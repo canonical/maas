@@ -1130,6 +1130,39 @@ class TestPod(MAASServerTestCase):
             Equals(len(discovered.machines)),
         )
 
+    def test_sync_for_lxd_pod_links_existing_vm(self):
+        discovered_machine = self.make_discovered_machine()
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine]
+        )
+        instance_name = discovered_machine.power_parameters["instance_name"]
+
+        pod = factory.make_Pod(pod_type="lxd")
+        virtual_machine = factory.make_VirtualMachine(
+            identifier=instance_name, bmc=pod
+        )
+        self.patch(Machine, "start_commissioning")
+        pod.sync(discovered_pod, factory.make_User())
+        machine = Machine.objects.get(hostname=instance_name)
+        self.assertEqual(machine.virtualmachine, virtual_machine)
+
+    def test_sync_for_lxd_pod_removes_unknown_vms(self):
+        discovered_pod = self.make_discovered_pod(machines=[])
+        pod = factory.make_Pod(pod_type="lxd")
+        machine1 = factory.make_Machine(bmc=pod)
+        # a VM linked to a machine that's been removed on the VM host
+        factory.make_VirtualMachine(
+            identifier=machine1.hostname,
+            bmc=pod,
+            machine=machine1,
+        )
+        # a VM not linked to a machine that's been removed on the VM host
+        factory.make_VirtualMachine(bmc=pod)
+        self.patch(Machine, "start_commissioning")
+        pod.sync(discovered_pod, factory.make_User())
+        self.assertFalse(Machine.objects.exists())
+        self.assertFalse(VirtualMachine.objects.exists())
+
     def test_sync_pod_upgrades_default_storage_pool(self):
         discovered = self.make_discovered_pod(machines=[])
         discovered_default = discovered.storage_pools[2]
@@ -2081,7 +2114,10 @@ class TestPod(MAASServerTestCase):
             ),
         )
         vm = factory.make_VirtualMachine(
-            bmc=pod, machine=machine, hugepages_backed=False
+            identifier=machine.hostname,
+            bmc=pod,
+            machine=machine,
+            hugepages_backed=False,
         )
         discovered_interface = self.make_discovered_interface(
             mac_address=machine.interface_set.first().mac_address,
@@ -2091,6 +2127,8 @@ class TestPod(MAASServerTestCase):
         )
         discovered_machine.hugepages_backed = True
         discovered_machine.pinned_cores = [0, 1, 2]
+        discovered_machine.hostname = machine.hostname
+        discovered_machine.power_parameters["instance_name"] = machine.hostname
         discovered_pod = self.make_discovered_pod(
             machines=[discovered_machine]
         )

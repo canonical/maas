@@ -3001,6 +3001,12 @@ class Node(CleanSave, TimestampedModel):
                 )
                 self.bmc.delete()
 
+            # XXX always delete the VM associated to the machine, if present.
+            # Ideally we should only delete VMs when the vM is decomposed.
+            # See LP:#1904758 for details
+            from maasserver.models.virtualmachine import VirtualMachine
+
+            VirtualMachine.objects.filter(machine_id=self.id).delete()
             super().delete(*args, **kwargs)
 
     def set_random_hostname(self):

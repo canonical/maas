@@ -1145,14 +1145,13 @@ class Pod(BMC):
 
             vm = getattr(existing_machine, "virtualmachine", None)
             if vm is None:
-                vm = VirtualMachine.objects.create(
+                vm, _ = VirtualMachine.objects.get_or_create(
                     identifier=existing_machine.instance_power_parameters[
                         "instance_name"
                     ],
                     bmc=self,
-                    machine=existing_machine,
                 )
-
+                vm.machine = existing_machine
             vm.memory = discovered_machine.memory
             vm.hugepages_backed = discovered_machine.hugepages_backed
             vm.pinned_cores = discovered_machine.pinned_cores
@@ -1410,6 +1409,19 @@ class Pod(BMC):
                 "%s: machine %s no longer exists and was deleted."
                 % (self.name, remove_machine.hostname)
             )
+
+        # delete entries for VirtualMachines if the corresponding VM has been
+        # removed on the host
+        existing_instance_names = set(
+            machine.power_parameters.get("instance_name")
+            for machine in discovered_machines
+        )
+        existing_instance_names.discard(None)
+        from maasserver.models.virtualmachine import VirtualMachine
+
+        VirtualMachine.objects.filter(bmc=self).exclude(
+            identifier__in=existing_instance_names
+        ).delete()
 
     def sync_storage_pools(self, discovered_storage_pools):
         """Sync the storage pools for the pod."""
