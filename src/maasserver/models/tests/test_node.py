@@ -1620,7 +1620,7 @@ class TestNode(MAASServerTestCase):
         node.delete()
         self.assertIsNotNone(reload_object(pod))
 
-    def test_delete_doesnt_delete_existing_virtual_machine(self):
+    def test_delete_deletes_existing_virtual_machine(self):
         pod = factory.make_Pod()
         machine = factory.make_Machine(
             bmc=pod, creation_type=NODE_CREATION_TYPE.PRE_EXISTING
@@ -1629,7 +1629,7 @@ class TestNode(MAASServerTestCase):
         vm.save()
         with post_commit_hooks:
             machine.delete()
-        self.assertIsNotNone(reload_object(vm))
+        self.assertIsNone(reload_object(vm))
 
     def test_delete_node_deletes_related_interface(self):
         node = factory.make_Node()
