@@ -711,13 +711,8 @@ class MachineForm(NodeForm):
     def __init__(self, request=None, requires_arch=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # Even though it doesn't need it and doesn't use it, this form accepts
-        # a parameter named 'request' because it is used interchangingly
-        # with AdminMachineForm which actually uses this parameter.
-        request = kwargs.get("request")
-        if request is not None:
-            self.data = request.data
         instance = kwargs.get("instance")
+        self.request = request
 
         self.set_up_architecture_field(requires_arch=requires_arch)
         # We only want the license key field to render in the UI if the `OS`
@@ -917,7 +912,16 @@ class MachineForm(NodeForm):
 
         # LP:1807991 - If requested when creating a new Machine, set the status
         # to COMMISSIONING when the object is created.
-        commission = not self.instance.id and self.cleaned_data["commission"]
+        is_anonymous = (
+            self.request
+            and self.request.user
+            and self.request.user.is_anonymous
+        )
+        commission = (
+            is_anonymous
+            and not self.instance.id
+            and self.cleaned_data["commission"]
+        )
         if commission:
             self.instance.status = NODE_STATUS.COMMISSIONING
         machine = super().save(*args, **kwargs)
@@ -1138,7 +1142,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
             "memory",
         )
 
-    def __init__(self, data=None, instance=None, request=None, **kwargs):
+    def __init__(self, data=None, instance=None, **kwargs):
         super().__init__(data=data, instance=instance, **kwargs)
         WithPowerTypeMixin.set_up_power_fields(self, data, instance)
 

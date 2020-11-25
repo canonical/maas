@@ -351,6 +351,39 @@ class TestMachinesAPI(APITestCase.ForUser):
             [script_result.name for script_result in script_set],
         )
 
+    def test_POST_commission_true(self):
+        # Regression test for LP:1904398
+        self.become_admin()
+        self.patch(Machine, "_start").return_value = None
+        make_usable_osystem(self)
+        response = self.client.post(
+            reverse("machines_handler"),
+            {
+                "architecture": make_usable_architecture(self),
+                "mac_addresses": ["aa:bb:cc:dd:ee:ff"],
+                "power_type": "manual",
+                "commission": True,
+            },
+        )
+        parsed_result = json.loads(response.content.decode())
+        self.assertEquals(NODE_STATUS.COMMISSIONING, parsed_result["status"])
+
+    def test_POST_commission_false(self):
+        # Regression test for LP:1904398
+        self.become_admin()
+        make_usable_osystem(self)
+        response = self.client.post(
+            reverse("machines_handler"),
+            {
+                "architecture": make_usable_architecture(self),
+                "mac_addresses": ["aa:bb:cc:dd:ee:ff"],
+                "power_type": "manual",
+                "commission": False,
+            },
+        )
+        parsed_result = json.loads(response.content.decode())
+        self.assertEquals(NODE_STATUS.NEW, parsed_result["status"])
+
     def test_GET_lists_machines(self):
         # The api allows for fetching the list of Machines.
         machine1 = factory.make_Node()
