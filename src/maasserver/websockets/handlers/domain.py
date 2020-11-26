@@ -96,7 +96,7 @@ class DomainHandler(TimestampedModelHandler, AdminOnlyMixin):
         if form.is_valid():
             form.save()
         else:
-            raise ValidationError
+            raise ValidationError(form.errors)
         return self.full_dehydrate(domain)
 
     def delete_dnsresource(self, params):

@@ -264,6 +264,21 @@ class TestDomainHandlerDNSResources(MAASServerTestCase):
             list(resource.ip_addresses.all())[0].ip, Equals("127.0.0.1")
         )
 
+    def test_update_resource_validation_error(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {}, None)
+        domain = factory.make_Domain()
+        resource = factory.make_DNSResource(domain=domain)
+        self.assertRaises(
+            ValidationError,
+            handler.update_dnsresource,
+            {
+                "domain": domain.id,
+                "dnsresource_id": resource.id,
+                "address_ttl": "invalid",
+            },
+        )
+
     def test_delete_resource(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)
