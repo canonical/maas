@@ -5,6 +5,8 @@
 
 __all__ = []
 
+from unittest.mock import MagicMock
+
 from django.http import QueryDict
 from testtools.matchers import Contains
 
@@ -218,8 +220,10 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         self.assertEqual("192-168-12-10-extra", node.hostname)
 
     def test_form_with_commissioning(self):
+        request = MagicMock()
+        request.user.is_anonymous = True
         form = MachineWithMACAddressesForm(
-            data={"commission": True, **self.make_params()}
+            request, data={"commission": True, **self.make_params()}
         )
         self.assertTrue(form.is_valid())
         machine = form.save()

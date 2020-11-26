@@ -1923,7 +1923,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @param (boolean) "commission" [required=false,formatting=true] Request
         the newly created machine to be created with status set to
         COMMISSIONING. Machines will wait for COMMISSIONING results and not
-        time out.
+        time out. Machines created by administrators will be commissioned
+        unless set to false.
 
         @param (int) "enable_ssh" [required=false]  Whether to enable SSH for
         the commissioning environment using the user's SSH key(s). '1' == True,
@@ -1959,8 +1960,13 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @success-example "success-json" [exkey=machines-create]
         placeholder text
         """
+        # Only admins are allowed to commission, store the value but remove it
+        # from the form.
+        commission = get_optional_param(
+            request.data, "commission", default=True, validator=StringBool
+        )
         machine = create_machine(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser and commission:
             form = CommissionForm(
                 instance=machine, user=request.user, data=request.data
             )
