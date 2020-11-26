@@ -8132,6 +8132,26 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             node.get_default_dns_servers(), [ipv6_subnet_dns]
         )
 
+    def test_ignores_other_unroutable_rack_controllers_ipv4(self):
+        # Regression test for LP:1896684
+        rack_v4, rack_v6, node = self.make_Node_with_RackController(
+            ipv4=True, ipv4_gateway=False, ipv6=False, ipv6_gateway=False
+        )
+        vlan = node.boot_interface.vlan
+        rack = vlan.primary_rack
+        rackif = rack.interface_set.first()
+        rack_ips = [rack_v4]
+        for _ in range(3):
+            subnet = factory.make_Subnet(vlan=vlan, version=4)
+            ip = factory.make_StaticIPAddress(subnet=subnet, interface=rackif)
+            rack_ips.append(ip.ip)
+        rack.save()
+        resolve_hostname = self.patch(server_address, "resolve_hostname")
+        resolve_hostname.side_effect = lambda hostname, version: set(
+            map(IPAddress, rack_ips)
+        )
+        self.assertItemsEqual(node.get_default_dns_servers(), [rack_v4])
+
 
 class TestNode_Start(MAASTransactionServerTestCase):
     """Tests for Node.start()."""

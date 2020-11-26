@@ -438,7 +438,15 @@ def make_subnet_config(
     dns_servers = []
     if subnet.allow_dns and default_dns_servers:
         # If the MAAS DNS server is enabled make sure that is used first.
-        dns_servers += default_dns_servers
+        if subnet.gateway_ip:
+            dns_servers += default_dns_servers
+        else:
+            # if there is no gateway, only provide in-subnet dns servers
+            dns_servers += [
+                ipaddress
+                for ipaddress in default_dns_servers
+                if ipaddress in ip_network
+            ]
     if subnet.dns_servers:
         # Add DNS user defined DNS servers
         dns_servers += [IPAddress(server) for server in subnet.dns_servers]
@@ -557,6 +565,10 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     :param use_rack_proxy: Whether to proxy DNS through the rack controller
       or not.
     """
+    if not subnet.allow_dns:
+        # This subnet isn't allowed to use region or rack addresses for dns
+        return []
+
     ip_version = subnet.get_ip_version()
     default_region_ip = get_source_address(subnet.get_ipnetwork())
     try:

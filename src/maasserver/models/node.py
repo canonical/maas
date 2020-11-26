@@ -4905,6 +4905,8 @@ class Node(CleanSave, TimestampedModel):
         if ipv4 and gateways.ipv4 is not None:
             subnet = Subnet.objects.get(id=gateways.ipv4.subnet_id)
             if subnet.dns_servers:
+                if not subnet.allow_dns:
+                    return subnet.dns_servers
                 rack_dns = []
                 for rack in {
                     self.get_boot_primary_rack_controller(),
@@ -4931,6 +4933,8 @@ class Node(CleanSave, TimestampedModel):
         if ipv6 and gateways.ipv6 is not None:
             subnet = Subnet.objects.get(id=gateways.ipv6.subnet_id)
             if subnet.dns_servers:
+                if not subnet.allow_dns:
+                    return subnet.dns_servers
                 rack_dns = []
                 for rack in {
                     self.get_boot_primary_rack_controller(),
@@ -4977,18 +4981,9 @@ class Node(CleanSave, TimestampedModel):
                 if filtered_addresses:
                     routable_addrs_map[node] = filtered_addresses
 
-        # No default gateway subnet has specific DNS servers defined, so
-        # use MAAS for the default DNS server.
         if gateways.ipv4 is None and gateways.ipv6 is None:
-            # If there are no default gateways, the default is the MAAS
-            # region IP address.
-            maas_dns_servers = get_dns_server_addresses(
-                rack_controller=self.get_boot_rack_controller(),
-                ipv4=ipv4,
-                ipv6=ipv6,
-                include_alternates=True,
-                default_region_ip=default_region_ip,
-            )
+            # node with no gateway can only use routable addrs
+            maas_dns_servers = []
             routable_addrs_map = {
                 node: [
                     address
