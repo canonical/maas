@@ -482,11 +482,11 @@ class BeaconingSocketProtocol(DatagramProtocol):
             self.transport.joinGroup(
                 BEACON_IPV4_MULTICAST, interface="127.0.0.1"
             )
-            # Loopback interface always has ifindex == 1.
+            # Loopback interface always has index 1.
             join_ipv6_beacon_group(sock, 1)
-        for _, ifdata in self.interfaces.items():
+        for ifname, ifdata in self.interfaces.items():
             # Always try to join the IPv6 group on each interface.
-            join_ipv6_beacon_group(sock, ifdata["index"])
+            join_ipv6_beacon_group(sock, socket.if_nametoindex(ifname))
             # Merely joining the group with the default parameters is not
             # enough, since we want to join the group on *all* interfaces.
             # So we need to join each group using an assigned IPv4 address

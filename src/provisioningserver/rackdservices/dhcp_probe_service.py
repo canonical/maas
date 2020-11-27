@@ -62,7 +62,7 @@ class DHCPProbeService(TimerService):
                 # interface in order to receive a response, and the TCP/IP
                 # stack will drop packets coming back from the server if an
                 # unexpected address is used.
-                if info["enabled"] and has_ipv4_address(interfaces, name)
+                if info["enabled"] and has_ipv4_address(info)
             ]
         )
         return d

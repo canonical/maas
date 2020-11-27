@@ -89,9 +89,8 @@ def _parse_interface_definition(line):
 
     # This line is in the format:
     # <interface_index>: <interface_name>: <properties>
-    [index, name, properties] = map(str.strip, line.split(":"))
+    [_, name, properties] = map(str.strip, line.split(":"))
 
-    interface["index"] = int(index)
     names = name.split("@")
     interface["name"] = names[0]
     if len(names) > 1:

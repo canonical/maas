@@ -71,12 +71,6 @@ class TestHelperFunctions(MAASTestCase):
         )
         self.assertThat(interface, Equals({}))
 
-    def test_parse_interface_definition_extracts_ifindex(self):
-        interface = _parse_interface_definition(
-            "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500"
-        )
-        self.assertThat(interface["index"], Equals(2))
-
     def test_parse_interface_definition_extracts_ifname(self):
         interface = _parse_interface_definition(
             "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500"
@@ -140,17 +134,6 @@ state UP mode DEFAULT group default qlen 1000
         self.assertIsNotNone(ip_link.get("lo"))
         self.assertIsNotNone(ip_link.get("eth0"))
         self.assertIsNotNone(ip_link["eth0"].get("mac"))
-
-    def test_parses_ifindex(self):
-        testdata = dedent(
-            """
-        2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
-state UP mode DEFAULT group default qlen 1000
-            link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
-        """
-        )
-        ip_link = parse_ip_addr(testdata)
-        self.assertEqual(2, ip_link["eth0"]["index"])
 
     def test_parses_name(self):
         testdata = dedent(
@@ -332,14 +315,12 @@ mode DORMANT group default qlen 1000
         """
         )
         ip_link = parse_ip_addr(testdata)
-        self.assertEqual(2, ip_link["eth0"]["index"])
         self.assertEqual("80:fa:5c:0d:43:5e", ip_link["eth0"]["mac"])
         self.assertEqual(["192.168.0.3/24"], ip_link["eth0"]["inet"])
         self.assertEqual(
             ["2001:db8:85a3:8d3:1319:8a2e:370:7350/64"],
             ip_link["eth0"]["inet6"],
         )
-        self.assertEqual(3, ip_link["eth1"]["index"])
         self.assertEqual("48:51:bb:7a:d5:e2", ip_link["eth1"]["mac"])
         self.assertEqual(["192.168.0.5/24"], ip_link["eth1"]["inet"])
         self.assertEqual(
@@ -378,13 +359,10 @@ group default qlen 1000
        """
         )
         ip_link = parse_ip_addr(testdata)
-        self.assertEqual(2, ip_link["ens3"]["index"])
         self.assertEqual("52:54:00:2d:39:49", ip_link["ens3"]["mac"])
         self.assertEqual(["172.16.100.108/24"], ip_link["ens3"]["inet"])
-        self.assertEqual(3, ip_link["ens10"]["index"])
         self.assertEqual("52:54:00:e5:c6:6b", ip_link["ens10"]["mac"])
         self.assertThat(ip_link["ens10"], Not(Contains("inet")))
-        self.assertEqual(4, ip_link["ens11"]["index"])
         self.assertEqual("52:54:00:ed:9f:9d", ip_link["ens11"]["mac"])
         self.assertThat(ip_link["ens11"], Not(Contains("inet")))
 

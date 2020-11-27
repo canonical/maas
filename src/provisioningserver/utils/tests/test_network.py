@@ -6,7 +6,6 @@
 
 import itertools
 import json
-import random
 import socket
 from socket import EAI_BADFLAGS, EAI_NODATA, EAI_NONAME, gaierror, IPPROTO_TCP
 from typing import List
@@ -1257,7 +1256,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "flags": ["UP"],
                 "inet": ["127.0.0.1/32"],
                 "inet6": ["::1"],
-                "index": 1,
             }
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
@@ -1269,26 +1267,22 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "inet": ["192.168.122.2/24"],
-                "index": 2,
             }
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_ignores_ipip(self):
-        ip_addr = {"vnet": {"type": "ipip", "flags": ["UP"], "index": 2}}
+        ip_addr = {"vnet": {"type": "ipip", "flags": ["UP"]}}
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_ignores_tunnel(self):
-        ip_addr = {
-            "vnet": {"type": "ethernet.tunnel", "flags": ["UP"], "index": 2}
-        }
+        ip_addr = {"vnet": {"type": "ethernet.tunnel", "flags": ["UP"]}}
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_simple(self):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
-                "index": 2,
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "inet": ["192.168.122.2/24"],
@@ -1299,7 +1293,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth0": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(ip_addr["eth0"]["index"]),
                         "mac_address": Equals(ip_addr["eth0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1317,7 +1310,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
-                "index": random.randint(2, 99),
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "inet": ["192.168.122.2/24"],
@@ -1329,7 +1321,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth0": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(ip_addr["eth0"]["index"]),
                         "mac_address": Equals(ip_addr["eth0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1353,7 +1344,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         ip_addr = {
             "eth0": {
                 "type": "ethernet",
-                "index": random.randint(2, 99),
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "inet": ["192.168.122.2/24"],
@@ -1364,7 +1354,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth0": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(ip_addr["eth0"]["index"]),
                         "mac_address": Equals(ip_addr["eth0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1384,7 +1373,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
-                "index": random.randint(2, 99),
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "inet": ["192.168.122.2/24", "192.168.122.200/32"],
@@ -1396,7 +1384,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth0": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(ip_addr["eth0"]["index"]),
                         "mac_address": Equals(ip_addr["eth0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1427,7 +1414,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
-                "index": random.randint(2, 99),
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "inet": [
@@ -1446,7 +1432,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth0": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(ip_addr["eth0"]["index"]),
                         "mac_address": Equals(ip_addr["eth0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1497,25 +1482,21 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         ip_addr = {
             "eth0": {
                 "type": "ethernet.physical",
-                "index": 2,
                 "mac": factory.make_mac_address(),
                 "flags": [],
             },
             "eth1": {
                 "type": "ethernet.physical",
-                "index": 3,
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
             },
             "eth2": {
                 "type": "ethernet.physical",
-                "index": 4,
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
             },
             "bond0": {
                 "type": "ethernet.bond",
-                "index": 5,
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "bonded_interfaces": ["eth1", "eth2"],
@@ -1524,7 +1505,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
             "bond0.10": {
                 "type": "ethernet.vlan",
-                "index": 6,
                 "flags": ["UP"],
                 "vid": 10,
                 "inet": ["192.168.123.2/24", "192.168.123.3/32"],
@@ -1532,7 +1512,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
             "vlan20": {
                 "type": "ethernet.vlan",
-                "index": 7,
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
                 "vid": 20,
@@ -1540,13 +1519,11 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
             "wlan0": {
                 "type": "ethernet.wireless",
-                "index": 8,
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
             },
             "br0": {
                 "type": "ethernet.bridge",
-                "index": 9,
                 "bridged_interfaces": ["eth0"],
                 "mac": factory.make_mac_address(),
                 "flags": ["UP"],
@@ -1554,7 +1531,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
             "gretap": {
                 "type": "gretap",
-                "index": 10,
                 "mac": "00:00:00:00:00:00",
                 "flags": ["UP"],
             },
@@ -1568,7 +1544,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth0": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(2),
                         "mac_address": Equals(ip_addr["eth0"]["mac"]),
                         "enabled": Is(False),
                         "parents": Equals([]),
@@ -1579,7 +1554,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth1": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(3),
                         "mac_address": Equals(ip_addr["eth1"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1590,7 +1564,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "eth2": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(4),
                         "mac_address": Equals(ip_addr["eth2"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1601,7 +1574,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "bond0": MatchesDict(
                     {
                         "type": Equals("bond"),
-                        "index": Equals(5),
                         "mac_address": Equals(ip_addr["bond0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals(["eth1", "eth2"]),
@@ -1633,7 +1605,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "bond0.10": MatchesDict(
                     {
                         "type": Equals("vlan"),
-                        "index": Equals(6),
                         "enabled": Is(True),
                         "parents": Equals(["bond0"]),
                         "vid": Equals(10),
@@ -1657,7 +1628,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "vlan20": MatchesDict(
                     {
                         "type": Equals("vlan"),
-                        "index": Equals(7),
                         "enabled": Is(True),
                         "parents": Equals(["eth0"]),
                         "links": Equals([]),
@@ -1668,7 +1638,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "wlan0": MatchesDict(
                     {
                         "type": Equals("physical"),
-                        "index": Equals(8),
                         "mac_address": Equals(ip_addr["wlan0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals([]),
@@ -1679,7 +1648,6 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "br0": MatchesDict(
                     {
                         "type": Equals("bridge"),
-                        "index": Equals(9),
                         "mac_address": Equals(ip_addr["br0"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals(["eth0"]),
@@ -1751,21 +1719,19 @@ class TestGetAllInterfacesSourceAddresses(MAASTestCase):
 class InterfaceLinksTestCase(MAASTestCase):
     """Test case for `TestHasIPv4Address` and `TestEnumerateAddresses`."""
 
-    def make_interfaces(self, name, addresses=None):
+    def make_interface(self, addresses=None):
         links = []
         if addresses is not None:
             for address in addresses:
                 links.append({"address": address, "mode": "static"})
         return {
-            name: {
-                "enabled": True,
-                "links": links,
-                "mac_address": "52:54:00:e7:d9:2c",
-                "monitored": True,
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            }
+            "enabled": True,
+            "links": links,
+            "mac_address": "52:54:00:e7:d9:2c",
+            "monitored": True,
+            "parents": [],
+            "source": "ipaddr",
+            "type": "physical",
         }
 
 
@@ -1773,27 +1739,17 @@ class TestHasIPv4Address(InterfaceLinksTestCase):
     """Tests for `has_ipv4_address()`."""
 
     def test_returns_false_for_no_ip_address(self):
-        ifname = factory.make_name("eth")
-        self.assertThat(
-            has_ipv4_address(self.make_interfaces(ifname), ifname),
-            Equals(False),
-        )
+        self.assertFalse(has_ipv4_address(self.make_interface()))
 
     def test_returns_false_for_ipv6_address(self):
-        ifname = factory.make_name("eth")
         address = "%s/64" % factory.make_ipv6_address()
-        self.assertThat(
-            has_ipv4_address(self.make_interfaces(ifname, [address]), ifname),
-            Equals(False),
+        self.assertFalse(
+            has_ipv4_address(self.make_interface(addresses=[address]))
         )
 
     def test_returns_true_for_ipv4_address(self):
-        ifname = factory.make_name("eth")
         address = "%s/24" % factory.make_ipv4_address()
-        self.assertThat(
-            has_ipv4_address(self.make_interfaces(ifname, [address]), ifname),
-            Equals(True),
-        )
+        self.assertTrue(self.make_interface(addresses=[address]))
 
 
 class TestGetIfnameIfdataForDestination(MAASTestCase):
@@ -1863,14 +1819,13 @@ class TestEnumerateAddresses(InterfaceLinksTestCase):
     """Tests for `enumerate_assigned_ips` and `enumerate_ipv4_addresses()`."""
 
     def test_returns_appropriate_assigned_ip_addresses(self):
-        ifname = factory.make_name("eth")
         ipv6_address = factory.make_ipv6_address()
         ipv4_address = factory.make_ipv4_address()
-        interfaces = self.make_interfaces(
-            ifname, [ipv6_address + "/64", ipv4_address + "/24"]
+        interface = self.make_interface(
+            addresses=[ipv6_address + "/64", ipv4_address + "/24"]
         )
-        ip_addresses = list(enumerate_assigned_ips(interfaces[ifname]))
-        ipv4_addresses = list(enumerate_ipv4_addresses(interfaces[ifname]))
+        ip_addresses = list(enumerate_assigned_ips(interface))
+        ipv4_addresses = list(enumerate_ipv4_addresses(interface))
         self.assertThat(ip_addresses, Equals([ipv6_address, ipv4_address]))
         self.assertThat(ipv4_addresses, Equals([ipv4_address]))
 

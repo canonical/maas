@@ -55,7 +55,6 @@ ENI_PARSED_METHODS = ["static", "manual", "dhcp"]
 # included in `get_all_interfaces_definition()`.
 LOOPBACK_INTERFACE_INFO = {
     "enabled": True,
-    "index": 1,
     "links": [{"address": "::1/128"}, {"address": "127.0.0.1/8"}],
 }
 
@@ -1165,7 +1164,6 @@ def get_all_interfaces_definition(
         # Create the interface definition will links for both IPv4 and IPv6.
         interface = {
             "type": iface_type,
-            "index": ipaddr["index"],
             "links": [],
             "enabled": True if "UP" in ipaddr["flags"] else False,
             "parents": parents,
@@ -1274,18 +1272,16 @@ def enumerate_ipv4_addresses(ifdata):
     )
 
 
-def has_ipv4_address(interfaces: dict, interface: str) -> bool:
+def has_ipv4_address(interface: dict) -> bool:
     """Returns True if the specified interface has an IPv4 address assigned.
 
     If no addresses are assigned, or only addresses with other address families
     are assigned (IPv6), returns False.
 
-    :param interfaces: The output of `get_all_interfaces_definition()`.
-    :param interface: The interface name to check.
+    :param interface: interface details for an interface fom `get_all_interfaces_definition()`.
     """
     address_families = {
-        IPAddress(ip).version
-        for ip in enumerate_assigned_ips(interfaces[interface])
+        IPAddress(ip).version for ip in enumerate_assigned_ips(interface)
     }
     return 4 in address_families
 
