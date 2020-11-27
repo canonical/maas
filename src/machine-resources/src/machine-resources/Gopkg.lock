@@ -2,56 +2,109 @@
 
 
 [[projects]]
+  digest = "1:0675c37c9ab84b1be69979619609bfb3b3fa008679b36cd34944c71b5295af4a"
   name = "github.com/flosch/pongo2"
   packages = ["."]
-  revision = "5e81b817a0c48c1c57cdf1a9056cf76bdee02ca9"
-  version = "v3.0"
+  pruneopts = ""
+  revision = "f946812ec8d53b724e4daeb888c95ab63c98b3c0"
+  version = "v4.0.0"
 
 [[projects]]
+  digest = "1:25eec675540d3cf690b593f161626a8bbf1d25e60d5cc8f8d51f38c467a32766"
+  name = "github.com/google/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "0e4e31197428a347842d152773b4cace4645ca25"
+  version = "v1.1.2"
+
+[[projects]]
+  digest = "1:5122b0b5a933bd0e16b887aa7844933c8a09fb5ba9b5f5651253cb5336c6462a"
   name = "github.com/gorilla/websocket"
   packages = ["."]
+  pruneopts = ""
   revision = "b65e62901fc1c0d968042419e74789f6af455eb9"
   version = "v1.4.2"
 
 [[projects]]
+  digest = "1:0c9cf259a0f3c81866f5fd5f8c11827542f7b8c917d59dafa0730f1bc73b66a8"
   name = "github.com/jaypipes/pcidb"
   packages = ["."]
+  pruneopts = ""
   revision = "98ef3ee36c69f20650fe7855047ad042338c6983"
   version = "v0.5.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:bb93eb5fd56bfe02ad0e8f8702084dd88e480360f7f3ab7e521b7ca80ef8bd30"
   name = "github.com/lxc/lxd"
-  packages = ["lxd/include","lxd/resources","shared","shared/api","shared/cancel","shared/ioprogress","shared/logger","shared/osarch","shared/units","shared/usbid","shared/validate","shared/version"]
-  revision = "4c7cd25c6842f49f3a29468aa745ee97651d42bd"
+  packages = [
+    "lxd/include",
+    "lxd/resources",
+    "shared",
+    "shared/api",
+    "shared/cancel",
+    "shared/ioprogress",
+    "shared/logger",
+    "shared/osarch",
+    "shared/units",
+    "shared/usbid",
+    "shared/validate",
+    "shared/version",
+  ]
+  pruneopts = ""
+  revision = "275ece65237da52bce37429327d3b6dbdad568ac"
 
 [[projects]]
+  digest = "1:6dbb0eb72090871f2e58d1e37973fe3cb8c0f45f49459398d3fc740cb30e13bd"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
+  pruneopts = ""
   revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
   version = "v1.1.0"
 
 [[projects]]
+  digest = "1:ce2a988688eca16ba1646676d3880b2e27cec585c1c4d63d31281c2c0001b1a6"
+  name = "github.com/pborman/uuid"
+  packages = ["."]
+  pruneopts = ""
+  revision = "5b6091a6a160ee5ce12917b21ab96acec2a4fdc0"
+  version = "v1.2.1"
+
+[[projects]]
+  digest = "1:c45802472e0c06928cd997661f2af610accd85217023b1d5f6331bebce0671d3"
   name = "github.com/pkg/errors"
   packages = ["."]
+  pruneopts = ""
   revision = "614d223910a179a466c1767a985424175c39b465"
   version = "v0.9.1"
 
 [[projects]]
   branch = "master"
+  digest = "1:3d2a2835773ff2a9149219731e5acb01cc3dd0f46cc503bf2575c584eea4dfac"
   name = "golang.org/x/sys"
-  packages = ["internal/unsafeheader","unix","windows"]
-  revision = "0cf7623e9dbd9bc79267b27a7e6c5757ef550423"
+  packages = [
+    "internal/unsafeheader",
+    "unix",
+    "windows",
+  ]
+  pruneopts = ""
+  revision = "f84b799fce68db3cb46a8f6f819c1e56377181df"
 
 [[projects]]
   branch = "v2"
+  digest = "1:92a9d3d81fc5b50d5ccf0c72b9888cd27acf277894f8aa18f4c9c41de8311555"
   name = "gopkg.in/robfig/cron.v2"
   packages = ["."]
+  pruneopts = ""
   revision = "be2e0b0deed5a68ffee390b4583a13aff8321535"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "0aa702d9956536c2ac11ab31b412046932bc18980bb395c40153f94d457e48c6"
+  input-imports = [
+    "github.com/lxc/lxd/lxd/resources",
+    "github.com/lxc/lxd/shared",
+    "github.com/lxc/lxd/shared/version",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

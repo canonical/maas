@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 
@@ -41,13 +42,15 @@ type HostInfo struct {
 type AllInfo struct {
 	HostInfo
 	Resources interface{} `json:"resources" yaml:"resources"`
+	Networks  interface{} `json:"networks" yaml:"networks"`
 }
 
-func check_error(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-		os.Exit(1)
+func checkError(err error) {
+	if err == nil {
+		return
 	}
+	fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+	os.Exit(1)
 }
 
 func parseKeyValueFile(path string) (map[string]string, error) {
@@ -112,10 +115,10 @@ func getOSNameVersion() OSInfo {
 
 func GetHostInfo() HostInfo {
 	hostname, err := os.Hostname()
-	check_error(err)
+	checkError(err)
 
 	uname, err := shared.Uname()
-	check_error(err)
+	checkError(err)
 
 	return HostInfo{
 		// These are the API extensions machine-resources reproduces.
@@ -150,53 +153,33 @@ func GetHostInfo() HostInfo {
 	}
 }
 
-func GetResources() (resources_data interface{}) {
-	var err error
-	resources_data, err = resources.GetResources()
-	check_error(err)
-	return
+func GetResources() interface{} {
+	data, err := resources.GetResources()
+	checkError(err)
+	return data
 }
 
-func help() {
-	fmt.Fprintf(os.Stderr, "usage: %s <endpoint> - Output system information in JSON\n\n", os.Args[0])
-	fmt.Fprintf(os.Stderr, "Supported LXD API endpoints:\n")
-	fmt.Fprintf(os.Stderr, "/            Print host info\n")
-	fmt.Fprintf(os.Stderr, "/resources   Print system resources\n")
-	fmt.Fprintf(os.Stderr, "/networks    Print network information\n\n")
-	fmt.Fprintf(os.Stderr, "Default      Print all information combined\n")
-	os.Exit(1)
+func GetNetworks() interface{} {
+	ifaces, err := net.Interfaces()
+	checkError(err)
+	data := make(map[string]interface{}, len(ifaces))
+	for _, iface := range ifaces {
+		netDetails, err := resources.GetNetworkState(iface.Name)
+		checkError(err)
+		data[iface.Name] = netDetails
+	}
+	return data
 }
 
 func main() {
-	var data interface{}
-	var err error
-	switch len(os.Args) {
-	case 1:
-		data = AllInfo{
-			HostInfo:  GetHostInfo(),
-			Resources: GetResources(),
-		}
-	case 2:
-		switch os.Args[1] {
-		case "/":
-			data = GetHostInfo()
-		case "/resources":
-			data = GetResources()
-		case "/networks":
-			fmt.Fprintf(os.Stderr, "TODO: Show network information\n")
-			os.Exit(1)
-		case "help":
-			help()
-		default:
-			fmt.Fprintf(os.Stderr, "ERROR: Unknown endpoint '%s'!\n\n", os.Args[1])
-			help()
-		}
-	default:
-		fmt.Fprintf(os.Stderr, "ERROR: Too many arguments given!\n\n")
-		help()
+	data := AllInfo{
+		HostInfo:  GetHostInfo(),
+		Resources: GetResources(),
+		Networks:  GetNetworks(),
 	}
-
-	ret, err := json.MarshalIndent(data, "", "    ")
-	check_error(err)
-	fmt.Printf("%s\n", ret)
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "    ")
+	err := encoder.Encode(data)
+	checkError(err)
 }
