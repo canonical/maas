@@ -99,6 +99,7 @@ class TransactionalHelpersMixin:
     def make_listener_without_delay(self):
         listener = PostgresListenerService()
         self.patch(listener, "HANDLE_NOTIFY_DELAY", 0)
+        self.patch(listener, "CHANNEL_REGISTRAR_DELAY", 0)
         return listener
 
     @transactional
