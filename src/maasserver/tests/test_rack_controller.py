@@ -16,10 +16,10 @@ from twisted.python.failure import Failure
 
 from maasserver import rack_controller
 from maasserver.ipc import IPCWorkerService
-from maasserver.listener import PostgresListenerService
 from maasserver.rack_controller import RackControllerService
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
@@ -32,7 +32,13 @@ from maastesting.matchers import (
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
-class TestRackControllerService(MAASTransactionServerTestCase):
+class TestRackControllerService(
+    TransactionalHelpersMixin, MAASTransactionServerTestCase
+):
+    def setUp(self):
+        super().setUp()
+        self.patch(RackControllerService, "PROCESSING_DELAY", 0)
+
     def test_init_sets_properties(self):
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
         self.assertThat(
@@ -65,7 +71,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         ipcWorker = IPCWorkerService(sentinel.reactor)
         ipcWorker.processId.set(regionProcessId)
 
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         yield listener.startService()
         service = RackControllerService(ipcWorker, listener)
         yield service.startService()
@@ -91,7 +97,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         ipcWorker = IPCWorkerService(sentinel.reactor)
         ipcWorker.processId.set(regionProcessId)
 
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         yield listener.startService()
         deferred = Deferred()
         listener.runChannelRegistrar = fake_run_channel_registrar
@@ -118,7 +124,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         ipcWorker = IPCWorkerService(sentinel.reactor)
         ipcWorker.processId.set(regionProcessId)
 
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(ipcWorker, listener)
         yield service.startService()
         self.assertIsNone(service.starting)
@@ -127,7 +133,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_startService_handles_cancel(self):
         ipcWorker = IPCWorkerService(sentinel.reactor)
 
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(ipcWorker, listener)
         starting = service.startService()
         self.assertIs(starting, service.starting)
@@ -154,7 +160,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         ipcWorker = IPCWorkerService(sentinel.reactor)
         ipcWorker.processId.set(process.id)
 
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(ipcWorker, listener)
         mock_coreHandler = self.patch(service, "coreHandler")
         yield service.startService()
@@ -167,7 +173,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_stopService_handles_canceling_startup(self):
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = random.randint(0, 100)
         service.starting = Deferred()
@@ -181,7 +187,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_stopService_calls_unregister_for_all_watching(self):
         processId = random.randint(0, 100)
         watching = {random.randint(0, 100) for _ in range(3)}
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = watching
@@ -198,7 +204,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_coreHandler_unwatch_calls_unregister(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = {rack_id}
@@ -212,7 +218,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_coreHandler_unwatch_doesnt_call_unregister(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         self.assertNotIn(rack_id, service.watching)
         listener.register(f"sys_dhcp_{rack_id}", service.dhcpHandler)
@@ -225,7 +231,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_coreHandler_watch_calls_register_and_startProcessing(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         mock_startProcessing = self.patch(service, "startProcessing")
@@ -241,7 +247,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_coreHandler_watch_doesnt_call_register(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         service.watching = set([rack_id])
@@ -257,7 +263,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
     def test_coreHandler_raises_ValueError_for_unknown_action(self):
         processId = random.randint(0, 100)
         rack_id = random.randint(0, 100)
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
         with ExpectedException(ValueError):
@@ -267,7 +273,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_dhcpHandler_adds_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.watching = set([rack_id])
         mock_startProcessing = self.patch(service, "startProcessing")
@@ -277,7 +283,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
 
     def test_dhcpHandler_doesnt_add_to_needsDHCPUpdate(self):
         rack_id = random.randint(0, 100)
-        listener = PostgresListenerService()
+        listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         mock_startProcessing = self.patch(service, "startProcessing")
         service.dhcpHandler("sys_dhcp_%d" % rack_id, "")
@@ -295,7 +301,7 @@ class TestRackControllerService(MAASTransactionServerTestCase):
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
         mock_start = self.patch(service.processing, "start")
         service.startProcessing()
-        self.assertThat(mock_start, MockCalledOnceWith(0.1, now=False))
+        self.assertThat(mock_start, MockCalledOnceWith(0, now=False))
 
     @wait_for_reactor
     @inlineCallbacks

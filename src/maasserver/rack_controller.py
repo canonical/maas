@@ -62,6 +62,8 @@ class RackControllerService(Service):
     See module documentation for more details.
     """
 
+    PROCESSING_DELAY = 0.1
+
     def __init__(self, ipcWorker, postgresListener, clock=reactor):
         """Initialise a new `RackControllerService`.
 
@@ -255,7 +257,9 @@ class RackControllerService(Service):
     def startProcessing(self):
         """Start the process looping call."""
         if not self.processing.running:
-            self.processingDone = self.processing.start(0.1, now=False)
+            self.processingDone = self.processing.start(
+                self.PROCESSING_DELAY, now=False
+            )
 
     def process(self):
         """Process the next rack controller that needs an update."""
