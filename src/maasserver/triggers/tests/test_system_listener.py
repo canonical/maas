@@ -3834,7 +3834,9 @@ class TestDNSStaticIPAddressListener(
                 "ip": old_ip,
             },
         )
-        new_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        new_ip = factory.pick_ip_in_network(
+            subnet.get_ipnetwork(), but_not=[old_ip]
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -3875,7 +3877,9 @@ class TestDNSStaticIPAddressListener(
                 "ip": old_ip,
             },
         )
-        new_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        new_ip = factory.pick_ip_in_network(
+            subnet.get_ipnetwork(), but_not=[old_ip]
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
