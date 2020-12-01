@@ -929,7 +929,7 @@ class OwnerDataMixin:
     @classmethod
     def owner_data(handler, machine):
         """Owner data placed on machine."""
-        return {data.key: data.value for data in machine.ownerdata_set.all()}
+        return OwnerData.objects.get_owner_data(machine)
 
     @operation(idempotent=False)
     def set_owner_data(self, request, system_id):

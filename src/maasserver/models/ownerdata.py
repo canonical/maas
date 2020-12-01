@@ -29,17 +29,23 @@ class OwnerDataManager(Manager):
             key for key, value in owner_data.items() if value is None
         }
         if len(keys_to_remove) > 0:
-            self.filter(node=node, key__in=keys_to_remove).delete()
+            self.delete_owner_data(node, keys_to_remove)
 
         # Create/update the owner data.
         for key, value in owner_data.items():
-            if value is not None:
-                data, created = self.get_or_create(
-                    node=node, key=key, defaults={"value": value}
-                )
-                if not created and data.value != value:
-                    data.value = value
-                    data.save()
+            if value is None:
+                continue
+            self.update_or_create(
+                node=node, key=key, defaults={"value": value}
+            )
+
+    def get_owner_data(self, node):
+        # Note: ownerdata_set is prefetched, so this is more efficient than it
+        #       otherwise appears. See NODES_PREFETCH in maasserver.api.nodes.
+        return {data.key: data.value for data in node.ownerdata_set.all()}
+
+    def delete_owner_data(self, node, keys):
+        node.ownerdata_set.filter(key__in=keys).delete()
 
 
 class OwnerData(CleanSave, Model):

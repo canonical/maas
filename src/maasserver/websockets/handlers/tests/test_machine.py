@@ -5271,3 +5271,95 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
             4,
             "Number of queries has changed; make sure this is expected.",
         )
+
+
+class TestMachineHandlerOwnerData(MAASServerTestCase):
+    """Tests for MachineHandle methods set_owner_data and get_owner_data."""
+
+    def test_set_owner_data(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {}, None)
+        owner_data = {"data 1": "value 1"}
+        self.assertEqual(
+            owner_data,
+            handler.set_owner_data(
+                {
+                    "system_id": node.system_id,
+                    "owner_data": owner_data,
+                }
+            ),
+        )
+
+    def test_set_owner_data_overwrite(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {}, None)
+        owner_data = {"data 1": "value 1"}
+        self.assertEqual(
+            owner_data,
+            handler.set_owner_data(
+                {
+                    "system_id": node.system_id,
+                    "owner_data": owner_data,
+                }
+            ),
+        )
+        owner_data = {"data 1": "value 2"}
+        self.assertEqual(
+            owner_data,
+            handler.set_owner_data(
+                {
+                    "system_id": node.system_id,
+                    "owner_data": owner_data,
+                }
+            ),
+        )
+
+    def test_set_owner_data_empty(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {}, None)
+        owner_data = {"data 1": "value 1"}
+        self.assertEqual(
+            owner_data,
+            handler.set_owner_data(
+                {
+                    "system_id": node.system_id,
+                    "owner_data": owner_data,
+                }
+            ),
+        )
+        owner_data = {"data 1": ""}
+        self.assertEqual(
+            {},
+            handler.set_owner_data(
+                {
+                    "system_id": node.system_id,
+                    "owner_data": owner_data,
+                }
+            ),
+        )
+
+    def test_get_ower_data(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {}, None)
+        owner_data = {"data 1": "value 1"}
+        self.assertEqual(
+            owner_data,
+            handler.set_owner_data(
+                {
+                    "system_id": node.system_id,
+                    "owner_data": owner_data,
+                }
+            ),
+        )
+        self.assertEqual(
+            owner_data,
+            handler.get_owner_data(
+                {
+                    "system_id": node.system_id,
+                }
+            ),
+        )

@@ -50,15 +50,19 @@ from maasserver.forms.interface import (
     VLANInterfaceForm,
 )
 from maasserver.forms.interface_link import InterfaceLinkForm
-from maasserver.models.blockdevice import BlockDevice
-from maasserver.models.cacheset import CacheSet
-from maasserver.models.event import Event
-from maasserver.models.filesystem import Filesystem
-from maasserver.models.filesystemgroup import VolumeGroup
-from maasserver.models.interface import Interface
-from maasserver.models.node import Machine, Node
-from maasserver.models.partition import Partition
-from maasserver.models.subnet import Subnet
+from maasserver.models import (
+    BlockDevice,
+    CacheSet,
+    Event,
+    Filesystem,
+    Interface,
+    Machine,
+    Node,
+    OwnerData,
+    Partition,
+    Subnet,
+    VolumeGroup,
+)
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import (
@@ -1114,3 +1118,22 @@ class MachineHandler(NodeHandler):
         if node.locked:
             raise HandlerPermissionError()
         return node
+
+    def get_owner_data(self, params):
+        """Get the owner data for a machine"""
+        machine = self._get_node_or_permission_error(
+            params, permission=NodePermission.edit
+        )
+        return OwnerData.objects.get_owner_data(machine)
+
+    def set_owner_data(self, params):
+        """Set the owner data for a machine"""
+        machine = self._get_node_or_permission_error(
+            params, permission=NodePermission.edit
+        )
+        owner_data = {
+            key: None if value == "" else value
+            for key, value in params["owner_data"].items()
+        }
+        OwnerData.objects.set_owner_data(machine, owner_data)
+        return OwnerData.objects.get_owner_data(machine)
