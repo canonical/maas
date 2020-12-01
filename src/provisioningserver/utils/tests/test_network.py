@@ -1253,7 +1253,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         ip_addr = {
             "vnet": {
                 "type": "loopback",
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": ["127.0.0.1/32"],
                 "inet6": ["::1"],
             }
@@ -1265,18 +1265,18 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "vnet": {
                 "type": "ethernet",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": ["192.168.122.2/24"],
             }
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_ignores_ipip(self):
-        ip_addr = {"vnet": {"type": "ipip", "flags": ["UP"]}}
+        ip_addr = {"vnet": {"type": "ipip", "enabled": True}}
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_ignores_tunnel(self):
-        ip_addr = {"vnet": {"type": "ethernet.tunnel", "flags": ["UP"]}}
+        ip_addr = {"vnet": {"type": "ethernet.tunnel", "enabled": True}}
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_simple(self):
@@ -1284,7 +1284,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "eth0": {
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": ["192.168.122.2/24"],
             }
         }
@@ -1311,7 +1311,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "eth0": {
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": ["192.168.122.2/24"],
             }
         }
@@ -1345,7 +1345,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "eth0": {
                 "type": "ethernet",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": ["192.168.122.2/24"],
             }
         }
@@ -1374,7 +1374,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "eth0": {
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": ["192.168.122.2/24", "192.168.122.200/32"],
             }
         }
@@ -1415,7 +1415,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "eth0": {
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": [
                     "192.168.122.2/24",
                     "192.168.122.3/32",
@@ -1483,29 +1483,29 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "eth0": {
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
-                "flags": [],
+                "enabled": False,
             },
             "eth1": {
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
             },
             "eth2": {
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
             },
             "bond0": {
                 "type": "ethernet.bond",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "bonded_interfaces": ["eth1", "eth2"],
                 "inet": ["192.168.122.2/24", "192.168.122.3/32"],
                 "inet6": ["2001:db8::3:2:2/96"],
             },
             "bond0.10": {
                 "type": "ethernet.vlan",
-                "flags": ["UP"],
+                "enabled": True,
                 "vid": 10,
                 "inet": ["192.168.123.2/24", "192.168.123.3/32"],
                 "parent": "bond0",
@@ -1513,26 +1513,26 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "vlan20": {
                 "type": "ethernet.vlan",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "vid": 20,
                 "parent": "eth0",
             },
             "wlan0": {
                 "type": "ethernet.wireless",
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
             },
             "br0": {
                 "type": "ethernet.bridge",
                 "bridged_interfaces": ["eth0"],
                 "mac": factory.make_mac_address(),
-                "flags": ["UP"],
+                "enabled": True,
                 "inet": ["192.168.124.2/24"],
             },
             "gretap": {
                 "type": "gretap",
                 "mac": "00:00:00:00:00:00",
-                "flags": ["UP"],
+                "enabled": True,
             },
         }
         iproute_info = {

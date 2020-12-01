@@ -98,15 +98,14 @@ def _parse_interface_definition(line):
 
     # Now parse the <properties> part from above.
     # This will be in the form "<FLAG1,FLAG2> key1 value1 key2 value2 ..."
-    matches = re.match(r"^<(.*)>(.*)", properties)
+    matches = re.match(r"^<(.*)>.*", properties)
     if matches:
         flags = matches.group(1)
-        if len(flags) > 0:
+        if flags:
             flags = flags.split(",")
         else:
             flags = []
-        interface["flags"] = flags
-        interface["settings"] = get_settings_dict(matches.group(2))
+        interface["enabled"] = "UP" in flags
     else:
         raise ValueError("Malformed 'ip addr' line (%s)" % line)
     return interface

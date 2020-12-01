@@ -1165,7 +1165,7 @@ def get_all_interfaces_definition(
         interface = {
             "type": iface_type,
             "links": [],
-            "enabled": True if "UP" in ipaddr["flags"] else False,
+            "enabled": ipaddr["enabled"],
             "parents": parents,
             "source": "ipaddr",
         }

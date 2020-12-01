@@ -77,24 +77,15 @@ class TestHelperFunctions(MAASTestCase):
         )
         self.assertThat(interface["name"], Equals("eth0"))
 
-    def test_parse_interface_definition_extracts_flags(self):
+    def test_parse_interface_definition_extract_state(self):
         interface = _parse_interface_definition(
             "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500"
         )
-        self.assertThat(
-            set(interface["flags"]),
-            Equals({"LOWER_UP", "UP", "MULTICAST", "BROADCAST"}),
-        )
+        self.assertTrue(interface["enabled"])
 
     def test_parse_interface_definition_tolerates_empty_flags(self):
         interface = _parse_interface_definition("2: eth0: <> mtu 1500")
-        self.assertThat(set(interface["flags"]), Equals(set()))
-
-    def test_parse_interface_definition_extracts_settings(self):
-        interface = _parse_interface_definition(
-            "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500"
-        )
-        self.assertThat(interface["settings"], Equals({"mtu": "1500"}))
+        self.assertFalse(interface["enabled"])
 
     def test_parse_interface_definition_malformed_line_raises_valueerror(self):
         with ExpectedException(ValueError):
@@ -157,7 +148,7 @@ state UP mode DEFAULT group default qlen 1000
         ip_link = parse_ip_addr(testdata)
         self.assertEqual("80:fa:5c:0d:43:5e", ip_link["eth0"]["mac"])
 
-    def test_parses_flags(self):
+    def test_parses_enabled_state(self):
         testdata = dedent(
             """
         2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
@@ -166,36 +157,7 @@ state UP mode DEFAULT group default qlen 1000
         """
         )
         ip_link = parse_ip_addr(testdata)
-        flags = ip_link["eth0"].get("flags")
-        self.assertIsNotNone(flags)
-        self.assertThat(
-            set(flags), Equals({"BROADCAST", "MULTICAST", "UP", "LOWER_UP"})
-        )
-
-    def test_parses_settings(self):
-        testdata = dedent(
-            """
-        2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast \
-state UP mode DEFAULT group default qlen 1000
-            link/ether 80:fa:5c:0d:43:5e brd ff:ff:ff:ff:ff:ff
-        """
-        )
-        ip_link = parse_ip_addr(testdata)
-        settings = ip_link["eth0"].get("settings")
-        self.assertIsNotNone(settings)
-        self.assertThat(
-            settings,
-            Equals(
-                {
-                    "mtu": "1500",
-                    "qdisc": "pfifo_fast",
-                    "state": "UP",
-                    "mode": "DEFAULT",
-                    "group": "default",
-                    "qlen": "1000",
-                }
-            ),
-        )
+        self.assertTrue(ip_link["eth0"]["enabled"])
 
     def test_parses_inet(self):
         testdata = dedent(
