@@ -6,6 +6,7 @@
 
 from functools import partial
 import re
+from statistics import mean
 
 from django.contrib.postgres.fields import ArrayField, JSONField
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -1548,7 +1549,7 @@ class Pod(BMC):
         podlog.info("%s: finished syncing discovered information" % self.name)
 
     def sync_hints_from_nodes(self):
-        """Sync the hints based on discovered data from assoicated nodes."""
+        """Sync the hints based on discovered data from associated nodes."""
         try:
             hints = self.hints
         except PodHints.DoesNotExist:
@@ -1558,6 +1559,7 @@ class Pod(BMC):
         self.memory = hints.memory = 0
         self.local_disks = hints.local_disks = 0
         self.iscsi_storage = hints.iscsi_storage = 0
+        cpu_speeds = []
         # Set the hints for the Pod to the total amount for all nodes in a
         # cluster.
         for node in hints.nodes.all().prefetch_related(
@@ -1569,11 +1571,7 @@ class Pod(BMC):
                 hints.memory += numa.memory
                 self.memory += numa.memory
             if node.cpu_speed != 0:
-                if hints.cpu_speed != 0:
-                    hints.cpu_speed = (hints.cpu_speed + node.cpu_speed) / 2
-                else:
-                    hints.cpu_speed = node.cpu_speed
-                self.cpu_speed = hints.cpu_speed
+                cpu_speeds.append(node.cpu_speed)
             for bd in node.blockdevice_set.all():
                 if bd.type == "physical":
                     hints.local_disks += 1
@@ -1581,6 +1579,9 @@ class Pod(BMC):
                 elif bd.type == "iscsi":
                     hints.iscsi_storage += bd.size
                     self.iscsi_storage += bd.size
+        self.cpu_speed = hints.cpu_speed = (
+            mean(cpu_speeds) if cpu_speeds else 0
+        )
         hints.save()
         self.save()
 

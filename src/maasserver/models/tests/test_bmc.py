@@ -5,6 +5,7 @@
 
 
 import random
+from statistics import mean
 from unittest.mock import Mock, sentinel
 
 from crochet import wait_for
@@ -2475,7 +2476,7 @@ class TestPod(MAASServerTestCase):
         pod.sync_hints_from_nodes()
 
         cores = 0
-        cpu_speed = 0
+        cpu_speeds = []
         memory = 0
         local_storage = 0
         iscsi_storage = 0
@@ -2483,10 +2484,7 @@ class TestPod(MAASServerTestCase):
             for numa in node.numanode_set.all():
                 cores += len(numa.cores)
                 memory += numa.memory
-            if cpu_speed == 0:
-                cpu_speed = node.cpu_speed
-            else:
-                cpu_speed = (cpu_speed + node.cpu_speed) / 2
+            cpu_speeds.append(node.cpu_speed)
             for bd in node.blockdevice_set.all():
                 if bd.type == "physical":
                     local_storage += bd.size
@@ -2494,7 +2492,11 @@ class TestPod(MAASServerTestCase):
                     iscsi_storage += bd.size
 
         self.assertEquals(pod.hints.cores, cores)
-        self.assertEquals(pod.hints.cpu_speed, int(cpu_speed))
+        self.assertEquals(
+            pod.hints.cpu_speed,
+            int(mean(cpu_speeds)),
+            f"Wrong hint ({pod.hints.cpu_speed}) for CPU speed. CPU speeds of nodes: {cpu_speeds}",
+        )
         self.assertEquals(pod.hints.memory, memory)
         self.assertEquals(pod.hints.local_disks, len(nodes))
         self.assertEquals(pod.hints.iscsi_storage, iscsi_storage)
