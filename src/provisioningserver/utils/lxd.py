@@ -81,3 +81,33 @@ def parse_lxd_cpuinfo(data):
                 cpu_speed = round(current_average / 100) * 100
 
     return cpu_count, cpu_speed, cpu_model, numa_nodes
+
+
+def parse_lxd_networks(networks):
+    """Return a dict with interface names and their details from networks info.
+
+    This function is meant to be called with the content of the "networks"
+    section output from the machine-resources binary.
+    This would be a dict with interface name and details that match the output
+    of the LXD /1.0/network/<iface>/state endpoint.
+
+    """
+    interfaces = {}
+    for name, details in networks.items():
+        interface = {
+            "name": name,
+            "enabled": details["state"] == "up",
+            "inet": [],
+            "inet6": [],
+        }
+        if details["hwaddr"]:
+            interface["mac"] = details["hwaddr"]
+        for address in details["addresses"]:
+            addr = f"{address['address']}/{address['netmask']}"
+            if address["scope"] != "link":
+                # skip link-local addresses
+                interface[address["family"]].append(addr)
+
+        interfaces[name] = interface
+
+    return interfaces

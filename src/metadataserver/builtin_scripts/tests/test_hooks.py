@@ -6,7 +6,7 @@
 
 from copy import deepcopy
 import json
-import os.path
+from pathlib import Path
 import random
 
 from distro_info import UbuntuDistroInfo
@@ -446,21 +446,10 @@ SAMPLE_LXD_XENIAL_NETWORK = {
 }
 
 
-IP_ADDR_OUTPUT_FILE = os.path.join(
-    os.path.dirname(__file__), "ip_addr_results.txt"
-)
-with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
-    IP_ADDR_OUTPUT = fd.read()
-    IP_ADDR_OUTPUT_FILE = os.path.join(
-        os.path.dirname(__file__), "ip_addr_results_xenial.txt"
-    )
-with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
-    IP_ADDR_OUTPUT_XENIAL = fd.read()
-    IP_ADDR_WEDGE_OUTPUT_FILE = os.path.join(
-        os.path.dirname(__file__), "ip_addr_results_wedge100.txt"
-    )
-with open(IP_ADDR_WEDGE_OUTPUT_FILE, "rb") as fd:
-    IP_ADDR_WEDGE_OUTPUT = fd.read()
+IP_ADDR_OUTPUT = (Path(__file__).parent / "ip_addr_results.txt").read_bytes()
+IP_ADDR_OUTPUT_XENIAL = (
+    Path(__file__).parent / "ip_addr_results_xenial.txt"
+).read_bytes()
 
 KERNEL_CMDLINE_OUTPUT = (
     "BOOT_IMAGE=http://10.245.136.6:5248/images/ubuntu/amd64/generic/bionic/"

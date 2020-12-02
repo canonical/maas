@@ -5,7 +5,12 @@
 
 
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils.lxd import lxd_cpu_speed
+from provisioningserver.utils.lxd import (
+    lxd_cpu_speed,
+    NUMANode,
+    parse_lxd_cpuinfo,
+    parse_lxd_networks,
+)
 
 SAMPLE_LXD_RESOURCES = {
     "cpu": {
@@ -317,7 +322,142 @@ SAMPLE_LXD_RESOURCES = {
     },
 }
 
+SAMPLE_LXD_NETWORKS = {
+    "lo": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "127.0.0.1",
+                "netmask": "8",
+                "scope": "local",
+            },
+            {
+                "family": "inet6",
+                "address": "::1",
+                "netmask": "128",
+                "scope": "local",
+            },
+        ],
+        "hwaddr": "",
+        "state": "up",
+        "type": "loopback",
+        "bond": None,
+        "bridge": None,
+    },
+    "eth0": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "192.168.0.3",
+                "netmask": "24",
+                "scope": "global",
+            },
+            {
+                "family": "inet6",
+                "address": "fe80::3e97:efe:fe0e:56dc",
+                "netmask": "64",
+                "scope": "link",
+            },
+            {
+                "family": "inet6",
+                "address": "2001:db8:a::123",
+                "netmask": "64",
+                "scope": "global",
+            },
+        ],
+        "hwaddr": "00:00:00:00:00:01",
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+    },
+    "eth1": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "172.17.42.1",
+                "netmask": "16",
+                "scope": "global",
+            },
+        ],
+        "hwaddr": "00:00:00:00:00:02",
+        "state": "down",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+    },
+    "eth2": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "172.17.12.1",
+                "netmask": "16",
+                "scope": "global",
+            },
+        ],
+        "hwaddr": "00:00:00:00:00:03",
+        "state": "down",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+    },
+}
+
 
 class TestLXDUtils(MAASTestCase):
     def test_lxd_cpu_speed(self):
         self.assertEquals(2400, lxd_cpu_speed(SAMPLE_LXD_RESOURCES))
+
+
+class TestParseLXDCPUInfo(MAASTestCase):
+    def test_cpuinfo(self):
+        cpu_count, cpu_speed, cpu_model, numa_nodes = parse_lxd_cpuinfo(
+            SAMPLE_LXD_RESOURCES
+        )
+        self.assertEqual(cpu_count, 8)
+        self.assertEqual(cpu_speed, 2400)
+        self.assertEqual(cpu_model, "Intel(R) Core(TM) i7-4700MQ CPU")
+        self.assertEqual(
+            numa_nodes,
+            {
+                0: NUMANode(memory=0, cores=[0, 1, 2, 3], hugepages=0),
+                1: NUMANode(memory=0, cores=[4, 5, 6, 7], hugepages=0),
+            },
+        )
+
+
+class TestLXDNetworks(MAASTestCase):
+    def test_networks(self):
+        networks = parse_lxd_networks(SAMPLE_LXD_NETWORKS)
+        self.assertEqual(
+            networks,
+            {
+                "eth0": {
+                    "enabled": True,
+                    "inet": ["192.168.0.3/24"],
+                    "inet6": ["2001:db8:a::123/64"],
+                    "mac": "00:00:00:00:00:01",
+                    "name": "eth0",
+                },
+                "eth1": {
+                    "enabled": False,
+                    "inet": ["172.17.42.1/16"],
+                    "inet6": [],
+                    "mac": "00:00:00:00:00:02",
+                    "name": "eth1",
+                },
+                "eth2": {
+                    "enabled": False,
+                    "inet": ["172.17.12.1/16"],
+                    "inet6": [],
+                    "mac": "00:00:00:00:00:03",
+                    "name": "eth2",
+                },
+                "lo": {
+                    "enabled": True,
+                    "inet": ["127.0.0.1/8"],
+                    "inet6": ["::1/128"],
+                    "name": "lo",
+                },
+            },
+        )
