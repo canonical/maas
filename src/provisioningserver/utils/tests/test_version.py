@@ -26,7 +26,8 @@ class TestGetVersionFromAPT(MAASTestCase):
         self.assertThat(mock_Cache, MockCalledOnceWith(None))
 
     def test_returns_empty_string_if_package_not_in_cache(self):
-        self.patch(version.apt_pkg, "Cache")
+        self.patch(version.apt_pkg, "Cache").return_value = {}
+
         self.assertEqual(
             "", version.get_version_from_apt(version.REGION_PACKAGE_NAME)
         )
@@ -42,41 +43,51 @@ class TestGetVersionFromAPT(MAASTestCase):
 
     def test_returns_ver_str_from_package(self):
         package = MagicMock()
-        package.current_ver.ver_str = sentinel.ver_str
+        package.current_ver.ver_str = "1.2.3~rc4-567-ubuntu0"
         mock_cache = {version.RACK_PACKAGE_NAME: package}
         self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertIs(
-            sentinel.ver_str,
+        self.assertEqual(
             version.get_version_from_apt(version.RACK_PACKAGE_NAME),
+            "1.2.3~rc4-567-ubuntu0",
+        )
+
+    def test_returns_ver_str_from_package_without_epoch(self):
+        package = MagicMock()
+        package.current_ver.ver_str = "99:1.2.3~rc4-567-ubuntu0"
+        mock_cache = {version.RACK_PACKAGE_NAME: package}
+        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
+        self.assertEqual(
+            version.get_version_from_apt(version.RACK_PACKAGE_NAME),
+            "1.2.3~rc4-567-ubuntu0",
         )
 
     def test_returns_ver_str_from_second_package_if_first_not_found(self):
         package = MagicMock()
-        package.current_ver.ver_str = sentinel.ver_str
+        package.current_ver.ver_str = "1.2.3~rc4-567-ubuntu0"
         mock_cache = {version.REGION_PACKAGE_NAME: package}
         self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertIs(
-            sentinel.ver_str,
+        self.assertEqual(
             version.get_version_from_apt(
                 version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME
             ),
+            "1.2.3~rc4-567-ubuntu0",
         )
 
     def test_returns_ver_str_from_second_package_if_first_is_empty(self):
         rack = MagicMock()
         rack.current_ver = ""
         region = MagicMock()
-        region.current_ver.ver_str = sentinel.ver_str
+        region.current_ver.ver_str = "1.2.3~rc4-567-ubuntu0"
         mock_cache = {
             version.RACK_PACKAGE_NAME: rack,
             version.REGION_PACKAGE_NAME: region,
         }
         self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertIs(
-            sentinel.ver_str,
+        self.assertEqual(
             version.get_version_from_apt(
                 version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME
             ),
+            "1.2.3~rc4-567-ubuntu0",
         )
 
 
