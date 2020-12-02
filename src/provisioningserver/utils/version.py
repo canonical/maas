@@ -4,6 +4,7 @@
 """Version utilities."""
 
 from collections import namedtuple
+from contextlib import suppress
 from functools import lru_cache
 import re
 
@@ -45,15 +46,25 @@ def get_version_from_apt(*packages):
 
     version = None
     for package in packages:
-        if package in cache:
+        try:
             apt_package = cache[package]
-            version = apt_package.current_ver
-            # If the version is None or an empty string, try the next package.
-            if not version:
-                continue
-            break
+        except KeyError:
+            continue
+        version = apt_package.current_ver
+        # If the version is None or an empty string, try the next package.
+        if not version:
+            continue
+        break
 
-    return version.ver_str if version is not None else ""
+    if not version:
+        return ""
+
+    ver_str = version.ver_str
+    with suppress(ValueError):
+        # if the deb version has an epoch, strip it
+        ver_str = ver_str[ver_str.index(":") + 1 :]
+
+    return ver_str
 
 
 def extract_version_subversion(version):
