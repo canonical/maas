@@ -237,14 +237,3 @@ def get_maas_version_user_agent():
     """
     version, subversion = get_maas_version_subversion()
     return "maas/%s/%s" % (version, subversion)
-
-
-@lru_cache(maxsize=1)
-def get_maas_doc_version():
-    """Return the doc version for the running MAAS region."""
-    apt_version = get_maas_version()
-    if apt_version:
-        version, _ = extract_version_subversion(apt_version)
-        return ".".join(version.split("~")[0].split(".")[:2])
-    else:
-        return ""

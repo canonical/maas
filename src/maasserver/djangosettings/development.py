@@ -57,8 +57,6 @@ DEBUG_QUERIES_LOG_ALL = (
 
 # Invalid strings should be visible.
 TEMPLATES[0]["OPTIONS"]["string_if_invalid"] = "#### INVALID STRING ####"
-TEMPLATES[0]["OPTIONS"]["debug"] = DEBUG
-YUI_DEBUG = DEBUG
 STATIC_ROOT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
     "maasui",
