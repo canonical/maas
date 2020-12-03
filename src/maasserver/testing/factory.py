@@ -164,22 +164,6 @@ RANDOM = object()
 RANDOM_OR_NONE = object()
 
 
-class Messages:
-    """A class to record messages published by Django messaging
-    framework.
-    """
-
-    def __init__(self):
-        self.messages = []
-
-    def add(self, level, message, extras):
-        self.messages.append((level, message, extras))
-
-    def __iter__(self):
-        for message in self.messages:
-            yield message
-
-
 class Factory(maastesting.factory.Factory):
     def make_fake_request(
         self, path="/", method="GET", cookies=None, data=None
@@ -205,7 +189,6 @@ class Factory(maastesting.factory.Factory):
             request = rf.get(path, data=data)
             request.method = method
         request.data = data
-        request._messages = Messages()
         request.COOKIES = cookies.copy()
         return request
 

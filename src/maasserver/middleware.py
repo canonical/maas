@@ -14,7 +14,6 @@ import traceback
 import attr
 from crochet import TimeoutError
 from django.conf import settings
-from django.contrib import messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.handlers.exception import get_exception_response
 from django.http import (
@@ -366,12 +365,6 @@ class RPCErrorsMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
-    def _handle_exception(self, request, exception):
-        logging.exception(exception)
-        messages.error(
-            request, "Error: %s" % get_error_message_for_exception(exception)
-        )
-
     def __call__(self, request):
         try:
             return self.get_response(request)
@@ -394,7 +387,7 @@ class RPCErrorsMiddleware:
             # than handled_exceptions.
             return None
 
-        self._handle_exception(request, exception)
+        logging.exception(exception)
         return HttpResponseRedirect(request.path)
 
 

@@ -227,8 +227,6 @@ MIDDLEWARE = (
     # Demands a user for most web pages. The equivalent for the Web API is
     # handled by Piston.
     "maasserver.middleware.AccessMiddleware",
-    # Temporary messages. FIXME: Not sure if it's used.
-    "django.contrib.messages.middleware.MessageMiddleware",
     # Sets X-Frame-Options header to SAMEORIGIN.
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     # Used to display errors about disconnected clusters. FIXME: This should
@@ -251,7 +249,6 @@ INSTALLED_APPS = (
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.sites",
-    "django.contrib.messages",
     "django.contrib.staticfiles",
     "maasserver",
     "metadataserver",

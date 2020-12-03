@@ -115,9 +115,9 @@ class TestLogFunctions(MAASTestCase):
 class TestResetRequest(MAASTestCase):
     """Tests for :py:func:`maasserver.utils.views.reset_request`."""
 
-    def test_clears_messages_from_cookies(self):
+    def test_clears_cookies(self):
         request = make_request()
-        request.COOKIES["messages"] = sentinel.messages
+        request.COOKIES["some-cookie"] = sentinel.cookie
         request = views.reset_request(request)
         self.assertEqual({}, request.COOKIES)
 
