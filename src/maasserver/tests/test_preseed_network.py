@@ -1726,6 +1726,7 @@ class TestNetplan(MAASServerTestCase):
         r2_address = factory.make_StaticIPAddress(
             interface=interface,
             subnet=subnet,
+            ip="10.0.0.2",
             alloc_type=IPADDRESS_TYPE.STICKY,
         )
         vlan = factory.make_VLAN()
