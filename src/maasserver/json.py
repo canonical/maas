@@ -33,10 +33,6 @@ class Serializer(django.core.serializers.json.Serializer):
     """A copy of Django's serializer for JSON, but using our own encoder."""
 
     def end_serialization(self):
-        if json.__version__.split(".") >= ["2", "1", "3"]:
-            # Use JS strings to represent Python Decimal instances
-            # (ticket #16850)
-            self.options.update({"use_decimal": False})
         json.dump(
             self.objects, self.stream, cls=MAASJSONEncoder, **self.options
         )
