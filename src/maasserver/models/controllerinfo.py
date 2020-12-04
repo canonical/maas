@@ -5,6 +5,7 @@
 
 
 from collections import namedtuple
+import dataclasses
 
 from django.db.models import CASCADE, CharField, Manager, OneToOneField
 
@@ -27,28 +28,17 @@ _ControllerVersionInfo = namedtuple(
 
 
 class ControllerVersionInfo(_ControllerVersionInfo):
-    @property
-    def comparable_version(self):
-        return self.maasversion[0:6]
-
     def difference(self, other):
-        v1 = self.comparable_version
-        v2 = other.comparable_version
-        # No difference in the numeric versions. For reference, here's a
-        # breakdown of the indexes:
-        # 0: Major (2)
-        # 1: Minor (2.2)
-        # 2: Point (2.2.2)
-        # 3: Qualifier (2.2.2~beta)
-        # 4: Qualifier revision (2.2.2~beta2)
-        # 5: Revision number (2.2.2~beta2-6000)
+        v1 = self.maasversion
+        v2 = other.maasversion
+        # No difference in the numeric versions
         if v1 == v2:
             return None, None
         # Indexes 0 through 5 will indicate the major, minor, patch, and
         # qualifier (such as alpha or beta qualifier), which is enough to know
         # we should display the full string instead of the short version.
         # (Since we already know they're not identical)
-        elif v1[0:5] == v2[0:5]:
+        elif dataclasses.astuple(v1)[0:5] == dataclasses.astuple(v2)[0:5]:
             return self.full_string, other.full_string
         else:
             # Only difference is the revision number, so just display the
@@ -157,9 +147,9 @@ def update_version_notifications():
     # with the highest version. So we can use that to compare with
     # the remaining controllers.
     latest_controller_version_info = controller_version_info[0]
-    latest_version = latest_controller_version_info.comparable_version
+    latest_version = latest_controller_version_info.maasversion
     for controller in controller_version_info:
-        if controller.comparable_version < latest_version:
+        if controller.maasversion < latest_version:
             v1, v2 = controller.difference(latest_controller_version_info)
             context = dict(
                 message=KNOWN_VERSION_MISMATCH_NOTIFICATION,

@@ -80,7 +80,7 @@ from provisioningserver.rpc.region import RegisterRackController
 from provisioningserver.rpc.testing import call_responder
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import events
-from provisioningserver.utils.version import get_maas_version
+from provisioningserver.utils.version import get_running_version
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -353,7 +353,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "version": "2.3",
             },
         )
-        self.assertThat(response["version"], Equals(get_maas_version()))
+        self.assertEqual(response["version"], get_running_version())
 
     @wait_for_reactor
     @inlineCallbacks

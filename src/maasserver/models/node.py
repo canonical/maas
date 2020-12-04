@@ -227,7 +227,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
     undefined,
 )
-from provisioningserver.utils.version import get_maas_version
+from provisioningserver.utils.version import get_running_version
 
 log = LegacyLogger()
 maaslog = get_maas_logger("node")
@@ -7331,7 +7331,7 @@ class RegionController(Controller):
                 token = yield deferToDatabase(self._get_token_for_controller)
                 yield deferToDatabase(self._signal_start_of_refresh)
                 maas_version = yield deferToThread(
-                    lambda: {"maas_version": get_maas_version()}
+                    lambda: {"maas_version": get_running_version()}
                 )
                 yield deferToDatabase(self._process_maas_version, maas_version)
                 yield deferToThread(

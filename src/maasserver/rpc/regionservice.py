@@ -72,7 +72,7 @@ from provisioningserver.utils.twisted import (
     deferWithTimeout,
     FOREVER,
 )
-from provisioningserver.utils.version import get_maas_version
+from provisioningserver.utils.version import get_running_version
 
 log = LegacyLogger()
 
@@ -714,7 +714,7 @@ class RegionServer(Region):
             result["beacon_support"] = True
         if version:
             # The remote supports version checking, so reply to that.
-            result["version"] = get_maas_version()
+            result["version"] = get_running_version()
         return result
 
     @inlineCallbacks

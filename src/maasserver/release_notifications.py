@@ -41,7 +41,7 @@ class NoReleasenotification(LookupError):
 
 def notification_available(notification_version, maas_version=None):
     current_version = version.get_version_tuple(
-        maas_version or version.get_maas_version()
+        maas_version or version.get_running_version()
     )
     log.debug(f"Current MAAS version: {repr(current_version)}")
     log.debug(f"Notification version: {notification_version}")

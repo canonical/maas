@@ -26,9 +26,9 @@ class TestVersionAPI(APITestCase.ForAnonymousAndUser):
     """Tests for /version/ API."""
 
     def test_GET_returns_details(self):
-        mock_apt = self.patch(version_module, "get_version_from_apt")
+        mock_apt = self.patch(version_module, "_get_version_from_apt")
         mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
-        version_module.get_maas_version.cache_clear()
+        version_module.get_running_version.cache_clear()
         version_module.get_maas_version_subversion.cache_clear()
 
         response = self.client.get(reverse("version_handler"))

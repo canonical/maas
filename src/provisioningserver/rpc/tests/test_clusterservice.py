@@ -132,7 +132,7 @@ from provisioningserver.utils.twisted import (
     makeDeferredWithProcessProtocol,
     pause,
 )
-from provisioningserver.utils.version import get_maas_version
+from provisioningserver.utils.version import get_running_version
 
 
 class TestClusterProtocol_Identify(MAASTestCase):
@@ -1922,7 +1922,7 @@ class TestClusterClient(MAASTestCase):
                 url=urlparse(maas_url),
                 nodegroup_uuid=None,
                 beacon_support=True,
-                version=get_maas_version(),
+                version=get_running_version(),
             ),
         )
         # Clear cache for the next test
@@ -2005,7 +2005,7 @@ class TestClusterClient(MAASTestCase):
                 url=urlparse(maas_url),
                 nodegroup_uuid=None,
                 beacon_support=True,
-                version=get_maas_version(),
+                version=get_running_version(),
             ),
         )
 
@@ -3150,7 +3150,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
         token_secret = factory.make_name("token_secret")
         maas_version = factory.make_name("maas_version")
         self.patch_autospec(
-            clusterservice, "get_maas_version"
+            clusterservice, "get_running_version"
         ).return_value = maas_version
 
         response = yield call_responder(

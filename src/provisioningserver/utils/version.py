@@ -3,9 +3,9 @@
 
 """Version utilities."""
 
-from collections import namedtuple
 from contextlib import suppress
-from functools import lru_cache
+import dataclasses
+from functools import lru_cache, total_ordering
 import re
 
 import pkg_resources
@@ -32,7 +32,7 @@ REGION_PACKAGE_NAME = "maas-region-api"
 RACK_PACKAGE_NAME = "maas-rack-controller"
 
 
-def get_version_from_apt(*packages):
+def _get_version_from_apt(*packages):
     """Return the version output from `apt_pkg.Cache` for the given package(s),
     or log an error message if the package data is not valid."""
     try:
@@ -67,13 +67,13 @@ def get_version_from_apt(*packages):
     return ver_str
 
 
-def extract_version_subversion(version):
+def _extract_version_subversion(version):
     """Return a tuple (version, subversion) from the given apt version."""
     main_version, subversion = re.split("[+|-]", version, 1)
     return main_version, subversion
 
 
-def get_maas_repo_hash():
+def _get_maas_repo_hash():
     """Return the Git hash for this running MAAS.
 
     :return: A string if MAAS is running from a git working tree, else `None`.
@@ -84,42 +84,56 @@ def get_maas_repo_hash():
             .decode("ascii")
             .strip()
         )
-    except shell.ExternalProcessError:
-        # We may not be in a git repository, or any manner of other errors. For
-        # the purposes of this function we don't care; simply say we don't
-        # know.
-        return None
-    except FileNotFoundError:
-        # Git is not installed. We don't care and simply say we don't know.
+    except (shell.ExternalProcessError, FileNotFoundError):
+        # We may not be in a git repository, or any manner of other errors, or
+        # git is not installed.
         return None
 
 
 def get_maas_version_track_channel():
     """Returns the track/channel where a snap of this version can be found."""
     # if running from source, default to current version
-    maas_version = get_maas_version() or DEFAULT_VERSION
+    maas_version = get_running_version() or DEFAULT_VERSION
     version = get_version_tuple(maas_version)
     risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
     risk = risk_map.get(version.qualifier_type, "stable")
     return f"{version.major}.{version.minor}/{risk}"
 
 
-MAASVersion = namedtuple(
-    "MAASVersion",
-    (
-        "major",
-        "minor",
-        "point",
-        "qualifier_type_version",
-        "qualifier_version",
-        "revno",
-        "git_rev",
-        "short_version",
-        "extended_info",
-        "qualifier_type",
-        "is_snap",
-    ),
-)
+@total_ordering
+@dataclasses.dataclass(frozen=True)
+class MAASVersion:
+    """Details about MAAS version."""
+
+    major: int
+    minor: int
+    point: int
+    qualifier_type_version: int
+    qualifier_version: int
+    revno: int
+    git_rev: str
+    short_version: str
+    extended_info: str
+    qualifier_type: str
+    is_snap: bool
+
+    def __lt__(self, other):
+        # only take into account numeric fields for comparison
+        return (
+            self.major,
+            self.minor,
+            self.point,
+            self.qualifier_type_version,
+            self.qualifier_version,
+            self.revno,
+        ) < (
+            other.major,
+            other.minor,
+            other.point,
+            other.qualifier_type_version,
+            other.qualifier_version,
+            other.revno,
+        )
 
 
 def _coerce_to_int(string: str) -> int:
@@ -194,23 +208,23 @@ def get_version_tuple(maas_version: str) -> MAASVersion:
 
 
 @lru_cache(maxsize=1)
-def get_maas_version():
+def get_running_version():
     """Return the apt or snap version for the main MAAS package."""
     if snappy.running_in_snap():
         return snappy.get_snap_version()
     else:
-        return get_version_from_apt(RACK_PACKAGE_NAME, REGION_PACKAGE_NAME)
+        return _get_version_from_apt(RACK_PACKAGE_NAME, REGION_PACKAGE_NAME)
 
 
 @lru_cache(maxsize=1)
 def get_maas_version_subversion():
     """Return a tuple with the MAAS version and the MAAS subversion."""
-    version = get_maas_version()
+    version = get_running_version()
     if version:
-        return extract_version_subversion(version)
+        return _extract_version_subversion(version)
     else:
         # Get the branch information
-        commit_hash = get_maas_repo_hash()
+        commit_hash = _get_maas_repo_hash()
         if commit_hash is None:
             # Not installed or not in repo, then no way to identify. This
             # should not happen, but just in case.

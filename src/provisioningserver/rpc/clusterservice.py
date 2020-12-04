@@ -113,7 +113,7 @@ from provisioningserver.utils.twisted import (
     suppress,
 )
 from provisioningserver.utils.url import get_domain
-from provisioningserver.utils.version import get_maas_version
+from provisioningserver.utils.version import get_running_version
 
 maaslog = get_maas_logger("rpc.cluster")
 log = LegacyLogger()
@@ -769,7 +769,7 @@ class Cluster(RPCProtocol):
                 log.err, "Failed to refresh the rack controller."
             )
 
-        return deferToThread(lambda: {"maas_version": get_maas_version()})
+        return deferToThread(lambda: {"maas_version": get_running_version()})
 
     @cluster.AddChassis.responder
     def add_chassis(
@@ -1107,7 +1107,7 @@ class ClusterClient(Cluster):
         interfaces = get_all_interfaces_definition()
         hostname = gethostname()
         parsed_url = urlparse(self.service.maas_url)
-        version = get_maas_version()
+        version = get_running_version()
 
         try:
             # Note: we indicate support for beacons here, and act differently

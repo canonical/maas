@@ -18,7 +18,7 @@ from metadataserver.builtin_scripts import (
 )
 from metadataserver.enum import SCRIPT_TYPE_CHOICES
 from metadataserver.models import Script
-from provisioningserver.utils.version import get_maas_version
+from provisioningserver.utils.version import get_running_version
 
 
 class TestBuiltinScripts(MAASServerTestCase):
@@ -39,7 +39,7 @@ class TestBuiltinScripts(MAASServerTestCase):
 
             # These values should always be set by the script loader.
             self.assertEquals(
-                "Created by maas-%s" % get_maas_version(),
+                "Created by maas-%s" % get_running_version(),
                 script_in_db.script.comment,
                 script.name,
             )
@@ -92,7 +92,7 @@ class TestBuiltinScripts(MAASServerTestCase):
 
         self.assertEquals(old_script, script.script.previous_version)
         self.assertEquals(
-            "Updated by maas-%s" % get_maas_version(), script.script.comment
+            "Updated by maas-%s" % get_running_version(), script.script.comment
         )
         self.assertTrue(script.default)
 
@@ -158,7 +158,7 @@ class TestBuiltinScripts(MAASServerTestCase):
         self.assertDictEqual(orig_parameters, second_script.parameters)
         self.assertEquals(old_script, second_script.script.previous_version)
         self.assertEquals(
-            "Updated by maas-%s" % get_maas_version(),
+            "Updated by maas-%s" % get_running_version(),
             second_script.script.comment,
         )
         self.assertTrue(second_script.default)
