@@ -104,7 +104,7 @@ from provisioningserver.utils.twisted import (
     pause,
     synchronous,
 )
-from provisioningserver.utils.version import DEFAULT_PARSED_VERSION
+from provisioningserver.utils.version import DISTRIBUTION
 
 maaslog = get_maas_logger("bootresources")
 log = LegacyLogger()
@@ -1124,7 +1124,7 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         # version meets or exceeds that requirement.
         if maas_supported is not None:
             supported_version = parse_version(maas_supported)
-            if supported_version > DEFAULT_PARSED_VERSION:
+            if supported_version > DISTRIBUTION.parsed_version:
                 maaslog.warning(
                     "Ignoring %s, requires a newer version of MAAS(%s)"
                     % (product_name, supported_version)

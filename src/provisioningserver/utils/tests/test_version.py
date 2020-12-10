@@ -10,13 +10,57 @@ from unittest import skipUnless
 from unittest.mock import MagicMock, sentinel
 
 from fixtures import EnvironmentVariableFixture
+from pkg_resources import parse_version
 
 from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import shell, snappy, version
-from provisioningserver.utils.version import DEFAULT_VERSION as old_version
-from provisioningserver.utils.version import get_version_tuple, MAASVersion
+from provisioningserver.utils.version import (
+    _get_version_from_python_package,
+    get_version_tuple,
+    MAASVersion,
+)
+
+
+class TestGetVersionFromPythonPackage(MAASTestCase):
+
+    scenarios = [
+        (
+            "final",
+            {
+                "version": "1.2.3",
+                "output": "1.2.3",
+            },
+        ),
+        (
+            "alpha",
+            {
+                "version": "2.3.4a1",
+                "output": "2.3.4~alpha1",
+            },
+        ),
+        (
+            "beta",
+            {
+                "version": "2.3.4b2",
+                "output": "2.3.4~beta2",
+            },
+        ),
+        (
+            "rc",
+            {
+                "version": "2.3.4rc4",
+                "output": "2.3.4~rc4",
+            },
+        ),
+    ]
+
+    def test_version(self):
+        self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
+            self.version
+        )
+        self.assertEqual(_get_version_from_python_package(), self.output)
 
 
 class TestGetVersionFromAPT(MAASTestCase):
@@ -419,7 +463,8 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
         mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
         mock_repo_hash.return_value = None
         self.assertEqual(
-            (old_version, "unknown"), version.get_maas_version_subversion()
+            (_get_version_from_python_package(), "unknown"),
+            version.get_maas_version_subversion(),
         )
 
     def test_returns_from_source_and_revno_from_branch(self):
@@ -428,7 +473,10 @@ class TestGetMAASVersionSubversion(TestVersionTestCase):
         mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
         mock_repo_hash.return_value = "deadbeef"
         self.assertEqual(
-            ("%s from source" % old_version, "git+deadbeef"),
+            (
+                "%s from source" % _get_version_from_python_package(),
+                "git+deadbeef",
+            ),
             version.get_maas_version_subversion(),
         )
 
@@ -448,7 +496,8 @@ class TestGetMAASVersionUI(TestVersionTestCase):
         mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
         mock_repo_hash.return_value = None
         self.assertEqual(
-            "%s (unknown)" % old_version, version.get_maas_version_ui()
+            "%s (unknown)" % _get_version_from_python_package(),
+            version.get_maas_version_ui(),
         )
 
     def test_returns_from_source_and_revno_from_branch(self):
@@ -458,7 +507,9 @@ class TestGetMAASVersionUI(TestVersionTestCase):
         mock_repo_hash.return_value = "deadbeef"
 
         self.assertEqual(
-            "{} from source (git+deadbeef)".format(old_version),
+            "{} from source (git+deadbeef)".format(
+                _get_version_from_python_package()
+            ),
             version.get_maas_version_ui(),
         )
 
@@ -478,7 +529,7 @@ class TestGetMAASVersionUserAgent(TestVersionTestCase):
         mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
         mock_repo_hash.return_value = None
         self.assertEqual(
-            "maas/%s/unknown" % old_version,
+            "maas/%s/unknown" % _get_version_from_python_package(),
             version.get_maas_version_user_agent(),
         )
 
@@ -488,7 +539,8 @@ class TestGetMAASVersionUserAgent(TestVersionTestCase):
         mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
         mock_repo_hash.return_value = "deadbeef"
         self.assertEqual(
-            "maas/%s from source/git+%s" % (old_version, "deadbeef"),
+            "maas/%s from source/git+%s"
+            % (_get_version_from_python_package(), "deadbeef"),
             version.get_maas_version_user_agent(),
         )
 

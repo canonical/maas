@@ -6,9 +6,9 @@
 
 import logging
 
-from provisioningserver.utils import version
+from provisioningserver.utils.version import DISTRIBUTION
 
-__version__ = version.DEFAULT_VERSION
+__version__ = DISTRIBUTION.version
 
 default_app_config = "maasserver.apps.MAASConfig"
 

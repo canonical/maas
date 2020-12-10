@@ -16,9 +16,7 @@ from provisioningserver.utils import shell, snappy
 maaslog = get_maas_logger("version")
 
 # the first requirement is always the required package itself
-DEFAULT_PARSED_VERSION = pkg_resources.require("maas")[0].parsed_version
-
-DEFAULT_VERSION = str(DEFAULT_PARSED_VERSION)
+DISTRIBUTION = pkg_resources.require("maas")[0]
 
 
 # Only import apt_pkg and initialize when not running in a snap.
@@ -30,6 +28,21 @@ if not snappy.running_in_snap():
 # Name of maas package to get version from.
 REGION_PACKAGE_NAME = "maas-region-api"
 RACK_PACKAGE_NAME = "maas-rack-controller"
+
+
+def _get_version_from_python_package():
+    """Return a string with the version from the python package."""
+    parsed_version = DISTRIBUTION.parsed_version
+    str_version = parsed_version.base_version
+    # pre is a tuple with qualifier and version, or None
+    pre = parsed_version._version.pre
+    if pre:
+        qualifier, qual_version = pre
+        qualifiers = {"a": "alpha", "b": "beta"}
+        if qualifier in qualifiers:
+            qualifier = qualifiers[qualifier]
+        str_version += f"~{qualifier}{qual_version}"
+    return str_version
 
 
 def _get_version_from_apt(*packages):
@@ -93,7 +106,7 @@ def _get_maas_repo_hash():
 def get_maas_version_track_channel():
     """Returns the track/channel where a snap of this version can be found."""
     # if running from source, default to current version
-    maas_version = get_running_version() or DEFAULT_VERSION
+    maas_version = get_running_version() or _get_version_from_python_package()
     version = get_version_tuple(maas_version)
     risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
     risk = risk_map.get(version.qualifier_type, "stable")
@@ -225,12 +238,13 @@ def get_maas_version_subversion():
     else:
         # Get the branch information
         commit_hash = _get_maas_repo_hash()
+        pkg_version = _get_version_from_python_package()
         if commit_hash is None:
             # Not installed or not in repo, then no way to identify. This
             # should not happen, but just in case.
-            return DEFAULT_VERSION, "unknown"
+            return pkg_version, "unknown"
         else:
-            return "%s from source" % DEFAULT_VERSION, "git+%s" % commit_hash
+            return "%s from source" % pkg_version, "git+%s" % commit_hash
 
 
 @lru_cache(maxsize=1)
