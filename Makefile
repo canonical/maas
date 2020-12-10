@@ -8,7 +8,7 @@ VENV := .ve
 # This uses an explicit empty check (rather than ?=) since Jenkins defines
 # variables for parameters even when not passed.
 ifeq ($(MAAS_PPA),)
-	MAAS_PPA = ppa:maas-committers/latest-deps
+	MAAS_PPA = ppa:maas/2.9
 endif
 
 # pkg_resources makes some incredible noise about version numbers. They
