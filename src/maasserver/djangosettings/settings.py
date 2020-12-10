@@ -178,8 +178,10 @@ STATICFILES_FINDERS = (
     # 'django.contrib.staticfiles.finders.DefaultStorageFinder',
 )
 
-# Make this unique, and don't share it with anybody.
-SECRET_KEY = "zk@qw+fdhu_b4ljx+pmb*8sju4lpx!5zkez%&4hep_(o6y1nf0"
+# MAAS uses session storage for cookies, and no other crypto feature from
+# Django, so the key is not used. The value is just a placeholder since Django
+# doesn't allow empty values.
+SECRET_KEY = "<UNUSED>"
 
 TEMPLATES = [
     {
