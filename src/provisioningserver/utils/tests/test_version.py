@@ -93,14 +93,14 @@ class TestGetVersionFromAPT(MAASTestCase):
             "1.2.3~rc4-567-ubuntu0",
         )
 
-    def test_returns_ver_str_from_package_without_epoch(self):
+    def test_returns_ver_str_from_package_with_epoch(self):
         package = MagicMock()
         package.current_ver.ver_str = "99:1.2.3~rc4-567-ubuntu0"
         mock_cache = {version.RACK_PACKAGE_NAME: package}
         self.patch(version.apt_pkg, "Cache").return_value = mock_cache
         self.assertEqual(
             version._get_version_from_apt(version.RACK_PACKAGE_NAME),
-            "1.2.3~rc4-567-ubuntu0",
+            "99:1.2.3~rc4-567-ubuntu0",
         )
 
     def test_returns_ver_str_from_second_package_if_first_not_found(self):
@@ -153,35 +153,6 @@ class TestGetMAASRepoHash(MAASTestCase):
     def test_returns_hash_for_this_branch(self):
         commit_hash = version._get_maas_repo_hash()
         self.assertIsInstance(commit_hash, str)
-
-
-class TestExtractVersionSubversion(MAASTestCase):
-
-    scenarios = [
-        (
-            "with ~",
-            {
-                "version": "2.2.0~beta4+bzr5856-0ubuntu1",
-                "output": ("2.2.0~beta4", "bzr5856-0ubuntu1"),
-            },
-        ),
-        (
-            "without ~",
-            {
-                "version": "2.1.0+bzr5480-0ubuntu1",
-                "output": ("2.1.0", "bzr5480-0ubuntu1"),
-            },
-        ),
-        (
-            "without ~ or +",
-            {"version": "2.1.0-0ubuntu1", "output": ("2.1.0", "0ubuntu1")},
-        ),
-    ]
-
-    def test_returns_version_subversion(self):
-        self.assertEqual(
-            self.output, version._extract_version_subversion(self.version)
-        )
 
 
 class TestMAASVersion(MAASTestCase):

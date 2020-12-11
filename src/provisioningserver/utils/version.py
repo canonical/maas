@@ -3,7 +3,6 @@
 
 """Version utilities."""
 
-from contextlib import suppress
 import dataclasses
 from functools import lru_cache, total_ordering
 import re
@@ -28,96 +27,6 @@ if not snappy.running_in_snap():
 # Name of maas package to get version from.
 REGION_PACKAGE_NAME = "maas-region-api"
 RACK_PACKAGE_NAME = "maas-rack-controller"
-
-
-def _get_version_from_python_package():
-    """Return a string with the version from the python package."""
-    parsed_version = DISTRIBUTION.parsed_version
-    str_version = parsed_version.base_version
-    # pre is a tuple with qualifier and version, or None
-    pre = parsed_version._version.pre
-    if pre:
-        qualifier, qual_version = pre
-        qualifiers = {"a": "alpha", "b": "beta"}
-        if qualifier in qualifiers:
-            qualifier = qualifiers[qualifier]
-        str_version += f"~{qualifier}{qual_version}"
-    return str_version
-
-
-def _get_version_from_apt(*packages):
-    """Return the version output from `apt_pkg.Cache` for the given package(s),
-    or log an error message if the package data is not valid."""
-    try:
-        cache = apt_pkg.Cache(None)
-    except SystemError:
-        maaslog.error(
-            "Installed version could not be determined. Ensure "
-            "/var/lib/dpkg/status is valid."
-        )
-        return ""
-
-    version = None
-    for package in packages:
-        try:
-            apt_package = cache[package]
-        except KeyError:
-            continue
-        version = apt_package.current_ver
-        # If the version is None or an empty string, try the next package.
-        if not version:
-            continue
-        break
-
-    if not version:
-        return ""
-
-    ver_str = version.ver_str
-    with suppress(ValueError):
-        # if the deb version has an epoch, strip it
-        ver_str = ver_str[ver_str.index(":") + 1 :]
-
-    return ver_str
-
-
-def _extract_version_subversion(version):
-    """Return a tuple (version, subversion) from the given apt version."""
-    main_version, subversion = re.split("[+|-]", version, 1)
-    return main_version, subversion
-
-
-def _git_cmd(*cmd):
-    """Run a git command and return output, or None in case of error."""
-    try:
-        return (
-            shell.call_and_check(["git"] + list(cmd)).decode("ascii").strip()
-        )
-    except (shell.ExternalProcessError, FileNotFoundError):
-        # We may not be in a git repository, or any manner of other errors, or
-        # git is not installed.
-        return None
-
-
-def _get_maas_repo_hash():
-    """Return the Git hash for this running MAAS.
-
-    :return: A string if MAAS is running from a git working tree, else `None`.
-    """
-    return _git_cmd("rev-parse", "--short", "HEAD")
-
-
-def _get_maas_repo_commit_count():
-    """Return the number of commit counts in the git tree, or 0 when not in a tree."""
-    return _git_cmd("rev-list", "--count") or 0
-
-
-def get_maas_version_track_channel():
-    """Returns the track/channel where a snap of this version can be found."""
-    # if running from source, default to current version
-    version = get_running_version()
-    risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
-    risk = risk_map.get(version.qualifier_type, "stable")
-    return f"{version.major}.{version.minor}/{risk}"
 
 
 @total_ordering
@@ -231,3 +140,79 @@ def get_running_version() -> MAASVersion:
         maas_version = dataclasses.replace(maas_version, revno=revno)
 
     return maas_version
+
+
+def get_maas_version_track_channel():
+    """Return the track/channel where a snap of this version can be found."""
+    # if running from source, default to current version
+    version = get_running_version()
+    risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
+    risk = risk_map.get(version.qualifier_type, "stable")
+    return f"{version.major}.{version.minor}/{risk}"
+
+
+def _get_version_from_python_package():
+    """Return a string with the version from the python package."""
+    parsed_version = DISTRIBUTION.parsed_version
+    str_version = parsed_version.base_version
+    # pre is a tuple with qualifier and version, or None
+    pre = parsed_version._version.pre
+    if pre:
+        qualifier, qual_version = pre
+        qualifiers = {"a": "alpha", "b": "beta"}
+        if qualifier in qualifiers:
+            qualifier = qualifiers[qualifier]
+        str_version += f"~{qualifier}{qual_version}"
+    return str_version
+
+
+def _get_version_from_apt(*packages):
+    """Return the version output from `apt_pkg.Cache` for the given package(s),
+    or log an error message if the package data is not valid."""
+    try:
+        cache = apt_pkg.Cache(None)
+    except SystemError:
+        maaslog.error(
+            "Installed version could not be determined. Ensure "
+            "/var/lib/dpkg/status is valid."
+        )
+        return ""
+
+    version = None
+    for package in packages:
+        try:
+            apt_package = cache[package]
+        except KeyError:
+            continue
+        version = apt_package.current_ver
+        # If the version is None or an empty string, try the next package.
+        if not version:
+            continue
+        break
+
+    return version.ver_str if version else ""
+
+
+def _get_maas_repo_hash():
+    """Return the Git hash for this running MAAS.
+
+    :return: A string if MAAS is running from a git working tree, else `None`.
+    """
+    return _git_cmd("rev-parse", "--short", "HEAD")
+
+
+def _get_maas_repo_commit_count():
+    """Return the number of commit counts in the git tree, or 0 when not in a tree."""
+    return _git_cmd("rev-list", "--count") or 0
+
+
+def _git_cmd(*cmd):
+    """Run a git command and return output, or None in case of error."""
+    try:
+        return (
+            shell.call_and_check(["git"] + list(cmd)).decode("ascii").strip()
+        )
+    except (shell.ExternalProcessError, FileNotFoundError):
+        # We may not be in a git repository, or any manner of other errors, or
+        # git is not installed.
+        return None
