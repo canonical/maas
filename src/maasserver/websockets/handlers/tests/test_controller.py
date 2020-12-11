@@ -6,7 +6,6 @@
 
 from unittest import skip
 
-from fixtures import EnvironmentVariableFixture
 from testscenarios import multiply_scenarios
 from testtools.matchers import ContainsDict, Equals
 
@@ -182,9 +181,6 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertTrue(handler.dehydrate_show_os_info(rack))
 
     def test_dehydrate_includes_version(self):
-        self.useFixture(
-            EnvironmentVariableFixture("SNAP", "/var/snap/maas/123")
-        )
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {}, None)
         rack = factory.make_RackController()
@@ -194,7 +190,7 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(version, result[0].get("version"))
         self.assertEqual("2.3.0~alpha1", result[0].get("version__short"))
         self.assertEqual(
-            "2.3.0~alpha1 (6000-gabc123) (snap)",
+            "2.3.0~alpha1 (6000-gabc123)",
             result[0].get("version__long"),
         )
 

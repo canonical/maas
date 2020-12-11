@@ -7,33 +7,40 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from provisioningserver.utils.version import MAASVersion
 
 
 class TestVersionCheck(MAASServerTestCase):
     def test_new_release_available(self):
-        current_version = "2.8.1"
+        self.patch(
+            release_notifications.version, "get_running_version"
+        ).return_value = MAASVersion.from_string("2.8.1")
         notification_maas_version = "2.9.0"
         self.assertTrue(
             release_notifications.notification_available(
-                notification_maas_version, current_version
+                notification_maas_version
             )
         )
 
     def test_already_on_latest_version(self):
-        current_version = "2.9.0"
+        self.patch(
+            release_notifications.version, "get_running_version"
+        ).return_value = MAASVersion.from_string("2.9.0")
         notification_maas_version = "2.9.0"
         self.assertFalse(
             release_notifications.notification_available(
-                notification_maas_version, current_version
+                notification_maas_version
             )
         )
 
     def test_notification_is_old(self):
-        current_version = "2.9.0"
+        self.patch(
+            release_notifications.version, "get_running_version"
+        ).return_value = MAASVersion.from_string("2.9.0")
         notification_maas_version = "2.8.0"
         self.assertFalse(
             release_notifications.notification_available(
-                notification_maas_version, current_version
+                notification_maas_version
             )
         )
 

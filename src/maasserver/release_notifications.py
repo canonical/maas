@@ -39,17 +39,14 @@ class NoReleasenotification(LookupError):
     pass
 
 
-def notification_available(notification_version, maas_version=None):
-    current_version = version.MAASVersion.from_string(
-        maas_version or version.get_running_version()
-    )
-    log.debug(f"Current MAAS version: {repr(current_version)}")
-    log.debug(f"Notification version: {notification_version}")
-
-    notification_version_tuple = version.MAASVersion.from_string(
+def notification_available(notification_version):
+    current_version = version.get_running_version()
+    notification_version = version.MAASVersion.from_string(
         notification_version
     )
-    return notification_version_tuple > current_version
+    log.debug(f"Current MAAS version: {current_version}")
+    log.debug(f"Notification version: {notification_version}")
+    return notification_version > current_version
 
 
 @transactional

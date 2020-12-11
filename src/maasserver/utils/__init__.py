@@ -25,7 +25,7 @@ from maasserver.config import RegionConfiguration
 from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.url import compose_URL
-from provisioningserver.utils.version import get_maas_version_user_agent
+from provisioningserver.utils.version import get_running_version
 
 
 def ignore_unused(*args):
@@ -43,7 +43,7 @@ def absolute_reverse(
     query=None,
     base_url=None,
     *args,
-    **kwargs
+    **kwargs,
 ):
     """Return the absolute URL (i.e. including the URL scheme specifier and
     the network location of the MAAS server).  Internally this method simply
@@ -122,10 +122,11 @@ def get_local_cluster_UUID():
 def get_maas_user_agent():
     from maasserver.models import Config
 
-    user_agent = get_maas_version_user_agent()
+    version = get_running_version()
+    user_agent = f"maas/{version.short_version}/{version.extended_info}"
     uuid = Config.objects.get_config("uuid")
     if uuid:
-        user_agent = "%s/%s" % (user_agent, uuid)
+        user_agent += f"/{uuid}"
     return user_agent
 
 

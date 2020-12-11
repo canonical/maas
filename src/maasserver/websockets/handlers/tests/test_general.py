@@ -25,6 +25,7 @@ from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
+from provisioningserver.utils.version import MAASVersion
 
 
 class TestGeneralHandler(MAASServerTestCase):
@@ -274,9 +275,16 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_version(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
         self.patch_autospec(
-            general, "get_maas_version_ui"
-        ).return_value = sentinel.version
-        self.assertEqual(sentinel.version, handler.version({}))
+            general, "get_running_version"
+        ).return_value = MAASVersion.from_string("1.2.3~rc1")
+        self.assertEqual(handler.version({}), "1.2.3~rc1")
+
+    def test_version_extended_info(self):
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        self.patch_autospec(
+            general, "get_running_version"
+        ).return_value = MAASVersion.from_string("1.2.3-456-g.deadbeef")
+        self.assertEqual(handler.version({}), "1.2.3 (456-g.deadbeef)")
 
     def test_power_types(self):
         handler = GeneralHandler(factory.make_User(), {}, None)

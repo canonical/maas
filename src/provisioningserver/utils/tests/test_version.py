@@ -4,12 +4,10 @@
 """Test version utilities."""
 
 
-import dataclasses
 import os.path
 from unittest import skipUnless
-from unittest.mock import MagicMock, sentinel
+from unittest.mock import MagicMock
 
-from fixtures import EnvironmentVariableFixture
 from pkg_resources import parse_version
 
 from maastesting import root
@@ -18,6 +16,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import shell, snappy, version
 from provisioningserver.utils.version import (
     _get_version_from_python_package,
+    get_running_version,
     MAASVersion,
 )
 
@@ -154,7 +153,6 @@ class TestGetMAASRepoHash(MAASTestCase):
     def test_returns_hash_for_this_branch(self):
         commit_hash = version._get_maas_repo_hash()
         self.assertIsInstance(commit_hash, str)
-        self.assertEqual(40, len(commit_hash))
 
 
 class TestExtractVersionSubversion(MAASTestCase):
@@ -204,8 +202,8 @@ class TestMAASVersion(MAASTestCase):
                     short_version="1.2.3",
                     extended_info="",
                     qualifier_type=None,
-                    is_snap=False,
                 ),
+                "str_version": "1.2.3",
             },
         ),
         (
@@ -223,8 +221,8 @@ class TestMAASVersion(MAASTestCase):
                     short_version="11.22.33~rc3",
                     extended_info="",
                     qualifier_type="rc",
-                    is_snap=False,
                 ),
+                "str_version": "11.22.33~rc3",
             },
         ),
         (
@@ -242,8 +240,8 @@ class TestMAASVersion(MAASTestCase):
                     short_version="2.3.0~alpha3",
                     extended_info="6202-g54f83de",
                     qualifier_type="alpha",
-                    is_snap=False,
                 ),
+                "str_version": "2.3.0~alpha3-6202-g.54f83de",
             },
         ),
         (
@@ -261,8 +259,8 @@ class TestMAASVersion(MAASTestCase):
                     short_version="2.3.0~alpha3",
                     extended_info="6202-g54f83de",
                     qualifier_type="alpha",
-                    is_snap=False,
                 ),
+                "str_version": "2.3.0~alpha3-6202-g.54f83de",
             },
         ),
         (
@@ -280,8 +278,8 @@ class TestMAASVersion(MAASTestCase):
                     short_version="2.3.0~alpha3",
                     extended_info="6202-g.54f83de",
                     qualifier_type="alpha",
-                    is_snap=False,
                 ),
+                "str_version": "2.3.0~alpha3-6202-g.54f83de",
             },
         ),
         (
@@ -299,26 +297,20 @@ class TestMAASVersion(MAASTestCase):
                     short_version="2.3.0~alpha3",
                     extended_info="6202-g54f83de",
                     qualifier_type="alpha",
-                    is_snap=False,
                 ),
+                "str_version": "2.3.0~alpha3-6202-g.54f83de",
             },
         ),
     )
 
-    def test_returns_expected_version(self):
-        self.useFixture(EnvironmentVariableFixture("SNAP", None))
+    def test_parse(self):
         self.assertEqual(
             MAASVersion.from_string(self.version), self.maas_version
         )
 
-        maas_version_snap = dataclasses.replace(
-            self.maas_version, is_snap=True
-        )
-        self.useFixture(
-            EnvironmentVariableFixture("SNAP", "/var/snap/maas/123")
-        )
+    def test_string(self):
         self.assertEqual(
-            MAASVersion.from_string(self.version), maas_version_snap
+            str(MAASVersion.from_string(self.version)), self.str_version
         )
 
 
@@ -342,8 +334,10 @@ class TestVersionTestCase(MAASTestCase):
 class TestGetRunningVersion(TestVersionTestCase):
     def test_calls__get_version_from_apt(self):
         mock_apt = self.patch(version, "_get_version_from_apt")
-        mock_apt.return_value = sentinel.version
-        self.assertIs(version.get_running_version(), sentinel.version)
+        mock_apt.return_value = "2.10.0-456-g.deadbeef-0ubuntu1"
+        maas_version = get_running_version()
+        self.assertEqual(maas_version.short_version, "2.10.0")
+        self.assertEqual(maas_version.extended_info, "456-g.deadbeef")
         self.expectThat(
             mock_apt,
             MockCalledOnceWith(
@@ -353,126 +347,39 @@ class TestGetRunningVersion(TestVersionTestCase):
 
     def test_uses_snappy_get_snap_version(self):
         self.patch(snappy, "running_in_snap").return_value = True
-        self.patch(snappy, "get_snap_version").return_value = sentinel.version
-        self.assertEqual(sentinel.version, version.get_running_version())
+        self.patch(
+            snappy, "get_snap_version"
+        ).return_value = "2.10.0-456-g.deadbeef"
+        maas_version = get_running_version()
+        self.assertEqual(maas_version.short_version, "2.10.0")
+        self.assertEqual(maas_version.extended_info, "456-g.deadbeef")
 
-
-class TestGetMAASVersionSubversion(TestVersionTestCase):
-    def test_returns_package_version(self):
-        mock_apt = self.patch(version, "_get_version_from_apt")
-        mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
-        self.assertEqual(
-            ("1.8.0~alpha4", "bzr356-0ubuntu1"),
-            version.get_maas_version_subversion(),
+    def test_uses_version_from_python(self):
+        self.patch(version, "_get_version_from_apt").return_value = None
+        self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
+            "2.10.0b1"
         )
+        maas_version = get_running_version()
+        self.assertEqual(maas_version.short_version, "2.10.0~beta1")
+        self.assertEqual(maas_version.extended_info, "")
 
-    def test_returns_unknown_if_version_is_empty_and_not_git_repo(self):
-        mock_version = self.patch(version, "_get_version_from_apt")
-        mock_version.return_value = ""
-        mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
-        mock_repo_hash.return_value = None
-        self.assertEqual(
-            (_get_version_from_python_package(), "unknown"),
-            version.get_maas_version_subversion(),
+    def test_uses_version_from_python_with_git_hash(self):
+        self.patch(version, "_get_version_from_apt").return_value = None
+        self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
+            "2.10.0b1"
         )
-
-    def test_returns_from_source_and_revno_from_branch(self):
-        mock_version = self.patch(version, "_get_version_from_apt")
-        mock_version.return_value = ""
-        mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
-        mock_repo_hash.return_value = "deadbeef"
-        self.assertEqual(
-            (
-                "%s from source" % _get_version_from_python_package(),
-                "git+deadbeef",
-            ),
-            version.get_maas_version_subversion(),
-        )
-
-
-class TestGetMAASVersionUI(TestVersionTestCase):
-    def test_returns_package_version(self):
-        mock_apt = self.patch(version, "_get_version_from_apt")
-        mock_apt.return_value = "1.8.0~alpha4+git+deadbeef-0ubuntu1"
-        self.assertEqual(
-            "1.8.0~alpha4 (git+deadbeef-0ubuntu1)",
-            version.get_maas_version_ui(),
-        )
-
-    def test_returns_unknown_if_version_is_empty_and_not_git_repo(self):
-        mock_version = self.patch(version, "_get_version_from_apt")
-        mock_version.return_value = ""
-        mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
-        mock_repo_hash.return_value = None
-        self.assertEqual(
-            "%s (unknown)" % _get_version_from_python_package(),
-            version.get_maas_version_ui(),
-        )
-
-    def test_returns_from_source_and_revno_from_branch(self):
-        mock_version = self.patch(version, "_get_version_from_apt")
-        mock_version.return_value = ""
-        mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
-        mock_repo_hash.return_value = "deadbeef"
-
-        self.assertEqual(
-            "{} from source (git+deadbeef)".format(
-                _get_version_from_python_package()
-            ),
-            version.get_maas_version_ui(),
-        )
-
-
-class TestGetMAASVersionUserAgent(TestVersionTestCase):
-    def test_returns_package_version(self):
-        mock_apt = self.patch(version, "_get_version_from_apt")
-        mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
-        self.assertEqual(
-            "maas/1.8.0~alpha4/bzr356-0ubuntu1",
-            version.get_maas_version_user_agent(),
-        )
-
-    def test_returns_unknown_if_version_is_empty_and_not_git_repo(self):
-        mock_version = self.patch(version, "_get_version_from_apt")
-        mock_version.return_value = ""
-        mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
-        mock_repo_hash.return_value = None
-        self.assertEqual(
-            "maas/%s/unknown" % _get_version_from_python_package(),
-            version.get_maas_version_user_agent(),
-        )
-
-    def test_returns_from_source_and_hashfrom_repo(self):
-        mock_version = self.patch(version, "_get_version_from_apt")
-        mock_version.return_value = ""
-        mock_repo_hash = self.patch(version, "_get_maas_repo_hash")
-        mock_repo_hash.return_value = "deadbeef"
-        self.assertEqual(
-            "maas/%s from source/git+%s"
-            % (_get_version_from_python_package(), "deadbeef"),
-            version.get_maas_version_user_agent(),
-        )
-
-
-class TestVersionMethodsCached(TestVersionTestCase):
-
-    scenarios = [
-        ("get_running_version", dict(method="get_running_version")),
-        (
-            "get_maas_version_subversion",
-            dict(method="get_maas_version_subversion"),
-        ),
-        ("get_maas_version_ui", dict(method="get_maas_version_ui")),
-    ]
+        self.patch(version, "_get_maas_repo_hash").return_value = "deadbeef"
+        maas_version = get_running_version()
+        self.assertEqual(maas_version.short_version, "2.10.0~beta1")
+        self.assertEqual(maas_version.git_rev, "deadbeef")
 
     def test_method_is_cached(self):
         mock_apt = self.patch(version, "_get_version_from_apt")
         mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
-        cached_method = getattr(version, self.method)
-        cached_method.cache_clear()
+        version.get_running_version.cache_clear()
 
-        first_return_value = cached_method()
-        second_return_value = cached_method()
+        first_return_value = version.get_running_version()
+        second_return_value = version.get_running_version()
         # The return value is not empty (full unit tests have been performed
         # earlier).
         self.assertNotIn(first_return_value, [b"", "", None])
@@ -514,7 +421,8 @@ class TestGetMAASVersionTrackChannel(TestVersionTestCase):
     ]
 
     def test_get_maas_version_track_channel(self):
-        mock = self.patch(version, "get_running_version")
-        mock.return_value = self.version
+        self.patch(
+            version, "get_running_version"
+        ).return_value = MAASVersion.from_string(self.version)
         result = version.get_maas_version_track_channel()
         self.assertEqual(result, self.output)

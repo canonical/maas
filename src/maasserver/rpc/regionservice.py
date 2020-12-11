@@ -714,7 +714,7 @@ class RegionServer(Region):
             result["beacon_support"] = True
         if version:
             # The remote supports version checking, so reply to that.
-            result["version"] = get_running_version()
+            result["version"] = str(get_running_version())
         return result
 
     @inlineCallbacks

@@ -93,7 +93,7 @@ def _get_maas_repo_hash():
     """
     try:
         return (
-            shell.call_and_check(["git", "rev-parse", "HEAD"])
+            shell.call_and_check(["git", "rev-parse", "--short", "HEAD"])
             .decode("ascii")
             .strip()
         )
@@ -106,8 +106,7 @@ def _get_maas_repo_hash():
 def get_maas_version_track_channel():
     """Returns the track/channel where a snap of this version can be found."""
     # if running from source, default to current version
-    maas_version = get_running_version() or _get_version_from_python_package()
-    version = MAASVersion.from_string(maas_version)
+    version = get_running_version()
     risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
     risk = risk_map.get(version.qualifier_type, "stable")
     return f"{version.major}.{version.minor}/{risk}"
@@ -128,7 +127,14 @@ class MAASVersion:
     short_version: str
     extended_info: str
     qualifier_type: str
-    is_snap: bool
+
+    def __str__(self):
+        version = self.short_version
+        if self.revno:
+            version += f"-{self.revno}"
+        if self.git_rev:
+            version += f"-g.{self.git_rev}"
+        return version
 
     def __lt__(self, other):
         # only take into account numeric fields for comparison
@@ -157,7 +163,7 @@ class MAASVersion:
             r"(~?(?P<qualifier_type>[a-z]+)(?P<qualifier_version>\d+))?"
             r")"
             r"(-(?P<extended_info>"  # -revno-g.hash
-            r"(?P<revno>\d+)"
+            r"(?P<revno>\d+)?"
             r"(-g\.?(?P<git_rev>\w+))?"
             r"))?"
         )
@@ -186,52 +192,25 @@ class MAASVersion:
             groups["short_version"],
             to_str("extended_info"),
             qualifier_type,
-            snappy.running_in_snap(),
         )
 
 
 @lru_cache(maxsize=1)
-def get_running_version():
-    """Return the apt or snap version for the main MAAS package."""
+def get_running_version() -> MAASVersion:
+    """Return the version for the running MAAS."""
+    git_rev = None
     if snappy.running_in_snap():
-        return snappy.get_snap_version()
+        version_str = snappy.get_snap_version()
     else:
-        return _get_version_from_apt(RACK_PACKAGE_NAME, REGION_PACKAGE_NAME)
+        version_str = _get_version_from_apt(
+            RACK_PACKAGE_NAME, REGION_PACKAGE_NAME
+        )
+    if not version_str:
+        version_str = _get_version_from_python_package()
+        git_rev = _get_maas_repo_hash()
 
+    maas_version = MAASVersion.from_string(version_str)
+    if (not maas_version.git_rev) and git_rev:
+        maas_version = dataclasses.replace(maas_version, git_rev=git_rev)
 
-@lru_cache(maxsize=1)
-def get_maas_version_subversion():
-    """Return a tuple with the MAAS version and the MAAS subversion."""
-    version = get_running_version()
-    if version:
-        return _extract_version_subversion(version)
-    else:
-        # Get the branch information
-        commit_hash = _get_maas_repo_hash()
-        pkg_version = _get_version_from_python_package()
-        if commit_hash is None:
-            # Not installed or not in repo, then no way to identify. This
-            # should not happen, but just in case.
-            return pkg_version, "unknown"
-        else:
-            return "%s from source" % pkg_version, "git+%s" % commit_hash
-
-
-@lru_cache(maxsize=1)
-def get_maas_version_ui():
-    """Return the version string for the running MAAS region.
-
-    The returned string is suitable to display in the UI.
-    """
-    version, subversion = get_maas_version_subversion()
-    return "%s (%s)" % (version, subversion) if subversion else version
-
-
-@lru_cache(maxsize=1)
-def get_maas_version_user_agent():
-    """Return the version string for the running MAAS region.
-
-    The returned string is suitable to set the user agent.
-    """
-    version, subversion = get_maas_version_subversion()
-    return "maas/%s/%s" % (version, subversion)
+    return maas_version

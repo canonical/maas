@@ -353,7 +353,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "version": "2.3.0",
             },
         )
-        self.assertEqual(response["version"], get_running_version())
+        self.assertEqual(response["version"], str(get_running_version()))
 
     @wait_for_reactor
     @inlineCallbacks

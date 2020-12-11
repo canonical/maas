@@ -132,7 +132,7 @@ from provisioningserver.utils.twisted import (
     makeDeferredWithProcessProtocol,
     pause,
 )
-from provisioningserver.utils.version import get_running_version
+from provisioningserver.utils.version import get_running_version, MAASVersion
 
 
 class TestClusterProtocol_Identify(MAASTestCase):
@@ -1922,7 +1922,7 @@ class TestClusterClient(MAASTestCase):
                 url=urlparse(maas_url),
                 nodegroup_uuid=None,
                 beacon_support=True,
-                version=get_running_version(),
+                version=str(get_running_version()),
             ),
         )
         # Clear cache for the next test
@@ -2005,7 +2005,7 @@ class TestClusterClient(MAASTestCase):
                 url=urlparse(maas_url),
                 nodegroup_uuid=None,
                 beacon_support=True,
-                version=get_running_version(),
+                version=str(get_running_version()),
             ),
         )
 
@@ -3148,7 +3148,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
         consumer_key = factory.make_name("consumer_key")
         token_key = factory.make_name("token_key")
         token_secret = factory.make_name("token_secret")
-        maas_version = factory.make_name("maas_version")
+        maas_version = MAASVersion.from_string("1.2.3")
         self.patch_autospec(
             clusterservice, "get_running_version"
         ).return_value = maas_version
@@ -3164,7 +3164,7 @@ class TestClusterProtocol_Refresh(MAASTestCaseThatWaitsForDeferredThreads):
             },
         )
 
-        self.assertEqual({"maas_version": maas_version}, response)
+        self.assertEqual({"maas_version": "1.2.3"}, response)
 
 
 class TestClusterProtocol_ScanNetworks(

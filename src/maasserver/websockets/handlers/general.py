@@ -30,7 +30,7 @@ from maasserver.utils.osystems import (
     list_release_choices,
 )
 from maasserver.websockets.base import Handler
-from provisioningserver.utils.version import get_maas_version_ui
+from provisioningserver.utils.version import get_running_version
 
 
 class GeneralHandler(Handler):
@@ -184,7 +184,10 @@ class GeneralHandler(Handler):
 
     def version(self, params):
         """Return the MAAS version."""
-        return get_maas_version_ui()
+        version = get_running_version()
+        if version.extended_info:
+            return f"{version.short_version} ({version.extended_info})"
+        return version.short_version
 
     def power_types(self, params):
         """Return all power types."""

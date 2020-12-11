@@ -27,9 +27,8 @@ class TestVersionAPI(APITestCase.ForAnonymousAndUser):
 
     def test_GET_returns_details(self):
         mock_apt = self.patch(version_module, "_get_version_from_apt")
-        mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
+        mock_apt.return_value = "2.10.0~alpha4-456-g.deadbeef-0ubuntu1"
         version_module.get_running_version.cache_clear()
-        version_module.get_maas_version_subversion.cache_clear()
 
         response = self.client.get(reverse("version_handler"))
         self.assertEqual(http.client.OK, response.status_code)
@@ -40,8 +39,8 @@ class TestVersionAPI(APITestCase.ForAnonymousAndUser):
         self.assertEqual(
             {
                 "capabilities": API_CAPABILITIES_LIST,
-                "version": "1.8.0~alpha4",
-                "subversion": "bzr356-0ubuntu1",
+                "version": "2.10.0~alpha4",
+                "subversion": "456-g.deadbeef",
             },
             parsed_result,
         )

@@ -134,8 +134,6 @@ class ControllerHandler(MachineHandler):
             long_version = version.short_version
             if len(version.extended_info) > 0:
                 long_version += " (%s)" % version.extended_info
-            if version.is_snap:
-                long_version += " (snap)"
             data["version__long"] = long_version
         data["service_ids"] = [service.id for service in obj.service_set.all()]
         if not for_list:
