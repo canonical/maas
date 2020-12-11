@@ -112,11 +112,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
         c1 = factory.make_RegionRackController()
         self.assertThat(get_version_notifications().count(), Equals(0))
         ControllerInfo.objects.set_version(c1, "2.3.0")
-        self.assertThat(get_version_notifications().count(), Equals(0))
-        ControllerInfo.objects.set_version(c1, None)
-        self.assertThat(get_version_notifications().count(), Equals(0))
-        ControllerInfo.objects.set_version(c1, "")
-        self.assertThat(get_version_notifications().count(), Equals(0))
+        self.assertFalse(get_version_notifications().exists())
 
     def test_out_of_date_controller_generates_concise_notification(self):
         c1 = factory.make_RegionRackController()

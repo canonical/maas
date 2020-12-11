@@ -310,9 +310,7 @@ class TestControllerListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(
-                self.set_version, controller, factory.make_string()
-            )
+            yield deferToDatabase(self.set_version, controller, "2.10.0")
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -325,13 +323,11 @@ class TestControllerListener(
         dv = DeferredValue()
         params = self.params.copy()
         controller = yield deferToDatabase(self.create_node, params)
-        yield deferToDatabase(self.set_version, controller, "")
+        yield deferToDatabase(self.set_version, controller, "2.10.0")
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(
-                self.set_version, controller, factory.make_string()
-            )
+            yield deferToDatabase(self.set_version, controller, "2.10.1")
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -344,7 +340,7 @@ class TestControllerListener(
         dv = DeferredValue()
         params = self.params.copy()
         controller = yield deferToDatabase(self.create_node, params)
-        yield deferToDatabase(self.set_version, controller, "")
+        yield deferToDatabase(self.set_version, controller, "2.10.0")
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
@@ -364,7 +360,7 @@ class TestControllerListener(
         dv = DeferredValue()
         params = self.params.copy()
         controller = yield deferToDatabase(self.create_node, params)
-        yield deferToDatabase(self.set_version, controller, "")
+        yield deferToDatabase(self.set_version, controller, "2.10.0")
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:

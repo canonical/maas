@@ -18,7 +18,6 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import shell, snappy, version
 from provisioningserver.utils.version import (
     _get_version_from_python_package,
-    get_version_tuple,
     MAASVersion,
 )
 
@@ -187,100 +186,44 @@ class TestExtractVersionSubversion(MAASTestCase):
         )
 
 
-class TestGetVersionTuple(MAASTestCase):
+class TestMAASVersion(MAASTestCase):
 
     scenarios = (
         (
-            "empty string",
+            "version only",
             {
-                "version": "",
+                "version": "1.2.3",
                 "maas_version": MAASVersion(
-                    0, 0, 0, 0, 0, 0, "", "", "", None, False
+                    major=1,
+                    minor=2,
+                    point=3,
+                    qualifier_type_version=0,
+                    qualifier_version=0,
+                    revno=0,
+                    git_rev="",
+                    short_version="1.2.3",
+                    extended_info="",
+                    qualifier_type=None,
+                    is_snap=False,
                 ),
             },
         ),
         (
-            "single digit",
-            {
-                "version": "2",
-                "maas_version": MAASVersion(
-                    2, 0, 0, 0, 0, 0, "", "2", "", None, False
-                ),
-            },
-        ),
-        (
-            "double digit",
-            {
-                "version": "2.2",
-                "maas_version": MAASVersion(
-                    2,
-                    2,
-                    0,
-                    0,
-                    0,
-                    0,
-                    "",
-                    "2.2",
-                    "",
-                    None,
-                    False,
-                ),
-            },
-        ),
-        (
-            "triple digits",
-            {
-                "version": "11.22.33",
-                "maas_version": MAASVersion(
-                    11,
-                    22,
-                    33,
-                    0,
-                    0,
-                    0,
-                    "",
-                    "11.22.33",
-                    "",
-                    None,
-                    False,
-                ),
-            },
-        ),
-        (
-            "single digit with qualifier",
-            {
-                "version": "2~alpha4",
-                "maas_version": MAASVersion(
-                    2,
-                    0,
-                    0,
-                    -3,
-                    4,
-                    0,
-                    "",
-                    "2~alpha4",
-                    "",
-                    "alpha",
-                    False,
-                ),
-            },
-        ),
-        (
-            "triple digit with qualifier",
+            "version with qualifier",
             {
                 "version": "11.22.33~rc3",
                 "maas_version": MAASVersion(
-                    11,
-                    22,
-                    33,
-                    -1,
-                    3,
-                    0,
-                    "",
-                    "11.22.33~rc3",
-                    "",
-                    "rc",
-                    False,
+                    major=11,
+                    minor=22,
+                    point=33,
+                    qualifier_type_version=-1,
+                    qualifier_version=3,
+                    revno=0,
+                    git_rev="",
+                    short_version="11.22.33~rc3",
+                    extended_info="",
+                    qualifier_type="rc",
+                    is_snap=False,
                 ),
             },
         ),
@@ -289,17 +232,36 @@ class TestGetVersionTuple(MAASTestCase):
             {
                 "version": "2.3.0~alpha3-6202-g54f83de-0ubuntu1~16.04.1",
                 "maas_version": MAASVersion(
-                    2,
-                    3,
-                    0,
-                    -3,
-                    3,
-                    6202,
-                    "54f83de",
-                    "2.3.0~alpha3",
-                    "6202-g54f83de",
-                    "alpha",
-                    False,
+                    major=2,
+                    minor=3,
+                    point=0,
+                    qualifier_type_version=-3,
+                    qualifier_version=3,
+                    revno=6202,
+                    git_rev="54f83de",
+                    short_version="2.3.0~alpha3",
+                    extended_info="6202-g54f83de",
+                    qualifier_type="alpha",
+                    is_snap=False,
+                ),
+            },
+        ),
+        (
+            "full version with snap suffix",
+            {
+                "version": "2.3.0~alpha3-6202-g54f83de-0ubuntu1~16.04.1-snap",
+                "maas_version": MAASVersion(
+                    major=2,
+                    minor=3,
+                    point=0,
+                    qualifier_type_version=-3,
+                    qualifier_version=3,
+                    revno=6202,
+                    git_rev="54f83de",
+                    short_version="2.3.0~alpha3",
+                    extended_info="6202-g54f83de",
+                    qualifier_type="alpha",
+                    is_snap=False,
                 ),
             },
         ),
@@ -308,93 +270,36 @@ class TestGetVersionTuple(MAASTestCase):
             {
                 "version": "2.3.0~alpha3-6202-g.54f83de-0ubuntu1~16.04.1",
                 "maas_version": MAASVersion(
-                    2,
-                    3,
-                    0,
-                    -3,
-                    3,
-                    6202,
-                    "54f83de",
-                    "2.3.0~alpha3",
-                    "6202-g.54f83de",
-                    "alpha",
-                    False,
+                    major=2,
+                    minor=3,
+                    point=0,
+                    qualifier_type_version=-3,
+                    qualifier_version=3,
+                    revno=6202,
+                    git_rev="54f83de",
+                    short_version="2.3.0~alpha3",
+                    extended_info="6202-g.54f83de",
+                    qualifier_type="alpha",
+                    is_snap=False,
                 ),
             },
         ),
         (
-            "full version with garbage revisions",
+            "full version with epoch",
             {
-                "version": "2.3.0~experimental3-xxxxxxx-xxxxxx",
+                "version": "1:2.3.0~alpha3-6202-g54f83de-0ubuntu1~16.04.1",
                 "maas_version": MAASVersion(
-                    2,
-                    3,
-                    0,
-                    0,
-                    3,
-                    0,
-                    "",
-                    "2.3.0~experimental3",
-                    "xxxxxxx-xxxxxx",
-                    "experimental",
-                    False,
-                ),
-            },
-        ),
-        (
-            "garbage integers",
-            {
-                "version": "2x.x3.x5x~alpha5Y-xxx-g1",
-                "maas_version": MAASVersion(
-                    2,
-                    3,
-                    5,
-                    0,
-                    5,
-                    0,
-                    "1",
-                    "2x.x3.x5x~alpha5Y",
-                    "xxx-g1",
-                    "alphaY",
-                    False,
-                ),
-            },
-        ),
-        (
-            "ci version",
-            {
-                "version": "2.4.0+6981.g011e51b+ci-0ubuntu1",
-                "maas_version": MAASVersion(
-                    2,
-                    4,
-                    0,
-                    0,
-                    0,
-                    6981,
-                    "011e51b",
-                    "2.4.0",
-                    "6981.g011e51b+ci-0ubuntu1",
-                    None,
-                    False,
-                ),
-            },
-        ),
-        (
-            "ci version with epoch",
-            {
-                "version": "1:2.9.0~beta3-8950-g.b5ea2ab1b-0ubuntu1",
-                "maas_version": MAASVersion(
-                    2,
-                    9,
-                    0,
-                    -2,
-                    3,
-                    8950,
-                    "b5ea2ab1b",
-                    "2.9.0~beta3",
-                    "8950-g.b5ea2ab1b",
-                    "beta",
-                    False,
+                    major=2,
+                    minor=3,
+                    point=0,
+                    qualifier_type_version=-3,
+                    qualifier_version=3,
+                    revno=6202,
+                    git_rev="54f83de",
+                    short_version="2.3.0~alpha3",
+                    extended_info="6202-g54f83de",
+                    qualifier_type="alpha",
+                    is_snap=False,
                 ),
             },
         ),
@@ -402,7 +307,9 @@ class TestGetVersionTuple(MAASTestCase):
 
     def test_returns_expected_version(self):
         self.useFixture(EnvironmentVariableFixture("SNAP", None))
-        self.assertEqual(get_version_tuple(self.version), self.maas_version)
+        self.assertEqual(
+            MAASVersion.from_string(self.version), self.maas_version
+        )
 
         maas_version_snap = dataclasses.replace(
             self.maas_version, is_snap=True
@@ -410,7 +317,9 @@ class TestGetVersionTuple(MAASTestCase):
         self.useFixture(
             EnvironmentVariableFixture("SNAP", "/var/snap/maas/123")
         )
-        self.assertEqual(get_version_tuple(self.version), maas_version_snap)
+        self.assertEqual(
+            MAASVersion.from_string(self.version), maas_version_snap
+        )
 
 
 class TestVersionTestCase(MAASTestCase):

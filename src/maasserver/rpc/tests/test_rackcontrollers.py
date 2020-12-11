@@ -173,9 +173,9 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_finding_existing_node_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-        register(system_id=node.system_id, version="4.0")
+        register(system_id=node.system_id, version="2.10.0")
         self.assertEqual(
-            "Existing rack controller '%s' running version 4.0 has "
+            "Existing rack controller '%s' running version 2.10.0 has "
             "connected to region '%s'."
             % (node.hostname, self.this_region.hostname),
             logger.output.strip(),
@@ -201,9 +201,9 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_converting_region_controller_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         node = factory.make_Node(node_type=NODE_TYPE.REGION_CONTROLLER)
-        register(system_id=node.system_id, version="7.8")
+        register(system_id=node.system_id, version="2.10.0")
         self.assertEqual(
-            "Region controller '%s' running version 7.8 converted "
+            "Region controller '%s' running version 2.10.0 converted "
             "into a region and rack controller.\n" % node.hostname,
             logger.output,
         )
@@ -271,9 +271,9 @@ class TestRegisterRackController(MAASServerTestCase):
     def test_logs_creating_new_rackcontroller_with_version(self):
         logger = self.useFixture(FakeLogger("maas"))
         hostname = factory.make_name("hostname")
-        register(hostname=hostname, version="4.2")
+        register(hostname=hostname, version="2.10.0")
         self.assertEqual(
-            "New rack controller '%s' running version 4.2 was "
+            "New rack controller '%s' running version 2.10.0 was "
             "created by region '%s' upon first connection."
             % (hostname, self.this_region.hostname),
             logger.output.strip(),

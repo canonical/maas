@@ -16,7 +16,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.version import get_version_tuple
+from provisioningserver.utils.version import MAASVersion
 
 maaslog = get_maas_logger("controllerinfo")
 
@@ -84,7 +84,7 @@ class ControllerInfoManager(Manager):
         )
         for i in range(len(versions)):
             version_info = list(versions[i])
-            version_info.append(get_version_tuple(version_info[-1]))
+            version_info.append(MAASVersion.from_string(version_info[-1]))
             versions[i] = ControllerVersionInfo(*version_info)
         return sorted(versions, key=lambda version: version[-1], reverse=True)
 

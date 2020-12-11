@@ -107,7 +107,7 @@ def get_maas_version_track_channel():
     """Returns the track/channel where a snap of this version can be found."""
     # if running from source, default to current version
     maas_version = get_running_version() or _get_version_from_python_package()
-    version = get_version_tuple(maas_version)
+    version = MAASVersion.from_string(maas_version)
     risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
     risk = risk_map.get(version.qualifier_type, "stable")
     return f"{version.major}.{version.minor}/{risk}"
@@ -148,76 +148,46 @@ class MAASVersion:
             other.revno,
         )
 
+    @classmethod
+    def from_string(cls, version: str):
+        r = re.compile(
+            r"((?P<epoch>\d+):)?"  # deb package epoch
+            r"(?P<short_version>"  # maj.min.point[~qualifier]
+            r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<point>\d+)"
+            r"(~?(?P<qualifier_type>[a-z]+)(?P<qualifier_version>\d+))?"
+            r")"
+            r"(-(?P<extended_info>"  # -revno-g.hash
+            r"(?P<revno>\d+)"
+            r"(-g\.?(?P<git_rev>\w+))?"
+            r"))?"
+        )
+        groups = r.match(version).groupdict()
 
-def _coerce_to_int(string: str) -> int:
-    """Strips all non-numeric characters out of the string and returns an int.
+        def to_int(field_name):
+            return int(groups.get(field_name) or 0)
 
-    Returns 0 for an empty string.
-    """
-    numbers = re.sub(r"[^\d]+", "", string)
-    if len(numbers) > 0:
-        return int(numbers)
-    else:
-        return 0
+        def to_str(field_name):
+            return groups.get(field_name) or ""
 
-
-def get_version_tuple(maas_version: str) -> MAASVersion:
-    without_epoch = maas_version.split(":", 1)[-1]
-    version_parts = re.split(r"[-|+]", without_epoch, 1)
-    short_version = version_parts[0]
-    major_minor_point = re.sub(r"~.*", "", short_version).split(".", 2)
-    for i in range(3):
-        try:
-            major_minor_point[i] = _coerce_to_int(major_minor_point[i])
-        except ValueError:
-            major_minor_point[i] = 0
-        except IndexError:
-            major_minor_point.append(0)
-    major, minor, point = major_minor_point
-    extended_info = ""
-    if len(version_parts) > 1:
-        extended_info = version_parts[1]
-    qualifier_type = None
-    qualifier_type_version = 0
-    qualifier_version = 0
-    if "~" in short_version:
-        # Parse the alpha/beta/rc version.
-        base_version, qualifier = short_version.split("~", 2)
+        # version qualifiers
+        qualifier_type = groups["qualifier_type"]
+        qualifier_version = to_int("qualifier_version")
         qualifier_types = {"rc": -1, "beta": -2, "alpha": -3}
-        # A release build won't have a qualifier, so its version should be
-        # greater than releases qualified with alpha/beta/rc revisions.
-        qualifier_type = re.sub(r"[\d]+", "", qualifier)
-        qualifier_version = _coerce_to_int(qualifier)
         qualifier_type_version = qualifier_types.get(qualifier_type, 0)
-    revno = 0
-    git_rev = ""
-    # If we find a '-g' or '.g', that means the extended info indicates a
-    # git revision.
-    if "-g" in extended_info or ".g" in extended_info:
-        # unify separators
-        revisions = extended_info.replace("-g.", "-g")
-        revno, git_rev = re.split(r"[-|.|+]", revisions)[0:2]
-        # Strip any non-numeric characters from the revno, just in case.
-        revno = _coerce_to_int(revno)
-        # Remove anything that doesn't look like a hexadecimal character.
-        git_rev = re.sub(r"[^0-9a-f]+", "", git_rev)
-    extended_info = re.sub(r"-*snap$", "", extended_info)
-    # Remove unnecessary garbage from the extended info string.
-    if "-" in extended_info:
-        extended_info = "-".join(extended_info.split("-")[0:2])
-    return MAASVersion(
-        major,
-        minor,
-        point,
-        qualifier_type_version,
-        qualifier_version,
-        revno,
-        git_rev,
-        short_version,
-        extended_info,
-        qualifier_type,
-        snappy.running_in_snap(),
-    )
+
+        return cls(
+            int(groups["major"]),
+            int(groups["minor"]),
+            int(groups["point"]),
+            qualifier_type_version,
+            qualifier_version,
+            to_int("revno"),
+            to_str("git_rev"),
+            groups["short_version"],
+            to_str("extended_info"),
+            qualifier_type,
+            snappy.running_in_snap(),
+        )
 
 
 @lru_cache(maxsize=1)

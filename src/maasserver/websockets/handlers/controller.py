@@ -17,7 +17,7 @@ from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerError, HandlerPermissionError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
-from provisioningserver.utils.version import get_version_tuple
+from provisioningserver.utils.version import MAASVersion
 
 
 class ControllerHandler(MachineHandler):
@@ -129,7 +129,7 @@ class ControllerHandler(MachineHandler):
         data = super().dehydrate(obj, data, for_list=for_list)
         data["version"] = obj.version
         if obj.version is not None and len(obj.version) > 0:
-            version = get_version_tuple(obj.version)
+            version = MAASVersion.from_string(obj.version)
             data["version__short"] = version.short_version
             long_version = version.short_version
             if len(version.extended_info) > 0:

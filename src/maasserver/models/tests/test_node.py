@@ -13477,7 +13477,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test_refresh_issues_rpc_call(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed(
-            {"maas_version": factory.make_name("maas_version")}
+            {"maas_version": "2.10.0"}
         )
 
         yield self.rackcontroller.refresh()
@@ -13498,7 +13498,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
     @defer.inlineCallbacks
     def test_refresh_logs_user_request(self):
         self.protocol.RefreshRackControllerInfo.return_value = defer.succeed(
-            {"maas_version": factory.make_name("maas_version")}
+            {"maas_version": "2.10.0"}
         )
 
         register_event = self.patch(

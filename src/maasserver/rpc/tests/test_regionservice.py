@@ -350,7 +350,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "system_id": rack_controller.system_id,
                 "hostname": rack_controller.hostname,
                 "interfaces": {},
-                "version": "2.3",
+                "version": "2.3.0",
             },
         )
         self.assertEqual(response["version"], get_running_version())
