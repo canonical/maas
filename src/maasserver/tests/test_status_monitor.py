@@ -36,7 +36,6 @@ from maastesting.matchers import (
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS, SCRIPT_TYPE
-from metadataserver.models import Script, ScriptSet
 
 
 class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
@@ -267,69 +266,6 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         self.assertEquals(
             SCRIPT_STATUS.TIMEDOUT, reload_object(running_script_result).status
         )
-
-    def test_mark_nodes_failed_after_builtin_commiss_script_overrun(self):
-        load_builtin_scripts()
-        user = factory.make_admin()
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING, owner=user)
-        script_set = ScriptSet.objects.create_commissioning_script_set(node)
-        node.current_commissioning_script_set = script_set
-        node.save()
-        current_time = now()
-        script_set.last_ping = current_time
-        script_set.save()
-        pending_script_results = list(script_set.scriptresult_set.all())
-        passed_script_result = pending_script_results.pop()
-        passed_script_result.status = SCRIPT_STATUS.PASSED
-        passed_script_result.save()
-        failed_script_result = pending_script_results.pop()
-        failed_script_result.status = SCRIPT_STATUS.FAILED
-        failed_script_result.save()
-        running_script_result = pending_script_results.pop()
-        running_script_result.status = SCRIPT_STATUS.RUNNING
-        running_script_result.started = current_time - timedelta(minutes=10)
-        running_script_result.save()
-
-        mark_nodes_failed_after_missing_script_timeout(current_time, 20)
-        node = reload_object(node)
-
-        self.assertEquals(NODE_STATUS.FAILED_COMMISSIONING, node.status)
-        timeout = str(
-            Script.objects.get(name=running_script_result.name).timeout
-        )
-        self.assertEquals(
-            "%s has run past it's timeout(%s)"
-            % (running_script_result.name, timeout),
-            node.error_description,
-        )
-        self.assertIn(
-            call(
-                "%s: %s has run past it's timeout(%s)"
-                % (node.hostname, running_script_result.name, timeout)
-            ),
-            self.maaslog.call_args_list,
-        )
-        if node.enable_ssh:
-            self.assertThat(self.mock_stop, MockNotCalled())
-        else:
-            self.assertThat(self.mock_stop, MockCalledOnce())
-            self.assertIn(
-                call("%s: Stopped because SSH is disabled" % node.hostname),
-                self.maaslog.call_args_list,
-            )
-        self.assertEquals(
-            SCRIPT_STATUS.PASSED, reload_object(passed_script_result).status
-        )
-        self.assertEquals(
-            SCRIPT_STATUS.FAILED, reload_object(failed_script_result).status
-        )
-        self.assertEquals(
-            SCRIPT_STATUS.TIMEDOUT, reload_object(running_script_result).status
-        )
-        for script_result in pending_script_results:
-            self.assertEquals(
-                SCRIPT_STATUS.ABORTED, reload_object(script_result).status
-            )
 
     def test_uses_param_runtime(self):
         node, script_set = self.make_node()
