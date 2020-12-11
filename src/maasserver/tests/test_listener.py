@@ -61,6 +61,8 @@ FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
 class PostgresListenerServiceSpy(PostgresListenerService):
     """Save received notifies `captured_notifies` before processing them.."""
 
+    HANDLE_NOTIFY_DELAY = CHANNEL_REGISTRAR_DELAY = 0
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Captured notifications from the database will go here.
