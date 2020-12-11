@@ -195,15 +195,15 @@ class TestMAASVersion(MAASTestCase):
                     major=1,
                     minor=2,
                     point=3,
-                    qualifier_type_version=0,
                     qualifier_version=0,
                     revno=0,
                     git_rev="",
-                    short_version="1.2.3",
-                    extended_info="",
                     qualifier_type=None,
                 ),
                 "str_version": "1.2.3",
+                "short_version": "1.2.3",
+                "extended_info": "",
+                "qualifier_type_order": 0,
             },
         ),
         (
@@ -214,15 +214,15 @@ class TestMAASVersion(MAASTestCase):
                     major=11,
                     minor=22,
                     point=33,
-                    qualifier_type_version=-1,
                     qualifier_version=3,
                     revno=0,
                     git_rev="",
-                    short_version="11.22.33~rc3",
-                    extended_info="",
                     qualifier_type="rc",
                 ),
                 "str_version": "11.22.33~rc3",
+                "short_version": "11.22.33~rc3",
+                "extended_info": "",
+                "qualifier_type_order": -1,
             },
         ),
         (
@@ -233,15 +233,15 @@ class TestMAASVersion(MAASTestCase):
                     major=2,
                     minor=3,
                     point=0,
-                    qualifier_type_version=-3,
                     qualifier_version=3,
                     revno=6202,
                     git_rev="54f83de",
-                    short_version="2.3.0~alpha3",
-                    extended_info="6202-g54f83de",
                     qualifier_type="alpha",
                 ),
                 "str_version": "2.3.0~alpha3-6202-g.54f83de",
+                "short_version": "2.3.0~alpha3",
+                "extended_info": "6202-g.54f83de",
+                "qualifier_type_order": -3,
             },
         ),
         (
@@ -252,15 +252,15 @@ class TestMAASVersion(MAASTestCase):
                     major=2,
                     minor=3,
                     point=0,
-                    qualifier_type_version=-3,
                     qualifier_version=3,
                     revno=6202,
                     git_rev="54f83de",
-                    short_version="2.3.0~alpha3",
-                    extended_info="6202-g54f83de",
                     qualifier_type="alpha",
                 ),
                 "str_version": "2.3.0~alpha3-6202-g.54f83de",
+                "short_version": "2.3.0~alpha3",
+                "extended_info": "6202-g.54f83de",
+                "qualifier_type_order": -3,
             },
         ),
         (
@@ -271,15 +271,15 @@ class TestMAASVersion(MAASTestCase):
                     major=2,
                     minor=3,
                     point=0,
-                    qualifier_type_version=-3,
                     qualifier_version=3,
                     revno=6202,
                     git_rev="54f83de",
-                    short_version="2.3.0~alpha3",
-                    extended_info="6202-g.54f83de",
                     qualifier_type="alpha",
                 ),
                 "str_version": "2.3.0~alpha3-6202-g.54f83de",
+                "short_version": "2.3.0~alpha3",
+                "extended_info": "6202-g.54f83de",
+                "qualifier_type_order": -3,
             },
         ),
         (
@@ -290,22 +290,26 @@ class TestMAASVersion(MAASTestCase):
                     major=2,
                     minor=3,
                     point=0,
-                    qualifier_type_version=-3,
                     qualifier_version=3,
                     revno=6202,
                     git_rev="54f83de",
-                    short_version="2.3.0~alpha3",
-                    extended_info="6202-g54f83de",
                     qualifier_type="alpha",
                 ),
                 "str_version": "2.3.0~alpha3-6202-g.54f83de",
+                "short_version": "2.3.0~alpha3",
+                "extended_info": "6202-g.54f83de",
+                "qualifier_type_order": -3,
             },
         ),
     )
 
     def test_parse(self):
+        maas_version = MAASVersion.from_string(self.version)
+        self.assertEqual(maas_version, self.maas_version)
+        self.assertEqual(maas_version.short_version, self.short_version)
+        self.assertEqual(maas_version.extended_info, self.extended_info)
         self.assertEqual(
-            MAASVersion.from_string(self.version), self.maas_version
+            maas_version._qualifier_type_order, self.qualifier_type_order
         )
 
     def test_string(self):
@@ -359,19 +363,21 @@ class TestGetRunningVersion(TestVersionTestCase):
         self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
             "2.10.0b1"
         )
+        self.patch(version, "_get_maas_repo_hash").return_value = None
         maas_version = get_running_version()
         self.assertEqual(maas_version.short_version, "2.10.0~beta1")
         self.assertEqual(maas_version.extended_info, "")
 
-    def test_uses_version_from_python_with_git_hash(self):
+    def test_uses_version_from_python_with_git_info(self):
         self.patch(version, "_get_version_from_apt").return_value = None
         self.patch(version, "DISTRIBUTION").parsed_version = parse_version(
             "2.10.0b1"
         )
+        self.patch(version, "_get_maas_repo_commit_count").return_value = 1234
         self.patch(version, "_get_maas_repo_hash").return_value = "deadbeef"
         maas_version = get_running_version()
         self.assertEqual(maas_version.short_version, "2.10.0~beta1")
-        self.assertEqual(maas_version.git_rev, "deadbeef")
+        self.assertEqual(maas_version.extended_info, "1234-g.deadbeef")
 
     def test_method_is_cached(self):
         mock_apt = self.patch(version, "_get_version_from_apt")

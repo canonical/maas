@@ -128,12 +128,12 @@ class ControllerHandler(MachineHandler):
         obj = obj.as_self()
         data = super().dehydrate(obj, data, for_list=for_list)
         data["version"] = obj.version
-        if obj.version is not None and len(obj.version) > 0:
+        if obj.version:
             version = MAASVersion.from_string(obj.version)
             data["version__short"] = version.short_version
             long_version = version.short_version
-            if len(version.extended_info) > 0:
-                long_version += " (%s)" % version.extended_info
+            if version.extended_info:
+                long_version += f" ({version.extended_info})"
             data["version__long"] = long_version
         data["service_ids"] = [service.id for service in obj.service_set.all()]
         if not for_list:

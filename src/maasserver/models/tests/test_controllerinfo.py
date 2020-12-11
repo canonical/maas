@@ -166,8 +166,8 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
     def test_revno_differences_cause_full_version_to_be_shown(self):
         c1 = factory.make_RegionRackController()
         c2 = factory.make_RegionRackController()
-        ControllerInfo.objects.set_version(c1, "2.3.0~beta2-6000-g123abc")
-        ControllerInfo.objects.set_version(c2, "2.3.0~beta2-6001-g234bcd")
+        ControllerInfo.objects.set_version(c1, "2.3.0~beta2-6000-g.123abc")
+        ControllerInfo.objects.set_version(c2, "2.3.0~beta2-6001-g.234bcd")
         self.assertThat(get_version_notifications().count(), Equals(1))
         self.assertThat(
             get_version_notifications().first().render(),
@@ -175,7 +175,7 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
                 KNOWN_VERSION_MISMATCH_NOTIFICATION.format(
                     system_id=c1.system_id,
                     hostname=c1.hostname,
-                    v1="2.3.0~beta2 (6000-g123abc)",
+                    v1="2.3.0~beta2 (6000-g.123abc)",
                 )
             ),
         )

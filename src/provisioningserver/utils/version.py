@@ -86,21 +86,29 @@ def _extract_version_subversion(version):
     return main_version, subversion
 
 
-def _get_maas_repo_hash():
-    """Return the Git hash for this running MAAS.
-
-    :return: A string if MAAS is running from a git working tree, else `None`.
-    """
+def _git_cmd(*cmd):
+    """Run a git command and return output, or None in case of error."""
     try:
         return (
-            shell.call_and_check(["git", "rev-parse", "--short", "HEAD"])
-            .decode("ascii")
-            .strip()
+            shell.call_and_check(["git"] + list(cmd)).decode("ascii").strip()
         )
     except (shell.ExternalProcessError, FileNotFoundError):
         # We may not be in a git repository, or any manner of other errors, or
         # git is not installed.
         return None
+
+
+def _get_maas_repo_hash():
+    """Return the Git hash for this running MAAS.
+
+    :return: A string if MAAS is running from a git working tree, else `None`.
+    """
+    return _git_cmd("rev-parse", "--short", "HEAD")
+
+
+def _get_maas_repo_commit_count():
+    """Return the number of commit counts in the git tree, or 0 when not in a tree."""
+    return _git_cmd("rev-list", "--count") or 0
 
 
 def get_maas_version_track_channel():
@@ -120,20 +128,15 @@ class MAASVersion:
     major: int
     minor: int
     point: int
-    qualifier_type_version: int
+    qualifier_type: str
     qualifier_version: int
     revno: int
     git_rev: str
-    short_version: str
-    extended_info: str
-    qualifier_type: str
 
     def __str__(self):
         version = self.short_version
-        if self.revno:
-            version += f"-{self.revno}"
-        if self.git_rev:
-            version += f"-g.{self.git_rev}"
+        if self.extended_info:
+            version += f"-{self.extended_info}"
         return version
 
     def __lt__(self, other):
@@ -142,30 +145,43 @@ class MAASVersion:
             self.major,
             self.minor,
             self.point,
-            self.qualifier_type_version,
+            self._qualifier_type_order,
             self.qualifier_version,
             self.revno,
         ) < (
             other.major,
             other.minor,
             other.point,
-            other.qualifier_type_version,
+            other._qualifier_type_order,
             other.qualifier_version,
             other.revno,
         )
+
+    @property
+    def short_version(self) -> str:
+        version = f"{self.major}.{self.minor}.{self.point}"
+        if self.qualifier_type:
+            version += f"~{self.qualifier_type}{self.qualifier_version or ''}"
+        return version
+
+    @property
+    def extended_info(self) -> str:
+        """Additional version string. Contains git commit details."""
+        info = ""
+        if self.revno:
+            info += str(self.revno)
+        if self.git_rev:
+            info += f"-g.{self.git_rev}"
+        return info
 
     @classmethod
     def from_string(cls, version: str):
         r = re.compile(
             r"((?P<epoch>\d+):)?"  # deb package epoch
-            r"(?P<short_version>"  # maj.min.point[~qualifier]
             r"(?P<major>\d+)\.(?P<minor>\d+)\.(?P<point>\d+)"
             r"(~?(?P<qualifier_type>[a-z]+)(?P<qualifier_version>\d+))?"
-            r")"
-            r"(-(?P<extended_info>"  # -revno-g.hash
-            r"(?P<revno>\d+)?"
-            r"(-g\.?(?P<git_rev>\w+))?"
-            r"))?"
+            r"(-(?P<revno>\d+))?"  # number of commits in tree
+            r"(-g\.?(?P<git_rev>\w+))?"  # git short hash
         )
         groups = r.match(version).groupdict()
 
@@ -175,30 +191,28 @@ class MAASVersion:
         def to_str(field_name):
             return groups.get(field_name) or ""
 
-        # version qualifiers
-        qualifier_type = groups["qualifier_type"]
-        qualifier_version = to_int("qualifier_version")
-        qualifier_types = {"rc": -1, "beta": -2, "alpha": -3}
-        qualifier_type_version = qualifier_types.get(qualifier_type, 0)
-
         return cls(
             int(groups["major"]),
             int(groups["minor"]),
             int(groups["point"]),
-            qualifier_type_version,
-            qualifier_version,
+            groups["qualifier_type"],
+            to_int("qualifier_version"),
             to_int("revno"),
             to_str("git_rev"),
-            groups["short_version"],
-            to_str("extended_info"),
-            qualifier_type,
         )
+
+    @property
+    def _qualifier_type_order(self) -> int:
+        """Return an integer for qualifier type ordering."""
+        qualifier_types = {"rc": -1, "beta": -2, "alpha": -3}
+        return qualifier_types.get(self.qualifier_type, 0)
 
 
 @lru_cache(maxsize=1)
 def get_running_version() -> MAASVersion:
     """Return the version for the running MAAS."""
     git_rev = None
+    revno = 0
     if snappy.running_in_snap():
         version_str = snappy.get_snap_version()
     else:
@@ -208,9 +222,12 @@ def get_running_version() -> MAASVersion:
     if not version_str:
         version_str = _get_version_from_python_package()
         git_rev = _get_maas_repo_hash()
+        revno = _get_maas_repo_commit_count()
 
     maas_version = MAASVersion.from_string(version_str)
     if (not maas_version.git_rev) and git_rev:
         maas_version = dataclasses.replace(maas_version, git_rev=git_rev)
+    if (not maas_version.revno) and revno:
+        maas_version = dataclasses.replace(maas_version, revno=revno)
 
     return maas_version

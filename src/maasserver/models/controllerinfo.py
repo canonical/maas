@@ -5,7 +5,6 @@
 
 
 from collections import namedtuple
-import dataclasses
 
 from django.db.models import CASCADE, CharField, Manager, OneToOneField
 
@@ -34,11 +33,9 @@ class ControllerVersionInfo(_ControllerVersionInfo):
         # No difference in the numeric versions
         if v1 == v2:
             return None, None
-        # Indexes 0 through 5 will indicate the major, minor, patch, and
-        # qualifier (such as alpha or beta qualifier), which is enough to know
-        # we should display the full string instead of the short version.
-        # (Since we already know they're not identical)
-        elif dataclasses.astuple(v1)[0:5] == dataclasses.astuple(v2)[0:5]:
+        elif v1.short_version == v2.short_version:
+            # If versions match up to the qualifier version, show the full
+            # strings
             return self.full_string, other.full_string
         else:
             # Only difference is the revision number, so just display the
@@ -51,11 +48,8 @@ class ControllerVersionInfo(_ControllerVersionInfo):
     @property
     def full_string(self):
         pretty_version = self.maasversion.short_version
-        if len(self.maasversion.extended_info) > 0:
-            pretty_version = "%s (%s)" % (
-                pretty_version,
-                self.maasversion.extended_info,
-            )
+        if self.maasversion.extended_info:
+            pretty_version += f" ({self.maasversion.extended_info})"
         return pretty_version
 
 
