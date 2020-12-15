@@ -191,6 +191,22 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             package_repository.arches, PackageRepository.MAIN_ARCHES
         )
 
+    def test_default_ports_package_repository_arches(self):
+        package_repository = PackageRepository.objects.get(
+            name="ports_archive"
+        )
+        form = PackageRepositoryForm(
+            instance=package_repository, data={"arches": []}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        request = HttpRequest()
+        request.user = factory.make_User()
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        package_repository = form.save(endpoint, request)
+        self.assertItemsEqual(
+            package_repository.arches, PackageRepository.PORTS_ARCHES
+        )
+
     def test_arches_validation(self):
         package_repository = factory.make_PackageRepository()
         form = PackageRepositoryForm(
