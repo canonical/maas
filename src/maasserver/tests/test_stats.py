@@ -67,7 +67,7 @@ class TestMAASStats(MAASServerTestCase):
             factory.make_Machine(architecture=arch)
         stats = get_machines_by_architecture()
         compare = {"amd64": 1, "i386": 1, "arm64": 1, "ppc64el": 1, "s390x": 1}
-        self.assertEquals(stats, compare)
+        self.assertEqual(stats, compare)
 
     def test_get_kvm_pods_stats(self):
         pod1 = self.make_pod(
@@ -101,7 +101,7 @@ class TestMAASStats(MAASServerTestCase):
             },
             "kvm_utilized_resources": {"cores": 0, "memory": 0, "storage": 0},
         }
-        self.assertEquals(compare, stats)
+        self.assertEqual(compare, stats)
 
     def test_get_kvm_pods_stats_no_pod(self):
         self.assertEqual(
@@ -183,7 +183,7 @@ class TestMAASStats(MAASServerTestCase):
                 "subnets_v6": len(v6),
             },
         }
-        self.assertEquals(json.loads(stats), expected)
+        self.assertEqual(json.loads(stats), expected)
 
     def test_get_maas_stats_no_machines(self):
         expected = {
@@ -224,7 +224,7 @@ class TestMAASStats(MAASServerTestCase):
                 json.dumps(get_maas_stats()).encode()
             ).decode()
         }
-        self.assertEquals(params, get_request_params())
+        self.assertEqual(params, get_request_params())
 
     def test_make_user_agent_request(self):
         factory.make_RegionRackController()

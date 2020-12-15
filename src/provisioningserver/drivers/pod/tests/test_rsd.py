@@ -746,7 +746,7 @@ class TestRSDPodDriver(MAASTestCase):
         mock_redfish_request.return_value = (SAMPLE_JSON_NODE, None)
 
         remote_drives = yield driver.scrape_remote_drives(url, headers)
-        self.assertEquals(
+        self.assertEqual(
             {
                 "/redfish/v1/Services/1/Targets/1",
                 "/redfish/v1/Services/1/Targets/2",
@@ -854,8 +854,8 @@ class TestRSDPodDriver(MAASTestCase):
             logical_drives,
             factory.make_name("targets"),
         )
-        self.assertEquals(92 * (1024 ** 3), pod_capacity)
-        self.assertEquals(80 * (1024 ** 3), pod_hints_capacity)
+        self.assertEqual(92 * (1024 ** 3), pod_capacity)
+        self.assertEqual(80 * (1024 ** 3), pod_hints_capacity)
 
     @inlineCallbacks
     def test_get_pod_memory_resources(self):
@@ -876,7 +876,7 @@ class TestRSDPodDriver(MAASTestCase):
         ]
 
         memories = yield driver.get_pod_memory_resources(url, headers, system)
-        self.assertEquals([7812, 7812], memories)
+        self.assertEqual([7812, 7812], memories)
 
     @inlineCallbacks
     def test_get_pod_processor_resources(self):
@@ -899,9 +899,9 @@ class TestRSDPodDriver(MAASTestCase):
         cores, cpu_speeds, arch = yield driver.get_pod_processor_resources(
             url, headers, system
         )
-        self.assertEquals([28, 28], cores)
-        self.assertEquals([2300, 2300], cpu_speeds)
-        self.assertEquals("x86-64", arch)
+        self.assertEqual([28, 28], cores)
+        self.assertEqual([2300, 2300], cpu_speeds)
+        self.assertEqual("x86-64", arch)
 
     @inlineCallbacks
     def test_get_pod_storage_resources(self):
@@ -925,7 +925,7 @@ class TestRSDPodDriver(MAASTestCase):
         ]
 
         storages = yield driver.get_pod_storage_resources(url, headers, system)
-        self.assertEquals([111.7587089538574, 111.7587089538574], storages)
+        self.assertEqual([111.7587089538574, 111.7587089538574], storages)
 
     @inlineCallbacks
     def test_get_pod_resources(self):
@@ -956,13 +956,13 @@ class TestRSDPodDriver(MAASTestCase):
         ]
 
         pod = yield driver.get_pod_resources(url, headers)
-        self.assertEquals(["amd64/generic"], pod.architectures)
-        self.assertEquals(28 * 2, pod.cores)
-        self.assertEquals(2300, pod.cpu_speed)
-        self.assertEquals(7812 * 2, pod.memory)
-        self.assertEquals(119999999999.99997 * 2, pod.local_storage)
-        self.assertEquals(2, pod.local_disks)
-        self.assertEquals(
+        self.assertEqual(["amd64/generic"], pod.architectures)
+        self.assertEqual(28 * 2, pod.cores)
+        self.assertEqual(2300, pod.cpu_speed)
+        self.assertEqual(7812 * 2, pod.memory)
+        self.assertEqual(119999999999.99997 * 2, pod.local_storage)
+        self.assertEqual(2, pod.local_disks)
+        self.assertEqual(
             [Capabilities.COMPOSABLE, Capabilities.FIXED_LOCAL_STORAGE],
             pod.capabilities,
         )
@@ -992,10 +992,10 @@ class TestRSDPodDriver(MAASTestCase):
         ]
 
         pod = yield driver.get_pod_resources(url, headers)
-        self.assertEquals(0, pod.cores)
-        self.assertEquals(0, pod.cpu_speed)
-        self.assertEquals(0, pod.memory)
-        self.assertEquals(0, pod.local_storage)
+        self.assertEqual(0, pod.cores)
+        self.assertEqual(0, pod.cpu_speed)
+        self.assertEqual(0, pod.memory)
+        self.assertEqual(0, pod.local_storage)
 
     @inlineCallbacks
     def test_get_pod_machine_memories(self):
@@ -1011,7 +1011,7 @@ class TestRSDPodDriver(MAASTestCase):
         yield driver.get_pod_machine_memories(
             node_data, url, headers, discovered_machine
         )
-        self.assertEquals(31248, discovered_machine.memory)
+        self.assertEqual(31248, discovered_machine.memory)
 
     @inlineCallbacks
     def test_get_pod_machine_processors(self):
@@ -1028,9 +1028,9 @@ class TestRSDPodDriver(MAASTestCase):
         yield driver.get_pod_machine_processors(
             node_data, url, headers, discovered_machine
         )
-        self.assertEquals("amd64/generic", discovered_machine.architecture)
-        self.assertEquals(56, discovered_machine.cores)
-        self.assertEquals([2300, 2300], discovered_machine.cpu_speeds)
+        self.assertEqual("amd64/generic", discovered_machine.architecture)
+        self.assertEqual(56, discovered_machine.cores)
+        self.assertEqual([2300, 2300], discovered_machine.cpu_speeds)
 
     @inlineCallbacks
     def test_get_pod_machine_local_storages(self):
@@ -1180,7 +1180,7 @@ class TestRSDPodDriver(MAASTestCase):
             targets,
             discovered_machine,
         )
-        self.assertEquals(
+        self.assertEqual(
             set(
                 [
                     "/redfish/v1/Services/1/Targets/1",
@@ -1189,14 +1189,14 @@ class TestRSDPodDriver(MAASTestCase):
             ),
             remote_drives,
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 b"redfish/v1/Services/1/LogicalDrives/1": SAMPLE_JSON_LV,
                 b"redfish/v1/Services/1/LogicalDrives/2": SAMPLE_JSON_LVG,
             },
             logical_drives,
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 b"redfish/v1/Services/1/Targets/1": SAMPLE_JSON_TARGET,
                 b"redfish/v1/Services/1/Targets/2": TARGET_CHANGED_1,
@@ -1424,8 +1424,8 @@ class TestRSDPodDriver(MAASTestCase):
             targets,
             request,
         )
-        self.assertEquals(node_data["Name"], machine.hostname)
-        self.assertEquals(
+        self.assertEqual(node_data["Name"], machine.hostname)
+        self.assertEqual(
             RSD_SYSTEM_POWER_STATE.get(node_data["PowerState"]),
             machine.power_state,
         )
@@ -1490,7 +1490,7 @@ class TestRSDPodDriver(MAASTestCase):
         discovered_machines = yield driver.get_pod_machines(
             url, headers, remote_drives, logical_drives, targets
         )
-        self.assertEquals(1, len(discovered_machines))
+        self.assertEqual(1, len(discovered_machines))
         self.assertThat(
             mock_get_pod_machine,
             MockCalledOnceWith(
@@ -1523,13 +1523,13 @@ class TestRSDPodDriver(MAASTestCase):
         expected_local_disks = discovered_pod.local_disks - used_disks
 
         discovered_pod_hints = driver.get_pod_hints(discovered_pod)
-        self.assertEquals(expected_cpu_speed, discovered_pod_hints.cpu_speed)
-        self.assertEquals(expected_cores, discovered_pod_hints.cores)
-        self.assertEquals(expected_memory, discovered_pod_hints.memory)
-        self.assertEquals(
+        self.assertEqual(expected_cpu_speed, discovered_pod_hints.cpu_speed)
+        self.assertEqual(expected_cores, discovered_pod_hints.cores)
+        self.assertEqual(expected_memory, discovered_pod_hints.memory)
+        self.assertEqual(
             expected_local_storage, discovered_pod_hints.local_storage
         )
-        self.assertEquals(
+        self.assertEqual(
             expected_local_disks, discovered_pod_hints.local_disks
         )
 
@@ -1569,8 +1569,8 @@ class TestRSDPodDriver(MAASTestCase):
         discovered_pod = yield driver.discover(
             factory.make_name("system_id"), context
         )
-        self.assertEquals(pod_iscsi_capacity, discovered_pod.iscsi_storage)
-        self.assertEquals(
+        self.assertEqual(pod_iscsi_capacity, discovered_pod.iscsi_storage)
+        self.assertEqual(
             pod_hints_iscsi_capacity, discovered_pod.hints.iscsi_storage
         )
         self.assertThat(
@@ -1613,7 +1613,7 @@ class TestRSDPodDriver(MAASTestCase):
         }
 
         master = driver.select_remote_master(remote_storage, size)
-        self.assertEquals(
+        self.assertEqual(
             remote_storage[b"redfish/v1/Services/1/LogicalDrives/1"][
                 "available"
             ],
@@ -1645,7 +1645,7 @@ class TestRSDPodDriver(MAASTestCase):
             )
             drive = local_drive.copy()
             driver.set_drive_type(drive, block_device)
-            self.assertEquals(drive["Type"], bk_types[idx])
+            self.assertEqual(drive["Type"], bk_types[idx])
 
     def test_convert_request_to_json_payload(self):
         driver = RSDPodDriver()
@@ -1926,8 +1926,8 @@ class TestRSDPodDriver(MAASTestCase):
                 request,
             ),
         )
-        self.assertEquals(new_machine, discovered_machine)
-        self.assertEquals(discovered_pod.hints, discovered_pod_hints)
+        self.assertEqual(new_machine, discovered_machine)
+        self.assertEqual(discovered_pod.hints, discovered_pod_hints)
 
     @inlineCallbacks
     def test_compose_raises_error_for_unknown_exception(self):
@@ -2080,7 +2080,7 @@ class TestRSDPodDriver(MAASTestCase):
         power_state = yield driver.get_composed_node_state(
             url, node_id, headers
         )
-        self.assertEquals(power_state, "PoweredOff")
+        self.assertEqual(power_state, "PoweredOff")
         self.assertThat(
             mock_redfish_request, MockCalledOnceWith(b"GET", uri, headers)
         )
@@ -2311,7 +2311,7 @@ class TestRSDPodDriver(MAASTestCase):
             mock_get_composed_node_state,
             MockCalledOnceWith(url, node_id, headers),
         )
-        self.assertEquals(power_state, RSD_NODE_POWER_STATE[power_change])
+        self.assertEqual(power_state, RSD_NODE_POWER_STATE[power_change])
 
     @inlineCallbacks
     def test_power_query_queries_off(self):
@@ -2338,7 +2338,7 @@ class TestRSDPodDriver(MAASTestCase):
             mock_get_composed_node_state,
             MockCalledOnceWith(url, node_id, headers),
         )
-        self.assertEquals(power_state, RSD_NODE_POWER_STATE[power_change])
+        self.assertEqual(power_state, RSD_NODE_POWER_STATE[power_change])
 
     @inlineCallbacks
     def test_power_query_raises_error_unknown_power_state(self):

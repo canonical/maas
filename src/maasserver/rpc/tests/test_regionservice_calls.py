@@ -1303,7 +1303,7 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(
         copy_response = dict(response)
         del copy_response["boot_type"]
         self.assertAttributes(node, copy_response)
-        self.assertEquals("fastpath", response["boot_type"])
+        self.assertEqual("fastpath", response["boot_type"])
 
     @wait_for_reactor
     def test_request_node_info_by_mac_address_raises_if_unknown_mac(self):

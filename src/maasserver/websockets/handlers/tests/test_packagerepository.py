@@ -90,7 +90,7 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         url = factory.make_url(scheme="http")
         handler.update({"id": package_repository.id, "url": url})
         package_repository = reload_object(package_repository)
-        self.assertEquals(url, package_repository.url)
+        self.assertEqual(url, package_repository.url)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(

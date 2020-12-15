@@ -51,7 +51,7 @@ class TestRunBadBlocks(MAASTestCase):
         # blocks at a time. Simulate that by reading test system memory
         # values and giving a block size of 1.
         self.mock_check_output.return_value = b"1\n"
-        self.assertEquals(50000, badblocks.get_parallel_blocks(1))
+        self.assertEqual(50000, badblocks.get_parallel_blocks(1))
 
     def test_get_parallel_blocks_limited(self):
         # Systems with a large amount of disks and not that much RAM will need
@@ -102,7 +102,7 @@ class TestRunBadBlocks(MAASTestCase):
             }
         }
 
-        self.assertEquals(1, badblocks.run_badblocks(storage))
+        self.assertEqual(1, badblocks.run_badblocks(storage))
         self.assertThat(
             mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=STDOUT)
         )
@@ -142,9 +142,7 @@ class TestRunBadBlocks(MAASTestCase):
         )
         proc.returncode = 0
 
-        self.assertEquals(
-            1, badblocks.run_badblocks(storage, destructive=True)
-        )
+        self.assertEqual(1, badblocks.run_badblocks(storage, destructive=True))
         self.assertThat(
             mock_popen, MockCalledOnceWith(cmd, stdout=PIPE, stderr=STDOUT)
         )

@@ -75,7 +75,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
 
         self.patch(pods_module, "getAllClients").return_value = clients
         discovered = yield discover_pod(factory.make_name("pod"), {})
-        self.assertEquals(
+        self.assertEqual(
             ({rack_id: pod for rack_id in rack_ids}, {}), discovered
         )
 
@@ -113,7 +113,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
 
         self.patch(pods_module, "getAllClients").return_value = clients
         discovered = yield discover_pod(pod_type, {})
-        self.assertEquals(
+        self.assertEqual(
             ({valid_rack_id: pod}, {error_rack_id: exception}), discovered
         )
 

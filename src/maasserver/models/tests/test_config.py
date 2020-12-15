@@ -127,7 +127,7 @@ class ConfigTest(MAASServerTestCase):
                 if name != expected_names[0]
             }
         )
-        self.assertEquals(expected_dict, observed)
+        self.assertEqual(expected_dict, observed)
 
     def test_manager_get_configs_returns_passed_defaults(self):
         expected = get_default_config()
@@ -139,7 +139,7 @@ class ConfigTest(MAASServerTestCase):
         defaults = [expected_dict[name] for name in expected_names]
         for name, value in expected_dict.items():
             Config.objects.set_config(name, value)
-        self.assertEquals(
+        self.assertEqual(
             expected_dict, Config.objects.get_configs(expected_names, defaults)
         )
 

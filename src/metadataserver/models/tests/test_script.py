@@ -91,7 +91,7 @@ class TestTranslateScriptType(MAASServerTestCase):
             with self.assertRaisesRegex(ValidationError, self.exception):
                 translate_script_type(self.value)
         else:
-            self.assertEquals(
+            self.assertEqual(
                 self.return_value, translate_script_type(self.value)
             )
 
@@ -200,7 +200,7 @@ class TestTranslateHardwareType(MAASServerTestCase):
             with self.assertRaisesRegex(ValidationError, self.exception):
                 translate_hardware_type(self.value)
         else:
-            self.assertEquals(
+            self.assertEqual(
                 self.return_value, translate_hardware_type(self.value)
             )
 
@@ -284,7 +284,7 @@ class TestTranslateScriptParallel(MAASServerTestCase):
             with self.assertRaisesRegex(ValidationError, self.exception):
                 translate_script_parallel(self.value)
         else:
-            self.assertEquals(
+            self.assertEqual(
                 self.return_value, translate_script_parallel(self.value)
             )
 
@@ -301,8 +301,8 @@ class TestScriptManager(MAASServerTestCase):
             name=name, script=script_str, comment=comment
         )
 
-        self.assertEquals(script_str, script.script.data)
-        self.assertEquals(comment, script.script.comment)
+        self.assertEqual(script_str, script.script.data)
+        self.assertEqual(comment, script.script.comment)
 
     def test_create_accepts_ver_txt_file_for_script(self):
         name = factory.make_name("name")
@@ -311,8 +311,8 @@ class TestScriptManager(MAASServerTestCase):
 
         script = Script.objects.create(name=name, script=ver_txt_file)
 
-        self.assertEquals(script_str, script.script.data)
-        self.assertEquals(ver_txt_file, script.script)
+        self.assertEqual(script_str, script.script.data)
+        self.assertEqual(ver_txt_file, script.script)
 
     def test_create_accepts_int_for_timeout(self):
         name = factory.make_name("name")
@@ -323,7 +323,7 @@ class TestScriptManager(MAASServerTestCase):
             name=name, script=script_str, timeout=timeout
         )
 
-        self.assertEquals(timedelta(seconds=timeout), script.timeout)
+        self.assertEqual(timedelta(seconds=timeout), script.timeout)
 
     def test_create_accepts_timedelta_for_timeout(self):
         name = factory.make_name("name")
@@ -334,7 +334,7 @@ class TestScriptManager(MAASServerTestCase):
             name=name, script=script_str, timeout=timeout
         )
 
-        self.assertEquals(timeout, script.timeout)
+        self.assertEqual(timeout, script.timeout)
 
 
 class TestScript(MAASServerTestCase):
@@ -354,7 +354,7 @@ class TestScript(MAASServerTestCase):
         script.add_tag(new_tag)
         script.save()
         script = reload_object(script)
-        self.assertEquals(len(set(script.tags)), len(script.tags))
+        self.assertEqual(len(set(script.tags)), len(script.tags))
 
     def test_remove_tag(self):
         script = factory.make_Script()
@@ -370,7 +370,7 @@ class TestScript(MAASServerTestCase):
         tag_count = len(script.tags)
         script.remove_tag(factory.make_name("tag"))
         script.save()
-        self.assertEquals(tag_count, len(reload_object(script).tags))
+        self.assertEqual(tag_count, len(reload_object(script).tags))
 
     def test_destructive_true_adds_tag(self):
         script = factory.make_Script(destructive=False)

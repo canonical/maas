@@ -1689,7 +1689,7 @@ class TestGetAllInterfacesSubnets(MAASTestCase):
         self.patch(
             network_module, "get_all_interfaces_definition"
         ).return_value = interface_definition
-        self.assertEquals(
+        self.assertEqual(
             set(
                 [IPNetwork("192.168.122.1/24"), IPNetwork("192.168.123.1/24")]
             ),
@@ -1711,7 +1711,7 @@ class TestGetAllInterfacesSourceAddresses(MAASTestCase):
             "192.168.122.1",
             None,
         ]
-        self.assertEquals(
+        self.assertEqual(
             set(["192.168.122.1"]), get_all_interface_source_addresses()
         )
 
@@ -2413,20 +2413,20 @@ class TestGenerateMACAddress(MAASTestCase):
 class TestConvertHostToUriStr(MAASTestCase):
     def test_hostname(self):
         hostname = factory.make_hostname()
-        self.assertEquals(hostname, convert_host_to_uri_str(hostname))
+        self.assertEqual(hostname, convert_host_to_uri_str(hostname))
 
     def test_ipv4(self):
         ipv4 = factory.make_ipv4_address()
-        self.assertEquals(ipv4, convert_host_to_uri_str(ipv4))
+        self.assertEqual(ipv4, convert_host_to_uri_str(ipv4))
 
     def test_ipv6_mapped(self):
         ipv4 = factory.make_ipv4_address()
         ipv6_mapped = IPAddress(ipv4).ipv6()
-        self.assertEquals(ipv4, convert_host_to_uri_str(str(ipv6_mapped)))
+        self.assertEqual(ipv4, convert_host_to_uri_str(str(ipv6_mapped)))
 
     def test_ipv6(self):
         ipv6 = factory.make_ipv6_address()
-        self.assertEquals("[%s]" % ipv6, convert_host_to_uri_str(ipv6))
+        self.assertEqual("[%s]" % ipv6, convert_host_to_uri_str(ipv6))
 
 
 class TestGetIfnameForLabel(MAASTestCase):

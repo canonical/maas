@@ -91,7 +91,7 @@ class TestOpenBMCPowerDriver(MAASTestCase):
         mock_power_query = self.patch(driver, "power_query")
         mock_power_query.return_value = "on"
         power_state = yield driver.power_query(system_id, context)
-        self.assertEquals(power_state, power_change)
+        self.assertEqual(power_state, power_change)
 
     @inlineCallbacks
     def test_power_query_queries_off(self):
@@ -102,7 +102,7 @@ class TestOpenBMCPowerDriver(MAASTestCase):
         mock_power_query = self.patch(driver, "power_query")
         mock_power_query.return_value = "off"
         power_state = yield driver.power_query(system_id, context)
-        self.assertEquals(power_state, power_change)
+        self.assertEqual(power_state, power_change)
 
     @inlineCallbacks
     def test_power_on(self):

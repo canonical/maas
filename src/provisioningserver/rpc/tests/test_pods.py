@@ -102,7 +102,7 @@ class TestDiscoverPod(MAASTestCase):
         fake_driver.discover.return_value = succeed(discovered_pod)
         self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
         result = yield pods.discover_pod(fake_driver.name, {})
-        self.assertEquals({"pod": discovered_pod}, result)
+        self.assertEqual({"pod": discovered_pod}, result)
 
     @inlineCallbacks
     def test_handles_driver_raising_NotImplementedError(self):
@@ -274,7 +274,7 @@ class TestComposeMachine(MAASTestCase):
         result = yield pods.compose_machine(
             fake_driver.name, {}, fake_request, pod_id=pod_id, name=pod_name
         )
-        self.assertEquals({"machine": machine, "hints": hints}, result)
+        self.assertEqual({"machine": machine, "hints": hints}, result)
 
     @inlineCallbacks
     def test_handles_driver_raising_NotImplementedError(self):

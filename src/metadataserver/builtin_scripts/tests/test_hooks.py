@@ -1239,7 +1239,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             node, make_lxd_output_json(kernel_architecture=kernel_arch), 0
         )
         node = reload_object(node)
-        self.assertEquals(deb_arch, node.architecture)
+        self.assertEqual(deb_arch, node.architecture)
 
     def test_sets_uuid(self):
         node = factory.make_Node()
@@ -1247,7 +1247,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         uuid = factory.make_UUID()
         process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
         node = reload_object(node)
-        self.assertEquals(uuid, node.hardware_uuid)
+        self.assertEqual(uuid, node.hardware_uuid)
 
     def test_sets_empty_uuid(self):
         node = factory.make_Node()
@@ -1294,9 +1294,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             0,
         )
         rack = reload_object(rack)
-        self.assertEquals("ubuntu", rack.osystem)
-        self.assertEquals(ubuntu_release["series"], rack.distro_series)
-        self.assertEquals(server_name, rack.hostname)
+        self.assertEqual("ubuntu", rack.osystem)
+        self.assertEqual(ubuntu_release["series"], rack.distro_series)
+        self.assertEqual(server_name, rack.hostname)
 
     def test_doesnt_set_os_for_controller_if_blank(self):
         osystem = factory.make_name("osystem")
@@ -1309,8 +1309,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             rack, make_lxd_output_json(os_name="", os_version=""), 0
         )
         rack = reload_object(rack)
-        self.assertEquals(osystem, rack.osystem)
-        self.assertEquals(distro_series, rack.distro_series)
+        self.assertEqual(osystem, rack.osystem)
+        self.assertEqual(distro_series, rack.distro_series)
 
     def test_sets_os_for_pod(self):
         pod = factory.make_Pod()
@@ -1333,8 +1333,8 @@ class TestProcessLXDResults(MAASServerTestCase):
             0,
         )
         node = reload_object(node)
-        self.assertEquals("ubuntu", node.osystem)
-        self.assertEquals(ubuntu_release["series"], node.distro_series)
+        self.assertEqual("ubuntu", node.osystem)
+        self.assertEqual(ubuntu_release["series"], node.distro_series)
 
     def test_ignores_os_for_machine(self):
         node = factory.make_Node(osystem="centos", distro_series="8")
@@ -1342,9 +1342,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
         process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
-        self.assertEquals("centos", node.osystem)
-        self.assertEquals("8", node.distro_series)
-        self.assertEquals(hostname, node.hostname)
+        self.assertEqual("centos", node.osystem)
+        self.assertEqual("8", node.distro_series)
+        self.assertEqual(hostname, node.hostname)
 
     def test_does_not_update_node_network_information_if_rack(self):
         rack = factory.make_RackController()
@@ -1514,7 +1514,7 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         process_lxd_results(node, json.dumps(data).encode(), 0)
 
-        self.assertEquals(32158, node.memory)
+        self.assertEqual(32158, node.memory)
         self.assertItemsEqual(
             [32158, 0], [numa.memory for numa in node.numanode_set.all()]
         )
@@ -1689,7 +1689,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(
             node, json.dumps(modified_sample_lxd_data).encode(), 0
         )
-        self.assertEquals(
+        self.assertEqual(
             0,
             node.nodemetadata_set.filter(
                 Q(key__startswith="mainboard")
@@ -1733,11 +1733,11 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, make_lxd_output_json(), 0)
         pod.hints.refresh_from_db()
 
-        self.assertEquals(8, pod.hints.cores)
-        self.assertEquals(2400, pod.hints.cpu_speed)
-        self.assertEquals(15918, pod.hints.memory)
-        self.assertEquals(2, pod.hints.local_disks)
-        self.assertEquals(0, pod.hints.iscsi_storage)
+        self.assertEqual(8, pod.hints.cores)
+        self.assertEqual(2400, pod.hints.cpu_speed)
+        self.assertEqual(15918, pod.hints.memory)
+        self.assertEqual(2, pod.hints.local_disks)
+        self.assertEqual(0, pod.hints.iscsi_storage)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
@@ -2137,9 +2137,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         update_node_physical_block_devices(
             node, UNDER_MIN_BLOCK_SIZE, create_numa_nodes(node)
         )
-        self.assertEquals(
-            0, len(PhysicalBlockDevice.objects.filter(node=node))
-        )
+        self.assertEqual(0, len(PhysicalBlockDevice.objects.filter(node=node)))
 
     def test_regenerates_testing_script_set(self):
         node = factory.make_Node()
@@ -2161,7 +2159,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, ONE_DISK, create_numa_nodes(node)
         )
 
-        self.assertEquals(1, len(node.get_latest_testing_script_results))
+        self.assertEqual(1, len(node.get_latest_testing_script_results))
         script_result = node.get_latest_testing_script_results.get(
             script=script
         )
@@ -2191,7 +2189,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
 
         _, layout = get_applied_storage_layout_for_node(node)
-        self.assertEquals(
+        self.assertEqual(
             Config.objects.get_config("default_storage_layout"), layout
         )
 
@@ -2211,7 +2209,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
         self.assertThat(mock_set_default_storage_layout, MockNotCalled())
         _, layout = get_applied_storage_layout_for_node(node)
-        self.assertEquals("blank", layout)
+        self.assertEqual("blank", layout)
 
 
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
@@ -2935,7 +2933,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
-        self.assertEquals(1, len(node.get_latest_testing_script_results))
+        self.assertEqual(1, len(node.get_latest_testing_script_results))
         # The default network layout only configures the boot interface.
         script_result = node.get_latest_testing_script_results.get(
             script=script
@@ -2966,7 +2964,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         )
 
         # 2 devices configured, one for IPv4 one for IPv6.
-        self.assertEquals(
+        self.assertEqual(
             2,
             node.interface_set.filter(
                 ip_addresses__alloc_type=IPADDRESS_TYPE.AUTO

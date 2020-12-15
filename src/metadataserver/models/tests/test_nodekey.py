@@ -60,11 +60,11 @@ class TestNodeKeyManager(MAASServerTestCase):
         consumer_key = NodeKey.objects.get_token_for_node(node).consumer.key
         with CountQueries() as prefetch_count:
             token = NodeKey.objects.get_token_for_node(node)
-        self.assertEquals(3, prefetch_count.num_queries)
+        self.assertEqual(3, prefetch_count.num_queries)
         # Verify consumer was prefetched
         with CountQueries() as access_count:
-            self.assertEquals(consumer_key, token.consumer.key)
-        self.assertEquals(0, access_count.num_queries)
+            self.assertEqual(consumer_key, token.consumer.key)
+        self.assertEqual(0, access_count.num_queries)
 
     def test_clear_token_for_node_deletes_related_NodeKey(self):
         node = factory.make_Node()

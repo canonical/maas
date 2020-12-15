@@ -91,7 +91,7 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         response = StringIO(expected)
         self.patch(urllib.request, "urlopen", Mock(return_value=response))
         output = driver.get(command, context, params)
-        self.assertEquals(output, expected)
+        self.assertEqual(output, expected)
 
     def test_get_crashes_on_http_error(self):
         driver = MicrosoftOCSPowerDriver()

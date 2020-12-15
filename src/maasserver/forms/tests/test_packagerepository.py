@@ -174,7 +174,7 @@ class TestPackageRepositoryForm(MAASServerTestCase):
             data={"url": factory.make_url(scheme="fake")},
         )
         self.assertFalse(form.is_valid())
-        self.assertEquals(url, reload_object(package_repository).url)
+        self.assertEqual(url, reload_object(package_repository).url)
 
     def test_creates_package_repository_defaults_main_arches(self):
         repo = factory.make_PackageRepository(arches=[])

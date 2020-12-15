@@ -167,7 +167,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertThat(
             client.authenticate, MockCalledOnceWith(context["password"])
         )
-        self.assertEquals(client, returned_client)
+        self.assertEqual(client, returned_client)
 
     @inlineCallbacks
     def test_get_client_raises_error_when_not_trusted_and_no_password(self):
@@ -203,7 +203,7 @@ class TestLXDPodDriver(MAASTestCase):
         client.virtual_machines.get.return_value = mock_machine
         returned_machine = yield driver.get_machine(None, context)
         self.assertThat(Client, MockCalledOnceWith(None, context))
-        self.assertEquals(mock_machine, returned_machine)
+        self.assertEqual(mock_machine, returned_machine)
 
     @inlineCallbacks
     def test_get_machine_raises_error_when_machine_not_found(self):
@@ -291,19 +291,19 @@ class TestLXDPodDriver(MAASTestCase):
         }
         discovered_pod = yield ensureDeferred(driver.discover(None, context))
         self.assertItemsEqual(["amd64/generic"], discovered_pod.architectures)
-        self.assertEquals(name, discovered_pod.name)
+        self.assertEqual(name, discovered_pod.name)
         self.assertItemsEqual([mac_address], discovered_pod.mac_addresses)
-        self.assertEquals(-1, discovered_pod.cores)
-        self.assertEquals(-1, discovered_pod.cpu_speed)
-        self.assertEquals(-1, discovered_pod.memory)
-        self.assertEquals(0, discovered_pod.local_storage)
-        self.assertEquals(-1, discovered_pod.local_disks)
-        self.assertEquals(-1, discovered_pod.iscsi_storage)
-        self.assertEquals(-1, discovered_pod.hints.cores)
-        self.assertEquals(-1, discovered_pod.hints.cpu_speed)
-        self.assertEquals(-1, discovered_pod.hints.local_storage)
-        self.assertEquals(-1, discovered_pod.hints.local_disks)
-        self.assertEquals(-1, discovered_pod.hints.iscsi_storage)
+        self.assertEqual(-1, discovered_pod.cores)
+        self.assertEqual(-1, discovered_pod.cpu_speed)
+        self.assertEqual(-1, discovered_pod.memory)
+        self.assertEqual(0, discovered_pod.local_storage)
+        self.assertEqual(-1, discovered_pod.local_disks)
+        self.assertEqual(-1, discovered_pod.iscsi_storage)
+        self.assertEqual(-1, discovered_pod.hints.cores)
+        self.assertEqual(-1, discovered_pod.hints.cpu_speed)
+        self.assertEqual(-1, discovered_pod.hints.local_storage)
+        self.assertEqual(-1, discovered_pod.hints.local_disks)
+        self.assertEqual(-1, discovered_pod.hints.iscsi_storage)
         self.assertItemsEqual(
             [
                 Capabilities.COMPOSABLE,
@@ -336,20 +336,20 @@ class TestLXDPodDriver(MAASTestCase):
             yield driver.get_discovered_pod_storage_pool(mock_storage_pool)
         )
 
-        self.assertEquals(
+        self.assertEqual(
             mock_storage_pool.name, discovered_pod_storage_pool.id
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_storage_pool.name, discovered_pod_storage_pool.name
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_storage_pool.config["source"],
             discovered_pod_storage_pool.path,
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_storage_pool.driver, discovered_pod_storage_pool.type
         )
-        self.assertEquals(
+        self.assertEqual(
             mock_resources.space["total"], discovered_pod_storage_pool.storage
         )
 
@@ -633,7 +633,7 @@ class TestLXDPodDriver(MAASTestCase):
             )
         )
 
-        self.assertEquals("unknown", discovered_machine.power_state)
+        self.assertEqual("unknown", discovered_machine.power_state)
 
     @inlineCallbacks
     def test_get_commissioning_data(self):
@@ -890,7 +890,7 @@ class TestLXDPodDriver(MAASTestCase):
             client.virtual_machines.create,
             MockCalledOnceWith(definition, wait=True),
         )
-        self.assertEquals(sentinel.discovered_machine, discovered_machine)
+        self.assertEqual(sentinel.discovered_machine, discovered_machine)
         self.assertThat(
             empty_hints,
             MatchesAll(
@@ -1019,7 +1019,7 @@ class TestLXDPodDriver(MAASTestCase):
             client.virtual_machines.create,
             MockCalledOnceWith(definition, wait=True),
         )
-        self.assertEquals(sentinel.discovered_machine, discovered_machine)
+        self.assertEqual(sentinel.discovered_machine, discovered_machine)
         self.assertThat(
             empty_hints,
             MatchesAll(

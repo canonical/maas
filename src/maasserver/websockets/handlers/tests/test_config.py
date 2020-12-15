@@ -52,7 +52,7 @@ class TestConfigHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
         Config.objects.set_config("curtin_verbose", True)
-        self.assertEquals(
+        self.assertEqual(
             {"name": "curtin_verbose", "value": True},
             handler.get({"name": "curtin_verbose"}),
         )
@@ -62,7 +62,7 @@ class TestConfigHandler(MAASServerTestCase):
         handler = ConfigHandler(user, {}, None)
         Config.objects.set_config("curtin_verbose", True)
         handler.get({"name": "curtin_verbose"})
-        self.assertEquals({"curtin_verbose"}, handler.cache["loaded_pks"])
+        self.assertEqual({"curtin_verbose"}, handler.cache["loaded_pks"])
 
     def test_get_requires_name(self):
         user = factory.make_User()
@@ -121,7 +121,7 @@ class TestConfigHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = ConfigHandler(user, {}, None)
         updated = handler.update({"name": "curtin_verbose", "value": True})
-        self.assertEquals({"name": "curtin_verbose", "value": True}, updated)
+        self.assertEqual({"name": "curtin_verbose", "value": True}, updated)
         self.assertTrue(Config.objects.get_config("curtin_verbose"))
 
     def test_update_cannot_update_uuid(self):
@@ -159,9 +159,7 @@ class TestConfigHandler(MAASServerTestCase):
             handler.update,
             {"name": "http_proxy", "value": factory.make_name("invalid")},
         )
-        self.assertEquals(
-            {"value": ["Enter a valid URL."]}, error.message_dict
-        )
+        self.assertEqual({"value": ["Enter a valid URL."]}, error.message_dict)
 
     def test_on_listen_returns_None_if_excluded(self):
         user = factory.make_User()

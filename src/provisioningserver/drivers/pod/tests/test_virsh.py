@@ -649,7 +649,7 @@ class TestVirshSSH(MAASTestCase):
         expected = "x86_64"
         conn = self.configure_virshssh("")
         value = conn.get_key_value(SAMPLE_NODEINFO, key)
-        self.assertEquals(value, expected)
+        self.assertEqual(value, expected)
 
     def test_create_storage_pool(self):
         mock_run = self.patch(virsh.VirshSSH, "run")
@@ -919,8 +919,8 @@ class TestVirshSSH(MAASTestCase):
         mock_get_pod_storage_pools.return_value = storage_pools
 
         discovered_pod = conn.get_pod_resources()
-        self.assertEquals([architecture], discovered_pod.architectures)
-        self.assertEquals(
+        self.assertEqual([architecture], discovered_pod.architectures)
+        self.assertEqual(
             [
                 Capabilities.COMPOSABLE,
                 Capabilities.DYNAMIC_LOCAL_STORAGE,
@@ -929,11 +929,11 @@ class TestVirshSSH(MAASTestCase):
             ],
             discovered_pod.capabilities,
         )
-        self.assertEquals(cores, discovered_pod.cores)
-        self.assertEquals(cpu_speed, discovered_pod.cpu_speed)
-        self.assertEquals(memory, discovered_pod.memory)
-        self.assertEquals(storage_pools, discovered_pod.storage_pools)
-        self.assertEquals(local_storage, discovered_pod.local_storage)
+        self.assertEqual(cores, discovered_pod.cores)
+        self.assertEqual(cpu_speed, discovered_pod.cpu_speed)
+        self.assertEqual(memory, discovered_pod.memory)
+        self.assertEqual(storage_pools, discovered_pod.storage_pools)
+        self.assertEqual(local_storage, discovered_pod.local_storage)
 
     def test_get_pod_hints(self):
         conn = self.configure_virshssh("")
@@ -957,10 +957,10 @@ class TestVirshSSH(MAASTestCase):
         mock_get_pod_available_local_storage.return_value = local_storage
 
         discovered_pod_hints = conn.get_pod_hints()
-        self.assertEquals(cores, discovered_pod_hints.cores)
-        self.assertEquals(memory, discovered_pod_hints.memory)
-        self.assertEquals(cpu_speed, discovered_pod_hints.cpu_speed)
-        self.assertEquals(local_storage, discovered_pod_hints.local_storage)
+        self.assertEqual(cores, discovered_pod_hints.cores)
+        self.assertEqual(memory, discovered_pod_hints.memory)
+        self.assertEqual(cpu_speed, discovered_pod_hints.cpu_speed)
+        self.assertEqual(local_storage, discovered_pod_hints.local_storage)
 
     def test_get_discovered_machine(self):
         conn = self.configure_virshssh("")
@@ -1043,10 +1043,10 @@ class TestVirshSSH(MAASTestCase):
         discovered_machine = conn.get_discovered_machine(
             hostname, request=request
         )
-        self.assertEquals(hostname, discovered_machine.hostname)
-        self.assertEquals(architecture, discovered_machine.architecture)
-        self.assertEquals(cores, discovered_machine.cores)
-        self.assertEquals(memory, discovered_machine.memory)
+        self.assertEqual(hostname, discovered_machine.hostname)
+        self.assertEqual(architecture, discovered_machine.architecture)
+        self.assertEqual(cores, discovered_machine.cores)
+        self.assertEqual(memory, discovered_machine.memory)
         self.assertItemsEqual(
             local_storage, [bd.size for bd in discovered_machine.block_devices]
         )
@@ -1151,10 +1151,10 @@ class TestVirshSSH(MAASTestCase):
         discovered_machine = conn.get_discovered_machine(
             hostname, request=request
         )
-        self.assertEquals(hostname, discovered_machine.hostname)
-        self.assertEquals(architecture, discovered_machine.architecture)
-        self.assertEquals(cores, discovered_machine.cores)
-        self.assertEquals(memory, discovered_machine.memory)
+        self.assertEqual(hostname, discovered_machine.hostname)
+        self.assertEqual(architecture, discovered_machine.architecture)
+        self.assertEqual(cores, discovered_machine.cores)
+        self.assertEqual(memory, discovered_machine.memory)
         self.assertIsNone(discovered_machine.block_devices[0].storage_pool)
         self.assertIsNone(discovered_machine.block_devices[1].storage_pool)
         self.assertIsNone(discovered_machine.block_devices[2].storage_pool)
@@ -1676,7 +1676,7 @@ class TestVirshSSH(MAASTestCase):
     def test_get_networks_list(self):
         networks = [factory.make_name("network") for _ in range(3)]
         conn = self.configure_virshssh("\n".join(networks))
-        self.assertEquals(networks, conn.get_network_list())
+        self.assertEqual(networks, conn.get_network_list())
 
     def test_check_network_maas_dhcp_enabled_returns_None_virsh_dhcp(self):
         bridge = "virbr0"
@@ -1698,7 +1698,7 @@ class TestVirshSSH(MAASTestCase):
         bridge_name = conn.check_network_maas_dhcp_enabled(
             bridge, host_interfaces
         )
-        self.assertEquals(bridge_name, bridge)
+        self.assertEqual(bridge_name, bridge)
 
     def test_get_default_interface_attachment_no_host_interfaces_maas(self):
         conn = self.configure_virshssh("")
@@ -1708,8 +1708,8 @@ class TestVirshSSH(MAASTestCase):
             "other",
         ]
         network, attach_type = conn.get_default_interface_attachment([])
-        self.assertEquals(LIBVIRT_NETWORK.MAAS, network)
-        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
+        self.assertEqual(LIBVIRT_NETWORK.MAAS, network)
+        self.assertEqual(InterfaceAttachType.NETWORK, attach_type)
 
     def test_get_default_interface_attachment_no_host_interfaces_default(self):
         conn = self.configure_virshssh("")
@@ -1718,8 +1718,8 @@ class TestVirshSSH(MAASTestCase):
             "other",
         ]
         network, attach_type = conn.get_default_interface_attachment([])
-        self.assertEquals(LIBVIRT_NETWORK.DEFAULT, network)
-        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
+        self.assertEqual(LIBVIRT_NETWORK.DEFAULT, network)
+        self.assertEqual(InterfaceAttachType.NETWORK, attach_type)
 
     def test_get_default_interface_attachment_errors_no_nics_or_networks(self):
         conn = self.configure_virshssh("")
@@ -1749,8 +1749,8 @@ class TestVirshSSH(MAASTestCase):
             host_interfaces
         )
         # This shows us that the method returned with these values.
-        self.assertEquals(LIBVIRT_NETWORK.MAAS, network)
-        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
+        self.assertEqual(LIBVIRT_NETWORK.MAAS, network)
+        self.assertEqual(InterfaceAttachType.NETWORK, attach_type)
 
     def test_get_default_interface_attachment_default_brd_no_virsh_dhcp(self):
         conn = self.configure_virshssh("")
@@ -1772,8 +1772,8 @@ class TestVirshSSH(MAASTestCase):
             host_interfaces
         )
         # This shows us that the method returned with these values.
-        self.assertEquals(LIBVIRT_NETWORK.DEFAULT, network)
-        self.assertEquals(InterfaceAttachType.NETWORK, attach_type)
+        self.assertEqual(LIBVIRT_NETWORK.DEFAULT, network)
+        self.assertEqual(InterfaceAttachType.NETWORK, attach_type)
 
     def test_get_default_interface_attachment_vlan_bridge_no_virsh_dhcp(self):
         conn = self.configure_virshssh("")
@@ -1796,8 +1796,8 @@ class TestVirshSSH(MAASTestCase):
             host_interfaces
         )
         # This shows us that the method returned with these values.
-        self.assertEquals("br0", ifname)
-        self.assertEquals(InterfaceAttachType.BRIDGE, attach_type)
+        self.assertEqual("br0", ifname)
+        self.assertEqual(InterfaceAttachType.BRIDGE, attach_type)
 
     def test_get_default_interface_attachment_macvlan_no_virsh_dhcp(self):
         conn = self.configure_virshssh("")
@@ -1820,8 +1820,8 @@ class TestVirshSSH(MAASTestCase):
             host_interfaces
         )
         # This shows us that the method returned with these values.
-        self.assertEquals("eth0", ifname)
-        self.assertEquals(InterfaceAttachType.MACVLAN, attach_type)
+        self.assertEqual("eth0", ifname)
+        self.assertEqual(InterfaceAttachType.MACVLAN, attach_type)
 
     def test_get_default_interface_attachment_errors_no_match(self):
         conn = self.configure_virshssh("")
@@ -2167,7 +2167,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(
             mock_discovered, MockCalledOnceWith(ANY, request=request)
         )
-        self.assertEquals(sentinel.discovered, observed)
+        self.assertEqual(sentinel.discovered, observed)
 
     def test_create_domain_calls_correct_methods_with_arm64_arch(self):
         conn = self.configure_virshssh("")
@@ -2245,7 +2245,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(
             mock_discovered, MockCalledOnceWith(ANY, request=request)
         )
-        self.assertEquals(sentinel.discovered, observed)
+        self.assertEqual(sentinel.discovered, observed)
 
     def test_create_domain_calls_correct_methods_with_ppc64_arch(self):
         conn = self.configure_virshssh("")
@@ -2323,7 +2323,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(
             mock_discovered, MockCalledOnceWith(ANY, request=request)
         )
-        self.assertEquals(sentinel.discovered, observed)
+        self.assertEqual(sentinel.discovered, observed)
 
     def test_create_domain_calls_correct_methods_with_s390x_arch(self):
         conn = self.configure_virshssh("")
@@ -2401,7 +2401,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertThat(
             mock_discovered, MockCalledOnceWith(ANY, request=request)
         )
-        self.assertEquals(sentinel.discovered, observed)
+        self.assertEqual(sentinel.discovered, observed)
 
     def test_delete_domain_calls_correct_methods(self):
         conn = self.configure_virshssh("")
@@ -2901,8 +2901,8 @@ class TestVirshPodDriver(MAASTestCase):
         discovered, hints = yield driver.compose(
             pod_id, context, make_requested_machine()
         )
-        self.assertEquals(sentinel.discovered, discovered)
-        self.assertEquals(sentinel.hints, hints)
+        self.assertEqual(sentinel.discovered, discovered)
+        self.assertEqual(sentinel.hints, hints)
 
     @inlineCallbacks
     def test_decompose(self):
@@ -2920,4 +2920,4 @@ class TestVirshPodDriver(MAASTestCase):
         mock_get_pod_hints.return_value = sentinel.hints
 
         hints = yield driver.decompose(pod_id, context)
-        self.assertEquals(sentinel.hints, hints)
+        self.assertEqual(sentinel.hints, hints)

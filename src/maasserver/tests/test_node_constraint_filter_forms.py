@@ -872,7 +872,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         _, storage, _ = self.assertConstrainedNodes(
             [node1], {"storage": "part:0(partition)"}
         )
-        self.assertEquals(
+        self.assertEqual(
             {node1.id: {"partition:%d" % partition.id: "part"}}, storage
         )
 
@@ -928,7 +928,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         _, storage, _ = self.assertConstrainedNodes(
             [node1], {"storage": "part:0(partition,ssd-part)"}
         )
-        self.assertEquals(
+        self.assertEqual(
             {node1.id: {"partition:%d" % partition.id: "part"}}, storage
         )
 
@@ -1090,7 +1090,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         _, storage, _ = self.assertConstrainedNodes(
             [node3], {"storage": "0,4,4,4,part:0(partition)"}
         )
-        self.assertEquals(
+        self.assertEqual(
             {node3.id: {"partition:%d" % partition.id: "part"}}, storage
         )
 
@@ -1203,11 +1203,11 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             value: key for key, value in constraint_map[node.id].items()
         }
         disk0 = node.blockdevice_set.get(id=constraints["root"])
-        self.assertEquals(virtual.id, disk0.id)
+        self.assertEqual(virtual.id, disk0.id)
         disk1 = node.blockdevice_set.get(id=constraints["physical"])
-        self.assertEquals(physical.id, disk1.id)
+        self.assertEqual(physical.id, disk1.id)
         disk2 = node.blockdevice_set.get(id=constraints["iscsi"])
-        self.assertEquals(iscsi.id, disk2.id)
+        self.assertEqual(iscsi.id, disk2.id)
 
     def test_fabrics_constraint(self):
         fabric1 = factory.make_Fabric(name="fabric1")

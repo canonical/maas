@@ -431,7 +431,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "interfaces": {},
             },
         )
-        self.assertEquals(rack_controller.system_id, protocol.ident)
+        self.assertEqual(rack_controller.system_id, protocol.ident)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -474,7 +474,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "interfaces": {},
             },
         )
-        self.assertEquals(sentinel.host, protocol.host)
+        self.assertEqual(sentinel.host, protocol.host)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -538,7 +538,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
             ),
             CannotRegisterRackController,
         )
-        self.assertEquals(
+        self.assertEqual(
             (
                 "Failed to register rack controller 'None' with the master. "
                 "Connection will be dropped.",
@@ -549,7 +549,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
 class TestRackClient(MAASTestCase):
     def test_defined_cache_calls(self):
-        self.assertEquals(
+        self.assertEqual(
             [cluster.DescribePowerTypes, cluster.DescribeNOSTypes],
             RackClient.cache_calls,
         )
@@ -583,7 +583,7 @@ class TestRackClient(MAASTestCase):
         result = yield client(cluster.DescribePowerTypes)
         # The result is a copy. It should equal the result but not be
         # the same object.
-        self.assertEquals(power_types, result)
+        self.assertEqual(power_types, result)
         self.assertIsNot(power_types, result)
 
     @wait_for_reactor
@@ -1093,7 +1093,7 @@ class TestRegionService(MAASTestCase):
         self.assertEqual({uuid: set()}, service.waiters)
 
         def check(conn_returned):
-            self.assertEquals(conn, conn_returned)
+            self.assertEqual(conn, conn_returned)
 
         return d.addCallback(check)
 

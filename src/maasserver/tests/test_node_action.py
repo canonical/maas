@@ -370,13 +370,11 @@ class TestCommissionAction(MAASServerTestCase):
             )
         script_sets = ScriptSet.objects.all()
         node = reload_object(node)
-        self.assertEquals(2, len(script_sets))
-        self.assertEquals(
+        self.assertEqual(2, len(script_sets))
+        self.assertEqual(
             node.current_commissioning_script_set_id, script_sets[0].id
         )
-        self.assertEquals(
-            node.current_testing_script_set_id, script_sets[1].id
-        )
+        self.assertEqual(node.current_testing_script_set_id, script_sets[1].id)
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
             node_start,

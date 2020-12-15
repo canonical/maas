@@ -145,7 +145,7 @@ class TestRECSPowerDriver(MAASTestCase):
         response = StringIO(expected)
         self.patch(urllib.request, "urlopen", Mock(return_value=response))
         output = api.get(command, params)
-        self.assertEquals(output, expected)
+        self.assertEqual(output, expected)
 
     def test_get_crashes_on_http_error(self):
         ip, port, username, password, node_id, context = self.make_context()
@@ -180,7 +180,7 @@ class TestRECSPowerDriver(MAASTestCase):
         response = StringIO(expected)
         self.patch(urllib.request, "urlopen", Mock(return_value=response))
         output = api.post(command, params=params)
-        self.assertEquals(output, expected)
+        self.assertEqual(output, expected)
 
     def test_post_crashes_on_http_error(self):
         ip, port, username, password, node_id, context = self.make_context()
@@ -215,7 +215,7 @@ class TestRECSPowerDriver(MAASTestCase):
         response = StringIO(expected)
         self.patch(urllib.request, "urlopen", Mock(return_value=response))
         output = api.put(command, params=params)
-        self.assertEquals(output, expected)
+        self.assertEqual(output, expected)
 
     def test_put_crashes_on_http_error(self):
         ip, port, username, password, node_id, context = self.make_context()
@@ -246,7 +246,7 @@ class TestRECSPowerDriver(MAASTestCase):
         response = StringIO(expected)
         self.patch(urllib.request, "urlopen", Mock(return_value=response))
         state = api.get_node_power_state("RCU_84055620466592_BB_1_0")
-        self.assertEquals(state, "1")
+        self.assertEqual(state, "1")
 
     def test_set_boot_source_sets_device(self):
         ip, port, username, password, node_id, context = self.make_context()

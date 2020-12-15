@@ -125,9 +125,9 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertEquals(node.system_id, parsed_results["system_id"])
+        self.assertEqual(node.system_id, parsed_results["system_id"])
         # VMFS should be using the 5 devices we listed above.
-        self.assertEquals(5, len(parsed_results["devices"]))
+        self.assertEqual(5, len(parsed_results["devices"]))
         # VMFS should be using all the block devices we created.
         self.assertItemsEqual(
             [bd.id for bd in block_devices] + [block_device.id],
@@ -147,7 +147,7 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
     def test_handler_path(self):
         node = factory.make_Machine()
         vmfs = factory.make_VMFS(node=node)
-        self.assertEquals(
+        self.assertEqual(
             "/MAAS/api/2.0/nodes/%s/vmfs-datastore/%s/"
             % (node.system_id, vmfs.id),
             self.get_vmfs_uri(vmfs),
@@ -183,7 +183,7 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
                 }
             ),
         )
-        self.assertEquals(
+        self.assertEqual(
             vmfs.filesystems.count(), len(parsed_result["devices"])
         )
 
@@ -242,8 +242,8 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
         vmfs = reload_object(vmfs)
         partition_ids.add(new_bd.get_partitiontable().partitions.first().id)
 
-        self.assertEquals(new_name, vmfs.name)
-        self.assertEquals(new_uuid, vmfs.uuid)
+        self.assertEqual(new_name, vmfs.name)
+        self.assertEqual(new_uuid, vmfs.uuid)
         self.assertItemsEqual(
             partition_ids,
             [fs.get_parent().id for fs in vmfs.filesystems.all()],

@@ -75,9 +75,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = NodeResultHandler(user, {}, None)
         node = factory.make_Node()
-        self.assertEquals(
-            node, handler.get_node({"system_id": node.system_id})
-        )
+        self.assertEqual(node, handler.get_node({"system_id": node.system_id}))
         self.assertDictEqual(
             {node.system_id: node}, handler.cache["system_ids"]
         )
@@ -88,7 +86,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         fake_system_id = factory.make_name("system_id")
         fake_node = factory.make_name("node")
         handler.cache["system_ids"][fake_system_id] = fake_node
-        self.assertEquals(
+        self.assertEqual(
             fake_node, handler.get_node({"system_id": fake_system_id})
         )
 
@@ -294,7 +292,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         for _ in range(6):
             factory.make_ScriptResult(script_set=script_set)
         start = random.randint(0, 5)
-        self.assertEquals(
+        self.assertEqual(
             6 - start,
             len(handler.list({"system_id": node.system_id, "start": start})),
         )
@@ -307,7 +305,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         for _ in range(6):
             factory.make_ScriptResult(script_set=script_set)
         limit = random.randint(0, 6)
-        self.assertEquals(
+        self.assertEqual(
             limit,
             len(handler.list({"system_id": node.system_id, "limit": limit})),
         )
@@ -382,7 +380,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             output=combined,
             script_set=factory.make_ScriptSet(node=node),
         )
-        self.assertEquals(
+        self.assertEqual(
             combined.decode(),
             handler.get_result_data(
                 {"id": script_result.id, "data_type": "combined"}
@@ -399,7 +397,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             stdout=stdout,
             script_set=factory.make_ScriptSet(node=node),
         )
-        self.assertEquals(
+        self.assertEqual(
             stdout.decode(),
             handler.get_result_data(
                 {"id": script_result.id, "data_type": "stdout"}
@@ -416,7 +414,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             stderr=stderr,
             script_set=factory.make_ScriptSet(node=node),
         )
-        self.assertEquals(
+        self.assertEqual(
             stderr.decode(),
             handler.get_result_data(
                 {"id": script_result.id, "data_type": "stderr"}
@@ -433,7 +431,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             result=result,
             script_set=factory.make_ScriptSet(node=node),
         )
-        self.assertEquals(
+        self.assertEqual(
             result.decode(),
             handler.get_result_data(
                 {"id": script_result.id, "data_type": "result"}
@@ -444,7 +442,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = NodeResultHandler(user, {}, None)
         id = random.randint(0, 100)
-        self.assertEquals(
+        self.assertEqual(
             "Unknown ScriptResult id %s" % id,
             handler.get_result_data({"id": id}),
         )
@@ -460,7 +458,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             script_set=factory.make_ScriptSet(node=node),
         )
         unknown_data_type = factory.make_name("data_type")
-        self.assertEquals(
+        self.assertEqual(
             "Unknown data_type %s" % unknown_data_type,
             handler.get_result_data(
                 {"id": script_result.id, "data_type": unknown_data_type}

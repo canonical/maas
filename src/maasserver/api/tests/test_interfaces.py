@@ -1104,8 +1104,8 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_interface = json_load_bytes(response.content)
-        self.assertEquals(new_name, parsed_interface["name"])
-        self.assertEquals(new_vlan.vid, parsed_interface["vlan"]["vid"])
+        self.assertEqual(new_name, parsed_interface["name"])
+        self.assertEqual(new_vlan.vid, parsed_interface["vlan"]["vid"])
 
     def test_update_bond_interface(self):
         self.become_admin()
@@ -1979,7 +1979,7 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_interface = json_load_bytes(response.content)
-        self.assertEquals(new_vlan.id, parsed_interface["vlan"]["id"])
+        self.assertEqual(new_vlan.id, parsed_interface["vlan"]["id"])
 
     def test_update_only_works_for_vlan_field(self):
         self.become_admin()
@@ -1997,8 +1997,8 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_interface = json_load_bytes(response.content)
-        self.assertEquals(new_vlan.id, parsed_interface["vlan"]["id"])
-        self.assertEquals(interface.name, parsed_interface["name"])
+        self.assertEqual(new_vlan.id, parsed_interface["vlan"]["id"])
+        self.assertEqual(interface.name, parsed_interface["name"])
 
     def test_update_forbidden_for_vlan_interface(self):
         self.become_admin()

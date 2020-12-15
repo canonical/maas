@@ -258,59 +258,59 @@ class TestNodeAPI(APITestCase.ForUser):
             return SCRIPT_STATUS_CHOICES[status(s)][1]
 
         self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEquals(
+        self.assertEqual(
             status(commissioning_script_result),
             parsed_result["commissioning_status"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status_name(commissioning_script_result),
             parsed_result["commissioning_status_name"],
         )
-        self.assertEquals(testing_status, parsed_result["testing_status"])
-        self.assertEquals(
+        self.assertEqual(testing_status, parsed_result["testing_status"])
+        self.assertEqual(
             SCRIPT_STATUS_CHOICES[testing_status][1],
             parsed_result["testing_status_name"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status(cpu_script_result), parsed_result["cpu_test_status"]
         )
-        self.assertEquals(
+        self.assertEqual(
             status_name(cpu_script_result),
             parsed_result["cpu_test_status_name"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status(memory_script_result), parsed_result["memory_test_status"]
         )
-        self.assertEquals(
+        self.assertEqual(
             status_name(memory_script_result),
             parsed_result["memory_test_status_name"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status(network_script_result), parsed_result["network_test_status"]
         )
-        self.assertEquals(
+        self.assertEqual(
             status_name(network_script_result),
             parsed_result["network_test_status_name"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status(storage_script_result), parsed_result["storage_test_status"]
         )
-        self.assertEquals(
+        self.assertEqual(
             status_name(storage_script_result),
             parsed_result["storage_test_status_name"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status(node_script_result), parsed_result["other_test_status"]
         )
-        self.assertEquals(
+        self.assertEqual(
             status_name(node_script_result),
             parsed_result["other_test_status_name"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status(interface_script_result),
             parsed_result["interface_test_status"],
         )
-        self.assertEquals(
+        self.assertEqual(
             status_name(interface_script_result),
             parsed_result["interface_test_status_name"],
         )

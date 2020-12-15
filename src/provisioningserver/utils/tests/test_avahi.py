@@ -61,7 +61,7 @@ class TestParseAvahiEvent(MAASTestCase):
             b"_http._tcp;local"
         )
         event = parse_avahi_event(input)
-        self.assertEquals(
+        self.assertEqual(
             event,
             {
                 "event": "BROWSER_NEW",
@@ -80,7 +80,7 @@ class TestParseAvahiEvent(MAASTestCase):
             b"_http._tcp;local"
         )
         event = parse_avahi_event(input)
-        self.assertEquals(
+        self.assertEqual(
             event,
             {
                 "event": "BROWSER_REMOVED",
@@ -103,7 +103,7 @@ class TestParseAvahiEvent(MAASTestCase):
             b'"priority=50" "rp=RAW"'
         )
         event = parse_avahi_event(input)
-        self.assertEquals(
+        self.assertEqual(
             event,
             {
                 "event": "RESOLVER_FOUND",
@@ -131,7 +131,7 @@ class TestParseAvahiEvent(MAASTestCase):
             b'"BluetoothAddress=\xc8i\xcdB\xe2\x09"'
         )
         event = parse_avahi_event(input)
-        self.assertEquals(
+        self.assertEqual(
             b'"BluetoothAddress=\xc8i\xcdB\xe2\x09"', event["txt"]
         )
 

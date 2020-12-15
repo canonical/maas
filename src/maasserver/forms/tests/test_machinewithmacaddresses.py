@@ -189,7 +189,7 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         node = form.save()
 
         self.assertIsNotNone(node.id)  # The node is persisted.
-        self.assertEquals(NODE_STATUS.NEW, node.status)
+        self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertItemsEqual(
             macs, [nic.mac_address for nic in node.interface_set.all()]
         )
@@ -226,5 +226,5 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         machine = form.save()
-        self.assertEquals(NODE_STATUS.COMMISSIONING, machine.status)
+        self.assertEqual(NODE_STATUS.COMMISSIONING, machine.status)
         self.assertIsNotNone(machine.current_commissioning_script_set)

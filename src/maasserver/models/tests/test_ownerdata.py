@@ -23,7 +23,7 @@ class TestOwnerData(MAASServerTestCase):
             for _ in range(3)
         }
         OwnerData.objects.set_owner_data(node, owner_data)
-        self.assertEquals(owner_data, self.get_owner_data(node))
+        self.assertEqual(owner_data, self.get_owner_data(node))
 
     def test_set_owner_data_updates_data(self):
         node = factory.make_Node()
@@ -35,7 +35,7 @@ class TestOwnerData(MAASServerTestCase):
         for key in owner_data.keys():
             owner_data[key] = factory.make_name("value")
         OwnerData.objects.set_owner_data(node, owner_data)
-        self.assertEquals(owner_data, self.get_owner_data(node))
+        self.assertEqual(owner_data, self.get_owner_data(node))
 
     def test_set_owner_data_removes_data(self):
         node = factory.make_Node()
@@ -47,4 +47,4 @@ class TestOwnerData(MAASServerTestCase):
         for key in owner_data.keys():
             owner_data[key] = None
         OwnerData.objects.set_owner_data(node, owner_data)
-        self.assertEquals({}, self.get_owner_data(node))
+        self.assertEqual({}, self.get_owner_data(node))

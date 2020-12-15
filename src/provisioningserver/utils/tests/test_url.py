@@ -132,7 +132,7 @@ class TestGetDomain(MAASTestCase):
             factory.make_name(),
             factory.make_name(),
         )
-        self.assertEquals(domain, get_domain(url))
+        self.assertEqual(domain, get_domain(url))
 
     def test_get_domain_fqdn(self):
         domain = factory.make_hostname()
@@ -144,4 +144,4 @@ class TestGetDomain(MAASTestCase):
             factory.make_name(),
             factory.make_name(),
         )
-        self.assertEquals("%s.example.com" % domain, get_domain(url))
+        self.assertEqual("%s.example.com" % domain, get_domain(url))

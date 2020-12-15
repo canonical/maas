@@ -491,7 +491,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content
         )
-        self.assertEquals(
+        self.assertEqual(
             b"Pod does not support composability.", response.content
         )
 

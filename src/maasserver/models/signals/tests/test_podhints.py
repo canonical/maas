@@ -17,6 +17,6 @@ class TestCreatePodChanged(MAASServerTestCase):
         node = factory.make_Node(memory=2048)
         pod.hints.nodes.add(node)
         pod.sync_hints_from_nodes()
-        self.assertEquals(2048, pod.memory)
+        self.assertEqual(2048, pod.memory)
         pod.hints.nodes.remove(node)
-        self.assertEquals(0, reload_object(pod).memory)
+        self.assertEqual(0, reload_object(pod).memory)

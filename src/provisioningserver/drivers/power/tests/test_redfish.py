@@ -190,7 +190,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         }
         driver = RedfishPowerDriver()
         headers = driver.make_auth_headers(power_user, power_pass)
-        self.assertEquals(headers, Headers(attributes))
+        self.assertEqual(headers, Headers(attributes))
 
     @inlineCallbacks
     def test_get_node_id_trailing_slash(self):
@@ -212,7 +212,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
 
         node_id = yield driver.get_node_id(url, {})
-        self.assertEquals(b"1", node_id)
+        self.assertEqual(b"1", node_id)
 
     @inlineCallbacks
     def test_get_node_id_no_trailing_slash(self):
@@ -234,7 +234,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
 
         node_id = yield driver.get_node_id(url, {})
-        self.assertEquals(b"1", node_id)
+        self.assertEqual(b"1", node_id)
 
     @inlineCallbacks
     def test_redfish_request_renders_response(self):
@@ -258,8 +258,8 @@ class TestRedfishPowerDriver(MAASTestCase):
         expected_response = SAMPLE_JSON_SYSTEMS
 
         response, headers = yield driver.redfish_request(b"GET", uri, headers)
-        self.assertEquals(expected_response, response)
-        self.assertEquals(expected_headers.headers, headers)
+        self.assertEqual(expected_response, response)
+        self.assertEqual(expected_headers.headers, headers)
 
     @inlineCallbacks
     def test_wrap_redfish_request_retries_404s_trailing_slash(self):
@@ -296,8 +296,8 @@ class TestRedfishPowerDriver(MAASTestCase):
                 call(b"GET", uri + "/".encode("utf-8"), headers, None),
             ),
         )
-        self.assertEquals(expected_response, response)
-        self.assertEquals(expected_headers.headers, return_headers)
+        self.assertEqual(expected_response, response)
+        self.assertEqual(expected_headers.headers, return_headers)
 
     @inlineCallbacks
     def test_redfish_request_raises_invalid_json_error(self):
@@ -345,8 +345,8 @@ class TestRedfishPowerDriver(MAASTestCase):
         expected_response = SAMPLE_JSON_SYSTEMS
 
         response, headers = yield driver.redfish_request(b"GET", uri, headers)
-        self.assertEquals(expected_response, response)
-        self.assertEquals(expected_headers.headers, headers)
+        self.assertEqual(expected_response, response)
+        self.assertEqual(expected_headers.headers, headers)
 
     @inlineCallbacks
     def test_redfish_request_raises_failures(self):
@@ -539,7 +539,7 @@ class TestRedfishPowerDriver(MAASTestCase):
             (NODE_POWERED_ON, None),
         ]
         power_state = yield driver.power_query(system_id, context)
-        self.assertEquals(power_state, power_change.lower())
+        self.assertEqual(power_state, power_change.lower())
 
     @inlineCallbacks
     def test_power_query_queries_off(self):
@@ -553,4 +553,4 @@ class TestRedfishPowerDriver(MAASTestCase):
             (SAMPLE_JSON_SYSTEM, None),
         ]
         power_state = yield driver.power_query(system_id, context)
-        self.assertEquals(power_state, power_change.lower())
+        self.assertEqual(power_state, power_change.lower())

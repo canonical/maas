@@ -1025,14 +1025,14 @@ class TestFilesystemGroup(MAASServerTestCase):
 
     def test_get_size_returns_total_size_with_vmfs(self):
         vmfs = factory.make_VMFS()
-        self.assertEquals(vmfs.get_total_size(), vmfs.get_size())
+        self.assertEqual(vmfs.get_total_size(), vmfs.get_size())
 
     def test_get_total_size(self):
         vmfs = factory.make_VMFS()
         size = 0
         for fs in vmfs.filesystems.all():
             size += fs.get_size()
-        self.assertEquals(size, vmfs.get_total_size())
+        self.assertEqual(size, vmfs.get_total_size())
 
     def test_is_lvm_returns_true_when_LVM_VG(self):
         fsgroup = FilesystemGroup(group_type=FILESYSTEM_GROUP_TYPE.LVM_VG)
@@ -1083,7 +1083,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         part = factory.make_Partition()
         name = factory.make_name("datastore")
         vmfs = VMFS.objects.create_vmfs(name, [part])
-        self.assertEquals(
+        self.assertEqual(
             "/vmfs/volumes/%s" % name,
             vmfs.virtual_device.get_effective_filesystem().mount_point,
         )

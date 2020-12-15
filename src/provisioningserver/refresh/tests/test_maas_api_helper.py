@@ -131,7 +131,7 @@ class TestGetUrl(MAASTestCase):
         urllib.request.install_opener(opener)
 
     def test_geturl_sends_request(self):
-        self.assertEquals(
+        self.assertEqual(
             "mock response",
             maas_api_helper.geturl(
                 "http://%s" % factory.make_hostname(), {}
@@ -147,7 +147,7 @@ class TestGetUrl(MAASTestCase):
             "http://%s-broken" % factory.make_hostname(),
             {},
         )
-        self.assertEquals(7, sleep.call_count)
+        self.assertEqual(7, sleep.call_count)
         self.assertThat(warn, MockAnyCall("date field not in 400 headers"))
 
     def test_geturl_increments_skew(self):
@@ -159,12 +159,12 @@ class TestGetUrl(MAASTestCase):
             "http://%s-broken_with_date" % factory.make_hostname(),
             {},
         )
-        self.assertEquals(7, sleep.call_count)
+        self.assertEqual(7, sleep.call_count)
         clock_shew_updates = [
             call[0][0].startswith("updated clock shew to")
             for call in warn.call_args_list
         ]
-        self.assertEquals(14, len(clock_shew_updates))
+        self.assertEqual(14, len(clock_shew_updates))
 
     def test_geturl_posts_data(self):
         mock_urlopen = self.patch(maas_api_helper.urllib.request.urlopen)
@@ -193,7 +193,7 @@ class TestEncode(MAASTestCase):
             headers,
         )
         self.assertIsInstance(data, bytes)
-        self.assertEquals("--%s--\r\n" % boundary, data.decode("utf-8"))
+        self.assertEqual("--%s--\r\n" % boundary, data.decode("utf-8"))
 
     def test_encode_data(self):
         key = factory.make_name("key")
@@ -210,7 +210,7 @@ class TestEncode(MAASTestCase):
             headers,
         )
         self.assertIsInstance(data, bytes)
-        self.assertEquals(
+        self.assertEqual(
             '--%s\r\nContent-Disposition: form-data; name="%s"'
             "\r\n\r\n%s\r\n--%s--\r\n" % (boundary, key, value, boundary),
             data.decode("utf-8"),
@@ -231,7 +231,7 @@ class TestEncode(MAASTestCase):
             headers,
         )
         self.assertIsInstance(data, bytes)
-        self.assertEquals(
+        self.assertEqual(
             '--%s\r\nContent-Disposition: form-data; name="%s"; filename="%s"'
             "\r\nContent-Type: application/octet-stream\r\n\r\n%s\r\n--%s--"
             "\r\n" % (boundary, file, file, content, boundary),
@@ -777,7 +777,7 @@ class TestCaptureScriptOutput(MAASTestCase):
             shell=True,
         )
         # Wait for it to finish before capturing.
-        self.assertEquals(0, proc.wait())
+        self.assertEqual(0, proc.wait())
         # Capturing now still gets foo and bar.
         self.assertThat(
             self.capture(proc),

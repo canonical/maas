@@ -614,7 +614,7 @@ class TestGetIPAddr(MAASTestCase):
             ipaddr_module, "annotate_with_driver_information"
         )
         patch_annotate_with_driver_information.return_value = sentinel.output
-        self.assertEquals(sentinel.output, get_ip_addr())
+        self.assertEqual(sentinel.output, get_ip_addr())
         self.assertThat(
             patch_call_and_check, MockCalledOnceWith(["ip", "addr"])
         )

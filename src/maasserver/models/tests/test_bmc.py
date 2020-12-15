@@ -2414,7 +2414,7 @@ class TestPod(MAASServerTestCase):
         )
         node = reload_object(node)
         self.assertItemsEqual([node], pod.hints.nodes.all())
-        self.assertEquals(NODE_STATUS.DEPLOYED, node.status)
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertIsNotNone(node.current_commissioning_script_set)
 
     def test_sync_converts_existing_device(self):
@@ -2435,8 +2435,8 @@ class TestPod(MAASServerTestCase):
         )
         device = reload_object(device)
         self.assertItemsEqual([device], pod.hints.nodes.all())
-        self.assertEquals(NODE_STATUS.DEPLOYED, device.status)
-        self.assertEquals(NODE_TYPE.MACHINE, device.node_type)
+        self.assertEqual(NODE_STATUS.DEPLOYED, device.status)
+        self.assertEqual(NODE_TYPE.MACHINE, device.node_type)
         self.assertIsNotNone(device.current_commissioning_script_set)
 
     def test_sync_creates_machine(self):
@@ -2449,11 +2449,11 @@ class TestPod(MAASServerTestCase):
             ),
             factory.make_User(),
         )
-        self.assertEquals(1, pod.hints.nodes.count())
+        self.assertEqual(1, pod.hints.nodes.count())
         node = pod.hints.nodes.first()
-        self.assertEquals(pod.name, node.hostname)
-        self.assertEquals(NODE_STATUS.DEPLOYED, node.status)
-        self.assertEquals(NODE_TYPE.MACHINE, node.node_type)
+        self.assertEqual(pod.name, node.hostname)
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
+        self.assertEqual(NODE_TYPE.MACHINE, node.node_type)
         self.assertItemsEqual(
             mac_addresses,
             [str(iface.mac_address) for iface in node.interface_set.all()],
@@ -2491,15 +2491,15 @@ class TestPod(MAASServerTestCase):
                 elif bd.type == "iscsi":
                     iscsi_storage += bd.size
 
-        self.assertEquals(pod.hints.cores, cores)
-        self.assertEquals(
+        self.assertEqual(pod.hints.cores, cores)
+        self.assertEqual(
             pod.hints.cpu_speed,
             int(mean(cpu_speeds)),
             f"Wrong hint ({pod.hints.cpu_speed}) for CPU speed. CPU speeds of nodes: {cpu_speeds}",
         )
-        self.assertEquals(pod.hints.memory, memory)
-        self.assertEquals(pod.hints.local_disks, len(nodes))
-        self.assertEquals(pod.hints.iscsi_storage, iscsi_storage)
+        self.assertEqual(pod.hints.memory, memory)
+        self.assertEqual(pod.hints.local_disks, len(nodes))
+        self.assertEqual(pod.hints.iscsi_storage, iscsi_storage)
 
     def test_get_used_cores(self):
         pod = factory.make_Pod()
@@ -2508,7 +2508,7 @@ class TestPod(MAASServerTestCase):
             cores = random.randint(1, 4)
             total_cores += cores
             factory.make_Node(bmc=pod, cpu_count=cores)
-        self.assertEquals(total_cores, pod.get_used_cores())
+        self.assertEqual(total_cores, pod.get_used_cores())
 
     def test_get_used_memory(self):
         pod = factory.make_Pod()
@@ -2517,7 +2517,7 @@ class TestPod(MAASServerTestCase):
             memory = random.randint(1, 4)
             total_memory += memory
             factory.make_Node(bmc=pod, memory=memory)
-        self.assertEquals(total_memory, pod.get_used_memory())
+        self.assertEqual(total_memory, pod.get_used_memory())
 
     def test_get_used_local_storage(self):
         pod = factory.make_Pod()
@@ -2527,7 +2527,7 @@ class TestPod(MAASServerTestCase):
             total_storage += storage
             node = factory.make_Node(bmc=pod, with_boot_disk=False)
             factory.make_PhysicalBlockDevice(node=node, size=storage)
-        self.assertEquals(total_storage, pod.get_used_local_storage())
+        self.assertEqual(total_storage, pod.get_used_local_storage())
 
     def test_get_used_local_disks(self):
         pod = factory.make_Pod()
@@ -2535,7 +2535,7 @@ class TestPod(MAASServerTestCase):
             node = factory.make_Node(bmc=pod, with_boot_disk=False)
             for _ in range(3):
                 factory.make_PhysicalBlockDevice(node=node)
-        self.assertEquals(9, pod.get_used_local_disks())
+        self.assertEqual(9, pod.get_used_local_disks())
 
     def test_get_used_iscsi_storage(self):
         pod = factory.make_Pod()
@@ -2545,7 +2545,7 @@ class TestPod(MAASServerTestCase):
             total_storage += storage
             node = factory.make_Node(bmc=pod, with_boot_disk=False)
             factory.make_ISCSIBlockDevice(node=node, size=storage)
-        self.assertEquals(total_storage, pod.get_used_iscsi_storage())
+        self.assertEqual(total_storage, pod.get_used_iscsi_storage())
 
     def test_sync_machine_memory(self):
         pod = factory.make_Pod(pod_type="lxd")

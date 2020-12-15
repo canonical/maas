@@ -18,4 +18,4 @@ class TestUserUsername(MAASServerTestCase):
         events = [factory.make_Event(user=user) for _ in range(3)]
         user.delete()
         for event in events:
-            self.assertEquals(event.username, username)
+            self.assertEqual(event.username, username)

@@ -665,7 +665,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertThat(
             restart_service, MockCalledOnceWith(self.server.dhcp_service)
         )
-        self.assertEquals(
+        self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key,
@@ -737,7 +737,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertThat(
             restart_service, MockCalledOnceWith(self.server.dhcp_service)
         )
-        self.assertEquals(
+        self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key,
@@ -811,7 +811,7 @@ class TestConfigureDHCP(MAASTestCase):
         self.assertThat(
             ensure_service, MockCalledOnceWith(self.server.dhcp_service)
         )
-        self.assertEquals(
+        self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key,
@@ -896,7 +896,7 @@ class TestConfigureDHCP(MAASTestCase):
             ensure_service, MockCalledOnceWith(self.server.dhcp_service)
         )
         self.assertThat(update_hosts, MockNotCalled())
-        self.assertEquals(
+        self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key,
@@ -992,7 +992,7 @@ class TestConfigureDHCP(MAASTestCase):
                 ANY, [removed_host], [added_host], [modified_host]
             ),
         )
-        self.assertEquals(
+        self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key,
@@ -1092,7 +1092,7 @@ class TestConfigureDHCP(MAASTestCase):
                 ANY, [removed_host], [added_host], [modified_host]
             ),
         )
-        self.assertEquals(
+        self.assertEqual(
             dhcp._current_server_state[self.server.dhcp_service],
             dhcp.DHCPState(
                 omapi_key,

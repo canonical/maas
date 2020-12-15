@@ -44,14 +44,14 @@ class TestPrometheusHandler(MAASServerTestCase):
         self.patch(stats, "PROMETHEUS_SUPPORTED", True)
         response = self.client.get(reverse("metrics"))
         self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
-        self.assertEquals(response.status_code, http.client.NOT_FOUND)
+        self.assertEqual(response.status_code, http.client.NOT_FOUND)
 
     def test_prometheus_stats_handler_not_found_not_supported(self):
         Config.objects.set_config("prometheus_enabled", True)
         self.patch(stats, "PROMETHEUS_SUPPORTED", False)
         response = self.client.get(reverse("metrics"))
         self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
-        self.assertEquals(response.status_code, http.client.NOT_FOUND)
+        self.assertEqual(response.status_code, http.client.NOT_FOUND)
 
     def test_prometheus_stats_handler_returns_success(self):
         Config.objects.set_config("prometheus_enabled", True)
@@ -59,7 +59,7 @@ class TestPrometheusHandler(MAASServerTestCase):
         mock_prom_cli.generate_latest.return_value = {}
         response = self.client.get(reverse("metrics"))
         self.assertEqual("text/plain", response["Content-Type"])
-        self.assertEquals(response.status_code, http.client.OK)
+        self.assertEqual(response.status_code, http.client.OK)
 
     def test_prometheus_stats_handler_returns_metrics(self):
         Config.objects.set_config("prometheus_enabled", True)

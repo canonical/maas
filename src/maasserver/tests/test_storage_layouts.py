@@ -120,13 +120,13 @@ class TestGetAppliedStorageLayoutForNode(MAASServerTestCase):
         )
         layout = self.layout_class(node)
         layout.configure()
-        self.assertEquals(
+        self.assertEqual(
             (bd, self.layout_name), get_applied_storage_layout_for_node(node)
         )
 
     def test_returns_unknown(self):
         node = factory.make_Node()
-        self.assertEquals(
+        self.assertEqual(
             (None, "unknown"), get_applied_storage_layout_for_node(node)
         )
 
@@ -418,7 +418,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(node, {})
         self.assertTrue(layout.is_valid(), layout.errors)
-        self.assertEquals(node.get_boot_disk(), layout.get_root_device())
+        self.assertEqual(node.get_boot_disk(), layout.get_root_device())
 
     def test_get_root_device_returns_root_device_if_set(self):
         node = make_Node_with_uefi_boot_method()
@@ -959,7 +959,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         )
         layout = FlatStorageLayout(node)
         layout.configure()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_without_uefi(self):
         node = make_arm64_Node_without_uefi_boot_method()
@@ -968,7 +968,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         )
         layout = FlatStorageLayout(node)
         layout.configure()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_returns_none_when_not_found(self):
         node = make_Node_with_uefi_boot_method()
@@ -1275,7 +1275,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         )
         layout = LVMStorageLayout(node)
         layout.configure()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_without_uefi(self):
         node = make_arm64_Node_without_uefi_boot_method()
@@ -1284,7 +1284,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         )
         layout = LVMStorageLayout(node)
         layout.configure()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_returns_none_when_not_found(self):
         node = make_Node_with_uefi_boot_method()
@@ -1805,7 +1805,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         )
         layout = BcacheStorageLayout(node)
         layout.configure()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_without_uefi(self):
         node = make_arm64_Node_without_uefi_boot_method()
@@ -1817,7 +1817,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         )
         layout = BcacheStorageLayout(node, {"cache_no_part": True})
         layout.configure()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_returns_none_when_not_found(self):
         node = make_Node_with_uefi_boot_method()
@@ -1953,7 +1953,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         )
         layout = VMFS6StorageLayout(node)
         layout.configure()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_without_datastore(self):
         node = make_Node_with_uefi_boot_method()
@@ -1965,7 +1965,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         # A user can delete the VMFS Datastore but the layout should still
         # be detected for the UI.
         node.virtualblockdevice_set.delete()
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual(bd, layout.is_layout())
 
     def test_is_layout_returns_none_when_not_found(self):
         node = make_Node_with_uefi_boot_method()
@@ -2007,8 +2007,8 @@ class TestBlankStorageLayout(MAASServerTestCase):
         layout = BlankStorageLayout(node)
         if self.layout_class != BlankStorageLayout:
             self.assertIsNone(layout.is_layout())
-        self.assertEquals("blank", layout.configure())
-        self.assertEquals(bd, layout.is_layout())
+        self.assertEqual("blank", layout.configure())
+        self.assertEqual(bd, layout.is_layout())
         self.assertFalse(node.virtualblockdevice_set.exists())
         for bd in node.blockdevice_set.all():
             self.assertFalse(bd.filesystem_set.exists())

@@ -85,7 +85,7 @@ class TestLocateTemplate(MAASTestCase):
     """Tests for `locate_template`."""
 
     def test_returns_test_path(self):
-        self.assertEquals(
+        self.assertEqual(
             os.path.abspath(
                 os.path.join(
                     os.path.dirname(__file__), "..", "..", "templates"
@@ -398,7 +398,7 @@ class TestKernelToDebianArchitecture(MAASTestCase):
     )
 
     def test_kernel_to_debian_architecture(self):
-        self.assertEquals(
+        self.assertEqual(
             self.debian, kernel_to_debian_architecture(self.kernel)
         )
 
@@ -423,6 +423,6 @@ class TestDebianToKernalArchitecture(MAASTestCase):
     )
 
     def test_kernel_to_debian_architecture(self):
-        self.assertEquals(
+        self.assertEqual(
             self.kernel, debian_to_kernel_architecture(self.debian)
         )

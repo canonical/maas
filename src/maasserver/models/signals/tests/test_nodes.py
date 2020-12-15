@@ -36,7 +36,7 @@ class TestNodeDeletion(MAASServerTestCase):
         events = [factory.make_Event(node=node) for _ in range(3)]
         node.delete()
         for event in events:
-            self.assertEquals(event.node_hostname, node_hostname)
+            self.assertEqual(event.node_hostname, node_hostname)
 
     def test_deleting_node_sets_node_to_null(self):
         node = factory.make_Node()
@@ -87,7 +87,7 @@ class TestNodePreviousStatus(MAASServerTestCase):
         )
         node.status = random.choice(NODE_TRANSITIONS[node.status])
         node.save()
-        self.assertEquals(previous_status, node.previous_status)
+        self.assertEqual(previous_status, node.previous_status)
 
 
 class TestNodeClearsOwnerNEWOrREADYStatus(MAASServerTestCase):

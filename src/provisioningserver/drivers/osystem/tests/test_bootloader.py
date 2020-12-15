@@ -13,12 +13,12 @@ from provisioningserver.drivers.osystem.bootloader import BootLoaderOS
 class TestCustomOS(MAASTestCase):
     def test_get_default_release(self):
         osystem = BootLoaderOS()
-        self.assertEquals("", osystem.get_default_release())
+        self.assertEqual("", osystem.get_default_release())
 
     def test_get_release_title(self):
         osystem = BootLoaderOS()
         release = factory.make_name("release")
-        self.assertEquals(release, osystem.get_release_title(release))
+        self.assertEqual(release, osystem.get_release_title(release))
 
     def test_get_boot_image_purposes(self):
         osystem = BootLoaderOS()

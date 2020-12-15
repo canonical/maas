@@ -180,7 +180,7 @@ class TestRackHTTPService(MAASTestCase):
 
         service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
         region_ips = list(service._genRegionIps())
-        self.assertEquals(3, len(region_ips))
+        self.assertEqual(3, len(region_ips))
 
     def test_genRegionIps_always_returns_same_result(self):
         mock_rpc = Mock()
@@ -198,7 +198,7 @@ class TestRackHTTPService(MAASTestCase):
         service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
         region_ips = frozenset(service._genRegionIps())
         for _ in range(3):
-            self.assertEquals(region_ips, frozenset(service._genRegionIps()))
+            self.assertEqual(region_ips, frozenset(service._genRegionIps()))
 
     def test_genRegionIps_formats_ipv6(self):
         mock_rpc = Mock()
@@ -216,7 +216,7 @@ class TestRackHTTPService(MAASTestCase):
 
         service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
         region_ips = set(service._genRegionIps())
-        self.assertEquals(ip_addresses, region_ips)
+        self.assertEqual(ip_addresses, region_ips)
 
 
 class TestRackHTTPService_Errors(MAASTestCase):
@@ -405,8 +405,8 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertEquals(503, request.responseCode)
-        self.assertEquals(
+        self.assertEqual(503, request.responseCode)
+        self.assertEqual(
             b"HTTP boot service not ready.", b"".join(request.written)
         )
 
@@ -429,8 +429,8 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertEquals(400, request.responseCode)
-        self.assertEquals(
+        self.assertEqual(400, request.responseCode)
+        self.assertEqual(
             b"Missing X-Server-Addr and X-Forwarded-For HTTP headers.",
             b"".join(request.written),
         )
@@ -450,8 +450,8 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertEquals(400, request.responseCode)
-        self.assertEquals(
+        self.assertEqual(400, request.responseCode)
+        self.assertEqual(
             b"Missing X-Server-Addr and X-Forwarded-For HTTP headers.",
             b"".join(request.written),
         )
@@ -479,8 +479,8 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertEquals(403, request.responseCode)
-        self.assertEquals(b"", b"".join(request.written))
+        self.assertEqual(403, request.responseCode)
+        self.assertEqual(b"", b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_404_file_not_found(self):
@@ -505,8 +505,8 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertEquals(404, request.responseCode)
-        self.assertEquals(b"", b"".join(request.written))
+        self.assertEqual(404, request.responseCode)
+        self.assertEqual(b"", b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_500_server_error(self):
@@ -532,8 +532,8 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertEquals(500, request.responseCode)
-        self.assertEquals(str(exc).encode("utf-8"), b"".join(request.written))
+        self.assertEqual(500, request.responseCode)
+        self.assertEqual(str(exc).encode("utf-8"), b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_produces_from_reader(self):
@@ -560,10 +560,10 @@ class TestHTTPBootResource(MAASTestCase):
         resource = http.HTTPBootResource()
         yield self.render_GET(resource, request)
 
-        self.assertEquals(
+        self.assertEqual(
             [100], request.responseHeaders.getRawHeaders(b"Content-Length")
         )
-        self.assertEquals(content, b"".join(request.written))
+        self.assertEqual(content, b"".join(request.written))
 
     @inlineCallbacks
     def test_render_GET_logs_node_event_with_original_path_ip(self):

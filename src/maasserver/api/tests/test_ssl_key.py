@@ -134,7 +134,7 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
         self.assertEqual(1, len(keys_after))
         self.assertEqual(keys[1].id, keys_after[0].id)
         self.assertIsNotNone(event)
-        self.assertEquals(
+        self.assertEqual(
             event.description, "Deleted SSL key id='%s'." % keys[0].id
         )
 

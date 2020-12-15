@@ -52,36 +52,36 @@ class TestDiscoveredClasses(MAASTestCase):
     def test_interface_mac(self):
         mac = factory.make_mac_address()
         nic = DiscoveredMachineInterface(mac_address=mac)
-        self.assertEquals(mac, nic.mac_address)
-        self.assertEquals(-1, nic.vid)
-        self.assertEquals([], nic.tags)
+        self.assertEqual(mac, nic.mac_address)
+        self.assertEqual(-1, nic.vid)
+        self.assertEqual([], nic.tags)
 
     def test_interface_mac_vid(self):
         mac = factory.make_mac_address()
         vid = random.randint(1, 300)
         nic = DiscoveredMachineInterface(mac_address=mac, vid=vid)
-        self.assertEquals(mac, nic.mac_address)
-        self.assertEquals(vid, nic.vid)
-        self.assertEquals([], nic.tags)
+        self.assertEqual(mac, nic.mac_address)
+        self.assertEqual(vid, nic.vid)
+        self.assertEqual([], nic.tags)
 
     def test_interface_mac_vid_tags(self):
         mac = factory.make_mac_address()
         vid = random.randint(1, 300)
         tags = [factory.make_name("tag") for _ in range(3)]
         nic = DiscoveredMachineInterface(mac_address=mac, vid=vid, tags=tags)
-        self.assertEquals(mac, nic.mac_address)
-        self.assertEquals(vid, nic.vid)
-        self.assertEquals(tags, nic.tags)
+        self.assertEqual(mac, nic.mac_address)
+        self.assertEqual(vid, nic.vid)
+        self.assertEqual(tags, nic.tags)
 
     def test_block_device_size(self):
         size = random.randint(512, 512 * 1024)
         device = DiscoveredMachineBlockDevice(
             model=None, serial=None, size=size
         )
-        self.assertEquals(None, device.model)
-        self.assertEquals(None, device.serial)
-        self.assertEquals(size, device.size)
-        self.assertEquals(None, device.id_path)
+        self.assertEqual(None, device.model)
+        self.assertEqual(None, device.serial)
+        self.assertEqual(size, device.size)
+        self.assertEqual(None, device.id_path)
 
     def test_block_device_size_id_path(self):
         size = random.randint(512, 512 * 1024)
@@ -89,10 +89,10 @@ class TestDiscoveredClasses(MAASTestCase):
         device = DiscoveredMachineBlockDevice(
             model=None, serial=None, size=size, id_path=id_path
         )
-        self.assertEquals(None, device.model)
-        self.assertEquals(None, device.serial)
-        self.assertEquals(size, device.size)
-        self.assertEquals(id_path, device.id_path)
+        self.assertEqual(None, device.model)
+        self.assertEqual(None, device.serial)
+        self.assertEqual(size, device.size)
+        self.assertEqual(id_path, device.id_path)
 
     def test_block_device_model_serial_size_block_size(self):
         model = factory.make_name("model")
@@ -102,10 +102,10 @@ class TestDiscoveredClasses(MAASTestCase):
         device = DiscoveredMachineBlockDevice(
             model=model, serial=serial, size=size, block_size=block_size
         )
-        self.assertEquals(model, device.model)
-        self.assertEquals(serial, device.serial)
-        self.assertEquals(size, device.size)
-        self.assertEquals(block_size, device.block_size)
+        self.assertEqual(model, device.model)
+        self.assertEqual(serial, device.serial)
+        self.assertEqual(size, device.size)
+        self.assertEqual(block_size, device.block_size)
 
     def test_block_device_model_serial_size_block_size_tags(self):
         model = factory.make_name("model")
@@ -120,11 +120,11 @@ class TestDiscoveredClasses(MAASTestCase):
             block_size=block_size,
             tags=tags,
         )
-        self.assertEquals(model, device.model)
-        self.assertEquals(serial, device.serial)
-        self.assertEquals(size, device.size)
-        self.assertEquals(block_size, device.block_size)
-        self.assertEquals(tags, device.tags)
+        self.assertEqual(model, device.model)
+        self.assertEqual(serial, device.serial)
+        self.assertEqual(size, device.size)
+        self.assertEqual(block_size, device.block_size)
+        self.assertEqual(tags, device.tags)
 
     def test_block_device_iscsi(self):
         size = random.randint(512, 512 * 1024)
@@ -145,11 +145,11 @@ class TestDiscoveredClasses(MAASTestCase):
         )
         self.assertIsNone(device.model)
         self.assertIsNone(device.serial)
-        self.assertEquals(size, device.size)
-        self.assertEquals(block_size, device.block_size)
-        self.assertEquals(tags, device.tags)
-        self.assertEquals(BlockDeviceType.ISCSI, device.type)
-        self.assertEquals(iscsi_target, device.iscsi_target)
+        self.assertEqual(size, device.size)
+        self.assertEqual(block_size, device.block_size)
+        self.assertEqual(tags, device.tags)
+        self.assertEqual(BlockDeviceType.ISCSI, device.type)
+        self.assertEqual(iscsi_target, device.iscsi_target)
 
     def test_machine(self):
         hostname = factory.make_name("hostname")
@@ -181,12 +181,12 @@ class TestDiscoveredClasses(MAASTestCase):
             block_devices=block_devices,
             tags=tags,
         )
-        self.assertEquals(cores, machine.cores)
-        self.assertEquals(cpu_speed, machine.cpu_speed)
-        self.assertEquals(memory, machine.memory)
-        self.assertEquals(interfaces, machine.interfaces)
-        self.assertEquals(block_devices, machine.block_devices)
-        self.assertEquals(tags, machine.tags)
+        self.assertEqual(cores, machine.cores)
+        self.assertEqual(cpu_speed, machine.cpu_speed)
+        self.assertEqual(memory, machine.memory)
+        self.assertEqual(interfaces, machine.interfaces)
+        self.assertEqual(block_devices, machine.block_devices)
+        self.assertEqual(tags, machine.tags)
 
     def test_pod_hints(self):
         cores = random.randint(1, 8)
@@ -203,11 +203,11 @@ class TestDiscoveredClasses(MAASTestCase):
             local_disks=local_disks,
             iscsi_storage=iscsi_storage,
         )
-        self.assertEquals(cores, hints.cores)
-        self.assertEquals(cpu_speed, hints.cpu_speed)
-        self.assertEquals(memory, hints.memory)
-        self.assertEquals(local_storage, hints.local_storage)
-        self.assertEquals(iscsi_storage, hints.iscsi_storage)
+        self.assertEqual(cores, hints.cores)
+        self.assertEqual(cpu_speed, hints.cpu_speed)
+        self.assertEqual(memory, hints.memory)
+        self.assertEqual(local_storage, hints.local_storage)
+        self.assertEqual(iscsi_storage, hints.iscsi_storage)
 
     def test_pod(self):
         hostname = factory.make_name("hostname")
@@ -279,12 +279,12 @@ class TestDiscoveredClasses(MAASTestCase):
             hints=hints,
             machines=machines,
         )
-        self.assertEquals(cores, pod.cores)
-        self.assertEquals(cpu_speed, pod.cpu_speed)
-        self.assertEquals(memory, pod.memory)
-        self.assertEquals(local_storage, pod.local_storage)
-        self.assertEquals(iscsi_storage, pod.iscsi_storage)
-        self.assertEquals(machines, pod.machines)
+        self.assertEqual(cores, pod.cores)
+        self.assertEqual(cpu_speed, pod.cpu_speed)
+        self.assertEqual(memory, pod.memory)
+        self.assertEqual(local_storage, pod.local_storage)
+        self.assertEqual(iscsi_storage, pod.iscsi_storage)
+        self.assertEqual(machines, pod.machines)
 
     def test_pod_asdict(self):
         hostname = factory.make_name("hostname")
@@ -676,8 +676,8 @@ class TestRequestClasses(MAASTestCase):
         size = random.randint(512, 512 * 1024)
         tags = [factory.make_name("tag") for _ in range(3)]
         device = RequestedMachineBlockDevice(size=size, tags=tags)
-        self.assertEquals(size, device.size)
-        self.assertEquals(tags, device.tags)
+        self.assertEqual(size, device.size)
+        self.assertEqual(tags, device.tags)
 
     def test_machine(self):
         hostname = factory.make_name("hostname")
@@ -701,12 +701,12 @@ class TestRequestClasses(MAASTestCase):
             interfaces=interfaces,
             block_devices=block_devices,
         )
-        self.assertEquals(hostname, machine.hostname)
-        self.assertEquals(cores, machine.cores)
-        self.assertEquals(cpu_speed, machine.cpu_speed)
-        self.assertEquals(memory, machine.memory)
-        self.assertEquals(interfaces, machine.interfaces)
-        self.assertEquals(block_devices, machine.block_devices)
+        self.assertEqual(hostname, machine.hostname)
+        self.assertEqual(cores, machine.cores)
+        self.assertEqual(cpu_speed, machine.cpu_speed)
+        self.assertEqual(memory, machine.memory)
+        self.assertEqual(interfaces, machine.interfaces)
+        self.assertEqual(block_devices, machine.block_devices)
 
     def test_machine_without_cpu_speed(self):
         hostname = factory.make_name("hostname")
@@ -726,12 +726,12 @@ class TestRequestClasses(MAASTestCase):
             interfaces=interfaces,
             block_devices=block_devices,
         )
-        self.assertEquals(hostname, machine.hostname)
-        self.assertEquals(cores, machine.cores)
+        self.assertEqual(hostname, machine.hostname)
+        self.assertEqual(cores, machine.cores)
         self.assertIsNone(machine.cpu_speed)
-        self.assertEquals(memory, machine.memory)
-        self.assertEquals(interfaces, machine.interfaces)
-        self.assertEquals(block_devices, machine.block_devices)
+        self.assertEqual(memory, machine.memory)
+        self.assertEqual(interfaces, machine.interfaces)
+        self.assertEqual(block_devices, machine.block_devices)
 
     def test_machine_asdict(self):
         hostname = factory.make_name("hostname")
@@ -1031,7 +1031,7 @@ class TestPodDriverBase(MAASTestCase):
         fake_driver = make_pod_driver_base(
             fake_name, fake_description, fake_settings
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 "driver_type": "pod",
                 "name": fake_name,

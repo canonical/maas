@@ -676,7 +676,7 @@ class TestRackControllerManager(MAASServerTestCase):
         ip = random.choice(["127.0.0.1", "::1"])
         mock_getaddr_info.return_value = (("", "", "", "", (ip,)),)
         self.useFixture(MAASIDFixture(rack.system_id))
-        self.assertEquals(
+        self.assertEqual(
             [rack], RackController.objects.filter_by_url_accessible(ip, False)
         )
 
@@ -724,7 +724,7 @@ class TestRackControllerManager(MAASServerTestCase):
         url = factory.pick_ip_in_Subnet(accessible_subnet)
         mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
         mock_getaddr_info.return_value = (("", "", "", "", (url,)),)
-        self.assertEquals(
+        self.assertEqual(
             None, RackController.objects.get_accessible_by_url(url, False)
         )
 
@@ -769,7 +769,7 @@ class TestRegionControllerManager(MAASServerTestCase):
         config_uuid = Config.objects.get_config("uuid")
         self.assertThat(region_running, IsInstance(RegionController))
         self.assertThat(region_running, Equals(region))
-        self.assertEquals(created_uuid, config_uuid)
+        self.assertEqual(created_uuid, config_uuid)
 
     def test_get_or_create_uuid_returns_stored_uuid(self):
         region = factory.make_RegionController()
@@ -783,8 +783,8 @@ class TestRegionControllerManager(MAASServerTestCase):
         stored_uuid = RegionController.objects.get_or_create_uuid()
         self.assertThat(region_running, IsInstance(RegionController))
         self.assertThat(region_running, Equals(region))
-        self.assertEquals(stored_uuid, config_uuid)
-        self.assertEquals(created_uuid, stored_uuid)
+        self.assertEqual(stored_uuid, config_uuid)
+        self.assertEqual(created_uuid, stored_uuid)
 
 
 class TestRegionControllerManagerGetOrCreateRunningController(
@@ -930,7 +930,7 @@ class TestRegionControllerManagerGetOrCreateRunningController(
 
     def assertControllerCreated(self, region):
         # A controller is created and it is always a region controller.
-        self.assertEquals(NODE_TYPE.REGION_CONTROLLER, region.node_type)
+        self.assertEqual(NODE_TYPE.REGION_CONTROLLER, region.node_type)
         # It's a fresh controller so the worker user is always owner.
         self.assertThat(region.owner, Equals(get_worker_user()))
 
@@ -955,7 +955,7 @@ class TestRegionControllerManagerGetOrCreateRunningController(
 
     def assertControllerNotDiscovered(self, region, host):
         # A controller is created and it is always a region controller.
-        self.assertEquals(NODE_TYPE.REGION_CONTROLLER, region.node_type)
+        self.assertEqual(NODE_TYPE.REGION_CONTROLLER, region.node_type)
         # It's new; the primary key differs from the host we planted.
         self.assertThat(region.id, Not(Equals(host.id)))
         # It's a fresh controller so the worker user is always owner.
@@ -3570,8 +3570,8 @@ class TestNode(MAASServerTestCase):
             user=admin,
             commissioning_scripts=[script.name],
         )
-        self.assertEquals(0, ScriptSet.objects.count())
-        self.assertEquals(0, ScriptResult.objects.count())
+        self.assertEqual(0, ScriptSet.objects.count())
+        self.assertEqual(0, ScriptResult.objects.count())
 
     def test_start_commissioning_fails_on_xenial_with_network_testing_t(self):
         Config.objects.set_config("commissioning_distro_series", "xenial")
@@ -3586,8 +3586,8 @@ class TestNode(MAASServerTestCase):
             user=admin,
             testing_scripts=[script.name],
         )
-        self.assertEquals(0, ScriptSet.objects.count())
-        self.assertEquals(0, ScriptResult.objects.count())
+        self.assertEqual(0, ScriptSet.objects.count())
+        self.assertEqual(0, ScriptResult.objects.count())
 
     def test_abort_commissioning_reverts_to_sane_state_on_error(self):
         # If abort commissioning hits an error when trying to stop the
@@ -3830,7 +3830,7 @@ class TestNode(MAASServerTestCase):
         node.start_testing(admin, testing_scripts=[script.name])
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        self.assertEquals(NODE_STATUS.TESTING, node.status)
+        self.assertEqual(NODE_STATUS.TESTING, node.status)
         self.assertThat(mock_node_start, MockCalledOnce())
 
     def test_start_testing_changes_status_and_starts_new_node(self):
@@ -3850,7 +3850,7 @@ class TestNode(MAASServerTestCase):
         node.start_testing(admin, testing_scripts=[script.name])
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        self.assertEquals(NODE_STATUS.TESTING, node.status)
+        self.assertEqual(NODE_STATUS.TESTING, node.status)
         self.assertThat(mock_node_start, MockCalledOnce())
 
     def test_start_testing_sets_options(self):
@@ -3870,7 +3870,7 @@ class TestNode(MAASServerTestCase):
         )
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
-        self.assertEquals(enable_ssh, node.enable_ssh)
+        self.assertEqual(enable_ssh, node.enable_ssh)
 
     def test_start_testing_sets_user_data(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.TESTING)
@@ -4065,8 +4065,8 @@ class TestNode(MAASServerTestCase):
             admin,
             testing_scripts=[script.name],
         )
-        self.assertEquals(0, ScriptSet.objects.count())
-        self.assertEquals(0, ScriptResult.objects.count())
+        self.assertEqual(0, ScriptSet.objects.count())
+        self.assertEqual(0, ScriptResult.objects.count())
 
     def test_save_logs_node_status_transition(self):
         self.disable_node_query()
@@ -4257,11 +4257,11 @@ class TestNode(MAASServerTestCase):
         node.mark_failed(script_result_status=script_result_status)
 
         for script_result in updated_script_results:
-            self.assertEquals(
+            self.assertEqual(
                 script_result_status, reload_object(script_result).status
             )
         for script_result in untouched_script_results:
-            self.assertEquals(
+            self.assertEqual(
                 script_result.status, reload_object(script_result).status
             )
 
@@ -8523,7 +8523,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             user, power_type="manual"
         )
         node.start(user)
-        self.assertEquals(NODE_STATUS.DEPLOYING, node.status)
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
 
     def test_creates_acquired_bridges_for_install_kvm(self):
         user = factory.make_User()
@@ -8543,11 +8543,11 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node = reload_object(node)
         bridge = BridgeInterface.objects.get(node=node)
         interface = node.interface_set.first()
-        self.assertEquals(NODE_STATUS.DEPLOYING, node.status)
-        self.assertEquals(bridge.mac_address, interface.mac_address)
-        self.assertEquals(bridge.params["bridge_type"], bridge_type)
-        self.assertEquals(bridge.params["bridge_stp"], bridge_stp)
-        self.assertEquals(bridge.params["bridge_fd"], bridge_fd)
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
+        self.assertEqual(bridge.mac_address, interface.mac_address)
+        self.assertEqual(bridge.params["bridge_type"], bridge_type)
+        self.assertEqual(bridge.params["bridge_stp"], bridge_stp)
+        self.assertEqual(bridge.params["bridge_fd"], bridge_fd)
         self.assertTrue(node.install_kvm)
 
     def test_doesnt_change_broken(self):
@@ -8558,7 +8558,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.status = NODE_STATUS.BROKEN
         node.save()
         node.start(user)
-        self.assertEquals(NODE_STATUS.BROKEN, node.status)
+        self.assertEqual(NODE_STATUS.BROKEN, node.status)
 
     def test_claims_auto_ip_addresses(self):
         user = factory.make_User()
@@ -9136,14 +9136,14 @@ class TestNode_Start(MAASTransactionServerTestCase):
             name=EVENT_TYPES.NODE_POWER_QUERY_FAILED
         )
         event = node.event_set.get(type=event_type)
-        self.assertEquals(
+        self.assertEqual(
             "(%s) - Aborting NEW and reverting to NEW. Unable to power "
             "control the node. Please check power credentials." % user,
             event.description,
         )
 
         for script_result in script_results:
-            self.assertEquals(
+            self.assertEqual(
                 SCRIPT_STATUS.ABORTED, reload_object(script_result).status
             )
 
@@ -9220,7 +9220,7 @@ class TestGetBMCClientConnectionInfo(MAASServerTestCase):
         fallback.system_id = fake_fallback_id
         mock_fallbacks.return_value = [fallback]
 
-        self.assertEquals(
+        self.assertEqual(
             ([fake_bmc_id], [fake_fallback_id]),
             node._get_bmc_client_connection_info(),
         )
@@ -9233,7 +9233,7 @@ class TestGetBMCClientConnectionInfo(MAASServerTestCase):
             name=EVENT_TYPES.NODE_POWER_QUERY_FAILED
         )
         event = node.event_set.get(type=event_type)
-        self.assertEquals(
+        self.assertEqual(
             (
                 "No rack controllers can access the BMC of node %s"
                 % node.hostname
@@ -13807,7 +13807,7 @@ class TestRackController(MAASTransactionServerTestCase):
         )
         system_id = region_and_rack.system_id
         region_and_rack.as_rack_controller().delete()
-        self.assertEquals(
+        self.assertEqual(
             NODE_TYPE.REGION_CONTROLLER,
             Node.objects.get(system_id=system_id).node_type,
         )
@@ -13817,7 +13817,7 @@ class TestRackController(MAASTransactionServerTestCase):
         rack.bmc = factory.make_BMC()
         rack.save()
         rack.delete()
-        self.assertEquals(
+        self.assertEqual(
             NODE_TYPE.MACHINE,
             Node.objects.get(system_id=rack.system_id).node_type,
         )
@@ -13927,16 +13927,16 @@ class TestRackController(MAASTransactionServerTestCase):
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
         self.assertItemsEqual(self.expected_images, images["images"])
-        self.assertEquals("synced", images["status"])
-        self.assertEquals("synced", rack_controller.get_image_sync_status())
+        self.assertEqual("synced", images["status"])
+        self.assertEqual("synced", rack_controller.get_image_sync_status())
 
     def test_list_boot_images_when_disconnected(self):
         rack_controller = factory.make_RackController()
         images = rack_controller.list_boot_images()
-        self.assertEquals(False, images["connected"])
+        self.assertEqual(False, images["connected"])
         self.assertItemsEqual([], images["images"])
-        self.assertEquals("unknown", images["status"])
-        self.assertEquals("unknown", rack_controller.get_image_sync_status())
+        self.assertEqual("unknown", images["status"])
+        self.assertEqual("unknown", rack_controller.get_image_sync_status())
 
     def test_list_boot_images_when_connection_closed(self):
         rack_controller = factory.make_RackController()
@@ -13944,10 +13944,10 @@ class TestRackController(MAASTransactionServerTestCase):
             boot_images, "get_boot_images"
         ).side_effect = ConnectionClosed()
         images = rack_controller.list_boot_images()
-        self.assertEquals(False, images["connected"])
+        self.assertEqual(False, images["connected"])
         self.assertItemsEqual([], images["images"])
-        self.assertEquals("unknown", images["status"])
-        self.assertEquals("unknown", rack_controller.get_image_sync_status())
+        self.assertEqual("unknown", images["status"])
+        self.assertEqual("unknown", rack_controller.get_image_sync_status())
 
     def test_list_boot_images_region_importing(self):
         rack_controller = factory.make_RackController()
@@ -13962,8 +13962,8 @@ class TestRackController(MAASTransactionServerTestCase):
         self.assertThat(fake_is_import_resources_running, MockCalledOnce())
         self.assertTrue(images["connected"])
         self.assertItemsEqual(self.expected_images, images["images"])
-        self.assertEquals("region-importing", images["status"])
-        self.assertEquals(
+        self.assertEqual("region-importing", images["status"])
+        self.assertEqual(
             "region-importing", rack_controller.get_image_sync_status()
         )
 
@@ -13981,8 +13981,8 @@ class TestRackController(MAASTransactionServerTestCase):
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
         self.assertItemsEqual(self.expected_images, images["images"])
-        self.assertEquals("syncing", images["status"])
-        self.assertEquals("syncing", rack_controller.get_image_sync_status())
+        self.assertEqual("syncing", images["status"])
+        self.assertEqual("syncing", rack_controller.get_image_sync_status())
 
     def test_list_boot_images_out_of_sync(self):
         rack_controller = factory.make_RackController()
@@ -13998,8 +13998,8 @@ class TestRackController(MAASTransactionServerTestCase):
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
         self.assertItemsEqual(self.expected_images, images["images"])
-        self.assertEquals("out-of-sync", images["status"])
-        self.assertEquals(
+        self.assertEqual("out-of-sync", images["status"])
+        self.assertEqual(
             "out-of-sync", rack_controller.get_image_sync_status()
         )
 
@@ -14015,7 +14015,7 @@ class TestRackController(MAASTransactionServerTestCase):
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
         self.assertItemsEqual([], images["images"])
-        self.assertEquals("syncing", images["status"])
+        self.assertEqual("syncing", images["status"])
 
     def test_is_import_images_running(self):
         running = factory.pick_bool()
@@ -14029,7 +14029,7 @@ class TestRackController(MAASTransactionServerTestCase):
         protocol.IsImportBootImagesRunning.return_value = defer.succeed(
             {"running": running}
         )
-        self.assertEquals(
+        self.assertEqual(
             running, rackcontroller.is_import_boot_images_running()
         )
 
@@ -14045,7 +14045,7 @@ class TestRegionController(MAASServerTestCase):
             node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER
         )
         region_and_rack.as_region_controller().delete()
-        self.assertEquals(
+        self.assertEqual(
             NODE_TYPE.RACK_CONTROLLER,
             Node.objects.get(system_id=region_and_rack.system_id).node_type,
         )
@@ -14055,7 +14055,7 @@ class TestRegionController(MAASServerTestCase):
         region.bmc = factory.make_BMC()
         region.save()
         region.delete()
-        self.assertEquals(
+        self.assertEqual(
             NODE_TYPE.MACHINE,
             Node.objects.get(system_id=region.system_id).node_type,
         )
@@ -15021,7 +15021,7 @@ class TestNodeInterfaceClone__MappingBetweenNodes(MAASServerTestCase):
         error = self.assertRaises(
             ValidationError, node2._get_interface_mapping_between_nodes, node1
         )
-        self.assertEquals(
+        self.assertEqual(
             "destination node physical interfaces do not match the "
             "source nodes physical interfaces: other, match",
             error.message,

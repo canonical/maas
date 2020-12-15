@@ -65,8 +65,8 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
         self.assertThat(response, HasStatusCode(http.client.OK))
 
         returned_script = json_load_bytes(response.content)
-        self.assertEquals(name, returned_script["name"])
-        self.assertEquals(
+        self.assertEqual(name, returned_script["name"])
+        self.assertEqual(
             content.encode(), b64decode(returned_script["content"])
         )
 
@@ -133,7 +133,7 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
             {"content": factory.make_file_upload(content=new_content)},
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEquals(rc.ALL_OK.content, response.content)
+        self.assertEqual(rc.ALL_OK.content, response.content)
 
         self.assertEqual(
             new_content.decode("utf-8"), reload_object(script).script.data
@@ -244,7 +244,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         for parsed_result in parsed_results:
             if parsed_result["name"] == script_result.name:
                 break
-        self.assertEquals(
+        self.assertEqual(
             node.current_commissioning_script_set.scriptresult_set.count()
             + node.current_testing_script_set.scriptresult_set.count()
             + node.current_installation_script_set.scriptresult_set.count(),
@@ -264,16 +264,16 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             ],
             parsed_result.keys(),
         )
-        self.assertEquals(script_result.id, parsed_result["id"])
-        self.assertEquals(script_result.name, parsed_result["name"])
-        self.assertEquals(
+        self.assertEqual(script_result.id, parsed_result["id"])
+        self.assertEqual(script_result.name, parsed_result["name"])
+        self.assertEqual(
             script_result.exit_status, parsed_result["script_result"]
         )
-        self.assertEquals(script_set.result_type, parsed_result["result_type"])
-        self.assertEquals(
+        self.assertEqual(script_set.result_type, parsed_result["result_type"])
+        self.assertEqual(
             {"system_id": script_set.node.system_id}, parsed_result["node"]
         )
-        self.assertEquals(
+        self.assertEqual(
             script_result.stdout, b64decode(parsed_result["data"])
         )
 
@@ -396,7 +396,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         response = self.client.get(url, {"name": script_result.name})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertEquals(script_result.id, parsed_results[0]["id"])
+        self.assertEqual(script_result.id, parsed_results[0]["id"])
 
     def test_list_displays_only_visible_nodes(self):
         node = factory.make_Node(

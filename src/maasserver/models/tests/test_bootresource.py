@@ -189,7 +189,7 @@ class TestBootResourceManager(MAASServerTestCase):
             architecture="amd64/hwe-16.04",
             extra={"subarches": "hwe-p,hwe-t,hwe-16.04,hwe-16.10"},
         )
-        self.assertEquals(
+        self.assertEqual(
             ["hwe-16.04"], BootResource.objects.get_usable_hwe_kernels()
         )
 
@@ -198,7 +198,7 @@ class TestBootResourceManager(MAASServerTestCase):
             architecture="amd64/hwe-16.04",
             extra={"subarches": "hwe-p,hwe-t,hwe-16.04,hwe-16.10"},
         )
-        self.assertEquals(
+        self.assertEqual(
             ["hwe-p", "hwe-t", "hwe-16.04", "hwe-16.10"],
             BootResource.objects.get_supported_hwe_kernels(),
         )

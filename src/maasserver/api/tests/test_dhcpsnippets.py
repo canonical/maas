@@ -198,7 +198,7 @@ class TestDHCPSnippetAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_dhcp_snippet = json.loads(response.content.decode())
-        self.assertEquals(
+        self.assertEqual(
             VersionedTextFile.objects.get(id=textfile_ids[revert_to - 1]).data,
             parsed_dhcp_snippet["value"],
         )
@@ -326,10 +326,10 @@ class TestDHCPSnippetsAPI(APITestCase.ForUser):
             },
         )
         parsed_dhcp_snippet = json.loads(response.content.decode())
-        self.assertEquals(name, parsed_dhcp_snippet["name"])
-        self.assertEquals(value, parsed_dhcp_snippet["value"])
-        self.assertEquals(description, parsed_dhcp_snippet["description"])
-        self.assertEquals(enabled, parsed_dhcp_snippet["enabled"])
+        self.assertEqual(name, parsed_dhcp_snippet["name"])
+        self.assertEqual(value, parsed_dhcp_snippet["value"])
+        self.assertEqual(description, parsed_dhcp_snippet["description"])
+        self.assertEqual(enabled, parsed_dhcp_snippet["enabled"])
 
     def test_create_admin_only(self):
         response = self.client.post(

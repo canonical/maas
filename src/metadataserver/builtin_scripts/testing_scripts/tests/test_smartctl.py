@@ -31,7 +31,7 @@ class TestRunSmartCTL(MAASTestCase):
         self.args = [factory.make_name("arg") for _ in range(3)]
 
     def test_default(self):
-        self.assertEquals(
+        self.assertEqual(
             self.output, smartctl.run_smartctl(self.blockdevice, self.args)
         )
         self.assertThat(
@@ -45,7 +45,7 @@ class TestRunSmartCTL(MAASTestCase):
 
     def test_device(self):
         device = factory.make_name("device")
-        self.assertEquals(
+        self.assertEqual(
             self.output,
             smartctl.run_smartctl(self.blockdevice, self.args, device=device),
         )
@@ -61,7 +61,7 @@ class TestRunSmartCTL(MAASTestCase):
         self.assertThat(self.mock_print, MockNotCalled())
 
     def test_output(self):
-        self.assertEquals(
+        self.assertEqual(
             self.output,
             smartctl.run_smartctl(self.blockdevice, self.args, output=True),
         )
@@ -85,7 +85,7 @@ class TestRunStorCLI(MAASTestCase):
         self.args = [factory.make_name("arg") for _ in range(3)]
 
     def test_default(self):
-        self.assertEquals(self.output, smartctl.run_storcli(self.args))
+        self.assertEqual(self.output, smartctl.run_storcli(self.args))
         self.assertThat(
             self.mock_check_output,
             MockCalledOnceWith(
@@ -97,7 +97,7 @@ class TestRunStorCLI(MAASTestCase):
 
     def test_using_alt_path(self):
         self.patch(smartctl.os.path, "exists").return_value = True
-        self.assertEquals(self.output, smartctl.run_storcli(self.args))
+        self.assertEqual(self.output, smartctl.run_storcli(self.args))
         self.assertThat(
             self.mock_check_output,
             MockCalledOnceWith(
@@ -108,7 +108,7 @@ class TestRunStorCLI(MAASTestCase):
         self.assertThat(self.mock_print, MockNotCalled())
 
     def test_output(self):
-        self.assertEquals(self.output, smartctl.run_storcli(self.args, True))
+        self.assertEqual(self.output, smartctl.run_storcli(self.args, True))
         self.assertThat(
             self.mock_check_output,
             MockCalledOnceWith(
@@ -122,12 +122,12 @@ class TestRunStorCLI(MAASTestCase):
 class TestMakeDeviceName(MAASTestCase):
     def test_blockdevice(self):
         blockdevice = factory.make_name("blockdevice")
-        self.assertEquals(blockdevice, smartctl.make_device_name(blockdevice))
+        self.assertEqual(blockdevice, smartctl.make_device_name(blockdevice))
 
     def test_device(self):
         blockdevice = factory.make_name("blockdevice")
         device = factory.make_name("device")
-        self.assertEquals(
+        self.assertEqual(
             "%s %s" % (blockdevice, device),
             smartctl.make_device_name(blockdevice, device),
         )
@@ -182,7 +182,7 @@ class TestFindMatchingMegaRAIDController(MAASTestCase):
             scsi_id,
             scsi_id,
         )
-        self.assertEquals(
+        self.assertEqual(
             1,
             smartctl.find_matching_megaraid_controller(
                 factory.make_name("blockdevice")

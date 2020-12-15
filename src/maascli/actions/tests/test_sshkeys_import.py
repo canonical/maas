@@ -39,14 +39,14 @@ class TestSSHKeysImportAction(MAASTestCase):
         )
         expected_data = ("keysource", ks)
         data = action.name_value_pair(ks)
-        self.assertEquals(data, expected_data)
+        self.assertEqual(data, expected_data)
 
     def test_name_value_pair_returns_sshkey_creds_tuple_for_no_protocol(self):
         action = self.make_sshkeys_import_action()
         ks = factory.make_name("user-id")
         expected_data = ("keysource", ks)
         data = action.name_value_pair(ks)
-        self.assertEquals(data, expected_data)
+        self.assertEqual(data, expected_data)
 
     def test_name_value_pair_returns_sshkey_creds_tuple_for_no_input(self):
         action = self.make_sshkeys_import_action()

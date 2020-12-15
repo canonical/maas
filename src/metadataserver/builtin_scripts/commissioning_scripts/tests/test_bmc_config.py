@@ -1424,9 +1424,9 @@ class TestWedge(MAASTestCase):
             b"8: eth0    inet fe80::ff:fe00:2/64 brd 10.0.0.255 scope global "
             b"eth0\\       valid_lft forever preferred_lft forever"
         )
-        self.assertEquals("fe80::1%eth0", self.wedge._wedge_local_addr)
+        self.assertEqual("fe80::1%eth0", self.wedge._wedge_local_addr)
         # Call multiple times to verify caching
-        self.assertEquals(
+        self.assertEqual(
             self.wedge._wedge_local_addr, self.wedge._wedge_local_addr
         )
         self.assertThat(self.mock_check_output, MockCalledOnce())
@@ -1478,9 +1478,9 @@ class TestWedge(MAASTestCase):
         )
         mock_client.exec_command.return_value = None, mock_stdout, None
 
-        self.assertEquals("10.0.0.10", self.wedge.get_bmc_ip())
+        self.assertEqual("10.0.0.10", self.wedge.get_bmc_ip())
         # Call multiple times to verify caching
-        self.assertEquals(self.wedge.get_bmc_ip(), self.wedge.get_bmc_ip())
+        self.assertEqual(self.wedge.get_bmc_ip(), self.wedge.get_bmc_ip())
         self.assertThat(mock_ssh_client, MockCalledOnce())
         self.assertThat(
             mock_client.set_missing_host_key_policy,

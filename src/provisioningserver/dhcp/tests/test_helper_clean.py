@@ -93,4 +93,4 @@ class TestDHCPClean(MAASTestCase):
     def test_removes_hosts_from_leases_file(self):
         path = self.make_file(contents=LEASES_FILE_WITH_HOSTS)
         call_and_check(["%s/scripts/maas-dhcp-helper" % root, "clean", path])
-        self.assertEquals(LEASES_FILE_WITHOUT_HOSTS, read_text_file(path))
+        self.assertEqual(LEASES_FILE_WITHOUT_HOSTS, read_text_file(path))

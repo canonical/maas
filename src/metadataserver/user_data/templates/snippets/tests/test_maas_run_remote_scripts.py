@@ -285,10 +285,10 @@ class TestOutputAndSend(MAASTestCase):
         )
         for script in scripts:
             script_error = "%s\n" % error.format(**script)
-            self.assertEquals(
+            self.assertEqual(
                 script_error, open(script["combined_path"], "r").read()
             )
-            self.assertEquals(
+            self.assertEqual(
                 script_error, open(script["stderr_path"], "r").read()
             )
 
@@ -322,13 +322,13 @@ class TestInstallDependencies(MAASTestCase):
                 factory.make_name("status"),
             )
         )
-        self.assertEquals(
+        self.assertEqual(
             script["stdout"], open(script["stdout_path"], "r").read()
         )
-        self.assertEquals(
+        self.assertEqual(
             script["stderr"], open(script["stderr_path"], "r").read()
         )
-        self.assertEquals(
+        self.assertEqual(
             script["combined"], open(script["combined_path"], "r").read()
         )
 
@@ -351,13 +351,13 @@ class TestInstallDependencies(MAASTestCase):
                 status,
             )
         )
-        self.assertEquals(
+        self.assertEqual(
             script["stdout"], open(script["stdout_path"], "r").read()
         )
-        self.assertEquals(
+        self.assertEqual(
             script["stderr"], open(script["stderr_path"], "r").read()
         )
-        self.assertEquals(
+        self.assertEqual(
             script["combined"], open(script["combined_path"], "r").read()
         )
         for script in scripts:
@@ -401,13 +401,13 @@ class TestInstallDependencies(MAASTestCase):
                 False,
             )
         )
-        self.assertEquals(
+        self.assertEqual(
             script["stdout"], open(script["stdout_path"], "r").read()
         )
-        self.assertEquals(
+        self.assertEqual(
             script["stderr"], open(script["stderr_path"], "r").read()
         )
-        self.assertEquals(
+        self.assertEqual(
             script["combined"], open(script["combined_path"], "r").read()
         )
 
@@ -830,7 +830,7 @@ class TestInstallDependencies(MAASTestCase):
         with open(
             os.path.join(scripts[0]["download_path"], "test-file"), "rb"
         ) as f:
-            self.assertEquals(file_content, f.read())
+            self.assertEqual(file_content, f.read())
 
     def test_install_dependencies_url_zip(self):
         self.patch(maas_run_remote_scripts, "run_and_check")
@@ -849,7 +849,7 @@ class TestInstallDependencies(MAASTestCase):
         with open(
             os.path.join(scripts[0]["download_path"], "test-file"), "rb"
         ) as f:
-            self.assertEquals(file_content, f.read())
+            self.assertEqual(file_content, f.read())
 
     def test_install_dependencies_url_deb(self):
         mock_run_and_check = self.patch(
@@ -1052,7 +1052,7 @@ class TestCustomNetworking(MAASTestCase):
 
         with custom_networking:
             # Verify config files where moved into place
-            self.assertEquals(
+            self.assertEqual(
                 netplan_yaml_content,
                 open(
                     os.path.join(self.netplan_dir, "netplan.yaml"), "r"
@@ -1063,7 +1063,7 @@ class TestCustomNetworking(MAASTestCase):
                     os.path.join(self.netplan_dir, "50-cloud-init.yaml")
                 )
             )
-            self.assertEquals(
+            self.assertEqual(
                 ephemeral_config_content,
                 open(
                     os.path.join(
@@ -1105,7 +1105,7 @@ class TestCustomNetworking(MAASTestCase):
 
         with custom_networking:
             # Verify config files where moved into place
-            self.assertEquals(
+            self.assertEqual(
                 netplan_yaml_content,
                 open(
                     os.path.join(self.netplan_dir, "netplan.yaml"), "r"
@@ -1116,7 +1116,7 @@ class TestCustomNetworking(MAASTestCase):
                     os.path.join(self.netplan_dir, "50-cloud-init.yaml")
                 )
             )
-            self.assertEquals(
+            self.assertEqual(
                 ephemeral_config_content,
                 open(
                     os.path.join(
@@ -1246,7 +1246,7 @@ class TestCustomNetworking(MAASTestCase):
         custom_networking._apply_ephemeral_netplan()
 
         self.assertFalse(os.path.exists(backup_dir))
-        self.assertEquals(
+        self.assertEqual(
             ephemeral_config_content,
             open(
                 os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
@@ -1285,7 +1285,7 @@ class TestCustomNetworking(MAASTestCase):
         custom_networking._apply_ephemeral_netplan()
 
         self.assertFalse(os.path.exists(backup_dir))
-        self.assertEquals(
+        self.assertEqual(
             ephemeral_config_content,
             open(
                 os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
@@ -1327,7 +1327,7 @@ class TestCustomNetworking(MAASTestCase):
         custom_networking._apply_ephemeral_netplan()
 
         self.assertFalse(os.path.exists(backup_dir))
-        self.assertEquals(
+        self.assertEqual(
             ephemeral_config_content,
             open(
                 os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
@@ -1369,7 +1369,7 @@ class TestCustomNetworking(MAASTestCase):
         custom_networking._apply_ephemeral_netplan()
 
         self.assertFalse(os.path.exists(backup_dir))
-        self.assertEquals(
+        self.assertEqual(
             ephemeral_config_content,
             open(
                 os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
@@ -1651,7 +1651,7 @@ class TestParseParameters(MAASTestCase):
         self.assertRaises(KeyError, get_block_devices)
 
     def test_udev_decode(self):
-        self.assertEquals(
+        self.assertEqual(
             "QEMU HARDDISK", udev_decode("QEMU\x20HARDDISK\x20\x20\x20")
         )
 
@@ -2442,14 +2442,14 @@ class TestRunScript(MAASTestCase):
         run_script(script, scripts_dir)
 
         env = mock_popen.call_args[1]["env"]
-        self.assertEquals(script["combined_path"], env["OUTPUT_COMBINED_PATH"])
-        self.assertEquals(script["stdout_path"], env["OUTPUT_STDOUT_PATH"])
-        self.assertEquals(script["stderr_path"], env["OUTPUT_STDERR_PATH"])
-        self.assertEquals(script["result_path"], env["RESULT_PATH"])
-        self.assertEquals(script["download_path"], env["DOWNLOAD_PATH"])
-        self.assertEquals(str(script["timeout_seconds"]), env["RUNTIME"])
-        self.assertEquals(str(script["has_started"]), env["HAS_STARTED"])
-        self.assertEquals(script["bmc_config_path"], env["BMC_CONFIG_PATH"])
+        self.assertEqual(script["combined_path"], env["OUTPUT_COMBINED_PATH"])
+        self.assertEqual(script["stdout_path"], env["OUTPUT_STDOUT_PATH"])
+        self.assertEqual(script["stderr_path"], env["OUTPUT_STDERR_PATH"])
+        self.assertEqual(script["result_path"], env["RESULT_PATH"])
+        self.assertEqual(script["download_path"], env["DOWNLOAD_PATH"])
+        self.assertEqual(str(script["timeout_seconds"]), env["RUNTIME"])
+        self.assertEqual(str(script["has_started"]), env["HAS_STARTED"])
+        self.assertEqual(script["bmc_config_path"], env["BMC_CONFIG_PATH"])
         self.assertIn("PATH", env)
         self.assertThat(
             self.mock_check_link_connected, MockCalledOnceWith(script)
@@ -3869,7 +3869,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         written_file_content = open(
             os.path.join(scripts_dir, "test-file"), "rb"
         ).read()
-        self.assertEquals(file_content, written_file_content)
+        self.assertEqual(file_content, written_file_content)
 
     def test_download_and_extract_tar_returns_false_on_no_content(self):
         self.patch(maas_run_remote_scripts.sys.stdout, "write")

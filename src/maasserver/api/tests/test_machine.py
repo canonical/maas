@@ -854,7 +854,7 @@ class TestMachineAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         response_content = json_load_bytes(response.content)
-        self.assertEquals("virsh", response_content["power_type"])
+        self.assertEqual("virsh", response_content["power_type"])
 
     def test_POST_deploy_allocates_ready_machines(self):
         self.patch(node_module.Node, "_start")

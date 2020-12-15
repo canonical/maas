@@ -209,7 +209,7 @@ class TestTagAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status`, 'special_filesystems' and
         # 'resource_pool' the number of queries is not the same but it is
         # proportional to the number of machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 7))
+        self.assertEqual(num_queries1, num_queries2 - (3 * 7))
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
@@ -282,7 +282,7 @@ class TestTagAPI(APITestCase.ForUser):
         # `default_gateways`, `health_status` and 'resource_pool', the number
         # of queries is not the same but it is proportional to the number of
         # machines.
-        self.assertEquals(num_queries1, num_queries2 - (3 * 7))
+        self.assertEqual(num_queries1, num_queries2 - (3 * 7))
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()
@@ -345,7 +345,7 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_2)),
             ],
         )
-        self.assertEquals(num_queries1, num_queries2)
+        self.assertEqual(num_queries1, num_queries2)
 
     def test_GET_rack_controllers_returns_rack_controllers(self):
         self.become_admin()
@@ -413,7 +413,7 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_2)),
             ],
         )
-        self.assertEquals(num_queries1, num_queries2 - (3 * 3))
+        self.assertEqual(num_queries1, num_queries2 - (3 * 3))
 
     def test_GET_rack_controllers_returns_no_rack_controllers_nonadmin(self):
         tag = factory.make_Tag()
@@ -506,7 +506,7 @@ class TestTagAPI(APITestCase.ForUser):
                 len(extract_system_ids(parsed_result_2)),
             ],
         )
-        self.assertEquals(num_queries1, num_queries2 - 6)
+        self.assertEqual(num_queries1, num_queries2 - 6)
 
     def test_GET_region_controllers_returns_no_controllers_nonadmin(self):
         tag = factory.make_Tag()

@@ -162,7 +162,7 @@ class TestIPIsStickyOrAuto(MAASServerTestCase):
 
     def test_returns_correct_result(self):
         ip_address = factory.make_StaticIPAddress(alloc_type=self.alloc_type)
-        self.assertEquals(self.result, dhcp.ip_is_sticky_or_auto(ip_address))
+        self.assertEqual(self.result, dhcp.ip_is_sticky_or_auto(ip_address))
 
 
 class TestGetBestInterface(MAASServerTestCase):
@@ -182,7 +182,7 @@ class TestGetBestInterface(MAASServerTestCase):
         bond = factory.make_Interface(
             INTERFACE_TYPE.BOND, node=rack_controller, parents=[nic0, nic1]
         )
-        self.assertEquals(bond, dhcp.get_best_interface([physical, bond]))
+        self.assertEqual(bond, dhcp.get_best_interface([physical, bond]))
 
     def test_returns_physical_over_vlan(self):
         rack_controller = factory.make_RackController()
@@ -192,7 +192,7 @@ class TestGetBestInterface(MAASServerTestCase):
         vlan = factory.make_Interface(
             INTERFACE_TYPE.VLAN, node=rack_controller, parents=[physical]
         )
-        self.assertEquals(physical, dhcp.get_best_interface([physical, vlan]))
+        self.assertEqual(physical, dhcp.get_best_interface([physical, vlan]))
 
     def test_returns_first_interface_when_all_physical(self):
         rack_controller = factory.make_RackController()
@@ -202,7 +202,7 @@ class TestGetBestInterface(MAASServerTestCase):
             )
             for _ in range(3)
         ]
-        self.assertEquals(interfaces[0], dhcp.get_best_interface(interfaces))
+        self.assertEqual(interfaces[0], dhcp.get_best_interface(interfaces))
 
     def test_returns_first_interface_when_all_vlan(self):
         rack_controller = factory.make_RackController()
@@ -215,7 +215,7 @@ class TestGetBestInterface(MAASServerTestCase):
             )
             for _ in range(3)
         ]
-        self.assertEquals(interfaces[0], dhcp.get_best_interface(interfaces))
+        self.assertEqual(interfaces[0], dhcp.get_best_interface(interfaces))
 
 
 class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
@@ -295,7 +295,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
         )
-        self.assertEquals(
+        self.assertEqual(
             [interface],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -353,7 +353,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=subnet_with_dynamic_range,
             interface=interface_two,
         )
-        self.assertEquals(
+        self.assertEqual(
             [interface_two, interface_one],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -427,7 +427,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        self.assertEquals(
+        self.assertEqual(
             [],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -460,7 +460,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=other_subnet,
             interface=other_interface,
         )
-        self.assertEquals(
+        self.assertEqual(
             [interface],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -493,7 +493,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=other_subnet,
             interface=other_interface,
         )
-        self.assertEquals(
+        self.assertEqual(
             [interface],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -511,7 +511,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
         )
-        self.assertEquals(
+        self.assertEqual(
             [interface],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller,
@@ -673,7 +673,7 @@ class TestGenManagedVLANsFor(MAASServerTestCase):
 
         # Should only contain the subnets that are managed by the rack
         # controller and the best interface should have been selected.
-        self.assertEquals(
+        self.assertEqual(
             {vlan_one, vlan_two},
             set(dhcp.gen_managed_vlans_for(rack_controller)),
         )
@@ -702,7 +702,7 @@ class TestGenManagedVLANsFor(MAASServerTestCase):
 
         # Should only contain the subnets that are managed by the rack
         # controller and the best interface should have been selected.
-        self.assertEquals(
+        self.assertEqual(
             relay_vlans.union(set([vlan_one])),
             set(dhcp.gen_managed_vlans_for(rack_controller)),
         )
@@ -810,7 +810,7 @@ class TestIPIsOnVLAN(MAASServerTestCase):
             # make_StaticIPAddress always creates a subnet so set it to None.
             ip_address.subnet = None
             ip_address.save()
-        self.assertEquals(
+        self.assertEqual(
             self.result, dhcp.ip_is_on_vlan(ip_address, expected_vlan)
         )
 
@@ -825,7 +825,7 @@ class TestGetIPAddressForInterface(MAASServerTestCase):
         ip_address = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
         )
-        self.assertEquals(
+        self.assertEqual(
             ip_address, dhcp.get_ip_address_for_interface(interface, vlan)
         )
 
@@ -854,7 +854,7 @@ class TestGetIPAddressForRackController(MAASServerTestCase):
         ip_address = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet, interface=interface
         )
-        self.assertEquals(
+        self.assertEqual(
             ip_address,
             dhcp.get_ip_address_for_rack_controller(rack_controller, vlan),
         )
@@ -883,7 +883,7 @@ class TestGetIPAddressForRackController(MAASServerTestCase):
             subnet=subnet,
             interface=bond_interface,
         )
-        self.assertEquals(
+        self.assertEqual(
             bond_ip_address,
             dhcp.get_ip_address_for_rack_controller(rack_controller, vlan),
         )
@@ -1120,7 +1120,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         self.assertItemsEqual(
             servers[0:-1], [IPAddress(r1_address.ip), IPAddress(r2_address.ip)]
         )
-        self.assertEquals(IPAddress("10.0.0.1"), servers[-1])
+        self.assertEqual(IPAddress("10.0.0.1"), servers[-1])
 
     def test_doesnt_include_remote_region_ip(self):
         # Regression test for LP:1881133
@@ -1584,7 +1584,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             [factory.make_name("ntp")],
             default_domain,
         )
-        self.assertEquals(
+        self.assertEqual(
             [
                 {"ip_range_low": "10.9.8.11", "ip_range_high": "10.9.8.20"},
                 {"ip_range_low": "10.9.8.21", "ip_range_high": "10.9.8.30"},
@@ -1613,7 +1613,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             default_domain,
             failover_peer=failover_peer,
         )
-        self.assertEquals(
+        self.assertEqual(
             [
                 {
                     "ip_range_low": "10.9.8.11",
@@ -2016,7 +2016,7 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             interface=secondary_interface,
         )
         failover_peer_name = "failover-vlan-%d" % vlan.id
-        self.assertEquals(
+        self.assertEqual(
             (
                 failover_peer_name,
                 {
@@ -2056,7 +2056,7 @@ class TestMakeFailoverPeerConfig(MAASServerTestCase):
             interface=secondary_interface,
         )
         failover_peer_name = "failover-vlan-%d" % vlan.id
-        self.assertEquals(
+        self.assertEqual(
             (
                 failover_peer_name,
                 {
@@ -2136,7 +2136,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             dhcp_snippets=DHCPSnippet.objects.all(),
         )
 
-        self.assertEquals(
+        self.assertEqual(
             {
                 "name": "failover-vlan-%d" % ha_vlan.id,
                 "mode": "primary",
@@ -2145,7 +2145,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             },
             observed_failover,
         )
-        self.assertEquals(
+        self.assertEqual(
             sorted(
                 [
                     {
@@ -2297,7 +2297,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
         for observed_subnet in observed_subnets:
             del observed_subnet["dns_servers"]
 
-        self.assertEquals(
+        self.assertEqual(
             {
                 "name": "failover-vlan-%d" % ha_vlan.id,
                 "mode": "primary",
@@ -2306,7 +2306,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             },
             observed_failover,
         )
-        self.assertEquals(
+        self.assertEqual(
             sorted(
                 [
                     {
@@ -3195,7 +3195,7 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         rack_controller, config = self.create_rack_controller()
         self.prepare_rpc(rack_controller)
 
-        self.assertEquals([], dhcp.validate_dhcp_config())
+        self.assertEqual([], dhcp.validate_dhcp_config())
 
     def test_returns_errors_when_invalid(self):
         rack_controller, config = self.create_rack_controller()

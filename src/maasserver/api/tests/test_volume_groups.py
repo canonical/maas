@@ -189,7 +189,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         volume_group = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
         )
-        self.assertEquals(
+        self.assertEqual(
             "/MAAS/api/2.0/nodes/%s/volume-group/%s/"
             % (node.system_id, volume_group.id),
             get_volume_group_uri(volume_group, node, False),

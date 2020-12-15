@@ -58,9 +58,9 @@ class TestZoneHandler(MAASServerTestCase):
             factory.make_RegionController(zone=zone)
         result = handler.get({"id": zone.id})
         self.assertEqual(self.dehydrate_zone(zone), result)
-        self.assertEquals(3, result["machines_count"])
-        self.assertEquals(3, result["devices_count"])
-        self.assertEquals(6, result["controllers_count"])
+        self.assertEqual(3, result["machines_count"])
+        self.assertEqual(3, result["devices_count"])
+        self.assertEqual(6, result["controllers_count"])
 
     def test_get_query_count(self):
         user = factory.make_User()

@@ -75,8 +75,8 @@ class TestStatusHandlerResource(MAASTestCase):
         resource = StatusHandlerResource(sentinel.status_worker)
         self.assertIs(sentinel.status_worker, resource.worker)
         self.assertTrue(resource.isLeaf)
-        self.assertEquals([b"POST"], resource.allowedMethods)
-        self.assertEquals(
+        self.assertEqual([b"POST"], resource.allowedMethods)
+        self.assertEqual(
             ["event_type", "origin", "name", "description"],
             resource.requiredMessageKeys,
         )
@@ -85,16 +85,16 @@ class TestStatusHandlerResource(MAASTestCase):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = DummyRequest([])
         output = resource.render_POST(request)
-        self.assertEquals(b"", output)
-        self.assertEquals(401, request.responseCode)
+        self.assertEqual(b"", output)
+        self.assertEqual(401, request.responseCode)
 
     def test_render_POST_empty_authorization(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = DummyRequest([])
         request.requestHeaders.addRawHeader(b"authorization", "")
         output = resource.render_POST(request)
-        self.assertEquals(b"", output)
-        self.assertEquals(401, request.responseCode)
+        self.assertEqual(b"", output)
+        self.assertEqual(401, request.responseCode)
 
     def test_render_POST_bad_authorization(self):
         resource = StatusHandlerResource(sentinel.status_worker)
@@ -103,39 +103,39 @@ class TestStatusHandlerResource(MAASTestCase):
             b"authorization", factory.make_name("auth")
         )
         output = resource.render_POST(request)
-        self.assertEquals(b"", output)
-        self.assertEquals(401, request.responseCode)
+        self.assertEqual(b"", output)
+        self.assertEqual(401, request.responseCode)
 
     def test_render_POST_body_must_be_ascii(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = self.make_request(content=b"\xe9")
         output = resource.render_POST(request)
-        self.assertEquals(
+        self.assertEqual(
             b"Status payload must be ASCII-only: 'ascii' codec can't "
             b"decode byte 0xe9 in position 0: ordinal not in range(128)",
             output,
         )
-        self.assertEquals(400, request.responseCode)
+        self.assertEqual(400, request.responseCode)
 
     def test_render_POST_body_must_be_valid_json(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = self.make_request(content=b"testing not json")
         output = resource.render_POST(request)
-        self.assertEquals(
+        self.assertEqual(
             b"Status payload is not valid JSON:\ntesting not json\n\n", output
         )
-        self.assertEquals(400, request.responseCode)
+        self.assertEqual(400, request.responseCode)
 
     def test_render_POST_validates_required_keys(self):
         resource = StatusHandlerResource(sentinel.status_worker)
         request = self.make_request(content=json.dumps({}).encode("ascii"))
         output = resource.render_POST(request)
-        self.assertEquals(
+        self.assertEqual(
             b"Missing parameter(s) event_type, origin, name, description "
             b"in status message.",
             output,
         )
-        self.assertEquals(400, request.responseCode)
+        self.assertEqual(400, request.responseCode)
 
     def test_render_POST_queue_messages(self):
         status_worker = Mock()
@@ -155,8 +155,8 @@ class TestStatusHandlerResource(MAASTestCase):
             content=json.dumps(message).encode("ascii"), token=token
         )
         output = resource.render_POST(request)
-        self.assertEquals(NOT_DONE_YET, output)
-        self.assertEquals(204, request.responseCode)
+        self.assertEqual(NOT_DONE_YET, output)
+        self.assertEqual(204, request.responseCode)
         self.assertThat(
             status_worker.queueMessage, MockCalledOnceWith(token, message)
         )

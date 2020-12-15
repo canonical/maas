@@ -501,7 +501,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler._script_results[cached_node.id] = cached_content
         handler._cache_pks([node])
 
-        self.assertEquals(
+        self.assertEqual(
             script_result.id,
             handler._script_results[node.id][
                 script_result.script.hardware_type
@@ -515,7 +515,7 @@ class TestMachineHandler(MAASServerTestCase):
                 for result in results
             ],
         )
-        self.assertEquals(
+        self.assertEqual(
             cached_content, handler._script_results[cached_node.id]
         )
 
@@ -704,8 +704,8 @@ class TestMachineHandler(MAASServerTestCase):
         _, _, ret = handler.on_listen_for_active_pk(
             "update", node.system_id, node
         )
-        self.assertEquals(ret["commissioning_status"]["passed"], 10)
-        self.assertEquals(ret["testing_status"]["passed"], 10)
+        self.assertEqual(ret["commissioning_status"]["passed"], 10)
+        self.assertEqual(ret["testing_status"]["passed"], 10)
 
     def test_cache_clears_on_reload(self):
         owner = factory.make_User()
@@ -799,11 +799,11 @@ class TestMachineHandler(MAASServerTestCase):
             if disk["id"] == node.boot_disk.id:
                 for partition in disk["partitions"]:
                     if partition["name"].endswith("-part3"):
-                        self.assertEquals(
+                        self.assertEqual(
                             "VMFS extent for datastore1", partition["used_for"]
                         )
                     else:
-                        self.assertEquals(
+                        self.assertEqual(
                             "VMware ESXi OS partition", partition["used_for"]
                         )
                         self.assertDictEqual(
@@ -1694,7 +1694,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
         observed = handler.get_summary_xml({"system_id": node.system_id})
-        self.assertEquals("", observed)
+        self.assertEqual("", observed)
 
     def test_dehydrate_summary_xml_returns_data(self):
         owner = factory.make_User()
@@ -1708,7 +1708,7 @@ class TestMachineHandler(MAASServerTestCase):
         script_result.store_result(exit_status=0, stdout=lldp_data)
         observed = handler.get_summary_xml({"system_id": node.system_id})
         probed_details = merge_details_cleanly(get_single_probed_details(node))
-        self.assertEquals(
+        self.assertEqual(
             etree.tostring(probed_details, encoding=str, pretty_print=True),
             observed,
         )
@@ -1718,7 +1718,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
         observed = handler.get_summary_yaml({"system_id": node.system_id})
-        self.assertEquals("", observed)
+        self.assertEqual("", observed)
 
     def test_dehydrate_summary_yaml_returns_data(self):
         owner = factory.make_User()
@@ -4326,7 +4326,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
         power_state = yield machine_handler.check_power(
             {"system_id": node.system_id}
         )
-        self.assertEquals(power_state, POWER_STATE.UNKNOWN)
+        self.assertEqual(power_state, POWER_STATE.UNKNOWN)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4339,7 +4339,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
         power_state = yield machine_handler.check_power(
             {"system_id": node.system_id}
         )
-        self.assertEquals(power_state, POWER_STATE.UNKNOWN)
+        self.assertEqual(power_state, POWER_STATE.UNKNOWN)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -4353,7 +4353,7 @@ class TestMachineHandlerCheckPower(MAASTransactionServerTestCase):
         power_state = yield machine_handler.check_power(
             {"system_id": node.system_id}
         )
-        self.assertEquals(power_state, POWER_STATE.ERROR)
+        self.assertEqual(power_state, POWER_STATE.ERROR)
         self.assertThat(
             mock_log_err,
             MockCalledOnceWith(

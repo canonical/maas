@@ -472,7 +472,7 @@ class TestPreseedContext(MAASServerTestCase):
         remote_syslog = "192.168.1.1:514"
         Config.objects.set_config("remote_syslog", remote_syslog)
         context = get_preseed_context(make_HttpRequest())
-        self.assertEquals(remote_syslog, context["syslog_host_port"])
+        self.assertEqual(remote_syslog, context["syslog_host_port"])
 
     def test_get_preseed_context_uses_maas_syslog_port(self):
         syslog_port = factory.pick_port()

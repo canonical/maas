@@ -573,9 +573,9 @@ class TestPostgresListenerService(MAASServerTestCase):
         listener = PostgresListenerService()
         channel = factory.make_name("channel", sep="_").lower()
         listener.register(channel, sentinel.handler)
-        self.assertEquals({channel: [sentinel.handler]}, listener.listeners)
+        self.assertEqual({channel: [sentinel.handler]}, listener.listeners)
         listener.unregister(channel, sentinel.handler)
-        self.assertEquals({}, listener.listeners)
+        self.assertEqual({}, listener.listeners)
 
     def test_unregister_removes_handler_others(self):
         listener = PostgresListenerService()
@@ -583,7 +583,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         listener.register(channel, sentinel.handler1)
         listener.register(channel, sentinel.handler2)
         listener.unregister(channel, sentinel.handler2)
-        self.assertEquals({channel: [sentinel.handler1]}, listener.listeners)
+        self.assertEqual({channel: [sentinel.handler1]}, listener.listeners)
 
     @wait_for_reactor
     @inlineCallbacks

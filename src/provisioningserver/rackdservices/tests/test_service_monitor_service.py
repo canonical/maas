@@ -203,7 +203,7 @@ class TestServiceMonitorService(MAASTestCase):
             sentinel.client_service, Clock()
         )
         observed_services = yield monitor_service._buildServices({})
-        self.assertEquals(
+        self.assertEqual(
             monitor_service.ALWAYS_RUNNING_SERVICES, observed_services
         )
 
@@ -221,4 +221,4 @@ class TestServiceMonitorService(MAASTestCase):
         expected_services.append(
             {"name": service.name, "status": "running", "status_info": ""}
         )
-        self.assertEquals(expected_services, observed_services)
+        self.assertEqual(expected_services, observed_services)

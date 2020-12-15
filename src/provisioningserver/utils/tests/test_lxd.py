@@ -406,7 +406,7 @@ SAMPLE_LXD_NETWORKS = {
 
 class TestLXDUtils(MAASTestCase):
     def test_lxd_cpu_speed(self):
-        self.assertEquals(2400, lxd_cpu_speed(SAMPLE_LXD_RESOURCES))
+        self.assertEqual(2400, lxd_cpu_speed(SAMPLE_LXD_RESOURCES))
 
 
 class TestParseLXDCPUInfo(MAASTestCase):

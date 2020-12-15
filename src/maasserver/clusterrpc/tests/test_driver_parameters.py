@@ -214,7 +214,7 @@ class TestMakeFormField(MAASServerTestCase):
             "default": "some default",
         }
         django_field = make_form_field(json_field)
-        self.assertEquals(json_field["default"], django_field.initial)
+        self.assertEqual(json_field["default"], django_field.initial)
 
 
 class TestMakeSettingField(MAASServerTestCase):

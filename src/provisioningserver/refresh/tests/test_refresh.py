@@ -35,7 +35,7 @@ class TestHelpers(MAASTestCase):
             "%s/%s" % (arch, subarch)
         ).encode("utf-8")
         ret_arch = refresh.get_architecture()
-        self.assertEquals("%s/generic" % arch, ret_arch)
+        self.assertEqual("%s/generic" % arch, ret_arch)
 
     def test_get_architecture_returns_arch_with_subarch(self):
         arch = factory.make_name("arch")
@@ -45,7 +45,7 @@ class TestHelpers(MAASTestCase):
             refresh, "call_and_check"
         ).return_value = architecture.encode("utf-8")
         ret_arch = refresh.get_architecture()
-        self.assertEquals(architecture, ret_arch)
+        self.assertEqual(architecture, ret_arch)
 
 
 class TestRefresh(MAASTestCase):

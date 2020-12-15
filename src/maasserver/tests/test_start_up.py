@@ -127,7 +127,7 @@ class TestInnerStartUp(MAASServerTestCase):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         ubuntu = UbuntuOS()
-        self.assertEquals(
+        self.assertEqual(
             Config.objects.get_config("commissioning_distro_series"),
             ubuntu.get_default_commissioning_release(),
         )
@@ -142,7 +142,7 @@ class TestInnerStartUp(MAASServerTestCase):
         Config.objects.set_config("commissioning_distro_series", release)
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        self.assertEquals(
+        self.assertEqual(
             Config.objects.get_config("commissioning_distro_series"), release
         )
         self.assertFalse(

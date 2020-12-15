@@ -284,7 +284,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         handler = BootResourceHandler(owner, {}, None)
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertEquals(
+        self.assertEqual(
             commissioning_series.value,
             json_obj["ubuntu"]["commissioning_series"],
         )
@@ -704,7 +704,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         response = handler.poll({})
         json_obj = json.loads(response)
         ubuntu_core_images = json_obj["ubuntu_core_images"]
-        self.assertEquals(
+        self.assertEqual(
             [
                 {
                     "name": "%s/%s/%s/%s"
@@ -730,7 +730,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         response = handler.poll({})
         json_obj = json.loads(response)
         ubuntu_core_images = json_obj["ubuntu_core_images"]
-        self.assertEquals(
+        self.assertEqual(
             [
                 {
                     "name": "%s/%s/%s/%s"
@@ -750,7 +750,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         response = handler.poll({})
         json_obj = json.loads(response)
         other_images = json_obj["other_images"]
-        self.assertEquals(
+        self.assertEqual(
             [
                 {
                     "name": "%s/%s/%s/%s"
@@ -776,7 +776,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         response = handler.poll({})
         json_obj = json.loads(response)
         other_images = json_obj["other_images"]
-        self.assertEquals(
+        self.assertEqual(
             [
                 {
                     "name": "%s/%s/%s/%s"
@@ -796,7 +796,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         factory.make_BootSourceCache(os="ubuntu-core")
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertEquals([], json_obj["other_images"])
+        self.assertEqual([], json_obj["other_images"])
 
     def test_other_images_filters_out_bootloaders(self):
         owner = factory.make_admin()
@@ -806,7 +806,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         )
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertEquals([], json_obj["other_images"])
+        self.assertEqual([], json_obj["other_images"])
 
     def test_prefers_title_from_boot_resource_extra(self):
         owner = factory.make_admin()
@@ -815,7 +815,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.make_other_resource(extra={"title": title})
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertEquals(title, json_obj["resources"][0]["title"])
+        self.assertEqual(title, json_obj["resources"][0]["title"])
 
 
 class TestBootResourceStopImport(MAASTransactionServerTestCase):
@@ -830,7 +830,7 @@ class TestBootResourceStopImport(MAASTransactionServerTestCase):
         mock_stop_import = self.patch_stop_import_resources()
         result = handler.stop_import({})
         self.assertThat(mock_stop_import, MockCalledOnceWith())
-        self.assertEquals(handler.poll({}), result)
+        self.assertEqual(handler.poll({}), result)
 
 
 class TestBootResourceSaveUbuntu(

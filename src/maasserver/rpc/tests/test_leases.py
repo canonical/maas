@@ -71,14 +71,12 @@ class TestUpdateLease(MAASServerTestCase):
         action = factory.make_name("action")
         kwargs = self.make_kwargs(action=action)
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
-        self.assertEquals("Unknown lease action: %s" % action, str(error))
+        self.assertEqual("Unknown lease action: %s" % action, str(error))
 
     def test_raises_LeaseUpdateError_for_no_subnet(self):
         kwargs = self.make_kwargs()
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
-        self.assertEquals(
-            "No subnet exists for: %s" % kwargs["ip"], str(error)
-        )
+        self.assertEqual("No subnet exists for: %s" % kwargs["ip"], str(error))
 
     def test_raises_LeaseUpdateError_for_ipv4_mismatch(self):
         ipv6_network = factory.make_ipv6_network()
@@ -86,7 +84,7 @@ class TestUpdateLease(MAASServerTestCase):
         kwargs = self.make_kwargs(subnet=subnet)
         kwargs["ip_family"] = "ipv4"
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
-        self.assertEquals(
+        self.assertEqual(
             "Family for the subnet does not match. Expected: ipv4", str(error)
         )
 
@@ -96,7 +94,7 @@ class TestUpdateLease(MAASServerTestCase):
         kwargs = self.make_kwargs(subnet=subnet)
         kwargs["ip_family"] = "ipv6"
         error = self.assertRaises(LeaseUpdateError, update_lease, **kwargs)
-        self.assertEquals(
+        self.assertEqual(
             "Family for the subnet does not match. Expected: ipv6", str(error)
         )
 
@@ -140,7 +138,7 @@ class TestUpdateLease(MAASServerTestCase):
             mac_address=kwargs["mac"]
         ).first()
         self.assertIsNotNone(unknown_interface)
-        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
         self.assertThat(
@@ -168,7 +166,7 @@ class TestUpdateLease(MAASServerTestCase):
             mac_address=kwargs["mac"]
         ).first()
         self.assertIsNotNone(unknown_interface)
-        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
         self.assertThat(
@@ -198,7 +196,7 @@ class TestUpdateLease(MAASServerTestCase):
             mac_address=kwargs["mac"]
         ).first()
         self.assertIsNotNone(unknown_interface)
-        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
         dnsrr = get_one(DNSResource.objects.filter(name=hostname))
@@ -232,7 +230,7 @@ class TestUpdateLease(MAASServerTestCase):
             mac_address=kwargs["mac"]
         ).first()
         self.assertIsNotNone(unknown_interface)
-        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
         self.assertThat(sip.dnsresource_set.all(), Not(Contains(sip)))
@@ -251,7 +249,7 @@ class TestUpdateLease(MAASServerTestCase):
             mac_address=kwargs["mac"]
         ).first()
         self.assertIsNotNone(unknown_interface)
-        self.assertEquals(subnet.vlan, unknown_interface.vlan)
+        self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
         self.assertThat(sip.dnsresource_set.all(), Not(Contains(sip)))

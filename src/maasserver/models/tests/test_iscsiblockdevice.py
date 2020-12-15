@@ -85,4 +85,4 @@ class TestISCSIBlockDevice(MAASServerTestCase):
             block_size=512,
             target=target,
         )
-        self.assertEquals("iscsi:%s" % target, block_device.target)
+        self.assertEqual("iscsi:%s" % target, block_device.target)

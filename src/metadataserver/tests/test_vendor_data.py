@@ -376,8 +376,8 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
             Contains("/etc/netplan/50-maas.yaml"),
         )
         # Make sure netplan's lock is removed before applying the config
-        self.assertEquals(config["runcmd"][0], "rm -rf /run/netplan")
-        self.assertEquals(config["runcmd"][1], "netplan apply --debug")
+        self.assertEqual(config["runcmd"][0], "rm -rf /run/netplan")
+        self.assertEqual(config["runcmd"][1], "netplan apply --debug")
 
 
 class TestGenerateVcenterConfiguration(MAASServerTestCase):

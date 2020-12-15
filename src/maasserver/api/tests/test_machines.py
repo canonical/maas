@@ -247,7 +247,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         validation_errors = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )["power_type"]
-        self.assertEquals(
+        self.assertEqual(
             "Select a valid choice. %s is not one of the "
             "available choices." % power_type,
             validation_errors[0],
@@ -269,7 +269,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )["system_id"]
         machine = Machine.objects.get(system_id=system_id)
-        self.assertEquals("", machine.power_type)
+        self.assertEqual("", machine.power_type)
         self.assertEqual({}, machine.power_parameters)
 
     def test_POST_handles_error_when_unable_to_access_bmc(self):
@@ -319,8 +319,8 @@ class TestMachinesAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json.loads(response.content.decode())
-        self.assertEquals(NODE_STATUS.COMMISSIONING, parsed_result["status"])
-        self.assertEquals(description, parsed_result["description"])
+        self.assertEqual(NODE_STATUS.COMMISSIONING, parsed_result["status"])
+        self.assertEqual(description, parsed_result["description"])
 
     def test_POST_starts_commissioning_with_selected_test_scripts(self):
         # Regression test for LP1707562
@@ -342,7 +342,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json.loads(response.content.decode())
-        self.assertEquals(NODE_STATUS.COMMISSIONING, parsed_result["status"])
+        self.assertEqual(NODE_STATUS.COMMISSIONING, parsed_result["status"])
         script_set = ScriptSet.objects.get(
             id=parsed_result["current_testing_result_id"]
         )
@@ -366,7 +366,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json.loads(response.content.decode())
-        self.assertEquals(NODE_STATUS.COMMISSIONING, parsed_result["status"])
+        self.assertEqual(NODE_STATUS.COMMISSIONING, parsed_result["status"])
 
     def test_POST_commission_false(self):
         # Regression test for LP:1904398
@@ -382,7 +382,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json.loads(response.content.decode())
-        self.assertEquals(NODE_STATUS.NEW, parsed_result["status"])
+        self.assertEqual(NODE_STATUS.NEW, parsed_result["status"])
 
     def test_GET_lists_machines(self):
         # The api allows for fetching the list of Machines.
@@ -457,7 +457,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 "id": pod.id,
                 "name": pod.name,

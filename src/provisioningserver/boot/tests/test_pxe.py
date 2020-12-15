@@ -135,7 +135,7 @@ class TestPXEBootMethod(MAASTestCase):
                 self.assertTrue(os.path.islink(bootloader_file_path))
             syslinux_link = os.path.join(tmp, "syslinux")
             self.assertTrue(os.path.islink(syslinux_link))
-            self.assertEquals(stream_path, os.path.realpath(syslinux_link))
+            self.assertEqual(stream_path, os.path.realpath(syslinux_link))
 
     def test_link_simplestream_bootloaders_creates_lpxelinux_and_links(self):
         method = PXEBootMethod()
@@ -178,7 +178,7 @@ class TestPXEBootMethod(MAASTestCase):
                 self.assertTrue(os.path.isfile(bootloader_file_path))
             syslinux_link = os.path.join(new_dir, "syslinux")
             self.assertTrue(os.path.islink(syslinux_link))
-            self.assertEquals(
+            self.assertEqual(
                 real_syslinux_dir, os.path.realpath(syslinux_link)
             )
 

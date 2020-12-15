@@ -352,7 +352,7 @@ class TestAtomicSymlink(MAASTestCase):
         link_name = factory.make_name("link")
         target = os.path.join(os.path.dirname(filename), link_name)
         atomic_symlink(filename, target)
-        self.assertEquals(os.path.basename(filename), os.readlink(target))
+        self.assertEqual(os.path.basename(filename), os.readlink(target))
         self.assertTrue(os.path.samefile(filename, target))
 
     def test_atomic_symlink_uses_relative_path_for_directory(self):

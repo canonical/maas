@@ -313,7 +313,7 @@ class TestRegisterRackController(MAASServerTestCase):
         version = "1.10.2"
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
         register(system_id=node.system_id, version=version)
-        self.assertEquals(version, node.as_rack_controller().version)
+        self.assertEqual(version, node.as_rack_controller().version)
 
     def test_updates_interfaces(self):
         # Interfaces are set on existing rack controllers.
@@ -467,7 +467,7 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
         )
         dhcp_ip = factory.make_ip_address()
         update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
-        self.assertEquals(dhcp_ip, reload_object(interface.vlan).external_dhcp)
+        self.assertEqual(dhcp_ip, reload_object(interface.vlan).external_dhcp)
 
     def test_logs_warning_for_external_dhcp_on_interface_no_vlan(self):
         rack_controller = factory.make_RackController(interface=False)

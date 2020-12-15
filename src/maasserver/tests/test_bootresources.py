@@ -335,8 +335,8 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         )
         response = self.get_stream_client("maas:v2:download.json")
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertEquals(kflavor, output["products"][product]["kflavor"])
-        self.assertEquals(
+        self.assertEqual(kflavor, output["products"][product]["kflavor"])
+        self.assertEqual(
             bootloader_type, output["products"][product]["bootloader-type"]
         )
         self.assertTrue(output["products"][product]["rolling"])
@@ -849,11 +849,11 @@ class TestBootResourceStore(MAASServerTestCase):
         }
         store = BootResourceStore()
         resource = store.get_or_create_boot_resource(product)
-        self.assertEquals(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
-        self.assertEquals("ubuntu-core/16-pc", resource.name)
-        self.assertEquals("amd64/generic", resource.architecture)
+        self.assertEqual(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
+        self.assertEqual("ubuntu-core/16-pc", resource.name)
+        self.assertEqual("amd64/generic", resource.architecture)
         self.assertIsNone(resource.bootloader_type)
-        self.assertEquals("pc-kernel", resource.kflavor)
+        self.assertEqual("pc-kernel", resource.kflavor)
         self.assertDictEqual({"title": "Ubuntu Core 16 PC"}, resource.extra)
 
     def test_get_or_create_boot_resource_set_creates_resource_set(self):
@@ -935,7 +935,7 @@ class TestBootResourceStore(MAASServerTestCase):
                 rfile.save()
             for rfile in resource_set.files.all():
                 self.assertIn(rfile.filename, files)
-                self.assertEquals(rfile.filetype, product["ftype"])
+                self.assertEqual(rfile.filetype, product["ftype"])
 
     def test_get_resource_file_log_identifier_returns_valid_ident(self):
         os = factory.make_name("os")
@@ -1022,7 +1022,7 @@ class TestBootResourceStore(MAASServerTestCase):
         store.delete_content_to_finalize()
         self.assertIsNone(reload_object(rfile_one))
         self.assertIsNone(reload_object(rfile_two))
-        self.assertEquals({}, store._content_to_finalize)
+        self.assertEqual({}, store._content_to_finalize)
 
     def test_finalize_does_nothing_if_resources_to_delete_hasnt_changed(self):
         self.patch(bootresources.Event.objects, "create_region_event")

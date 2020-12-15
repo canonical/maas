@@ -77,7 +77,7 @@ class TestMAASCertificates(MAASTestCase):
         self.assertTrue(os.path.exists(maas_certificates.MAAS_CERTIFICATE))
         with open(maas_certificates.MAAS_CERTIFICATE) as f:
             cert = crypto.load_certificate(crypto.FILETYPE_PEM, f.read())
-        self.assertEquals(gethostname(), cert.get_subject().CN)
+        self.assertEqual(gethostname(), cert.get_subject().CN)
         self.assertGreaterEqual(
             datetime.utcnow(),
             datetime.strptime(cert.get_notBefore().decode(), "%Y%m%d%H%M%SZ"),
@@ -119,7 +119,7 @@ class TestMAASCertificates(MAASTestCase):
         old_hash = maas_certificates.get_certificate_fingerprint()
         self.assertFalse(maas_certificates.generate_certificate_if_needed())
         new_hash = maas_certificates.get_certificate_fingerprint()
-        self.assertEquals(old_hash, new_hash)
+        self.assertEqual(old_hash, new_hash)
 
     def test_generate_certificate_if_needed_raises_exception_on_failure(self):
         self.patch(maas_certificates, "sleep")

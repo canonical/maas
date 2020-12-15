@@ -78,7 +78,7 @@ class TestSevenZTest(MAASTestCase):
             mock_yaml_safe_dump,
             MockCalledOnceWith(results, mock_open.return_value),
         )
-        self.assertEquals(returncode, 0)
+        self.assertEqual(returncode, 0)
 
     def test_run_7z_exits_if_returncode_non_zero(self):
         cmd = ["7z", "b"]

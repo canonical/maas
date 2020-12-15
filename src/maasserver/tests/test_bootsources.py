@@ -220,7 +220,7 @@ class TestHelpers(MAASServerTestCase):
         os_title = factory.make_name("os_title")
         release_title = factory.make_name("release_title")
         gadget_title = factory.make_name("gadget_title")
-        self.assertEquals(
+        self.assertEqual(
             "%s %s %s" % (os_title, release_title, gadget_title),
             get_product_title(
                 {
@@ -234,7 +234,7 @@ class TestHelpers(MAASServerTestCase):
     def test_get_product_title_with_os_and_release_titles(self):
         os_title = factory.make_name("os_title")
         release_title = factory.make_name("release_title")
-        self.assertEquals(
+        self.assertEqual(
             "%s %s" % (os_title, release_title),
             get_product_title(
                 {"os_title": os_title, "release_title": release_title}
@@ -346,7 +346,7 @@ class TestPrivateUpdateCache(MAASServerTestCase):
             source.to_dict_without_selections(),
             image_mapping,
         )
-        self.assertEquals(5, queries)
+        self.assertEqual(5, queries)
 
         # Now that they all already exist, it should only be 4 queries.
         queries, _ = count_queries(
@@ -354,7 +354,7 @@ class TestPrivateUpdateCache(MAASServerTestCase):
             source.to_dict_without_selections(),
             image_mapping,
         )
-        self.assertEquals(4, queries)
+        self.assertEqual(4, queries)
 
         # Do it again just to be sure.
         queries, _ = count_queries(
@@ -362,7 +362,7 @@ class TestPrivateUpdateCache(MAASServerTestCase):
             source.to_dict_without_selections(),
             image_mapping,
         )
-        self.assertEquals(4, queries)
+        self.assertEqual(4, queries)
 
 
 class TestPrivateCacheBootSources(MAASTransactionServerTestCase):

@@ -117,31 +117,31 @@ class TestGetBootImage(MAASTestCase):
         self.patch_list_boot_images(images)
         params = self.get_params_from_boot_image(expected_image)
         params["purpose"] = "enlist"
-        self.assertEquals(expected_image, get_boot_image(params))
+        self.assertEqual(expected_image, get_boot_image(params))
 
     def test_returns_commissioning_image_for_commissioning(self):
         images, expected_image = self.make_all_boot_images("commissioning")
         self.patch_list_boot_images(images)
         params = self.get_params_from_boot_image(expected_image)
-        self.assertEquals(expected_image, get_boot_image(params))
+        self.assertEqual(expected_image, get_boot_image(params))
 
     def test_returns_xinstall_image_for_xinstall(self):
         images, expected_image = self.make_all_boot_images("xinstall")
         self.patch_list_boot_images(images)
         params = self.get_params_from_boot_image(expected_image)
-        self.assertEquals(expected_image, get_boot_image(params))
+        self.assertEqual(expected_image, get_boot_image(params))
 
     def test_returns_ephemeral_image_for_ephemeral(self):
         images, expected_image = self.make_all_boot_images("ephemeral")
         self.patch_list_boot_images(images)
         params = self.get_params_from_boot_image(expected_image)
-        self.assertEquals(expected_image, get_boot_image(params))
+        self.assertEqual(expected_image, get_boot_image(params))
 
     def test_returns_install_image_for_install(self):
         images, expected_image = self.make_all_boot_images("install")
         self.patch_list_boot_images(images)
         params = self.get_params_from_boot_image(expected_image)
-        self.assertEquals(expected_image, get_boot_image(params))
+        self.assertEqual(expected_image, get_boot_image(params))
 
     def test_returns_image_by_its_supported_subarches(self):
         subarch = factory.make_name("hwe")
@@ -153,7 +153,7 @@ class TestGetBootImage(MAASTestCase):
         self.patch_list_boot_images(images)
         params = self.get_params_from_boot_image(expected_image)
         params["subarch"] = subarch
-        self.assertEquals(expected_image, get_boot_image(params))
+        self.assertEqual(expected_image, get_boot_image(params))
 
     def test_returns_None_if_missing_image(self):
         images, _ = self.make_all_boot_images(None)
@@ -409,11 +409,11 @@ class TestTFTPBackend(MAASTestCase):
         self.addCleanup(reader.finish)
 
         # Only one client is saved.
-        self.assertEquals(clients[0], backend.client_to_remote[remote_ip])
+        self.assertEqual(clients[0], backend.client_to_remote[remote_ip])
 
         # Only the first client should have been called twice, and all the
         # other clients should not have been called.
-        self.assertEquals(2, clients[0].call_count)
+        self.assertEqual(2, clients[0].call_count)
         for idx in range(1, 10):
             self.assertThat(clients[idx], MockNotCalled())
 
@@ -478,13 +478,13 @@ class TestTFTPBackend(MAASTestCase):
         self.addCleanup(reader.finish)
 
         # The both clients are saved.
-        self.assertEquals(clients[0], backend.client_to_remote[remote_ip_one])
-        self.assertEquals(clients[1], backend.client_to_remote[remote_ip_two])
+        self.assertEqual(clients[0], backend.client_to_remote[remote_ip_one])
+        self.assertEqual(clients[1], backend.client_to_remote[remote_ip_two])
 
         # Only the first and second client should have been called once, and
         # all the other clients should not have been called.
-        self.assertEquals(1, clients[0].call_count)
-        self.assertEquals(1, clients[1].call_count)
+        self.assertEqual(1, clients[0].call_count)
+        self.assertEqual(1, clients[1].call_count)
         for idx in range(2, 10):
             self.assertThat(clients[idx], MockNotCalled())
 
@@ -542,7 +542,7 @@ class TestTFTPBackend(MAASTestCase):
         self.addCleanup(reader.finish)
 
         # The first client is now saved.
-        self.assertEquals(clients[0], backend.client_to_remote[remote_ip])
+        self.assertEqual(clients[0], backend.client_to_remote[remote_ip])
 
         # Get the reader twice.
         params_with_ip = dict(fake_params)
@@ -551,12 +551,12 @@ class TestTFTPBackend(MAASTestCase):
         self.addCleanup(reader.finish)
 
         # The second client is now saved.
-        self.assertEquals(clients[1], backend.client_to_remote[remote_ip])
+        self.assertEqual(clients[1], backend.client_to_remote[remote_ip])
 
         # Only the first and second client should have been called once, and
         # all the other clients should not have been called.
-        self.assertEquals(1, clients[0].call_count)
-        self.assertEquals(1, clients[1].call_count)
+        self.assertEqual(1, clients[0].call_count)
+        self.assertEqual(1, clients[1].call_count)
         for idx in range(2, 10):
             self.assertThat(clients[idx], MockNotCalled())
 

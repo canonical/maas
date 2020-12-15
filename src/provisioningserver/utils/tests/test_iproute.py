@@ -33,7 +33,7 @@ class TestHelperFunctions(MAASTestCase):
             proto,
             metric,
         )
-        self.assertEquals(
+        self.assertEqual(
             (
                 subnet,
                 {
@@ -52,7 +52,7 @@ class TestHelperFunctions(MAASTestCase):
         gateway = factory.pick_ip_in_network(network)
         interface = factory.make_name("nic")
         route_line = "%s via %s dev %s" % (subnet, gateway, interface)
-        self.assertEquals(
+        self.assertEqual(
             (subnet, {"via": gateway, "dev": interface}),
             _parse_route_definition(route_line),
         )
@@ -75,7 +75,7 @@ class TestParseIPRoute(MAASTestCase):
             expected_output.update(output)
             route_input += "\n" + route_line
         route_input += "\n"
-        self.assertEquals(expected_output, parse_ip_route(route_input))
+        self.assertEqual(expected_output, parse_ip_route(route_input))
 
 
 class TestGetIPRoute(MAASTestCase):
@@ -84,7 +84,7 @@ class TestGetIPRoute(MAASTestCase):
         patch_call_and_check.return_value = sentinel.ip_route_cmd
         patch_parse_ip_route = self.patch(iproute_module, "parse_ip_route")
         patch_parse_ip_route.return_value = sentinel.output
-        self.assertEquals(sentinel.output, get_ip_route())
+        self.assertEqual(sentinel.output, get_ip_route())
         self.assertThat(
             patch_call_and_check,
             MockCalledOnceWith(["ip", "route", "list", "scope", "global"]),

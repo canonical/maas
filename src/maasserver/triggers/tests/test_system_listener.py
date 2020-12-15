@@ -4104,7 +4104,7 @@ class TestDNSDNSResourceListener(
                     for pub in DNSPublication.objects.order_by("-id")[:2]
                 ]
             )
-            self.assertEquals(
+            self.assertEqual(
                 list(sources),
                 [
                     "zone %s removed resource %s"
@@ -4683,7 +4683,7 @@ class TestDNSInterfaceListener(
                     for pub in DNSPublication.objects.order_by("-id")[:2]
                 ]
             )
-            self.assertEquals(
+            self.assertEqual(
                 list(sources),
                 [
                     "node %s removed interface %s" % (old_hostname, nic_name),

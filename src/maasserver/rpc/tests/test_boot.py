@@ -223,7 +223,7 @@ class TestGetConfig(MAASServerTestCase):
             mac=mac,
             query_count=9,
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 "system_id": node.system_id,
                 "arch": node.split_arch()[0],
@@ -268,7 +268,7 @@ class TestGetConfig(MAASServerTestCase):
             mac=mac,
             query_count=9,
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 "system_id": node.system_id,
                 "arch": node.split_arch()[0],
@@ -312,7 +312,7 @@ class TestGetConfig(MAASServerTestCase):
             mac=mac,
             query_count=8,
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 "system_id": device.system_id,
                 "arch": device.split_arch()[0],
@@ -360,7 +360,7 @@ class TestGetConfig(MAASServerTestCase):
         config = get_config(
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
-        self.assertEquals(config["purpose"], "xinstall")
+        self.assertEqual(config["purpose"], "xinstall")
 
     def test_returns_kparams_for_known_node(self):
         rack_controller = factory.make_RackController()
@@ -1403,19 +1403,19 @@ class TestGetBootFilenames(MAASServerTestCase):
             arch, subarch, osystem, series
         )
 
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
             ).filename,
             kernel,
         )
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
             ).filename,
             initrd,
         )
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
             ).filename,
@@ -1435,19 +1435,19 @@ class TestGetBootFilenames(MAASServerTestCase):
             arch, "generic", osystem, series
         )
 
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
             ).filename,
             kernel,
         )
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
             ).filename,
             initrd,
         )
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_DTB
             ).filename,
@@ -1486,13 +1486,13 @@ class TestGetBootFilenames(MAASServerTestCase):
             arch, subarch, osystem, series
         )
 
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL
             ).filename,
             kernel,
         )
-        self.assertEquals(
+        self.assertEqual(
             boot_resource_set.files.get(
                 filetype=BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD
             ).filename,

@@ -130,9 +130,9 @@ class TestMAASID(MAASTestCase):
         contents = factory.make_name("contents")
         with open(self.maas_id_path, "w") as fd:
             fd.write(contents)
-        self.assertEquals(contents, env.get_maas_id())
+        self.assertEqual(contents, env.get_maas_id())
         os.unlink(self.maas_id_path)
-        self.assertEquals(contents, env.get_maas_id())
+        self.assertEqual(contents, env.get_maas_id())
 
     def test_set_writes_argument_to_maas_id_file(self):
         contents = factory.make_name("contents")
@@ -165,7 +165,7 @@ class TestMAASID(MAASTestCase):
         contents = factory.make_name("contents")
         env.set_maas_id(contents)
         os.unlink(self.maas_id_path)
-        self.assertEquals(contents, env.get_maas_id())
+        self.assertEqual(contents, env.get_maas_id())
 
     def test_set_None_clears_cache(self):
         contents = factory.make_name("contents")
@@ -194,12 +194,12 @@ class TestMAASID(MAASTestCase):
     def test_set_caches_to_normalized_value(self):
         contents = "  %s  " % factory.make_name("contents")
         env.set_maas_id(contents)
-        self.assertEquals(env._normalise_maas_id(contents), env.get_maas_id())
+        self.assertEqual(env._normalise_maas_id(contents), env.get_maas_id())
 
     def test_set_none_clears_cache(self):
         contents = factory.make_name("contents")
         env.set_maas_id(contents)
-        self.assertEquals(contents, env.get_maas_id())
+        self.assertEqual(contents, env.get_maas_id())
         env.set_maas_id(None)
         self.assertIsNone(env.get_maas_id())
         self.assertFalse(os.path.exists(self.maas_id_path))

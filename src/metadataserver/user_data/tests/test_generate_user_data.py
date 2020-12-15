@@ -34,14 +34,14 @@ class TestGenerateUserData(MAASServerTestCase):
         self.assertTrue(parsed_data.is_multipart())
 
         user_data_script = parsed_data.get_payload()[0]
-        self.assertEquals(
+        self.assertEqual(
             'text/x-shellscript; charset="utf-8"',
             user_data_script["Content-Type"],
         )
-        self.assertEquals(
+        self.assertEqual(
             "base64", user_data_script["Content-Transfer-Encoding"]
         )
-        self.assertEquals(
+        self.assertEqual(
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
@@ -67,14 +67,14 @@ class TestGenerateUserData(MAASServerTestCase):
         self.assertTrue(parsed_data.is_multipart())
 
         user_data_script = parsed_data.get_payload()[0]
-        self.assertEquals(
+        self.assertEqual(
             'text/x-shellscript; charset="utf-8"',
             user_data_script["Content-Type"],
         )
-        self.assertEquals(
+        self.assertEqual(
             "base64", user_data_script["Content-Transfer-Encoding"]
         )
-        self.assertEquals(
+        self.assertEqual(
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
@@ -98,14 +98,14 @@ class TestGenerateUserData(MAASServerTestCase):
         self.assertTrue(parsed_data.is_multipart())
 
         user_data_script = parsed_data.get_payload()[0]
-        self.assertEquals(
+        self.assertEqual(
             'text/x-shellscript; charset="utf-8"',
             user_data_script["Content-Type"],
         )
-        self.assertEquals(
+        self.assertEqual(
             "base64", user_data_script["Content-Transfer-Encoding"]
         )
-        self.assertEquals(
+        self.assertEqual(
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
@@ -130,14 +130,14 @@ class TestGenerateUserData(MAASServerTestCase):
         self.assertTrue(parsed_data.is_multipart())
 
         user_data_script = parsed_data.get_payload()[0]
-        self.assertEquals(
+        self.assertEqual(
             'text/x-shellscript; charset="utf-8"',
             user_data_script["Content-Type"],
         )
-        self.assertEquals(
+        self.assertEqual(
             "base64", user_data_script["Content-Transfer-Encoding"]
         )
-        self.assertEquals(
+        self.assertEqual(
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
@@ -160,14 +160,14 @@ class TestGenerateUserData(MAASServerTestCase):
         self.assertTrue(parsed_data.is_multipart())
 
         user_data_script = parsed_data.get_payload()[0]
-        self.assertEquals(
+        self.assertEqual(
             'text/x-shellscript; charset="utf-8"',
             user_data_script["Content-Type"],
         )
-        self.assertEquals(
+        self.assertEqual(
             "base64", user_data_script["Content-Transfer-Encoding"]
         )
-        self.assertEquals(
+        self.assertEqual(
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )
@@ -221,14 +221,14 @@ class TestDiskErasingUserData(MAASServerTestCase):
         self.assertTrue(parsed_data.is_multipart())
 
         user_data_script = parsed_data.get_payload()[0]
-        self.assertEquals(
+        self.assertEqual(
             'text/x-shellscript; charset="utf-8"',
             user_data_script["Content-Type"],
         )
-        self.assertEquals(
+        self.assertEqual(
             "base64", user_data_script["Content-Transfer-Encoding"]
         )
-        self.assertEquals(
+        self.assertEqual(
             'attachment; filename="user_data.sh"',
             user_data_script["Content-Disposition"],
         )

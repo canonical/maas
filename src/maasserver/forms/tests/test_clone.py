@@ -17,7 +17,7 @@ class TestCloneForm(MAASServerTestCase):
         user = factory.make_admin()
         form = CloneForm(user, data={})
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "source": ["This field is required."],
                 "destinations": ["This field is required."],
@@ -42,7 +42,7 @@ class TestCloneForm(MAASServerTestCase):
             },
         )
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "destinations": [
                     "Machine 1 in the array did not validate: "
@@ -76,7 +76,7 @@ class TestCloneForm(MAASServerTestCase):
             },
         )
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "destinations": [
                     "Machine 1 in the array did not validate: "
@@ -107,7 +107,7 @@ class TestCloneForm(MAASServerTestCase):
             },
         )
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "destinations": [
                     "Machine 1 in the array did not validate: "
@@ -145,7 +145,7 @@ class TestCloneForm(MAASServerTestCase):
             },
         )
         self.assertFalse(form.is_valid())
-        self.assertEquals(
+        self.assertEqual(
             {
                 "destinations": [
                     "Machine 1 in the array did not validate: "

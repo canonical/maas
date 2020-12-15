@@ -20,7 +20,7 @@ class TestPackageRepositoryManager(MAASServerTestCase):
         archive = factory.make_PackageRepository(
             url=main_url, default=True, arches=["i386", "amd64"]
         )
-        self.assertEquals(
+        self.assertEqual(
             archive, PackageRepository.objects.get_default_archive(arch)
         )
 
@@ -30,7 +30,7 @@ class TestPackageRepositoryManager(MAASServerTestCase):
         archive = factory.make_PackageRepository(
             url=main_url, default=False, arches=["i386", "amd64"]
         )
-        self.assertEquals(
+        self.assertEqual(
             archive,
             PackageRepository.objects.get_additional_repositories(
                 arch
@@ -68,13 +68,13 @@ class TestPackageRepositoryManager(MAASServerTestCase):
         archive = factory.make_PackageRepository(
             url=url, default=False, arches=[arch, factory.make_name()]
         )
-        self.assertEquals(
+        self.assertEqual(
             ppa_archive,
             PackageRepository.objects.get_additional_repositories(
                 ppa_arch
             ).first(),
         )
-        self.assertEquals(
+        self.assertEqual(
             archive,
             PackageRepository.objects.get_additional_repositories(
                 arch

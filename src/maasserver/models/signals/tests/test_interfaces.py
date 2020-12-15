@@ -261,7 +261,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         new_vlan = new_fabric.get_default_vlan()
         interface.vlan = new_vlan
         interface.save()
-        self.assertEquals(new_vlan, reload_object(subnet).vlan)
+        self.assertEqual(new_vlan, reload_object(subnet).vlan)
 
     def test_doesnt_move_link_subnets_when_target_vlan_is_None(self):
         node = self.maker()
@@ -271,7 +271,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         factory.make_StaticIPAddress(subnet=subnet, interface=interface)
         interface.vlan = None
         interface.save()
-        self.assertEquals(old_vlan, reload_object(subnet).vlan)
+        self.assertEqual(old_vlan, reload_object(subnet).vlan)
 
     def test_doesnt_move_link_subnets_when_source_vlan_is_None(self):
         node = self.maker()
@@ -283,7 +283,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         factory.make_StaticIPAddress(subnet=subnet, interface=interface)
         interface.vlan = factory.make_VLAN()
         interface.save()
-        self.assertEquals(interface.vlan, reload_object(subnet).vlan)
+        self.assertEqual(interface.vlan, reload_object(subnet).vlan)
 
     def test_moves_children_vlans_to_same_fabric(self):
         node = self.maker()
@@ -302,14 +302,14 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
         new_vlan = new_fabric.get_default_vlan()
         parent.vlan = new_vlan
         parent.save()
-        self.assertEquals(new_vlan, reload_object(subnet).vlan)
+        self.assertEqual(new_vlan, reload_object(subnet).vlan)
         vlan_interface = reload_object(vlan_interface)
-        self.assertEquals(
+        self.assertEqual(
             (new_fabric.id, old_vlan.vid),
             (vlan_interface.vlan.fabric.id, vlan_interface.vlan.vid),
         )
         vlan_subnet = reload_object(vlan_subnet)
-        self.assertEquals(
+        self.assertEqual(
             (new_fabric.id, old_vlan.vid),
             (vlan_subnet.vlan.fabric.id, vlan_subnet.vlan.vid),
         )

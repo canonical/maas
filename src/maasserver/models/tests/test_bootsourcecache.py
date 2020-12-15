@@ -33,7 +33,7 @@ class TestBootSourceCache(MAASServerTestCase):
     def test_get_release_title_returns_release_title(self):
         release_title = factory.make_name("release_title")
         cache = factory.make_BootSourceCache(release_title=release_title)
-        self.assertEquals(
+        self.assertEqual(
             release_title,
             BootSourceCache.objects.get_release_title(cache.os, cache.release),
         )
@@ -54,7 +54,7 @@ class TestBootSourceCache(MAASServerTestCase):
     def test_get_release_codename_returns_release_codename(self):
         release_codename = factory.make_name("release_codename")
         cache = factory.make_BootSourceCache(release_codename=release_codename)
-        self.assertEquals(
+        self.assertEqual(
             release_codename,
             BootSourceCache.objects.get_release_codename(
                 cache.os, cache.release

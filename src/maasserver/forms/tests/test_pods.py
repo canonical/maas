@@ -432,8 +432,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertEquals(bmc.id, pod.id)
-        self.assertEquals(BMC_TYPE.POD, reload_object(bmc).bmc_type)
+        self.assertEqual(bmc.id, pod.id)
+        self.assertEqual(BMC_TYPE.POD, reload_object(bmc).bmc_type)
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_existing_pod_minimal(self):
@@ -797,7 +797,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         form = PodForm(data=pod_info)
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
-        self.assertEquals(
+        self.assertEqual(
             "Unable to start the pod discovery process. "
             "No rack controllers connected.",
             str(error),
@@ -816,7 +816,7 @@ class TestPodForm(MAASTransactionServerTestCase):
 
         def validate_error(failure):
             self.assertIsInstance(failure.value, PodProblem)
-            self.assertEquals(
+            self.assertEqual(
                 "Unable to start the pod discovery process. "
                 "No rack controllers connected.",
                 str(failure.value),
@@ -837,7 +837,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         form = PodForm(data=pod_info)
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
-        self.assertEquals(str(exc), str(error))
+        self.assertEqual(str(exc), str(error))
 
     @wait_for_reactor
     @inlineCallbacks
@@ -854,7 +854,7 @@ class TestPodForm(MAASTransactionServerTestCase):
 
         def validate_error(failure):
             self.assertIsInstance(failure.value, PodProblem)
-            self.assertEquals(str(exc), str(failure.value))
+            self.assertEqual(str(exc), str(failure.value))
 
         d = form.save()
         d.addErrback(validate_error)
@@ -2386,7 +2386,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         form = ComposeMachineForm(data={}, request=request, pod=pod)
         self.assertTrue(form.is_valid())
         error = self.assertRaises(PodProblem, form.compose)
-        self.assertEquals(
+        self.assertEqual(
             "Unable to compose a machine because '%s' driver timed out "
             "after 120 seconds." % pod.power_type,
             str(error),

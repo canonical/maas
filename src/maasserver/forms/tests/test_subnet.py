@@ -311,7 +311,7 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertEquals(dns_servers, subnet.dns_servers)
+        self.assertEqual(dns_servers, subnet.dns_servers)
 
     def test_doesnt_overwrite_other_fields(self):
         new_name = factory.make_name("subnet")
@@ -355,7 +355,7 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertEquals(dns_servers, subnet.dns_servers)
+        self.assertEqual(dns_servers, subnet.dns_servers)
 
     def test_clean_dns_servers_accepts_space_separated_list(self):
         subnet = factory.make_Subnet()
@@ -368,4 +368,4 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertEquals(dns_servers, subnet.dns_servers)
+        self.assertEqual(dns_servers, subnet.dns_servers)

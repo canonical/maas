@@ -54,18 +54,18 @@ class TestGetIPCSocketPath(MAASTestCase):
         self.useFixture(
             EnvironmentVariableFixture("MAAS_IPC_SOCKET_PATH", path)
         )
-        self.assertEquals(path, get_ipc_socket_path())
+        self.assertEqual(path, get_ipc_socket_path())
 
     def test_returns_ipc_from_maas_data(self):
         path = factory.make_name("path")
         self.useFixture(EnvironmentVariableFixture("MAAS_DATA", path))
-        self.assertEquals(
+        self.assertEqual(
             os.path.join(path, "maas-regiond.sock"), get_ipc_socket_path()
         )
 
     def test_returns_ipc_at_default_location(self):
         self.useFixture(EnvironmentVariableFixture("MAAS_DATA", None))
-        self.assertEquals(
+        self.assertEqual(
             "/var/lib/maas/maas-regiond.sock", get_ipc_socket_path()
         )
 
@@ -142,15 +142,15 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
             return RegionControllerProcess.objects.get(region=region, pid=pid)
 
         process = yield deferToDatabase(getProcessFromDB)
-        self.assertEquals(process.id, master.connections[pid]["process_id"])
+        self.assertEqual(process.id, master.connections[pid]["process_id"])
 
         worker_procId = yield worker.processId.get(timeout=2)
-        self.assertEquals(process.id, worker_procId)
+        self.assertEqual(process.id, worker_procId)
 
         yield worker.stopService()
 
         yield disconnected.get(timeout=2)
-        self.assertEquals({}, master.connections)
+        self.assertEqual({}, master.connections)
 
         process = yield deferToDatabase(reload_object, process)
         self.assertIsNone(process)
@@ -217,7 +217,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
             )
 
         endpoints = yield deferToDatabase(getEndpoints)
-        self.assertEquals(
+        self.assertEqual(
             master._getListenAddresses(master.connections[pid]["rpc"]["port"]),
             endpoints,
         )
@@ -294,7 +294,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
 
         connection = yield deferToDatabase(getConnection)
         self.assertIsNotNone(connection)
-        self.assertEquals(
+        self.assertEqual(
             {connid: (rackd.system_id, address, port)},
             master.connections[pid]["rpc"]["connections"],
         )
@@ -331,7 +331,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
             process = yield deferToDatabase(
                 RegionControllerProcess.objects.get, id=data["process_id"]
             )
-            self.assertEquals(pid, process.pid)
+            self.assertEqual(pid, process.pid)
 
         yield master.stopService()
 
@@ -404,7 +404,7 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         yield master.update()
 
         region_process = yield deferToDatabase(reload_object, region_process)
-        self.assertEquals(current_time, region_process.updated)
+        self.assertEqual(current_time, region_process.updated)
 
         yield master.stopService()
 

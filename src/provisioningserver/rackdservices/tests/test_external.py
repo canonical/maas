@@ -318,7 +318,7 @@ class TestRackNTP(MAASTestCase):
 
         # Ensure that the service was set to any.
         service = service_monitor.getServiceByName("ntp_rack")
-        self.assertEquals(
+        self.assertEqual(
             (SERVICE_STATE.ANY, "managed by the region"),
             service.getExpectedState(),
         )
@@ -552,7 +552,7 @@ class TestRackDNS(MAASTestCase):
 
         # Ensure that the service was set to any.
         service = service_monitor.getServiceByName("dns_rack")
-        self.assertEquals(
+        self.assertEqual(
             (SERVICE_STATE.ANY, "managed by the region"),
             service.getExpectedState(),
         )
@@ -583,7 +583,7 @@ class TestRackDNS(MAASTestCase):
 
         dns = external.RackDNS()
         region_ips = list(dns._genRegionIps(mock_rpc.connections))
-        self.assertEquals(3, len(region_ips))
+        self.assertEqual(3, len(region_ips))
 
     def test_genRegionIps_always_returns_same_result(self):
         mock_rpc = Mock()
@@ -601,7 +601,7 @@ class TestRackDNS(MAASTestCase):
         dns = external.RackDNS()
         region_ips = frozenset(dns._genRegionIps(mock_rpc.connections))
         for _ in range(3):
-            self.assertEquals(
+            self.assertEqual(
                 region_ips, frozenset(dns._genRegionIps(mock_rpc.connections))
             )
 
@@ -756,7 +756,7 @@ class TestRackProxy(MAASTestCase):
 
         # Ensure that the service was set to any.
         service = service_monitor.getServiceByName("proxy_rack")
-        self.assertEquals(
+        self.assertEqual(
             (SERVICE_STATE.ANY, "managed by the region"),
             service.getExpectedState(),
         )
@@ -886,7 +886,7 @@ class TestRackSyslog(MAASTestCase):
 
         # Ensure that the service was set to any.
         service = service_monitor.getServiceByName("syslog_rack")
-        self.assertEquals(
+        self.assertEqual(
             (SERVICE_STATE.ANY, "managed by the region"),
             service.getExpectedState(),
         )

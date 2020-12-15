@@ -163,7 +163,7 @@ class TestInterfaceManager(MAASServerTestCase):
             node=node, mac_address=mac_address
         )
         self.assertFalse(created)
-        self.assertEquals(interface, retrieved_interface)
+        self.assertEqual(interface, retrieved_interface)
 
     def test_get_or_create_with_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -182,7 +182,7 @@ class TestInterfaceManager(MAASServerTestCase):
             node=parent1.node, parents=[parent1, parent2]
         )
         self.assertFalse(created)
-        self.assertEquals(interface, retrieved_interface)
+        self.assertEqual(interface, retrieved_interface)
 
     def test_get_interface_dict_for_node(self):
         node1 = factory.make_Node()
@@ -1341,8 +1341,8 @@ class InterfaceTest(MAASServerTestCase):
         interface.interface_speed = 100
         interface.link_speed = 1000
         interface.save()
-        self.assertEquals(100, interface.interface_speed)
-        self.assertEquals(1000, interface.link_speed)
+        self.assertEqual(100, interface.interface_speed)
+        self.assertEqual(1000, interface.link_speed)
 
     def test_save_link_speed_may_exceed_unknown_interface_speed(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1350,14 +1350,14 @@ class InterfaceTest(MAASServerTestCase):
         interface.link_speed = 1000
         interface.save()
         interface = reload_object(interface)
-        self.assertEquals(0, interface.interface_speed)
-        self.assertEquals(1000, interface.link_speed)
+        self.assertEqual(0, interface.interface_speed)
+        self.assertEqual(1000, interface.link_speed)
 
     def test_save_if_link_disconnected_set_link_speed_to_zero(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.link_connected = False
         interface.save()
-        self.assertEquals(0, interface.link_speed)
+        self.assertEqual(0, interface.link_speed)
 
 
 class InterfaceUpdateNeighbourTest(MAASServerTestCase):
@@ -1771,7 +1771,7 @@ class InterfaceMTUTest(MAASServerTestCase):
                 ),
             ),
         )
-        self.assertEquals([parent.id], [p.id for p in bridge.parents.all()])
+        self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
 
 
 class VLANInterfaceTest(MAASServerTestCase):
@@ -3649,13 +3649,13 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
         with transaction.atomic():
             observed = interface.claim_auto_ips()
-        self.assertEquals(
+        self.assertEqual(
             1,
             len(observed),
             "Should have 1 AUTO IP addresses with an IP address assigned.",
         )
-        self.assertEquals(subnet, observed[0].subnet)
-        self.assertEquals(
+        self.assertEqual(subnet, observed[0].subnet)
+        self.assertEqual(
             IPAddress(network.first + 2), IPAddress(observed[0].ip)
         )
 
@@ -3790,7 +3790,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
                 ),
             ),
         )
-        self.assertEquals([parent.id], [p.id for p in bridge.parents.all()])
+        self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
 
     def test_creates_acquired_bridge_with_passed_options(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -3818,7 +3818,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
                 ),
             ),
         )
-        self.assertEquals([parent.id], [p.id for p in bridge.parents.all()])
+        self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
 
     def test_creates_acquired_bridge_moves_links_from_parent_to_bridge(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -3847,11 +3847,11 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
                 ),
             ),
         )
-        self.assertEquals([parent.id], [p.id for p in bridge.parents.all()])
-        self.assertEquals(
+        self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
+        self.assertEqual(
             [bridge.id], [nic.id for nic in auto_ip.interface_set.all()]
         )
-        self.assertEquals(
+        self.assertEqual(
             [bridge.id], [nic.id for nic in static_ip.interface_set.all()]
         )
 

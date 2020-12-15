@@ -69,11 +69,11 @@ class TestGetLatestFixedAddress(MAASTestCase):
 
     def test_ipv4(self):
         path = self.make_file(contents=self.IPV4_LEASE_FILE)
-        self.assertEquals("192.168.1.113", get_lastest_fixed_address(path))
+        self.assertEqual("192.168.1.113", get_lastest_fixed_address(path))
 
     def test_ipv6(self):
         path = self.make_file(contents=self.IPV6_LEASE_FILE)
-        self.assertEquals(
+        self.assertEqual(
             "2001:db8:a0b:12f0::3", get_lastest_fixed_address(path)
         )
 
@@ -120,4 +120,4 @@ class TestGetDhclientInfo(MAASTestCase):
             cmdline = "\x00".join(cmdline) + "\x00"
             os.mkdir(os.path.join(proc_path, str(pid)))
             atomic_write(cmdline.encode("ascii"), cmdline_path)
-        self.assertEquals(interfaces, get_dhclient_info(proc_path=proc_path))
+        self.assertEqual(interfaces, get_dhclient_info(proc_path=proc_path))

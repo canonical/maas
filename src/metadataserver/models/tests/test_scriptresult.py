@@ -34,20 +34,20 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_name_returns_script_name(self):
         script_result = factory.make_ScriptResult()
-        self.assertEquals(script_result.script.name, script_result.name)
+        self.assertEqual(script_result.script.name, script_result.name)
 
     def test_name_returns_model_script_name_when_no_script(self):
         script_result = factory.make_ScriptResult()
         script_result.script = None
         script_name = factory.make_name("script_name")
         script_result.script_name = script_name
-        self.assertEquals(script_name, script_result.name)
+        self.assertEqual(script_name, script_result.name)
 
     def test_name_returns_unknown_when_no_script_or_model_script_name(self):
         script_result = factory.make_ScriptResult()
         script_result.script = None
         script_result.script_name = None
-        self.assertEquals("Unknown", script_result.name)
+        self.assertEqual("Unknown", script_result.name)
 
     def test_store_result_only_allows_status_running(self):
         # XXX ltrager 2016-12-07 - Only allow SCRIPT_STATUS.RUNNING once
@@ -90,11 +90,11 @@ class TestScriptResult(MAASServerTestCase):
         )
         script_result.store_result(exit_status, output, stdout, stderr, result)
 
-        self.assertEquals(exit_status, script_result.exit_status)
-        self.assertEquals(output, script_result.output)
-        self.assertEquals(stdout, script_result.stdout)
-        self.assertEquals(stderr, script_result.stderr)
-        self.assertEquals(result, script_result.result)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(output, script_result.output)
+        self.assertEqual(stdout, script_result.stdout)
+        self.assertEqual(stderr, script_result.stderr)
+        self.assertEqual(result, script_result.result)
 
     def test_store_result_allows_pod_to_overwrite(self):
         pod = factory.make_Pod()
@@ -119,29 +119,29 @@ class TestScriptResult(MAASServerTestCase):
         )
         script_result.store_result(exit_status, output, stdout, stderr, result)
 
-        self.assertEquals(exit_status, script_result.exit_status)
-        self.assertEquals(output, script_result.output)
-        self.assertEquals(stdout, script_result.stdout)
-        self.assertEquals(stderr, script_result.stderr)
-        self.assertEquals(result, script_result.result)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(output, script_result.output)
+        self.assertEqual(stdout, script_result.stdout)
+        self.assertEqual(stderr, script_result.stderr)
+        self.assertEqual(result, script_result.result)
 
     def test_store_result_sets_status_to_timedout_with_timedout_true(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
         script_result.store_result(random.randint(0, 255), timedout=True)
-        self.assertEquals(SCRIPT_STATUS.TIMEDOUT, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.TIMEDOUT, script_result.status)
 
     def test_store_result_sets_status_to_passed_with_exit_code_zero(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
         script_result.store_result(0)
-        self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
-        self.assertEquals(0, script_result.exit_status)
+        self.assertEqual(SCRIPT_STATUS.PASSED, script_result.status)
+        self.assertEqual(0, script_result.exit_status)
 
     def test_store_result_sets_status_to_failed_with_exit_code_non_zero(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
         exit_status = random.randint(1, 255)
         script_result.store_result(exit_status)
-        self.assertEquals(SCRIPT_STATUS.FAILED, script_result.status)
-        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEqual(SCRIPT_STATUS.FAILED, script_result.status)
+        self.assertEqual(exit_status, script_result.exit_status)
 
     def test_store_result_sets_status_to_install_failed_when_install(self):
         script_result = factory.make_ScriptResult(
@@ -149,10 +149,8 @@ class TestScriptResult(MAASServerTestCase):
         )
         exit_status = random.randint(1, 255)
         script_result.store_result(exit_status)
-        self.assertEquals(
-            SCRIPT_STATUS.FAILED_INSTALLING, script_result.status
-        )
-        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEqual(SCRIPT_STATUS.FAILED_INSTALLING, script_result.status)
+        self.assertEqual(exit_status, script_result.exit_status)
 
     def test_store_result_sets_status_to_netconf_failed_when_netconf(self):
         script_result = factory.make_ScriptResult(
@@ -160,10 +158,10 @@ class TestScriptResult(MAASServerTestCase):
         )
         exit_status = random.randint(1, 255)
         script_result.store_result(exit_status)
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.FAILED_APPLYING_NETCONF, script_result.status
         )
-        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEqual(exit_status, script_result.exit_status)
 
     def test_store_result_stores_output(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
@@ -172,8 +170,8 @@ class TestScriptResult(MAASServerTestCase):
 
         script_result.store_result(exit_status, output=output)
 
-        self.assertEquals(exit_status, script_result.exit_status)
-        self.assertEquals(output, script_result.output)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(output, script_result.output)
 
     def test_store_result_stores_stdout(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
@@ -182,8 +180,8 @@ class TestScriptResult(MAASServerTestCase):
 
         script_result.store_result(exit_status, stdout=stdout)
 
-        self.assertEquals(exit_status, script_result.exit_status)
-        self.assertEquals(stdout, script_result.stdout)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(stdout, script_result.stdout)
 
     def test_store_result_stores_stderr(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
@@ -192,8 +190,8 @@ class TestScriptResult(MAASServerTestCase):
 
         script_result.store_result(exit_status, stderr=stderr)
 
-        self.assertEquals(exit_status, script_result.exit_status)
-        self.assertEquals(stderr, script_result.stderr)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(stderr, script_result.stderr)
 
     def test_store_result_stores_result(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
@@ -209,7 +207,7 @@ class TestScriptResult(MAASServerTestCase):
             exit_status, result=yaml.safe_dump(result).encode()
         )
 
-        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEqual(exit_status, script_result.exit_status)
         self.assertDictEqual(result, script_result.read_results())
 
     def test_store_result_logs_invalid_result_yaml(self):
@@ -233,10 +231,10 @@ class TestScriptResult(MAASServerTestCase):
         event = Event.objects.get(
             node=script_result.script_set.node, type_id=event_type.id
         )
-        self.assertEquals(expected_msg, event.description)
+        self.assertEqual(expected_msg, event.description)
         self.assertThat(mock_logger, MockCalledOnceWith(expected_msg))
-        self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
-        self.assertEquals(result, script_result.result)
+        self.assertEqual(SCRIPT_STATUS.PASSED, script_result.status)
+        self.assertEqual(result, script_result.result)
 
     def test_store_result_yaml_can_set_script_status(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)
@@ -255,8 +253,8 @@ class TestScriptResult(MAASServerTestCase):
             exit_status, result=yaml.safe_dump(status_yaml).encode()
         )
 
-        self.assertEquals(status_choices[status], script_result.status)
-        self.assertEquals(exit_status, script_result.exit_status)
+        self.assertEqual(status_choices[status], script_result.status)
+        self.assertEqual(exit_status, script_result.exit_status)
         self.assertDictEqual(status_yaml, script_result.read_results())
 
     def test_store_result_yaml_can_set_interface_link_connected(self):
@@ -292,8 +290,8 @@ class TestScriptResult(MAASServerTestCase):
             exit_status, script_version_id=old_version.id
         )
 
-        self.assertEquals(exit_status, script_result.exit_status)
-        self.assertEquals(old_version, script_result.script_version)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(old_version, script_result.script_version)
 
     def test_store_result_sets_script_version_to_latest_when_not_given(self):
         script = factory.make_Script()
@@ -304,8 +302,8 @@ class TestScriptResult(MAASServerTestCase):
 
         script_result.store_result(exit_status)
 
-        self.assertEquals(exit_status, script_result.exit_status)
-        self.assertEquals(script.script, script_result.script_version)
+        self.assertEqual(exit_status, script_result.exit_status)
+        self.assertEqual(script.script, script_result.script_version)
 
     def test_store_result_logs_missing_script_version(self):
         mock_logger = self.patch(scriptresult_module.logger, "error")
@@ -330,7 +328,7 @@ class TestScriptResult(MAASServerTestCase):
         event = Event.objects.get(
             node=script_result.script_set.node, type_id=event_type.id
         )
-        self.assertEquals(expected_msg, event.description)
+        self.assertEqual(expected_msg, event.description)
         self.assertThat(mock_logger, MockCalledOnceWith(expected_msg))
 
     def test_store_result_runs_builtin_commissioning_hooks(self):
@@ -382,7 +380,7 @@ class TestScriptResult(MAASServerTestCase):
             expected_event.description,
             DocTestMatches("...failed during post-processing."),
         )
-        self.assertEquals(
+        self.assertEqual(
             reload_object(script_result).status, SCRIPT_STATUS.FAILED
         )
 
@@ -407,11 +405,11 @@ class TestScriptResult(MAASServerTestCase):
 
         for script_result in script_set:
             if script_result.name in NODE_INFO_SCRIPTS:
-                self.assertEquals(SCRIPT_STATUS.PENDING, script_result.status)
+                self.assertEqual(SCRIPT_STATUS.PENDING, script_result.status)
                 self.assertIsNone(script_result.started)
                 self.assertIsNone(script_result.ended)
             else:
-                self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
+                self.assertEqual(SCRIPT_STATUS.PASSED, script_result.status)
 
     def test_store_result_on_recommission_script_failure_does_nothing(self):
         script_set = factory.make_ScriptSet(
@@ -434,11 +432,11 @@ class TestScriptResult(MAASServerTestCase):
 
         for script_result in script_set:
             if script_result.name in NODE_INFO_SCRIPTS:
-                self.assertEquals(SCRIPT_STATUS.PASSED, script_result.status)
+                self.assertEqual(SCRIPT_STATUS.PASSED, script_result.status)
                 self.assertIsNotNone(script_result.started)
                 self.assertIsNotNone(script_result.ended)
             else:
-                self.assertEquals(SCRIPT_STATUS.FAILED, script_result.status)
+                self.assertEqual(SCRIPT_STATUS.FAILED, script_result.status)
 
     def test_store_result_accepts_runtime(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
@@ -493,7 +491,7 @@ class TestScriptResult(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertIsNotNone(script_result.started)
         self.assertIsNotNone(script_result.ended)
-        self.assertEquals(script_result.started, script_result.ended)
+        self.assertEqual(script_result.started, script_result.ended)
 
     def test_save_sets_physical_blockdevice_from_parameters(self):
         node = factory.make_Machine()
@@ -514,7 +512,7 @@ class TestScriptResult(MAASServerTestCase):
                 }
             },
         )
-        self.assertEquals(
+        self.assertEqual(
             physical_blockdevice, script_result.physical_blockdevice
         )
         self.assertDictEqual(
@@ -552,7 +550,7 @@ class TestScriptResult(MAASServerTestCase):
                 }
             },
         )
-        self.assertEquals(interface, script_result.interface)
+        self.assertEqual(interface, script_result.interface)
         self.assertIsNone(script_result.physical_blockdevice)
         self.assertDictEqual(
             {
@@ -642,33 +640,33 @@ class TestScriptResult(MAASServerTestCase):
             text_seconds = "0%d" % runtime_seconds
         else:
             text_seconds = "%d" % runtime_seconds
-        self.assertEquals("0:00:%s" % text_seconds, script_result.runtime)
+        self.assertEqual("0:00:%s" % text_seconds, script_result.runtime)
 
     def test_get_runtime_blank_when_missing(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
-        self.assertEquals("", script_result.runtime)
+        self.assertEqual("", script_result.runtime)
 
     def test_get_starttime(self):
         now = datetime.now()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, started=now, ended=now
         )
-        self.assertEquals(now.timestamp(), script_result.starttime)
+        self.assertEqual(now.timestamp(), script_result.starttime)
 
     def test_get_starttime_None(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
-        self.assertEquals("", script_result.starttime)
+        self.assertEqual("", script_result.starttime)
 
     def test_get_endtime(self):
         now = datetime.now()
         script_result = factory.make_ScriptResult(
             status=SCRIPT_STATUS.PASSED, started=now, ended=now
         )
-        self.assertEquals(now.timestamp(), script_result.endtime)
+        self.assertEqual(now.timestamp(), script_result.endtime)
 
     def test_get_endtime_None(self):
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.PENDING)
-        self.assertEquals("", script_result.endtime)
+        self.assertEqual("", script_result.endtime)
 
     def test_estimated_runtime_returns_set_runtime(self):
         now = datetime.now()
@@ -677,7 +675,7 @@ class TestScriptResult(MAASServerTestCase):
             started=now,
             ended=(now + factory.make_timedelta()),
         )
-        self.assertEquals(
+        self.assertEqual(
             script_result.runtime, script_result.estimated_runtime
         )
 
@@ -710,7 +708,7 @@ class TestScriptResult(MAASServerTestCase):
             average_runtime
             - timedelta(microseconds=average_runtime.microseconds)
         )
-        self.assertEquals(expected, script_result.estimated_runtime)
+        self.assertEqual(expected, script_result.estimated_runtime)
 
     def test_estimated_runtime_sets_start_time_when_unavailable(self):
         # Regression test for LP:1730799
@@ -728,7 +726,7 @@ class TestScriptResult(MAASServerTestCase):
             script=script,
             script_set=script_set,
         )
-        self.assertEquals("0:00:00", script_result.estimated_runtime)
+        self.assertEqual("0:00:00", script_result.estimated_runtime)
 
     def test_estimated_runtime_uses_timeout(self):
         now = datetime.now()
@@ -739,7 +737,7 @@ class TestScriptResult(MAASServerTestCase):
             script_result.script.timeout
             - timedelta(microseconds=script_result.script.timeout.microseconds)
         )
-        self.assertEquals(expected, script_result.estimated_runtime)
+        self.assertEqual(expected, script_result.estimated_runtime)
 
     def test_estimated_runtime_returns_Unknown(self):
         now = datetime.now()
@@ -748,7 +746,7 @@ class TestScriptResult(MAASServerTestCase):
         )
         script_result.script.timeout = timedelta(0)
         script_result.script.save()
-        self.assertEquals("Unknown", script_result.estimated_runtime)
+        self.assertEqual("Unknown", script_result.estimated_runtime)
 
     def test_read_results(self):
         results = {
@@ -920,8 +918,8 @@ class TestScriptResult(MAASServerTestCase):
         script_result_many = ScriptResult.objects.get(id=script_results[-1].id)
         with queries_many:
             script_result_many.history
-        self.assertEquals(1, queries_one.num_queries)
-        self.assertEquals(1, queries_many.num_queries)
+        self.assertEqual(1, queries_one.num_queries)
+        self.assertEqual(1, queries_many.num_queries)
 
     def test_history_storage_device(self):
         # Regression test for LP: #1721524

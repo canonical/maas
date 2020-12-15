@@ -441,7 +441,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
-        self.assertEquals(vlan, interface.vlan)
+        self.assertEqual(vlan, interface.vlan)
 
     def test_rejects_parents(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1077,7 +1077,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
             data={"name": interface_name, "parents": [parent1.id, parent2.id]},
         )
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertEquals(
+        self.assertEqual(
             "All parents must belong to the same VLAN.",
             form.errors["parents"][0],
         )

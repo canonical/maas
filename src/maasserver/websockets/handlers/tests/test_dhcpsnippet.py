@@ -124,7 +124,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         node = factory.make_Node()
         handler.update({"id": dhcp_snippet.id, "node": node.system_id})
         dhcp_snippet = reload_object(dhcp_snippet)
-        self.assertEquals(node, dhcp_snippet.node)
+        self.assertEqual(node, dhcp_snippet.node)
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
@@ -168,7 +168,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
         remaining_ids = textfile_ids[:revert_to]
         handler.revert({"id": dhcp_snippet.id, "to": revert_to})
         dhcp_snippet = reload_object(dhcp_snippet)
-        self.assertEquals(
+        self.assertEqual(
             VersionedTextFile.objects.get(id=textfile_ids[revert_to - 1]).data,
             dhcp_snippet.value.data,
         )

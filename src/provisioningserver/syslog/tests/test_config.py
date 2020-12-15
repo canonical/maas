@@ -23,13 +23,13 @@ class TestGetConfigDir(MAASTestCase):
     """Tests for `get_syslog_config_path`."""
 
     def test_returns_default(self):
-        self.assertEquals(
+        self.assertEqual(
             "/var/lib/maas/rsyslog.conf", config.get_syslog_config_path()
         )
 
     def test_env_overrides_default(self):
         os.environ["MAAS_SYSLOG_CONFIG_DIR"] = factory.make_name("env")
-        self.assertEquals(
+        self.assertEqual(
             os.sep.join(
                 [
                     os.environ["MAAS_SYSLOG_CONFIG_DIR"],

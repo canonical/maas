@@ -223,7 +223,7 @@ class TestFindRackController(MAASServerTestCase):
         subnet.vlan.dhcp_on = True
         subnet.vlan.primary_rack = rack_controller
         subnet.vlan.save()
-        self.assertEquals(
+        self.assertEqual(
             rack_controller.system_id,
             find_rack_controller(
                 make_request(factory.pick_ip_in_Subnet(subnet))
@@ -305,13 +305,13 @@ class GetRemoteIPTest(MAASTestCase):
         ip_address = factory.make_ipv4_address()
         request = HttpRequest()
         request.META = {"HTTP_X_FORWARDED_FOR": ip_address}
-        self.assertEquals(ip_address, get_remote_ip(request))
+        self.assertEqual(ip_address, get_remote_ip(request))
 
     def test_gets_client_ipv6_for_HTTP_X_FORWARDED_FOR(self):
         ip_address = factory.make_ipv6_address()
         request = HttpRequest()
         request.META = {"HTTP_X_FORWARDED_FOR": ip_address}
-        self.assertEquals(ip_address, get_remote_ip(request))
+        self.assertEqual(ip_address, get_remote_ip(request))
 
     def test_gets_client_ip_for_X_FORWARDED_FOR_with_proxies(self):
         ip_address = factory.make_ipv4_address()
@@ -321,19 +321,19 @@ class GetRemoteIPTest(MAASTestCase):
         request.META = {
             "HTTP_X_FORWARDED_FOR": "%s, %s, %s" % (ip_address, proxy1, proxy2)
         }
-        self.assertEquals(ip_address, get_remote_ip(request))
+        self.assertEqual(ip_address, get_remote_ip(request))
 
     def test_gets_client_ipv4_for_REMOTE_ADDR(self):
         ip_address = factory.make_ipv4_address()
         request = HttpRequest()
         request.META = {"REMOTE_ADDR": ip_address}
-        self.assertEquals(ip_address, get_remote_ip(request))
+        self.assertEqual(ip_address, get_remote_ip(request))
 
     def test_gets_client_ipv6_for_REMOTE_ADDR(self):
         ip_address = factory.make_ipv6_address()
         request = HttpRequest()
         request.META = {"REMOTE_ADDR": ip_address}
-        self.assertEquals(ip_address, get_remote_ip(request))
+        self.assertEqual(ip_address, get_remote_ip(request))
 
     def test_fallsback_to_REMOTE_ADDR_for_invalid_X_FORWARDED_FOR(self):
         ip_address = factory.make_ipv4_address()
@@ -342,7 +342,7 @@ class GetRemoteIPTest(MAASTestCase):
             "HTTP_X_FORWARDED_FOR": factory.make_name("garbage ip"),
             "REMOTE_ADDR": ip_address,
         }
-        self.assertEquals(ip_address, get_remote_ip(request))
+        self.assertEqual(ip_address, get_remote_ip(request))
 
     def test_returns_None_for_invalid_ip(self):
         ip_address = factory.make_name("garbage ip")

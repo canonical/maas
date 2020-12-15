@@ -38,7 +38,7 @@ class TestBuiltinScripts(MAASServerTestCase):
             self.assertThat(script_in_db.tags, Not(Equals([])), script.name)
 
             # These values should always be set by the script loader.
-            self.assertEquals(
+            self.assertEqual(
                 "Created by maas-%s" % get_running_version(),
                 script_in_db.script.comment,
                 script.name,
@@ -81,17 +81,17 @@ class TestBuiltinScripts(MAASServerTestCase):
         load_builtin_scripts()
         script = reload_object(script)
 
-        self.assertEquals(orig_title, script.title, script.name)
-        self.assertEquals(orig_description, script.description, script.name)
-        self.assertEquals(orig_script_type, script.script_type, script.name)
+        self.assertEqual(orig_title, script.title, script.name)
+        self.assertEqual(orig_description, script.description, script.name)
+        self.assertEqual(orig_script_type, script.script_type, script.name)
         self.assertDictEqual(orig_results, script.results, script.name)
         self.assertDictEqual(orig_parameters, script.parameters, script.name)
 
         self.assertThat(script.tags, ContainsAll(user_tags))
-        self.assertEquals(user_timeout, script.timeout)
+        self.assertEqual(user_timeout, script.timeout)
 
-        self.assertEquals(old_script, script.script.previous_version)
-        self.assertEquals(
+        self.assertEqual(old_script, script.script.previous_version)
+        self.assertEqual(
             "Updated by maas-%s" % get_running_version(), script.script.comment
         )
         self.assertTrue(script.default)
@@ -144,20 +144,20 @@ class TestBuiltinScripts(MAASServerTestCase):
         load_builtin_scripts()
 
         script = reload_object(script)
-        self.assertEquals(update_script_values.name, script.name)
-        self.assertEquals(new_script, script.script.data)
+        self.assertEqual(update_script_values.name, script.name)
+        self.assertEqual(new_script, script.script.data)
         self.assertTrue(min([tag in script.tags for tag in user_tags]))
-        self.assertEquals(user_timeout, script.timeout)
+        self.assertEqual(user_timeout, script.timeout)
         self.assertTrue(script.default)
 
         second_script = reload_object(second_script)
-        self.assertEquals(orig_title, second_script.title)
-        self.assertEquals(orig_description, second_script.description)
-        self.assertEquals(orig_script_type, second_script.script_type)
+        self.assertEqual(orig_title, second_script.title)
+        self.assertEqual(orig_description, second_script.description)
+        self.assertEqual(orig_script_type, second_script.script_type)
         self.assertDictEqual(orig_results, second_script.results)
         self.assertDictEqual(orig_parameters, second_script.parameters)
-        self.assertEquals(old_script, second_script.script.previous_version)
-        self.assertEquals(
+        self.assertEqual(old_script, second_script.script.previous_version)
+        self.assertEqual(
             "Updated by maas-%s" % get_running_version(),
             second_script.script.comment,
         )

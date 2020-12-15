@@ -207,7 +207,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
             ],
             required=False,
         )
-        self.assertEquals(
+        self.assertEqual(
             default_value, multi_field.clean_sub_fields("")["field_a"]
         )
 

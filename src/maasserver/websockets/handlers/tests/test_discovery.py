@@ -87,7 +87,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
             self.dehydrate_discovery(discovery, for_list=True)
             for discovery in [d0, d1, d2, d3, d4]
         ]
-        self.assertEquals(expected_discoveries, handler.list({}))
+        self.assertEqual(expected_discoveries, handler.list({}))
 
     def test_list_starts_after_first_seen(self):
         user = factory.make_User()
@@ -108,7 +108,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
             self.dehydrate_discovery(discovery, for_list=True)
             for discovery in [d3, d4]
         ]
-        self.assertEquals(
+        self.assertEqual(
             expected_discoveries, handler.list({"start": first_seen})
         )
 

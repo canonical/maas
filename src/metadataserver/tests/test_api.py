@@ -618,8 +618,8 @@ class TestHelpers(MAASServerTestCase):
         process_file(results, script_set, script_name, output, request)
         script_result, value = list(results.items())[0]
 
-        self.assertEquals(script_name, script_result.name)
-        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertEqual(script_name, script_result.name)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
         self.assertDictEqual(
             {"exit_status": request["exit_status"], "output": output}, value
         )
@@ -668,7 +668,7 @@ class TestHelpers(MAASServerTestCase):
 
         script_result, value = list(results.items())[0]
 
-        self.assertEquals(script_name, script_result.name)
+        self.assertEqual(script_name, script_result.name)
         self.assertDictEqual(
             {
                 "exit_status": request["exit_status"],
@@ -1295,7 +1295,7 @@ class TestInstallingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
 
     def test_signaling_installation_with_install_sets_script_to_install(self):
         node = factory.make_Node(
@@ -1318,7 +1318,7 @@ class TestInstallingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.INSTALLING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.INSTALLING, script_result.status)
 
     def test_signaling_installation_with_script_id_sets_script_to_run(self):
         node = factory.make_Node(
@@ -1337,7 +1337,7 @@ class TestInstallingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
 
     def test_signaling_installation_with_script_name_sets_script_to_run(self):
         node = factory.make_Node(
@@ -1356,7 +1356,7 @@ class TestInstallingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
 
     def test_signaling_netconf_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
@@ -1385,7 +1385,7 @@ class TestInstallingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(script_status, script_result.status)
+        self.assertEqual(script_status, script_result.status)
 
     def test_signaling_installation_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
@@ -1414,7 +1414,7 @@ class TestInstallingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(script_status, script_result.status)
+        self.assertEqual(script_status, script_result.status)
 
 
 class TestMAASScripts(MAASServerTestCase):
@@ -1747,11 +1747,11 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
         # The + 1 is for the index.json file.
-        self.assertEquals(
+        self.assertEqual(
             node.current_commissioning_script_set.scriptresult_set.count()
             + node.current_testing_script_set.scriptresult_set.count()
             + 1,
@@ -1827,11 +1827,11 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         # The + 2 is for the index.json file and the for_hardware script.
-        self.assertEquals(orig_script_count + 2, len(tar.getmembers()))
-        self.assertEquals(
+        self.assertEqual(orig_script_count + 2, len(tar.getmembers()))
+        self.assertEqual(
             for_hardware_script,
             commissioning_script_set.scriptresult_set.get(
                 script=for_hardware_script
@@ -1853,11 +1853,11 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
         # The + 1 is for the index.json file.
-        self.assertEquals(
+        self.assertEqual(
             node.current_testing_script_set.scriptresult_set.count() + 1,
             len(tar.getmembers()),
         )
@@ -1900,11 +1900,11 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
         # The + 1 is for the index.json file.
-        self.assertEquals(
+        self.assertEqual(
             node.current_commissioning_script_set.scriptresult_set.count()
             + node.current_testing_script_set.scriptresult_set.count()
             + 1,
@@ -1959,11 +1959,11 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
         # The + 1 is for the index.json file.
-        self.assertEquals(
+        self.assertEqual(
             node.current_commissioning_script_set.scriptresult_set.count()
             + node.current_testing_script_set.scriptresult_set.count()
             + 1,
@@ -2027,11 +2027,11 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
-        self.assertEquals(2, len(tar.getmembers()))
+        self.assertEqual(2, len(tar.getmembers()))
 
-        self.assertEquals(
+        self.assertEqual(
             1, node.current_testing_script_set.scriptresult_set.count()
         )
 
@@ -2094,12 +2094,12 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
         # We have two scripts which have been run but the tar always includes
         # an index.json file so subtract one.
-        self.assertEquals(
+        self.assertEqual(
             node.current_commissioning_script_set.scriptresult_set.count()
             + node.current_testing_script_set.scriptresult_set.count()
             - 1,
@@ -2167,12 +2167,12 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
         # index.json + one script + combined, stdout, stderr, and result
         # output.
-        self.assertEquals(6, len(tar.getmembers()))
+        self.assertEqual(6, len(tar.getmembers()))
 
         testing_meta_data = self.validate_scripts(
             node.current_testing_script_set,
@@ -2221,11 +2221,11 @@ class TestMAASScripts(MAASServerTestCase):
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
         )
-        self.assertEquals("application/x-tar", response["Content-Type"])
+        self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
         end_time = ceil(time.time())
         # index.json + one script + netplan.yaml
-        self.assertEquals(3, len(tar.getmembers()))
+        self.assertEqual(3, len(tar.getmembers()))
 
         testing_meta_data = self.validate_scripts(
             node.current_testing_script_set,
@@ -2455,10 +2455,10 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         script_result = reload_object(script_result)
         self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEquals(new_result, script_result.output)
-        self.assertEquals(new_result, script_result.stdout)
-        self.assertEquals(b"", script_result.stderr)
-        self.assertEquals(b"", script_result.result)
+        self.assertEqual(new_result, script_result.output)
+        self.assertEqual(new_result, script_result.stdout)
+        self.assertEqual(b"", script_result.stderr)
+        self.assertEqual(b"", script_result.result)
 
     def test_signaling_requires_status_code(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -2977,7 +2977,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
 
     def test_signaling_commissioning_with_install_sets_script_to_install(self):
         node = factory.make_Node(
@@ -3000,7 +3000,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.INSTALLING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.INSTALLING, script_result.status)
 
     def test_signaling_commissioning_with_script_id_sets_script_to_run(self):
         node = factory.make_Node(
@@ -3019,7 +3019,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
 
     def test_signaling_commissioning_with_script_name_sets_script_to_run(self):
         node = factory.make_Node(
@@ -3038,7 +3038,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
 
     def test_signaling_commissioning_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
@@ -3067,7 +3067,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(script_status, script_result.status)
+        self.assertEqual(script_status, script_result.status)
 
 
 class TestTestingAPI(MAASServerTestCase):
@@ -3172,10 +3172,10 @@ class TestTestingAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_TESTING, reload_object(node).status
         )
         self.assertEqual(event.type.name, EVENT_TYPES.FAILED_TESTING)
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.ABORTED, node.current_commissioning_script_set.status
         )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.ABORTED, node.current_testing_script_set.status
         )
 
@@ -3264,7 +3264,7 @@ class TestTestingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.APPLYING_NETCONF, script_result.status)
 
     def test_signaling_testing_with_install_sets_script_to_install(self):
         node = factory.make_Node(
@@ -3287,7 +3287,7 @@ class TestTestingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.INSTALLING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.INSTALLING, script_result.status)
 
     def test_signaling_testing_with_script_id_sets_script_to_run(self):
         node = factory.make_Node(
@@ -3306,7 +3306,7 @@ class TestTestingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
 
     def test_signaling_testing_with_script_name_sets_script_to_run(self):
         node = factory.make_Node(
@@ -3325,7 +3325,7 @@ class TestTestingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
 
     def test_signaling_testing_with_script_id_ignores_not_pending(self):
         node = factory.make_Node(
@@ -3354,7 +3354,7 @@ class TestTestingAPI(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script_result = reload_object(script_result)
-        self.assertEquals(script_status, script_result.status)
+        self.assertEqual(script_status, script_result.status)
 
     def test_signaling_testing_resets_status_expires(self):
         factory.make_Script(script_type=SCRIPT_TYPE.TESTING)

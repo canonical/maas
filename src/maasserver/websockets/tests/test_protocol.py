@@ -106,19 +106,19 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol.authenticate.return_value = defer.succeed(sentinel.user)
         protocol.connectionMade()
         self.addCleanup(protocol.connectionLost, "")
-        self.assertEquals(protocol.user, protocol.request.user)
-        self.assertEquals(
+        self.assertEqual(protocol.user, protocol.request.user)
+        self.assertEqual(
             protocol.request.META["HTTP_USER_AGENT"],
             protocol.transport.user_agent,
         )
-        self.assertEquals(
+        self.assertEqual(
             protocol.request.META["REMOTE_ADDR"], protocol.transport.ip_address
         )
-        self.assertEquals(
+        self.assertEqual(
             protocol.request.META["SERVER_NAME"],
             splithost(protocol.transport.host)[0],
         )
-        self.assertEquals(
+        self.assertEqual(
             protocol.request.META["SERVER_PORT"],
             splithost(protocol.transport.host)[1],
         )
@@ -132,8 +132,8 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         protocol.authenticate.return_value = defer.succeed(sentinel.user)
         protocol.connectionMade()
         self.addCleanup(protocol.connectionLost, "")
-        self.assertEquals(protocol.request.META["SERVER_NAME"], "localhost")
-        self.assertEquals(protocol.request.META["SERVER_PORT"], 5248)
+        self.assertEqual(protocol.request.META["SERVER_NAME"], "localhost")
+        self.assertEqual(protocol.request.META["SERVER_PORT"], 5248)
 
     def test_connectionMade_sets_user_and_processes_messages(self):
         protocol, factory = self.make_protocol(patch_authenticate=False)
@@ -737,9 +737,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
             "data": data,
         }
         protocol.sendNotify(name, action, data)
-        self.assertEquals(
-            message, self.get_written_transport_message(protocol)
-        )
+        self.assertEqual(message, self.get_written_transport_message(protocol))
 
 
 class MakeProtocolFactoryMixin:

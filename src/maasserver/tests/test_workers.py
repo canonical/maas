@@ -29,14 +29,14 @@ class TestWorkersCount(MAASTestCase):
     def test_MAX_WORKERS_COUNT_default_cpucount(self):
         from maasserver.workers import MAX_WORKERS_COUNT
 
-        self.assertEquals(os.cpu_count(), MAX_WORKERS_COUNT)
+        self.assertEqual(os.cpu_count(), MAX_WORKERS_COUNT)
 
     def test_set_max_workers_count(self):
         worker_count = random.randint(1, 8)
         set_max_workers_count(worker_count)
         from maasserver.workers import MAX_WORKERS_COUNT
 
-        self.assertEquals(worker_count, MAX_WORKERS_COUNT)
+        self.assertEqual(worker_count, MAX_WORKERS_COUNT)
 
 
 class TestWorkersService(MAASTestCase):
@@ -47,8 +47,8 @@ class TestWorkersService(MAASTestCase):
 
         from maasserver.workers import MAX_WORKERS_COUNT
 
-        self.assertEquals(MAX_WORKERS_COUNT, service.worker_count)
-        self.assertEquals(sys.argv[0], service.worker_cmd)
+        self.assertEqual(MAX_WORKERS_COUNT, service.worker_count)
+        self.assertEqual(sys.argv[0], service.worker_cmd)
 
     def test_calls_spawnWorkers_on_start(self):
         service = WorkersService(reactor)
@@ -87,12 +87,12 @@ class TestWorkersService(MAASTestCase):
         try:
             service.startService()
 
-            self.assertEquals(1, len(service.workers))
+            self.assertEqual(1, len(service.workers))
             pid = list(service.workers.keys())[0]
             service.killWorker(pid)
             yield dv.get(timeout=2)
             self.assertNotIn(pid, service.workers)
-            self.assertEquals(1, len(service.workers))
+            self.assertEqual(1, len(service.workers))
         finally:
             service.stopService()
 
@@ -115,12 +115,12 @@ class TestWorkersService(MAASTestCase):
         try:
             service.startService()
 
-            self.assertEquals(1, len(service.workers))
+            self.assertEqual(1, len(service.workers))
             pid = list(service.workers.keys())[0]
             service.termWorker(pid)
             yield dv.get(timeout=2)
             self.assertNotIn(pid, service.workers)
-            self.assertEquals(1, len(service.workers))
+            self.assertEqual(1, len(service.workers))
         finally:
             service.stopService()
 
@@ -142,7 +142,7 @@ class TestWorkersService(MAASTestCase):
 
         try:
             service.startService()
-            self.assertEquals(1, len(service.workers))
+            self.assertEqual(1, len(service.workers))
         finally:
             service.stopService()
 

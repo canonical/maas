@@ -554,7 +554,7 @@ class TestRegionControllerService(MAASServerTestCase):
                 action=RBAC_ACTION.REMOVE, resource_id=4, resource_name="r-4"
             ),
         ]
-        self.assertEquals(
+        self.assertEqual(
             (
                 [
                     Resource(identifier=2, name="r-2"),
@@ -704,7 +704,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         service = RegionControllerService(sentinel.listener)
         self.patch(service, "_getRBACClient").return_value = rbac_client
 
-        self.assertEquals([], service._rbacSync())
+        self.assertEqual([], service._rbacSync())
         self.assertThat(
             rbac_client.update_resources,
             MockCalledOnceWith("resource-pool", updates=resources),
@@ -730,7 +730,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.patch(service, "_getRBACClient").return_value = rbac_client
         service.rbacInit = True
 
-        self.assertEquals(reasons, service._rbacSync())
+        self.assertEqual(reasons, service._rbacSync())
         self.assertThat(
             rbac_client.update_resources,
             MockCalledOnceWith(
@@ -764,7 +764,7 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         self.patch(service, "_getRBACClient").return_value = rbac_client
         service.rbacInit = True
 
-        self.assertEquals(reasons, service._rbacSync())
+        self.assertEqual(reasons, service._rbacSync())
         self.assertThat(
             rbac_client.update_resources,
             MockCallsMatch(

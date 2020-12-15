@@ -95,7 +95,7 @@ class VersionedTextFileTest(MAASServerTestCase):
         for _ in range(10):
             textfile = textfile.update(factory.make_string())
             textfile_ids.append(textfile.id)
-        self.assertEquals(textfile, textfile.revert(0))
+        self.assertEqual(textfile, textfile.revert(0))
         self.assertItemsEqual(
             textfile_ids, [f.id for f in textfile.previous_versions()]
         )
@@ -110,7 +110,7 @@ class VersionedTextFileTest(MAASServerTestCase):
         revert_to = random.randint(-10, -1)
         reverted_ids = textfile_ids[revert_to:]
         remaining_ids = textfile_ids[:revert_to]
-        self.assertEquals(
+        self.assertEqual(
             textfile_ids[revert_to - 1], textfile.revert(revert_to).id
         )
         for i in reverted_ids:
@@ -130,7 +130,7 @@ class VersionedTextFileTest(MAASServerTestCase):
             textfile = textfile.update(factory.make_string())
             textfile_ids.append(textfile.id)
         revert_to = random.randint(-10, -1)
-        self.assertEquals(
+        self.assertEqual(
             textfile_ids[revert_to - 1], textfile.revert(revert_to, False).id
         )
         for i in textfile_ids:
@@ -160,7 +160,7 @@ class VersionedTextFileTest(MAASServerTestCase):
             reverted_or_remaining.append(i)
             if i == revert_to:
                 reverted_or_remaining = reverted_ids
-        self.assertEquals(
+        self.assertEqual(
             VersionedTextFile.objects.get(id=revert_to),
             textfile.revert(revert_to),
         )
@@ -181,7 +181,7 @@ class VersionedTextFileTest(MAASServerTestCase):
             textfile = textfile.update(factory.make_string())
             textfile_ids.append(textfile.id)
         revert_to = random.choice(textfile_ids)
-        self.assertEquals(
+        self.assertEqual(
             VersionedTextFile.objects.get(id=revert_to),
             textfile.revert(revert_to, False),
         )
@@ -232,13 +232,13 @@ class VersionedTextFileTest(MAASServerTestCase):
         textfile = VersionedTextFile.objects.create(
             data='#!/bin/sh\r\necho "Created on Windows!"\r\n'
         )
-        self.assertEquals(
+        self.assertEqual(
             '#!/bin/sh\necho "Created on Windows!"\n', textfile.data
         )
         updated_textfile = textfile.update(
             '#!/bin/sh\r\necho "Updated on Windows!"\r\n'
         )
         self.assertNotEquals(textfile, updated_textfile)
-        self.assertEquals(
+        self.assertEqual(
             '#!/bin/sh\necho "Updated on Windows!"\n', updated_textfile.data
         )

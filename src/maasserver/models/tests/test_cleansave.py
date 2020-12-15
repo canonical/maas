@@ -21,12 +21,12 @@ class TestCleanSave(MAASLegacyServerTestCase):
     def test_state_is_clean_save_based(self):
         obj = CleanSaveTestModel.objects.create()
         self.assertIsInstance(obj._state, CleanSaveModelState)
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_setting_property(self):
         obj = CleanSaveModelState()
         obj.test_prop = sentinel.value
-        self.assertEquals(sentinel.value, obj.test_prop)
+        self.assertEqual(sentinel.value, obj.test_prop)
 
     def test_handling_deferred_field_getting(self):
         obj = CleanSaveTestModel.objects.create()
@@ -43,24 +43,24 @@ class TestCleanSave(MAASLegacyServerTestCase):
     def test_field_marked_changed_for_new_obj(self):
         obj = CleanSaveTestModel()
         obj.field = "test"
-        self.assertEquals({"field": None}, obj._state._changed_fields)
+        self.assertEqual({"field": None}, obj._state._changed_fields)
 
     def test_field_marked_changed_for_new_obj_when_reset(self):
         obj = CleanSaveTestModel()
         obj.field = "test"
         obj.field = None
-        self.assertEquals({"field": None}, obj._state._changed_fields)
+        self.assertEqual({"field": None}, obj._state._changed_fields)
 
     def test_field_marked_changed_for_existing_obj(self):
         obj = CleanSaveTestModel.objects.create()
         obj.field = "test"
-        self.assertEquals({"field": None}, obj._state._changed_fields)
+        self.assertEqual({"field": None}, obj._state._changed_fields)
 
     def test_field_not_marked_changed_for_existing_obj_when_reset(self):
         obj = CleanSaveTestModel.objects.create()
         obj.field = "test"
         obj.field = None
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_field_not_marked_changed_when_refresh_from_db(self):
         obj = CleanSaveTestModel.objects.create()
@@ -69,8 +69,8 @@ class TestCleanSave(MAASLegacyServerTestCase):
         duplicate.save()
 
         obj.refresh_from_db()
-        self.assertEquals("test", obj.field)
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual("test", obj.field)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_field_not_marked_changed_when_refresh_from_db_no_fields(self):
         obj = CleanSaveTestModel.objects.create()
@@ -79,8 +79,8 @@ class TestCleanSave(MAASLegacyServerTestCase):
         duplicate.save()
 
         obj.refresh_from_db(fields=[])
-        self.assertEquals(None, obj.field)
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual(None, obj.field)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_field_not_marked_changed_when_refresh_with_changed_fields(self):
         obj = CleanSaveTestModel.objects.create()
@@ -89,15 +89,15 @@ class TestCleanSave(MAASLegacyServerTestCase):
         duplicate.save()
 
         obj.refresh_from_db(fields=["field"])
-        self.assertEquals("test", obj.field)
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual("test", obj.field)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_field_not_marked_changed_when_refresh_with_same_fields(self):
         obj = CleanSaveTestModel.objects.create()
 
         obj.refresh_from_db(fields=["field"])
-        self.assertEquals(None, obj.field)
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual(None, obj.field)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_field_marked_changed_when_refresh_from_db_with_no_fields(self):
         obj = CleanSaveTestModel.objects.create()
@@ -107,27 +107,27 @@ class TestCleanSave(MAASLegacyServerTestCase):
 
         obj.field = "test"
         obj.refresh_from_db(fields=[])
-        self.assertEquals("test", obj.field)
-        self.assertEquals({"field": None}, obj._state._changed_fields)
+        self.assertEqual("test", obj.field)
+        self.assertEqual({"field": None}, obj._state._changed_fields)
 
     def test_field_marked_changed_rel_id_for_new_obj(self):
         related = GenericTestModel.objects.create(field="")
         obj = CleanSaveTestModel()
         obj.related_id = related.id
-        self.assertEquals({"related_id": None}, obj._state._changed_fields)
+        self.assertEqual({"related_id": None}, obj._state._changed_fields)
 
     def test_field_marked_changed_rel_attname_for_new_obj(self):
         related = GenericTestModel.objects.create(field="")
         obj = CleanSaveTestModel()
         obj.related = related
-        self.assertEquals({"related_id": None}, obj._state._changed_fields)
+        self.assertEqual({"related_id": None}, obj._state._changed_fields)
 
     def test_field_marked_changed_rel_id_for_existing_obj(self):
         related = GenericTestModel.objects.create(field="")
         new_related = GenericTestModel.objects.create(field="")
         obj = CleanSaveTestModel.objects.create(related=related)
         obj.related_id = new_related.id
-        self.assertEquals(
+        self.assertEqual(
             {"related_id": related.id}, obj._state._changed_fields
         )
 
@@ -136,7 +136,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
         new_related = GenericTestModel.objects.create(field="")
         obj = CleanSaveTestModel.objects.create(related=related)
         obj.related = new_related
-        self.assertEquals(
+        self.assertEqual(
             {"related_id": related.id}, obj._state._changed_fields
         )
 
@@ -146,7 +146,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
         obj = CleanSaveTestModel.objects.create(related=related)
         obj.related_id = new_related.id
         obj.related_id = related.id
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_field_not_marked_changed_rel_attname_for_existing_obj(self):
         related = GenericTestModel.objects.create(field="")
@@ -154,7 +154,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
         obj = CleanSaveTestModel.objects.create(related=related)
         obj.related = new_related
         obj.related = related
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_save_always_calls_save_when_new(self):
         mock_save = self.patch(Model, "save")
@@ -185,7 +185,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
         obj = CleanSaveTestModel()
         obj.field = "test"
         obj.save()
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_save_performed_with_force_update(self):
         obj = CleanSaveTestModel.objects.create()
@@ -237,7 +237,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
                 using="default",
             ),
         )
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_save_table_updates_update_fields_with_changed_fields(self):
         related = GenericTestModel.objects.create(field="")
@@ -257,7 +257,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
                 using="default",
             ),
         )
-        self.assertEquals({}, obj._state._changed_fields)
+        self.assertEqual({}, obj._state._changed_fields)
 
     def test_save_ignores_clean_on_deferred(self):
         obj = CleanSaveTestModel.objects.create(field="test")
@@ -306,7 +306,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
     def test_utils_get_changed(self):
         obj = CleanSaveTestModel.objects.create()
         obj.field = "test"
-        self.assertEquals({"field"}, obj._state.get_changed())
+        self.assertEqual({"field"}, obj._state.get_changed())
 
     def test_utils_has_changed_True(self):
         obj = CleanSaveTestModel.objects.create()
@@ -331,7 +331,7 @@ class TestCleanSave(MAASLegacyServerTestCase):
         new_related = GenericTestModel.objects.create(field="")
         obj = CleanSaveTestModel.objects.create(related=related)
         obj.related = new_related
-        self.assertEquals(related.id, obj._state.get_old_value("related_id"))
+        self.assertEqual(related.id, obj._state.get_old_value("related_id"))
 
     def test_utils_get_old_value_returns_None_when_not_changed(self):
         obj = CleanSaveTestModel.objects.create()

@@ -969,7 +969,7 @@ class TestClusterClientService(MAASTestCase):
         self.assertItemsEqual(
             _make_connection_expected, _make_connection.call_args_list
         )
-        self.assertEquals(
+        self.assertEqual(
             {
                 "host1:pid=1001": mock_client,
                 "host1:pid=2002": mock_client,
@@ -1228,7 +1228,7 @@ class TestClusterClientService(MAASTestCase):
         connection = Mock()
         service.connections[endpoint] = connection
         service.remove_connection(endpoint, connection)
-        self.assertEquals(service.step, service.INTERVAL_LOW)
+        self.assertEqual(service.step, service.INTERVAL_LOW)
 
     def test_remove_connection_stops_both_dhcpd_and_dhcpd6(self):
         service = make_inert_client_service()
@@ -2825,7 +2825,7 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
                 "interfaces": interfaces,
             },
         )
-        self.assertEquals(None, response["errors"])
+        self.assertEqual(None, response["errors"])
 
     @inlineCallbacks
     def test_validates_bad_dhcp_config(self):
@@ -3968,7 +3968,7 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
                 "hostname": factory.make_hostname(),
             },
         )
-        self.assertEquals({}, response.result)
+        self.assertEqual({}, response.result)
 
 
 class TestClusterProtocol_DiscoverPod(MAASTestCase):
@@ -4197,7 +4197,7 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         response = call_responder(
             Cluster(), cluster.DisableAndShutoffRackd, {}
         )
-        self.assertEquals({}, response.result)
+        self.assertEqual({}, response.result)
         mock_call_and_check.assert_called_once_with(
             ["sudo", "systemctl", "restart", "maas-rackd"]
         )
@@ -4223,7 +4223,7 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         response = call_responder(
             Cluster(), cluster.DisableAndShutoffRackd, {}
         )
-        self.assertEquals({}, response.result)
+        self.assertEqual({}, response.result)
         mock_call_and_check.assert_called_once_with(
             ["snapctl", "restart", "maas.supervisor"]
         )
@@ -4256,8 +4256,8 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
         response = call_responder(
             Cluster(), cluster.DisableAndShutoffRackd, {}
         )
-        self.assertEquals({}, response.result)
-        self.assertEquals(1, mock_call_and_check.call_count)
+        self.assertEqual({}, response.result)
+        self.assertEqual(1, mock_call_and_check.call_count)
 
 
 class TestClusterProtocol_CheckIPs(MAASTestCaseThatWaitsForDeferredThreads):

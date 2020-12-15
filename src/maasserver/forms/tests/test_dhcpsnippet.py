@@ -251,7 +251,7 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         request.user = factory.make_User()
         dhcp_snippet = form.save(endpoint, request)
         self.assertIsNone(dhcp_snippet.subnet)
-        self.assertEquals(node, dhcp_snippet.node)
+        self.assertEqual(node, dhcp_snippet.node)
 
     def test_updates_subnet(self):
         dhcp_snippet = factory.make_DHCPSnippet()
@@ -278,7 +278,7 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         request.user = factory.make_User()
         dhcp_snippet = form.save(endpoint, request)
         self.assertIsNone(dhcp_snippet.node)
-        self.assertEquals(subnet, dhcp_snippet.subnet)
+        self.assertEqual(subnet, dhcp_snippet.subnet)
 
     def test_cannot_update_both_node_and_subnet(self):
         dhcp_snippet = factory.make_DHCPSnippet()
@@ -302,7 +302,7 @@ class TestDHCPSnippetForm(MAASServerTestCase):
             },
         )
         self.assertFalse(form.is_valid())
-        self.assertEquals(value, reload_object(dhcp_snippet).value.data)
+        self.assertEqual(value, reload_object(dhcp_snippet).value.data)
 
     def test_update_global_snippet_resets_node(self):
         node = factory.make_Node()
@@ -349,6 +349,6 @@ class TestDHCPSnippetForm(MAASServerTestCase):
             }
         )
         self.assertFalse(form.is_valid())
-        self.assertEquals({"value": [dhcpd_error["error"]]}, form.errors)
+        self.assertEqual({"value": [dhcpd_error["error"]]}, form.errors)
         self.assertItemsEqual([], VersionedTextFile.objects.all())
         self.assertItemsEqual([], DHCPSnippet.objects.all())

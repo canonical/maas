@@ -55,7 +55,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
         )
         # MAAS logs in the status_monitor that the timeout was detected. It
         # then logs the transisition in the node signal handler.
-        self.assertEquals(
+        self.assertEqual(
             len(NODE_FAILURE_MONITORED_STATUS_TRANSITIONS),
             len(maaslog.call_args_list) / 2,
         )
@@ -128,7 +128,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         # No exception should be raised.
         mark_nodes_failed_after_missing_script_timeout(now(), 20)
         node = reload_object(node)
-        self.assertEquals(self.status, node.status)
+        self.assertEqual(self.status, node.status)
         self.assertThat(self.maaslog, MockNotCalled())
 
     def test_mark_nodes_failed_after_missing_timeout_heartbeat(self):
@@ -151,8 +151,8 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         )
         node = reload_object(node)
 
-        self.assertEquals(self.failed_status, node.status)
-        self.assertEquals(
+        self.assertEqual(self.failed_status, node.status)
+        self.assertEqual(
             "Node has not been heard from for the last %s minutes"
             % node_timeout,
             node.error_description,
@@ -173,7 +173,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
                 self.maaslog.call_args_list,
             )
         for script_result in script_results:
-            self.assertEquals(
+            self.assertEqual(
                 SCRIPT_STATUS.TIMEDOUT, reload_object(script_result).status
             )
 
@@ -194,7 +194,7 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         mark_nodes_failed_after_missing_script_timeout(current_time, 20)
         node = reload_object(node)
 
-        self.assertEquals(
+        self.assertEqual(
             current_time
             - (current_time - script_set.last_ping)
             + timedelta(minutes=get_node_timeout(self.status, 20)),
@@ -226,8 +226,8 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         mark_nodes_failed_after_missing_script_timeout(current_time, 20)
         node = reload_object(node)
 
-        self.assertEquals(self.failed_status, node.status)
-        self.assertEquals(
+        self.assertEqual(self.failed_status, node.status)
+        self.assertEqual(
             "%s has run past it's timeout(%s)"
             % (
                 running_script_result.name,
@@ -254,16 +254,16 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
                 call("%s: Stopped because SSH is disabled" % node.hostname),
                 self.maaslog.call_args_list,
             )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.PASSED, reload_object(passed_script_result).status
         )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.FAILED, reload_object(failed_script_result).status
         )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.ABORTED, reload_object(pending_script_result).status
         )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.TIMEDOUT, reload_object(running_script_result).status
         )
 
@@ -293,18 +293,18 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         mark_nodes_failed_after_missing_script_timeout(current_time, 20)
         node = reload_object(node)
 
-        self.assertEquals(self.status, node.status)
+        self.assertEqual(self.status, node.status)
         self.assertThat(self.mock_stop, MockNotCalled())
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.PASSED, reload_object(passed_script_result).status
         )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.FAILED, reload_object(failed_script_result).status
         )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.PENDING, reload_object(pending_script_result).status
         )
-        self.assertEquals(
+        self.assertEqual(
             SCRIPT_STATUS.RUNNING, reload_object(running_script_result).status
         )
 
@@ -352,8 +352,8 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         # 5. Get all testing ScriptResults
         # 6. Get all commissioning Scripts
         # 7. Get all testing Scripts
-        self.assertEquals(7, counter_one.num_queries)
-        self.assertEquals(7, counter_many.num_queries)
+        self.assertEqual(7, counter_one.num_queries)
+        self.assertEqual(7, counter_many.num_queries)
 
 
 class TestStatusMonitorService(MAASServerTestCase):

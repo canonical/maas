@@ -193,7 +193,7 @@ class TestServiceMonitor(MAASTestCase):
     def test_getServiceByName_returns_service(self):
         fake_service = make_fake_service()
         service_monitor = self.make_service_monitor([fake_service])
-        self.assertEquals(
+        self.assertEqual(
             fake_service, service_monitor.getServiceByName(fake_service.name)
         )
 
@@ -215,11 +215,11 @@ class TestServiceMonitor(MAASTestCase):
             name, active_state, process_state
         )
         state = service_monitor._serviceStates[name]
-        self.assertEquals(
+        self.assertEqual(
             (active_state, process_state),
             (state.active_state, state.process_state),
         )
-        self.assertEquals(state, observed_state)
+        self.assertEqual(state, observed_state)
 
     @inlineCallbacks
     def test_updateServiceState_does_not_hold_service_lock(self):
@@ -250,11 +250,11 @@ class TestServiceMonitor(MAASTestCase):
             fake_service.name, now=True
         )
         state = service_monitor._serviceStates[fake_service.name]
-        self.assertEquals(
+        self.assertEqual(
             (active_state, process_state),
             (state.active_state, state.process_state),
         )
-        self.assertEquals(state, observed_state)
+        self.assertEqual(state, observed_state)
         self.assertThat(
             mock_loadSystemDServiceState, MockCalledOnceWith(fake_service)
         )
@@ -270,11 +270,11 @@ class TestServiceMonitor(MAASTestCase):
             fake_service.name, now=False
         )
         state = service_monitor._serviceStates[fake_service.name]
-        self.assertEquals(
+        self.assertEqual(
             (SERVICE_STATE.UNKNOWN, None),
             (state.active_state, state.process_state),
         )
-        self.assertEquals(state, observed_state)
+        self.assertEqual(state, observed_state)
         self.assertThat(mock_loadSystemDServiceState, MockNotCalled())
 
     @inlineCallbacks
@@ -292,7 +292,7 @@ class TestServiceMonitor(MAASTestCase):
             service_monitor, "ensureService"
         ).side_effect = lambda name: succeed(expected_states[name])
         observed = yield service_monitor.ensureServices()
-        self.assertEquals(expected_states, observed)
+        self.assertEqual(expected_states, observed)
 
     @inlineCallbacks
     def test_ensureServices_handles_errors(self):
@@ -346,7 +346,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_ensureService = self.patch(service_monitor, "_ensureService")
         mock_ensureService.return_value = succeed(service_state)
         observed = yield service_monitor.ensureService(fake_service.name)
-        self.assertEquals(service_state, observed)
+        self.assertEqual(service_state, observed)
         self.assertThat(mock_ensureService, MockCalledOnceWith(fake_service))
 
     @inlineCallbacks
@@ -368,7 +368,7 @@ class TestServiceMonitor(MAASTestCase):
         mock_getServiceState = self.patch(service_monitor, "getServiceState")
         mock_getServiceState.return_value = succeed(service_state)
         observed = yield service_monitor.restartService(fake_service.name)
-        self.assertEquals(service_state, observed)
+        self.assertEqual(service_state, observed)
         self.assertThat(
             mock_getServiceState,
             MockCalledOnceWith(fake_service.name, now=True),

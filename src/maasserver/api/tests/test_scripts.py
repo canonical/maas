@@ -77,18 +77,18 @@ class TestScriptsAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         script = Script.objects.get(id=int(parsed_result["id"]))
 
-        self.assertEquals(name, script.name)
-        self.assertEquals(title, script.title)
-        self.assertEquals(description, script.description)
+        self.assertEqual(name, script.name)
+        self.assertEqual(title, script.title)
+        self.assertEqual(description, script.description)
         self.assertThat(script.tags, ContainsAll(tags))
-        self.assertEquals(script_type, script.script_type)
-        self.assertEquals(hardware_type, script.hardware_type)
-        self.assertEquals(parallel, script.parallel)
+        self.assertEqual(script_type, script.script_type)
+        self.assertEqual(hardware_type, script.hardware_type)
+        self.assertEqual(parallel, script.parallel)
         self.assertDictEqual(packages, script.packages)
-        self.assertEquals(timeout, script.timeout.seconds)
-        self.assertEquals(destructive, script.destructive)
-        self.assertEquals(script_content, script.script.data)
-        self.assertEquals(comment, script.script.comment)
+        self.assertEqual(timeout, script.timeout.seconds)
+        self.assertEqual(destructive, script.destructive)
+        self.assertEqual(script_content, script.script.data)
+        self.assertEqual(comment, script.script.comment)
 
     def test_POST_gets_name_from_filename(self):
         self.become_admin()
@@ -125,18 +125,18 @@ class TestScriptsAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         script = Script.objects.get(id=int(parsed_result["id"]))
 
-        self.assertEquals(name, script.name)
-        self.assertEquals(title, script.title)
-        self.assertEquals(description, script.description)
+        self.assertEqual(name, script.name)
+        self.assertEqual(title, script.title)
+        self.assertEqual(description, script.description)
         self.assertThat(script.tags, ContainsAll(tags))
-        self.assertEquals(script_type, script.script_type)
-        self.assertEquals(hardware_type, script.hardware_type)
-        self.assertEquals(parallel, script.parallel)
+        self.assertEqual(script_type, script.script_type)
+        self.assertEqual(hardware_type, script.hardware_type)
+        self.assertEqual(parallel, script.parallel)
         self.assertDictEqual(packages, script.packages)
-        self.assertEquals(timeout, script.timeout.seconds)
-        self.assertEquals(destructive, script.destructive)
-        self.assertEquals(script_content, script.script.data)
-        self.assertEquals(comment, script.script.comment)
+        self.assertEqual(timeout, script.timeout.seconds)
+        self.assertEqual(destructive, script.destructive)
+        self.assertEqual(script_content, script.script.data)
+        self.assertEqual(comment, script.script.comment)
 
     def test_POST_requires_admin(self):
         response = self.client.post(self.get_scripts_uri())
@@ -224,7 +224,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         parsed_results = json_load_bytes(response.content)
 
         for result in parsed_results:
-            self.assertEquals(
+            self.assertEqual(
                 scripts[result["name"]].script.data.encode(),
                 b64decode(result["history"][0]["data"].encode()),
             )
@@ -298,7 +298,7 @@ class TestScriptAPI(APITestCase.ForUser):
         for result_rev in history:
             for rev in script.script.previous_versions():
                 if rev.id == result_rev["id"]:
-                    self.assertEquals(
+                    self.assertEqual(
                         {
                             "id": rev.id,
                             "comment": rev.comment,
@@ -354,7 +354,7 @@ class TestScriptAPI(APITestCase.ForUser):
         for result_rev in history:
             for rev in script.script.previous_versions():
                 if rev.id == result_rev["id"]:
-                    self.assertEquals(
+                    self.assertEqual(
                         {
                             "id": rev.id,
                             "comment": rev.comment,
@@ -428,18 +428,18 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         script = reload_object(script)
 
-        self.assertEquals(name, script.name)
-        self.assertEquals(title, script.title)
-        self.assertEquals(description, script.description)
+        self.assertEqual(name, script.name)
+        self.assertEqual(title, script.title)
+        self.assertEqual(description, script.description)
         self.assertThat(script.tags, ContainsAll(tags))
-        self.assertEquals(script_type, script.script_type)
-        self.assertEquals(hardware_type, script.hardware_type)
-        self.assertEquals(parallel, script.parallel)
+        self.assertEqual(script_type, script.script_type)
+        self.assertEqual(hardware_type, script.hardware_type)
+        self.assertEqual(parallel, script.parallel)
         self.assertDictEqual(packages, script.packages)
-        self.assertEquals(timeout, script.timeout.seconds)
-        self.assertEquals(destructive, script.destructive)
-        self.assertEquals(script_content, script.script.data)
-        self.assertEquals(comment, script.script.comment)
+        self.assertEqual(timeout, script.timeout.seconds)
+        self.assertEqual(destructive, script.destructive)
+        self.assertEqual(script_content, script.script.data)
+        self.assertEqual(comment, script.script.comment)
         self.assertIsNotNone(script.script.previous_version)
 
     def test_PUT_gets_name_from_filename(self):
@@ -477,17 +477,17 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         script = reload_object(script)
 
-        self.assertEquals(name, script.name)
-        self.assertEquals(description, script.description)
+        self.assertEqual(name, script.name)
+        self.assertEqual(description, script.description)
         self.assertThat(script.tags, ContainsAll(tags))
-        self.assertEquals(script_type, script.script_type)
-        self.assertEquals(hardware_type, script.hardware_type)
-        self.assertEquals(parallel, script.parallel)
+        self.assertEqual(script_type, script.script_type)
+        self.assertEqual(hardware_type, script.hardware_type)
+        self.assertEqual(parallel, script.parallel)
         self.assertDictEqual(packages, script.packages)
-        self.assertEquals(timeout, script.timeout.seconds)
-        self.assertEquals(destructive, script.destructive)
-        self.assertEquals(script_content, script.script.data)
-        self.assertEquals(comment, script.script.comment)
+        self.assertEqual(timeout, script.timeout.seconds)
+        self.assertEqual(destructive, script.destructive)
+        self.assertEqual(script_content, script.script.data)
+        self.assertEqual(comment, script.script.comment)
         self.assertIsNotNone(script.script.previous_version)
 
     def test_PUT_admin_only(self):
@@ -503,7 +503,7 @@ class TestScriptAPI(APITestCase.ForUser):
             self.get_script_uri(script), {"op": "download"}
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEquals(script.script.data, response.content.decode())
+        self.assertEqual(script.script.data, response.content.decode())
 
     def test_download_gets_previous_revision(self):
         script = factory.make_Script()
@@ -514,7 +514,7 @@ class TestScriptAPI(APITestCase.ForUser):
             {"op": "download", "revision": script.script.previous_version.id},
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEquals(
+        self.assertEqual(
             script.script.previous_version.data, response.content.decode()
         )
 
@@ -527,7 +527,7 @@ class TestScriptAPI(APITestCase.ForUser):
             {"op": "download", "rev": script.script.previous_version.id},
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
-        self.assertEquals(
+        self.assertEqual(
             script.script.previous_version.data, response.content.decode()
         )
 
@@ -555,7 +555,7 @@ class TestScriptAPI(APITestCase.ForUser):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         script = reload_object(script)
-        self.assertEquals(
+        self.assertEqual(
             VersionedTextFile.objects.get(id=textfile_ids[revert_to - 1]).data,
             script.script.data,
         )

@@ -56,9 +56,9 @@ class TestDevicesAPI(APITestCase.ForUser):
         device = Device.objects.get(system_id=system_id)
         self.assertEqual(hostname, device.hostname)
         self.assertIsNone(device.parent)
-        self.assertEquals(device.node_type, NODE_TYPE.DEVICE)
-        self.assertEquals(self.user, device.owner)
-        self.assertEquals(
+        self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
+        self.assertEqual(self.user, device.owner)
+        self.assertEqual(
             macs, {nic.mac_address for nic in device.interface_set.all()}
         )
 
@@ -81,8 +81,8 @@ class TestDevicesAPI(APITestCase.ForUser):
         )
         system_id = json_load_bytes(response.content)["system_id"]
         device = Device.objects.get(system_id=system_id)
-        self.assertEquals(hostname, device.hostname)
-        self.assertEquals(parent, device.parent)
+        self.assertEqual(hostname, device.hostname)
+        self.assertEqual(parent, device.parent)
         self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
 
     def test_POST_creates_device_with_default_domain(self):
@@ -99,8 +99,8 @@ class TestDevicesAPI(APITestCase.ForUser):
         )
         system_id = json_load_bytes(response.content)["system_id"]
         device = Device.objects.get(system_id=system_id)
-        self.assertEquals(hostname, device.hostname)
-        self.assertEquals(Domain.objects.get_default_domain(), device.domain)
+        self.assertEqual(hostname, device.hostname)
+        self.assertEqual(Domain.objects.get_default_domain(), device.domain)
         self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
 
     def test_POST_creates_device_with_domain(self):
@@ -122,8 +122,8 @@ class TestDevicesAPI(APITestCase.ForUser):
         )
         system_id = json_load_bytes(response.content)["system_id"]
         device = Device.objects.get(system_id=system_id)
-        self.assertEquals(hostname, device.hostname)
-        self.assertEquals(domain, device.domain)
+        self.assertEqual(hostname, device.hostname)
+        self.assertEqual(domain, device.domain)
         self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
 
     def test_POST_without_macs_raises_appropriate_error(self):

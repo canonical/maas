@@ -61,7 +61,7 @@ class TestUbuntuOS(MAASTestCase):
     def test_get_lts_release(self):
         # Canary so we know when the lts changes
         osystem = UbuntuOS()
-        self.assertEquals("focal", osystem.get_lts_release())
+        self.assertEqual("focal", osystem.get_lts_release())
 
     def test_get_default_release(self):
         osystem = UbuntuOS()

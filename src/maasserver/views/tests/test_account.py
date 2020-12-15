@@ -130,7 +130,7 @@ class TestLogin(MAASServerTestCase):
         )
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(event.description, "Logged in user.")
+        self.assertEqual(event.description, "Logged in user.")
 
 
 class TestLogout(MAASServerTestCase):
@@ -164,7 +164,7 @@ class TestLogout(MAASServerTestCase):
         self.client.post(reverse("logout"))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(event.description, "Logged out user.")
+        self.assertEqual(event.description, "Logged out user.")
 
 
 def token_to_dict(token):
@@ -329,7 +329,7 @@ class TestAuthenticate(MAASServerTestCase):
         )
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(event.description, "Retrieved API (OAuth) token.")
+        self.assertEqual(event.description, "Retrieved API (OAuth) token.")
 
     def test_authenticate_creates_audit_event_without_tokens(self):
         username = factory.make_name("username")
@@ -347,7 +347,7 @@ class TestAuthenticate(MAASServerTestCase):
         )
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEquals(event.description, "Created API (OAuth) token.")
+        self.assertEqual(event.description, "Created API (OAuth) token.")
 
 
 class TestCSRF(MAASServerTestCase):

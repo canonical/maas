@@ -257,7 +257,7 @@ class TestSupervisordHelpers(MAASTestCase):
         mock_popen.return_value = mock_process
         snappy.sighup_supervisord()
         self.assertThat(mock_kill, MockCalledOnceWith(pid, signal.SIGHUP))
-        self.assertEquals(2, mock_popen.call_count)
+        self.assertEqual(2, mock_popen.call_count)
 
 
 class TestConfigHelpers(MAASTestCase):
@@ -302,7 +302,7 @@ class TestConfigHelpers(MAASTestCase):
     def test_set_rpc_secret_sets_secret(self):
         secret = factory.make_string()
         snappy.set_rpc_secret(secret)
-        self.assertEquals(secret, snappy.get_rpc_secret())
+        self.assertEqual(secret, snappy.get_rpc_secret())
 
     def test_set_rpc_secret_clears_secret(self):
         secret = factory.make_string()
