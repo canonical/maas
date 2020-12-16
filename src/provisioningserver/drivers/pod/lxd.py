@@ -505,9 +505,11 @@ class LXDPodDriver(PodDriver):
                 **client.host_info,
                 # /1.0/resources
                 "resources": client.resources,
-                # TODO - Add networking information.
-                # /1.0/networks
-                # 'networks': {'eth0': {...}, 'eth1': {...}, 'bond0': {...}},
+                # /1.0/networks/<network>/state
+                "networks": {
+                    net.name: dict(net.state())
+                    for net in client.networks.all()
+                },
             }
         )
         d.addCallback(lambda resources: {LXD_OUTPUT_NAME: resources})

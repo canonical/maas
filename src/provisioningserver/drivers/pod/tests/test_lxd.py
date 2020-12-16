@@ -647,12 +647,27 @@ class TestLXDPodDriver(MAASTestCase):
         client.host_info = {
             factory.make_name("hkey"): factory.make_name("hvalue")
         }
+
+        def mock_iface(name, mac):
+            iface = Mock()
+            iface.state.return_value = {"hwaddr": mac}
+            iface.configure_mock(name=name)
+            return iface
+
+        client.networks.all.return_value = [
+            mock_iface("eth0", "aa:bb:cc:dd:ee:ff"),
+            mock_iface("eth1", "ff:ee:dd:cc:bb:aa"),
+        ]
         commissioning_data = yield driver.get_commissioning_data(1, context)
         self.assertDictEqual(
             {
                 LXD_OUTPUT_NAME: {
                     **client.host_info,
                     "resources": client.resources,
+                    "networks": {
+                        "eth0": {"hwaddr": "aa:bb:cc:dd:ee:ff"},
+                        "eth1": {"hwaddr": "ff:ee:dd:cc:bb:aa"},
+                    },
                 }
             },
             commissioning_data,
