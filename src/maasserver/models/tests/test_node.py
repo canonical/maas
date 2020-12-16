@@ -10658,9 +10658,6 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         product = factory.make_name("product")
         firmware_version = factory.make_name("firmware_version")
 
-        test_hooks.create_IPADDR_OUTPUT_NAME_script(
-            controller, test_hooks.IP_ADDR_OUTPUT
-        )
         lxd_script = (
             controller.current_commissioning_script_set.find_script_result(
                 script_name=LXD_OUTPUT_NAME
@@ -11973,7 +11970,6 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
     def test_bridge_with_mac_as_phyisical_not_updated(self):
         controller = self.create_empty_controller(with_empty_script_sets=True)
-        controller = self.create_empty_controller()
         mac_address = factory.make_mac_address()
         eth0 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=controller, mac_address=mac_address
@@ -12001,9 +11997,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         vendor = factory.make_name("vendor")
         product = factory.make_name("product")
         firmware_version = factory.make_name("firmware_version")
-        test_hooks.create_IPADDR_OUTPUT_NAME_script(
-            controller, test_hooks.IP_ADDR_OUTPUT
-        )
+
         lxd_script = (
             controller.current_commissioning_script_set.find_script_result(
                 script_name=LXD_OUTPUT_NAME

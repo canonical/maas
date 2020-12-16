@@ -27,15 +27,13 @@ from maasserver.utils.osystems import get_release
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
-    IPADDR_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
 from provisioningserver.utils import kernel_to_debian_architecture
-from provisioningserver.utils.ipaddr import parse_ip_addr
-from provisioningserver.utils.lxd import parse_lxd_cpuinfo
+from provisioningserver.utils.lxd import parse_lxd_cpuinfo, parse_lxd_networks
 
 logger = logging.getLogger(__name__)
 
@@ -108,24 +106,8 @@ def _parse_interfaces(node, data):
     """Return a dict of interfaces keyed by MAC address."""
     interfaces = {}
 
-    # Retrieve informaton from IPADDR_OUTPUT_NAME script
-    script_set = node.current_commissioning_script_set
-    script_result = script_set.find_script_result(
-        script_name=IPADDR_OUTPUT_NAME
-    )
-    # Only the IP addresses come from ip addr output. While this information
-    # is useful for automatically associating a device with a VLAN and subnet
-    # it is not necessary for use as users can manually do it.
-    if not script_result or script_result.status != SCRIPT_STATUS.PASSED:
-        # Pods don't currently have ip addr information, don't warn about it.
-        if not node.is_pod:
-            logger.error(
-                "%s: Unable to discover NIC IP addresses due to missing "
-                "passed output from %s" % (node.hostname, IPADDR_OUTPUT_NAME)
-            )
-        ip_addr_info = {}
-    else:
-        ip_addr_info = parse_ip_addr(script_result.output)
+    resources = data["resources"]
+    ifaces_info = parse_lxd_networks(data["networks"])
 
     def process_port(card, port):
         mac = port.get("address")
@@ -146,7 +128,7 @@ def _parse_interfaces(node, data):
             "sriov_max_vf": card.get("sriov", {}).get("maximum_vfs", 0),
         }
         # Assign the IP addresses to this interface
-        link = ip_addr_info.get(interface["name"], {})
+        link = ifaces_info.get(interface["name"], {})
         interface["ips"] = link.get("inet", []) + link.get("inet6", [])
 
         if mac in interfaces:
@@ -157,7 +139,7 @@ def _parse_interfaces(node, data):
 
         interfaces[mac] = interface
 
-    network_cards = data.get("network", {}).get("cards", {})
+    network_cards = resources.get("network", {}).get("cards", {})
     for card in network_cards:
         for port in card.get("ports", []):
             process_port(card, port)
@@ -190,13 +172,8 @@ def parse_interfaces_details(node):
         )
         return interfaces
 
-    details = json.loads(script_result.stdout)
-    # MAAS 2.8 added additional information to machine-resources output.
-    # LXD_OUTPUT_NAME used to only contain resources, now it is one of
-    # the objects provided.
-    if "resources" in details:
-        details = details["resources"]
-    return _parse_interfaces(node, details)
+    data = json.loads(script_result.stdout)
+    return _parse_interfaces(node, data)
 
 
 def update_interface_details(interface, details):
@@ -480,14 +457,15 @@ def _process_system_information(node, system_data):
 
 def _process_lxd_resources(node, data):
     """Process the resources results of the `LXD_OUTPUT_NAME` script."""
+    resources = data["resources"]
     update_deployment_resources = node.status == NODE_STATUS.DEPLOYED
     # Update CPU details.
     node.cpu_count, node.cpu_speed, cpu_model, numa_nodes = parse_lxd_cpuinfo(
-        data
+        resources
     )
     # Update memory.
     node.memory, hugepages_size, numa_nodes_info = _parse_memory(
-        data.get("memory", {}), numa_nodes
+        resources.get("memory", {}), numa_nodes
     )
     # Create or update NUMA nodes.
     numa_nodes = []
@@ -512,14 +490,14 @@ def _process_lxd_resources(node, data):
     if not node.is_controller:
         update_node_network_information(node, data, numa_nodes)
     # Storage.
-    update_node_physical_block_devices(node, data, numa_nodes)
+    update_node_physical_block_devices(node, resources, numa_nodes)
 
     if cpu_model:
         NodeMetadata.objects.update_or_create(
             node=node, key="cpu_model", defaults={"value": cpu_model}
         )
 
-    _process_system_information(node, data.get("system", {}))
+    _process_system_information(node, resources.get("system", {}))
 
 
 def _parse_memory(memory, numa_nodes):
@@ -751,18 +729,21 @@ def process_lxd_results(node, output, exit_status):
 
     assert data.get("api_version") == "1.0", "Data not from LXD API 1.0!"
 
-    for api_extension in [
+    required_extensions = {
         "resources",
         "resources_v2",
         "api_os",
         "resources_system",
-    ]:
-        assert api_extension in data.get(
-            "api_extensions", []
-        ), f"Missing required LXD API extension '{api_extension}'"
+    }
+    missing_extensions = required_extensions - set(
+        data.get("api_extensions", ())
+    )
+    assert (
+        not missing_extensions
+    ), f"Missing required LXD API extensions {sorted(missing_extensions)}"
 
     _process_lxd_environment(node, data["environment"])
-    _process_lxd_resources(node, data["resources"])
+    _process_lxd_resources(node, data)
 
     node.save()
 

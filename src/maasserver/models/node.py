@@ -4584,11 +4584,6 @@ class Node(CleanSave, TimestampedModel):
             script_name=LXD_OUTPUT_NAME
         )
         lxd_output = json.loads(script.stdout)
-        # MAAS 2.8 added additional information to machine-resources output.
-        # LXD_OUTPUT_NAME used to only contain resources, now it is one of
-        # the objects provided.
-        if "resources" in lxd_output:
-            lxd_output = lxd_output["resources"]
         update_node_network_information(
             self, lxd_output, NUMANode.objects.filter(node=self)
         )
