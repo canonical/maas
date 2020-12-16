@@ -467,7 +467,7 @@ class TestScriptForm(MAASServerTestCase):
         self.assertDictEqual(
             {
                 "hardware_type": [
-                    "Hardware type must be node, cpu, memory, or storage"
+                    "Hardware type must be node, cpu, memory, storage, or gpu"
                 ]
             },
             form.errors,

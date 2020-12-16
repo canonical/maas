@@ -35,6 +35,8 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
     KEYS_PROTOCOL_TYPE,
+    NODE_DEVICE_BUS,
+    NODE_DEVICE_BUS_CHOICES,
     NODE_STATUS,
     NODE_TYPE,
     PARTITION_TABLE_TYPE,
@@ -73,6 +75,7 @@ from maasserver.models import (
     MDNS,
     Neighbour,
     Node,
+    NodeDevice,
     NodeMetadata,
     Notification,
     OwnerData,
@@ -123,6 +126,7 @@ from maastesting.factory import TooManyRandomRetries
 from maastesting.typecheck import typed
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
+    HARDWARE_TYPE,
     HARDWARE_TYPE_CHOICES,
     RESULT_TYPE,
     RESULT_TYPE_CHOICES,
@@ -582,6 +586,8 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(updated=updated)
         if created is not None:
             Node.objects.filter(id=node.id).update(created=created)
+        for _ in range(0, random.randint(10, 20)):
+            self.make_NodeDevice(node=node)
         return reload_object(node)
 
     def make_Machine(self, *args, **kwargs):
@@ -1779,6 +1785,14 @@ class Factory(maastesting.factory.Factory):
             for parent in parents:
                 InterfaceRelationship(child=interface, parent=parent).save()
         interface.save(force_update=True)
+        if interface.type == INTERFACE_TYPE.PHYSICAL:
+            self.make_NodeDevice(
+                bus=NODE_DEVICE_BUS.PCIE,
+                hardware_type=HARDWARE_TYPE.NETWORK,
+                node=node,
+                numa_node=numa_node,
+                physical_interface=interface,
+            )
         return reload_object(interface)
 
     def make_IPRange(
@@ -2635,6 +2649,16 @@ class Factory(maastesting.factory.Factory):
             storage_pool=storage_pool,
             numa_node=numa_node,
         )
+        # Only NVMe drives have a NodeDevice assoicated with them since
+        # they are PCIE devices. Don't always create them.
+        if self.pick_bool():
+            self.make_NodeDevice(
+                bus=NODE_DEVICE_BUS.PCIE,
+                hardware_type=HARDWARE_TYPE.STORAGE,
+                node=node,
+                numa_node=numa_node,
+                physical_blockdevice=block_device,
+            )
         if formatted_root:
             partition = self.make_Partition(
                 partition_table=(
@@ -3199,6 +3223,82 @@ class Factory(maastesting.factory.Factory):
             machine=machine,
             pinned_cores=pinned_cores,
             unpinned_cores=unpinned_cores,
+        )
+
+    def make_NodeDevice(
+        self,
+        bus=None,
+        hardware_type=None,
+        node=None,
+        numa_node=None,
+        physical_blockdevice=None,
+        physical_interface=None,
+        vendor_id=None,
+        vendor_name=None,
+        product_id=None,
+        product_name=None,
+        commissioning_driver=None,
+        bus_number=None,
+        device_number=None,
+        pci_address=None,
+        **kwargs,
+    ):
+        if bus is None:
+            bus = factory.pick_choice(NODE_DEVICE_BUS_CHOICES)
+        if hardware_type is None:
+            hardware_type = factory.pick_choice(
+                HARDWARE_TYPE_CHOICES,
+                but_not=(
+                    # Storage and network NodeDevices are created in
+                    # make_PhysicalBlockDevice and make_Interface
+                    HARDWARE_TYPE.STORAGE,
+                    HARDWARE_TYPE.NETWORK,
+                ),
+            )
+        if node is None:
+            node = factory.make_Node()
+        if numa_node is None:
+            try:
+                numa_node = random.choice(node.numanode_set.all())
+            except IndexError:
+                numa_node = factory.make_NUMANode(node=node)
+        if vendor_id is None:
+            vendor_id = self.make_hex_string(size=4)
+        if vendor_name is None:
+            vendor_name = self.make_name("vendor_name")
+        if product_id is None:
+            product_id = self.make_hex_string(size=4)
+        if product_name is None:
+            product_name = self.make_name("product_name")
+        if commissioning_driver is None:
+            commissioning_driver = self.make_name("commissioning_driver")
+        if bus_number is None:
+            bus_number = random.randint(0, 2 ** 16)
+        if device_number is None:
+            device_number = random.randint(0, 2 ** 16)
+        if pci_address is None and bus == NODE_DEVICE_BUS.PCIE:
+            pci_domain = factory.make_hex_string(size=4)
+            pci_function_number = random.randint(0, 9)
+            pci_address = (
+                f"{pci_domain}:{hex(bus_number)[2:].zfill(2)}"
+                f":{hex(device_number)[2:].zfill(2)}.{pci_function_number}"
+            )
+        return NodeDevice.objects.create(
+            bus=bus,
+            hardware_type=hardware_type,
+            node=node,
+            numa_node=numa_node,
+            physical_blockdevice=physical_blockdevice,
+            physical_interface=physical_interface,
+            vendor_id=vendor_id,
+            vendor_name=vendor_name,
+            product_id=product_id,
+            product_name=product_name,
+            commissioning_driver=commissioning_driver,
+            bus_number=bus_number,
+            device_number=device_number,
+            pci_address=pci_address,
+            **kwargs,
         )
 
 

@@ -151,6 +151,13 @@ class TestTranslateHardwareType(MAASServerTestCase):
             },
         ),
         (
+            "numeric string gpu",
+            {
+                "value": str(HARDWARE_TYPE.GPU),
+                "return_value": HARDWARE_TYPE.GPU,
+            },
+        ),
+        (
             "invalid id",
             {
                 "value": random.randint(100, 1000),
@@ -164,6 +171,7 @@ class TestTranslateHardwareType(MAASServerTestCase):
             {"value": "controller", "return_value": HARDWARE_TYPE.NODE},
         ),
         ("other", {"value": "other", "return_value": HARDWARE_TYPE.NODE}),
+        ("generic", {"value": "generic", "return_value": HARDWARE_TYPE.NODE}),
         ("cpu", {"value": "cpu", "return_value": HARDWARE_TYPE.CPU}),
         (
             "processor",
@@ -187,10 +195,24 @@ class TestTranslateHardwareType(MAASServerTestCase):
             {"value": "interface", "return_value": HARDWARE_TYPE.NETWORK},
         ),
         (
+            "gpu",
+            {
+                "value": "gpu",
+                "return_value": HARDWARE_TYPE.GPU,
+            },
+        ),
+        (
+            "graphics",
+            {
+                "value": "graphics",
+                "return_value": HARDWARE_TYPE.GPU,
+            },
+        ),
+        (
             "invalid value",
             {
                 "value": factory.make_name("value"),
-                "exception": "Hardware type must be node, cpu, memory, or storage",
+                "exception": "Hardware type must be node, cpu, memory, storage, or gpu",
             },
         ),
     ]

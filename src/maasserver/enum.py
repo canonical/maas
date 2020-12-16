@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the maasserver application."""
@@ -839,3 +839,15 @@ class ENDPOINT:
 
 
 ENDPOINT_CHOICES = ((ENDPOINT.API, "API"), (ENDPOINT.UI, "WebUI"))
+
+
+class NODE_DEVICE_BUS:
+
+    PCIE = 1
+    USB = 2
+
+
+NODE_DEVICE_BUS_CHOICES = (
+    (NODE_DEVICE_BUS.PCIE, "PCIE"),
+    (NODE_DEVICE_BUS.USB, "USB"),
+)

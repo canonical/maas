@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model export and helpers for maasserver."""
@@ -46,6 +46,7 @@ __all__ = [
     "MDNS",
     "Neighbour",
     "Node",
+    "NodeDevice",
     "NodeMetadata",
     "NodeGroupToRackController",
     "Notification",
@@ -162,6 +163,7 @@ from maasserver.models.node import (
     RackController,
     RegionController,
 )
+from maasserver.models.nodedevice import NodeDevice
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.notification import Notification
 from maasserver.models.numa import NUMANode, NUMANodeHugepages

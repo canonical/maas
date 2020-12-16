@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Enumerations meaningful to the metadataserver application."""
@@ -135,6 +135,7 @@ class HARDWARE_TYPE:
     MEMORY = 2
     STORAGE = 3
     NETWORK = 4
+    GPU = 5
 
 
 # Labels are also used for autotagging scripts.
@@ -144,6 +145,7 @@ HARDWARE_TYPE_CHOICES = (
     (HARDWARE_TYPE.MEMORY, "Memory"),
     (HARDWARE_TYPE.STORAGE, "Storage"),
     (HARDWARE_TYPE.NETWORK, "Network"),
+    (HARDWARE_TYPE.GPU, "GPU"),
 )
 
 
