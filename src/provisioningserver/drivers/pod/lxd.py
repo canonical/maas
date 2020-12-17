@@ -707,7 +707,8 @@ class LXDPodDriver(PodDriver):
 
         def sync_decompose(instance_name):
             machine = client.virtual_machines.get(instance_name)
-            machine.stop(force=True, wait=True)
+            if machine.status_code != 102:  # 102 - Stopped
+                machine.stop(force=True, wait=True)
             machine.delete(wait=True)
 
         yield deferToThread(sync_decompose, context["instance_name"])
