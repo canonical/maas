@@ -1080,6 +1080,22 @@ class TestLXDPodDriver(MAASTestCase):
             ),
         )
 
+    @inlineCallbacks
+    def test_decompose_on_stopped_instance(self):
+        pod_id = factory.make_name("pod_id")
+        context = self.make_parameters_context()
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(driver, "get_client")
+        client = Client.return_value
+        mock_machine = Mock()
+        # Simulate the case where the VM is already stopped
+        mock_machine.status_code = 102  # 102 - Stopped
+        client.virtual_machines.get.return_value = mock_machine
+        yield driver.decompose(pod_id, context)
+
+        mock_machine.stop.assert_not_called()
+        mock_machine.delete.assert_called_once_with(wait=True)
+
 
 class TestLXDGetNicDevice(MAASTestCase):
     def test_bridged(self):
