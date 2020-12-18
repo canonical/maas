@@ -108,9 +108,8 @@ class TestHelpers(MAASServerTestCase):
     def test_ensure_boot_source_definition_creates_default_source(self):
         BootSource.objects.all().delete()
         arch = factory.make_name("arch")
-        architecture = "%s/%s" % (arch, factory.make_name("subarch"))
         mock_get_architecture = self.patch(bootsources, "get_architecture")
-        mock_get_architecture.return_value = architecture
+        mock_get_architecture.return_value = arch
         created = ensure_boot_source_definition()
         self.assertTrue(
             created,

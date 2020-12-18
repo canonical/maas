@@ -82,7 +82,6 @@ parts:
       - python3-setuptools
     stage-packages:
       - amtterm # AMT
-      - archdetect-deb
       - avahi-utils
       - bind9
       - chrony

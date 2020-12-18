@@ -1,13 +1,10 @@
-archdetect-deb
 authbind
 avahi-utils
-bash
 build-essential
 curl
 dos2unix
 git
 libnss-wrapper
-make
 psmisc
 python3-django-nose
 python3-dnspython

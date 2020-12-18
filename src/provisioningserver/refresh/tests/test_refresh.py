@@ -12,7 +12,7 @@ import stat
 import sys
 import tempfile
 from textwrap import dedent
-from unittest.mock import sentinel
+from unittest.mock import patch, sentinel
 
 from testtools.matchers import Contains, DirExists, Not
 
@@ -27,25 +27,25 @@ from provisioningserver.refresh.maas_api_helper import (
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 
 
-class TestHelpers(MAASTestCase):
-    def test_get_architecture_returns_arch_with_generic(self):
-        arch = random.choice(["i386", "amd64", "arm64", "ppc64el"])
-        subarch = factory.make_name("subarch")
-        self.patch_autospec(refresh, "call_and_check").return_value = (
-            "%s/%s" % (arch, subarch)
-        ).encode("utf-8")
-        ret_arch = refresh.get_architecture()
-        self.assertEqual("%s/generic" % arch, ret_arch)
+class TestGetArchitecture(MAASTestCase):
+    def tearDown(self):
+        super().tearDown()
+        refresh.get_architecture.cache_clear()
 
-    def test_get_architecture_returns_arch_with_subarch(self):
-        arch = factory.make_name("arch")
-        subarch = factory.make_name("subarch")
-        architecture = "%s/%s" % (arch, subarch)
-        self.patch_autospec(
-            refresh, "call_and_check"
-        ).return_value = architecture.encode("utf-8")
+    @patch("apt_pkg.get_architectures")
+    def test_get_architecture_from_deb(self, mock_get_architectures):
+        arch = random.choice(["i386", "amd64", "arm64", "ppc64el"])
+        mock_get_architectures.return_value = [arch, "otherarch"]
         ret_arch = refresh.get_architecture()
-        self.assertEqual(architecture, ret_arch)
+        self.assertEqual(arch, ret_arch)
+
+    @patch("apt_pkg.get_architectures")
+    def test_get_architecture_from_snap_env(self, mock_get_architectures):
+        arch = factory.make_name("arch")
+        self.patch(os, "environ", {"SNAP_ARCH": arch})
+        ret_arch = refresh.get_architecture()
+        self.assertEqual(arch, ret_arch)
+        mock_get_architectures.assert_not_called()
 
 
 class TestRefresh(MAASTestCase):

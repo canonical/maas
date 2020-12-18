@@ -123,8 +123,7 @@ Description: Region Controller for MAAS
 Package: python3-maas-provisioningserver
 Section: python
 Architecture: all
-Depends: archdetect-deb,
-         lshw,
+Depends: lshw,
          openssh-client,
          python3-attr,
          python3-bson,

@@ -4,6 +4,7 @@
 """Functionality to refresh rack controller hardware and networking details."""
 
 import copy
+from functools import lru_cache
 import os
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 import tempfile
@@ -19,23 +20,31 @@ from provisioningserver.refresh.node_info_scripts import (
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
-from provisioningserver.utils.shell import call_and_check, ExternalProcessError
-from provisioningserver.utils.snappy import get_snap_path, running_in_snap
+from provisioningserver.utils.snappy import get_snap_path
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("refresh")
 
 
+@lru_cache(maxsize=1)
 def get_architecture():
-    """Get the architecture of the running system."""
-    try:
-        stdout = call_and_check("archdetect").decode("utf-8")
-    except ExternalProcessError:
-        return ""
-    arch, subarch = stdout.strip().split("/")
-    if arch in ["i386", "amd64", "arm64", "ppc64el"]:
-        subarch = "generic"
-    return "%s/%s" % (arch, subarch)
+    """Get the Debian architecture of the running system."""
+    arch = os.getenv("SNAP_ARCH")
+    if not arch:
+        # assume it's a deb environment
+        import apt_pkg
+
+        apt_pkg.init()
+        arch = apt_pkg.get_architectures()[0]
+    return arch
+
+
+@lru_cache(maxsize=1)
+def get_resources_bin_path():
+    """Return the path of the resources binary."""
+    prefix = get_snap_path() or ""
+    arch = get_architecture()
+    return f"{prefix}/usr/share/maas/machine-resources/{arch}"
 
 
 def signal_wrapper(*args, **kwargs):
@@ -97,17 +106,7 @@ def runscripts(scripts, url, creds, tmpdir):
         if script_name == LXD_OUTPUT_NAME:
             # Execute the LXD binary directly as we are already on the
             # rack controller and don't need to download it.
-            if running_in_snap():
-                script_path = os.path.join(
-                    get_snap_path(),
-                    "usr/share/maas/machine-resources",
-                    get_architecture().split("/")[0],
-                )
-            else:
-                script_path = os.path.join(
-                    "/usr/share/maas/machine-resources",
-                    get_architecture().split("/")[0],
-                )
+            script_path = get_resources_bin_path()
         else:
             script_path = os.path.join(os.path.dirname(__file__), script_name)
 

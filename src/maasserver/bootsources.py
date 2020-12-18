@@ -60,7 +60,7 @@ def ensure_boot_source_definition():
         )
         # Default is to import newest Ubuntu LTS release, for the current
         # architecture.
-        arch = get_architecture().split("/")[0]
+        arch = get_architecture()
         # amd64 is the primary architecture for MAAS uses. Make sure its always
         # selected. If MAAS is running on another architecture select that as
         # well.
