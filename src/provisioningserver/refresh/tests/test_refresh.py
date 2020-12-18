@@ -23,6 +23,7 @@ from provisioningserver import refresh
 from provisioningserver.refresh.maas_api_helper import (
     MD_VERSION,
     SignalException,
+    TimeoutExpired,
 )
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 
@@ -331,11 +332,6 @@ class TestRefresh(MAASTestCase):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
         self.patch_scripts_failure(script_name)
-        self.patch(refresh.maas_api_helper.time, "monotonic").side_effect = (
-            0,
-            60 * 6,
-            60 * 6,
-        )
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -343,7 +339,20 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
+        def timeout_run(
+            proc, combined_path, stdout_path, stderr_path, timeout_seconds
+        ):
+            # Contract of capture_script_output is to create these files
+            for path in (stdout_path, stderr_path, combined_path):
+                open(path, "w").close()
+            raise TimeoutExpired(proc.args, timeout_seconds)
+
+        mock_capture_script_output = self.patch(
+            refresh, "capture_script_output"
+        )
+        mock_capture_script_output.side_effect = timeout_run
         refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+
         self.assertThat(
             signal,
             MockAnyCall(
@@ -356,8 +365,8 @@ class TestRefresh(MAASTestCase):
                 },
                 "TIMEDOUT",
                 files={
-                    script_name: b"test failed\n",
-                    "%s.out" % script_name: b"test failed\n",
+                    script_name: b"",
+                    "%s.out" % script_name: b"",
                     "%s.err" % script_name: b"",
                 },
                 error="Timeout(60) expired on %s [1/1]" % script_name,

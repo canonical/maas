@@ -21,11 +21,6 @@ LLDP_INSTALL_OUTPUT_NAME = "20-maas-01-install-lldpd"
 DHCP_EXPLORE_OUTPUT_NAME = "20-maas-02-dhcp-unconfigured-ifaces"
 # Run BMC config early as it will enlist new machines.
 BMC_DETECTION = "30-maas-01-bmc-config"
-# Network information must be collected before 50-maas-01-commissioning as
-# network output is used when processing commissioning output. Once
-# 50-maas-01-commissioning can gather network information this script
-# can be removed.
-IPADDR_OUTPUT_NAME = "40-maas-01-network-interfaces"
 LXD_OUTPUT_NAME = "50-maas-01-commissioning"
 # The remaining scripts can run in parallel
 SUPPORT_INFO_OUTPUT_NAME = "maas-support-info"
@@ -79,7 +74,6 @@ NODE_INFO_SCRIPTS = OrderedDict(
             BMC_DETECTION,
             {"hook": null_hook, "run_on_controller": False},
         ),
-        (IPADDR_OUTPUT_NAME, {"hook": null_hook, "run_on_controller": True}),
         (LXD_OUTPUT_NAME, {"hook": null_hook, "run_on_controller": True}),
         (
             SUPPORT_INFO_OUTPUT_NAME,

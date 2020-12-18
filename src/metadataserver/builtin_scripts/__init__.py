@@ -18,7 +18,6 @@ from provisioningserver.refresh.node_info_scripts import (
     BMC_DETECTION,
     DHCP_EXPLORE_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
-    IPADDR_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_INSTALL_OUTPUT_NAME,
@@ -82,9 +81,6 @@ BUILTIN_SCRIPTS = [
         name=DHCP_EXPLORE_OUTPUT_NAME, filename="dhcp_unconfigured_ifaces.py"
     ),
     BuiltinScript(name=BMC_DETECTION, filename="bmc_config.py"),
-    BuiltinScript(
-        name=IPADDR_OUTPUT_NAME, filename="40-maas-01-network-interfaces"
-    ),
     BuiltinScript(name=LXD_OUTPUT_NAME, filename="50-maas-01-commissioning"),
     BuiltinScript(name=SUPPORT_INFO_OUTPUT_NAME, filename="maas-support-info"),
     BuiltinScript(name=LSHW_OUTPUT_NAME, filename="maas-lshw"),

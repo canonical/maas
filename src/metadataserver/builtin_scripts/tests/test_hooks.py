@@ -64,9 +64,7 @@ from metadataserver.builtin_scripts.hooks import (
 from metadataserver.enum import SCRIPT_TYPE
 from metadataserver.models import ScriptSet
 from provisioningserver.refresh.node_info_scripts import (
-    IPADDR_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
-    LXD_OUTPUT_NAME,
 )
 from provisioningserver.utils.tests.test_lxd import (
     SAMPLE_LXD_NETWORKS,
@@ -1498,13 +1496,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(1000, iface2.interface_speed)
         self.assertEqual(0, iface3.link_speed)
         self.assertEqual(0, iface3.interface_speed)
-
-    def test_ipaddr_script_before(self):
-        self.assertLess(
-            IPADDR_OUTPUT_NAME,
-            LXD_OUTPUT_NAME,
-            "The LXD script hook depends on the IPADDR script result",
-        )
 
     def test_ignores_system_information_placeholders(self):
         node = factory.make_Node()
