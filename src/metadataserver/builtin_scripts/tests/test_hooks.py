@@ -6,7 +6,6 @@
 
 from copy import deepcopy
 import json
-from pathlib import Path
 import random
 
 from distro_info import UbuntuDistroInfo
@@ -339,120 +338,6 @@ SAMPLE_LXD_RESOURCES_NO_NUMA = {
 }
 
 
-# This matches ip_addr_results_xenial.txt for the unit tests
-SAMPLE_LXD_XENIAL_NETWORK = {
-    "cards": [
-        {
-            "driver": "e1000e",
-            "driver_version": "3.2.6-k",
-            "ports": [
-                {
-                    "id": "ens3",
-                    "address": "52:54:00:2d:39:49",
-                    "port": 0,
-                    "protocol": "ethernet",
-                    "supported_modes": [
-                        "10baseT/Half",
-                        "10baseT/Full",
-                        "100baseT/Half",
-                        "100baseT/Full",
-                        "1000baseT/Full",
-                    ],
-                    "supported_ports": ["twisted pair"],
-                    "port_type": "twisted pair",
-                    "transceiver_type": "internal",
-                    "auto_negotiation": True,
-                    "link_detected": True,
-                    "link_speed": 1000,
-                }
-            ],
-            "numa_node": 0,
-            "pci_address": "0000:00:19.0",
-            "vendor": "Intel Corporation",
-            "vendor_id": "8086",
-            "product": "Ethernet Connection I217-LM",
-            "product_id": "153a",
-        },
-        {
-            "driver": "e1000e",
-            "driver_version": "3.2.6-k",
-            "ports": [
-                {
-                    "id": "ens10",
-                    "address": "52:54:00:e5:c6:6b",
-                    "port": 0,
-                    "protocol": "ethernet",
-                    "supported_modes": [
-                        "10baseT/Half",
-                        "10baseT/Full",
-                        "100baseT/Half",
-                        "100baseT/Full",
-                        "1000baseT/Full",
-                    ],
-                    "supported_ports": ["twisted pair"],
-                    "port_type": "twisted pair",
-                    "transceiver_type": "internal",
-                    "auto_negotiation": True,
-                    "link_detected": False,
-                }
-            ],
-            "numa_node": 0,
-            "pci_address": "0000:00:19.0",
-            "vendor": "Intel Corporation",
-            "vendor_id": "8086",
-            "product": "Ethernet Connection I217-LM",
-            "product_id": "153a",
-        },
-        {
-            "driver": "e1000e",
-            "driver_version": "3.2.6-k",
-            "ports": [
-                {
-                    "id": "ens11",
-                    "address": "52:54:00:ed:9f:9d",
-                    "port": 0,
-                    "protocol": "ethernet",
-                    "auto_negotiation": False,
-                    "link_detected": False,
-                }
-            ],
-            "numa_node": 1,
-            "pci_address": "0000:04:00.0",
-            "vendor": "Intel Corporation",
-            "vendor_id": "8086",
-            "product": "Wireless 7260",
-            "product_id": "08b2",
-        },
-        {
-            "driver": "e1000e",
-            "driver_version": "3.2.6-k",
-            "ports": [
-                {
-                    "id": "ens12",
-                    "address": "52:54:00:ed:9f:00",
-                    "port": 0,
-                    "protocol": "ethernet",
-                    "auto_negotiation": False,
-                    "link_detected": False,
-                }
-            ],
-            "numa_node": 1,
-            "pci_address": "0000:04:00.0",
-            "vendor": "Intel Corporation",
-            "vendor_id": "8086",
-            "product": "Wireless 7260",
-            "product_id": "08b2",
-        },
-    ],
-    "total": 4,
-}
-
-
-IP_ADDR_OUTPUT = (Path(__file__).parent / "ip_addr_results.txt").read_bytes()
-IP_ADDR_OUTPUT_XENIAL = (
-    Path(__file__).parent / "ip_addr_results_xenial.txt"
-).read_bytes()
-
 KERNEL_CMDLINE_OUTPUT = (
     "BOOT_IMAGE=http://10.245.136.6:5248/images/ubuntu/amd64/generic/bionic/"
     "daily/boot-kernel nomodeset ro root=squash:http://10.245.136.6:5248/"
@@ -524,7 +409,6 @@ def make_lxd_output(
     os_version=None,
     server_name=None,
     virt_type=None,
-    with_xenial_network=False,
     uuid=None,
 ):
     if not resources:
@@ -545,8 +429,6 @@ def make_lxd_output(
         "networks": networks,
     }
     ret["resources"]["system"] = make_lxd_system_info(virt_type, uuid)
-    if with_xenial_network:
-        ret["resources"]["network"] = deepcopy(SAMPLE_LXD_XENIAL_NETWORK)
     return ret
 
 
@@ -2481,8 +2363,6 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # These should have been added to the node.
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
-        # This one should have been removed because it no longer shows on the
-        # `ip addr` output.
         db_macaddresses = [
             iface.mac_address for iface in node.interface_set.all()
         ]

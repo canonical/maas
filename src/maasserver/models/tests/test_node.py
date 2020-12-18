@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 import email
 import json
 import logging
-import os
 import random
 import re
 from textwrap import dedent
@@ -73,6 +72,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     IPAddressCheckFailed,
+    NetworkingResetProblem,
     NodeStateViolation,
     PodProblem,
     PowerProblem,
@@ -193,7 +193,6 @@ from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
-    IPADDR_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
@@ -7360,24 +7359,16 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
 
     def test_restore_commissioned_network_interfaces(self):
         node = factory.make_Node()
-        IP_ADDR_OUTPUT_FILE = os.path.join(
-            os.path.dirname(test_hooks.__file__), "ip_addr_results_xenial.txt"
-        )
-        with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
-            IP_ADDR_OUTPUT_XENIAL = fd.read()
         lxd_script = factory.make_Script(
             name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        ip_addr_script = factory.make_Script(
-            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
-        )
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
-                node, scripts=[lxd_script.name, ip_addr_script.name]
+                node, scripts=[lxd_script.name]
             )
         )
         node.current_commissioning_script_set = commissioning_script_set
-        output = test_hooks.make_lxd_output_json(with_xenial_network=True)
+        output = test_hooks.make_lxd_output_json()
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
             script=lxd_script,
@@ -7385,42 +7376,55 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             output=output,
             stdout=output,
         )
+        # Create NUMA nodes.
+        test_hooks.create_numa_nodes(node)
+        # reset network intefaces from commissioning data
+        node.restore_network_interfaces()
+        self.assertEqual(
+            ["eth0", "eth1", "eth2"],
+            sorted(interface.name for interface in node.interface_set.all()),
+        )
+
+    def test_restore_commissioned_network_interfaces_missing_data(self):
+        node = factory.make_Node()
+        lxd_script = factory.make_Script(
+            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
+        )
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[lxd_script.name]
+            )
+        )
+        node.current_commissioning_script_set = commissioning_script_set
+        data = test_hooks.make_lxd_output()
+        # emulate missing networks information in LXD output (<<2.10)
+        del data["networks"]
+        output = json.dumps(data).encode()
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
-            script=ip_addr_script,
+            script=lxd_script,
             exit_status=0,
-            output=IP_ADDR_OUTPUT_XENIAL,
+            output=output,
+            stdout=output,
         )
         # Create NUMA nodes.
         test_hooks.create_numa_nodes(node)
-        # restore_network_interfaces() will set up the network intefaces
-        # specified in ip_addr_results_xenial.txt
-        node.restore_network_interfaces()
-        self.assertEqual(
-            ["ens10", "ens11", "ens12", "ens3"],
-            sorted(interface.name for interface in node.interface_set.all()),
+        self.assertRaises(
+            NetworkingResetProblem, node.restore_network_interfaces
         )
 
     def test_restore_network_interfaces_ignores_stderr(self):
         node = factory.make_Node()
-        IP_ADDR_OUTPUT_FILE = os.path.join(
-            os.path.dirname(test_hooks.__file__), "ip_addr_results_xenial.txt"
-        )
-        with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
-            IP_ADDR_OUTPUT_XENIAL = fd.read()
         lxd_script = factory.make_Script(
             name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        ip_addr_script = factory.make_Script(
-            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
-        )
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
-                node, scripts=[lxd_script.name, ip_addr_script.name]
+                node, scripts=[lxd_script.name]
             )
         )
         node.current_commissioning_script_set = commissioning_script_set
-        output = test_hooks.make_lxd_output_json(with_xenial_network=True)
+        output = test_hooks.make_lxd_output_json()
         error_message = b"some error message"
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
@@ -7430,54 +7434,33 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             stdout=output,
             stderr=error_message,
         )
-        factory.make_ScriptResult(
-            script_set=commissioning_script_set,
-            script=ip_addr_script,
-            exit_status=0,
-            output=IP_ADDR_OUTPUT_XENIAL,
-        )
         # Create NUMA nodes.
         test_hooks.create_numa_nodes(node)
-        # restore_network_interfaces() will set up the network intefaces
-        # specified in ip_addr_results_xenial.txt
+        # reset network intefaces from commissioning data
         node.restore_network_interfaces()
         self.assertEqual(
-            ["ens10", "ens11", "ens12", "ens3"],
+            ["eth0", "eth1", "eth2"],
             sorted(interface.name for interface in node.interface_set.all()),
         )
 
     def test_restore_network_interfaces_extra(self):
         node = factory.make_Node()
-        IP_ADDR_OUTPUT_FILE = os.path.join(
-            os.path.dirname(test_hooks.__file__), "ip_addr_results_xenial.txt"
-        )
-        with open(IP_ADDR_OUTPUT_FILE, "rb") as fd:
-            IP_ADDR_OUTPUT_XENIAL = fd.read()
         lxd_script = factory.make_Script(
             name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
         )
-        ip_addr_script = factory.make_Script(
-            name=IPADDR_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
-        )
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
-                node, scripts=[lxd_script.name, ip_addr_script.name]
+                node, scripts=[lxd_script.name]
             )
         )
         node.current_commissioning_script_set = commissioning_script_set
-        output = test_hooks.make_lxd_output_json(with_xenial_network=True)
+        output = test_hooks.make_lxd_output_json()
         factory.make_ScriptResult(
             script_set=commissioning_script_set,
             script=lxd_script,
             exit_status=0,
             output=output,
             stdout=output,
-        )
-        factory.make_ScriptResult(
-            script_set=commissioning_script_set,
-            script=ip_addr_script,
-            exit_status=0,
-            output=IP_ADDR_OUTPUT_XENIAL,
         )
         # Create NUMA nodes.
         test_hooks.create_numa_nodes(node)
@@ -7497,7 +7480,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         node.restore_network_interfaces()
         self.assertEqual(
-            ["ens10", "ens11", "ens12", "ens3"],
+            ["eth0", "eth1", "eth2"],
             sorted(interface.name for interface in node.interface_set.all()),
         )
 

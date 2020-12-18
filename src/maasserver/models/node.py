@@ -106,6 +106,7 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import (
     IPAddressCheckFailed,
+    NetworkingResetProblem,
     NodeStateViolation,
     NoScriptsFound,
     PowerProblem,
@@ -4584,6 +4585,11 @@ class Node(CleanSave, TimestampedModel):
             script_name=LXD_OUTPUT_NAME
         )
         lxd_output = json.loads(script.stdout)
+        if "networks" not in lxd_output:
+            raise NetworkingResetProblem(
+                "Missing network information from commissioning script, "
+                "please commission the machine again"
+            )
         update_node_network_information(
             self, lxd_output, NUMANode.objects.filter(node=self)
         )
