@@ -543,7 +543,7 @@ source-package-clean:
 
 # Debugging target. Allows printing of any variable.
 # As an example, try:
-#     make print-scss_input
+#     make print-BIN_SCRIPTS
 print-%:
 	@echo $* = $($*)
 
