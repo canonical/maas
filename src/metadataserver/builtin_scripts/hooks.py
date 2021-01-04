@@ -128,8 +128,8 @@ def _parse_interfaces(node, data):
             "sriov_max_vf": card.get("sriov", {}).get("maximum_vfs", 0),
         }
         # Assign the IP addresses to this interface
-        link = ifaces_info.get(interface["name"], {})
-        interface["ips"] = link.get("inet", []) + link.get("inet6", [])
+        link = ifaces_info.get(interface["name"])
+        interface["ips"] = link["addresses"] if link else []
 
         if mac in interfaces:
             raise DuplicateMACs(

@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:0675c37c9ab84b1be69979619609bfb3b3fa008679b36cd34944c71b5295af4a"
+  digest = "1:184f59086e68cdf85d7a909b6410367f3415dd8b46da68fb176ae5438bcec642"
   name = "github.com/flosch/pongo2"
   packages = ["."]
   pruneopts = ""
-  revision = "f946812ec8d53b724e4daeb888c95ab63c98b3c0"
-  version = "v4.0.0"
+  revision = "6b600819ffbf4a36a02b27f81065fdf1fc03bfa9"
+  version = "v4.0.2"
 
 [[projects]]
   digest = "1:25eec675540d3cf690b593f161626a8bbf1d25e60d5cc8f8d51f38c467a32766"
@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:bb93eb5fd56bfe02ad0e8f8702084dd88e480360f7f3ab7e521b7ca80ef8bd30"
+  digest = "1:e5b20925fd28e01188d1060d6e9e697de45ee7e39ddedad5c34a1bdef6740625"
   name = "github.com/lxc/lxd"
   packages = [
     "lxd/include",
@@ -52,7 +52,7 @@
     "shared/version",
   ]
   pruneopts = ""
-  revision = "275ece65237da52bce37429327d3b6dbdad568ac"
+  revision = "2e660ad180900052302f6aa818ad142b162a1812"
 
 [[projects]]
   digest = "1:6dbb0eb72090871f2e58d1e37973fe3cb8c0f45f49459398d3fc740cb30e13bd"
@@ -80,7 +80,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3d2a2835773ff2a9149219731e5acb01cc3dd0f46cc503bf2575c584eea4dfac"
+  digest = "1:36c822345de05a05ca182647a2364b392ce56a6bb514084368e8501d6e497dd3"
   name = "golang.org/x/sys"
   packages = [
     "internal/unsafeheader",
@@ -88,7 +88,7 @@
     "windows",
   ]
   pruneopts = ""
-  revision = "f84b799fce68db3cb46a8f6f819c1e56377181df"
+  revision = "f9fddec55a1e5ebe479d5259f4982995b3194ebc"
 
 [[projects]]
   branch = "v2"

@@ -95,19 +95,27 @@ def parse_lxd_networks(networks):
     interfaces = {}
     for name, details in networks.items():
         interface = {
-            "name": name,
+            "type": details["type"],
+            "mac": details["hwaddr"],
             "enabled": details["state"] == "up",
-            "inet": [],
-            "inet6": [],
-        }
-        if details["hwaddr"]:
-            interface["mac"] = details["hwaddr"]
-        for address in details["addresses"]:
-            addr = f"{address['address']}/{address['netmask']}"
-            if address["scope"] != "link":
+            "addresses": [
+                f"{address['address']}/{address['netmask']}"
+                for address in details["addresses"]
                 # skip link-local addresses
-                interface[address["family"]].append(addr)
-
+                if address["scope"] != "link"
+            ],
+            "parents": [],
+        }
+        if details["bridge"]:
+            interface["type"] = "bridge"
+            interface["parents"] = details["bridge"]["upper_devices"]
+        elif details["bond"]:
+            interface["type"] = "bond"
+            interface["parents"] = details["bond"]["lower_devices"]
+        elif details["vlan"]:
+            interface["type"] = "vlan"
+            interface["vid"] = details["vlan"]["vid"]
+            interface["parents"] = [details["vlan"]["lower_device"]]
         interfaces[name] = interface
 
     return interfaces

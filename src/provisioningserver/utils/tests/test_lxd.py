@@ -343,6 +343,7 @@ SAMPLE_LXD_NETWORKS = {
         "type": "loopback",
         "bond": None,
         "bridge": None,
+        "vlan": None,
     },
     "eth0": {
         "addresses": [
@@ -370,6 +371,7 @@ SAMPLE_LXD_NETWORKS = {
         "type": "broadcast",
         "bond": None,
         "bridge": None,
+        "vlan": None,
     },
     "eth1": {
         "addresses": [
@@ -385,6 +387,7 @@ SAMPLE_LXD_NETWORKS = {
         "type": "broadcast",
         "bond": None,
         "bridge": None,
+        "vlan": None,
     },
     "eth2": {
         "addresses": [
@@ -400,6 +403,7 @@ SAMPLE_LXD_NETWORKS = {
         "type": "broadcast",
         "bond": None,
         "bridge": None,
+        "vlan": None,
     },
 }
 
@@ -433,31 +437,118 @@ class TestLXDNetworks(MAASTestCase):
             networks,
             {
                 "eth0": {
+                    "type": "broadcast",
                     "enabled": True,
-                    "inet": ["192.168.0.3/24"],
-                    "inet6": ["2001:db8:a::123/64"],
+                    "addresses": ["192.168.0.3/24", "2001:db8:a::123/64"],
                     "mac": "00:00:00:00:00:01",
-                    "name": "eth0",
+                    "parents": [],
                 },
                 "eth1": {
+                    "type": "broadcast",
                     "enabled": False,
-                    "inet": ["172.17.42.1/16"],
-                    "inet6": [],
+                    "addresses": ["172.17.42.1/16"],
                     "mac": "00:00:00:00:00:02",
-                    "name": "eth1",
+                    "parents": [],
                 },
                 "eth2": {
+                    "type": "broadcast",
                     "enabled": False,
-                    "inet": ["172.17.12.1/16"],
-                    "inet6": [],
+                    "addresses": ["172.17.12.1/16"],
                     "mac": "00:00:00:00:00:03",
-                    "name": "eth2",
+                    "parents": [],
                 },
                 "lo": {
+                    "type": "loopback",
                     "enabled": True,
-                    "inet": ["127.0.0.1/8"],
-                    "inet6": ["::1/128"],
-                    "name": "lo",
+                    "addresses": ["127.0.0.1/8", "::1/128"],
+                    "mac": "",
+                    "parents": [],
+                },
+            },
+        )
+
+    def test_networks_vlan(self):
+        network_details = {
+            "vlan100": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": {
+                    "lower_device": "eth0",
+                    "vid": 100,
+                },
+            },
+        }
+        networks = parse_lxd_networks(network_details)
+        self.assertEqual(
+            networks,
+            {
+                "vlan100": {
+                    "type": "vlan",
+                    "enabled": True,
+                    "addresses": [],
+                    "mac": "00:00:00:00:00:01",
+                    "parents": ["eth0"],
+                    "vid": 100,
+                },
+            },
+        )
+
+    def test_networks_bond(self):
+        network_details = {
+            "bond0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": {
+                    "lower_devices": ["eth0", "eth1"],
+                },
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        networks = parse_lxd_networks(network_details)
+        self.assertEqual(
+            networks,
+            {
+                "bond0": {
+                    "type": "bond",
+                    "enabled": True,
+                    "addresses": [],
+                    "mac": "00:00:00:00:00:01",
+                    "parents": ["eth0", "eth1"],
+                },
+            },
+        )
+
+    def test_networks_bridge(self):
+        network_details = {
+            "br0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": {
+                    "upper_devices": ["eth0", "eth1"],
+                },
+                "vlan": None,
+            },
+        }
+        networks = parse_lxd_networks(network_details)
+        self.assertEqual(
+            networks,
+            {
+                "br0": {
+                    "type": "bridge",
+                    "enabled": True,
+                    "addresses": [],
+                    "mac": "00:00:00:00:00:01",
+                    "parents": ["eth0", "eth1"],
                 },
             },
         )
