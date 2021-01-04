@@ -133,6 +133,7 @@ class MachineHandler(NodeHandler):
             .prefetch_related("boot_interface__vlan__fabric")
             .prefetch_related("tags")
             .prefetch_related("pool")
+            .prefetch_related("ownerdata_set")
             .annotate(
                 status_event_type_description=Subquery(
                     Event.objects.filter(
@@ -199,8 +200,8 @@ class MachineHandler(NodeHandler):
             "set_script_result_unsuppressed",
             "get_suppressible_script_results",
             "get_latest_failed_testing_script_results",
-            "get_owner_data",
-            "set_owner_data",
+            "get_workload_annotations",
+            "set_workload_annotations",
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [
@@ -360,6 +361,8 @@ class MachineHandler(NodeHandler):
         data["other_test_status"] = self.dehydrate_test_statuses(
             node_script_results
         )
+
+        data["workload_annotations"] = OwnerData.objects.get_owner_data(obj)
 
         if not for_list:
             # Add info specific to a machine.
@@ -1121,21 +1124,21 @@ class MachineHandler(NodeHandler):
             raise HandlerPermissionError()
         return node
 
-    def get_owner_data(self, params):
-        """Get the owner data for a machine"""
+    def get_workload_annotations(self, params):
+        """Get the owner data for a machine, known as workload annotations."""
         machine = self._get_node_or_permission_error(
             params, permission=NodePermission.edit
         )
         return OwnerData.objects.get_owner_data(machine)
 
-    def set_owner_data(self, params):
-        """Set the owner data for a machine"""
+    def set_workload_annotations(self, params):
+        """Set the owner data for a machine, known as workload annotations."""
         machine = self._get_node_or_permission_error(
             params, permission=NodePermission.edit
         )
         owner_data = {
             key: None if value == "" else value
-            for key, value in params["owner_data"].items()
+            for key, value in params["workload_annotations"].items()
         }
         OwnerData.objects.set_owner_data(machine, owner_data)
         return OwnerData.objects.get_owner_data(machine)

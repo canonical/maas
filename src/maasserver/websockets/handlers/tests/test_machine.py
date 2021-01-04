@@ -61,6 +61,7 @@ from maasserver.models.nodeprobeddetails import (
     get_single_probed_details,
     script_output_nsmap,
 )
+from maasserver.models.ownerdata import OwnerData
 from maasserver.models.partition import Partition, PARTITION_ALIGNMENT_SIZE
 import maasserver.node_action as node_action_module
 from maasserver.node_action import compile_node_actions
@@ -125,6 +126,9 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestMachineHandler(MAASServerTestCase):
+
+    maxDiff = None
+
     def get_blockdevice_status(self, handler, blockdevice):
         blockdevice_script_results = [
             script_result
@@ -321,6 +325,7 @@ class TestMachineHandler(MAASServerTestCase):
             "zone": handler.dehydrate_zone(node.zone),
             "pool": handler.dehydrate_pool(node.pool),
             "default_user": node.default_user,
+            "workload_annotations": OwnerData.objects.get_owner_data(node),
         }
         if "module" in driver and "comment" in driver:
             data["third_party_driver"] = {
@@ -374,6 +379,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "testing_script_count",
                 "testing_status",
                 "vlan",
+                "workload_annotations",
             ]
             for key in list(data):
                 if key not in allowed_fields:
@@ -577,14 +583,15 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
+        expected_query_count = 24
         self.assertEqual(
             queries_one,
-            23,
+            expected_query_count,
             "Number of queries has changed; make sure this is expected.",
         )
         self.assertEqual(
             queries_total,
-            23,
+            expected_query_count,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -629,7 +636,7 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 23
+        expected_query_count = 24
         self.assertEqual(
             queries_one,
             expected_query_count,
@@ -673,7 +680,7 @@ class TestMachineHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            51,
+            52,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -5274,90 +5281,90 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
 
 
 class TestMachineHandlerOwnerData(MAASServerTestCase):
-    """Tests for MachineHandle methods set_owner_data and get_owner_data."""
+    """Tests for MachineHandle methods set_workload_annotations and get_workload_annotations."""
 
-    def test_set_owner_data(self):
+    def test_set_workload_annotations(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        owner_data = {"data 1": "value 1"}
+        workload_annotations = {"data 1": "value 1"}
         self.assertEqual(
-            owner_data,
-            handler.set_owner_data(
+            workload_annotations,
+            handler.set_workload_annotations(
                 {
                     "system_id": node.system_id,
-                    "owner_data": owner_data,
-                }
-            ),
-        )
-
-    def test_set_owner_data_overwrite(self):
-        user = factory.make_User()
-        node = factory.make_Node(owner=user)
-        handler = MachineHandler(user, {}, None)
-        owner_data = {"data 1": "value 1"}
-        self.assertEqual(
-            owner_data,
-            handler.set_owner_data(
-                {
-                    "system_id": node.system_id,
-                    "owner_data": owner_data,
-                }
-            ),
-        )
-        owner_data = {"data 1": "value 2"}
-        self.assertEqual(
-            owner_data,
-            handler.set_owner_data(
-                {
-                    "system_id": node.system_id,
-                    "owner_data": owner_data,
+                    "workload_annotations": workload_annotations,
                 }
             ),
         )
 
-    def test_set_owner_data_empty(self):
+    def test_set_workload_annotations_overwrite(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        owner_data = {"data 1": "value 1"}
+        workload_annotations = {"data 1": "value 1"}
         self.assertEqual(
-            owner_data,
-            handler.set_owner_data(
+            workload_annotations,
+            handler.set_workload_annotations(
                 {
                     "system_id": node.system_id,
-                    "owner_data": owner_data,
+                    "workload_annotations": workload_annotations,
                 }
             ),
         )
-        owner_data = {"data 1": ""}
+        workload_annotations = {"data 1": "value 2"}
+        self.assertEqual(
+            workload_annotations,
+            handler.set_workload_annotations(
+                {
+                    "system_id": node.system_id,
+                    "workload_annotations": workload_annotations,
+                }
+            ),
+        )
+
+    def test_set_workload_annotations_empty(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {}, None)
+        workload_annotations = {"data 1": "value 1"}
+        self.assertEqual(
+            workload_annotations,
+            handler.set_workload_annotations(
+                {
+                    "system_id": node.system_id,
+                    "workload_annotations": workload_annotations,
+                }
+            ),
+        )
+        workload_annotations = {"data 1": ""}
         self.assertEqual(
             {},
-            handler.set_owner_data(
+            handler.set_workload_annotations(
                 {
                     "system_id": node.system_id,
-                    "owner_data": owner_data,
+                    "workload_annotations": workload_annotations,
                 }
             ),
         )
 
-    def test_get_ower_data(self):
+    def test_get_workload_annotations(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        owner_data = {"data 1": "value 1"}
+        workload_annotations = {"data 1": "value 1"}
         self.assertEqual(
-            owner_data,
-            handler.set_owner_data(
+            workload_annotations,
+            handler.set_workload_annotations(
                 {
                     "system_id": node.system_id,
-                    "owner_data": owner_data,
+                    "workload_annotations": workload_annotations,
                 }
             ),
         )
         self.assertEqual(
-            owner_data,
-            handler.get_owner_data(
+            workload_annotations,
+            handler.get_workload_annotations(
                 {
                     "system_id": node.system_id,
                 }

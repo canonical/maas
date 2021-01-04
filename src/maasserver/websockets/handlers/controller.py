@@ -32,6 +32,7 @@ class ControllerHandler(MachineHandler):
             .select_related("controllerinfo", "domain", "bmc")
             .prefetch_related("service_set")
             .prefetch_related("tags")
+            .prefetch_related("ownerdata_set")
             .annotate(
                 status_event_type_description=Subquery(
                     Event.objects.filter(
