@@ -330,20 +330,14 @@ def interface_info_to_beacon_remote_payload(ifname, ifdata, rx_vid=None):
     :return: A subset of the ifdata, with the addition of the 'name' key,
         which will be set to the given `ifname`.
     """
-    remote = ifdata.copy()
+    # copy network info, filtering out unneeded fields
+    remote = {
+        key: value
+        for key, value in ifdata.items()
+        if key not in ("enabled", "monitored", "links", "source")
+    }
     if ifname is not None:
         remote["name"] = ifname
-    # It will be obvious to the receiver that the source interface
-    # was enabled. ;-)
-    remote.pop("enabled", None)
-    # Remote doesn't need to know which interfaces are monitored.
-    remote.pop("monitored", None)
-    # Don't need all the links, just the one that originated this
-    # packet.
-    remote.pop("links", None)
-    # Remote doesn't need to know the source or index.
-    remote.pop("source", None)
-    remote.pop("index", None)
     # The subnet will be replaced by the value of each subnet link, but if
     # no link is configured, None is the default.
     remote["subnet"] = None
@@ -607,6 +601,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # on the configured source subnet (if any), but the basic payload
             # is ready.
             payload = {"remote": remote}
+            if_index = socket.if_nametoindex(ifname)
             links = ifdata["links"]
             if len(links) == 0:
                 # No configured links, so try sending out a link-local IPv6
@@ -614,7 +609,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
                 beacon = create_beacon_payload(beacon_type, payload)
                 if verbose:
                     log.msg("Beacon payload:\n%s" % pformat(beacon.payload))
-                self.send_multicast_beacon(ifdata["index"], beacon)
+                self.send_multicast_beacon(if_index, beacon)
                 continue
             sent_ipv6 = False
             for link in ifdata["links"]:
@@ -631,12 +626,12 @@ class BeaconingSocketProtocol(DatagramProtocol):
                 else:
                     # An IPv6 socket requires the source address to be the
                     # interface index.
-                    self.send_multicast_beacon(ifdata["index"], beacon)
+                    self.send_multicast_beacon(if_index, beacon)
                     sent_ipv6 = True
             if not sent_ipv6:
                 remote["subnet"] = None
                 beacon = create_beacon_payload(beacon_type, payload)
-                self.send_multicast_beacon(ifdata["index"], beacon)
+                self.send_multicast_beacon(if_index, beacon)
 
     def solicitationReceived(self, beacon: ReceivedBeacon):
         """Called whenever a solicitation beacon is received.

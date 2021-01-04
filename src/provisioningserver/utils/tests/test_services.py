@@ -6,8 +6,9 @@
 
 from functools import partial
 import random
+import socket
 import threading
-from unittest.mock import call, Mock, sentinel
+from unittest.mock import ANY, call, Mock, sentinel
 from uuid import uuid1
 
 from testtools import ExpectedException
@@ -1256,4 +1257,28 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         clock.advance(5)
         self.assertThat(
             send_mcast_mock, MockCalledOnceWith({}, "solicitation")
+        )
+
+    def test_send_multicast_beacons(self):
+        interfaces = {
+            "eth0": {"enabled": True, "links": []},
+            "eth1": {"enabled": True, "links": []},
+            "eth2": {"enabled": True, "links": []},
+        }
+        self.patch(socket, "if_nametoindex", lambda name: int(name[3:]))
+        protocol = BeaconingSocketProtocol(
+            Clock(),
+            port=0,
+            process_incoming=False,
+            loopback=True,
+            interface="::",
+            debug=True,
+        )
+        self.patch(services, "create_beacon_payload")
+        send_mcast_mock = self.patch(protocol, "send_multicast_beacon")
+        protocol.send_multicast_beacons(interfaces)
+        # beaconing is sent for each interface ID
+        self.assertEqual(
+            send_mcast_mock.mock_calls,
+            [call(0, ANY), call(1, ANY), call(2, ANY)],
         )
