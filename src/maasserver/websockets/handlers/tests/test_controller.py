@@ -4,8 +4,6 @@
 """Tests for `maasserver.websockets.handlers.controller`"""
 
 
-from unittest import skip
-
 from testscenarios import multiply_scenarios
 from testtools.matchers import ContainsDict, Equals
 
@@ -117,7 +115,6 @@ class TestControllerHandler(MAASServerTestCase):
             "Number of queries has changed; make sure this is expected.",
         )
 
-    @skip("XXX: ltrager 2919-11-29 bug=1854546")
     def test_get_num_queries_is_the_expected_number(self):
         owner = factory.make_admin()
         node = factory.make_RegionRackController(owner=owner)
@@ -148,7 +145,7 @@ class TestControllerHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            36,
+            35,
             "Number of queries has changed; make sure this is expected.",
         )
 
