@@ -5132,3 +5132,66 @@ class TestScriptListener(
             self.assertEqual(("delete", "%s" % script.id), dv.value)
         finally:
             yield listener.stopService()
+
+
+class TestNodeDeviceListener(
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_create_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("nodedevice", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            node_device = yield deferToDatabase(
+                self.create_node_device, {"node": node}
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("create", "%s" % node_device.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_update_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("nodedevice", lambda *args: dv.set(args))
+        node_device = yield deferToDatabase(self.create_node_device)
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_node_device,
+                node_device.id,
+                {
+                    "commissioning_driver": factory.make_name(
+                        "commissioning_driver"
+                    )
+                },
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", "%s" % node_device.id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_delete_notification(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("nodedevice", lambda *args: dv.set(args))
+        node_device = yield deferToDatabase(self.create_node_device)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_node_device, node_device.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(("delete", "%s" % node_device.id), dv.value)
+        finally:
+            yield listener.stopService()

@@ -2119,20 +2119,29 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             result["numa_nodes"],
             [
-                {"index": 0, "memory": 0, "cores": [], "hugepages_set": []},
                 {
+                    "id": numa_node.id - 3,
+                    "index": 0,
+                    "memory": 0,
+                    "cores": [],
+                    "hugepages_set": [],
+                },
+                {
+                    "id": numa_node.id - 2,
                     "index": 1,
                     "memory": 512,
                     "cores": [0, 1],
                     "hugepages_set": [{"page_size": 1024, "total": 1024}],
                 },
                 {
+                    "id": numa_node.id - 1,
                     "index": 2,
                     "memory": 1024,
                     "cores": [2, 3],
                     "hugepages_set": [{"page_size": 1024, "total": 2048}],
                 },
                 {
+                    "id": numa_node.id,
                     "index": 3,
                     "memory": 2048,
                     "cores": [4, 5],

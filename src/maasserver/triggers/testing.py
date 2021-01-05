@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Helper class for all tests using the `PostgresListenerService` under
@@ -29,6 +29,7 @@ from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.interface import Interface
 from maasserver.models.iprange import IPRange
 from maasserver.models.node import Node, RackController, RegionController
+from maasserver.models.nodedevice import NodeDevice
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.models.partition import Partition
@@ -826,6 +827,21 @@ class TransactionalHelpersMixin:
         config = Config.objects.get(name=name)
         config.value = value
         config.save()
+
+    @transactional
+    def create_node_device(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_NodeDevice(**params)
+
+    @transactional
+    def update_node_device(self, id, params, **kwargs):
+        return apply_update_to_model(NodeDevice, id, params, **kwargs)
+
+    @transactional
+    def delete_node_device(self, id):
+        node_device = NodeDevice.objects.get(id=id)
+        node_device.delete()
 
 
 class DNSHelpersMixin:

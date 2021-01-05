@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -2724,3 +2724,21 @@ def register_websocket_triggers():
         )
     )
     register_triggers("metadataserver_script", "script")
+
+    # NodeDevice table
+    register_procedure(
+        render_notification_procedure(
+            "nodedevice_create_notify", "nodedevice_create", "NEW.id"
+        )
+    )
+    register_procedure(
+        render_notification_procedure(
+            "nodedevice_update_notify", "nodedevice_update", "NEW.id"
+        )
+    )
+    register_procedure(
+        render_notification_procedure(
+            "nodedevice_delete_notify", "nodedevice_delete", "OLD.id"
+        )
+    )
+    register_triggers("maasserver_nodedevice", "nodedevice")

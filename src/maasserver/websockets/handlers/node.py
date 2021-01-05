@@ -138,7 +138,7 @@ class NodeHandler(TimestampedModelHandler):
     def dehydrate_numanode(self, numa_node):
         details = {
             attr: getattr(numa_node, attr)
-            for attr in ("index", "memory", "cores")
+            for attr in ("id", "index", "memory", "cores")
         }
         details["hugepages_set"] = [
             self.dehydrate_hugepages(hugepages)
