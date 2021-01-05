@@ -6,7 +6,7 @@
 
 import base64
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timedelta
 import http.client
 from io import BytesIO
 import json
@@ -1446,7 +1446,7 @@ class TestMAASScripts(MAASServerTestCase):
             if script_result.script is None:
                 script = NODE_INFO_SCRIPTS[script_result.name]
                 content = script["content"]
-                md_item["timeout_seconds"] = script["timeout"].seconds
+                md_item["timeout_seconds"] = script["timeout"].total_seconds()
                 md_item["parallel"] = script.get(
                     "parallel", SCRIPT_PARALLEL.DISABLED
                 )
@@ -1463,7 +1463,7 @@ class TestMAASScripts(MAASServerTestCase):
                 md_item["script_version_id"] = script_result.script.script.id
                 md_item[
                     "timeout_seconds"
-                ] = script_result.script.timeout.seconds
+                ] = script_result.script.timeout.total_seconds()
                 md_item["parallel"] = script_result.script.parallel
                 md_item["hardware_type"] = script_result.script.hardware_type
                 md_item["parameters"] = script_result.parameters
@@ -1581,7 +1581,7 @@ class TestMAASScripts(MAASServerTestCase):
                         "name": script.name,
                         "path": path,
                         "script_version_id": script.script.id,
-                        "timeout_seconds": script.timeout.seconds,
+                        "timeout_seconds": script.timeout.total_seconds(),
                         "parallel": script.parallel,
                         "hardware_type": script.hardware_type,
                         "parameters": parameters,
@@ -1635,7 +1635,7 @@ class TestMAASScripts(MAASServerTestCase):
                         "name": script.name,
                         "path": path,
                         "script_version_id": script.script.id,
-                        "timeout_seconds": script.timeout.seconds,
+                        "timeout_seconds": script.timeout.total_seconds(),
                         "parallel": script.parallel,
                         "hardware_type": script.hardware_type,
                         "parameters": parameters,
@@ -1707,7 +1707,7 @@ class TestMAASScripts(MAASServerTestCase):
                         "name": script.name,
                         "path": path,
                         "script_version_id": script.script.id,
-                        "timeout_seconds": script.timeout.seconds,
+                        "timeout_seconds": script.timeout.total_seconds(),
                         "parallel": script.parallel,
                         "hardware_type": script.hardware_type,
                         "parameters": parameters,
@@ -2049,7 +2049,9 @@ class TestMAASScripts(MAASServerTestCase):
                             ),
                             "script_result_id": script_result.id,
                             "script_version_id": script_result.script.script.id,
-                            "timeout_seconds": script_result.script.timeout.seconds,
+                            "timeout_seconds": (
+                                script_result.script.timeout.total_seconds()
+                            ),
                             "parallel": script_result.script.parallel,
                             "hardware_type": script_result.script.hardware_type,
                             "parameters": script_result.parameters,
@@ -2260,6 +2262,51 @@ class TestMAASScripts(MAASServerTestCase):
             response.status_code,
             "Unexpected response %d: %s"
             % (response.status_code, response.content),
+        )
+
+    def test_scripts_with_timeout_greater_than_24_hours(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.TESTING, with_empty_script_sets=True
+        )
+        # Make script timeout value to 24:05:00
+        timeout = timedelta(days=1, seconds=600)
+        script = factory.make_Script(
+            script_type=SCRIPT_TYPE.TESTING, timeout=timeout
+        )
+        factory.make_ScriptResult(
+            script_set=node.current_testing_script_set,
+            script=script,
+            status=SCRIPT_STATUS.PENDING,
+        )
+        response = make_node_client(node=node).get(
+            reverse("maas-scripts", args=["latest"])
+        )
+
+        tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
+        end_time = ceil(time.time())
+
+        testing_meta_data = self.validate_scripts(
+            node.current_testing_script_set,
+            "testing",
+            tar,
+            start_time,
+            end_time,
+        )
+        meta_data = json.loads(
+            tar.extractfile("index.json").read().decode("utf-8")
+        )
+        # Assertion should fail if timeout conversions are improper
+        self.assertDictEqual(
+            {
+                "1.0": {
+                    "testing_scripts": sorted(
+                        testing_meta_data,
+                        key=itemgetter("name", "script_result_id"),
+                    ),
+                }
+            },
+            meta_data,
         )
 
 

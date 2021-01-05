@@ -1197,7 +1197,7 @@ class AnonMAASScriptsHandler(AnonymousOperationsHandler):
                             "name": script.name,
                             "path": path,
                             "script_version_id": script.script.id,
-                            "timeout_seconds": script.timeout.seconds,
+                            "timeout_seconds": script.timeout.total_seconds(),
                             "parallel": script.parallel,
                             "hardware_type": script.hardware_type,
                             "parameters": parameters,
@@ -1248,7 +1248,9 @@ class MAASScriptsHandler(OperationsHandler):
                     "path": path,
                     "script_result_id": script_result.id,
                     "script_version_id": script_result.script.script.id,
-                    "timeout_seconds": script_result.script.timeout.seconds,
+                    "timeout_seconds": (
+                        script_result.script.timeout.total_seconds()
+                    ),
                     "parallel": script_result.script.parallel,
                     "hardware_type": script_result.script.hardware_type,
                     "parameters": script_result.parameters,
