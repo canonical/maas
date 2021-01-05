@@ -5,17 +5,19 @@
 
 
 import fnmatch
+from functools import partial
 import json
 import logging
 import re
 
 from django.core.exceptions import ValidationError
 
-from maasserver.enum import NODE_METADATA, NODE_STATUS
+from maasserver.enum import NODE_DEVICE_BUS, NODE_METADATA, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import Interface, PhysicalInterface
 from maasserver.models.node import Node
+from maasserver.models.nodedevice import NodeDevice
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -24,7 +26,7 @@ from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
-from metadataserver.enum import SCRIPT_STATUS
+from metadataserver.enum import HARDWARE_TYPE, SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
@@ -126,6 +128,8 @@ def _parse_interfaces(node, data):
             "product": card.get("product"),
             "firmware_version": card.get("firmware_version"),
             "sriov_max_vf": card.get("sriov", {}).get("maximum_vfs", 0),
+            "pci_address": card.get("pci_address"),
+            "usb_address": card.get("usb_address"),
         }
         # Assign the IP addresses to this interface
         link = ifaces_info.get(interface["name"])
@@ -250,12 +254,13 @@ def update_boot_interface(node, output, exit_status):
 
 
 def update_node_network_information(node, data, numa_nodes):
+    network_devices = {}
     # Skip network configuration if set by the user.
     if node.skip_networking:
         # Turn off skip_networking now that the hook has been called.
         node.skip_networking = False
         node.save(update_fields=["skip_networking"])
-        return
+        return network_devices
 
     try:
         interfaces_info = _parse_interfaces(node, data)
@@ -330,6 +335,11 @@ def update_node_network_information(node, data, numa_nodes):
                 sriov_max_vf=sriov_max_vf,
             )
 
+        if iface.get("pci_address"):
+            network_devices[iface.get("pci_address")] = interface
+        elif iface.get("usb_address"):
+            network_devices[iface.get("usb_address")] = interface
+
         current_interfaces.add(interface)
         interface.update_ip_addresses(iface.get("ips"))
         if sriov_max_vf > 0:
@@ -383,6 +393,8 @@ def update_node_network_information(node, data, numa_nodes):
         Interface.objects.filter(node=node).exclude(
             id__in=[iface.id for iface in current_interfaces]
         ).delete()
+
+    return network_devices
 
 
 def _process_system_information(node, system_data):
@@ -455,6 +467,179 @@ def _process_system_information(node, system_data):
         node.tags.add(tag)
 
 
+def _add_or_update_node_device(
+    node,
+    numa_nodes,
+    network_devices,
+    storage_devices,
+    gpu_devices,
+    old_devices,
+    bus,
+    device,
+    address,
+    key,
+    commissioning_driver,
+):
+    network_device = network_devices.get(address)
+    storage_device = storage_devices.get(address)
+
+    if network_device:
+        hardware_type = HARDWARE_TYPE.NETWORK
+    elif storage_device:
+        hardware_type = HARDWARE_TYPE.STORAGE
+    elif address in gpu_devices:
+        hardware_type = HARDWARE_TYPE.GPU
+    else:
+        hardware_type = HARDWARE_TYPE.NODE
+
+    if "numa_node" in device:
+        numa_node = numa_nodes[device["numa_node"]]
+    else:
+        # LXD doesn't map USB devices to NUMA node nor does it map
+        # USB devices to USB controller on the PCI bus. Map to the
+        # default numa node in cache.
+        numa_node = numa_nodes[0]
+
+    if key in old_devices:
+        node_device = old_devices.pop(key)
+        node_device.hardware_type = hardware_type
+        node_device.numa_node = numa_node
+        node_device.physical_block_device = storage_device
+        node_device.physical_interface = network_device
+        node_device.vendor_name = device.get("vendor")
+        node_device.product_name = device.get("product")
+        node_device.commissioning_driver = commissioning_driver
+        node_device.save()
+    else:
+        NodeDevice.objects.create(
+            bus=bus,
+            hardware_type=hardware_type,
+            node=node,
+            numa_node=numa_node,
+            physical_blockdevice=storage_device,
+            physical_interface=network_device,
+            vendor_id=device["vendor_id"],
+            product_id=device["product_id"],
+            vendor_name=device.get("vendor"),
+            product_name=device.get("product"),
+            commissioning_driver=commissioning_driver,
+            bus_number=device.get("bus_address"),
+            device_number=device.get("device_address"),
+            pci_address=device.get("pci_address"),
+        )
+
+
+def _process_pcie_devices(add_func, data):
+    for device in data.get("pci", {}).get("devices", []):
+        key = (
+            device["vendor_id"],
+            device["product_id"],
+            device["pci_address"],
+        )
+        add_func(
+            NODE_DEVICE_BUS.PCIE,
+            device,
+            device["pci_address"],
+            key,
+            device.get("driver"),
+        )
+
+
+def _process_usb_devices(add_func, data):
+    for device in data.get("usb", {}).get("devices", []):
+        usb_address = "%s:%s" % (
+            device["bus_address"],
+            device["device_address"],
+        )
+        key = (device["vendor_id"], device["product_id"], usb_address)
+        # USB devices can have different drivers for each
+        # functionality. e.g a webcam has a video and audio driver.
+        commissioning_driver = ", ".join(
+            set(
+                [
+                    interface["driver"]
+                    for interface in device.get("interfaces", [])
+                    if "driver" in interface
+                ]
+            )
+        )
+        add_func(
+            NODE_DEVICE_BUS.USB, device, usb_address, key, commissioning_driver
+        )
+
+
+def update_node_devices(
+    node, data, numa_nodes, network_devices=None, storage_devices=None
+):
+    # network and storage devices are only passed if they were updated. If
+    # configuration was skipped or running on a controller devices must be
+    # loaded for mapping.
+    if not network_devices:
+        network_devices = {}
+        mac_to_dev_ids = {}
+        for card in data.get("network", {}).get("cards", []):
+            for port in card.get("ports", []):
+                if "address" not in port:
+                    continue
+                if "pci_address" in card:
+                    mac_to_dev_ids[port["address"]] = card["pci_address"]
+                elif "usb_address" in card:
+                    mac_to_dev_ids[port["address"]] = card["usb_address"]
+        for iface in node.interface_set.filter(
+            mac_address__in=mac_to_dev_ids.keys()
+        ):
+            network_devices[mac_to_dev_ids[iface.mac_address]] = iface
+
+    if not storage_devices:
+        storage_devices = {}
+        name_to_dev_ids = {}
+        for disk in data.get("storage", {}).get("disks", []):
+            if "pci_address" in disk:
+                name_to_dev_ids[disk["id"]] = disk["pci_address"]
+            elif "usb_address" in disk:
+                name_to_dev_ids[disk["id"]] = disk["usb_address"]
+        for block_dev in node.physicalblockdevice_set.filter(
+            name__in=name_to_dev_ids.keys()
+        ):
+            storage_devices[name_to_dev_ids[block_dev.name]] = block_dev
+
+    # Gather the list of GPUs for setting the type.
+    gpu_devices = set()
+    for card in data.get("gpu", {}).get("cards", []):
+        if "pci_address" in card:
+            gpu_devices.add(card["pci_address"])
+        elif "usb_address" in card:
+            gpu_devices.add(card["usb_address"])
+
+    old_devices = {
+        (
+            node_device.vendor_id,
+            node_device.product_id,
+            node_device.pci_address
+            if node_device.bus == NODE_DEVICE_BUS.PCIE
+            else f"{node_device.bus_number}:{node_device.device_number}",
+        ): node_device
+        for node_device in node.node_devices.all()
+    }
+
+    add_func = partial(
+        _add_or_update_node_device,
+        node,
+        numa_nodes,
+        network_devices,
+        storage_devices,
+        gpu_devices,
+        old_devices,
+    )
+
+    _process_pcie_devices(add_func, data)
+    _process_usb_devices(add_func, data)
+
+    NodeDevice.objects.filter(
+        id__in=[node_device.id for node_device in old_devices.values()]
+    ).delete()
+
+
 def _process_lxd_resources(node, data):
     """Process the resources results of the `LXD_OUTPUT_NAME` script."""
     resources = data["resources"]
@@ -488,9 +673,19 @@ def _process_lxd_resources(node, data):
     # for controllers during commissioning as this conflicts with
     # maasserver.models.node:Controller.update_interfaces().
     if not node.is_controller:
-        update_node_network_information(node, data, numa_nodes)
+        network_devices = update_node_network_information(
+            node, data, numa_nodes
+        )
+    else:
+        network_devices = {}
     # Storage.
-    update_node_physical_block_devices(node, resources, numa_nodes)
+    storage_devices = update_node_physical_block_devices(
+        node, resources, numa_nodes
+    )
+
+    update_node_devices(
+        node, resources, numa_nodes, network_devices, storage_devices
+    )
 
     if cpu_model:
         NodeMetadata.objects.update_or_create(
@@ -553,12 +748,13 @@ def get_matching_block_device(block_devices, serial=None, id_path=None):
 
 
 def update_node_physical_block_devices(node, data, numa_nodes):
+    block_devices = {}
     # Skip storage configuration if set by the user.
     if node.skip_storage:
         # Turn off skip_storage now that the hook has been called.
         node.skip_storage = False
         node.save(update_fields=["skip_storage"])
-        return
+        return block_devices
 
     blockdevs = data.get("storage", {}).get("disks", [])
     previous_block_devices = list(
@@ -630,7 +826,7 @@ def update_node_physical_block_devices(node, data, numa_nodes):
                 continue
 
             # New block device. Create it on the node.
-            PhysicalBlockDevice.objects.create(
+            block_device = PhysicalBlockDevice.objects.create(
                 numa_node=numa_nodes[numa_index],
                 name=name,
                 id_path=id_path,
@@ -641,6 +837,11 @@ def update_node_physical_block_devices(node, data, numa_nodes):
                 serial=serial,
                 firmware_version=firmware_version,
             )
+
+        if block_info.get("pci_address"):
+            block_devices[block_info["pci_address"]] = block_device
+        elif block_info.get("usb_address"):
+            block_devices[block_info["usb_address"]] = block_device
 
     # Clear boot_disk if it is being removed.
     boot_disk = node.boot_disk
@@ -675,6 +876,8 @@ def update_node_physical_block_devices(node, data, numa_nodes):
         # applied layout. Deployed Pods should not have a layout set as the
         # layout of the deployed system is unknown.
         node.set_default_storage_layout()
+
+    return block_devices
 
 
 def _process_lxd_environment(node, data):
@@ -729,11 +932,16 @@ def process_lxd_results(node, output, exit_status):
 
     assert data.get("api_version") == "1.0", "Data not from LXD API 1.0!"
 
+    # resources_network_usb and resources_disk_address are needed for mapping
+    # between NodeDevices and Interfaces and BlockDevices. It is not included
+    # on this list so MAAS can still use LXD < 4.9 as a VM host where this
+    # information isn't necessary.
     required_extensions = {
         "resources",
         "resources_v2",
         "api_os",
         "resources_system",
+        "resources_usb_pci",
     }
     missing_extensions = required_extensions - set(
         data.get("api_extensions", ())

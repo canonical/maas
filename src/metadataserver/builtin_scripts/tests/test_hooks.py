@@ -23,6 +23,7 @@ from testtools.matchers import (
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_DEVICE_BUS,
     NODE_METADATA,
     NODE_STATUS,
 )
@@ -61,7 +62,7 @@ from metadataserver.builtin_scripts.hooks import (
     update_node_network_information,
     update_node_physical_block_devices,
 )
-from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.enum import HARDWARE_TYPE, SCRIPT_TYPE
 from metadataserver.models import ScriptSet
 from provisioningserver.refresh.node_info_scripts import (
     KERNEL_CMDLINE_OUTPUT_NAME,
@@ -365,6 +366,7 @@ def make_lxd_host_info(
             "resources_v2",
             "api_os",
             "resources_system",
+            "resources_usb_pci",
         ]
     if api_version is None:
         api_version = "1.0"
@@ -393,6 +395,50 @@ def make_lxd_host_info(
             "server_name": server_name,
             "server_version": "4.0.0",
         },
+    }
+
+
+def make_lxd_pcie_device():
+    return {
+        "driver": factory.make_name("driver"),
+        "driver_version": factory.make_name("driver-version"),
+        "numa_node": 0,
+        "pci_address": "%s:%s:%s.%s"
+        % (
+            factory.make_hex_string(size=4),
+            factory.make_hex_string(size=2),
+            factory.make_hex_string(size=2),
+            factory.make_hex_string(size=1),
+        ),
+        "product": factory.make_name("product"),
+        "product_id": factory.make_hex_string(size=4),
+        "vendor": factory.make_name("vendor"),
+        "vendor_id": factory.make_hex_string(size=4),
+        "iommu_group": 0,
+    }
+
+
+def make_lxd_usb_device():
+    return {
+        "bus_address": random.randint(0, 2 ** 16),
+        "device_address": random.randint(0, 2 ** 16),
+        "interfaces": [
+            {
+                "class": factory.make_name("class"),
+                "class_id": random.randint(0, 256),
+                "driver": factory.make_name("driver"),
+                "driver_version": factory.make_name("driver_version"),
+                "number": i,
+                "subclass": factory.make_name("subclass"),
+                "subclass_id": random.randint(0, 256),
+            }
+            for i in range(0, random.randint(1, 3))
+        ],
+        "product": factory.make_name("product"),
+        "product_id": factory.make_hex_string(size=4),
+        "speed": 480,
+        "vendor": factory.make_name("vendor"),
+        "vendor_id": factory.make_hex_string(size=4),
     }
 
 
@@ -1241,7 +1287,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.memory = random.randint(4096, 8192)
         node.save()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
@@ -1251,7 +1299,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
@@ -1263,7 +1313,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         NO_SPEED_IN_NAME = deepcopy(SAMPLE_LXD_RESOURCES)
         NO_SPEED_IN_NAME["cpu"]["sockets"][0][
@@ -1277,7 +1329,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         node.cpu_speed = 9999
         node.save()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         NO_NAME_OR_MAX_FREQ = deepcopy(SAMPLE_LXD_RESOURCES)
         del NO_NAME_OR_MAX_FREQ["cpu"]["sockets"][0]["name"]
@@ -1289,7 +1343,9 @@ class TestProcessLXDResults(MAASServerTestCase):
     def test_updates_memory_numa_nodes(self):
         expected_memory = int(16691519488 / 2 / 1024 / 1024)
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         process_lxd_results(
             node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
@@ -1304,7 +1360,9 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_updates_numa_node_hugepages(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
         lxd_json = deepcopy(SAMPLE_LXD_RESOURCES)
         lxd_json["memory"]["nodes"][0]["hugepages_total"] = 16 * 2097152
         lxd_json["memory"]["nodes"][1]["hugepages_total"] = 8 * 2097152
@@ -1321,7 +1379,9 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_no_update_numa_node_hugepages_if_commissioining(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
         process_lxd_results(
             node, make_lxd_output_json(SAMPLE_LXD_RESOURCES), 0
         )
@@ -1331,7 +1391,9 @@ class TestProcessLXDResults(MAASServerTestCase):
     def test_updates_memory_numa_nodes_missing(self):
         total_memory = SAMPLE_LXD_RESOURCES_NO_NUMA["memory"]["total"]
         node = factory.make_Node()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         process_lxd_results(
             node, make_lxd_output_json(SAMPLE_LXD_RESOURCES_NO_NUMA), 0
@@ -1344,7 +1406,9 @@ class TestProcessLXDResults(MAASServerTestCase):
     def test_accepts_numa_node_zero_memory(self):
         # Regression test for LP:1878923
         node = factory.make_Node()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
         data = make_lxd_output()
         data["resources"]["memory"] = {
             "nodes": [
@@ -1380,7 +1444,9 @@ class TestProcessLXDResults(MAASServerTestCase):
     def test_updates_memory_no_corresponding_cpu_numa_node(self):
         # Regression test for LP:1885157
         node = factory.make_Node()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
         data = make_lxd_output()
         data["resources"]["memory"] = {
             "nodes": [
@@ -1426,7 +1492,9 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_updates_cpu_numa_nodes(self):
         node = factory.make_Node()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
@@ -1436,7 +1504,9 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_updates_cpu_numa_nodes_per_thread(self):
         node = factory.make_Node()
-        self.patch(hooks_module, "update_node_network_information")
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
 
         lxd_json = deepcopy(SAMPLE_LXD_RESOURCES)
         cores_data = lxd_json["cpu"]["sockets"][0]["cores"]
@@ -1472,6 +1542,218 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
+
+    def test_creates_node_devices(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        usb_device = make_lxd_usb_device()
+        pcie_device = make_lxd_pcie_device()
+        lxd_output["resources"]["usb"] = {
+            "devices": [usb_device],
+            "total": 1,
+        }
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        usb_node_device = node.node_devices.get(bus=NODE_DEVICE_BUS.USB)
+        pcie_node_device = node.node_devices.get(bus=NODE_DEVICE_BUS.PCIE)
+
+        self.assertEqual(2, node.node_devices.count())
+
+        self.assertEqual(usb_node_device.hardware_type, HARDWARE_TYPE.NODE)
+        self.assertEqual(usb_node_device.vendor_id, usb_device["vendor_id"])
+        self.assertEqual(usb_node_device.product_id, usb_device["product_id"])
+        self.assertEqual(usb_node_device.vendor_name, usb_device["vendor"])
+        self.assertEqual(usb_node_device.product_name, usb_device["product"])
+        self.assertEqual(usb_node_device.bus_number, usb_device["bus_address"])
+        self.assertEqual(
+            usb_node_device.commissioning_driver,
+            ", ".join(
+                set(
+                    [
+                        interface["driver"]
+                        for interface in usb_device["interfaces"]
+                    ]
+                )
+            ),
+        )
+        self.assertEqual(
+            usb_node_device.device_number, usb_device["device_address"]
+        )
+        self.assertIsNone(usb_node_device.pci_address)
+
+        self.assertEqual(pcie_node_device.hardware_type, HARDWARE_TYPE.NODE)
+        self.assertEqual(pcie_node_device.vendor_id, pcie_device["vendor_id"])
+        self.assertEqual(
+            pcie_node_device.product_id, pcie_device["product_id"]
+        )
+        self.assertEqual(pcie_node_device.vendor_name, pcie_device["vendor"])
+        self.assertEqual(pcie_node_device.product_name, pcie_device["product"])
+        self.assertEqual(
+            pcie_node_device.commissioning_driver, pcie_device["driver"]
+        )
+        self.assertEqual(
+            pcie_node_device.pci_address, pcie_device["pci_address"]
+        )
+
+    def test_updates_node_device(self):
+        node = factory.make_Node()
+        pcie_device = factory.make_NodeDevice(
+            node=node, bus=NODE_DEVICE_BUS.PCIE
+        )
+        lxd_output = make_lxd_output()
+        new_vendor_name = factory.make_name("vendor_name")
+        new_product_name = factory.make_name("product_name")
+        new_commissioning_driver = factory.make_name("commissioning_driver")
+        lxd_output["resources"]["pci"] = {
+            "devices": [
+                {
+                    "driver": new_commissioning_driver,
+                    "numa_node": pcie_device.numa_node.index,
+                    "pci_address": pcie_device.pci_address,
+                    "product": new_product_name,
+                    "product_id": pcie_device.product_id,
+                    "vendor": new_vendor_name,
+                    "vendor_id": pcie_device.vendor_id,
+                }
+            ],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        pcie_device = reload_object(pcie_device)
+
+        self.assertEqual(new_vendor_name, pcie_device.vendor_name)
+        self.assertEqual(new_product_name, pcie_device.product_name)
+        self.assertEqual(
+            new_commissioning_driver, pcie_device.commissioning_driver
+        )
+
+    def test_removes_node_devices(self):
+        node = factory.make_Node()
+        old_node_devices = [
+            factory.make_NodeDevice(node=node) for _ in range(20)
+        ]
+        lxd_output = make_lxd_output()
+        pcie_device = make_lxd_pcie_device()
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        pcie_node_device = node.node_devices.first()
+
+        self.assertEqual(1, node.node_devices.count())
+        self.assertEqual(pcie_node_device.vendor_id, pcie_device["vendor_id"])
+        self.assertEqual(
+            pcie_node_device.product_id, pcie_device["product_id"]
+        )
+        self.assertEqual(pcie_node_device.vendor_name, pcie_device["vendor"])
+        self.assertEqual(pcie_node_device.product_name, pcie_device["product"])
+        self.assertEqual(
+            pcie_node_device.commissioning_driver, pcie_device["driver"]
+        )
+        self.assertEqual(
+            pcie_node_device.pci_address, pcie_device["pci_address"]
+        )
+        for old_node_device in old_node_devices:
+            self.assertIsNone(reload_object(old_node_device))
+
+    def test_assoicates_node_device_with_physical_iface(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        pcie_device1 = make_lxd_pcie_device()
+        pcie_device2 = make_lxd_pcie_device()
+        usb_device = make_lxd_usb_device()
+        lxd_output["resources"]["usb"] = {
+            "devices": [usb_device],
+            "total": 1,
+        }
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device1, pcie_device2],
+            "total": 2,
+        }
+        lxd_output["resources"]["network"]["cards"][0][
+            "pci_address"
+        ] = pcie_device1["pci_address"]
+        lxd_output["resources"]["network"]["cards"][1][
+            "pci_address"
+        ] = pcie_device2["pci_address"]
+        lxd_output["resources"]["network"]["cards"][2][
+            "usb_address"
+        ] = "%s:%s" % (usb_device["bus_address"], usb_device["device_address"])
+        del lxd_output["resources"]["network"]["cards"][2]["pci_address"]
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        for node_device in node.node_devices.all():
+            self.assertEqual(HARDWARE_TYPE.NETWORK, node_device.hardware_type)
+            self.assertIsNotNone(node_device.physical_interface)
+
+    def test_assoicates_node_device_with_physical_blockdevice(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        pcie_device = make_lxd_pcie_device()
+        usb_device = make_lxd_usb_device()
+        lxd_output["resources"]["usb"] = {
+            "devices": [usb_device],
+            "total": 1,
+        }
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device],
+            "total": 1,
+        }
+        lxd_output["resources"]["storage"]["disks"][0][
+            "pci_address"
+        ] = pcie_device["pci_address"]
+        lxd_output["resources"]["storage"]["disks"][1][
+            "usb_address"
+        ] = "%s:%s" % (usb_device["bus_address"], usb_device["device_address"])
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        for node_device in node.node_devices.all():
+            self.assertEqual(HARDWARE_TYPE.STORAGE, node_device.hardware_type)
+            self.assertIsNotNone(node_device.physical_blockdevice)
+
+    def test_creates_node_device_gpu(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        usb_device = make_lxd_usb_device()
+        usb_device["usb_address"] = "%s:%s" % (
+            usb_device["bus_address"],
+            usb_device["device_address"],
+        )
+        pcie_device = make_lxd_pcie_device()
+        lxd_output["resources"]["usb"] = {
+            "devices": [usb_device],
+            "total": 1,
+        }
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device],
+            "total": 1,
+        }
+        lxd_output["resources"]["gpu"] = {
+            "cards": [usb_device, pcie_device],
+            "total": 2,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        self.assertEqual(
+            {
+                NODE_DEVICE_BUS.USB: HARDWARE_TYPE.GPU,
+                NODE_DEVICE_BUS.PCIE: HARDWARE_TYPE.GPU,
+            },
+            {
+                node_device.bus: node_device.hardware_type
+                for node_device in node.node_devices.all()
+            },
+        )
 
     def test_updates_interfaces_speed(self):
         node = factory.make_Node()

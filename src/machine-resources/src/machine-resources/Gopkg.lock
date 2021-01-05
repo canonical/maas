@@ -10,12 +10,12 @@
   version = "v4.0.2"
 
 [[projects]]
-  digest = "1:25eec675540d3cf690b593f161626a8bbf1d25e60d5cc8f8d51f38c467a32766"
+  digest = "1:26d581d6bb4fe26c77058a2b47e038ede7bdceb8f407ac87c4ea166bcd507340"
   name = "github.com/google/uuid"
   packages = ["."]
   pruneopts = ""
-  revision = "0e4e31197428a347842d152773b4cace4645ca25"
-  version = "v1.1.2"
+  revision = "85223faccf99409308cd169d9608753a95d21083"
+  version = "v1.1.4"
 
 [[projects]]
   digest = "1:5122b0b5a933bd0e16b887aa7844933c8a09fb5ba9b5f5651253cb5336c6462a"
@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e5b20925fd28e01188d1060d6e9e697de45ee7e39ddedad5c34a1bdef6740625"
+  digest = "1:c3583f593dc658596e653f65da36889707b885bbff4bf9a7f680ccb79795e9fc"
   name = "github.com/lxc/lxd"
   packages = [
     "lxd/include",
@@ -52,7 +52,7 @@
     "shared/version",
   ]
   pruneopts = ""
-  revision = "2e660ad180900052302f6aa818ad142b162a1812"
+  revision = "ee7e4d2a9e29225bfae8f51193886186631afc4d"
 
 [[projects]]
   digest = "1:6dbb0eb72090871f2e58d1e37973fe3cb8c0f45f49459398d3fc740cb30e13bd"
@@ -80,7 +80,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:36c822345de05a05ca182647a2364b392ce56a6bb514084368e8501d6e497dd3"
+  digest = "1:2d8f62324869e92fcc06e09ed80a38c1678c1cf8a188ec853cb3bfa17ad37187"
   name = "golang.org/x/sys"
   packages = [
     "internal/unsafeheader",
@@ -88,7 +88,7 @@
     "windows",
   ]
   pruneopts = ""
-  revision = "f9fddec55a1e5ebe479d5259f4982995b3194ebc"
+  revision = "2d18734c6014bdfc4d7fd7cfc8e0608c9684967b"
 
 [[projects]]
   branch = "v2"

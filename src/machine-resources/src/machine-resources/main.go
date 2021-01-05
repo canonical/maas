@@ -129,11 +129,16 @@ func GetHostInfo() HostInfo {
 			"resources_numa",
 			"resources_v2",
 			"resources_disk_sata",
+			"resources_network_firmware",
+			"resources_disk_id",
 			"resources_usb_pci",
 			"resources_cpu_threads_numa",
 			"resources_cpu_core_die",
 			"api_os",
 			"resources_system",
+			"resources_pci_iommu",
+			"resources_network_usb",
+			"resources_disk_address",
 		},
 		// machine-resources leverages LXD API code to output data. If
 		// the LXD import is updated and this changes MAAS may need to
