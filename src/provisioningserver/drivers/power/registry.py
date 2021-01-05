@@ -19,6 +19,7 @@ from provisioningserver.drivers.power.moonshot import MoonshotIPMIPowerDriver
 from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
 from provisioningserver.drivers.power.nova import NovaPowerDriver
+from provisioningserver.drivers.power.wakeonlan import WakeOnLANPowerDriver
 from provisioningserver.drivers.power.openbmc import OpenBMCPowerDriver
 from provisioningserver.drivers.power.recs import RECSPowerDriver
 from provisioningserver.drivers.power.redfish import RedfishPowerDriver
@@ -59,6 +60,7 @@ power_drivers = [
     MSCMPowerDriver(),
     MicrosoftOCSPowerDriver(),
     NovaPowerDriver(),
+    WakeOnLANPowerDriver(),
     OpenBMCPowerDriver(),
     RECSPowerDriver(),
     RedfishPowerDriver(),
