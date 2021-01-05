@@ -31,6 +31,21 @@ BDF_REGEX = re.compile(
 )
 
 
+def translate_bus(bus):
+    if isinstance(bus, int) or bus.isdigit():
+        bus = int(bus)
+        for id, _ in NODE_DEVICE_BUS_CHOICES:
+            if bus == id:
+                return bus
+        raise ValidationError("Invalid bus numeric value!")
+    elif bus in ["PCIE", "pcie"]:
+        return NODE_DEVICE_BUS.PCIE
+    elif bus in ["USB", "usb"]:
+        return NODE_DEVICE_BUS.USB
+    else:
+        raise ValidationError("Bus must be PCIE or USB!")
+
+
 class NodeDevice(CleanSave, TimestampedModel):
     class Meta:
         unique_together = [

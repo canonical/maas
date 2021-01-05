@@ -49,6 +49,7 @@ from maasserver.api.license_keys import LicenseKeyHandler, LicenseKeysHandler
 from maasserver.api.maas import MaasHandler
 from maasserver.api.machines import MachineHandler, MachinesHandler
 from maasserver.api.networks import NetworkHandler, NetworksHandler
+from maasserver.api.nodedevices import NodeDeviceHandler, NodeDevicesHandler
 from maasserver.api.nodes import NodeHandler, NodesHandler
 from maasserver.api.not_found import not_found_handler
 from maasserver.api.notification import (
@@ -296,6 +297,12 @@ resourcepool_handler = RestrictedResource(
 resourcepools_handler = RestrictedResource(
     ResourcePoolsHandler, authentication=api_auth
 )
+node_device_handler = RestrictedResource(
+    NodeDeviceHandler, authentication=api_auth
+)
+node_devices_handler = RestrictedResource(
+    NodeDevicesHandler, authentication=api_auth
+)
 
 # Admin handlers.
 commissioning_script_handler = AdminRestrictedResource(
@@ -430,6 +437,16 @@ urlpatterns += [
         r"^nodes/(?P<system_id>[^/]+)/results/(?P<id>[^/]+)/$",
         script_result_handler,
         name="script_result_handler",
+    ),
+    url(
+        r"^nodes/(?P<system_id>[^/]+)/devices/$",
+        node_devices_handler,
+        name="node_devices_handler",
+    ),
+    url(
+        r"^nodes/(?P<system_id>[^/]+)/devices/(?P<id>[^/]+)/$",
+        node_device_handler,
+        name="node_device_handler",
     ),
     url(r"^nodes/(?P<system_id>[^/]+)/$", node_handler, name="node_handler"),
     url(r"^nodes/$", nodes_handler, name="nodes_handler"),

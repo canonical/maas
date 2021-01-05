@@ -5839,5 +5839,25 @@
     "id": 25,
     "size": 45248151552,
     "resource_uri": "/MAAS/api/2.0/nodes/8f86dk/vmfs-datastore/25/"
+  },
+  "node-devices-read-by-id": {
+    "bus": 1,
+    "hardware_type": 0,
+    "physical_blockdevice": null,
+    "physical_interface": null,
+    "vendor_id": "1af4",
+    "product_id": "1003",
+    "vendor_name": "Red Hat, Inc.",
+    "product_name": "Virtio console",
+    "commissioning_driver": "virtio-pci",
+    "bus_number": 0,
+    "device_number": 6,
+    "pci_address": "0000:00:06.0",
+    "bus_name": "PCIE",
+    "numa_node": 0,
+    "hardware_type_name": "Node",
+    "system_id": "wr8xmb",
+    "id": 12,
+    "resource_uri": "/MAAS/api/2.0/nodes/wr8xmb/devices/12/"
   }
 }
