@@ -1315,7 +1315,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "inet": ["192.168.122.2/24"],
             }
         }
-        iproute_info = {"default": {"via": "192.168.122.1"}}
+        iproute_info = {"default": {"gateway": "192.168.122.1"}}
         expected_result = MatchesDict(
             {
                 "eth0": MatchesDict(
@@ -1536,8 +1536,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
         }
         iproute_info = {
-            "default": {"via": "192.168.122.1"},
-            "192.168.124.0/24": {"via": "192.168.124.1"},
+            "default": {"gateway": "192.168.122.1"},
+            "192.168.124.0/24": {"gateway": "192.168.124.1"},
         }
         expected_result = MatchesDict(
             {

@@ -991,15 +991,15 @@ def fix_link_gateways(links, iproute_info):
     or if the default gateway is in the subnet.
     """
     for link in links:
-        ip_addr = IPNetwork(link["address"])
-        cidr = str(ip_addr.cidr)
+        network = IPNetwork(link["address"])
+        cidr = str(network.cidr)
         if cidr in iproute_info:
-            link["gateway"] = iproute_info[cidr]["via"]
+            link["gateway"] = iproute_info[cidr]["gateway"]
         elif (
             "default" in iproute_info
-            and IPAddress(iproute_info["default"]["via"]) in ip_addr
+            and IPAddress(iproute_info["default"]["gateway"]) in network
         ):
-            link["gateway"] = iproute_info["default"]["via"]
+            link["gateway"] = iproute_info["default"]["gateway"]
 
 
 def get_interface_children(interfaces: dict) -> dict:
