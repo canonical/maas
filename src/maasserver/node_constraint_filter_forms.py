@@ -1,4 +1,4 @@
-# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -117,6 +117,16 @@ NETWORKING_CONSTRAINT_NAMES = {
     "link_speed",
 }
 
+
+DEVICE_CONSTRAINT_NAMES = {
+    "vendor_id",
+    "product_id",
+    "vendor_name",
+    "product_name",
+    "commissioning_driver",
+}
+
+
 IGNORED_FIELDS = {
     "comment",
     "bridge_all",
@@ -160,6 +170,13 @@ def interfaces_validator(constraint_map):
                 raise ValidationError(
                     "Unknown interfaces constraint: '%s" % constraint_name
                 )
+
+
+def devices_validator(values):
+    for value in values.split(","):
+        key = value.split("=", 1)[0]
+        if key not in DEVICE_CONSTRAINT_NAMES:
+            raise ValidationError("Unknown devices constraint: '%s" % key)
 
 
 def generate_architecture_wildcards(arches):
@@ -752,6 +769,10 @@ class FilterNodeForm(RenamableFieldsForm):
         validators=[interfaces_validator], label="Interfaces", required=False
     )
 
+    devices = forms.CharField(
+        validators=[devices_validator], label="Devices", required=False
+    )
+
     cpu_count = forms.FloatField(
         label="CPU count",
         required=False,
@@ -989,6 +1010,7 @@ class FilterNodeForm(RenamableFieldsForm):
         nodes = self.filter_by_cpu_count(nodes)
         nodes = self.filter_by_mem(nodes)
         nodes = self.filter_by_pod_or_pod_type(nodes)
+        nodes = self.filter_by_devices(nodes)
         return nodes.distinct()
 
     def filter_by_interfaces(self, filtered_nodes):
@@ -1166,6 +1188,16 @@ class FilterNodeForm(RenamableFieldsForm):
                 bmc_id__in=pods.values_list("id", flat=True)
             )
         return filtered_nodes.distinct()
+
+    def filter_by_devices(self, filtered_nodes):
+        devices = self.cleaned_data.get(self.get_field_name("devices"))
+        if devices:
+            filters = {}
+            for f in devices.split(","):
+                key, value = f.split("=", 1)
+                filters[f"node_devices__{key}__iexact"] = value
+            filtered_nodes = filtered_nodes.filter(**filters)
+        return filtered_nodes
 
 
 class AcquireNodeForm(FilterNodeForm):

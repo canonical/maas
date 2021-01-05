@@ -814,6 +814,19 @@ class NodesHandler(OperationsHandler):
         @param (string) "not_pod_type": [required=false] Only nodes that don't
         belong a pod of the specified type will be returned.
 
+        @param (string) "devices": [required=false] Only return nodes which
+        have one or more devices containing the following constraints in the
+        format key=value[,key2=value2[,...]]
+
+        Each key can be one of the following:
+
+        - ``vendor_id``: The device vendor id
+        - ``product_id``: The device product id
+        - ``vendor_name``: The device vendor name, not case sensative
+        - ``product_name``: The device product name, not case sensative
+        - ``commissioning_driver``: The device uses this driver during
+          commissioning.
+
         @success (http-status-code) "200" 200
 
         @success (json) "success_json" A JSON object containing a list of node

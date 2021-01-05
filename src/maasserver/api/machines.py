@@ -2386,6 +2386,19 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @param (int) "bridge_fd" [required=false] Optionally adjust the forward
         delay to time seconds.  (Default: 15)
 
+        @param (string) "devices": [required=false] Only return a node which
+        have one or more devices containing the following constraints in the
+        format key=value[,key2=value2[,...]]
+
+        Each key can be one of the following:
+
+        - ``vendor_id``: The device vendor id
+        - ``product_id``: The device product id
+        - ``vendor_name``: The device vendor name, not case sensative
+        - ``product_name``: The device product name, not case sensative
+        - ``commissioning_driver``: The device uses this driver during
+          commissioning.
+
         @param (boolean) "dry_run" [required=false] Optional boolean to
         indicate that the machine should not actually be acquired (this is for
         support/troubleshooting, or users who want to see which machine would

@@ -1,10 +1,10 @@
-# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test node constraint forms."""
 
 
-from random import randint
+import random
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -307,7 +307,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
             for subnet in subnets
         ]
-        expected_selection = randint(0, len(subnets) - 1)
+        expected_selection = random.randint(0, len(subnets) - 1)
         expected_node = nodes[expected_selection]
         # Remove the expected subnet from the list of subnets; we'll use the
         # remaining subnets to filter the list.
@@ -343,7 +343,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
             for subnet in subnets
         ]
-        expected_selection = randint(0, len(vlans) - 1)
+        expected_selection = random.randint(0, len(vlans) - 1)
         expected_node = nodes[expected_selection]
         # Remove the expected subnet from the list of subnets; we'll use the
         # remaining subnets to filter the list.
@@ -1504,13 +1504,14 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
     def test_describe_constraints_shows_all_constraints(self):
         constraints = {
             "arch": self.set_usable_arch(),
-            "cpu_count": randint(1, 32),
-            "mem": randint(1024, 256 * 1024),
+            "cpu_count": random.randint(1, 32),
+            "devices": "vendor_id=8086",
+            "mem": random.randint(1024, 256 * 1024),
             "tags": [factory.make_Tag().name],
             "not_tags": [factory.make_Tag().name],
             "subnets": [factory.make_Subnet().name],
             "not_subnets": [factory.make_Subnet().name],
-            "link_speed": randint(100, 10000),
+            "link_speed": random.randint(100, 10000),
             "vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
             "not_vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
             "connected_to": [factory.make_mac_address()],
@@ -1628,13 +1629,14 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "name": factory.make_name("host"),
             "system_id": factory.make_name("system_id"),
             "arch": self.set_usable_arch(),
-            "cpu_count": randint(1, 32),
-            "mem": randint(1024, 256 * 1024),
+            "cpu_count": random.randint(1, 32),
+            "devices": "vendor_id=8086",
+            "mem": random.randint(1024, 256 * 1024),
             "tags": [factory.make_Tag().name],
             "not_tags": [factory.make_Tag().name],
             "subnets": [factory.make_Subnet().name],
             "not_subnets": [factory.make_Subnet().name],
-            "link_speed": randint(100, 10000),
+            "link_speed": random.randint(100, 10000),
             "vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
             "not_vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
             "connected_to": [factory.make_mac_address()],
@@ -1753,12 +1755,76 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             [node1, node2], {"not_pod_type": factory.make_name("not_pod_type")}
         )
 
+    def test_device_filter_by_vendor_id(self):
+        node = random.choice([factory.make_Node() for _ in range(3)])
+        node_device = factory.make_NodeDevice(node=node)
+        self.assertConstrainedNodes(
+            [node], {"devices": f"vendor_id={node_device.vendor_id}"}
+        )
+
+    def test_device_filter_by_product_id(self):
+        node = random.choice([factory.make_Node() for _ in range(3)])
+        node_device = factory.make_NodeDevice(node=node)
+        self.assertConstrainedNodes(
+            [node], {"devices": f"product_id={node_device.product_id}"}
+        )
+
+    def test_device_filter_by_vendor_name(self):
+        node = random.choice([factory.make_Node() for _ in range(3)])
+        node_device = factory.make_NodeDevice(node=node)
+        self.assertConstrainedNodes(
+            [node], {"devices": f"vendor_name={node_device.vendor_name}"}
+        )
+
+    def test_device_filter_by_product_name(self):
+        node = random.choice([factory.make_Node() for _ in range(3)])
+        node_device = factory.make_NodeDevice(node=node)
+        self.assertConstrainedNodes(
+            [node], {"devices": f"product_name={node_device.product_name}"}
+        )
+
+    def test_device_filter_by_commissioning_driver(self):
+        node = random.choice([factory.make_Node() for _ in range(3)])
+        node_device = factory.make_NodeDevice(node=node)
+        self.assertConstrainedNodes(
+            [node],
+            {
+                "devices": f"commissioning_driver={node_device.commissioning_driver}"
+            },
+        )
+
+    def test_device_filter_by_multiple_keys(self):
+        vendor_id = factory.make_hex_string(size=4)
+        commissioning_driver = factory.make_name("commissioning_driver")
+        factory.make_Node()
+        node1 = factory.make_Node()
+        factory.make_NodeDevice(node=node1, vendor_id=vendor_id)
+        node2 = factory.make_Node()
+        factory.make_NodeDevice(
+            node=node2,
+            vendor_id=vendor_id,
+            commissioning_driver=commissioning_driver,
+        )
+        node3 = factory.make_Node()
+        factory.make_NodeDevice(
+            node=node3,
+            vendor_id=vendor_id,
+            commissioning_driver=commissioning_driver,
+        )
+        self.assertConstrainedNodes(
+            [node2, node3],
+            {
+                "devices": f"vendor_id={vendor_id},commissioning_driver={commissioning_driver}"
+            },
+        )
+
 
 class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
     def test_describe_constraints_orders_based_on_cost(self):
         nodes = [
             factory.make_Node(
-                cpu_count=randint(5, 32), memory=randint(1024, 256 * 1024)
+                cpu_count=random.randint(5, 32),
+                memory=random.randint(1024, 256 * 1024),
             )
             for _ in range(4)
         ]
