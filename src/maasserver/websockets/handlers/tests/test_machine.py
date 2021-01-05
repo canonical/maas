@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.node`"""
@@ -174,8 +174,29 @@ class TestMachineHandler(MAASServerTestCase):
         commissioning_scripts = commissioning_scripts.exclude(
             status=SCRIPT_STATUS.ABORTED
         )
+        commissioning_start_time = None
+        for script_result in commissioning_scripts:
+            if commissioning_start_time is None or (
+                script_result.started
+                and script_result.started < commissioning_start_time
+            ):
+                commissioning_start_time = script_result.started
         testing_scripts = node.get_latest_testing_script_results
         testing_scripts = testing_scripts.exclude(status=SCRIPT_STATUS.ABORTED)
+        testing_start_time = None
+        for script_result in testing_scripts:
+            if testing_start_time is None or (
+                script_result.started
+                and script_result.started < testing_start_time
+            ):
+                testing_start_time = script_result.started
+        installation_script_result = (
+            node.get_latest_installation_script_results.first()
+        )
+        if installation_script_result:
+            installation_start_time = installation_script_result.started
+        else:
+            installation_start_time = None
         log_results = set()
         for script_result in commissioning_scripts:
             if (
@@ -202,8 +223,12 @@ class TestMachineHandler(MAASServerTestCase):
             "current_commissioning_script_set": (
                 node.current_commissioning_script_set_id
             ),
+            "commissioning_start_time": dehydrate_datetime(
+                commissioning_start_time
+            ),
             "current_testing_script_set": node.current_testing_script_set_id,
             "testing_status": handler.dehydrate_test_statuses(testing_scripts),
+            "testing_start_time": dehydrate_datetime(testing_start_time),
             "current_installation_script_set": (
                 node.current_installation_script_set_id
             ),
@@ -211,6 +236,9 @@ class TestMachineHandler(MAASServerTestCase):
                 handler.dehydrate_script_set_status(
                     node.current_installation_script_set
                 )
+            ),
+            "installation_start_time": dehydrate_datetime(
+                installation_start_time
             ),
             "has_logs": (
                 log_results.difference(script_output_nsmap.keys()) == set()
@@ -348,6 +376,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "actions",
                 "architecture",
                 "commissioning_script_count",
+                "commissioning_start_time",
                 "commissioning_status",
                 "dhcp_on",
                 "distro_series",
@@ -356,6 +385,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "fabrics",
                 "fqdn",
                 "has_logs",
+                "installation_start_time",
                 "ip_addresses",
                 "link_type",
                 "metadata",
@@ -377,6 +407,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "subnets",
                 "tags",
                 "testing_script_count",
+                "testing_start_time",
                 "testing_status",
                 "vlan",
                 "workload_annotations",

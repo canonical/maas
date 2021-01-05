@@ -221,6 +221,9 @@ class NodeHandler(TimestampedModelHandler):
             data["storage_tags"] = self.get_all_storage_tags(blockdevices)
             commissioning_script_results = []
             testing_script_results = []
+            commissioning_start_time = None
+            testing_start_time = None
+            installation_start_time = None
             log_results = set()
             for hw_type in self._script_results.get(obj.id, {}).values():
                 for script_result in hw_type:
@@ -229,8 +232,8 @@ class NodeHandler(TimestampedModelHandler):
                         == RESULT_TYPE.INSTALLATION
                     ):
                         # Don't include installation results in the health
-                        # status.
-                        continue
+                        # status but record the start time
+                        installation_start_time = script_result.started
                     elif script_result.status == SCRIPT_STATUS.ABORTED:
                         # LP: #1724235 - Ignore aborted scripts.
                         continue
@@ -239,6 +242,12 @@ class NodeHandler(TimestampedModelHandler):
                         == RESULT_TYPE.COMMISSIONING
                     ):
                         commissioning_script_results.append(script_result)
+                        if commissioning_start_time is None or (
+                            script_result.started is not None
+                            and script_result.started
+                            < commissioning_start_time
+                        ):
+                            commissioning_start_time = script_result.started
                         if (
                             script_result.name in script_output_nsmap
                             and script_result.status == SCRIPT_STATUS.PASSED
@@ -249,11 +258,23 @@ class NodeHandler(TimestampedModelHandler):
                         == RESULT_TYPE.TESTING
                     ):
                         testing_script_results.append(script_result)
+                        if testing_start_time is None or (
+                            script_result.started is not None
+                            and script_result.started < testing_start_time
+                        ):
+                            testing_start_time = script_result.started
             data["commissioning_status"] = self.dehydrate_test_statuses(
                 commissioning_script_results
             )
             data["testing_status"] = self.dehydrate_test_statuses(
                 testing_script_results
+            )
+            data["commissioning_start_time"] = dehydrate_datetime(
+                commissioning_start_time
+            )
+            data["testing_start_time"] = dehydrate_datetime(testing_start_time)
+            data["installation_start_time"] = dehydrate_datetime(
+                installation_start_time
             )
             data["has_logs"] = (
                 log_results.difference(script_output_nsmap.keys()) == set()
