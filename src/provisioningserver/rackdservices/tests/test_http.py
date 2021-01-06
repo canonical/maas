@@ -32,7 +32,7 @@ from provisioningserver import services
 from provisioningserver.boot import BytesReader
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rackdservices import http
-from provisioningserver.rpc import common, exceptions
+from provisioningserver.rpc import clusterservice, common, exceptions
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
 
@@ -66,6 +66,12 @@ class TestRackHTTPService(MAASTestCase):
     """Tests for `RackHTTPService`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5000)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def test_service_uses__tryUpdate_as_periodic_function(self):
         service = http.RackHTTPService(
@@ -230,6 +236,12 @@ class TestRackHTTPService_Errors(MAASTestCase):
         ("_applyConfiguration", dict(method="_applyConfiguration")),
         ("_configurationApplied", dict(method="_configurationApplied")),
     )
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def make_startable_RackHTTPService(self, *args, **kwargs):
         service = http.RackHTTPService(*args, **kwargs)

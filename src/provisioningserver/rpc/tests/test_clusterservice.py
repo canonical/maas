@@ -126,7 +126,6 @@ from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils.env import set_maas_id
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
-from provisioningserver.utils.network import get_all_interfaces_definition
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import (
     makeDeferredWithProcessProtocol,
@@ -1437,6 +1436,9 @@ class TestClusterClient(MAASTestCase):
                 cluster_uuid=factory.make_UUID(),
             )
         )
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
         self.maas_id = None
 
         def set_maas_id(maas_id):
@@ -1906,7 +1908,6 @@ class TestClusterClient(MAASTestCase):
 
         maas_url = factory.make_simple_http_url()
         hostname = platform.node().split(".")[0]
-        interfaces = get_all_interfaces_definition()
         self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
         protocol, connecting = fixture.makeEventLoop()
@@ -1918,7 +1919,7 @@ class TestClusterClient(MAASTestCase):
                 protocol,
                 system_id="",
                 hostname=hostname,
-                interfaces=interfaces,
+                interfaces={},
                 url=urlparse(maas_url),
                 nodegroup_uuid=None,
                 beacon_support=True,
@@ -1989,7 +1990,6 @@ class TestClusterClient(MAASTestCase):
         self.patch_autospec(
             clusterservice, "gethostname"
         ).return_value = hostname
-        interfaces = get_all_interfaces_definition()
         self.useFixture(ClusterConfigurationFixture())
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture(maas_url))
         protocol, connecting = fixture.makeEventLoop()
@@ -2001,7 +2001,7 @@ class TestClusterClient(MAASTestCase):
                 protocol,
                 system_id="",
                 hostname=hostname,
-                interfaces=interfaces,
+                interfaces={},
                 url=urlparse(maas_url),
                 nodegroup_uuid=None,
                 beacon_support=True,

@@ -23,7 +23,7 @@ from provisioningserver.rackdservices import lease_socket_service
 from provisioningserver.rackdservices.lease_socket_service import (
     LeaseSocketService,
 )
-from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc import clusterservice, getRegionClient
 from provisioningserver.rpc.region import UpdateLease
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.twisted import DeferredValue, pause, retries
@@ -32,6 +32,12 @@ from provisioningserver.utils.twisted import DeferredValue, pause, retries
 class TestLeaseSocketService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def patch_socket_path(self):
         path = self.make_dir()

@@ -28,7 +28,7 @@ from provisioningserver.boot import (
 )
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
-from provisioningserver.rpc import region
+from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import atomic_symlink, tempdir
@@ -335,6 +335,12 @@ class TestBootMethod(MAASTestCase):
 class TestGetArchiveUrl(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def patch_rpc_methods(self, return_value=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())

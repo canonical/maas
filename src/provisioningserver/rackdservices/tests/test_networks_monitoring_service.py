@@ -16,7 +16,7 @@ from provisioningserver import services
 from provisioningserver.rackdservices.networks_monitoring_service import (
     RackNetworksMonitoringService,
 )
-from provisioningserver.rpc import region
+from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils import services as services_module
 
@@ -24,6 +24,12 @@ from provisioningserver.utils import services as services_module
 class TestRackNetworksMonitoringService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     @inlineCallbacks
     def test_runs_refresh_first_time(self):
@@ -38,7 +44,16 @@ class TestRackNetworksMonitoringService(MAASTestCase):
             enable_monitoring=False,
             enable_beaconing=False,
         )
-
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            }
+        }
+        service.getInterfaces = lambda: succeed(interfaces)
         yield maybeDeferred(service.startService)
         # By stopping the interface_monitor first, we assure that the loop
         # happens at least once before the service stops completely.

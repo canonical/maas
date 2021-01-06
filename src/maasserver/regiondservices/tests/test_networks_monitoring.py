@@ -77,6 +77,7 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
         service = RegionNetworksMonitoringService(
             reactor, enable_beaconing=False
         )
+        self.patch(service, "getInterfaces").return_value = {}
 
         with TwistedLoggerFixture() as logger:
             service.startService()

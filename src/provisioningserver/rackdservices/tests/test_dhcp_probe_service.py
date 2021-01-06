@@ -25,13 +25,19 @@ from provisioningserver.rackdservices import dhcp_probe_service
 from provisioningserver.rackdservices.dhcp_probe_service import (
     DHCPProbeService,
 )
-from provisioningserver.rpc import getRegionClient, region
+from provisioningserver.rpc import clusterservice, getRegionClient, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
 
 class TestDHCPProbeService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())

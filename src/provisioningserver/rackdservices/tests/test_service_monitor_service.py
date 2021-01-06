@@ -17,7 +17,7 @@ from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rackdservices import service_monitor_service as sms
-from provisioningserver.rpc import getRegionClient, region
+from provisioningserver.rpc import clusterservice, getRegionClient, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils.service_monitor import (
@@ -38,6 +38,9 @@ class TestServiceMonitorService(MAASTestCase):
         for service in service_monitor._services.values():
             if isinstance(service, ToggleableService):
                 service.off()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def pick_service(self):
         return random.choice(list(service_monitor._services.values()))

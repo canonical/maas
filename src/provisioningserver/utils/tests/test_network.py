@@ -1254,8 +1254,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             "vnet": {
                 "type": "loopback",
                 "enabled": True,
-                "inet": ["127.0.0.1/32"],
-                "inet6": ["::1"],
+                "addresses": ["127.0.0.1/32", ["::1"]],
+                "parents": [],
             }
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
@@ -1266,7 +1266,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "type": "ethernet",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "inet": ["192.168.122.2/24"],
+                "addresses": ["192.168.122.2/24"],
+                "parents": [],
             }
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
@@ -1276,16 +1277,17 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_ignores_tunnel(self):
-        ip_addr = {"vnet": {"type": "ethernet.tunnel", "enabled": True}}
+        ip_addr = {"vnet": {"type": "tunnel", "enabled": True}}
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_simple(self):
         ip_addr = {
             "eth0": {
-                "type": "ethernet.physical",
+                "type": "physical",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "inet": ["192.168.122.2/24"],
+                "addresses": ["192.168.122.2/24"],
+                "parents": [],
             }
         }
         expected_result = MatchesDict(
@@ -1299,7 +1301,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                         "links": Equals(
                             [{"mode": "static", "address": "192.168.122.2/24"}]
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 )
             }
@@ -1312,7 +1314,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "type": "ethernet.physical",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "inet": ["192.168.122.2/24"],
+                "addresses": ["192.168.122.2/24"],
+                "parents": [],
             }
         }
         iproute_info = {"default": {"gateway": "192.168.122.1"}}
@@ -1333,7 +1336,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                                 }
                             ]
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 )
             }
@@ -1346,7 +1349,8 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "type": "ethernet",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "inet": ["192.168.122.2/24"],
+                "addresses": ["192.168.122.2/24"],
+                "parents": [],
             }
         }
         expected_result = MatchesDict(
@@ -1360,7 +1364,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                         "links": Equals(
                             [{"mode": "static", "address": "192.168.122.2/24"}]
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 )
             }
@@ -1372,10 +1376,11 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
     def test_simple_with_dhcp(self):
         ip_addr = {
             "eth0": {
-                "type": "ethernet.physical",
+                "type": "physical",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "inet": ["192.168.122.2/24", "192.168.122.200/32"],
+                "addresses": ["192.168.122.2/24", "192.168.122.200/32"],
+                "parents": [],
             }
         }
         dhclient_info = {"eth0": "192.168.122.2"}
@@ -1401,7 +1406,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                                 }
                             ),
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 )
             }
@@ -1413,18 +1418,17 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
     def test_fixing_links(self):
         ip_addr = {
             "eth0": {
-                "type": "ethernet.physical",
+                "type": "physical",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "inet": [
+                "addresses": [
                     "192.168.122.2/24",
                     "192.168.122.3/32",
                     "192.168.123.3/32",
-                ],
-                "inet6": [
                     "2001:db8:a0b:12f0::1/96",
                     "2001:db8:a0b:12f0::2/128",
                 ],
+                "parents": [],
             }
         }
         expected_result = MatchesDict(
@@ -1471,7 +1475,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                                 }
                             ),
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 )
             }
@@ -1481,58 +1485,73 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
     def test_complex(self):
         ip_addr = {
             "eth0": {
-                "type": "ethernet.physical",
+                "type": "physical",
                 "mac": factory.make_mac_address(),
                 "enabled": False,
+                "parents": [],
+                "addresses": [],
             },
             "eth1": {
-                "type": "ethernet.physical",
+                "type": "physical",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
+                "parents": [],
+                "addresses": [],
             },
             "eth2": {
-                "type": "ethernet.physical",
+                "type": "physical",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
+                "parents": [],
+                "addresses": [],
             },
             "bond0": {
-                "type": "ethernet.bond",
+                "type": "bond",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "bonded_interfaces": ["eth1", "eth2"],
-                "inet": ["192.168.122.2/24", "192.168.122.3/32"],
-                "inet6": ["2001:db8::3:2:2/96"],
+                "parents": ["eth1", "eth2"],
+                "addresses": [
+                    "192.168.122.2/24",
+                    "192.168.122.3/32",
+                    "2001:db8::3:2:2/96",
+                ],
             },
             "bond0.10": {
-                "type": "ethernet.vlan",
+                "type": "vlan",
+                "mac": "",
                 "enabled": True,
                 "vid": 10,
-                "inet": ["192.168.123.2/24", "192.168.123.3/32"],
-                "parent": "bond0",
+                "parents": ["bond0"],
+                "addresses": ["192.168.123.2/24", "192.168.123.3/32"],
             },
             "vlan20": {
-                "type": "ethernet.vlan",
+                "type": "vlan",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
                 "vid": 20,
-                "parent": "eth0",
+                "parents": ["eth0"],
+                "addresses": [],
             },
             "wlan0": {
-                "type": "ethernet.wireless",
+                "type": "wireless",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
+                "parents": [],
+                "addresses": [],
             },
             "br0": {
-                "type": "ethernet.bridge",
-                "bridged_interfaces": ["eth0"],
+                "type": "bridge",
                 "mac": factory.make_mac_address(),
                 "enabled": True,
-                "inet": ["192.168.124.2/24"],
+                "parents": ["eth0"],
+                "addresses": ["192.168.124.2/24"],
             },
             "gretap": {
                 "type": "gretap",
                 "mac": "00:00:00:00:00:00",
                 "enabled": True,
+                "parents": [],
+                "addresses": [],
             },
         }
         iproute_info = {
@@ -1548,7 +1567,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                         "enabled": Is(False),
                         "parents": Equals([]),
                         "links": Equals([]),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 ),
                 "eth1": MatchesDict(
@@ -1558,7 +1577,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                         "enabled": Is(True),
                         "parents": Equals([]),
                         "links": Equals([]),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 ),
                 "eth2": MatchesDict(
@@ -1568,7 +1587,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                         "enabled": Is(True),
                         "parents": Equals([]),
                         "links": Equals([]),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 ),
                 "bond0": MatchesDict(
@@ -1599,7 +1618,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                                 }
                             ),
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 ),
                 "bond0.10": MatchesDict(
@@ -1622,16 +1641,17 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                                 }
                             ),
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 ),
                 "vlan20": MatchesDict(
                     {
                         "type": Equals("vlan"),
+                        "mac_address": Equals(ip_addr["vlan20"]["mac"]),
                         "enabled": Is(True),
                         "parents": Equals(["eth0"]),
                         "links": Equals([]),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                         "vid": Equals(20),
                     }
                 ),
@@ -1642,7 +1662,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                         "enabled": Is(True),
                         "parents": Equals([]),
                         "links": Equals([]),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 ),
                 "br0": MatchesDict(
@@ -1660,7 +1680,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                                 }
                             ]
                         ),
-                        "source": Equals("ipaddr"),
+                        "source": Equals("machine-resources"),
                     }
                 ),
             }
@@ -1730,7 +1750,7 @@ class InterfaceLinksTestCase(MAASTestCase):
             "mac_address": "52:54:00:e7:d9:2c",
             "monitored": True,
             "parents": [],
-            "source": "ipaddr",
+            "source": "machine-resources",
             "type": "physical",
         }
 

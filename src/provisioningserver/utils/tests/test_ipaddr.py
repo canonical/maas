@@ -4,12 +4,12 @@
 """Test parser for 'ip addr show'."""
 
 
+import json
 import os
 from shutil import rmtree
 from subprocess import check_output
 from tempfile import mkdtemp
 from textwrap import dedent
-from unittest.mock import sentinel
 
 import netifaces
 from testtools import ExpectedException
@@ -18,20 +18,22 @@ from testtools.matchers import Contains, Equals, Not
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from provisioningserver.refresh import get_resources_bin_path
 from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _add_additional_interface_properties,
+    _annotate_with_proc_net_bonding_original_macs,
+    _get_interface_type,
     _parse_interface_definition,
     annotate_with_driver_information,
-    annotate_with_proc_net_bonding_original_macs,
     get_bonded_interfaces,
-    get_interface_type,
     get_ip_addr,
     get_mac_addresses,
     get_machine_default_gateway_ip,
     get_settings_dict,
     parse_ip_addr,
 )
+from provisioningserver.utils.tests.test_lxd import SAMPLE_LXD_NETWORKS
 
 
 class TestHelperFunctions(MAASTestCase):
@@ -393,14 +395,14 @@ class FakeSysProcTestCase(MAASTestCase):
 class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_missing_interface(self):
         self.assertThat(
-            get_interface_type("eth0", sys_class_net=self.tmp_sys_net),
+            _get_interface_type("eth0", sys_class_net=self.tmp_sys_net),
             Equals("missing"),
         )
 
     def test_identifies_bridge_interface(self):
         self.createEthernetInterface("br0", is_bridge=True)
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "br0",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -411,7 +413,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_tunnel_interface(self):
         self.createEthernetInterface("vnet0", is_tunnel=True)
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "vnet0",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -422,7 +424,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_bond_interface(self):
         self.createEthernetInterface("bond0", is_bond=True)
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "bond0",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -442,7 +444,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_vlan_interface(self):
         self.createEthernetInterface("vlan42", is_vlan=True)
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "vlan42",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -453,7 +455,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_physical_ethernet_interface(self):
         self.createEthernetInterface("eth0", is_physical=True)
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "eth0",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -464,7 +466,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_wireless_ethernet_interface(self):
         self.createEthernetInterface("wlan0", is_wireless=True)
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "wlan0",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -475,7 +477,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_other_ethernet_interface(self):
         self.createEthernetInterface("eth1")
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "eth1",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -486,7 +488,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_loopback_interface(self):
         self.createLoopbackInterface("lo")
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "lo",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -497,7 +499,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_identifies_ipip_interface(self):
         self.createIpIpInterface("tun0")
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "tun0",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -508,7 +510,7 @@ class TestGetInterfaceType(FakeSysProcTestCase):
     def test_unknown_interfaces_type_includes_id(self):
         self.createInterfaceType("avian0", 1149)
         self.assertThat(
-            get_interface_type(
+            _get_interface_type(
                 "avian0",
                 sys_class_net=self.tmp_sys_net,
                 proc_net=self.tmp_proc_net,
@@ -573,7 +575,7 @@ class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
             "ens3": {"mac": "00:01:02:03:04:05"},
             "ens11": {"mac": "01:02:03:04:05:06"},
         }
-        annotate_with_proc_net_bonding_original_macs(
+        _annotate_with_proc_net_bonding_original_macs(
             interfaces, proc_net=self.tmp_proc_net
         )
         self.assertEqual(
@@ -590,7 +592,7 @@ class TestAnnotateWithDriverInformation(FakeSysProcTestCase):
             "ens3": {"mac": "00:01:02:03:04:05"},
             "ens11": {"mac": "01:02:03:04:05:06"},
         }
-        annotate_with_proc_net_bonding_original_macs(
+        _annotate_with_proc_net_bonding_original_macs(
             interfaces, proc_net=self.tmp_proc_net
         )
         self.assertEqual(
@@ -607,23 +609,14 @@ class TestGetIPAddr(MAASTestCase):
 
     def test_get_ip_addr_calls_methods(self):
         patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
-        patch_call_and_check.return_value = sentinel.ip_addr_cmd
-        patch_parse_ip_addr = self.patch(ipaddr_module, "parse_ip_addr")
-        patch_parse_ip_addr.return_value = sentinel.parse_result
-        patch_annotate_with_driver_information = self.patch(
-            ipaddr_module, "annotate_with_driver_information"
+        patch_call_and_check.return_value = json.dumps(
+            {"networks": SAMPLE_LXD_NETWORKS}
         )
-        patch_annotate_with_driver_information.return_value = sentinel.output
-        self.assertEqual(sentinel.output, get_ip_addr())
+        # all interfaces from binary output are included in result
+        self.assertCountEqual(SAMPLE_LXD_NETWORKS, get_ip_addr())
         self.assertThat(
-            patch_call_and_check, MockCalledOnceWith(["ip", "addr"])
-        )
-        self.assertThat(
-            patch_parse_ip_addr, MockCalledOnceWith(sentinel.ip_addr_cmd)
-        )
-        self.assertThat(
-            patch_annotate_with_driver_information,
-            MockCalledOnceWith(sentinel.parse_result),
+            patch_call_and_check,
+            MockCalledOnceWith([get_resources_bin_path()]),
         )
 
     def test_get_mac_addresses_returns_all_mac_addresses(self):

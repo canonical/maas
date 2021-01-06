@@ -29,7 +29,7 @@ from provisioningserver.events import (
     send_node_event_mac_address,
     send_rack_event,
 )
-from provisioningserver.rpc import region
+from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.exceptions import NoSuchEventType, NoSuchNode
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.enum import map_enum
@@ -120,6 +120,12 @@ class TestNodeEventHubLogByID(MAASTestCase):
     """Tests for `NodeEventHub.logByID`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def patch_rpc_methods(self, side_effect=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
@@ -214,6 +220,12 @@ class TestSendEventMACAddress(MAASTestCase):
     """Tests for `NodeEventHub.logByMAC`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def patch_rpc_methods(self, side_effect=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
@@ -329,6 +341,12 @@ class TestSendEventIPAddress(MAASTestCase):
     """Tests for `NodeEventHub.logByIP`."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def patch_rpc_methods(self, side_effect=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())

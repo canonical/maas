@@ -48,12 +48,16 @@ state UP mode DEFAULT group default qlen 1000
                 valid_lft forever preferred_lft forever
 """
 
+import json
 import os
+from pathlib import Path
 import re
 
 from netaddr import IPNetwork
 import netifaces
 
+from provisioningserver.refresh import get_resources_bin_path
+from provisioningserver.utils.lxd import parse_lxd_networks
 from provisioningserver.utils.shell import call_and_check
 
 
@@ -190,7 +194,7 @@ def get_bridged_interfaces(ifname, sys_class_net="/sys/class/net"):
         return []
 
 
-def get_interface_type(
+def _get_interface_type(
     ifname, sys_class_net="/sys/class/net", proc_net="/proc/net"
 ):
     """Heuristic to return the type of the given interface.
@@ -285,7 +289,7 @@ def _parse_proc_net_bonding(file):
     return interfaces
 
 
-def annotate_with_proc_net_bonding_original_macs(
+def _annotate_with_proc_net_bonding_original_macs(
     interfaces, proc_net="/proc/net"
 ):
     """Repairs the MAC addresses of bond members in the specified structure.
@@ -322,12 +326,12 @@ def annotate_with_driver_information(
     :param proc_net: path to /proc/net
     :param sys_class_net: path to /sys/class/net
     """
-    interfaces = annotate_with_proc_net_bonding_original_macs(
+    interfaces = _annotate_with_proc_net_bonding_original_macs(
         interfaces, proc_net=proc_net
     )
     for name in interfaces:
         iface = interfaces[name]
-        iftype = get_interface_type(
+        iftype = _get_interface_type(
             name, sys_class_net=sys_class_net, proc_net=proc_net
         )
         interfaces[name]["type"] = iftype
@@ -370,9 +374,11 @@ def get_ip_addr():
     :raises:ExternalProcessError: if IP address information could not be
         gathered.
     """
-    ip_addr_output = call_and_check(["ip", "addr"])
-    ifaces = parse_ip_addr(ip_addr_output)
-    return annotate_with_driver_information(ifaces)
+    output = call_and_check([get_resources_bin_path()])
+    ifaces = parse_lxd_networks(json.loads(output)["networks"])
+    _update_interface_type(ifaces)
+    _annotate_with_proc_net_bonding_original_macs(ifaces)
+    return ifaces
 
 
 def get_mac_addresses():
@@ -407,3 +413,47 @@ def get_machine_default_gateway_ip():
             return addresses[0]["addr"]
 
     return default_ip(netifaces.AF_INET) or default_ip(netifaces.AF_INET6)
+
+
+def _update_interface_type(interfaces, sys_class_net=Path("/sys/class/net")):
+    """Update the interface type in a more detailed way than LXD code reports.
+
+
+    LXD reports both virtual and physical interfaces as "broadcast". This logic
+    looks at /sys to get more details about interface type.
+
+    """
+
+    def get_interface_type(name, details):
+        iftype = details["type"]
+        if iftype in ("vlan", "bond", "bridge", "loopback"):
+            return iftype
+
+        sys_path = sys_class_net / name
+        if not sys_path.is_dir():
+            return "missing"
+
+        iftype_id = int(((sys_path / "type").read_text()))
+        # The iftype value here is defined in linux/if_arp.h.
+        # The important thing here is that Ethernet maps to 1.
+        # Currently, MAAS only runs on Ethernet interfaces.
+        if iftype_id == 1:
+            if (sys_path / "tun_flags").is_file():
+                return "tunnel"
+            device_path = sys_path / "device"
+            if device_path.is_symlink():
+                if (device_path / "ieee80211").is_dir():
+                    return "wireless"
+                else:
+                    return "physical"
+            else:
+                return "ethernet"
+        # ... however, we'll include some other commonly-seen interface types,
+        # just for completeness.
+        elif iftype_id == 768:
+            return "ipip"
+        else:
+            return "unknown-%d" % iftype
+
+    for name, details in interfaces.items():
+        details["type"] = get_interface_type(name, details)

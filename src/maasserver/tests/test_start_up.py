@@ -31,6 +31,7 @@ from maastesting.matchers import (
 )
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.utils import ipaddr
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.testing import MAASIDFixture
 
@@ -46,6 +47,7 @@ class TestStartUp(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(RegionEventLoopFixture())
+        self.patch(ipaddr, "get_ip_addr").return_value = {}
 
     def tearDown(self):
         super().tearDown()
@@ -94,6 +96,7 @@ class TestInnerStartUp(MAASServerTestCase):
         self.useFixture(MAASIDFixture(None))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
         self.patch_autospec(start_up, "post_commit_do")
+        self.patch(ipaddr, "get_ip_addr").return_value = {}
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
         bootsources.signals.disable()

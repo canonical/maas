@@ -1100,8 +1100,7 @@ def annotate_with_default_monitored_interfaces(interfaces: dict) -> None:
 def get_all_interfaces_definition(
     annotate_with_monitored: bool = True,
 ) -> dict:
-    """Return interfaces definition by parsing "ip addr" and the running
-    "dhclient" processes on the machine.
+    """Return details for all network interfaces.
 
     The interfaces definition is defined as a contract between the region and
     the rack controller. The region controller processes this resulting
@@ -1109,6 +1108,7 @@ def get_all_interfaces_definition(
 
     :param annotate_with_monitored: If True, annotates the given interfaces
         with whether or not they should be monitored. (Default: True)
+
     """
     interfaces = {}
     dhclient_info = get_dhclient_info()
@@ -1121,7 +1121,7 @@ def get_all_interfaces_definition(
         # This type of interface is created when hypervisors create virtual
         # interfaces for guests. By themselves, they're not useful for MAAS to
         # manage.
-        "ethernet.tunnel",
+        "tunnel",
     ]
     if not running_in_container():
         # When not running in a container, we should be able to identify
@@ -1137,45 +1137,26 @@ def get_all_interfaces_definition(
             and ipaddr.get("mac", "") != "00:00:00:00:00:00"
         )
     }
-    for name, ipaddr in ipaddr_info.items():
-        iface_type = "physical"
-        parents = []
-        mac_address = None
-        vid = None
-        if ipaddr["type"] == "ethernet.bond":
-            iface_type = "bond"
-            mac_address = ipaddr["mac"]
-            for bond_nic in ipaddr["bonded_interfaces"]:
-                if bond_nic in interfaces or bond_nic in ipaddr_info:
-                    parents.append(bond_nic)
-        elif ipaddr["type"] == "ethernet.vlan":
-            iface_type = "vlan"
-            parents.append(ipaddr["parent"])
-            vid = ipaddr["vid"]
-        elif ipaddr["type"] == "ethernet.bridge":
-            iface_type = "bridge"
-            mac_address = ipaddr["mac"]
-            for bridge_nic in ipaddr["bridged_interfaces"]:
-                if bridge_nic in interfaces or bridge_nic in ipaddr_info:
-                    parents.append(bridge_nic)
-        else:
-            mac_address = ipaddr["mac"]
-
-        # Create the interface definition will links for both IPv4 and IPv6.
+    for name, details in ipaddr_info.items():
+        if_type = details["type"]
+        if if_type not in ("vlan", "bridge", "bond"):
+            if_type = "physical"
         interface = {
-            "type": iface_type,
+            "type": if_type,
             "links": [],
-            "enabled": ipaddr["enabled"],
-            "parents": parents,
-            "source": "ipaddr",
+            "enabled": details["enabled"],
+            "parents": [
+                iface for iface in details["parents"] if iface in ipaddr_info
+            ],
+            "source": "machine-resources",
         }
-        if mac_address is not None:
-            interface["mac_address"] = mac_address
-        if vid is not None:
-            interface["vid"] = vid
+        if details["mac"]:
+            interface["mac_address"] = details["mac"]
+        if "vid" in details:
+            interface["vid"] = details["vid"]
         # Add the static and dynamic IP addresses assigned to the interface.
         dhcp_address = dhclient_info.get(name, None)
-        for address in ipaddr.get("inet", []) + ipaddr.get("inet6", []):
+        for address in details["addresses"]:
             if str(IPNetwork(address).ip) == dhcp_address:
                 interface["links"].append({"mode": "dhcp", "address": address})
             else:

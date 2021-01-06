@@ -18,13 +18,24 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.rackdservices import node_power_monitor_service as npms
-from provisioningserver.rpc import exceptions, getRegionClient, region
+from provisioningserver.rpc import (
+    clusterservice,
+    exceptions,
+    getRegionClient,
+    region,
+)
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 
 
 class TestNodePowerMonitorService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     def test_init_sets_up_timer_correctly(self):
         service = npms.NodePowerMonitorService()

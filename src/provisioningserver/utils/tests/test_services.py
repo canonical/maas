@@ -102,6 +102,10 @@ class TestNetworksMonitoringService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
+    def setUp(self):
+        super().setUp()
+        self.patch(services, "get_all_interfaces_definition")
+
     def makeService(self, *args, **kwargs):
         service = StubNetworksMonitoringService(*args, **kwargs)
         self.addCleanup(service._releaseSoleResponsibility)

@@ -21,7 +21,7 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver import eventloop
+from maasserver import eventloop, ipc
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
@@ -48,6 +48,9 @@ class RPCViewTest(MAASTransactionServerTestCase):
 
         self.get_maas_id = self.patch(regionservice, "get_maas_id")
         self.get_maas_id.side_effect = get_maas_id
+        self.patch(
+            ipc, "get_all_interface_source_addresses"
+        ).return_value = set()
         load_builtin_scripts()
 
     def test_rpc_info_empty(self):

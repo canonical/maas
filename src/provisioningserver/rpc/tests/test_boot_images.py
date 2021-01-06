@@ -20,7 +20,7 @@ from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.import_images import boot_resources
-from provisioningserver.rpc import boot_images, region
+from provisioningserver.rpc import boot_images, clusterservice, region
 from provisioningserver.rpc.boot_images import (
     _run_import,
     fix_sources_for_cluster,
@@ -257,6 +257,12 @@ class TestRunImport(MAASTestCase):
 class TestImportBootImages(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
 
     @defer.inlineCallbacks
     def test_add_to_waiting_if_lock_already_held(self):

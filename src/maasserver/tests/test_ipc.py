@@ -16,7 +16,7 @@ from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, succeed
 
-from maasserver import workers
+from maasserver import ipc, workers
 from maasserver.enum import SERVICE_STATUS
 from maasserver.ipc import (
     get_ipc_socket_path,
@@ -43,6 +43,7 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.runtest import MAASCrochetRunTest
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import load_builtin_scripts
+from provisioningserver.utils import ipaddr
 from provisioningserver.utils.twisted import callOut, DeferredValue
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -79,6 +80,9 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         self.ipc_path = os.path.join(
             self.useFixture(TempDirectory()).path, "maas-regiond.sock"
         )
+        self.patch(ipaddr, "get_ip_addr").return_value = {}
+        self.patch(ipc, "get_all_interface_addresses")
+        self.patch(ipc, "get_all_interface_source_addresses")
 
     def make_IPCMasterService(self, workers=None, run_loop=False):
         master = IPCMasterService(
