@@ -430,7 +430,7 @@ class TestParseLXDCPUInfo(MAASTestCase):
         )
 
 
-class TestLXDNetworks(MAASTestCase):
+class TestParseLXDNetworks(MAASTestCase):
     def test_networks(self):
         networks = parse_lxd_networks(SAMPLE_LXD_NETWORKS)
         self.assertEqual(
@@ -549,6 +549,31 @@ class TestLXDNetworks(MAASTestCase):
                     "addresses": [],
                     "mac": "00:00:00:00:00:01",
                     "parents": ["eth0", "eth1"],
+                },
+            },
+        )
+
+    def test_networks_missing_vlan_key(self):
+        network_details = {
+            "if0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+            },
+        }
+        networks = parse_lxd_networks(network_details)
+        self.assertEqual(
+            networks,
+            {
+                "if0": {
+                    "type": "broadcast",
+                    "enabled": True,
+                    "addresses": [],
+                    "mac": "00:00:00:00:00:01",
+                    "parents": [],
                 },
             },
         )
