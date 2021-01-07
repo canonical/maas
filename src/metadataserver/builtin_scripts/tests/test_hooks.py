@@ -1630,6 +1630,26 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
         self.assertEqual(node_interfaces[1].numa_node, numa_nodes[1])
 
+    def test_allows_devices_on_sparse_numa_nodes(self):
+        node = factory.make_Node()
+        create_IPADDR_OUTPUT_NAME_script(node, IP_ADDR_OUTPUT)
+        lxd_output = make_lxd_output()
+        lxd_output["resources"]["cpu"]["sockets"][-1]["cores"][-1]["threads"][
+            -1
+        ]["numa_node"] = 16
+        lxd_output["resources"]["network"]["cards"][-1]["numa_node"] = 16
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        self.assertEqual(
+            16,
+            node.interface_set.get(
+                mac_address=lxd_output["resources"]["network"]["cards"][-1][
+                    "ports"
+                ][-1]["address"]
+            ).numa_node.index,
+        )
+
     def test_updates_interfaces_speed(self):
         node = factory.make_Node()
         iface = factory.make_Interface(

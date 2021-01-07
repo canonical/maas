@@ -489,8 +489,10 @@ def _process_lxd_resources(node, data):
     node.memory, hugepages_size, numa_nodes_info = _parse_memory(
         data.get("memory", {}), numa_nodes
     )
-    # Create or update NUMA nodes.
-    numa_nodes = []
+    # Create or update NUMA nodes. This must be kept as a dictionary as not all
+    # systems maintain linear continuity. e.g the PPC64 machine in our CI uses
+    # 0, 1, 16, 17.
+    numa_nodes = {}
     for numa_index, numa_data in numa_nodes_info.items():
         numa_node, _ = NUMANode.objects.update_or_create(
             node=node,
@@ -503,7 +505,7 @@ def _process_lxd_resources(node, data):
                 page_size=hugepages_size,
                 defaults={"total": numa_data.hugepages},
             )
-        numa_nodes.append(numa_node)
+        numa_nodes[numa_index] = numa_node
 
     # Network interfaces
     # LP: #1849355 -- Don't update the node network information
