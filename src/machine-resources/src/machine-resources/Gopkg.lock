@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c3583f593dc658596e653f65da36889707b885bbff4bf9a7f680ccb79795e9fc"
+  digest = "1:53019bf42f200f525ee58eb503212a46425b238a9039055284b382eb8bd4ecea"
   name = "github.com/lxc/lxd"
   packages = [
     "lxd/include",
@@ -52,7 +52,7 @@
     "shared/version",
   ]
   pruneopts = ""
-  revision = "ee7e4d2a9e29225bfae8f51193886186631afc4d"
+  revision = "c877c368c26293280a82a90c990727fe5012a465"
 
 [[projects]]
   digest = "1:6dbb0eb72090871f2e58d1e37973fe3cb8c0f45f49459398d3fc740cb30e13bd"
@@ -80,7 +80,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2d8f62324869e92fcc06e09ed80a38c1678c1cf8a188ec853cb3bfa17ad37187"
+  digest = "1:48ddc32875983a47dc5f0b9243cb804773f94b2b0b5b997df519f8f529344828"
   name = "golang.org/x/sys"
   packages = [
     "internal/unsafeheader",
@@ -88,7 +88,7 @@
     "windows",
   ]
   pruneopts = ""
-  revision = "2d18734c6014bdfc4d7fd7cfc8e0608c9684967b"
+  revision = "16f7687f5001b816ff9f6b586071238941e88a9d"
 
 [[projects]]
   branch = "v2"
