@@ -398,18 +398,19 @@ def make_lxd_host_info(
     }
 
 
-def make_lxd_pcie_device():
-    return {
-        "driver": factory.make_name("driver"),
-        "driver_version": factory.make_name("driver-version"),
-        "numa_node": 0,
-        "pci_address": "%s:%s:%s.%s"
-        % (
+def make_lxd_pcie_device(numa_node=0, pci_address=None):
+    if pci_address is None:
+        pci_address = "%s:%s:%s.%s" % (
             factory.make_hex_string(size=4),
             factory.make_hex_string(size=2),
             factory.make_hex_string(size=2),
             factory.make_hex_string(size=1),
-        ),
+        )
+    return {
+        "driver": factory.make_name("driver"),
+        "driver_version": factory.make_name("driver-version"),
+        "numa_node": numa_node,
+        "pci_address": pci_address,
         "product": factory.make_name("product"),
         "product_id": factory.make_hex_string(size=4),
         "vendor": factory.make_name("vendor"),
@@ -1754,6 +1755,29 @@ class TestProcessLXDResults(MAASServerTestCase):
                 for node_device in node.node_devices.all()
             },
         )
+
+    def test_allows_devices_on_sparse_numa_nodes(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        pci_address = lxd_output["resources"]["network"]["cards"][-1][
+            "pci_address"
+        ]
+        lxd_output["resources"]["cpu"]["sockets"][-1]["cores"][-1]["threads"][
+            -1
+        ]["numa_node"] = 16
+        lxd_output["resources"]["network"]["cards"][-1]["numa_node"] = 16
+        lxd_output["resources"]["pci"] = {
+            "devices": [
+                make_lxd_pcie_device(numa_node=16, pci_address=pci_address)
+            ],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        node_device = node.node_devices.get(pci_address=pci_address)
+
+        self.assertEquals(16, node_device.numa_node.index)
+        self.assertEquals(16, node_device.physical_interface.numa_node.index)
 
     def test_updates_interfaces_speed(self):
         node = factory.make_Node()
