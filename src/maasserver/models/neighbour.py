@@ -13,7 +13,7 @@ from maasserver.fields import MAASIPAddressField, MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import get_one, MAASQueriesMixin, UniqueViolation
+from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import get_mac_organization
 
@@ -105,29 +105,6 @@ class NeighbourManager(Manager, NeighbourQueriesMixin):
             binding.delete()
             deleted = True
         return deleted
-
-    def get_current_binding(self, ip: str, mac: str, interface: str, vid: int):
-        """Returns the current neighbour for the specified values.
-
-        Returns None if an object representing the specified IP, MAC,
-        Interface, and VID does not exist. (This is not an error condition;
-        it happens normally when the binding is created for the first time.)
-
-        The caller must ensure that any obsolete bindings are deleted before
-        calling this method.
-
-        :raises UniqueViolation: If more than one binding is found for the
-            specified interface, IP address, VID, and MAC address. (Which
-            should never happen due to the `unique_together`.)
-        """
-        query = self.filter(
-            interface=interface, ip=ip, vid=vid, mac_address=mac
-        )
-        # If we get an exception here, it is most likely due to an unlikely
-        # race condition. (either that, or the caller neglected to remove
-        # obsolete bindings before calling this method.) Therefore, raise
-        # a UniqueViolation so this operation can be retried.
-        return get_one(query, exception_class=UniqueViolation)
 
     def get_by_updated_with_related_nodes(self):
         """Returns a `QuerySet` of neighbours, while also selecting related

@@ -104,6 +104,7 @@ from maasserver.enum import (
     SERVICE_STATUS,
 )
 from maasserver.exceptions import (
+    IPAddressCheckFailed,
     NodeStateViolation,
     NoScriptsFound,
     PowerProblem,
@@ -4292,26 +4293,28 @@ class Node(CleanSave, TimestampedModel):
                 allocated_ips.add(ip)
         return allocated_ips
 
-    def _claim_auto_ips(self, defer):
+    @inlineCallbacks
+    def _claim_auto_ips(self):
         """Perform claim AUTO IP addresses from the post_commit `defer`."""
 
         @transactional
         def clean_expired():
             """Clean the expired AUTO IP addresses."""
-            ips = StaticIPAddress.objects.filter(
+            StaticIPAddress.objects.filter(
                 temp_expires_on__lte=datetime.utcnow()
-            )
-            ips.update(ip=None, temp_expires_on=None)
+            ).update(ip=None, temp_expires_on=None)
+
+        # track which IPs have been already attempted for allocation
+        attempted_ips = set()
 
         @transactional
         def get_racks_to_check(allocated_ips):
             """Calculate the rack controllers to perform the IP check on."""
-            # No allocated ips.
             if not allocated_ips:
                 return None, None
 
             # Map the allocated IP addresses to the subnets they belong.
-            ip_ids = map(attrgetter("id"), allocated_ips)
+            ip_ids = [ip.id for ip in allocated_ips]
             ips_to_subnet = StaticIPAddress.objects.filter(id__in=ip_ids)
             subnets_to_ips = defaultdict(set)
             for ip in ips_to_subnet:
@@ -4338,10 +4341,9 @@ class Node(CleanSave, TimestampedModel):
 
             return subnets_to_ips, subnets_to_clients
 
-        def perform_ip_checks(result):
-            subnets_to_ips, subnets_to_clients = result
+        def perform_ip_checks(subnets_to_ips, subnets_to_clients):
             # Early-out if no IP addresses where allocated.
-            if subnets_to_ips is None:
+            if not subnets_to_ips:
                 return None
             defers = []
             for subnet_id, ips in subnets_to_ips.items():
@@ -4365,13 +4367,12 @@ class Node(CleanSave, TimestampedModel):
             return DeferredList(defers)
 
         @transactional
-        def process_results(results, try_count=0, max_try_count=2):
-            # Early-out if no IP addresses where allocated.
-            if results is None:
-                return False, try_count, max_try_count
-            needs_retry = False
-            for _, result in results:
-                check_result, rack_id, ips = result
+        def process_results(results, do_cleanups):
+            maaslog.debug(
+                f"Processing IP allocation results for {self.system_id}"
+            )
+            check_failed, ips_in_use = False, False
+            for _, (check_result, rack_id, ips) in results:
                 ip_ids = [ip.id for ip in ips]
                 ip_to_obj = {ip.ip: ip for ip in ips}
                 if check_result is None:
@@ -4382,33 +4383,19 @@ class Node(CleanSave, TimestampedModel):
                         temp_expires_on=None
                     )
                 elif isinstance(check_result, Failure):
+                    check_failed = True
                     # Failed to perform IP address checking on the rack
                     # controller.
-                    if try_count < max_try_count:
+                    static_ips = StaticIPAddress.objects.filter(id__in=ip_ids)
+                    if do_cleanups:
+                        # Clear the temp_expires_on marking the IP address as
+                        # assigned. Thsi was the last attempt to perform the
+                        # allocation.
+                        static_ips.update(temp_expires_on=None)
+                    else:
                         # Clear the assigned IP address so new IP can be
                         # assigned in the next pass.
-                        StaticIPAddress.objects.filter(id__in=ip_ids).update(
-                            ip=None, temp_expires_on=None
-                        )
-                        needs_retry = True
-                        log.err(
-                            check_result,
-                            "Performing IP address checking failed, "
-                            "will be retried.",
-                        )
-                    else:
-                        # Clear the temp_expires_on marking the IP address
-                        # as assigned. Enough tries where performed to verify
-                        # and it always failed.
-                        StaticIPAddress.objects.filter(id__in=ip_ids).update(
-                            temp_expires_on=None
-                        )
-                        log.err(
-                            check_result,
-                            "Performing IP address checking failed, "
-                            "will *NOT* be retried. (marking IP addresses "
-                            "as available).",
-                        )
+                        static_ips.update(ip=None, temp_expires_on=None)
                 else:
                     # IP address checking was successful, use the results
                     # to either mark the assigned IP address no longer
@@ -4416,6 +4403,7 @@ class Node(CleanSave, TimestampedModel):
                     for ip_result in check_result["ip_addresses"]:
                         ip_obj = ip_to_obj[ip_result["ip_address"]]
                         if ip_result["used"]:
+                            attempted_ips.add(ip_obj.ip)
                             # Create a Neighbour reference to the IP address
                             # so the next loop will not use that IP address.
                             rack_interface = Interface.objects.filter(
@@ -4434,56 +4422,53 @@ class Node(CleanSave, TimestampedModel):
                             ip_obj.ip = None
                             ip_obj.temp_expires_on = None
                             ip_obj.save()
-                            needs_retry = True
+                            ips_in_use = True
                         else:
                             # IP was free and offically assigned.
                             ip_obj.temp_expires_on = None
                             ip_obj.save()
-            return needs_retry, try_count, max_try_count
 
-        def retrier(result):
-            needs_retry, try_count, max_try_count = result
-            if needs_retry:
-                if try_count >= max_try_count:
-                    # Over retry count, IP address allocation is exhausted.
-                    raise StaticIPAddressExhaustion(
-                        "Failed to allocate the required AUTO IP addresses "
-                        "after %d retries." % max_try_count
-                    )
-                else:
-                    # Re-loop the whole process again until max_try_count.
-                    d = succeed(None)
-                    d.addCallback(
-                        lambda _: deferToDatabase(
-                            transactional(self.claim_auto_ips),
-                            temp_expires_after=timedelta(minutes=5),
-                        )
-                    )
-                    d.addCallback(partial(deferToDatabase, get_racks_to_check))
-                    d.addCallback(perform_ip_checks)
-                    d.addCallback(
-                        partial(
-                            deferToDatabase,
-                            process_results,
-                            try_count=(try_count + 1),
-                        )
-                    )
-                    d.addCallback(retrier)
-                    return d
+            return check_failed, ips_in_use
 
-        defer.addCallback(lambda _: deferToDatabase(clean_expired))
-        defer.addCallback(
-            lambda _: deferToDatabase(
+        retry, max_retries = 0, 2
+        while retry <= max_retries:
+            yield deferToDatabase(clean_expired)
+            allocated_ips = yield deferToDatabase(
                 transactional(self.claim_auto_ips),
                 temp_expires_after=timedelta(minutes=5),
             )
-        )
-        defer.addCallback(partial(deferToDatabase, get_racks_to_check))
-        defer.addCallback(perform_ip_checks)
-        defer.addCallback(partial(deferToDatabase, process_results))
-        defer.addCallback(retrier)
+            # skip IPs that have been tested already
+            allocated_ips = set(
+                ip for ip in allocated_ips if ip.ip not in attempted_ips
+            )
+            if not allocated_ips:
+                raise StaticIPAddressExhaustion(
+                    "Failed to allocate the required AUTO IP addresses"
+                )
+            subnets_to_ips, subnets_to_clients = yield deferToDatabase(
+                get_racks_to_check, allocated_ips
+            )
+            results = yield perform_ip_checks(
+                subnets_to_ips, subnets_to_clients
+            )
+            if not results:
+                return
 
-        return defer
+            last_run = retry == max_retries
+            check_failed, ips_in_use = yield deferToDatabase(
+                process_results, results, last_run
+            )
+            if ips_in_use:
+                retry = 0
+            elif check_failed:
+                retry += 1
+            else:
+                return
+
+        # over the retry count, check failed
+        raise IPAddressCheckFailed(
+            f"IP address checks failed after {max_retries} retries."
+        )
 
     @transactional
     def release_interface_config(self):
@@ -5495,12 +5480,16 @@ class Node(CleanSave, TimestampedModel):
         d = post_commit()
         claimed_ips = False
 
+        @inlineCallbacks
+        def claim_auto_ips(_):
+            yield self._claim_auto_ips()
+
         if self.status == NODE_STATUS.ALLOCATED:
             old_status = self.status
             # Claim AUTO IP addresses for the node if it's ALLOCATED.
             # The current state being ALLOCATED is our indication that the node
             # is being deployed for the first time.
-            d = self._claim_auto_ips(d)
+            d.addCallback(claim_auto_ips)
             set_deployment_timeout = True
             self._start_deployment()
             claimed_ips = True
@@ -5519,7 +5508,7 @@ class Node(CleanSave, TimestampedModel):
                 ],
                 script__apply_configured_networking=True,
             ).exists():
-                d = self._claim_auto_ips(d)
+                d.addCallback(claim_auto_ips)
                 claimed_ips = True
             set_deployment_timeout = False
         elif self.status == NODE_STATUS.DEPLOYED and self.ephemeral_deployment:
