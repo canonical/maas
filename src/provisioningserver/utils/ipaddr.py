@@ -119,7 +119,7 @@ def _update_interface_type(interfaces, sys_class_net=Path("/sys/class/net")):
         elif iftype_id == 768:
             return "ipip"
         else:
-            return "unknown-%d" % iftype
+            return f"unknown-{iftype_id}"
 
     for name, details in interfaces.items():
         details["type"] = get_interface_type(name, details)

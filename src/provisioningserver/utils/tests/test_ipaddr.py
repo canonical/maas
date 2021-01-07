@@ -6,6 +6,7 @@
 
 import json
 import os
+from pathlib import Path
 from shutil import rmtree
 from tempfile import mkdtemp
 from textwrap import dedent
@@ -19,6 +20,7 @@ from provisioningserver.refresh import get_resources_bin_path
 from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _annotate_with_proc_net_bonding_original_macs,
+    _update_interface_type,
     get_ip_addr,
     get_mac_addresses,
     get_machine_default_gateway_ip,
@@ -29,62 +31,36 @@ from provisioningserver.utils.tests.test_lxd import SAMPLE_LXD_NETWORKS
 class FakeSysProcTestCase(MAASTestCase):
     def setUp(self):
         super().setUp()
-        self.tmp_sys_net = mkdtemp("maas-unit-tests.sys-class-net")
-        self.tmp_proc_net = mkdtemp("maas-unit-tests.proc-net")
-        os.mkdir(os.path.join(self.tmp_proc_net, "vlan"))
-        os.mkdir(os.path.join(self.tmp_proc_net, "bonding"))
+        self.path_sys_net = Path(mkdtemp("maas-unit-tests.sys-class-net"))
+        self.path_proc_net = Path(mkdtemp("maas-unit-tests.proc-net"))
+        (self.path_proc_net / "vlan").mkdir()
+        (self.path_proc_net / "bonding").mkdir()
 
     def tearDown(self):
         super().tearDown()
-        rmtree(self.tmp_sys_net)
-        rmtree(self.tmp_proc_net)
+        rmtree(self.path_sys_net)
+        rmtree(self.path_proc_net)
 
     def createInterfaceType(
         self,
         ifname,
-        iftype,
-        is_bridge=False,
-        is_vlan=False,
-        is_bond=False,
+        iftype=1,
         is_wireless=False,
         is_physical=False,
         is_tunnel=False,
-        bonded_interfaces=None,
     ):
-        ifdir = os.path.join(self.tmp_sys_net, ifname)
-        os.mkdir(ifdir)
-        type_file = os.path.join(ifdir, "type")
-        with open(type_file, "w", encoding="utf-8") as f:
-            f.write("%d\n" % iftype)
-        if is_bridge:
-            os.mkdir(os.path.join(ifdir, "bridge"))
-        if is_tunnel:
-            with open(os.path.join(ifdir, "tun_flags"), "w"):
-                pass  # Just touch.
-        if is_vlan:
-            with open(os.path.join(self.tmp_proc_net, "vlan", ifname), "w"):
-                pass  # Just touch.
-        if is_bond:
-            os.mkdir(os.path.join(ifdir, "bonding"))
-            if bonded_interfaces is not None:
-                filename_slaves = os.path.join(ifdir, "bonding", "slaves")
-                with open(filename_slaves, "w", encoding="utf-8") as f:
-                    f.write("%s\n" % " ".join(bonded_interfaces))
+        ifdir = self.path_sys_net / ifname
+        ifdir.mkdir()
+        type_file = ifdir / "type"
+        type_file.write_text(f"{iftype}\n")
         if is_physical or is_wireless:
-            device_real = os.path.join(ifdir, "device.real")
-            os.mkdir(device_real)
-            os.symlink(device_real, os.path.join(ifdir, "device"))
+            device_real = ifdir / "device.real"
+            device_real.mkdir()
+            (ifdir / "device").symlink_to(device_real)
         if is_wireless:
-            os.mkdir(os.path.join(ifdir, "device", "ieee80211"))
-
-    def createIpIpInterface(self, ifname):
-        self.createInterfaceType(ifname, 768)
-
-    def createLoopbackInterface(self, ifname):
-        self.createInterfaceType(ifname, 772)
-
-    def createEthernetInterface(self, ifname, **kwargs):
-        self.createInterfaceType(ifname, 1, **kwargs)
+            (ifdir / "device" / "ieee80211").mkdir()
+        if is_tunnel:
+            (ifdir / "tun_flags").touch()
 
 
 class TestAnnotateWithProcNetBondingOriginalMacs(FakeSysProcTestCase):
@@ -118,17 +94,14 @@ class TestAnnotateWithProcNetBondingOriginalMacs(FakeSysProcTestCase):
             Slave queue ID: 0
             """
         )
-        proc_net_bonding_bond0 = os.path.join(
-            self.tmp_proc_net, "bonding", "bond0"
-        )
-        with open(proc_net_bonding_bond0, mode="w") as f:
-            f.write(testdata)
+        proc_net_bonding_bond0 = self.path_proc_net / "bonding" / "bond0"
+        proc_net_bonding_bond0.write_text(testdata)
         interfaces = {
             "ens3": {"mac": "00:01:02:03:04:05"},
             "ens11": {"mac": "01:02:03:04:05:06"},
         }
         _annotate_with_proc_net_bonding_original_macs(
-            interfaces, proc_net=self.tmp_proc_net
+            interfaces, proc_net=self.path_proc_net
         )
         self.assertEqual(
             {
@@ -139,13 +112,13 @@ class TestAnnotateWithProcNetBondingOriginalMacs(FakeSysProcTestCase):
         )
 
     def test_ignores_missing_proc_net_bonding(self):
-        os.rmdir(os.path.join(self.tmp_proc_net, "bonding"))
+        os.rmdir(os.path.join(self.path_proc_net, "bonding"))
         interfaces = {
             "ens3": {"mac": "00:01:02:03:04:05"},
             "ens11": {"mac": "01:02:03:04:05:06"},
         }
         _annotate_with_proc_net_bonding_original_macs(
-            interfaces, proc_net=self.tmp_proc_net
+            interfaces, proc_net=self.path_proc_net
         )
         self.assertEqual(
             {
@@ -195,6 +168,110 @@ class TestGetIPAddr(MAASTestCase):
         patch_get_ip_addr.return_value = results
         observed = get_mac_addresses()
         self.assertItemsEqual(mac_addresses, observed)
+
+
+class TestUpdateInterfaceType(FakeSysProcTestCase):
+    def test_ipip(self):
+        networks = {
+            "if0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        self.createInterfaceType("if0", 768)
+        ifaces = ipaddr_module.parse_lxd_networks(networks)
+        _update_interface_type(ifaces, sys_class_net=self.path_sys_net)
+        self.assertEqual(ifaces["if0"]["type"], "ipip")
+
+    def test_tunnel(self):
+        networks = {
+            "if0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        self.createInterfaceType("if0", is_tunnel=True)
+        ifaces = ipaddr_module.parse_lxd_networks(networks)
+        _update_interface_type(ifaces, sys_class_net=self.path_sys_net)
+        self.assertEqual(ifaces["if0"]["type"], "tunnel")
+
+    def test_physical(self):
+        networks = {
+            "if0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        self.createInterfaceType("if0", is_physical=True)
+        ifaces = ipaddr_module.parse_lxd_networks(networks)
+        _update_interface_type(ifaces, sys_class_net=self.path_sys_net)
+        self.assertEqual(ifaces["if0"]["type"], "physical")
+
+    def test_wireless(self):
+        networks = {
+            "if0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        self.createInterfaceType("if0", is_wireless=True)
+        ifaces = ipaddr_module.parse_lxd_networks(networks)
+        _update_interface_type(ifaces, sys_class_net=self.path_sys_net)
+        self.assertEqual(ifaces["if0"]["type"], "wireless")
+
+    def test_ethernet(self):
+        networks = {
+            "if0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        self.createInterfaceType("if0")
+        ifaces = ipaddr_module.parse_lxd_networks(networks)
+        _update_interface_type(ifaces, sys_class_net=self.path_sys_net)
+        self.assertEqual(ifaces["if0"]["type"], "ethernet")
+
+    def test_unknown(self):
+        networks = {
+            "if0": {
+                "addresses": [],
+                "hwaddr": "00:00:00:00:00:01",
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        self.createInterfaceType("if0", 123456)
+        ifaces = ipaddr_module.parse_lxd_networks(networks)
+        _update_interface_type(ifaces, sys_class_net=self.path_sys_net)
+        self.assertEqual(ifaces["if0"]["type"], "unknown-123456")
 
 
 class TestGetMachineDefaultGatewayIP(MAASTestCase):
