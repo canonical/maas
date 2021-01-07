@@ -226,6 +226,21 @@ class TestPodHandler(MAASTransactionServerTestCase):
             ],
         )
 
+    def test_get_with_pod_host_no_vlan(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        node = factory.make_Node()
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            host=node,
+        )
+        # attach an unconnected interface to the node
+        interface = factory.make_Interface(node=node)
+        interface.vlan = None
+        interface.save()
+        result = handler.get({"id": pod.id})
+        self.assertEqual(result["attached_vlans"], [])
+
     def test_get_host_interfaces_no_sriov(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)
