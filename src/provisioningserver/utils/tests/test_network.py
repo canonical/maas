@@ -1256,6 +1256,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                 "enabled": True,
                 "addresses": ["127.0.0.1/32", ["::1"]],
                 "parents": [],
+                "mac": [],
             }
         }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
@@ -1273,11 +1274,23 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_ignores_ipip(self):
-        ip_addr = {"vnet": {"type": "ipip", "enabled": True}}
+        ip_addr = {
+            "vnet": {
+                "type": "ipip",
+                "enabled": True,
+                "mac": factory.make_mac_address(),
+            }
+        }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_ignores_tunnel(self):
-        ip_addr = {"vnet": {"type": "tunnel", "enabled": True}}
+        ip_addr = {
+            "vnet": {
+                "type": "tunnel",
+                "enabled": True,
+                "mac": factory.make_mac_address(),
+            }
+        }
         self.assertInterfacesResult(ip_addr, {}, {}, MatchesDict({}))
 
     def test_simple(self):
@@ -1518,7 +1531,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
             "bond0.10": {
                 "type": "vlan",
-                "mac": "",
+                "mac": factory.make_mac_address(),
                 "enabled": True,
                 "vid": 10,
                 "parents": ["bond0"],
@@ -1548,7 +1561,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
             },
             "gretap": {
                 "type": "gretap",
-                "mac": "00:00:00:00:00:00",
+                "mac": "",
                 "enabled": True,
                 "parents": [],
                 "addresses": [],
@@ -1626,6 +1639,7 @@ class TestGetAllInterfacesDefinition(MAASTestCase):
                         "type": Equals("vlan"),
                         "enabled": Is(True),
                         "parents": Equals(["bond0"]),
+                        "mac_address": Equals(ip_addr["bond0.10"]["mac"]),
                         "vid": Equals(10),
                         "links": MatchesSetwise(
                             MatchesDict(

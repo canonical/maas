@@ -1132,9 +1132,9 @@ def get_all_interfaces_definition(
         name: ipaddr
         for name, ipaddr in get_ip_addr().items()
         if (
-            ipaddr["type"] not in exclude_types
+            ipaddr["mac"]
+            and ipaddr["type"] not in exclude_types
             and not ipaddr["type"].startswith("unknown-")
-            and ipaddr.get("mac", "") != "00:00:00:00:00:00"
         )
     }
     for name, details in ipaddr_info.items():
@@ -1143,6 +1143,7 @@ def get_all_interfaces_definition(
             if_type = "physical"
         interface = {
             "type": if_type,
+            "mac_address": details["mac"],
             "links": [],
             "enabled": details["enabled"],
             "parents": [
@@ -1150,8 +1151,6 @@ def get_all_interfaces_definition(
             ],
             "source": "machine-resources",
         }
-        if details["mac"]:
-            interface["mac_address"] = details["mac"]
         if "vid" in details:
             interface["vid"] = details["vid"]
         # Add the static and dynamic IP addresses assigned to the interface.

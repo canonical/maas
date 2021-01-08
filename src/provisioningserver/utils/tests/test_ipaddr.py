@@ -151,7 +151,7 @@ class TestGetIPAddr(MAASTestCase):
             mac = factory.make_mac_address()
             mac_addresses.append(mac)
             results[factory.make_name("eth")] = {"mac": mac}
-        results[factory.make_name("eth")] = {"mac": "00:00:00:00:00:00"}
+        results[factory.make_name("eth")] = {"mac": ""}
         patch_get_ip_addr = self.patch(ipaddr_module, "get_ip_addr")
         patch_get_ip_addr.return_value = results
         observed = get_mac_addresses()
