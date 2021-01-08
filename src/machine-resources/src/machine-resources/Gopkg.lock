@@ -35,7 +35,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:53019bf42f200f525ee58eb503212a46425b238a9039055284b382eb8bd4ecea"
+  digest = "1:2f89b2ecf31fcb4cf3892f5aa99d106e07a0299c63a91088d7667804a89655b6"
   name = "github.com/lxc/lxd"
   packages = [
     "lxd/include",
@@ -52,7 +52,7 @@
     "shared/version",
   ]
   pruneopts = ""
-  revision = "c877c368c26293280a82a90c990727fe5012a465"
+  revision = "357b4934c37f258706b0eba81f3d34d54549d93e"
 
 [[projects]]
   digest = "1:6dbb0eb72090871f2e58d1e37973fe3cb8c0f45f49459398d3fc740cb30e13bd"
