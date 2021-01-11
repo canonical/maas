@@ -138,6 +138,8 @@ parts:
       - python3-pymacaroons # for macaroonbakery
       - python3-pyparsing
       - python3-requests
+      - python3-requests-toolbelt  # for pylxd
+      - python3-requests-unixsocket  # for pylxd
       - python3-rfc3339 # for macaroonbakery
       - python3-seamicroclient
       - python3-simplejson
