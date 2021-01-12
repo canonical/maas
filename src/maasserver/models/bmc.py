@@ -1150,6 +1150,8 @@ class Pod(BMC):
                     identifier=existing_machine.instance_power_parameters[
                         "instance_name"
                     ],
+                    # XXX currently only tracking VMs in the configured project
+                    project=self.power_parameters["project"],
                     bmc=self,
                 )
                 vm.machine = existing_machine
@@ -1421,7 +1423,7 @@ class Pod(BMC):
         from maasserver.models.virtualmachine import VirtualMachine
 
         VirtualMachine.objects.filter(bmc=self).exclude(
-            identifier__in=existing_instance_names
+            identifier__in=existing_instance_names,
         ).delete()
 
     def sync_storage_pools(self, discovered_storage_pools):

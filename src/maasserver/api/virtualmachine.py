@@ -11,6 +11,7 @@ from maasserver.models.virtualmachine import VirtualMachine
 DISPLAYED_VM_FIELDS = (
     "id",
     "identifier",
+    "project",
     "pinned_cores",
     "unpinned_cores",
     "memory",

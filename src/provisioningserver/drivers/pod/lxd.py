@@ -156,6 +156,12 @@ class LXDPodDriver(PodDriver):
             required=True,
         ),
         make_setting_field(
+            "project",
+            "LXD project",
+            required=True,
+            default="default",
+        ),
+        make_setting_field(
             "password",
             "LXD password (optional)",
             required=False,
@@ -199,6 +205,7 @@ class LXDPodDriver(PodDriver):
             client = yield deferToThread(
                 Client,
                 endpoint=endpoint,
+                project=context.get("project", "default"),
                 cert=get_maas_cert_tuple(),
                 verify=False,
             )

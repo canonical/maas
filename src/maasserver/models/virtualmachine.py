@@ -53,10 +53,11 @@ class VirtualMachine(CleanSave, TimestampedModel):
         editable=False,
         related_name="virtualmachine",
     )
+    project = TextField()
     bmc = ForeignKey(BMC, editable=False, on_delete=CASCADE)
 
     class Meta:
-        unique_together = [("bmc", "identifier")]
+        unique_together = [("bmc", "identifier", "project")]
 
     def clean(self):
         super().clean()

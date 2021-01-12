@@ -18,10 +18,11 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestVirtualMachine(MAASServerTestCase):
     def test_instantiate_defaults(self):
         bmc = factory.make_BMC(power_type="lxd")
-        vm = VirtualMachine(identifier="vm1", bmc=bmc)
+        vm = VirtualMachine(identifier="vm1", bmc=bmc, project="prj1")
         vm.save()
         self.assertEqual(vm.identifier, "vm1")
         self.assertIs(vm.bmc, bmc)
+        self.assertEqual(vm.project, "prj1")
         self.assertEqual(vm.unpinned_cores, 0)
         self.assertEqual(vm.pinned_cores, [])
         self.assertEqual(vm.memory, 0)
@@ -35,6 +36,7 @@ class TestVirtualMachine(MAASServerTestCase):
         vm = VirtualMachine(
             identifier="vm1",
             bmc=factory.make_BMC(power_type="lxd"),
+            project="prj1",
             memory=memory,
             machine=machine,
             hugepages_backed=hugepages_backed,
@@ -67,6 +69,7 @@ class TestVirtualMachine(MAASServerTestCase):
         vm = VirtualMachine.objects.create(
             identifier="vm1",
             bmc=factory.make_BMC(power_type="lxd"),
+            project="prj1",
             machine=machine,
         )
         self.assertIs(machine.virtualmachine, vm)

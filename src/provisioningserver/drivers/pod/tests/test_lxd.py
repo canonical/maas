@@ -109,14 +109,8 @@ class TestLXDPodDriver(MAASTestCase):
             ),
             "instance_name": factory.make_name("instance_name"),
             "password": factory.make_name("password"),
+            "project": factory.make_name("project"),
         }
-
-    def make_parameters(self, context):
-        return (
-            context.get("power_address"),
-            context.get("instance_name"),
-            context.get("password"),
-        )
 
     def test_get_url(self):
         driver = lxd_module.LXDPodDriver()
@@ -160,6 +154,32 @@ class TestLXDPodDriver(MAASTestCase):
             Client,
             MockCalledOnceWith(
                 endpoint=endpoint,
+                project=context["project"],
+                cert=(MAAS_CERTIFICATE, MAAS_PRIVATE_KEY),
+                verify=False,
+            ),
+        )
+        self.assertThat(
+            client.authenticate, MockCalledOnceWith(context["password"])
+        )
+        self.assertEqual(client, returned_client)
+
+    @inlineCallbacks
+    def test_get_client_default_project(self):
+        context = self.make_parameters_context()
+        context.pop("project")
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = True
+        client.trusted = False
+        driver = lxd_module.LXDPodDriver()
+        endpoint = driver.get_url(context)
+        returned_client = yield driver.get_client(None, context)
+        self.assertThat(
+            Client,
+            MockCalledOnceWith(
+                endpoint=endpoint,
+                project="default",
                 cert=(MAAS_CERTIFICATE, MAAS_PRIVATE_KEY),
                 verify=False,
             ),
