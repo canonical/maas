@@ -190,6 +190,33 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(client, returned_client)
 
     @inlineCallbacks
+    def test_get_client_override_project(self):
+        context = self.make_parameters_context()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = True
+        client.trusted = False
+        driver = lxd_module.LXDPodDriver()
+        endpoint = driver.get_url(context)
+        project = factory.make_string()
+        returned_client = yield driver.get_client(
+            None, context, project=project
+        )
+        self.assertThat(
+            Client,
+            MockCalledOnceWith(
+                endpoint=endpoint,
+                project=project,
+                cert=(MAAS_CERTIFICATE, MAAS_PRIVATE_KEY),
+                verify=False,
+            ),
+        )
+        self.assertThat(
+            client.authenticate, MockCalledOnceWith(context["password"])
+        )
+        self.assertEqual(client, returned_client)
+
+    @inlineCallbacks
     def test_get_client_raises_error_when_not_trusted_and_no_password(self):
         context = self.make_parameters_context()
         context["password"] = None
@@ -563,6 +590,47 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertItemsEqual([], discovered_machine.tags)
         self.assertFalse(discovered_machine.hugepages_backed)
         self.assertEqual(discovered_machine.pinned_cores, [])
+
+    @inlineCallbacks
+    def test_get_discovered_machine_project(self):
+        driver = lxd_module.LXDPodDriver()
+        project = factory.make_string()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.project = project
+        mock_machine = Mock()
+        mock_machine.name = factory.make_name("machine")
+        mock_machine.architecture = "x86_64"
+        mock_machine.expanded_config = {
+            "limits.cpu": "2",
+            "limits.memory": "1024MiB",
+            "volatile.eth0.hwaddr": "00:16:3e:78:be:04",
+        }
+        mock_machine.expanded_devices = {}
+        mock_machine.status_code = 102
+        mock_storage_pool = Mock()
+        mock_storage_pool.name = "default"
+        mock_storage_pool_resources = Mock()
+        mock_storage_pool_resources.space = {
+            "used": 207111192576,
+            "total": 306027577344,
+        }
+        mock_storage_pool.resources.get.return_value = (
+            mock_storage_pool_resources
+        )
+        mock_machine.storage_pools.get.return_value = mock_storage_pool
+        mock_network = Mock()
+        mock_network.type = "bridge"
+        mock_network.name = "lxdbr0"
+        client.networks.get.return_value = mock_network
+        discovered_machine = yield ensureDeferred(
+            driver.get_discovered_machine(
+                client, mock_machine, [mock_storage_pool]
+            )
+        )
+        self.assertEqual(
+            discovered_machine.power_parameters["project"], project
+        )
 
     @inlineCallbacks
     def test_get_discovered_machine_vm_info(self):

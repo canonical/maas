@@ -1138,6 +1138,53 @@ class TestPod(MAASServerTestCase):
             Equals(len(discovered.machines)),
         )
 
+    def test_sync_for_lxd_creates_vms_all_projects(self):
+        project1 = factory.make_string()
+        project2 = factory.make_string()
+        discovered_machines = sorted(
+            [
+                self.make_discovered_machine(project=project1),
+                self.make_discovered_machine(project=project2),
+            ],
+            key=lambda m: m.power_parameters["instance_name"],
+        )
+        discovered_pod = self.make_discovered_pod(machines=discovered_machines)
+        pod = factory.make_Pod(
+            pod_type="lxd", parameters={"project": project1}
+        )
+        self.patch(Machine, "start_commissioning")
+        pod.sync(discovered_pod, factory.make_User())
+        vms = VirtualMachine.objects.order_by("identifier", "project")
+        for vm, discovered_vm in zip(vms, discovered_machines):
+            self.assertEqual(
+                vm.identifier, discovered_vm.power_parameters["instance_name"]
+            )
+            self.assertEqual(
+                vm.project, discovered_vm.power_parameters["project"]
+            )
+            self.assertEqual(vm.memory, discovered_vm.memory)
+            self.assertEqual(
+                vm.hugepages_backed, discovered_vm.hugepages_backed
+            )
+            self.assertEqual(vm.pinned_cores, discovered_vm.pinned_cores)
+            self.assertEqual(vm.unpinned_cores, discovered_vm.cores)
+        # a machine is created only for the VM in the tracked project
+        [machine] = Machine.objects.all()
+        self.assertEqual(machine.virtualmachine.project, project1)
+
+    def test_sync_for_lxd_deletes_vms_all_projects(self):
+        project1 = factory.make_string()
+        project2 = factory.make_string()
+        discovered_pod = self.make_discovered_pod(machines=[])
+        pod = factory.make_Pod(
+            pod_type="lxd", parameters={"project": project1}
+        )
+        factory.make_VirtualMachine(project=project1, bmc=pod)
+        factory.make_VirtualMachine(project=project2, bmc=pod)
+        self.patch(Machine, "start_commissioning")
+        pod.sync(discovered_pod, factory.make_User())
+        self.assertFalse(VirtualMachine.objects.exists())
+
     def test_sync_for_lxd_pod_links_existing_vm(self):
         project = factory.make_string()
         discovered_machine = self.make_discovered_machine(project=project)
@@ -1175,21 +1222,29 @@ class TestPod(MAASServerTestCase):
         self.assertNotEqual(machine.virtualmachine, other_vm)
 
     def test_sync_for_lxd_pod_removes_unknown_vms(self):
-        discovered_pod = self.make_discovered_pod(machines=[])
-        pod = factory.make_Pod(pod_type="lxd")
+        project = factory.make_string()
+        discovered_machine = self.make_discovered_machine(project=project)
+        instance_name = discovered_machine.power_parameters["instance_name"]
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine]
+        )
+        pod = factory.make_Pod(pod_type="lxd", parameters={"project": project})
         machine1 = factory.make_Machine(bmc=pod)
         # a VM linked to a machine that's been removed on the VM host
         factory.make_VirtualMachine(
             identifier=machine1.hostname,
             bmc=pod,
             machine=machine1,
+            project=project,
         )
         # a VM not linked to a machine that's been removed on the VM host
-        factory.make_VirtualMachine(bmc=pod)
+        factory.make_VirtualMachine(bmc=pod, project=project)
         self.patch(Machine, "start_commissioning")
         pod.sync(discovered_pod, factory.make_User())
-        self.assertFalse(Machine.objects.exists())
-        self.assertFalse(VirtualMachine.objects.exists())
+        self.assertNotIn(machine1, Machine.objects.all())
+        # only one VM exists, for the new discovered machine
+        [new_vm] = VirtualMachine.objects.all()
+        self.assertEqual(new_vm.identifier, instance_name)
 
     def test_sync_pod_upgrades_default_storage_pool(self):
         discovered = self.make_discovered_pod(machines=[])
@@ -1273,8 +1328,7 @@ class TestPod(MAASServerTestCase):
         project = factory.make_string()
         pod = factory.make_Pod(pod_type="lxd", parameters={"project": project})
         discovered_machine = self.make_discovered_machine()
-        instance_name = factory.make_string()
-        discovered_machine.power_parameters["instance_name"] = instance_name
+        instance_name = discovered_machine.power_parameters["instance_name"]
         machine = pod.create_machine(discovered_machine, factory.make_User())
         vm = machine.virtualmachine
         self.assertEqual(vm.identifier, instance_name)
@@ -1291,12 +1345,12 @@ class TestPod(MAASServerTestCase):
         self.patch(Machine, "set_default_storage_layout")
         self.patch(Machine, "set_initial_networking_configuration")
         self.patch(Machine, "start_commissioning")
+        project = factory.make_string()
         pod = factory.make_Pod(
-            pod_type="lxd", parameters={"project": factory.make_string()}
+            pod_type="lxd",
+            parameters={"project": project},
         )
-        discovered_machine = self.make_discovered_machine()
-        instance_name = factory.make_string()
-        discovered_machine.power_parameters["instance_name"] = instance_name
+        discovered_machine = self.make_discovered_machine(project=project)
         discovered_machine.hugepages_backed = True
         machine = pod.create_machine(discovered_machine, factory.make_User())
         self.assertTrue(machine.virtualmachine.hugepages_backed)
@@ -2127,11 +2181,8 @@ class TestPod(MAASServerTestCase):
             mac_address=machine.interface_set.first().mac_address,
         )
         discovered_machine = self.make_discovered_machine(
-            interfaces=[discovered_interface]
+            project=project, interfaces=[discovered_interface]
         )
-        discovered_machine.power_parameters[
-            "instance_name"
-        ] = factory.make_string()
         discovered_machine.hugepages_backed = True
         discovered_machine.pinned_cores = [0, 1, 2]
         discovered_pod = self.make_discovered_pod(
@@ -2164,7 +2215,7 @@ class TestPod(MAASServerTestCase):
             mac_address=machine.interface_set.first().mac_address,
         )
         discovered_machine = self.make_discovered_machine(
-            interfaces=[discovered_interface]
+            project=project, interfaces=[discovered_interface]
         )
         discovered_machine.hugepages_backed = True
         discovered_machine.pinned_cores = [0, 1, 2]
@@ -2709,9 +2760,8 @@ class TestPod(MAASServerTestCase):
         self.assertEqual("33:44:55:66:77:88", str(vm2_interface.mac_address))
 
     def test_sync_machine_interface_no_mac_address(self):
-        pod = factory.make_Pod(
-            pod_type="lxd", parameters={"project": factory.make_string()}
-        )
+        project = factory.make_string()
+        pod = factory.make_Pod(pod_type="lxd", parameters={"project": project})
         interface1 = self.make_discovered_interface(
             mac_address=None,
             attach_type=InterfaceAttachType.SRIOV,
@@ -2722,7 +2772,7 @@ class TestPod(MAASServerTestCase):
         )
         machine = factory.make_Machine()
         discovered_machine = self.make_discovered_machine(
-            project=factory.make_string(),
+            project=project,
             interfaces=[interface1, interface2],
         )
         pod._sync_machine(discovered_machine, machine)
@@ -2750,7 +2800,7 @@ class TestPod(MAASServerTestCase):
         )
         machine = factory.make_Machine()
         discovered_machine = self.make_discovered_machine(
-            project=factory.make_string(),
+            project=project,
             interfaces=[interface],
         )
         pod._sync_machine(discovered_machine, machine)
@@ -2759,13 +2809,14 @@ class TestPod(MAASServerTestCase):
         self.assertIsNone(vm_interface.host_interface)
 
     def test_sync_machine_interface_no_pod_host_interface(self):
+        project = factory.make_string()
         pod_host = factory.make_Machine()
         factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", node=pod_host
         )
         pod = factory.make_Pod(
             pod_type="lxd",
-            parameters={"project": factory.make_string()},
+            parameters={"project": project},
             host=pod_host,
         )
         interface = self.make_discovered_interface(
@@ -2775,7 +2826,7 @@ class TestPod(MAASServerTestCase):
         )
         machine = factory.make_Machine()
         discovered_machine = self.make_discovered_machine(
-            project=factory.make_string(),
+            project=project,
             interfaces=[interface],
         )
         pod._sync_machine(discovered_machine, machine)

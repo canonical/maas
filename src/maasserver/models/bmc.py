@@ -4,6 +4,7 @@
 """BMC objects."""
 
 
+from collections import defaultdict
 from functools import partial
 import re
 from statistics import mean
@@ -1144,13 +1145,13 @@ class Pod(BMC):
                 for interface in self.host.interface_set.all():
                     host_interfaces[interface.name] = interface
 
+            # sync machines (and link to VMs) for the tracked project
             vm = getattr(existing_machine, "virtualmachine", None)
             if vm is None:
                 vm, _ = VirtualMachine.objects.get_or_create(
                     identifier=existing_machine.instance_power_parameters[
                         "instance_name"
                     ],
-                    # XXX currently only tracking VMs in the configured project
                     project=self.power_parameters["project"],
                     bmc=self,
                 )
@@ -1368,9 +1369,60 @@ class Pod(BMC):
 
     def sync_machines(self, discovered_machines, commissioning_user):
         """Sync the machines on this pod from `discovered_machines`."""
+        tracked_machines = []
+        if self.power_type == "lxd":
+            # only track machines that are in the LXD project, but sync VMs across all
+            tracked_project = self.power_parameters["project"]
+            vms_by_project = defaultdict(list)
+            for discovered_machine in discovered_machines:
+                machine_project = discovered_machine.power_parameters[
+                    "project"
+                ]
+                vms_by_project[machine_project].append(discovered_machine)
+                if machine_project == tracked_project:
+                    tracked_machines.append(discovered_machine)
+
+            # sync VirtualMachine instances across all projects
+            from maasserver.models.virtualmachine import VirtualMachine
+
+            # delete all VMs in projects that are no longer found (either
+            # they're empty or have been removed)
+            VirtualMachine.objects.filter(bmc=self).exclude(
+                project__in=vms_by_project
+            ).delete()
+
+            for project, vms in vms_by_project.items():
+                vm_names = [
+                    machine.power_parameters["instance_name"]
+                    for machine in vms
+                ]
+                VirtualMachine.objects.filter(
+                    bmc=self, project=project
+                ).exclude(identifier__in=vm_names).delete()
+                for discovered_vm in vms:
+                    VirtualMachine.objects.update_or_create(
+                        identifier=discovered_vm.power_parameters[
+                            "instance_name"
+                        ],
+                        project=project,
+                        bmc=self,
+                        defaults={
+                            "memory": discovered_vm.memory,
+                            "hugepages_backed": discovered_vm.hugepages_backed,
+                            "pinned_cores": discovered_vm.pinned_cores,
+                            "unpinned_cores": (
+                                0
+                                if discovered_vm.pinned_cores
+                                else discovered_vm.cores
+                            ),
+                        },
+                    )
+
+        else:
+            tracked_machines = discovered_machines
         all_macs = [
             interface.mac_address
-            for machine in discovered_machines
+            for machine in tracked_machines
             for interface in machine.interfaces
         ]
         existing_machines = list(
@@ -1390,7 +1442,7 @@ class Pod(BMC):
             for machine in existing_machines
             for interface in machine.interface_set.all()
         }
-        for discovered_machine in discovered_machines:
+        for discovered_machine in tracked_machines:
             existing_machine = self._find_existing_machine(
                 discovered_machine, mac_machine_map
             )
@@ -1412,19 +1464,6 @@ class Pod(BMC):
                 "%s: machine %s no longer exists and was deleted."
                 % (self.name, remove_machine.hostname)
             )
-
-        # delete entries for VirtualMachines if the corresponding VM has been
-        # removed on the host
-        existing_instance_names = set(
-            machine.power_parameters.get("instance_name")
-            for machine in discovered_machines
-        )
-        existing_instance_names.discard(None)
-        from maasserver.models.virtualmachine import VirtualMachine
-
-        VirtualMachine.objects.filter(bmc=self).exclude(
-            identifier__in=existing_instance_names,
-        ).delete()
 
     def sync_storage_pools(self, discovered_storage_pools):
         """Sync the storage pools for the pod."""

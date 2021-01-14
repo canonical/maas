@@ -6,6 +6,7 @@
 
 from contextlib import suppress
 import re
+from typing import Optional
 from urllib.parse import urlparse
 
 from pylxd import Client
@@ -197,15 +198,19 @@ class LXDPodDriver(PodDriver):
 
     @typed
     @inlineCallbacks
-    def get_client(self, pod_id: str, context: dict):
+    def get_client(
+        self, pod_id: str, context: dict, project: Optional[str] = None
+    ):
         """Connect pylxd client."""
         endpoint = self.get_url(context)
         password = context.get("password")
+        if not project:
+            project = context.get("project", "default")
         try:
             client = yield deferToThread(
                 Client,
                 endpoint=endpoint,
-                project=context.get("project", "default"),
+                project=project,
                 cert=get_maas_cert_tuple(),
                 verify=False,
             )
@@ -368,7 +373,10 @@ class LXDPodDriver(PodDriver):
             interfaces=interfaces,
             block_devices=block_devices,
             power_state=power_state,
-            power_parameters={"instance_name": machine.name},
+            power_parameters={
+                "instance_name": machine.name,
+                "project": client.project,
+            },
             tags=[],
             hugepages_backed=hugepages_backed,
             pinned_cores=pinned_cores,
@@ -434,6 +442,7 @@ class LXDPodDriver(PodDriver):
                 "Please upgrade your LXD host to 3.19+ for virtual machine support."
             )
         resources = await deferToThread(lambda: client.resources)
+        host_cpu_speed = lxd_cpu_speed(resources)
 
         mac_addresses = []
         for card in resources["network"]["cards"]:
@@ -474,7 +483,6 @@ class LXDPodDriver(PodDriver):
 
         # Discover Storage Pools.
         pools = []
-        storage_pools = await deferToThread(client.storage_pools.all)
         local_storage = 0
         for storage_pool in storage_pools:
             discovered_storage_pool = self.get_discovered_pod_storage_pool(
@@ -486,16 +494,26 @@ class LXDPodDriver(PodDriver):
         discovered_pod.local_storage = local_storage
 
         # Discover VMs.
+        projects = [
+            project.name
+            for project in await deferToThread(client.projects.all)
+        ]
         machines = []
-        virtual_machines = await deferToThread(client.virtual_machines.all)
-        for virtual_machine in virtual_machines:
-            discovered_machine = await self.get_discovered_machine(
-                client,
-                virtual_machine,
-                storage_pools=discovered_pod.storage_pools,
+        for project in projects:
+            project_cli = await self.get_client(
+                pod_id, context, project=project
             )
-            discovered_machine.cpu_speed = lxd_cpu_speed(resources)
-            machines.append(discovered_machine)
+            virtual_machines = await deferToThread(
+                project_cli.virtual_machines.all
+            )
+            for virtual_machine in virtual_machines:
+                discovered_machine = await self.get_discovered_machine(
+                    project_cli,
+                    virtual_machine,
+                    storage_pools=discovered_pod.storage_pools,
+                )
+                discovered_machine.cpu_speed = host_cpu_speed
+                machines.append(discovered_machine)
         discovered_pod.machines = machines
 
         # Return the DiscoveredPod.
