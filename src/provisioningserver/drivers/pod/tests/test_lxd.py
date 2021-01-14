@@ -365,6 +365,30 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertItemsEqual([], discovered_pod.storage_pools)
 
     @inlineCallbacks
+    def test_discover_no_network_card_ports(self):
+        context = self.make_parameters_context()
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = True
+        name = factory.make_name("hostname")
+        client.host_info = {
+            "environment": {
+                "architectures": ["x86_64", "i686"],
+                "kernel_architecture": "x86_64",
+                "server_name": name,
+            }
+        }
+        # no "port" key for the card
+        client.resources = {
+            "network": {
+                "cards": [{"driver": factory.make_string(), "numa_node": 0}]
+            }
+        }
+        discovered_pod = yield ensureDeferred(driver.discover(None, context))
+        self.assertEqual(discovered_pod.mac_addresses, [])
+
+    @inlineCallbacks
     def test_get_discovered_pod_storage_pool(self):
         driver = lxd_module.LXDPodDriver()
         mock_storage_pool = Mock()

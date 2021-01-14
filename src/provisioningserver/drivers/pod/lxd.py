@@ -446,7 +446,7 @@ class LXDPodDriver(PodDriver):
 
         mac_addresses = []
         for card in resources["network"]["cards"]:
-            for port in card["ports"]:
+            for port in card.get("ports", []):
                 mac_addresses.append(port["address"])
 
         # After the region creates the Pod object it will sync LXD commissioning
