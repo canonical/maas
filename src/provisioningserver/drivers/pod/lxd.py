@@ -519,13 +519,11 @@ class LXDPodDriver(PodDriver):
         # Return the DiscoveredPod.
         return discovered_pod
 
-    @asynchronous
-    def get_commissioning_data(self, pod_id, context):
+    async def get_commissioning_data(self, pod_id, context):
         """Retreive commissioning data from LXD."""
-        d = self.get_client(pod_id, context)
-        # Replicate the LXD API in tree form, like machine-resources does.
-        d.addCallback(
-            lambda client: {
+        client = await self.get_client(pod_id, context)
+        resources = await deferToThread(
+            lambda: {
                 # /1.0
                 **client.host_info,
                 # /1.0/resources
@@ -537,8 +535,7 @@ class LXDPodDriver(PodDriver):
                 },
             }
         )
-        d.addCallback(lambda resources: {LXD_OUTPUT_NAME: resources})
-        return d
+        return {LXD_OUTPUT_NAME: resources}
 
     def get_usable_storage_pool(
         self, disk, storage_pools, default_storage_pool=None
@@ -684,8 +681,7 @@ class LXDPodDriver(PodDriver):
                 nic_devices[dk] = {"type": "none"}
 
         # Merge the devices and attach the devices to the defintion.
-        for k, v in nic_devices.items():
-            devices[k] = v
+        devices.update(nic_devices)
         definition["devices"] = devices
 
         # Create the machine.

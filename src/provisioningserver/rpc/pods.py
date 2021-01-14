@@ -151,8 +151,9 @@ def send_pod_commissioning_results(
     pod_driver = PodDriverRegistry.get_item(pod_type)
     if pod_driver is None:
         raise UnknownPodType(pod_type)
-    d = pod_driver.get_commissioning_data(pod_id, context)
-    if not isinstance(d, Deferred):
+    try:
+        d = ensureDeferred(pod_driver.get_commissioning_data(pod_id, context))
+    except ValueError:
         raise PodActionFail(
             f"bad pod driver '{pod_type}'; 'get_commissioning_data' did not return Deferred."
         )

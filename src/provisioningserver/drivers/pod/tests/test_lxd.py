@@ -770,7 +770,9 @@ class TestLXDPodDriver(MAASTestCase):
             mock_iface("eth0", "aa:bb:cc:dd:ee:ff"),
             mock_iface("eth1", "ff:ee:dd:cc:bb:aa"),
         ]
-        commissioning_data = yield driver.get_commissioning_data(1, context)
+        commissioning_data = yield ensureDeferred(
+            driver.get_commissioning_data(1, context)
+        )
         self.assertDictEqual(
             {
                 LXD_OUTPUT_NAME: {
