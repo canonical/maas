@@ -441,13 +441,19 @@ class LXDPodDriver(PodDriver):
             raise LXDPodError(
                 "Please upgrade your LXD host to 3.19+ for virtual machine support."
             )
-        resources = await deferToThread(lambda: client.resources)
-        host_cpu_speed = lxd_cpu_speed(resources)
 
-        mac_addresses = []
-        for card in resources["network"]["cards"]:
-            for port in card.get("ports", []):
-                mac_addresses.append(port["address"])
+        # get MACs for host interfaces. "unknown" interfaces are considered too
+        # to match ethernets in containers
+        networks_state = await deferToThread(
+            lambda: [
+                net.state()
+                for net in client.networks.all()
+                if net.type in ("unknown", "physical")
+            ]
+        )
+        mac_addresses = list(
+            {state.hwaddr for state in networks_state if state.hwaddr}
+        )
 
         # After the region creates the Pod object it will sync LXD commissioning
         # data for all hardware information.
@@ -492,6 +498,9 @@ class LXDPodDriver(PodDriver):
             pools.append(discovered_storage_pool)
         discovered_pod.storage_pools = pools
         discovered_pod.local_storage = local_storage
+
+        resources = await deferToThread(lambda: client.resources)
+        host_cpu_speed = lxd_cpu_speed(resources)
 
         # Discover VMs.
         projects = [

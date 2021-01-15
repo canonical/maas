@@ -333,9 +333,12 @@ class TestLXDPodDriver(MAASTestCase):
             }
         }
         mac_address = factory.make_mac_address()
-        client.resources = {
-            "network": {"cards": [{"ports": [{"address": mac_address}]}]}
-        }
+        lxd_net1 = Mock(type="physical")
+        lxd_net1.state.return_value = Mock(hwaddr=mac_address)
+        # virtual interfaces are excluded
+        lxd_net2 = Mock(type="bridge")
+        lxd_net2.state.return_value = Mock(hwaddr=factory.make_mac_address())
+        client.networks.all.return_value = [lxd_net1, lxd_net2]
         discovered_pod = yield ensureDeferred(driver.discover(None, context))
         self.assertItemsEqual(["amd64/generic"], discovered_pod.architectures)
         self.assertEqual(name, discovered_pod.name)
@@ -365,7 +368,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertItemsEqual([], discovered_pod.storage_pools)
 
     @inlineCallbacks
-    def test_discover_no_network_card_ports(self):
+    def test_discover_includes_unknown_type_interfaces(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
@@ -379,14 +382,12 @@ class TestLXDPodDriver(MAASTestCase):
                 "server_name": name,
             }
         }
-        # no "port" key for the card
-        client.resources = {
-            "network": {
-                "cards": [{"driver": factory.make_string(), "numa_node": 0}]
-            }
-        }
+        mac_address = factory.make_mac_address()
+        lxd_network = Mock(type="unknown")
+        lxd_network.state.return_value = Mock(hwaddr=mac_address)
+        client.networks.all.return_value = [lxd_network]
         discovered_pod = yield ensureDeferred(driver.discover(None, context))
-        self.assertEqual(discovered_pod.mac_addresses, [])
+        self.assertEqual(discovered_pod.mac_addresses, [mac_address])
 
     @inlineCallbacks
     def test_get_discovered_pod_storage_pool(self):

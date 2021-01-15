@@ -674,12 +674,12 @@ def _process_lxd_resources(node, data):
     # LP: #1849355 -- Don't update the node network information
     # for controllers during commissioning as this conflicts with
     # maasserver.models.node:Controller.update_interfaces().
-    if not node.is_controller:
+    if node.is_controller:
+        network_devices = {}
+    else:
         network_devices = update_node_network_information(
             node, data, numa_nodes
         )
-    else:
-        network_devices = {}
     # Storage.
     storage_devices = update_node_physical_block_devices(
         node, resources, numa_nodes
