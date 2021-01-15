@@ -232,6 +232,7 @@ RackControllerRule = Rule(
     Allow("tempita"),
     Allow("tftp|tftp.**"),
     Allow("twisted.**"),
+    Allow("urllib3|urllib3.**"),
     Allow("uvloop"),
     Allow("yaml"),
     Allow("zope.interface|zope.interface.**"),
