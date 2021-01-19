@@ -11,8 +11,6 @@ from urllib.parse import urlparse
 
 from pylxd import Client
 from pylxd.exceptions import ClientConnectionFailed, NotFound
-from twisted.internet.defer import ensureDeferred, inlineCallbacks
-from twisted.internet.threads import deferToThread
 import urllib3
 
 from provisioningserver.drivers import (
@@ -45,7 +43,7 @@ from provisioningserver.utils import (
 from provisioningserver.utils.ipaddr import get_vid_from_ifname
 from provisioningserver.utils.lxd import lxd_cpu_speed
 from provisioningserver.utils.network import generate_mac_address
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import asynchronous, threadDeferred
 
 # silence warnings from pylxd because of unverified certs for HTTPS connection
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -203,28 +201,28 @@ class LXDPodDriver(PodDriver):
 
     @typed
     @asynchronous
-    @inlineCallbacks
+    @threadDeferred
     def power_on(self, pod_id: str, context: dict):
         """Power on LXD VM."""
-        machine = yield self._get_machine(pod_id, context)
+        machine = self._get_machine(pod_id, context)
         if LXD_VM_POWER_STATE[machine.status_code] == "off":
-            yield deferToThread(machine.start)
+            machine.start()
 
     @typed
     @asynchronous
-    @inlineCallbacks
+    @threadDeferred
     def power_off(self, pod_id: str, context: dict):
         """Power off LXD VM."""
-        machine = yield self._get_machine(pod_id, context)
+        machine = self._get_machine(pod_id, context)
         if LXD_VM_POWER_STATE[machine.status_code] == "on":
-            yield deferToThread(machine.stop)
+            machine.stop()
 
     @typed
     @asynchronous
-    @inlineCallbacks
+    @threadDeferred
     def power_query(self, pod_id: str, context: dict):
         """Power query LXD VM."""
-        machine = yield self._get_machine(pod_id, context)
+        machine = self._get_machine(pod_id, context)
         state = machine.status_code
         try:
             return LXD_VM_POWER_STATE[state]
@@ -233,10 +231,11 @@ class LXDPodDriver(PodDriver):
                 f"Pod {pod_id}: Unknown power status code: {state}"
             )
 
-    async def discover(self, pod_id, context):
+    @threadDeferred
+    def discover(self, pod_id, context):
         """Discover all Pod host resources."""
         # Connect to the Pod and make sure it is valid.
-        client = await self._get_client(pod_id, context)
+        client = self._get_client(pod_id, context)
         if not client.has_api_extension("virtual-machines"):
             raise LXDPodError(
                 "Please upgrade your LXD host to 3.19+ for virtual machine support."
@@ -244,13 +243,11 @@ class LXDPodDriver(PodDriver):
 
         # get MACs for host interfaces. "unknown" interfaces are considered too
         # to match ethernets in containers
-        networks_state = await deferToThread(
-            lambda: [
-                net.state()
-                for net in client.networks.all()
-                if net.type in ("unknown", "physical")
-            ]
-        )
+        networks_state = [
+            net.state()
+            for net in client.networks.all()
+            if net.type in ("unknown", "physical")
+        ]
         mac_addresses = list(
             {state.hwaddr for state in networks_state if state.hwaddr}
         )
@@ -281,7 +278,7 @@ class LXDPodDriver(PodDriver):
 
         # Check that we have at least one storage pool.
         # If not, user should be warned that they need to create one.
-        storage_pools = await deferToThread(client.storage_pools.all)
+        storage_pools = client.storage_pools.all()
         if not storage_pools:
             raise LXDPodError(
                 "No storage pools exists.  Please create a storage pool in LXD."
@@ -299,24 +296,15 @@ class LXDPodDriver(PodDriver):
         discovered_pod.storage_pools = pools
         discovered_pod.local_storage = local_storage
 
-        resources = await deferToThread(lambda: client.resources)
-        host_cpu_speed = lxd_cpu_speed(resources)
+        host_cpu_speed = lxd_cpu_speed(client.resources)
 
         # Discover VMs.
-        projects = [
-            project.name
-            for project in await deferToThread(client.projects.all)
-        ]
+        projects = [project.name for project in client.projects.all()]
         machines = []
         for project in projects:
-            project_cli = await self._get_client(
-                pod_id, context, project=project
-            )
-            virtual_machines = await deferToThread(
-                project_cli.virtual_machines.all
-            )
-            for virtual_machine in virtual_machines:
-                discovered_machine = await self._get_discovered_machine(
+            project_cli = self._get_client(pod_id, context, project=project)
+            for virtual_machine in project_cli.virtual_machines.all():
+                discovered_machine = self._get_discovered_machine(
                     project_cli,
                     virtual_machine,
                     storage_pools=discovered_pod.storage_pools,
@@ -328,42 +316,38 @@ class LXDPodDriver(PodDriver):
         # Return the DiscoveredPod.
         return discovered_pod
 
-    async def get_commissioning_data(self, pod_id, context):
+    @threadDeferred
+    def get_commissioning_data(self, pod_id, context):
         """Retreive commissioning data from LXD."""
-        client = await self._get_client(pod_id, context)
-        resources = await deferToThread(
-            lambda: {
-                # /1.0
-                **client.host_info,
-                # /1.0/resources
-                "resources": client.resources,
-                # /1.0/networks/<network>/state
-                "networks": {
-                    net.name: dict(net.state())
-                    for net in client.networks.all()
-                },
-            }
-        )
+        client = self._get_client(pod_id, context)
+        resources = {
+            # /1.0
+            **client.host_info,
+            # /1.0/resources
+            "resources": client.resources,
+            # /1.0/networks/<network>/state
+            "networks": {
+                net.name: dict(net.state()) for net in client.networks.all()
+            },
+        }
         return {LXD_OUTPUT_NAME: resources}
 
-    @inlineCallbacks
+    @threadDeferred
     def compose(self, pod_id: str, context: dict, request: RequestedMachine):
         """Compose a virtual machine."""
-        client = yield self._get_client(pod_id, context)
+        client = self._get_client(pod_id, context)
         # Check to see if there is a maas profile.  If not, use the default.
         try:
-            profile = yield deferToThread(client.profiles.get, "maas")
+            profile = client.profiles.get("maas")
         except NotFound:
             # Fall back to default
             try:
-                profile = yield deferToThread(client.profiles.get, "default")
+                profile = client.profiles.get("default")
             except NotFound:
                 raise LXDPodError(
                     f"Pod {pod_id}: MAAS needs LXD to have either a 'maas' "
                     "profile or a 'default' profile, defined."
                 )
-        resources = yield deferToThread(lambda: client.resources)
-
         definition = get_lxd_machine_definition(request, profile.name)
 
         # Add disk to the definition.
@@ -371,7 +355,7 @@ class LXDPodDriver(PodDriver):
         # Loop will need to be modified once LXD has multiple virtual
         # block device support.
         devices = {}
-        storage_pools = yield deferToThread(client.storage_pools.all)
+        storage_pools = client.storage_pools.all()
         default_storage_pool = context.get(
             "default_storage_pool_id", context.get("default_storage_pool")
         )
@@ -432,32 +416,24 @@ class LXDPodDriver(PodDriver):
         definition["devices"] = devices
 
         # Create the machine.
-        machine = yield deferToThread(
-            client.virtual_machines.create, definition, wait=True
-        )
+        machine = client.virtual_machines.create(definition, wait=True)
         # Pod hints are updated on the region after the machine
         # is composed.
-        discovered_machine = yield ensureDeferred(
-            self._get_discovered_machine(
-                client, machine, storage_pools, request=request
-            )
+        discovered_machine = self._get_discovered_machine(
+            client, machine, storage_pools, request=request
         )
         # Update the machine cpu speed.
-        discovered_machine.cpu_speed = lxd_cpu_speed(resources)
+        discovered_machine.cpu_speed = lxd_cpu_speed(client.resources)
         return discovered_machine, DiscoveredPodHints()
 
-    @inlineCallbacks
+    @threadDeferred
     def decompose(self, pod_id, context):
         """Decompose a virtual machine."""
-        client = yield self._get_client(pod_id, context)
-
-        def sync_decompose(instance_name):
-            machine = client.virtual_machines.get(instance_name)
-            if machine.status_code != 102:  # 102 - Stopped
-                machine.stop(force=True, wait=True)
-            machine.delete(wait=True)
-
-        yield deferToThread(sync_decompose, context["instance_name"])
+        client = self._get_client(pod_id, context)
+        machine = client.virtual_machines.get(context["instance_name"])
+        if machine.status_code != 102:  # 102 - Stopped
+            machine.stop(force=True, wait=True)
+        machine.delete(wait=True)
         # Hints are updated on the region for LXDPodDriver.
         return DiscoveredPodHints()
 
@@ -547,7 +523,7 @@ class LXDPodDriver(PodDriver):
             )
         )
 
-    async def _get_discovered_machine(
+    def _get_discovered_machine(
         self, client, machine, storage_pools, request=None
     ):
         """Get the discovered machine."""
@@ -625,9 +601,7 @@ class LXDPodDriver(PodDriver):
                 # XXX: This should work for "bridge" networks,
                 #      but will most likely produce weird results for the
                 #      other types.
-                network = await deferToThread(
-                    client.networks.get, device["network"]
-                )
+                network = client.networks.get(device["network"])
                 attach_type = network.type
                 attach_name = network.name
             else:
@@ -706,42 +680,36 @@ class LXDPodDriver(PodDriver):
         )
 
     @typed
-    @inlineCallbacks
     def _get_machine(self, pod_id: str, context: dict):
         """Retrieve LXD VM."""
-        client = yield self._get_client(pod_id, context)
+        client = self._get_client(pod_id, context)
         instance_name = context.get("instance_name")
         try:
-            machine = yield deferToThread(
-                client.virtual_machines.get, instance_name
-            )
+            return client.virtual_machines.get(instance_name)
         except NotFound:
             raise LXDPodError(
                 f"Pod {pod_id}: LXD VM {instance_name} not found."
             )
-        return machine
 
     @typed
-    @inlineCallbacks
     def _get_client(
         self, pod_id: str, context: dict, project: Optional[str] = None
     ):
         """Connect pylxd client."""
-        endpoint = self.get_url(context)
-        password = context.get("password")
         if not project:
             project = context.get("project", "default")
+        endpoint = self.get_url(context)
         try:
-            client = yield deferToThread(
-                Client,
+            client = Client(
                 endpoint=endpoint,
                 project=project,
                 cert=get_maas_cert_tuple(),
                 verify=False,
             )
             if not client.trusted:
+                password = context.get("password")
                 if password:
-                    yield deferToThread(client.authenticate, password)
+                    client.authenticate(password)
                 else:
                     raise LXDPodError(
                         f"Pod {pod_id}: Certificate is not trusted and no password was given."

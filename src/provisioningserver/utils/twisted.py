@@ -61,6 +61,16 @@ def deferred(func):
     return wrapper
 
 
+def threadDeferred(func):
+    """Wrap a sync function to be run asynchronously in a thread."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return deferToThread(func, *args, **kwargs)
+
+    return wrapper
+
+
 class IAsynchronous(interface.Interface):
     """Denotes that a call to the provider will result in the execution of
     asynchronous or non-blocking code.

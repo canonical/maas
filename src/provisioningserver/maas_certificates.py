@@ -6,6 +6,7 @@
 from datetime import datetime
 import os
 from socket import gethostname
+from threading import Lock
 from time import sleep
 
 from OpenSSL import crypto
@@ -161,7 +162,11 @@ def get_certificate_fingerprint(digest_name="sha256"):
     return cert.digest(digest_name).decode()
 
 
+_get_maas_cert_tuple_lock = Lock()
+
+
 def get_maas_cert_tuple():
     """Return a certificate tuple as required by python-requests."""
-    generate_certificate_if_needed()
+    with _get_maas_cert_tuple_lock:
+        generate_certificate_if_needed()
     return (MAAS_CERTIFICATE, MAAS_PRIVATE_KEY)
