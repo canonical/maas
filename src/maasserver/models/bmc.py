@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """BMC objects."""
@@ -30,6 +30,7 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
+from netaddr import AddrFormatError, IPAddress
 import petname
 from twisted.internet.defer import inlineCallbacks
 
@@ -327,10 +328,6 @@ class BMC(CleanSave, TimestampedModel):
         parameters has changed."""
         new_ip = BMC.extract_ip_address(self.power_type, self.power_parameters)
         current_ip = None if self.ip_address is None else self.ip_address.ip
-        # Set the ip_address field.  If we have a bracketed address, assume
-        # it's IPv6, and strip the brackets.
-        if new_ip and new_ip.startswith("[") and new_ip.endswith("]"):
-            new_ip = new_ip[1:-1]
         if new_ip != current_ip:
             if not new_ip:
                 self.ip_address = None
@@ -425,7 +422,29 @@ class BMC(CleanSave, TimestampedModel):
             return None
         match = re.match(extraction_pattern, field_value)
         if match:
-            return match.group("address")
+            ip = match.group("address")
+            # If we have a bracketed address, assume it's IPv6, and strip the
+            # brackets.
+            if ip.startswith("[") and ip.endswith("]"):
+                ip = ip[1:-1]
+            if ip == "":
+                return ip
+            # self.clean() attempts to map the return value of this method to
+            # a subnet. If the user gives an FQDN or hostname the mapping fails
+            # when Subnet.objects.get_best_subnet_for_ip() is called and an
+            # exception is raised as an IP is expected. If the BMC does not
+            # have an IP address MAAS will fall back on sending power requests
+            # to all connected rack controllers.
+            try:
+                IPAddress(ip)
+            except AddrFormatError:
+                maaslog.info(
+                    "BMC uses FQDN, power action will be sent to all "
+                    "rack controllers"
+                )
+                return None
+            else:
+                return ip
         # no match found - return None
         return None
 
