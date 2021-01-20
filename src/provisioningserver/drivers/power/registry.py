@@ -25,6 +25,7 @@ from provisioningserver.drivers.power.redfish import RedfishPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
 from provisioningserver.drivers.power.ucsm import UCSMPowerDriver
 from provisioningserver.drivers.power.vmware import VMwarePowerDriver
+from provisioningserver.drivers.power.webhook import WebhookPowerDriver
 from provisioningserver.drivers.power.wedge import WedgePowerDriver
 from provisioningserver.utils.registry import Registry
 
@@ -65,6 +66,7 @@ power_drivers = [
     SeaMicroPowerDriver(),
     UCSMPowerDriver(),
     VMwarePowerDriver(),
+    WebhookPowerDriver(),
     WedgePowerDriver(),
 ]
 for driver in power_drivers:
