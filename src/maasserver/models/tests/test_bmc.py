@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -433,14 +433,6 @@ class TestBMC(MAASServerTestCase):
         power_parameters = {"power_address": None}
         self.assertEqual(None, BMC.extract_ip_address("hmc", power_parameters))
 
-    def test_bmc_extract_ip_address_from_url(self):
-        power_parameters = {
-            "power_address": "protocol://somehost:8080/path/to/thing#tag"
-        }
-        self.assertEqual(
-            "somehost", BMC.extract_ip_address("virsh", power_parameters)
-        )
-
     def test_bmc_extract_ip_address_from_url_blank_gives_none(self):
         self.assertEqual(None, BMC.extract_ip_address("virsh", None))
         self.assertEqual(None, BMC.extract_ip_address("virsh", {}))
@@ -458,6 +450,13 @@ class TestBMC(MAASServerTestCase):
     def test_bmc_extract_ip_address_from_url_empty_host(self):
         power_parameters = {"power_address": "http://:8080/foo/#baz"}
         self.assertEqual("", BMC.extract_ip_address("virsh", power_parameters))
+
+    def test_bmc_extract_ip_address_with_fqdn_returns_none(self):
+        self.assertIsNone(
+            BMC.extract_ip_address(
+                "webhook", {"power_address": factory.make_url()}
+            )
+        )
 
     def test_get_usable_rack_controllers_returns_empty_when_none(self):
         bmc = factory.make_BMC()
