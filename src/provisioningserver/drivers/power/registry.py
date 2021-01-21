@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Load all power drivers."""
@@ -20,6 +20,7 @@ from provisioningserver.drivers.power.mscm import MSCMPowerDriver
 from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
 from provisioningserver.drivers.power.nova import NovaPowerDriver
 from provisioningserver.drivers.power.openbmc import OpenBMCPowerDriver
+from provisioningserver.drivers.power.proxmox import ProxmoxPowerDriver
 from provisioningserver.drivers.power.recs import RECSPowerDriver
 from provisioningserver.drivers.power.redfish import RedfishPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
@@ -61,6 +62,7 @@ power_drivers = [
     MicrosoftOCSPowerDriver(),
     NovaPowerDriver(),
     OpenBMCPowerDriver(),
+    ProxmoxPowerDriver(),
     RECSPowerDriver(),
     RedfishPowerDriver(),
     SeaMicroPowerDriver(),
