@@ -819,11 +819,6 @@ class cmd_config(SnappyCommand):
             # Validate the mode and flags.
             self._validate_flags(options, running_mode)
 
-            if options.mode != running_mode:
-                render_supervisord(options.mode)
-                set_current_mode(options.mode)
-                restart_required = True
-
             current_config = config_manager.get()
             # Only update the passed settings.
             for flag in self.setting_flags:
