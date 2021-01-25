@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 10.7 (Ubuntu 10.7-0ubuntu0.18.04.1)
--- Dumped by pg_dump version 10.7 (Ubuntu 10.7-0ubuntu0.18.04.1)
+-- Dumped from database version 12.5 (Ubuntu 12.5-0ubuntu0.20.04.1)
+-- Dumped by pg_dump version 12.5 (Ubuntu 12.5-0ubuntu0.20.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12,26 +12,13 @@ SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
 SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
+SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
---
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
---
-
-CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
-
-
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
---
-
-COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
-
-
 SET default_tablespace = '';
 
-SET default_with_oids = false;
+SET default_table_access_method = heap;
 
 --
 -- Name: auth_group; Type: TABLE; Schema: public; Owner: -
@@ -39,7 +26,7 @@ SET default_with_oids = false;
 
 CREATE TABLE public.auth_group (
     id integer NOT NULL,
-    name character varying(80) NOT NULL
+    name character varying(150) NOT NULL
 );
 
 
@@ -137,7 +124,7 @@ CREATE TABLE public.auth_user (
     is_superuser boolean NOT NULL,
     username character varying(150) NOT NULL,
     first_name character varying(30) NOT NULL,
-    last_name character varying(30) NOT NULL,
+    last_name character varying(150) NOT NULL,
     email character varying(254),
     is_staff boolean NOT NULL,
     is_active boolean NOT NULL,
@@ -475,7 +462,6 @@ CREATE TABLE public.maasserver_node (
     gateway_link_ipv6_id integer,
     owner_id integer,
     parent_id integer,
-    token_id integer,
     zone_id integer NOT NULL,
     boot_disk_id integer,
     node_type integer NOT NULL,
@@ -498,7 +484,6 @@ CREATE TABLE public.maasserver_node (
     install_rackd boolean NOT NULL,
     locked boolean NOT NULL,
     pool_id integer,
-    skip_bmc_config boolean NOT NULL,
     instance_power_parameters jsonb NOT NULL,
     install_kvm boolean NOT NULL,
     hardware_uuid character varying(36),
@@ -576,7 +561,15 @@ CREATE TABLE public.maasserver_interface (
     neighbour_discovery_state boolean NOT NULL,
     firmware_version character varying(255),
     product character varying(255),
-    vendor character varying(255)
+    vendor character varying(255),
+    interface_speed integer NOT NULL,
+    link_connected boolean NOT NULL,
+    link_speed integer NOT NULL,
+    numa_node_id integer,
+    sriov_max_vf integer NOT NULL,
+    CONSTRAINT maasserver_interface_interface_speed_check CHECK ((interface_speed >= 0)),
+    CONSTRAINT maasserver_interface_link_speed_check CHECK ((link_speed >= 0)),
+    CONSTRAINT maasserver_interface_sriov_max_vf_check CHECK ((sriov_max_vf >= 0))
 );
 
 
@@ -603,7 +596,8 @@ CREATE TABLE public.maasserver_staticipaddress (
     alloc_type integer NOT NULL,
     subnet_id integer,
     user_id integer,
-    lease_time integer NOT NULL
+    lease_time integer NOT NULL,
+    temp_expires_on timestamp with time zone
 );
 
 
@@ -1422,7 +1416,7 @@ CREATE TABLE public.maasserver_event (
     node_id integer,
     type_id integer NOT NULL,
     node_hostname character varying(255) NOT NULL,
-    username character varying(32) NOT NULL,
+    username character varying(150) NOT NULL,
     ip_address inet,
     user_agent text NOT NULL,
     endpoint integer NOT NULL,
@@ -1990,6 +1984,53 @@ ALTER SEQUENCE public.maasserver_node_tags_id_seq OWNED BY public.maasserver_nod
 
 
 --
+-- Name: maasserver_nodedevice; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_nodedevice (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    bus integer NOT NULL,
+    hardware_type integer NOT NULL,
+    vendor_id character varying(4) NOT NULL,
+    product_id character varying(4) NOT NULL,
+    vendor_name character varying(256) NOT NULL,
+    product_name character varying(256) NOT NULL,
+    commissioning_driver character varying(256) NOT NULL,
+    bus_number integer NOT NULL,
+    device_number integer NOT NULL,
+    pci_address character varying(64),
+    node_id integer NOT NULL,
+    numa_node_id integer NOT NULL,
+    physical_blockdevice_id integer,
+    physical_interface_id integer,
+    CONSTRAINT maasserver_nodedevice_bus_number_check CHECK ((bus_number >= 0)),
+    CONSTRAINT maasserver_nodedevice_device_number_check CHECK ((device_number >= 0))
+);
+
+
+--
+-- Name: maasserver_nodedevice_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_nodedevice_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_nodedevice_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_nodedevice_id_seq OWNED BY public.maasserver_nodedevice.id;
+
+
+--
 -- Name: maasserver_nodegrouptorackcontroller; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2068,7 +2109,8 @@ CREATE TABLE public.maasserver_notification (
     message text NOT NULL,
     context text NOT NULL,
     user_id integer,
-    category character varying(10) NOT NULL
+    category character varying(10) NOT NULL,
+    dismissable boolean NOT NULL
 );
 
 
@@ -2099,7 +2141,9 @@ ALTER SEQUENCE public.maasserver_notification_id_seq OWNED BY public.maasserver_
 CREATE TABLE public.maasserver_notificationdismissal (
     id integer NOT NULL,
     notification_id integer NOT NULL,
-    user_id integer NOT NULL
+    user_id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL
 );
 
 
@@ -2121,6 +2165,75 @@ CREATE SEQUENCE public.maasserver_notificationdismissal_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_notificationdismissal_id_seq OWNED BY public.maasserver_notificationdismissal.id;
+
+
+--
+-- Name: maasserver_numanode; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_numanode (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    index integer NOT NULL,
+    memory integer NOT NULL,
+    cores integer[] NOT NULL,
+    node_id integer NOT NULL
+);
+
+
+--
+-- Name: maasserver_numanode_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_numanode_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_numanode_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_numanode_id_seq OWNED BY public.maasserver_numanode.id;
+
+
+--
+-- Name: maasserver_numanodehugepages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_numanodehugepages (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    page_size bigint NOT NULL,
+    total bigint NOT NULL,
+    numanode_id integer NOT NULL
+);
+
+
+--
+-- Name: maasserver_numanodehugepages_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_numanodehugepages_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_numanodehugepages_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_numanodehugepages_id_seq OWNED BY public.maasserver_numanodehugepages.id;
 
 
 --
@@ -2275,7 +2388,8 @@ CREATE TABLE public.maasserver_physicalblockdevice (
     model character varying(255) NOT NULL,
     serial character varying(255) NOT NULL,
     firmware_version character varying(255),
-    storage_pool_id integer
+    storage_pool_id integer,
+    numa_node_id integer NOT NULL
 );
 
 
@@ -2313,6 +2427,37 @@ CREATE SEQUENCE public.maasserver_podhints_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_podhints_id_seq OWNED BY public.maasserver_podhints.id;
+
+
+--
+-- Name: maasserver_podhints_nodes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_podhints_nodes (
+    id integer NOT NULL,
+    podhints_id integer NOT NULL,
+    node_id integer NOT NULL
+);
+
+
+--
+-- Name: maasserver_podhints_nodes_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_podhints_nodes_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_podhints_nodes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_podhints_nodes_id_seq OWNED BY public.maasserver_podhints_nodes.id;
 
 
 --
@@ -3018,6 +3163,80 @@ CREATE TABLE public.maasserver_virtualblockdevice (
 
 
 --
+-- Name: maasserver_virtualmachine; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_virtualmachine (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    identifier text NOT NULL,
+    pinned_cores integer[] NOT NULL,
+    unpinned_cores integer NOT NULL,
+    memory integer NOT NULL,
+    hugepages_backed boolean NOT NULL,
+    bmc_id integer NOT NULL,
+    machine_id integer,
+    project text NOT NULL
+);
+
+
+--
+-- Name: maasserver_virtualmachine_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_virtualmachine_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_virtualmachine_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_virtualmachine_id_seq OWNED BY public.maasserver_virtualmachine.id;
+
+
+--
+-- Name: maasserver_virtualmachineinterface; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_virtualmachineinterface (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    mac_address macaddr,
+    attachment_type character varying(10) NOT NULL,
+    host_interface_id integer,
+    vm_id integer NOT NULL
+);
+
+
+--
+-- Name: maasserver_virtualmachineinterface_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_virtualmachineinterface_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_virtualmachineinterface_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_virtualmachineinterface_id_seq OWNED BY public.maasserver_virtualmachineinterface.id;
+
+
+--
 -- Name: maasserver_vlan_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -3177,7 +3396,8 @@ CREATE TABLE public.metadataserver_script (
     results text NOT NULL,
     for_hardware character varying(255)[] NOT NULL,
     may_reboot boolean NOT NULL,
-    recommission boolean NOT NULL
+    recommission boolean NOT NULL,
+    apply_configured_networking boolean NOT NULL
 );
 
 
@@ -3223,7 +3443,8 @@ CREATE TABLE public.metadataserver_scriptresult (
     started timestamp with time zone,
     parameters text NOT NULL,
     physical_blockdevice_id integer,
-    suppressed boolean NOT NULL
+    suppressed boolean NOT NULL,
+    interface_id integer
 );
 
 
@@ -3703,6 +3924,13 @@ ALTER TABLE ONLY public.maasserver_node_tags ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: maasserver_nodedevice id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodedevice_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_nodegrouptorackcontroller id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3728,6 +3956,20 @@ ALTER TABLE ONLY public.maasserver_notification ALTER COLUMN id SET DEFAULT next
 --
 
 ALTER TABLE ONLY public.maasserver_notificationdismissal ALTER COLUMN id SET DEFAULT nextval('public.maasserver_notificationdismissal_id_seq'::regclass);
+
+
+--
+-- Name: maasserver_numanode id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanode ALTER COLUMN id SET DEFAULT nextval('public.maasserver_numanode_id_seq'::regclass);
+
+
+--
+-- Name: maasserver_numanodehugepages id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanodehugepages ALTER COLUMN id SET DEFAULT nextval('public.maasserver_numanodehugepages_id_seq'::regclass);
 
 
 --
@@ -3763,6 +4005,13 @@ ALTER TABLE ONLY public.maasserver_partitiontable ALTER COLUMN id SET DEFAULT ne
 --
 
 ALTER TABLE ONLY public.maasserver_podhints ALTER COLUMN id SET DEFAULT nextval('public.maasserver_podhints_id_seq'::regclass);
+
+
+--
+-- Name: maasserver_podhints_nodes id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes ALTER COLUMN id SET DEFAULT nextval('public.maasserver_podhints_nodes_id_seq'::regclass);
 
 
 --
@@ -3906,6 +4155,20 @@ ALTER TABLE ONLY public.maasserver_versionedtextfile ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: maasserver_virtualmachine id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachine ALTER COLUMN id SET DEFAULT nextval('public.maasserver_virtualmachine_id_seq'::regclass);
+
+
+--
+-- Name: maasserver_virtualmachineinterface id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachineinterface ALTER COLUMN id SET DEFAULT nextval('public.maasserver_virtualmachineinterface_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_vlan id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3999,303 +4262,423 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 1	Can add permission	1	add_permission
 2	Can change permission	1	change_permission
 3	Can delete permission	1	delete_permission
-4	Can add group	2	add_group
-5	Can change group	2	change_group
-6	Can delete group	2	delete_group
-7	Can add user	3	add_user
-8	Can change user	3	change_user
-9	Can delete user	3	delete_user
-10	Can add content type	4	add_contenttype
-11	Can change content type	4	change_contenttype
-12	Can delete content type	4	delete_contenttype
-13	Can add session	5	add_session
-14	Can change session	5	change_session
-15	Can delete session	5	delete_session
-16	Can add site	6	add_site
-17	Can change site	6	change_site
-18	Can delete site	6	delete_site
-19	Can add block device	7	add_blockdevice
-20	Can change block device	7	change_blockdevice
-21	Can delete block device	7	delete_blockdevice
-22	Can add boot resource	8	add_bootresource
-23	Can change boot resource	8	change_bootresource
-24	Can delete boot resource	8	delete_bootresource
-25	Can add boot resource file	9	add_bootresourcefile
-26	Can change boot resource file	9	change_bootresourcefile
-27	Can delete boot resource file	9	delete_bootresourcefile
-28	Can add boot resource set	10	add_bootresourceset
-29	Can change boot resource set	10	change_bootresourceset
-30	Can delete boot resource set	10	delete_bootresourceset
-31	Can add boot source	11	add_bootsource
-32	Can change boot source	11	change_bootsource
-33	Can delete boot source	11	delete_bootsource
-34	Can add boot source cache	12	add_bootsourcecache
-35	Can change boot source cache	12	change_bootsourcecache
-36	Can delete boot source cache	12	delete_bootsourcecache
-37	Can add boot source selection	13	add_bootsourceselection
-38	Can change boot source selection	13	change_bootsourceselection
-39	Can delete boot source selection	13	delete_bootsourceselection
-40	Can add cache set	14	add_cacheset
-41	Can change cache set	14	change_cacheset
-42	Can delete cache set	14	delete_cacheset
-43	Can add config	15	add_config
-44	Can change config	15	change_config
-45	Can delete config	15	delete_config
-46	Can add Event record	16	add_event
-47	Can change Event record	16	change_event
-48	Can delete Event record	16	delete_event
-49	Can add Event type	17	add_eventtype
-50	Can change Event type	17	change_eventtype
-51	Can delete Event type	17	delete_eventtype
-52	Can add Fabric	18	add_fabric
-53	Can change Fabric	18	change_fabric
-54	Can delete Fabric	18	delete_fabric
-55	Can add Fan Network	19	add_fannetwork
-56	Can change Fan Network	19	change_fannetwork
-57	Can delete Fan Network	19	delete_fannetwork
-58	Can add file storage	20	add_filestorage
-59	Can change file storage	20	change_filestorage
-60	Can delete file storage	20	delete_filestorage
-61	Can add filesystem	21	add_filesystem
-62	Can change filesystem	21	change_filesystem
-63	Can delete filesystem	21	delete_filesystem
-64	Can add filesystem group	22	add_filesystemgroup
-65	Can change filesystem group	22	change_filesystemgroup
-66	Can delete filesystem group	22	delete_filesystemgroup
-67	Can add Interface	23	add_interface
-68	Can change Interface	23	change_interface
-69	Can delete Interface	23	delete_interface
-70	Can add interface relationship	24	add_interfacerelationship
-71	Can change interface relationship	24	change_interfacerelationship
-72	Can delete interface relationship	24	delete_interfacerelationship
-73	Can add large file	25	add_largefile
-74	Can change large file	25	change_largefile
-75	Can delete large file	25	delete_largefile
-76	Can add license key	26	add_licensekey
-77	Can change license key	26	change_licensekey
-78	Can delete license key	26	delete_licensekey
-79	Can add node	27	add_node
-80	Can change node	27	change_node
-81	Can delete node	27	delete_node
-82	Can add partition	28	add_partition
-83	Can change partition	28	change_partition
-84	Can delete partition	28	delete_partition
-85	Can add partition table	29	add_partitiontable
-86	Can change partition table	29	change_partitiontable
-87	Can delete partition table	29	delete_partitiontable
-88	Can add Space	30	add_space
-89	Can change Space	30	change_space
-90	Can delete Space	30	delete_space
-91	Can add SSH key	31	add_sshkey
-92	Can change SSH key	31	change_sshkey
-93	Can delete SSH key	31	delete_sshkey
-94	Can add SSL key	32	add_sslkey
-95	Can change SSL key	32	change_sslkey
-96	Can delete SSL key	32	delete_sslkey
-97	Can add Static IP Address	33	add_staticipaddress
-98	Can change Static IP Address	33	change_staticipaddress
-99	Can delete Static IP Address	33	delete_staticipaddress
-100	Can add subnet	34	add_subnet
-101	Can change subnet	34	change_subnet
-102	Can delete subnet	34	delete_subnet
-103	Can add tag	35	add_tag
-104	Can change tag	35	change_tag
-105	Can delete tag	35	delete_tag
-106	Can add user profile	36	add_userprofile
-107	Can change user profile	36	change_userprofile
-108	Can delete user profile	36	delete_userprofile
-109	Can add VLAN	37	add_vlan
-110	Can change VLAN	37	change_vlan
-111	Can delete VLAN	37	delete_vlan
-112	Can add Physical zone	38	add_zone
-113	Can change Physical zone	38	change_zone
-114	Can delete Physical zone	38	delete_zone
-115	Can add physical block device	39	add_physicalblockdevice
-116	Can change physical block device	39	change_physicalblockdevice
-117	Can delete physical block device	39	delete_physicalblockdevice
-118	Can add virtual block device	40	add_virtualblockdevice
-119	Can change virtual block device	40	change_virtualblockdevice
-120	Can delete virtual block device	40	delete_virtualblockdevice
-121	Can add bcache	22	add_bcache
-122	Can change bcache	22	change_bcache
-123	Can delete bcache	22	delete_bcache
-124	Can add Bond	23	add_bondinterface
-125	Can change Bond	23	change_bondinterface
-126	Can delete Bond	23	delete_bondinterface
-127	Can add device	27	add_device
-128	Can change device	27	change_device
-129	Can delete device	27	delete_device
-130	Can add Physical interface	23	add_physicalinterface
-131	Can change Physical interface	23	change_physicalinterface
-132	Can delete Physical interface	23	delete_physicalinterface
-133	Can add raid	22	add_raid
-134	Can change raid	22	change_raid
-135	Can delete raid	22	delete_raid
-136	Can add Unknown interface	23	add_unknowninterface
-137	Can change Unknown interface	23	change_unknowninterface
-138	Can delete Unknown interface	23	delete_unknowninterface
-139	Can add VLAN interface	23	add_vlaninterface
-140	Can change VLAN interface	23	change_vlaninterface
-141	Can delete VLAN interface	23	delete_vlaninterface
-142	Can add volume group	22	add_volumegroup
-143	Can change volume group	22	change_volumegroup
-144	Can delete volume group	22	delete_volumegroup
-145	Can add machine	27	add_machine
-146	Can change machine	27	change_machine
-147	Can delete machine	27	delete_machine
-148	Can add rack controller	27	add_rackcontroller
-149	Can change rack controller	27	change_rackcontroller
-150	Can delete rack controller	27	delete_rackcontroller
-151	Can add DNSResource	41	add_dnsresource
-152	Can change DNSResource	41	change_dnsresource
-153	Can delete DNSResource	41	delete_dnsresource
-154	Can add Domain	42	add_domain
-155	Can change Domain	42	change_domain
-156	Can delete Domain	42	delete_domain
-157	Can add region controller process	43	add_regioncontrollerprocess
-158	Can change region controller process	43	change_regioncontrollerprocess
-159	Can delete region controller process	43	delete_regioncontrollerprocess
-160	Can add region controller process endpoint	44	add_regioncontrollerprocessendpoint
-161	Can change region controller process endpoint	44	change_regioncontrollerprocessendpoint
-162	Can delete region controller process endpoint	44	delete_regioncontrollerprocessendpoint
-163	Can add region controller	27	add_regioncontroller
-164	Can change region controller	27	change_regioncontroller
-165	Can delete region controller	27	delete_regioncontroller
-166	Can add bmc	45	add_bmc
-167	Can change bmc	45	change_bmc
-168	Can delete bmc	45	delete_bmc
-169	Can add DNSData	46	add_dnsdata
-170	Can change DNSData	46	change_dnsdata
-171	Can delete DNSData	46	delete_dnsdata
-172	Can add ip range	47	add_iprange
-173	Can change ip range	47	change_iprange
-174	Can delete ip range	47	delete_iprange
-175	Can add node group to rack controller	48	add_nodegrouptorackcontroller
-176	Can change node group to rack controller	48	change_nodegrouptorackcontroller
-177	Can delete node group to rack controller	48	delete_nodegrouptorackcontroller
-178	Can add region rack rpc connection	49	add_regionrackrpcconnection
-179	Can change region rack rpc connection	49	change_regionrackrpcconnection
-180	Can delete region rack rpc connection	49	delete_regionrackrpcconnection
-181	Can add service	50	add_service
-182	Can change service	50	change_service
-183	Can delete service	50	delete_service
-184	Can add Template	51	add_template
-185	Can change Template	51	change_template
-186	Can delete Template	51	delete_template
-187	Can add VersionedTextFile	52	add_versionedtextfile
-188	Can change VersionedTextFile	52	change_versionedtextfile
-189	Can delete VersionedTextFile	52	delete_versionedtextfile
-190	Can add bmc routable rack controller relationship	53	add_bmcroutablerackcontrollerrelationship
-191	Can change bmc routable rack controller relationship	53	change_bmcroutablerackcontrollerrelationship
-192	Can delete bmc routable rack controller relationship	53	delete_bmcroutablerackcontrollerrelationship
-193	Can add dhcp snippet	54	add_dhcpsnippet
-194	Can change dhcp snippet	54	change_dhcpsnippet
-195	Can delete dhcp snippet	54	delete_dhcpsnippet
-196	Can add child interface	23	add_childinterface
-197	Can change child interface	23	change_childinterface
-198	Can delete child interface	23	delete_childinterface
-199	Can add Bridge	23	add_bridgeinterface
-200	Can change Bridge	23	change_bridgeinterface
-201	Can delete Bridge	23	delete_bridgeinterface
-202	Can add owner data	55	add_ownerdata
-203	Can change owner data	55	change_ownerdata
-204	Can delete owner data	55	delete_ownerdata
-205	Can add controller	27	add_controller
-206	Can change controller	27	change_controller
-207	Can delete controller	27	delete_controller
-208	Can add dns publication	56	add_dnspublication
-209	Can change dns publication	56	change_dnspublication
-210	Can delete dns publication	56	delete_dnspublication
-211	Can add package repository	57	add_packagerepository
-212	Can change package repository	57	change_packagerepository
-213	Can delete package repository	57	delete_packagerepository
-214	Can add mDNS binding	58	add_mdns
-215	Can change mDNS binding	58	change_mdns
-216	Can delete mDNS binding	58	delete_mdns
-217	Can add Neighbour	59	add_neighbour
-218	Can change Neighbour	59	change_neighbour
-219	Can delete Neighbour	59	delete_neighbour
-220	Can add static route	60	add_staticroute
-221	Can change static route	60	change_staticroute
-222	Can delete static route	60	delete_staticroute
-223	Can add Key Source	61	add_keysource
-224	Can change Key Source	61	change_keysource
-225	Can delete Key Source	61	delete_keysource
-226	Can add Discovery	62	add_discovery
-227	Can change Discovery	62	change_discovery
-228	Can delete Discovery	62	delete_discovery
-229	Can add Reverse-DNS entry	63	add_rdns
-230	Can change Reverse-DNS entry	63	change_rdns
-231	Can delete Reverse-DNS entry	63	delete_rdns
-232	Can add notification	64	add_notification
-233	Can change notification	64	change_notification
-234	Can delete notification	64	delete_notification
-235	Can add notification dismissal	65	add_notificationdismissal
-236	Can change notification dismissal	65	change_notificationdismissal
-237	Can delete notification dismissal	65	delete_notificationdismissal
-238	Can add pod hints	66	add_podhints
-239	Can change pod hints	66	change_podhints
-240	Can delete pod hints	66	delete_podhints
-241	Can add pod	45	add_pod
-242	Can change pod	45	change_pod
-243	Can delete pod	45	delete_pod
-244	Can add iscsi block device	67	add_iscsiblockdevice
-245	Can change iscsi block device	67	change_iscsiblockdevice
-246	Can delete iscsi block device	67	delete_iscsiblockdevice
-247	Can add Switch	68	add_switch
-248	Can change Switch	68	change_switch
-249	Can delete Switch	68	delete_switch
-250	Can add ControllerInfo	69	add_controllerinfo
-251	Can change ControllerInfo	69	change_controllerinfo
-252	Can delete ControllerInfo	69	delete_controllerinfo
-253	Can add NodeMetadata	70	add_nodemetadata
-254	Can change NodeMetadata	70	change_nodemetadata
-255	Can delete NodeMetadata	70	delete_nodemetadata
-256	Can add resource pool	71	add_resourcepool
-257	Can change resource pool	71	change_resourcepool
-258	Can delete resource pool	71	delete_resourcepool
-259	Can add root key	72	add_rootkey
-260	Can change root key	72	change_rootkey
-261	Can delete root key	72	delete_rootkey
-262	Can add global default	73	add_globaldefault
-263	Can change global default	73	change_globaldefault
-264	Can delete global default	73	delete_globaldefault
-265	Can add pod storage pool	74	add_podstoragepool
-266	Can change pod storage pool	74	change_podstoragepool
-267	Can delete pod storage pool	74	delete_podstoragepool
-268	Can add rbac sync	75	add_rbacsync
-269	Can change rbac sync	75	change_rbacsync
-270	Can delete rbac sync	75	delete_rbacsync
-271	Can add rbac last sync	76	add_rbaclastsync
-272	Can change rbac last sync	76	change_rbaclastsync
-273	Can delete rbac last sync	76	delete_rbaclastsync
-274	Can add vmfs	22	add_vmfs
-275	Can change vmfs	22	change_vmfs
-276	Can delete vmfs	22	delete_vmfs
-277	Can add node key	93	add_nodekey
-278	Can change node key	93	change_nodekey
-279	Can delete node key	93	delete_nodekey
-280	Can add node user data	94	add_nodeuserdata
-281	Can change node user data	94	change_nodeuserdata
-282	Can delete node user data	94	delete_nodeuserdata
-283	Can add script	95	add_script
-284	Can change script	95	change_script
-285	Can delete script	95	delete_script
-286	Can add script result	96	add_scriptresult
-287	Can change script result	96	change_scriptresult
-288	Can delete script result	96	delete_scriptresult
-289	Can add script set	97	add_scriptset
-290	Can change script set	97	change_scriptset
-291	Can delete script set	97	delete_scriptset
-292	Can add consumer	98	add_consumer
-293	Can change consumer	98	change_consumer
-294	Can delete consumer	98	delete_consumer
-295	Can add nonce	99	add_nonce
-296	Can change nonce	99	change_nonce
-297	Can delete nonce	99	delete_nonce
-298	Can add token	100	add_token
-299	Can change token	100	change_token
-300	Can delete token	100	delete_token
+4	Can view permission	1	view_permission
+5	Can add group	2	add_group
+6	Can change group	2	change_group
+7	Can delete group	2	delete_group
+8	Can view group	2	view_group
+9	Can add user	3	add_user
+10	Can change user	3	change_user
+11	Can delete user	3	delete_user
+12	Can view user	3	view_user
+13	Can add content type	4	add_contenttype
+14	Can change content type	4	change_contenttype
+15	Can delete content type	4	delete_contenttype
+16	Can view content type	4	view_contenttype
+17	Can add session	5	add_session
+18	Can change session	5	change_session
+19	Can delete session	5	delete_session
+20	Can view session	5	view_session
+21	Can add site	6	add_site
+22	Can change site	6	change_site
+23	Can delete site	6	delete_site
+24	Can view site	6	view_site
+25	Can add block device	7	add_blockdevice
+26	Can change block device	7	change_blockdevice
+27	Can delete block device	7	delete_blockdevice
+28	Can view block device	7	view_blockdevice
+29	Can add boot resource	8	add_bootresource
+30	Can change boot resource	8	change_bootresource
+31	Can delete boot resource	8	delete_bootresource
+32	Can view boot resource	8	view_bootresource
+33	Can add boot resource file	9	add_bootresourcefile
+34	Can change boot resource file	9	change_bootresourcefile
+35	Can delete boot resource file	9	delete_bootresourcefile
+36	Can view boot resource file	9	view_bootresourcefile
+37	Can add boot resource set	10	add_bootresourceset
+38	Can change boot resource set	10	change_bootresourceset
+39	Can delete boot resource set	10	delete_bootresourceset
+40	Can view boot resource set	10	view_bootresourceset
+41	Can add boot source	11	add_bootsource
+42	Can change boot source	11	change_bootsource
+43	Can delete boot source	11	delete_bootsource
+44	Can view boot source	11	view_bootsource
+45	Can add boot source cache	12	add_bootsourcecache
+46	Can change boot source cache	12	change_bootsourcecache
+47	Can delete boot source cache	12	delete_bootsourcecache
+48	Can view boot source cache	12	view_bootsourcecache
+49	Can add boot source selection	13	add_bootsourceselection
+50	Can change boot source selection	13	change_bootsourceselection
+51	Can delete boot source selection	13	delete_bootsourceselection
+52	Can view boot source selection	13	view_bootsourceselection
+53	Can add cache set	14	add_cacheset
+54	Can change cache set	14	change_cacheset
+55	Can delete cache set	14	delete_cacheset
+56	Can view cache set	14	view_cacheset
+57	Can add config	15	add_config
+58	Can change config	15	change_config
+59	Can delete config	15	delete_config
+60	Can view config	15	view_config
+61	Can add Event record	16	add_event
+62	Can change Event record	16	change_event
+63	Can delete Event record	16	delete_event
+64	Can view Event record	16	view_event
+65	Can add Event type	17	add_eventtype
+66	Can change Event type	17	change_eventtype
+67	Can delete Event type	17	delete_eventtype
+68	Can view Event type	17	view_eventtype
+69	Can add Fabric	18	add_fabric
+70	Can change Fabric	18	change_fabric
+71	Can delete Fabric	18	delete_fabric
+72	Can view Fabric	18	view_fabric
+73	Can add Fan Network	19	add_fannetwork
+74	Can change Fan Network	19	change_fannetwork
+75	Can delete Fan Network	19	delete_fannetwork
+76	Can view Fan Network	19	view_fannetwork
+77	Can add file storage	20	add_filestorage
+78	Can change file storage	20	change_filestorage
+79	Can delete file storage	20	delete_filestorage
+80	Can view file storage	20	view_filestorage
+81	Can add filesystem	21	add_filesystem
+82	Can change filesystem	21	change_filesystem
+83	Can delete filesystem	21	delete_filesystem
+84	Can view filesystem	21	view_filesystem
+85	Can add filesystem group	22	add_filesystemgroup
+86	Can change filesystem group	22	change_filesystemgroup
+87	Can delete filesystem group	22	delete_filesystemgroup
+88	Can view filesystem group	22	view_filesystemgroup
+89	Can add Interface	23	add_interface
+90	Can change Interface	23	change_interface
+91	Can delete Interface	23	delete_interface
+92	Can view Interface	23	view_interface
+93	Can add interface relationship	24	add_interfacerelationship
+94	Can change interface relationship	24	change_interfacerelationship
+95	Can delete interface relationship	24	delete_interfacerelationship
+96	Can view interface relationship	24	view_interfacerelationship
+97	Can add large file	25	add_largefile
+98	Can change large file	25	change_largefile
+99	Can delete large file	25	delete_largefile
+100	Can view large file	25	view_largefile
+101	Can add license key	26	add_licensekey
+102	Can change license key	26	change_licensekey
+103	Can delete license key	26	delete_licensekey
+104	Can view license key	26	view_licensekey
+105	Can add node	27	add_node
+106	Can change node	27	change_node
+107	Can delete node	27	delete_node
+108	Can view node	27	view_node
+109	Can add partition	28	add_partition
+110	Can change partition	28	change_partition
+111	Can delete partition	28	delete_partition
+112	Can view partition	28	view_partition
+113	Can add partition table	29	add_partitiontable
+114	Can change partition table	29	change_partitiontable
+115	Can delete partition table	29	delete_partitiontable
+116	Can view partition table	29	view_partitiontable
+117	Can add Space	30	add_space
+118	Can change Space	30	change_space
+119	Can delete Space	30	delete_space
+120	Can view Space	30	view_space
+121	Can add SSH key	31	add_sshkey
+122	Can change SSH key	31	change_sshkey
+123	Can delete SSH key	31	delete_sshkey
+124	Can view SSH key	31	view_sshkey
+125	Can add SSL key	32	add_sslkey
+126	Can change SSL key	32	change_sslkey
+127	Can delete SSL key	32	delete_sslkey
+128	Can view SSL key	32	view_sslkey
+129	Can add Static IP Address	33	add_staticipaddress
+130	Can change Static IP Address	33	change_staticipaddress
+131	Can delete Static IP Address	33	delete_staticipaddress
+132	Can view Static IP Address	33	view_staticipaddress
+133	Can add subnet	34	add_subnet
+134	Can change subnet	34	change_subnet
+135	Can delete subnet	34	delete_subnet
+136	Can view subnet	34	view_subnet
+137	Can add tag	35	add_tag
+138	Can change tag	35	change_tag
+139	Can delete tag	35	delete_tag
+140	Can view tag	35	view_tag
+141	Can add user profile	36	add_userprofile
+142	Can change user profile	36	change_userprofile
+143	Can delete user profile	36	delete_userprofile
+144	Can view user profile	36	view_userprofile
+145	Can add VLAN	37	add_vlan
+146	Can change VLAN	37	change_vlan
+147	Can delete VLAN	37	delete_vlan
+148	Can view VLAN	37	view_vlan
+149	Can add Physical zone	38	add_zone
+150	Can change Physical zone	38	change_zone
+151	Can delete Physical zone	38	delete_zone
+152	Can view Physical zone	38	view_zone
+153	Can add physical block device	39	add_physicalblockdevice
+154	Can change physical block device	39	change_physicalblockdevice
+155	Can delete physical block device	39	delete_physicalblockdevice
+156	Can view physical block device	39	view_physicalblockdevice
+157	Can add virtual block device	40	add_virtualblockdevice
+158	Can change virtual block device	40	change_virtualblockdevice
+159	Can delete virtual block device	40	delete_virtualblockdevice
+160	Can view virtual block device	40	view_virtualblockdevice
+161	Can add bcache	41	add_bcache
+162	Can change bcache	41	change_bcache
+163	Can delete bcache	41	delete_bcache
+164	Can view bcache	41	view_bcache
+165	Can add Bond	42	add_bondinterface
+166	Can change Bond	42	change_bondinterface
+167	Can delete Bond	42	delete_bondinterface
+168	Can view Bond	42	view_bondinterface
+169	Can add device	43	add_device
+170	Can change device	43	change_device
+171	Can delete device	43	delete_device
+172	Can view device	43	view_device
+173	Can add Physical interface	44	add_physicalinterface
+174	Can change Physical interface	44	change_physicalinterface
+175	Can delete Physical interface	44	delete_physicalinterface
+176	Can view Physical interface	44	view_physicalinterface
+177	Can add raid	45	add_raid
+178	Can change raid	45	change_raid
+179	Can delete raid	45	delete_raid
+180	Can view raid	45	view_raid
+181	Can add Unknown interface	46	add_unknowninterface
+182	Can change Unknown interface	46	change_unknowninterface
+183	Can delete Unknown interface	46	delete_unknowninterface
+184	Can view Unknown interface	46	view_unknowninterface
+185	Can add VLAN interface	47	add_vlaninterface
+186	Can change VLAN interface	47	change_vlaninterface
+187	Can delete VLAN interface	47	delete_vlaninterface
+188	Can view VLAN interface	47	view_vlaninterface
+189	Can add volume group	48	add_volumegroup
+190	Can change volume group	48	change_volumegroup
+191	Can delete volume group	48	delete_volumegroup
+192	Can view volume group	48	view_volumegroup
+193	Can add machine	49	add_machine
+194	Can change machine	49	change_machine
+195	Can delete machine	49	delete_machine
+196	Can view machine	49	view_machine
+197	Can add rack controller	50	add_rackcontroller
+198	Can change rack controller	50	change_rackcontroller
+199	Can delete rack controller	50	delete_rackcontroller
+200	Can view rack controller	50	view_rackcontroller
+201	Can add DNSResource	51	add_dnsresource
+202	Can change DNSResource	51	change_dnsresource
+203	Can delete DNSResource	51	delete_dnsresource
+204	Can view DNSResource	51	view_dnsresource
+205	Can add Domain	52	add_domain
+206	Can change Domain	52	change_domain
+207	Can delete Domain	52	delete_domain
+208	Can view Domain	52	view_domain
+209	Can add region controller process	53	add_regioncontrollerprocess
+210	Can change region controller process	53	change_regioncontrollerprocess
+211	Can delete region controller process	53	delete_regioncontrollerprocess
+212	Can view region controller process	53	view_regioncontrollerprocess
+213	Can add region controller process endpoint	54	add_regioncontrollerprocessendpoint
+214	Can change region controller process endpoint	54	change_regioncontrollerprocessendpoint
+215	Can delete region controller process endpoint	54	delete_regioncontrollerprocessendpoint
+216	Can view region controller process endpoint	54	view_regioncontrollerprocessendpoint
+217	Can add region controller	55	add_regioncontroller
+218	Can change region controller	55	change_regioncontroller
+219	Can delete region controller	55	delete_regioncontroller
+220	Can view region controller	55	view_regioncontroller
+221	Can add bmc	56	add_bmc
+222	Can change bmc	56	change_bmc
+223	Can delete bmc	56	delete_bmc
+224	Can view bmc	56	view_bmc
+225	Can add DNSData	57	add_dnsdata
+226	Can change DNSData	57	change_dnsdata
+227	Can delete DNSData	57	delete_dnsdata
+228	Can view DNSData	57	view_dnsdata
+229	Can add ip range	58	add_iprange
+230	Can change ip range	58	change_iprange
+231	Can delete ip range	58	delete_iprange
+232	Can view ip range	58	view_iprange
+233	Can add node group to rack controller	59	add_nodegrouptorackcontroller
+234	Can change node group to rack controller	59	change_nodegrouptorackcontroller
+235	Can delete node group to rack controller	59	delete_nodegrouptorackcontroller
+236	Can view node group to rack controller	59	view_nodegrouptorackcontroller
+237	Can add region rack rpc connection	60	add_regionrackrpcconnection
+238	Can change region rack rpc connection	60	change_regionrackrpcconnection
+239	Can delete region rack rpc connection	60	delete_regionrackrpcconnection
+240	Can view region rack rpc connection	60	view_regionrackrpcconnection
+241	Can add service	61	add_service
+242	Can change service	61	change_service
+243	Can delete service	61	delete_service
+244	Can view service	61	view_service
+245	Can add Template	62	add_template
+246	Can change Template	62	change_template
+247	Can delete Template	62	delete_template
+248	Can view Template	62	view_template
+249	Can add VersionedTextFile	63	add_versionedtextfile
+250	Can change VersionedTextFile	63	change_versionedtextfile
+251	Can delete VersionedTextFile	63	delete_versionedtextfile
+252	Can view VersionedTextFile	63	view_versionedtextfile
+253	Can add bmc routable rack controller relationship	64	add_bmcroutablerackcontrollerrelationship
+254	Can change bmc routable rack controller relationship	64	change_bmcroutablerackcontrollerrelationship
+255	Can delete bmc routable rack controller relationship	64	delete_bmcroutablerackcontrollerrelationship
+256	Can view bmc routable rack controller relationship	64	view_bmcroutablerackcontrollerrelationship
+257	Can add dhcp snippet	65	add_dhcpsnippet
+258	Can change dhcp snippet	65	change_dhcpsnippet
+259	Can delete dhcp snippet	65	delete_dhcpsnippet
+260	Can view dhcp snippet	65	view_dhcpsnippet
+261	Can add child interface	66	add_childinterface
+262	Can change child interface	66	change_childinterface
+263	Can delete child interface	66	delete_childinterface
+264	Can view child interface	66	view_childinterface
+265	Can add Bridge	67	add_bridgeinterface
+266	Can change Bridge	67	change_bridgeinterface
+267	Can delete Bridge	67	delete_bridgeinterface
+268	Can view Bridge	67	view_bridgeinterface
+269	Can add owner data	68	add_ownerdata
+270	Can change owner data	68	change_ownerdata
+271	Can delete owner data	68	delete_ownerdata
+272	Can view owner data	68	view_ownerdata
+273	Can add controller	69	add_controller
+274	Can change controller	69	change_controller
+275	Can delete controller	69	delete_controller
+276	Can view controller	69	view_controller
+277	Can add dns publication	70	add_dnspublication
+278	Can change dns publication	70	change_dnspublication
+279	Can delete dns publication	70	delete_dnspublication
+280	Can view dns publication	70	view_dnspublication
+281	Can add package repository	71	add_packagerepository
+282	Can change package repository	71	change_packagerepository
+283	Can delete package repository	71	delete_packagerepository
+284	Can view package repository	71	view_packagerepository
+285	Can add mDNS binding	72	add_mdns
+286	Can change mDNS binding	72	change_mdns
+287	Can delete mDNS binding	72	delete_mdns
+288	Can view mDNS binding	72	view_mdns
+289	Can add Neighbour	73	add_neighbour
+290	Can change Neighbour	73	change_neighbour
+291	Can delete Neighbour	73	delete_neighbour
+292	Can view Neighbour	73	view_neighbour
+293	Can add static route	74	add_staticroute
+294	Can change static route	74	change_staticroute
+295	Can delete static route	74	delete_staticroute
+296	Can view static route	74	view_staticroute
+297	Can add Key Source	75	add_keysource
+298	Can change Key Source	75	change_keysource
+299	Can delete Key Source	75	delete_keysource
+300	Can view Key Source	75	view_keysource
+301	Can add Discovery	76	add_discovery
+302	Can change Discovery	76	change_discovery
+303	Can delete Discovery	76	delete_discovery
+304	Can view Discovery	76	view_discovery
+305	Can add Reverse-DNS entry	77	add_rdns
+306	Can change Reverse-DNS entry	77	change_rdns
+307	Can delete Reverse-DNS entry	77	delete_rdns
+308	Can view Reverse-DNS entry	77	view_rdns
+309	Can add notification	78	add_notification
+310	Can change notification	78	change_notification
+311	Can delete notification	78	delete_notification
+312	Can view notification	78	view_notification
+313	Can add notification dismissal	79	add_notificationdismissal
+314	Can change notification dismissal	79	change_notificationdismissal
+315	Can delete notification dismissal	79	delete_notificationdismissal
+316	Can view notification dismissal	79	view_notificationdismissal
+317	Can add pod hints	80	add_podhints
+318	Can change pod hints	80	change_podhints
+319	Can delete pod hints	80	delete_podhints
+320	Can view pod hints	80	view_podhints
+321	Can add pod	81	add_pod
+322	Can change pod	81	change_pod
+323	Can delete pod	81	delete_pod
+324	Can view pod	81	view_pod
+325	Can add iscsi block device	82	add_iscsiblockdevice
+326	Can change iscsi block device	82	change_iscsiblockdevice
+327	Can delete iscsi block device	82	delete_iscsiblockdevice
+328	Can view iscsi block device	82	view_iscsiblockdevice
+329	Can add Switch	83	add_switch
+330	Can change Switch	83	change_switch
+331	Can delete Switch	83	delete_switch
+332	Can view Switch	83	view_switch
+333	Can add ControllerInfo	84	add_controllerinfo
+334	Can change ControllerInfo	84	change_controllerinfo
+335	Can delete ControllerInfo	84	delete_controllerinfo
+336	Can view ControllerInfo	84	view_controllerinfo
+337	Can add NodeMetadata	85	add_nodemetadata
+338	Can change NodeMetadata	85	change_nodemetadata
+339	Can delete NodeMetadata	85	delete_nodemetadata
+340	Can view NodeMetadata	85	view_nodemetadata
+341	Can add resource pool	86	add_resourcepool
+342	Can change resource pool	86	change_resourcepool
+343	Can delete resource pool	86	delete_resourcepool
+344	Can view resource pool	86	view_resourcepool
+345	Can add root key	87	add_rootkey
+346	Can change root key	87	change_rootkey
+347	Can delete root key	87	delete_rootkey
+348	Can view root key	87	view_rootkey
+349	Can add global default	88	add_globaldefault
+350	Can change global default	88	change_globaldefault
+351	Can delete global default	88	delete_globaldefault
+352	Can view global default	88	view_globaldefault
+353	Can add pod storage pool	89	add_podstoragepool
+354	Can change pod storage pool	89	change_podstoragepool
+355	Can delete pod storage pool	89	delete_podstoragepool
+356	Can view pod storage pool	89	view_podstoragepool
+357	Can add rbac sync	90	add_rbacsync
+358	Can change rbac sync	90	change_rbacsync
+359	Can delete rbac sync	90	delete_rbacsync
+360	Can view rbac sync	90	view_rbacsync
+361	Can add rbac last sync	91	add_rbaclastsync
+362	Can change rbac last sync	91	change_rbaclastsync
+363	Can delete rbac last sync	91	delete_rbaclastsync
+364	Can view rbac last sync	91	view_rbaclastsync
+365	Can add vmfs	92	add_vmfs
+366	Can change vmfs	92	change_vmfs
+367	Can delete vmfs	92	delete_vmfs
+368	Can view vmfs	92	view_vmfs
+369	Can add numa node	93	add_numanode
+370	Can change numa node	93	change_numanode
+371	Can delete numa node	93	delete_numanode
+372	Can view numa node	93	view_numanode
+373	Can add virtual machine	94	add_virtualmachine
+374	Can change virtual machine	94	change_virtualmachine
+375	Can delete virtual machine	94	delete_virtualmachine
+376	Can view virtual machine	94	view_virtualmachine
+377	Can add numa node hugepages	95	add_numanodehugepages
+378	Can change numa node hugepages	95	change_numanodehugepages
+379	Can delete numa node hugepages	95	delete_numanodehugepages
+380	Can view numa node hugepages	95	view_numanodehugepages
+381	Can add virtual machine interface	96	add_virtualmachineinterface
+382	Can change virtual machine interface	96	change_virtualmachineinterface
+383	Can delete virtual machine interface	96	delete_virtualmachineinterface
+384	Can view virtual machine interface	96	view_virtualmachineinterface
+385	Can add node device	97	add_nodedevice
+386	Can change node device	97	change_nodedevice
+387	Can delete node device	97	delete_nodedevice
+388	Can view node device	97	view_nodedevice
+389	Can add node key	98	add_nodekey
+390	Can change node key	98	change_nodekey
+391	Can delete node key	98	delete_nodekey
+392	Can view node key	98	view_nodekey
+393	Can add node user data	99	add_nodeuserdata
+394	Can change node user data	99	change_nodeuserdata
+395	Can delete node user data	99	delete_nodeuserdata
+396	Can view node user data	99	view_nodeuserdata
+397	Can add script	100	add_script
+398	Can change script	100	change_script
+399	Can delete script	100	delete_script
+400	Can view script	100	view_script
+401	Can add script result	101	add_scriptresult
+402	Can change script result	101	change_scriptresult
+403	Can delete script result	101	delete_scriptresult
+404	Can view script result	101	view_scriptresult
+405	Can add script set	102	add_scriptset
+406	Can change script set	102	change_scriptset
+407	Can delete script set	102	delete_scriptset
+408	Can view script set	102	view_scriptset
+409	Can add consumer	103	add_consumer
+410	Can change consumer	103	change_consumer
+411	Can delete consumer	103	delete_consumer
+412	Can view consumer	103	view_consumer
+413	Can add nonce	104	add_nonce
+414	Can change nonce	104	change_nonce
+415	Can delete nonce	104	delete_nonce
+416	Can view nonce	104	view_nonce
+417	Can add token	105	add_token
+418	Can change token	105	change_token
+419	Can delete token	105	delete_token
+420	Can view token	105	view_token
 \.
 
 
@@ -4368,66 +4751,71 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 38	maasserver	zone
 39	maasserver	physicalblockdevice
 40	maasserver	virtualblockdevice
-41	maasserver	dnsresource
-42	maasserver	domain
-43	maasserver	regioncontrollerprocess
-44	maasserver	regioncontrollerprocessendpoint
-45	maasserver	bmc
-46	maasserver	dnsdata
-47	maasserver	iprange
-48	maasserver	nodegrouptorackcontroller
-49	maasserver	regionrackrpcconnection
-50	maasserver	service
-51	maasserver	template
-52	maasserver	versionedtextfile
-53	maasserver	bmcroutablerackcontrollerrelationship
-54	maasserver	dhcpsnippet
-55	maasserver	ownerdata
-56	maasserver	dnspublication
-57	maasserver	packagerepository
-58	maasserver	mdns
-59	maasserver	neighbour
-60	maasserver	staticroute
-61	maasserver	keysource
-62	maasserver	discovery
-63	maasserver	rdns
-64	maasserver	notification
-65	maasserver	notificationdismissal
-66	maasserver	podhints
-67	maasserver	iscsiblockdevice
-68	maasserver	switch
-69	maasserver	controllerinfo
-70	maasserver	nodemetadata
-71	maasserver	resourcepool
-72	maasserver	rootkey
-73	maasserver	globaldefault
-74	maasserver	podstoragepool
-75	maasserver	rbacsync
-76	maasserver	rbaclastsync
-77	maasserver	bcache
-78	maasserver	bondinterface
-79	maasserver	device
-80	maasserver	physicalinterface
-81	maasserver	raid
-82	maasserver	unknowninterface
-83	maasserver	vlaninterface
-84	maasserver	volumegroup
-85	maasserver	machine
-86	maasserver	rackcontroller
-87	maasserver	regioncontroller
-88	maasserver	childinterface
-89	maasserver	bridgeinterface
-90	maasserver	controller
-91	maasserver	pod
+41	maasserver	bcache
+42	maasserver	bondinterface
+43	maasserver	device
+44	maasserver	physicalinterface
+45	maasserver	raid
+46	maasserver	unknowninterface
+47	maasserver	vlaninterface
+48	maasserver	volumegroup
+49	maasserver	machine
+50	maasserver	rackcontroller
+51	maasserver	dnsresource
+52	maasserver	domain
+53	maasserver	regioncontrollerprocess
+54	maasserver	regioncontrollerprocessendpoint
+55	maasserver	regioncontroller
+56	maasserver	bmc
+57	maasserver	dnsdata
+58	maasserver	iprange
+59	maasserver	nodegrouptorackcontroller
+60	maasserver	regionrackrpcconnection
+61	maasserver	service
+62	maasserver	template
+63	maasserver	versionedtextfile
+64	maasserver	bmcroutablerackcontrollerrelationship
+65	maasserver	dhcpsnippet
+66	maasserver	childinterface
+67	maasserver	bridgeinterface
+68	maasserver	ownerdata
+69	maasserver	controller
+70	maasserver	dnspublication
+71	maasserver	packagerepository
+72	maasserver	mdns
+73	maasserver	neighbour
+74	maasserver	staticroute
+75	maasserver	keysource
+76	maasserver	discovery
+77	maasserver	rdns
+78	maasserver	notification
+79	maasserver	notificationdismissal
+80	maasserver	podhints
+81	maasserver	pod
+82	maasserver	iscsiblockdevice
+83	maasserver	switch
+84	maasserver	controllerinfo
+85	maasserver	nodemetadata
+86	maasserver	resourcepool
+87	maasserver	rootkey
+88	maasserver	globaldefault
+89	maasserver	podstoragepool
+90	maasserver	rbacsync
+91	maasserver	rbaclastsync
 92	maasserver	vmfs
-93	metadataserver	nodekey
-94	metadataserver	nodeuserdata
-95	metadataserver	script
-96	metadataserver	scriptresult
-97	metadataserver	scriptset
-98	piston3	consumer
-99	piston3	nonce
-100	piston3	token
+93	maasserver	numanode
+94	maasserver	virtualmachine
+95	maasserver	numanodehugepages
+96	maasserver	virtualmachineinterface
+97	maasserver	nodedevice
+98	metadataserver	nodekey
+99	metadataserver	nodeuserdata
+100	metadataserver	script
+101	metadataserver	scriptresult
+102	metadataserver	scriptset
+103	piston3	consumer
+104	piston3	nonce
+105	piston3	token
 \.
 
 
@@ -4436,225 +4824,270 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
-1	contenttypes	0001_initial	2019-04-16 17:36:55.501914+00
-2	auth	0001_initial	2019-04-16 17:36:55.524324+00
-3	auth	0002_auto_20151119_1629	2019-04-16 17:36:55.612211+00
-4	auth	0003_django_1_11_update	2019-04-16 17:36:55.624772+00
-5	auth	0004_user_email_allow_null	2019-04-16 17:36:55.630658+00
-6	contenttypes	0002_remove_content_type_name	2019-04-16 17:36:55.640941+00
-7	piston3	0001_initial	2019-04-16 17:36:55.664582+00
-8	maasserver	0001_initial	2019-04-16 17:36:56.524727+00
-9	metadataserver	0001_initial	2019-04-16 17:36:56.691448+00
-10	maasserver	0002_remove_candidate_name_model	2019-04-16 17:36:56.695131+00
-11	maasserver	0003_add_node_type_to_node	2019-04-16 17:36:56.720313+00
-12	maasserver	0004_migrate_installable_to_node_type	2019-04-16 17:36:56.773+00
-13	maasserver	0005_delete_installable_from_node	2019-04-16 17:36:56.792103+00
-14	maasserver	0006_add_lease_time_to_staticipaddress	2019-04-16 17:36:56.813389+00
-15	maasserver	0007_create_node_proxy_models	2019-04-16 17:36:56.817239+00
-16	maasserver	0008_use_new_arrayfield	2019-04-16 17:36:56.874798+00
-17	maasserver	0009_remove_routers_field_from_node	2019-04-16 17:36:56.890968+00
-18	maasserver	0010_add_dns_models	2019-04-16 17:36:56.963439+00
-19	maasserver	0011_domain_data	2019-04-16 17:36:57.047973+00
-20	maasserver	0012_drop_dns_fields	2019-04-16 17:36:57.178856+00
-21	maasserver	0013_remove_boot_type_from_node	2019-04-16 17:36:57.198101+00
-22	maasserver	0014_add_region_models	2019-04-16 17:36:57.311805+00
-23	maasserver	0015_add_bmc_model	2019-04-16 17:36:57.38435+00
-24	maasserver	0016_migrate_power_data_node_to_bmc	2019-04-16 17:36:57.428096+00
-25	maasserver	0017_remove_node_power_type	2019-04-16 17:36:57.447126+00
-26	maasserver	0018_add_dnsdata	2019-04-16 17:36:57.498685+00
-27	maasserver	0019_add_iprange	2019-04-16 17:36:57.525608+00
-28	maasserver	0020_nodegroup_to_rackcontroller	2019-04-16 17:36:57.676312+00
-29	maasserver	0021_nodegroupinterface_to_iprange	2019-04-16 17:36:57.716365+00
-30	maasserver	0022_extract_ip_for_bmcs	2019-04-16 17:36:57.767014+00
-31	maasserver	0023_add_ttl_field	2019-04-16 17:36:57.867868+00
-32	maasserver	0024_remove_nodegroupinterface	2019-04-16 17:36:58.271861+00
-33	maasserver	0025_create_node_system_id_sequence	2019-04-16 17:36:58.27726+00
-34	maasserver	0026_create_zone_serial_sequence	2019-04-16 17:36:58.281644+00
-35	maasserver	0027_replace_static_range_with_admin_reserved_ranges	2019-04-16 17:36:58.327235+00
-36	maasserver	0028_update_default_vlan_on_interface_and_subnet	2019-04-16 17:36:58.386472+00
-37	maasserver	0029_add_rdns_mode	2019-04-16 17:36:58.401049+00
-38	maasserver	0030_drop_all_old_funcs	2019-04-16 17:36:58.443815+00
-39	maasserver	0031_add_region_rack_rpc_conn_model	2019-04-16 17:36:58.61988+00
-40	maasserver	0032_loosen_vlan	2019-04-16 17:36:58.673017+00
-41	maasserver	0033_iprange_minor_changes	2019-04-16 17:36:58.740017+00
-42	maasserver	0034_rename_mount_params_as_mount_options	2019-04-16 17:36:58.757097+00
-43	maasserver	0035_convert_ether_wake_to_manual_power_type	2019-04-16 17:36:58.799252+00
-44	maasserver	0036_add_service_model	2019-04-16 17:36:58.844134+00
-45	maasserver	0037_node_last_image_sync	2019-04-16 17:36:58.865274+00
-46	maasserver	0038_filesystem_ramfs_tmpfs_support	2019-04-16 17:36:58.915884+00
-47	maasserver	0039_create_template_and_versionedtextfile_models	2019-04-16 17:36:58.939744+00
-48	maasserver	0040_fix_id_seq	2019-04-16 17:36:58.942561+00
-49	maasserver	0041_change_bmc_on_delete_to_set_null	2019-04-16 17:36:58.970527+00
-50	maasserver	0042_add_routable_rack_controllers_to_bmc	2019-04-16 17:36:59.109347+00
-51	maasserver	0043_dhcpsnippet	2019-04-16 17:36:59.144385+00
-52	maasserver	0044_remove_di_bootresourcefiles	2019-04-16 17:36:59.201353+00
-53	maasserver	0045_add_node_to_filesystem	2019-04-16 17:36:59.240419+00
-54	maasserver	0046_add_bridge_interface_type	2019-04-16 17:36:59.265746+00
-55	maasserver	0047_fix_spelling_of_degraded	2019-04-16 17:36:59.329345+00
-56	maasserver	0048_add_subnet_allow_proxy	2019-04-16 17:36:59.342215+00
-57	maasserver	0049_add_external_dhcp_present_to_vlan	2019-04-16 17:36:59.430811+00
-58	maasserver	0050_modify_external_dhcp_on_vlan	2019-04-16 17:36:59.640234+00
-59	maasserver	0051_space_fabric_unique	2019-04-16 17:36:59.740465+00
-60	maasserver	0052_add_codename_title_eol_to_bootresourcecache	2019-04-16 17:36:59.761803+00
-61	maasserver	0053_add_ownerdata_model	2019-04-16 17:36:59.812833+00
-62	maasserver	0054_controller	2019-04-16 17:36:59.817516+00
-63	maasserver	0055_dns_publications	2019-04-16 17:36:59.822889+00
-64	maasserver	0056_zone_serial_ownership	2019-04-16 17:36:59.827238+00
-65	maasserver	0057_initial_dns_publication	2019-04-16 17:36:59.876357+00
-66	maasserver	0058_bigger_integer_for_dns_publication_serial	2019-04-16 17:36:59.883775+00
-67	maasserver	0056_add_description_to_fabric_and_space	2019-04-16 17:36:59.99166+00
-68	maasserver	0057_merge	2019-04-16 17:36:59.993223+00
-69	maasserver	0059_merge	2019-04-16 17:36:59.995233+00
-70	maasserver	0060_amt_remove_mac_address	2019-04-16 17:37:00.046534+00
-71	maasserver	0061_maas_nodegroup_worker_to_maas	2019-04-16 17:37:00.186102+00
-72	maasserver	0062_fix_bootsource_daily_label	2019-04-16 17:37:00.239049+00
-73	maasserver	0063_remove_orphaned_bmcs_and_ips	2019-04-16 17:37:00.290026+00
-74	maasserver	0064_remove_unneeded_event_triggers	2019-04-16 17:37:00.341201+00
-75	maasserver	0065_larger_osystem_and_distro_series	2019-04-16 17:37:00.404157+00
-76	maasserver	0066_allow_squashfs	2019-04-16 17:37:00.412484+00
-77	maasserver	0067_add_size_to_largefile	2019-04-16 17:37:00.468827+00
-78	maasserver	0068_drop_node_system_id_sequence	2019-04-16 17:37:00.47158+00
-79	maasserver	0069_add_previous_node_status_to_node	2019-04-16 17:37:00.498723+00
-80	maasserver	0070_allow_null_vlan_on_interface	2019-04-16 17:37:00.530503+00
-81	maasserver	0071_ntp_server_to_ntp_servers	2019-04-16 17:37:00.533156+00
-82	maasserver	0072_packagerepository	2019-04-16 17:37:00.539127+00
-83	maasserver	0073_migrate_package_repositories	2019-04-16 17:37:00.674315+00
-84	maasserver	0072_update_status_and_previous_status	2019-04-16 17:37:00.840657+00
-85	maasserver	0074_merge	2019-04-16 17:37:00.841837+00
-86	maasserver	0075_modify_packagerepository	2019-04-16 17:37:00.862177+00
-87	maasserver	0076_interface_discovery_rescue_mode	2019-04-16 17:37:01.092169+00
-88	maasserver	0077_static_routes	2019-04-16 17:37:01.135068+00
-89	maasserver	0078_remove_packagerepository_description	2019-04-16 17:37:01.140089+00
-90	maasserver	0079_add_keysource_model	2019-04-16 17:37:01.194301+00
-91	maasserver	0080_change_packagerepository_url_type	2019-04-16 17:37:01.199039+00
-92	maasserver	0081_allow_larger_bootsourcecache_fields	2019-04-16 17:37:01.224346+00
-93	maasserver	0082_add_kflavor	2019-04-16 17:37:01.43096+00
-94	maasserver	0083_device_discovery	2019-04-16 17:37:01.467246+00
-95	maasserver	0084_add_default_user_to_node_model	2019-04-16 17:37:01.501023+00
-96	maasserver	0085_no_intro_on_upgrade	2019-04-16 17:37:01.551578+00
-97	maasserver	0086_remove_powerpc_from_ports_arches	2019-04-16 17:37:01.602206+00
-98	maasserver	0087_add_completed_intro_to_userprofile	2019-04-16 17:37:01.617141+00
-99	maasserver	0088_remove_node_disable_ipv4	2019-04-16 17:37:01.645487+00
-100	maasserver	0089_active_discovery	2019-04-16 17:37:01.698768+00
-101	maasserver	0090_bootloaders	2019-04-16 17:37:01.720966+00
-102	maasserver	0091_v2_to_v3	2019-04-16 17:37:01.786127+00
-103	maasserver	0092_rolling	2019-04-16 17:37:01.793135+00
-104	maasserver	0093_add_rdns_model	2019-04-16 17:37:01.939918+00
-105	maasserver	0094_add_unmanaged_subnets	2019-04-16 17:37:01.955615+00
-106	maasserver	0095_vlan_relay_vlan	2019-04-16 17:37:01.985536+00
-107	maasserver	0096_set_default_vlan_field	2019-04-16 17:37:02.016516+00
-108	maasserver	0097_node_chassis_storage_hints	2019-04-16 17:37:02.17322+00
-109	maasserver	0098_add_space_to_vlan	2019-04-16 17:37:02.204595+00
-110	maasserver	0099_set_default_vlan_field	2019-04-16 17:37:02.236778+00
-111	maasserver	0100_migrate_spaces_from_subnet_to_vlan	2019-04-16 17:37:02.289853+00
-112	maasserver	0101_filesystem_btrfs_support	2019-04-16 17:37:02.314024+00
-113	maasserver	0102_remove_space_from_subnet	2019-04-16 17:37:02.356748+00
-114	maasserver	0103_notifications	2019-04-16 17:37:02.50474+00
-115	maasserver	0104_notifications_dismissals	2019-04-16 17:37:02.539849+00
-116	metadataserver	0002_script_models	2019-04-16 17:37:02.755999+00
-117	maasserver	0105_add_script_sets_to_node_model	2019-04-16 17:37:02.867701+00
-118	maasserver	0106_testing_status	2019-04-16 17:37:02.927317+00
-119	maasserver	0107_chassis_to_pods	2019-04-16 17:37:03.351328+00
-120	maasserver	0108_generate_bmc_names	2019-04-16 17:37:03.406471+00
-121	maasserver	0109_bmc_names_unique	2019-04-16 17:37:03.429658+00
-122	maasserver	0110_notification_category	2019-04-16 17:37:03.444753+00
-123	maasserver	0111_remove_component_error	2019-04-16 17:37:03.448566+00
-124	maasserver	0112_update_notification	2019-04-16 17:37:03.518698+00
-125	maasserver	0113_set_filepath_limit_to_linux_max	2019-04-16 17:37:03.662862+00
-126	maasserver	0114_node_dynamic_to_creation_type	2019-04-16 17:37:03.724841+00
-127	maasserver	0115_additional_boot_resource_filetypes	2019-04-16 17:37:03.738009+00
-128	maasserver	0116_add_disabled_components_for_mirrors	2019-04-16 17:37:03.747253+00
-129	maasserver	0117_add_iscsi_block_device	2019-04-16 17:37:03.778613+00
-130	maasserver	0118_add_iscsi_storage_pod	2019-04-16 17:37:03.82572+00
-131	maasserver	0119_set_default_vlan_field	2019-04-16 17:37:03.871722+00
-132	maasserver	0120_bootsourcecache_extra	2019-04-16 17:37:03.87989+00
-133	maasserver	0121_relax_staticipaddress_unique_constraint	2019-04-16 17:37:03.921315+00
-134	maasserver	0122_make_virtualblockdevice_uuid_editable	2019-04-16 17:37:03.933793+00
-135	maasserver	0123_make_iprange_comment_default_to_empty_string	2019-04-16 17:37:03.950462+00
-136	maasserver	0124_staticipaddress_address_family_index	2019-04-16 17:37:03.95353+00
-137	maasserver	0125_add_switch_model	2019-04-16 17:37:03.987396+00
-138	maasserver	0126_add_controllerinfo_model	2019-04-16 17:37:04.078359+00
-139	maasserver	0127_nodemetadata	2019-04-16 17:37:04.136094+00
-140	maasserver	0128_events_created_index	2019-04-16 17:37:04.139414+00
-141	maasserver	0129_add_install_rackd_flag	2019-04-16 17:37:04.170553+00
-142	maasserver	0130_node_locked_flag	2019-04-16 17:37:04.202194+00
-143	maasserver	0131_update_event_model_for_audit_logs	2019-04-16 17:37:04.469151+00
-144	maasserver	0132_consistent_model_name_validation	2019-04-16 17:37:04.510766+00
-145	maasserver	0133_add_resourcepool_model	2019-04-16 17:37:04.516263+00
-146	maasserver	0134_create_default_resourcepool	2019-04-16 17:37:04.57699+00
-147	maasserver	0135_add_pool_reference_to_node	2019-04-16 17:37:04.671845+00
-148	maasserver	0136_add_user_role_models	2019-04-16 17:37:04.713715+00
-149	maasserver	0137_create_default_roles	2019-04-16 17:37:04.791035+00
-150	maasserver	0138_add_ip_and_user_agent_to_event_model	2019-04-16 17:37:04.849801+00
-151	maasserver	0139_add_endpoint_and_increase_user_agent_length_for_event	2019-04-16 17:37:05.04435+00
-152	maasserver	0140_add_usergroup_model	2019-04-16 17:37:05.117957+00
-153	maasserver	0141_add_default_usergroup	2019-04-16 17:37:05.178319+00
-154	maasserver	0142_pod_default_resource_pool	2019-04-16 17:37:05.270875+00
-155	maasserver	0143_blockdevice_firmware	2019-04-16 17:37:05.282841+00
-156	maasserver	0144_filesystem_zfsroot_support	2019-04-16 17:37:05.304294+00
-157	maasserver	0145_interface_firmware	2019-04-16 17:37:05.374242+00
-158	maasserver	0146_add_rootkey	2019-04-16 17:37:05.379243+00
-159	maasserver	0147_pod_zones	2019-04-16 17:37:05.415598+00
-160	maasserver	0148_add_tags_on_pods	2019-04-16 17:37:05.447827+00
-161	maasserver	0149_userprofile_auth_last_check	2019-04-16 17:37:05.461514+00
-162	maasserver	0150_add_pod_commit_ratios	2019-04-16 17:37:05.510538+00
-163	maasserver	0151_userprofile_is_local	2019-04-16 17:37:05.526674+00
-164	maasserver	0152_add_usergroup_local	2019-04-16 17:37:05.543247+00
-165	maasserver	0153_add_skip_bmc_config	2019-04-16 17:37:05.575709+00
-166	maasserver	0154_link_usergroup_role	2019-04-16 17:37:05.837148+00
-167	maasserver	0155_add_globaldefaults_model	2019-04-16 17:37:05.98717+00
-168	maasserver	0156_drop_ssh_unique_key_index	2019-04-16 17:37:06.013039+00
-169	maasserver	0157_drop_usergroup_and_role	2019-04-16 17:37:06.282489+00
-170	maasserver	0158_pod_default_pool_to_pod	2019-04-16 17:37:06.331371+00
-171	maasserver	0159_userprofile_auth_last_check_no_now_default	2019-04-16 17:37:06.516823+00
-172	maasserver	0160_pool_only_for_machines	2019-04-16 17:37:06.574181+00
-173	maasserver	0161_pod_storage_pools	2019-04-16 17:37:06.707258+00
-174	maasserver	0162_storage_pools_notification	2019-04-16 17:37:06.788267+00
-175	maasserver	0163_create_new_power_parameters_with_jsonfield	2019-04-16 17:37:06.857672+00
-176	maasserver	0164_copy_over_existing_power_parameters	2019-04-16 17:37:06.920072+00
-177	maasserver	0165_remove_and_rename_power_parameters	2019-04-16 17:37:07.1754+00
-178	maasserver	0166_auto_select_s390x_extra_arches	2019-04-16 17:37:07.236168+00
-179	maasserver	0167_add_pod_host	2019-04-16 17:37:07.278091+00
-180	maasserver	0168_add_pod_default_macvlan_mode	2019-04-16 17:37:07.310484+00
-181	maasserver	0169_find_pod_host	2019-04-16 17:37:07.311622+00
-182	maasserver	0170_add_subnet_allow_dns	2019-04-16 17:37:07.325742+00
-183	maasserver	0171_remove_pod_host	2019-04-16 17:37:07.369634+00
-184	maasserver	0172_partition_tags	2019-04-16 17:37:07.382005+00
-185	maasserver	0173_add_node_install_kvm	2019-04-16 17:37:07.421282+00
-186	maasserver	0174_add_user_id_and_node_system_id_for_events	2019-04-16 17:37:07.481066+00
-187	maasserver	0175_copy_user_id_and_node_system_id_for_events	2019-04-16 17:37:07.541046+00
-188	maasserver	0176_rename_user_id_migrate_to_user_id_for_events	2019-04-16 17:37:07.608531+00
-189	maasserver	0177_remove_unique_together_on_bmc	2019-04-16 17:37:07.638324+00
-190	maasserver	0178_break_apart_linked_bmcs	2019-04-16 17:37:07.697226+00
-191	maasserver	0179_rbacsync	2019-04-16 17:37:07.702617+00
-192	maasserver	0180_rbaclastsync	2019-04-16 17:37:07.709333+00
-193	maasserver	0181_packagerepository_disable_sources	2019-04-16 17:37:07.869781+00
-194	maasserver	0182_remove_duplicate_null_ips	2019-04-16 17:37:07.87898+00
-195	maasserver	0183_node_uuid	2019-04-16 17:37:07.912023+00
-196	maasserver	0184_add_ephemeral_deploy_setting_to_node	2019-04-16 17:37:07.952222+00
-197	maasserver	0185_vmfs6	2019-04-16 17:37:07.992201+00
-198	maasserver	0186_node_description	2019-04-16 17:37:08.028878+00
-199	metadataserver	0003_remove_noderesult	2019-04-16 17:37:08.08989+00
-200	metadataserver	0004_aborted_script_status	2019-04-16 17:37:08.100884+00
-201	metadataserver	0005_store_powerstate_on_scriptset_creation	2019-04-16 17:37:08.1223+00
-202	metadataserver	0006_scriptresult_combined_output	2019-04-16 17:37:08.137487+00
-203	metadataserver	0007_migrate-commissioningscripts	2019-04-16 17:37:08.198422+00
-204	metadataserver	0008_remove-commissioningscripts	2019-04-16 17:37:08.203058+00
-205	metadataserver	0009_remove_noderesult_schema	2019-04-16 17:37:08.208025+00
-206	metadataserver	0010_scriptresult_time_and_script_title	2019-04-16 17:37:08.242006+00
-207	metadataserver	0011_script_metadata	2019-04-16 17:37:08.302883+00
-208	metadataserver	0012_store_script_results	2019-04-16 17:37:08.325377+00
-209	metadataserver	0013_scriptresult_physicalblockdevice	2019-04-16 17:37:08.409689+00
-210	metadataserver	0014_rename_dhcp_unconfigured_ifaces	2019-04-16 17:37:08.469905+00
-211	metadataserver	0015_migrate_storage_tests	2019-04-16 17:37:08.530112+00
-212	metadataserver	0016_script_model_fw_update_and_hw_config	2019-04-16 17:37:08.56081+00
-213	metadataserver	0017_store_requested_scripts	2019-04-16 17:37:08.76682+00
-214	metadataserver	0018_script_result_skipped	2019-04-16 17:37:08.781929+00
-215	metadataserver	0019_add_script_result_suppressed	2019-04-16 17:37:08.800124+00
-216	piston3	0002_auto_20151209_1652	2019-04-16 17:37:08.812509+00
-217	sessions	0001_initial	2019-04-16 17:37:08.817576+00
-218	sites	0001_initial	2019-04-16 17:37:08.822308+00
-219	sites	0002_alter_domain_unique	2019-04-16 17:37:08.828947+00
+1	contenttypes	0001_initial	2021-01-25 08:30:33.179806+00
+2	auth	0001_initial	2021-01-25 08:30:33.206181+00
+3	auth	0002_auto_20151119_1629	2021-01-25 08:30:33.293081+00
+4	auth	0003_django_1_11_update	2021-01-25 08:30:33.312245+00
+5	auth	0004_user_email_allow_null	2021-01-25 08:30:33.319382+00
+6	auth	0005_auto_20200626_1049	2021-01-25 08:30:33.335507+00
+7	contenttypes	0002_remove_content_type_name	2021-01-25 08:30:33.351668+00
+8	piston3	0001_initial	2021-01-25 08:30:33.379937+00
+9	maasserver	0001_initial	2021-01-25 08:30:34.759918+00
+10	metadataserver	0001_initial	2021-01-25 08:30:35.031785+00
+11	maasserver	0002_remove_candidate_name_model	2021-01-25 08:30:35.055042+00
+12	maasserver	0003_add_node_type_to_node	2021-01-25 08:30:35.143632+00
+13	maasserver	0004_migrate_installable_to_node_type	2021-01-25 08:30:35.278981+00
+14	maasserver	0005_delete_installable_from_node	2021-01-25 08:30:35.335141+00
+15	maasserver	0006_add_lease_time_to_staticipaddress	2021-01-25 08:30:35.383798+00
+16	maasserver	0007_create_node_proxy_models	2021-01-25 08:30:35.395479+00
+17	maasserver	0008_use_new_arrayfield	2021-01-25 08:30:35.54205+00
+18	maasserver	0009_remove_routers_field_from_node	2021-01-25 08:30:35.57577+00
+19	maasserver	0010_add_dns_models	2021-01-25 08:30:35.765172+00
+20	maasserver	0011_domain_data	2021-01-25 08:30:35.88794+00
+21	maasserver	0012_drop_dns_fields	2021-01-25 08:30:35.977718+00
+22	maasserver	0013_remove_boot_type_from_node	2021-01-25 08:30:36.007484+00
+23	maasserver	0014_add_region_models	2021-01-25 08:30:36.175729+00
+24	maasserver	0015_add_bmc_model	2021-01-25 08:30:36.29413+00
+25	maasserver	0016_migrate_power_data_node_to_bmc	2021-01-25 08:30:36.358236+00
+26	maasserver	0017_remove_node_power_type	2021-01-25 08:30:36.390964+00
+27	maasserver	0018_add_dnsdata	2021-01-25 08:30:36.608037+00
+28	maasserver	0019_add_iprange	2021-01-25 08:30:36.651274+00
+29	maasserver	0020_nodegroup_to_rackcontroller	2021-01-25 08:30:36.76365+00
+30	maasserver	0021_nodegroupinterface_to_iprange	2021-01-25 08:30:36.836429+00
+31	maasserver	0022_extract_ip_for_bmcs	2021-01-25 08:30:36.905308+00
+32	maasserver	0023_add_ttl_field	2021-01-25 08:30:37.063389+00
+33	maasserver	0024_remove_nodegroupinterface	2021-01-25 08:30:37.63788+00
+34	maasserver	0025_create_node_system_id_sequence	2021-01-25 08:30:37.647014+00
+35	maasserver	0026_create_zone_serial_sequence	2021-01-25 08:30:37.650883+00
+36	maasserver	0027_replace_static_range_with_admin_reserved_ranges	2021-01-25 08:30:37.713544+00
+37	maasserver	0028_update_default_vlan_on_interface_and_subnet	2021-01-25 08:30:37.800207+00
+38	maasserver	0029_add_rdns_mode	2021-01-25 08:30:37.816259+00
+39	maasserver	0030_drop_all_old_funcs	2021-01-25 08:30:37.875434+00
+40	maasserver	0031_add_region_rack_rpc_conn_model	2021-01-25 08:30:38.138606+00
+41	maasserver	0032_loosen_vlan	2021-01-25 08:30:38.215453+00
+42	maasserver	0033_iprange_minor_changes	2021-01-25 08:30:38.3205+00
+43	maasserver	0034_rename_mount_params_as_mount_options	2021-01-25 08:30:38.372721+00
+44	maasserver	0035_convert_ether_wake_to_manual_power_type	2021-01-25 08:30:38.441833+00
+45	maasserver	0036_add_service_model	2021-01-25 08:30:38.519388+00
+46	maasserver	0037_node_last_image_sync	2021-01-25 08:30:38.556359+00
+47	maasserver	0038_filesystem_ramfs_tmpfs_support	2021-01-25 08:30:38.641934+00
+48	maasserver	0039_create_template_and_versionedtextfile_models	2021-01-25 08:30:38.667392+00
+49	maasserver	0040_fix_id_seq	2021-01-25 08:30:38.680449+00
+50	maasserver	0041_change_bmc_on_delete_to_set_null	2021-01-25 08:30:38.729303+00
+51	maasserver	0042_add_routable_rack_controllers_to_bmc	2021-01-25 08:30:38.810899+00
+52	maasserver	0043_dhcpsnippet	2021-01-25 08:30:39.008291+00
+53	maasserver	0044_remove_di_bootresourcefiles	2021-01-25 08:30:39.093821+00
+54	maasserver	0045_add_node_to_filesystem	2021-01-25 08:30:39.151968+00
+55	maasserver	0046_add_bridge_interface_type	2021-01-25 08:30:39.198102+00
+56	maasserver	0047_fix_spelling_of_degraded	2021-01-25 08:30:39.296963+00
+57	maasserver	0048_add_subnet_allow_proxy	2021-01-25 08:30:39.310056+00
+58	maasserver	0049_add_external_dhcp_present_to_vlan	2021-01-25 08:30:39.433432+00
+59	maasserver	0050_modify_external_dhcp_on_vlan	2021-01-25 08:30:39.576401+00
+60	maasserver	0051_space_fabric_unique	2021-01-25 08:30:39.862551+00
+61	maasserver	0052_add_codename_title_eol_to_bootresourcecache	2021-01-25 08:30:39.917953+00
+62	maasserver	0053_add_ownerdata_model	2021-01-25 08:30:40.03608+00
+63	maasserver	0054_controller	2021-01-25 08:30:40.052742+00
+64	maasserver	0055_dns_publications	2021-01-25 08:30:40.082083+00
+65	maasserver	0056_zone_serial_ownership	2021-01-25 08:30:40.097772+00
+66	maasserver	0057_initial_dns_publication	2021-01-25 08:30:40.199518+00
+67	maasserver	0058_bigger_integer_for_dns_publication_serial	2021-01-25 08:30:40.210594+00
+68	maasserver	0056_add_description_to_fabric_and_space	2021-01-25 08:30:40.343241+00
+69	maasserver	0057_merge	2021-01-25 08:30:40.34525+00
+70	maasserver	0059_merge	2021-01-25 08:30:40.347332+00
+71	maasserver	0060_amt_remove_mac_address	2021-01-25 08:30:40.402037+00
+72	maasserver	0061_maas_nodegroup_worker_to_maas	2021-01-25 08:30:40.457711+00
+73	maasserver	0062_fix_bootsource_daily_label	2021-01-25 08:30:40.516525+00
+74	maasserver	0063_remove_orphaned_bmcs_and_ips	2021-01-25 08:30:40.583887+00
+75	maasserver	0064_remove_unneeded_event_triggers	2021-01-25 08:30:40.81115+00
+76	maasserver	0065_larger_osystem_and_distro_series	2021-01-25 08:30:40.878035+00
+77	maasserver	0066_allow_squashfs	2021-01-25 08:30:40.887284+00
+78	maasserver	0067_add_size_to_largefile	2021-01-25 08:30:40.951751+00
+79	maasserver	0068_drop_node_system_id_sequence	2021-01-25 08:30:40.956237+00
+80	maasserver	0069_add_previous_node_status_to_node	2021-01-25 08:30:40.992316+00
+81	maasserver	0070_allow_null_vlan_on_interface	2021-01-25 08:30:41.03783+00
+82	maasserver	0071_ntp_server_to_ntp_servers	2021-01-25 08:30:41.042539+00
+83	maasserver	0072_packagerepository	2021-01-25 08:30:41.051556+00
+84	maasserver	0073_migrate_package_repositories	2021-01-25 08:30:41.174624+00
+85	maasserver	0072_update_status_and_previous_status	2021-01-25 08:30:41.244456+00
+86	maasserver	0074_merge	2021-01-25 08:30:41.246418+00
+87	maasserver	0075_modify_packagerepository	2021-01-25 08:30:41.274276+00
+88	maasserver	0076_interface_discovery_rescue_mode	2021-01-25 08:30:41.828086+00
+89	maasserver	0077_static_routes	2021-01-25 08:30:41.951958+00
+90	maasserver	0078_remove_packagerepository_description	2021-01-25 08:30:41.965531+00
+91	maasserver	0079_add_keysource_model	2021-01-25 08:30:42.060437+00
+92	maasserver	0080_change_packagerepository_url_type	2021-01-25 08:30:42.069645+00
+93	maasserver	0081_allow_larger_bootsourcecache_fields	2021-01-25 08:30:42.112717+00
+94	maasserver	0082_add_kflavor	2021-01-25 08:30:42.254989+00
+95	maasserver	0083_device_discovery	2021-01-25 08:30:42.316922+00
+96	maasserver	0084_add_default_user_to_node_model	2021-01-25 08:30:42.366965+00
+97	maasserver	0085_no_intro_on_upgrade	2021-01-25 08:30:42.448154+00
+98	maasserver	0086_remove_powerpc_from_ports_arches	2021-01-25 08:30:42.530908+00
+99	maasserver	0087_add_completed_intro_to_userprofile	2021-01-25 08:30:42.552817+00
+100	maasserver	0088_remove_node_disable_ipv4	2021-01-25 08:30:42.769248+00
+101	maasserver	0089_active_discovery	2021-01-25 08:30:42.852354+00
+102	maasserver	0090_bootloaders	2021-01-25 08:30:42.889991+00
+103	maasserver	0091_v2_to_v3	2021-01-25 08:30:42.967844+00
+104	maasserver	0092_rolling	2021-01-25 08:30:42.97596+00
+105	maasserver	0093_add_rdns_model	2021-01-25 08:30:43.052548+00
+106	maasserver	0094_add_unmanaged_subnets	2021-01-25 08:30:43.070352+00
+107	maasserver	0095_vlan_relay_vlan	2021-01-25 08:30:43.116391+00
+108	maasserver	0096_set_default_vlan_field	2021-01-25 08:30:43.174923+00
+109	maasserver	0097_node_chassis_storage_hints	2021-01-25 08:30:43.372784+00
+110	maasserver	0098_add_space_to_vlan	2021-01-25 08:30:43.416886+00
+111	maasserver	0099_set_default_vlan_field	2021-01-25 08:30:43.478076+00
+112	maasserver	0100_migrate_spaces_from_subnet_to_vlan	2021-01-25 08:30:43.718886+00
+113	maasserver	0101_filesystem_btrfs_support	2021-01-25 08:30:43.753142+00
+114	maasserver	0102_remove_space_from_subnet	2021-01-25 08:30:43.824153+00
+115	maasserver	0103_notifications	2021-01-25 08:30:43.883886+00
+116	maasserver	0104_notifications_dismissals	2021-01-25 08:30:43.953024+00
+117	metadataserver	0002_script_models	2021-01-25 08:30:44.234682+00
+118	maasserver	0105_add_script_sets_to_node_model	2021-01-25 08:30:44.593122+00
+119	maasserver	0106_testing_status	2021-01-25 08:30:44.697383+00
+120	maasserver	0107_chassis_to_pods	2021-01-25 08:30:45.113412+00
+121	maasserver	0108_generate_bmc_names	2021-01-25 08:30:45.204493+00
+122	maasserver	0109_bmc_names_unique	2021-01-25 08:30:45.244605+00
+123	maasserver	0110_notification_category	2021-01-25 08:30:45.274601+00
+124	maasserver	0111_remove_component_error	2021-01-25 08:30:45.281343+00
+125	maasserver	0112_update_notification	2021-01-25 08:30:45.401158+00
+126	maasserver	0113_set_filepath_limit_to_linux_max	2021-01-25 08:30:45.642178+00
+127	maasserver	0114_node_dynamic_to_creation_type	2021-01-25 08:30:45.723687+00
+128	maasserver	0115_additional_boot_resource_filetypes	2021-01-25 08:30:45.735018+00
+129	maasserver	0116_add_disabled_components_for_mirrors	2021-01-25 08:30:45.745029+00
+130	maasserver	0117_add_iscsi_block_device	2021-01-25 08:30:45.799407+00
+131	maasserver	0118_add_iscsi_storage_pod	2021-01-25 08:30:45.868375+00
+132	maasserver	0119_set_default_vlan_field	2021-01-25 08:30:45.950011+00
+133	maasserver	0120_bootsourcecache_extra	2021-01-25 08:30:45.960738+00
+134	maasserver	0121_relax_staticipaddress_unique_constraint	2021-01-25 08:30:46.026106+00
+135	maasserver	0122_make_virtualblockdevice_uuid_editable	2021-01-25 08:30:46.043644+00
+136	maasserver	0123_make_iprange_comment_default_to_empty_string	2021-01-25 08:30:46.074578+00
+137	maasserver	0124_staticipaddress_address_family_index	2021-01-25 08:30:46.081852+00
+138	maasserver	0125_add_switch_model	2021-01-25 08:30:46.142308+00
+139	maasserver	0126_add_controllerinfo_model	2021-01-25 08:30:46.279325+00
+140	maasserver	0127_nodemetadata	2021-01-25 08:30:46.365567+00
+141	maasserver	0128_events_created_index	2021-01-25 08:30:46.37278+00
+142	maasserver	0129_add_install_rackd_flag	2021-01-25 08:30:46.413101+00
+143	maasserver	0130_node_locked_flag	2021-01-25 08:30:46.455571+00
+144	maasserver	0131_update_event_model_for_audit_logs	2021-01-25 08:30:46.876494+00
+145	maasserver	0132_consistent_model_name_validation	2021-01-25 08:30:46.943175+00
+146	maasserver	0133_add_resourcepool_model	2021-01-25 08:30:46.950794+00
+147	maasserver	0134_create_default_resourcepool	2021-01-25 08:30:47.04285+00
+148	maasserver	0135_add_pool_reference_to_node	2021-01-25 08:30:47.29152+00
+149	maasserver	0136_add_user_role_models	2021-01-25 08:30:47.465486+00
+150	maasserver	0137_create_default_roles	2021-01-25 08:30:47.599389+00
+151	maasserver	0138_add_ip_and_user_agent_to_event_model	2021-01-25 08:30:47.673755+00
+152	maasserver	0139_add_endpoint_and_increase_user_agent_length_for_event	2021-01-25 08:30:47.748819+00
+153	maasserver	0140_add_usergroup_model	2021-01-25 08:30:48.226192+00
+154	maasserver	0141_add_default_usergroup	2021-01-25 08:30:48.322751+00
+155	maasserver	0142_pod_default_resource_pool	2021-01-25 08:30:48.459772+00
+156	maasserver	0143_blockdevice_firmware	2021-01-25 08:30:48.48049+00
+157	maasserver	0144_filesystem_zfsroot_support	2021-01-25 08:30:48.524843+00
+158	maasserver	0145_interface_firmware	2021-01-25 08:30:48.657439+00
+159	maasserver	0146_add_rootkey	2021-01-25 08:30:48.673831+00
+160	maasserver	0147_pod_zones	2021-01-25 08:30:48.7668+00
+161	maasserver	0148_add_tags_on_pods	2021-01-25 08:30:48.846039+00
+162	maasserver	0149_userprofile_auth_last_check	2021-01-25 08:30:48.902049+00
+163	maasserver	0150_add_pod_commit_ratios	2021-01-25 08:30:48.978818+00
+164	maasserver	0151_userprofile_is_local	2021-01-25 08:30:48.999313+00
+165	maasserver	0152_add_usergroup_local	2021-01-25 08:30:49.022437+00
+166	maasserver	0153_add_skip_bmc_config	2021-01-25 08:30:49.060189+00
+167	maasserver	0154_link_usergroup_role	2021-01-25 08:30:49.22826+00
+168	maasserver	0155_add_globaldefaults_model	2021-01-25 08:30:49.891339+00
+169	maasserver	0156_drop_ssh_unique_key_index	2021-01-25 08:30:49.949099+00
+170	maasserver	0157_drop_usergroup_and_role	2021-01-25 08:30:50.364372+00
+171	maasserver	0158_pod_default_pool_to_pod	2021-01-25 08:30:50.451253+00
+172	maasserver	0159_userprofile_auth_last_check_no_now_default	2021-01-25 08:30:50.478752+00
+173	maasserver	0160_pool_only_for_machines	2021-01-25 08:30:50.571191+00
+174	maasserver	0161_pod_storage_pools	2021-01-25 08:30:51.02767+00
+175	maasserver	0162_storage_pools_notification	2021-01-25 08:30:51.148748+00
+176	maasserver	0163_create_new_power_parameters_with_jsonfield	2021-01-25 08:30:51.240823+00
+177	maasserver	0164_copy_over_existing_power_parameters	2021-01-25 08:30:51.32043+00
+178	maasserver	0165_remove_and_rename_power_parameters	2021-01-25 08:30:51.546146+00
+179	maasserver	0166_auto_select_s390x_extra_arches	2021-01-25 08:30:51.861298+00
+180	maasserver	0167_add_pod_host	2021-01-25 08:30:51.921724+00
+181	maasserver	0168_add_pod_default_macvlan_mode	2021-01-25 08:30:51.969963+00
+182	maasserver	0169_find_pod_host	2021-01-25 08:30:51.971722+00
+183	maasserver	0170_add_subnet_allow_dns	2021-01-25 08:30:51.990965+00
+184	maasserver	0171_remove_pod_host	2021-01-25 08:30:52.052534+00
+185	maasserver	0172_partition_tags	2021-01-25 08:30:52.065755+00
+186	maasserver	0173_add_node_install_kvm	2021-01-25 08:30:52.112463+00
+187	maasserver	0174_add_user_id_and_node_system_id_for_events	2021-01-25 08:30:52.18821+00
+188	maasserver	0175_copy_user_id_and_node_system_id_for_events	2021-01-25 08:30:52.274196+00
+189	maasserver	0176_rename_user_id_migrate_to_user_id_for_events	2021-01-25 08:30:52.41677+00
+190	maasserver	0177_remove_unique_together_on_bmc	2021-01-25 08:30:52.457209+00
+191	maasserver	0178_break_apart_linked_bmcs	2021-01-25 08:30:52.544233+00
+192	maasserver	0179_rbacsync	2021-01-25 08:30:52.55249+00
+193	maasserver	0180_rbaclastsync	2021-01-25 08:30:52.561385+00
+194	maasserver	0181_packagerepository_disable_sources	2021-01-25 08:30:52.571762+00
+195	maasserver	0182_remove_duplicate_null_ips	2021-01-25 08:30:52.58266+00
+196	maasserver	0183_node_uuid	2021-01-25 08:30:52.625556+00
+197	maasserver	0184_add_ephemeral_deploy_setting_to_node	2021-01-25 08:30:52.671674+00
+198	maasserver	0185_vmfs6	2021-01-25 08:30:52.94002+00
+199	maasserver	0186_node_description	2021-01-25 08:30:52.99686+00
+200	maasserver	0187_status_messages_change_event_logging_levels	2021-01-25 08:30:53.104096+00
+201	maasserver	0192_event_node_no_set_null	2021-01-25 08:30:53.17378+00
+202	maasserver	0194_machine_listing_event_index	2021-01-25 08:30:53.221683+00
+203	maasserver	0188_network_testing	2021-01-25 08:30:53.350028+00
+204	maasserver	0189_staticipaddress_temp_expires_on	2021-01-25 08:30:53.390253+00
+205	maasserver	0190_bmc_clean_duplicates	2021-01-25 08:30:53.486629+00
+206	maasserver	0191_bmc_unique_power_type_and_parameters	2021-01-25 08:30:53.492644+00
+207	maasserver	0193_merge_maasserver_0191_1092	2021-01-25 08:30:53.494883+00
+208	maasserver	0195_merge_20190902_1357	2021-01-25 08:30:53.500433+00
+209	maasserver	0196_numa_model	2021-01-25 08:30:54.12758+00
+210	maasserver	0197_remove_duplicate_physical_interfaces	2021-01-25 08:30:54.236948+00
+211	maasserver	0198_interface_physical_unique_mac	2021-01-25 08:30:54.241894+00
+212	maasserver	0199_bootresource_tbz_txz	2021-01-25 08:30:54.253396+00
+213	maasserver	0200_interface_sriov_max_vf	2021-01-25 08:30:54.296996+00
+214	maasserver	0195_event_username_max_length	2021-01-25 08:30:54.401485+00
+215	maasserver	0201_merge_20191008_1426	2021-01-25 08:30:54.403674+00
+216	maasserver	0202_event_node_on_delete	2021-01-25 08:30:54.480222+00
+217	maasserver	0203_interface_node_name_duplicates_delete	2021-01-25 08:30:54.573127+00
+218	maasserver	0204_interface_node_name_unique_together	2021-01-25 08:30:54.619182+00
+219	maasserver	0205_pod_nodes	2021-01-25 08:30:54.678937+00
+220	maasserver	0206_remove_node_token	2021-01-25 08:30:54.748261+00
+221	maasserver	0207_notification_dismissable	2021-01-25 08:30:54.769561+00
+222	maasserver	0208_no_power_query_events	2021-01-25 08:30:54.853057+00
+223	maasserver	0209_default_partitiontable_gpt	2021-01-25 08:30:54.87111+00
+224	maasserver	0210_filepathfield_to_charfield	2021-01-25 08:30:54.907814+00
+225	maasserver	0211_jsonfield_default_callable	2021-01-25 08:30:54.997491+00
+226	maasserver	0212_notifications_fields	2021-01-25 08:30:55.290148+00
+227	maasserver	0213_virtual_machine	2021-01-25 08:30:55.435425+00
+228	maasserver	0214_virtualmachine_one_to_one	2021-01-25 08:30:55.503661+00
+229	maasserver	0215_numanode_hugepages	2021-01-25 08:30:55.563452+00
+230	maasserver	0216_remove_skip_bmc_config_column	2021-01-25 08:30:55.617795+00
+231	maasserver	0217_notification_dismissal_timestamp	2021-01-25 08:30:55.655932+00
+232	maasserver	0218_images_maas_io_daily_to_stable	2021-01-25 08:30:55.742722+00
+233	maasserver	0219_vm_nic_link	2021-01-25 08:30:55.816957+00
+234	maasserver	0220_nodedevice	2021-01-25 08:30:55.908859+00
+235	maasserver	0221_track_lxd_project	2021-01-25 08:30:56.109937+00
+236	metadataserver	0003_remove_noderesult	2021-01-25 08:30:56.464233+00
+237	metadataserver	0004_aborted_script_status	2021-01-25 08:30:56.483653+00
+238	metadataserver	0005_store_powerstate_on_scriptset_creation	2021-01-25 08:30:56.512828+00
+239	metadataserver	0006_scriptresult_combined_output	2021-01-25 08:30:56.533128+00
+240	metadataserver	0007_migrate-commissioningscripts	2021-01-25 08:30:56.628516+00
+241	metadataserver	0008_remove-commissioningscripts	2021-01-25 08:30:56.63472+00
+242	metadataserver	0009_remove_noderesult_schema	2021-01-25 08:30:56.641605+00
+243	metadataserver	0010_scriptresult_time_and_script_title	2021-01-25 08:30:56.688109+00
+244	metadataserver	0011_script_metadata	2021-01-25 08:30:56.773996+00
+245	metadataserver	0012_store_script_results	2021-01-25 08:30:56.826825+00
+246	metadataserver	0013_scriptresult_physicalblockdevice	2021-01-25 08:30:56.964641+00
+247	metadataserver	0014_rename_dhcp_unconfigured_ifaces	2021-01-25 08:30:57.072323+00
+248	metadataserver	0015_migrate_storage_tests	2021-01-25 08:30:57.172115+00
+249	metadataserver	0016_script_model_fw_update_and_hw_config	2021-01-25 08:30:57.206595+00
+250	metadataserver	0017_store_requested_scripts	2021-01-25 08:30:57.280951+00
+251	metadataserver	0018_script_result_skipped	2021-01-25 08:30:57.309378+00
+252	metadataserver	0019_add_script_result_suppressed	2021-01-25 08:30:57.335989+00
+253	metadataserver	0020_network_testing	2021-01-25 08:30:57.427461+00
+254	metadataserver	0021_scriptresult_applying_netconf	2021-01-25 08:30:57.477232+00
+255	metadataserver	0022_internet-connectivity-network-validation	2021-01-25 08:30:57.483297+00
+256	metadataserver	0023_reorder_network_scripts	2021-01-25 08:30:57.844893+00
+257	metadataserver	0024_reorder_commissioning_scripts	2021-01-25 08:30:57.957308+00
+258	metadataserver	0025_nodedevice	2021-01-25 08:30:57.973468+00
+259	metadataserver	0026_drop_ipaddr_script	2021-01-25 08:30:58.087672+00
+260	piston3	0002_auto_20151209_1652	2021-01-25 08:30:58.106121+00
+261	piston3	0003_piston_nonce_index	2021-01-25 08:30:58.116991+00
+262	sessions	0001_initial	2021-01-25 08:30:58.127168+00
+263	sites	0001_initial	2021-01-25 08:30:58.137954+00
+264	sites	0002_alter_domain_unique	2021-01-25 08:30:58.149668+00
 \.
 
 
@@ -4792,7 +5225,7 @@ COPY public.maasserver_dnsdata (id, created, updated, rrtype, rrdata, dnsresourc
 --
 
 COPY public.maasserver_dnspublication (id, serial, created, source) FROM stdin;
-1	1	2019-04-16 17:36:59.875074+00	Initial publication
+1	1	2021-01-25 08:30:40.197528+00	Initial publication
 \.
 
 
@@ -4817,7 +5250,7 @@ COPY public.maasserver_dnsresource_ip_addresses (id, dnsresource_id, staticipadd
 --
 
 COPY public.maasserver_domain (id, created, updated, name, authoritative, ttl) FROM stdin;
-0	2019-04-16 17:36:57.007061+00	2019-04-16 17:36:57.007061+00	maas	t	\N
+0	2021-01-25 08:30:35.831939+00	2021-01-25 08:30:35.831939+00	maas	t	\N
 \.
 
 
@@ -4842,7 +5275,6 @@ COPY public.maasserver_eventtype (id, created, updated, name, description, level
 --
 
 COPY public.maasserver_fabric (id, created, updated, name, class_type, description) FROM stdin;
-0	2019-04-16 17:37:03.858242+00	2019-04-16 17:37:03.86234+00	fabric-0	\N	
 \.
 
 
@@ -4883,7 +5315,7 @@ COPY public.maasserver_filesystemgroup (id, created, updated, uuid, group_type, 
 --
 
 COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdin;
-0	2019-04-16 17:37:05.925692+00	2019-04-16 17:37:05.928476+00	0
+0	2021-01-25 08:30:49.785523+00	2021-01-25 08:30:49.789533+00	0
 \.
 
 
@@ -4891,7 +5323,7 @@ COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdi
 -- Data for Name: maasserver_interface; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_interface (id, created, updated, name, type, mac_address, ipv4_params, ipv6_params, params, tags, enabled, node_id, vlan_id, acquired, mdns_discovery_state, neighbour_discovery_state, firmware_version, product, vendor) FROM stdin;
+COPY public.maasserver_interface (id, created, updated, name, type, mac_address, ipv4_params, ipv6_params, params, tags, enabled, node_id, vlan_id, acquired, mdns_discovery_state, neighbour_discovery_state, firmware_version, product, vendor, interface_speed, link_connected, link_speed, numa_node_id, sriov_max_vf) FROM stdin;
 \.
 
 
@@ -4971,7 +5403,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, token_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, creation_type, install_rackd, locked, pool_id, skip_bmc_config, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, creation_type, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description) FROM stdin;
 \.
 
 
@@ -4980,6 +5412,14 @@ COPY public.maasserver_node (id, created, updated, system_id, hostname, status, 
 --
 
 COPY public.maasserver_node_tags (id, node_id, tag_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_nodedevice; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_nodedevice (id, created, updated, bus, hardware_type, vendor_id, product_id, vendor_name, product_name, commissioning_driver, bus_number, device_number, pci_address, node_id, numa_node_id, physical_blockdevice_id, physical_interface_id) FROM stdin;
 \.
 
 
@@ -5003,7 +5443,7 @@ COPY public.maasserver_nodemetadata (id, created, updated, key, value, node_id) 
 -- Data for Name: maasserver_notification; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_notification (id, created, updated, ident, users, admins, message, context, user_id, category) FROM stdin;
+COPY public.maasserver_notification (id, created, updated, ident, users, admins, message, context, user_id, category, dismissable) FROM stdin;
 \.
 
 
@@ -5011,7 +5451,23 @@ COPY public.maasserver_notification (id, created, updated, ident, users, admins,
 -- Data for Name: maasserver_notificationdismissal; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_notificationdismissal (id, notification_id, user_id) FROM stdin;
+COPY public.maasserver_notificationdismissal (id, notification_id, user_id, created, updated) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_numanode; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_numanode (id, created, updated, index, memory, cores, node_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_numanodehugepages; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_numanodehugepages (id, created, updated, page_size, total, numanode_id) FROM stdin;
 \.
 
 
@@ -5028,8 +5484,8 @@ COPY public.maasserver_ownerdata (id, key, value, node_id) FROM stdin;
 --
 
 COPY public.maasserver_packagerepository (id, created, updated, name, url, components, arches, key, "default", enabled, disabled_pockets, distributions, disabled_components, disable_sources) FROM stdin;
-1	2019-04-16 17:37:00.58845+00	2019-04-16 17:37:00.58845+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
-2	2019-04-16 17:37:00.58845+00	2019-04-16 17:37:00.58845+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
+1	2021-01-25 08:30:41.109431+00	2021-01-25 08:30:41.109431+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
+2	2021-01-25 08:30:41.109431+00	2021-01-25 08:30:41.109431+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
 \.
 
 
@@ -5053,7 +5509,7 @@ COPY public.maasserver_partitiontable (id, created, updated, table_type, block_d
 -- Data for Name: maasserver_physicalblockdevice; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_physicalblockdevice (blockdevice_ptr_id, model, serial, firmware_version, storage_pool_id) FROM stdin;
+COPY public.maasserver_physicalblockdevice (blockdevice_ptr_id, model, serial, firmware_version, storage_pool_id, numa_node_id) FROM stdin;
 \.
 
 
@@ -5062,6 +5518,14 @@ COPY public.maasserver_physicalblockdevice (blockdevice_ptr_id, model, serial, f
 --
 
 COPY public.maasserver_podhints (id, cores, memory, local_storage, local_disks, pod_id, cpu_speed, iscsi_storage) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_podhints_nodes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_podhints_nodes (id, podhints_id, node_id) FROM stdin;
 \.
 
 
@@ -5126,7 +5590,7 @@ COPY public.maasserver_regionrackrpcconnection (id, created, updated, endpoint_i
 --
 
 COPY public.maasserver_resourcepool (id, created, updated, name, description) FROM stdin;
-0	2019-04-16 17:37:04.573624+00	2019-04-16 17:37:04.573624+00	default	Default pool
+0	2021-01-25 08:30:47.036941+00	2021-01-25 08:30:47.036941+00	default	Default pool
 \.
 
 
@@ -5174,7 +5638,7 @@ COPY public.maasserver_sslkey (id, created, updated, key, user_id) FROM stdin;
 -- Data for Name: maasserver_staticipaddress; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_staticipaddress (id, created, updated, ip, alloc_type, subnet_id, user_id, lease_time) FROM stdin;
+COPY public.maasserver_staticipaddress (id, created, updated, ip, alloc_type, subnet_id, user_id, lease_time, temp_expires_on) FROM stdin;
 \.
 
 
@@ -5243,11 +5707,26 @@ COPY public.maasserver_virtualblockdevice (blockdevice_ptr_id, uuid, filesystem_
 
 
 --
+-- Data for Name: maasserver_virtualmachine; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_virtualmachine (id, created, updated, identifier, pinned_cores, unpinned_cores, memory, hugepages_backed, bmc_id, machine_id, project) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_virtualmachineinterface; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_virtualmachineinterface (id, created, updated, mac_address, attachment_type, host_interface_id, vm_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: maasserver_vlan; Type: TABLE DATA; Schema: public; Owner: -
 --
 
 COPY public.maasserver_vlan (id, created, updated, name, vid, mtu, fabric_id, dhcp_on, primary_rack_id, secondary_rack_id, external_dhcp, description, relay_vlan_id, space_id) FROM stdin;
-5001	2019-04-16 17:37:03.866778+00	2019-04-16 17:37:03.866778+00	Default VLAN	0	1500	0	f	\N	\N	\N		\N	\N
 \.
 
 
@@ -5256,7 +5735,7 @@ COPY public.maasserver_vlan (id, created, updated, name, vid, mtu, fabric_id, dh
 --
 
 COPY public.maasserver_zone (id, created, updated, name, description) FROM stdin;
-1	2019-04-16 17:36:56.031348+00	2019-04-16 17:36:56.031348+00	default	
+1	2021-01-25 08:30:34.17084+00	2021-01-25 08:30:34.17084+00	default	
 \.
 
 
@@ -5280,7 +5759,7 @@ COPY public.metadataserver_nodeuserdata (id, data, node_id) FROM stdin;
 -- Data for Name: metadataserver_script; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.metadataserver_script (id, created, updated, name, description, tags, script_type, timeout, destructive, "default", script_id, title, hardware_type, packages, parallel, parameters, results, for_hardware, may_reboot, recommission) FROM stdin;
+COPY public.metadataserver_script (id, created, updated, name, description, tags, script_type, timeout, destructive, "default", script_id, title, hardware_type, packages, parallel, parameters, results, for_hardware, may_reboot, recommission, apply_configured_networking) FROM stdin;
 \.
 
 
@@ -5288,7 +5767,7 @@ COPY public.metadataserver_script (id, created, updated, name, description, tags
 -- Data for Name: metadataserver_scriptresult; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.metadataserver_scriptresult (id, created, updated, status, exit_status, script_name, stdout, stderr, result, script_id, script_set_id, script_version_id, output, ended, started, parameters, physical_blockdevice_id, suppressed) FROM stdin;
+COPY public.metadataserver_scriptresult (id, created, updated, status, exit_status, script_name, stdout, stderr, result, script_id, script_set_id, script_version_id, output, ended, started, parameters, physical_blockdevice_id, suppressed, interface_id) FROM stdin;
 \.
 
 
@@ -5342,7 +5821,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 300, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 420, true);
 
 
 --
@@ -5370,14 +5849,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 100, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 105, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 219, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 264, true);
 
 
 --
@@ -5640,6 +6119,13 @@ SELECT pg_catalog.setval('public.maasserver_node_tags_id_seq', 1, false);
 
 
 --
+-- Name: maasserver_nodedevice_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_nodedevice_id_seq', 1, false);
+
+
+--
 -- Name: maasserver_nodegrouptorackcontroller_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
@@ -5657,7 +6143,7 @@ SELECT pg_catalog.setval('public.maasserver_nodemetadata_id_seq', 1, false);
 -- Name: maasserver_notification_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.maasserver_notification_id_seq', 1, true);
+SELECT pg_catalog.setval('public.maasserver_notification_id_seq', 1, false);
 
 
 --
@@ -5665,6 +6151,20 @@ SELECT pg_catalog.setval('public.maasserver_notification_id_seq', 1, true);
 --
 
 SELECT pg_catalog.setval('public.maasserver_notificationdismissal_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_numanode_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_numanode_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_numanodehugepages_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_numanodehugepages_id_seq', 1, false);
 
 
 --
@@ -5700,6 +6200,13 @@ SELECT pg_catalog.setval('public.maasserver_partitiontable_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.maasserver_podhints_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_podhints_nodes_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_podhints_nodes_id_seq', 1, false);
 
 
 --
@@ -5843,10 +6350,24 @@ SELECT pg_catalog.setval('public.maasserver_versionedtextfile_id_seq', 1, false)
 
 
 --
+-- Name: maasserver_virtualmachine_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_virtualmachine_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_virtualmachineinterface_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_virtualmachineinterface_id_seq', 1, false);
+
+
+--
 -- Name: maasserver_vlan_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.maasserver_vlan_id_seq', 5001, true);
+SELECT pg_catalog.setval('public.maasserver_vlan_id_seq', 5001, false);
 
 
 --
@@ -6456,6 +6977,14 @@ ALTER TABLE ONLY public.maasserver_interface_ip_addresses
 
 
 --
+-- Name: maasserver_interface maasserver_interface_node_id_name_83f87ba4_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_interface
+    ADD CONSTRAINT maasserver_interface_node_id_name_83f87ba4_uniq UNIQUE (node_id, name);
+
+
+--
 -- Name: maasserver_interface maasserver_interface_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6616,6 +7145,38 @@ ALTER TABLE ONLY public.maasserver_node_tags
 
 
 --
+-- Name: maasserver_nodedevice maasserver_nodedevice_node_id_bus_number_devic_805ca24f_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevice_node_id_bus_number_devic_805ca24f_uniq UNIQUE (node_id, bus_number, device_number, pci_address);
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevice_physical_blockdevice_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevice_physical_blockdevice_id_key UNIQUE (physical_blockdevice_id);
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevice_physical_interface_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevice_physical_interface_id_key UNIQUE (physical_interface_id);
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevice_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevice_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: maasserver_nodegrouptorackcontroller maasserver_nodegrouptorackcontroller_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6653,6 +7214,38 @@ ALTER TABLE ONLY public.maasserver_notification
 
 ALTER TABLE ONLY public.maasserver_notificationdismissal
     ADD CONSTRAINT maasserver_notificationdismissal_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_numanode maasserver_numanode_node_id_index_dd400f07_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanode
+    ADD CONSTRAINT maasserver_numanode_node_id_index_dd400f07_uniq UNIQUE (node_id, index);
+
+
+--
+-- Name: maasserver_numanode maasserver_numanode_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanode
+    ADD CONSTRAINT maasserver_numanode_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_numanodehugepages maasserver_numanodehugep_numanode_id_page_size_e5f46837_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanodehugepages
+    ADD CONSTRAINT maasserver_numanodehugep_numanode_id_page_size_e5f46837_uniq UNIQUE (numanode_id, page_size);
+
+
+--
+-- Name: maasserver_numanodehugepages maasserver_numanodehugepages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanodehugepages
+    ADD CONSTRAINT maasserver_numanodehugepages_pkey PRIMARY KEY (id);
 
 
 --
@@ -6717,6 +7310,22 @@ ALTER TABLE ONLY public.maasserver_partitiontable
 
 ALTER TABLE ONLY public.maasserver_physicalblockdevice
     ADD CONSTRAINT maasserver_physicalblockdevice_pkey PRIMARY KEY (blockdevice_ptr_id);
+
+
+--
+-- Name: maasserver_podhints_nodes maasserver_podhints_nodes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints_nodes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_podhints_nodes maasserver_podhints_nodes_podhints_id_node_id_785b70a7_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints_nodes_podhints_id_node_id_785b70a7_uniq UNIQUE (podhints_id, node_id);
 
 
 --
@@ -7040,6 +7649,46 @@ ALTER TABLE ONLY public.maasserver_virtualblockdevice
 
 
 --
+-- Name: maasserver_virtualmachine maasserver_virtualmachin_bmc_id_identifier_projec_29edbd12_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachine
+    ADD CONSTRAINT maasserver_virtualmachin_bmc_id_identifier_projec_29edbd12_uniq UNIQUE (bmc_id, identifier, project);
+
+
+--
+-- Name: maasserver_virtualmachineinterface maasserver_virtualmachin_vm_id_mac_address_2b5531e9_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachineinterface
+    ADD CONSTRAINT maasserver_virtualmachin_vm_id_mac_address_2b5531e9_uniq UNIQUE (vm_id, mac_address);
+
+
+--
+-- Name: maasserver_virtualmachine maasserver_virtualmachine_machine_id_22da40a9_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachine
+    ADD CONSTRAINT maasserver_virtualmachine_machine_id_22da40a9_uniq UNIQUE (machine_id);
+
+
+--
+-- Name: maasserver_virtualmachine maasserver_virtualmachine_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachine
+    ADD CONSTRAINT maasserver_virtualmachine_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_virtualmachineinterface maasserver_virtualmachineinterface_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachineinterface
+    ADD CONSTRAINT maasserver_virtualmachineinterface_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: maasserver_vlan maasserver_vlan_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7176,6 +7825,14 @@ ALTER TABLE ONLY public.piston3_nonce
 
 
 --
+-- Name: piston3_nonce piston3_nonce_token_key_consumer_key_key_3f11425b_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.piston3_nonce
+    ADD CONSTRAINT piston3_nonce_token_key_consumer_key_key_3f11425b_uniq UNIQUE (token_key, consumer_key, key);
+
+
+--
 -- Name: piston3_token piston3_token_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7275,6 +7932,13 @@ CREATE INDEX django_site_domain_a2e37b91_like ON public.django_site USING btree 
 
 
 --
+-- Name: maasserver__node_id_e4a8dd_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver__node_id_e4a8dd_idx ON public.maasserver_event USING btree (node_id, created DESC, id DESC);
+
+
+--
 -- Name: maasserver_blockdevice_node_id_bdedcfca; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7307,6 +7971,13 @@ CREATE INDEX maasserver_bmc_ip_address_id_79362d14 ON public.maasserver_bmc USIN
 --
 
 CREATE INDEX maasserver_bmc_name_144ffd80_like ON public.maasserver_bmc USING btree (name varchar_pattern_ops);
+
+
+--
+-- Name: maasserver_bmc_power_type_parameters_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_bmc_power_type_parameters_idx ON public.maasserver_bmc USING btree (power_type, power_parameters) WHERE ((power_type)::text <> 'manual'::text);
 
 
 --
@@ -7590,6 +8261,20 @@ CREATE INDEX maasserver_interface_node_id_692ef434 ON public.maasserver_interfac
 
 
 --
+-- Name: maasserver_interface_numa_node_id_6e790407; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_interface_numa_node_id_6e790407 ON public.maasserver_interface USING btree (numa_node_id);
+
+
+--
+-- Name: maasserver_interface_type_mac_address_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_interface_type_mac_address_idx ON public.maasserver_interface USING btree (type, mac_address) WHERE ((type)::text = 'physical'::text);
+
+
+--
 -- Name: maasserver_interface_vlan_id_5f39995d; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7779,17 +8464,24 @@ CREATE INDEX maasserver_node_tags_tag_id_f4728372 ON public.maasserver_node_tags
 
 
 --
--- Name: maasserver_node_token_id_544f49f8; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_node_token_id_544f49f8 ON public.maasserver_node USING btree (token_id);
-
-
---
 -- Name: maasserver_node_zone_id_97213f69; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX maasserver_node_zone_id_97213f69 ON public.maasserver_node USING btree (zone_id);
+
+
+--
+-- Name: maasserver_nodedevice_node_id_56c4d8ac; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_nodedevice_node_id_56c4d8ac ON public.maasserver_nodedevice USING btree (node_id);
+
+
+--
+-- Name: maasserver_nodedevice_numa_node_id_fadf5b46; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_nodedevice_numa_node_id_fadf5b46 ON public.maasserver_nodedevice USING btree (numa_node_id);
 
 
 --
@@ -7835,6 +8527,20 @@ CREATE INDEX maasserver_notificationdismissal_user_id_87cc11da ON public.maasser
 
 
 --
+-- Name: maasserver_numanode_node_id_539a7e2f; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_numanode_node_id_539a7e2f ON public.maasserver_numanode USING btree (node_id);
+
+
+--
+-- Name: maasserver_numanodehugepages_numanode_id_0f0542f0; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_numanodehugepages_numanode_id_0f0542f0 ON public.maasserver_numanodehugepages USING btree (numanode_id);
+
+
+--
 -- Name: maasserver_ownerdata_node_id_4ec53011; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7870,10 +8576,31 @@ CREATE INDEX maasserver_partitiontable_block_device_id_ee132cc5 ON public.maasse
 
 
 --
+-- Name: maasserver_physicalblockdevice_numa_node_id_8bd61f48; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_physicalblockdevice_numa_node_id_8bd61f48 ON public.maasserver_physicalblockdevice USING btree (numa_node_id);
+
+
+--
 -- Name: maasserver_physicalblockdevice_storage_pool_id_f0053704; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX maasserver_physicalblockdevice_storage_pool_id_f0053704 ON public.maasserver_physicalblockdevice USING btree (storage_pool_id);
+
+
+--
+-- Name: maasserver_podhints_nodes_node_id_7e2e56a4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_podhints_nodes_node_id_7e2e56a4 ON public.maasserver_podhints_nodes USING btree (node_id);
+
+
+--
+-- Name: maasserver_podhints_nodes_podhints_id_df1bafb3; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_podhints_nodes_podhints_id_df1bafb3 ON public.maasserver_podhints_nodes USING btree (podhints_id);
 
 
 --
@@ -7989,6 +8716,13 @@ CREATE INDEX maasserver_staticipaddress_subnet_id_b30d84c3 ON public.maasserver_
 
 
 --
+-- Name: maasserver_staticipaddress_temp_expires_on_1cb8532a; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_staticipaddress_temp_expires_on_1cb8532a ON public.maasserver_staticipaddress USING btree (temp_expires_on);
+
+
+--
 -- Name: maasserver_staticipaddress_user_id_a7e5e455; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8066,6 +8800,27 @@ CREATE INDEX maasserver_virtualblockdevice_uuid_f094d740_like ON public.maasserv
 
 
 --
+-- Name: maasserver_virtualmachine_bmc_id_e2b4f381; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_virtualmachine_bmc_id_e2b4f381 ON public.maasserver_virtualmachine USING btree (bmc_id);
+
+
+--
+-- Name: maasserver_virtualmachineinterface_host_interface_id_9408be99; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_virtualmachineinterface_host_interface_id_9408be99 ON public.maasserver_virtualmachineinterface USING btree (host_interface_id);
+
+
+--
+-- Name: maasserver_virtualmachineinterface_vm_id_a6acb3e9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_virtualmachineinterface_vm_id_a6acb3e9 ON public.maasserver_virtualmachineinterface USING btree (vm_id);
+
+
+--
 -- Name: maasserver_vlan_fabric_id_af5275c8; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8119,6 +8874,13 @@ CREATE INDEX metadataserver_nodekey_key_2a0a84be_like ON public.metadataserver_n
 --
 
 CREATE INDEX metadataserver_script_name_b2be1ba5_like ON public.metadataserver_script USING btree (name varchar_pattern_ops);
+
+
+--
+-- Name: metadataserver_scriptresult_interface_id_a120e25e; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX metadataserver_scriptresult_interface_id_a120e25e ON public.metadataserver_scriptresult USING btree (interface_id);
 
 
 --
@@ -8498,6 +9260,14 @@ ALTER TABLE ONLY public.maasserver_interface
 
 
 --
+-- Name: maasserver_interface maasserver_interface_numa_node_id_6e790407_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_interface
+    ADD CONSTRAINT maasserver_interface_numa_node_id_6e790407_fk_maasserve FOREIGN KEY (numa_node_id) REFERENCES public.maasserver_numanode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_interfacerelationship maasserver_interface_parent_id_d3c77c37_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8690,19 +9460,43 @@ ALTER TABLE ONLY public.maasserver_node_tags
 
 
 --
--- Name: maasserver_node maasserver_node_token_id_544f49f8_fk_piston3_token_id; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_token_id_544f49f8_fk_piston3_token_id FOREIGN KEY (token_id) REFERENCES public.piston3_token(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
 -- Name: maasserver_node maasserver_node_zone_id_97213f69_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
     ADD CONSTRAINT maasserver_node_zone_id_97213f69_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevic_numa_node_id_fadf5b46_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevic_numa_node_id_fadf5b46_fk_maasserve FOREIGN KEY (numa_node_id) REFERENCES public.maasserver_numanode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevic_physical_blockdevice_7ce12336_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevic_physical_blockdevice_7ce12336_fk_maasserve FOREIGN KEY (physical_blockdevice_id) REFERENCES public.maasserver_physicalblockdevice(blockdevice_ptr_id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevic_physical_interface_i_ee476ae3_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevic_physical_interface_i_ee476ae3_fk_maasserve FOREIGN KEY (physical_interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevice_node_id_56c4d8ac_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevice_node_id_56c4d8ac_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -8746,6 +9540,22 @@ ALTER TABLE ONLY public.maasserver_notification
 
 
 --
+-- Name: maasserver_numanode maasserver_numanode_node_id_539a7e2f_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanode
+    ADD CONSTRAINT maasserver_numanode_node_id_539a7e2f_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_numanodehugepages maasserver_numanodeh_numanode_id_0f0542f0_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_numanodehugepages
+    ADD CONSTRAINT maasserver_numanodeh_numanode_id_0f0542f0_fk_maasserve FOREIGN KEY (numanode_id) REFERENCES public.maasserver_numanode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_ownerdata maasserver_ownerdata_node_id_4ec53011_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8778,11 +9588,35 @@ ALTER TABLE ONLY public.maasserver_physicalblockdevice
 
 
 --
+-- Name: maasserver_physicalblockdevice maasserver_physicalb_numa_node_id_8bd61f48_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_physicalblockdevice
+    ADD CONSTRAINT maasserver_physicalb_numa_node_id_8bd61f48_fk_maasserve FOREIGN KEY (numa_node_id) REFERENCES public.maasserver_numanode(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_physicalblockdevice maasserver_physicalb_storage_pool_id_f0053704_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_physicalblockdevice
     ADD CONSTRAINT maasserver_physicalb_storage_pool_id_f0053704_fk_maasserve FOREIGN KEY (storage_pool_id) REFERENCES public.maasserver_podstoragepool(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_podhints_nodes maasserver_podhints__node_id_7e2e56a4_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints__node_id_7e2e56a4_fk_maasserve FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_podhints_nodes maasserver_podhints__podhints_id_df1bafb3_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_podhints_nodes
+    ADD CONSTRAINT maasserver_podhints__podhints_id_df1bafb3_fk_maasserve FOREIGN KEY (podhints_id) REFERENCES public.maasserver_podhints(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -8970,6 +9804,38 @@ ALTER TABLE ONLY public.maasserver_virtualblockdevice
 
 
 --
+-- Name: maasserver_virtualmachineinterface maasserver_virtualma_host_interface_id_9408be99_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachineinterface
+    ADD CONSTRAINT maasserver_virtualma_host_interface_id_9408be99_fk_maasserve FOREIGN KEY (host_interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_virtualmachine maasserver_virtualma_machine_id_22da40a9_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachine
+    ADD CONSTRAINT maasserver_virtualma_machine_id_22da40a9_fk_maasserve FOREIGN KEY (machine_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_virtualmachineinterface maasserver_virtualma_vm_id_a6acb3e9_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachineinterface
+    ADD CONSTRAINT maasserver_virtualma_vm_id_a6acb3e9_fk_maasserve FOREIGN KEY (vm_id) REFERENCES public.maasserver_virtualmachine(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_virtualmachine maasserver_virtualmachine_bmc_id_e2b4f381_fk_maasserver_bmc_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_virtualmachine
+    ADD CONSTRAINT maasserver_virtualmachine_bmc_id_e2b4f381_fk_maasserver_bmc_id FOREIGN KEY (bmc_id) REFERENCES public.maasserver_bmc(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_vlan maasserver_vlan_fabric_id_af5275c8_fk_maasserver_fabric_id; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9031,6 +9897,14 @@ ALTER TABLE ONLY public.metadataserver_nodekey
 
 ALTER TABLE ONLY public.metadataserver_nodeuserdata
     ADD CONSTRAINT metadataserver_nodeu_node_id_40aa2a4e_fk_maasserve FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: metadataserver_scriptresult metadataserver_scrip_interface_id_a120e25e_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.metadataserver_scriptresult
+    ADD CONSTRAINT metadataserver_scrip_interface_id_a120e25e_fk_maasserve FOREIGN KEY (interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

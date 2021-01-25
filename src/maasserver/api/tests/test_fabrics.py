@@ -86,7 +86,7 @@ class TestFabricsAPI(APITestCase.ForUser):
         parsed_result_1 = json_load_bytes(response1.content)
         parsed_result_2 = json_load_bytes(response2.content)
         self.assertEqual(
-            [http.client.OK, http.client.OK, 4, 7],
+            [http.client.OK, http.client.OK, 3, 6],
             [
                 response1.status_code,
                 response2.status_code,

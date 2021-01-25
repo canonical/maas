@@ -209,8 +209,8 @@ class TestMAASStats(MAASServerTestCase):
             },
             "network_stats": {
                 "spaces": 0,
-                "fabrics": 1,
-                "vlans": 1,
+                "fabrics": 0,
+                "vlans": 0,
                 "subnets_v4": 0,
                 "subnets_v6": 0,
             },
