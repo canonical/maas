@@ -1140,24 +1140,23 @@ class TestPod(MAASServerTestCase):
     def test_sync_for_lxd_creates_vms_all_projects(self):
         project1 = factory.make_string()
         project2 = factory.make_string()
-        discovered_machines = sorted(
-            [
-                self.make_discovered_machine(project=project1),
-                self.make_discovered_machine(project=project2),
-            ],
-            key=lambda m: m.power_parameters["instance_name"],
-        )
+        discovered_machines = [
+            self.make_discovered_machine(project=project1),
+            self.make_discovered_machine(project=project2),
+        ]
         discovered_pod = self.make_discovered_pod(machines=discovered_machines)
         pod = factory.make_Pod(
             pod_type="lxd", parameters={"project": project1}
         )
         self.patch(Machine, "start_commissioning")
         pod.sync(discovered_pod, factory.make_User())
-        vms = VirtualMachine.objects.order_by("identifier", "project")
-        for vm, discovered_vm in zip(vms, discovered_machines):
-            self.assertEqual(
-                vm.identifier, discovered_vm.power_parameters["instance_name"]
-            )
+        discovered_vms = {
+            discovered_vm.power_parameters["instance_name"]: discovered_vm
+            for discovered_vm in discovered_machines
+        }
+        vms = VirtualMachine.objects.all()
+        for vm in vms:
+            discovered_vm = discovered_vms.pop(vm.identifier)
             self.assertEqual(
                 vm.project, discovered_vm.power_parameters["project"]
             )
@@ -1167,6 +1166,7 @@ class TestPod(MAASServerTestCase):
             )
             self.assertEqual(vm.pinned_cores, discovered_vm.pinned_cores)
             self.assertEqual(vm.unpinned_cores, discovered_vm.cores)
+        self.assertEqual(discovered_vms, {}, "Found extra vms not discovered")
         # a machine is created only for the VM in the tracked project
         [machine] = Machine.objects.all()
         self.assertEqual(machine.virtualmachine.project, project1)
