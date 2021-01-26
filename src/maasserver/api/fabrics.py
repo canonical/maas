@@ -47,13 +47,7 @@ class FabricsHandler(OperationsHandler):
         fabric objects.
         @success-example "success-json" [exkey=fabrics-read] placeholder text
         """
-        fabrics = prefetch_queryset(Fabric.objects.all(), FABRIC_PREFETCH)
-        # Preload the fabric on each vlan as that is already known, another
-        # query is not required.
-        for fabric in fabrics:
-            for vlan in fabric.vlan_set.all():
-                vlan.fabric = fabric
-        return fabrics
+        return prefetch_queryset(Fabric.objects.all(), FABRIC_PREFETCH)
 
     @admin_method
     def create(self, request):

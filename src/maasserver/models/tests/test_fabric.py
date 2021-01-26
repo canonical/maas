@@ -8,7 +8,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from testtools.matchers import Contains, MatchesStructure
 
 from maasserver.enum import INTERFACE_TYPE
-from maasserver.models.fabric import DEFAULT_FABRIC_NAME, Fabric
+from maasserver.models.fabric import Fabric
 from maasserver.models.vlan import DEFAULT_VID, DEFAULT_VLAN_NAME, VLAN
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
@@ -160,8 +160,8 @@ class TestFabric(MAASServerTestCase):
     def test_get_default_fabric_creates_default_fabric(self):
         default_fabric = Fabric.objects.get_default_fabric()
         self.assertEqual(0, default_fabric.id)
-        self.assertEqual(DEFAULT_FABRIC_NAME, default_fabric.get_name())
-        self.assertEqual(DEFAULT_FABRIC_NAME, default_fabric.name)
+        self.assertEqual("fabric-0", default_fabric.get_name())
+        self.assertEqual("fabric-0", default_fabric.name)
 
     def test_create_sets_name(self):
         fabric = Fabric.objects.create(name=None)
