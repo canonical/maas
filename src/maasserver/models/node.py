@@ -94,7 +94,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_FAMILY,
     IPADDRESS_TYPE,
-    NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
@@ -1121,11 +1120,8 @@ class Node(CleanSave, TimestampedModel):
 
     license_key = CharField(max_length=30, null=True, blank=True)
 
-    # Only used by Machine. Set to the creation type based on how the machine
-    # ended up in the Pod.
-    creation_type = IntegerField(
-        null=False, blank=False, default=NODE_CREATION_TYPE.PRE_EXISTING
-    )
+    # Whether this is a machine in a POD that was composed on allocation
+    dynamic = BooleanField(default=False)
 
     tags = ManyToManyField(Tag)
 
@@ -2938,9 +2934,7 @@ class Node(CleanSave, TimestampedModel):
             and bmc is not None
             and bmc.bmc_type == BMC_TYPE.POD
             and Capabilities.COMPOSABLE in bmc.capabilities
-            and self.creation_type != NODE_CREATION_TYPE.PRE_EXISTING
         ):
-            # Avoid circular imports
             from maasserver.forms.pods import request_commissioning_results
 
             pod = bmc.as_pod()
@@ -3002,12 +2996,6 @@ class Node(CleanSave, TimestampedModel):
                 )
                 self.bmc.delete()
 
-            # XXX always delete the VM associated to the machine, if present.
-            # Ideally we should only delete VMs when the vM is decomposed.
-            # See LP:#1904758 for details
-            from maasserver.models.virtualmachine import VirtualMachine
-
-            VirtualMachine.objects.filter(machine_id=self.id).delete()
             super().delete(*args, **kwargs)
 
     def set_random_hostname(self):
@@ -3645,7 +3633,7 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular imports.
         from maasserver.models.event import Event
 
-        if self.creation_type == NODE_CREATION_TYPE.DYNAMIC:
+        if self.dynamic:
             self.delete()
         else:
             self.release_interface_config()

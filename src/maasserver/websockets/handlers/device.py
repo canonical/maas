@@ -75,7 +75,7 @@ class DeviceHandler(NodeHandler):
         ]
         exclude = [
             "bmc",
-            "creation_type",
+            "dynamic",
             "type",
             "boot_interface",
             "boot_cluster_ip",

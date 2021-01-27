@@ -11,7 +11,6 @@ from unittest.mock import MagicMock
 from django.urls import reverse
 from twisted.internet.defer import succeed
 
-from maasserver.enum import NODE_CREATION_TYPE
 from maasserver.forms import pods
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
@@ -573,17 +572,8 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
     def test_DELETE_calls_async_delete(self):
         pod = factory.make_Pod()
         for _ in range(3):
-            factory.make_Machine(
-                bmc=pod, creation_type=NODE_CREATION_TYPE.PRE_EXISTING
-            )
-        for _ in range(3):
-            factory.make_Machine(
-                bmc=pod, creation_type=NODE_CREATION_TYPE.MANUAL
-            )
-        for _ in range(3):
-            factory.make_Machine(
-                bmc=pod, creation_type=NODE_CREATION_TYPE.DYNAMIC
-            )
+            factory.make_Machine(bmc=pod)
+            factory.make_Machine(bmc=pod, dynamic=True)
         mock_eventual = MagicMock()
         mock_async_delete = self.patch(Pod, "async_delete")
         mock_async_delete.return_value = mock_eventual

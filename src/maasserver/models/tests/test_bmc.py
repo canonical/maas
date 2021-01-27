@@ -6,7 +6,7 @@
 
 import random
 from statistics import mean
-from unittest.mock import Mock, sentinel
+from unittest.mock import call, Mock, sentinel
 
 from crochet import wait_for
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -27,7 +27,6 @@ from twisted.internet.defer import fail, inlineCallbacks, succeed
 from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_TYPE,
     POWER_STATE,
@@ -1042,7 +1041,7 @@ class TestPod(MAASServerTestCase):
                         instance_power_parameters=Equals(
                             machine.power_parameters
                         ),
-                        creation_type=Equals(NODE_CREATION_TYPE.PRE_EXISTING),
+                        dynamic=Equals(False),
                         tags=MatchesSetwiseWithAll(
                             *[
                                 MatchesStructure(name=Equals(tag))
@@ -1891,7 +1890,7 @@ class TestPod(MAASServerTestCase):
                         instance_power_parameters=Equals(
                             machine.power_parameters
                         ),
-                        creation_type=Equals(NODE_CREATION_TYPE.PRE_EXISTING),
+                        dynamic=Equals(False),
                         tags=MatchesSetwiseWithAll(
                             *[
                                 MatchesStructure(name=Equals(tag))
@@ -2015,7 +2014,7 @@ class TestPod(MAASServerTestCase):
                 memory=Equals(machine.memory),
                 power_state=Equals(machine.power_state),
                 instance_power_parameters=Equals(machine.power_parameters),
-                creation_type=Equals(NODE_CREATION_TYPE.PRE_EXISTING),
+                dynamic=Equals(False),
                 tags=MatchesSetwiseWithAll(
                     *[
                         MatchesStructure(name=Equals(tag))
@@ -2094,9 +2093,7 @@ class TestPod(MAASServerTestCase):
 
     def test_sync_updates_machine_properties_for_dynamic(self):
         pod = factory.make_Pod()
-        machine = factory.make_Node(
-            interface=True, creation_type=NODE_CREATION_TYPE.DYNAMIC
-        )
+        machine = factory.make_Node(interface=True, dynamic=True)
         discovered_interface = self.make_discovered_interface(
             mac_address=machine.interface_set.first().mac_address
         )
@@ -2130,12 +2127,7 @@ class TestPod(MAASServerTestCase):
 
     def test_sync_updates_machine_properties_for_not_dynamic(self):
         pod = factory.make_Pod()
-        machine = factory.make_Node(
-            interface=True,
-            creation_type=random.choice(
-                [NODE_CREATION_TYPE.PRE_EXISTING, NODE_CREATION_TYPE.MANUAL]
-            ),
-        )
+        machine = factory.make_Node(interface=True, dynamic=False)
         discovered_interface = self.make_discovered_interface(
             mac_address=machine.interface_set.first().mac_address
         )
@@ -2170,12 +2162,7 @@ class TestPod(MAASServerTestCase):
     def test_sync_creates_machine_vm(self):
         project = factory.make_string()
         pod = factory.make_Pod(pod_type="lxd", parameters={"project": project})
-        machine = factory.make_Node(
-            interface=True,
-            creation_type=random.choice(
-                [NODE_CREATION_TYPE.PRE_EXISTING, NODE_CREATION_TYPE.MANUAL]
-            ),
-        )
+        machine = factory.make_Node(interface=True)
         discovered_interface = self.make_discovered_interface(
             mac_address=machine.interface_set.first().mac_address,
         )
@@ -2197,12 +2184,7 @@ class TestPod(MAASServerTestCase):
     def test_sync_updates_machine_vm(self):
         project = factory.make_string()
         pod = factory.make_Pod(pod_type="lxd", parameters={"project": project})
-        machine = factory.make_Node(
-            interface=True,
-            creation_type=random.choice(
-                [NODE_CREATION_TYPE.PRE_EXISTING, NODE_CREATION_TYPE.MANUAL]
-            ),
-        )
+        machine = factory.make_Node(interface=True)
         vm = factory.make_VirtualMachine(
             identifier=machine.hostname,
             bmc=pod,
@@ -2285,9 +2267,7 @@ class TestPod(MAASServerTestCase):
 
     def test_sync_updates_existing_machine_block_devices_for_dynamic(self):
         pod = factory.make_Pod()
-        machine = factory.make_Node(
-            with_boot_disk=False, creation_type=NODE_CREATION_TYPE.DYNAMIC
-        )
+        machine = factory.make_Node(with_boot_disk=False, dynamic=True)
         boot_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=machine
         )
@@ -2442,7 +2422,7 @@ class TestPod(MAASServerTestCase):
 
     def test_sync_updates_existing_machine_interfaces_for_dynamic(self):
         pod = factory.make_Pod()
-        machine = factory.make_Node(creation_type=NODE_CREATION_TYPE.DYNAMIC)
+        machine = factory.make_Node(dynamic=True)
         other_vlan = factory.make_Fabric().get_default_vlan()
         keep_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=machine, vlan=other_vlan
@@ -2886,37 +2866,55 @@ class TestPodDelete(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_decomposes_and_deletes_machines_and_pod(self):
+    def test_deletes_machines_and_pod_no_decompose(self):
         pod = yield deferToDatabase(factory.make_Pod)
-        decomposable_machine = yield deferToDatabase(
-            factory.make_Machine,
-            bmc=pod,
-            creation_type=NODE_CREATION_TYPE.MANUAL,
-        )
-        delete_machine = yield deferToDatabase(factory.make_Machine, bmc=pod)
+        machine = yield deferToDatabase(factory.make_Machine, bmc=pod)
         client = Mock()
-        client.return_value = succeed({"hints": None})
         self.patch(
             bmc_module, "getClientFromIdentifiers"
         ).return_value = client
         yield pod.async_delete()
-        self.assertThat(
-            client,
-            MockCalledOnceWith(
-                DecomposeMachine,
-                type=pod.power_type,
-                context=pod.power_parameters,
-                pod_id=pod.id,
-                name=pod.name,
-            ),
-        )
-        decomposable_machine = yield deferToDatabase(
-            reload_object, decomposable_machine
-        )
-        delete_machine = yield deferToDatabase(reload_object, delete_machine)
+        client.assert_not_called()
+        machine = yield deferToDatabase(reload_object, machine)
         pod = yield deferToDatabase(reload_object, pod)
-        self.assertIsNone(decomposable_machine)
-        self.assertIsNone(delete_machine)
+        self.assertIsNone(machine)
+        self.assertIsNone(pod)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_decomposes_and_deletes_machines_and_pod(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        machine1 = yield deferToDatabase(factory.make_Machine, bmc=pod)
+        machine2 = yield deferToDatabase(factory.make_Machine, bmc=pod)
+        client = Mock()
+        client.side_effect = lambda *args, **kwargs: succeed({"hints": None})
+        self.patch(
+            bmc_module, "getClientFromIdentifiers"
+        ).return_value = client
+        yield pod.async_delete(decompose=True)
+        client.assert_has_calls(
+            [
+                call(
+                    DecomposeMachine,
+                    type=pod.power_type,
+                    context=pod.power_parameters,
+                    pod_id=pod.id,
+                    name=pod.name,
+                ),
+                call(
+                    DecomposeMachine,
+                    type=pod.power_type,
+                    context=pod.power_parameters,
+                    pod_id=pod.id,
+                    name=pod.name,
+                ),
+            ]
+        )
+        machine1 = yield deferToDatabase(reload_object, machine1)
+        machine2 = yield deferToDatabase(reload_object, machine2)
+        pod = yield deferToDatabase(reload_object, pod)
+        self.assertIsNone(machine1)
+        self.assertIsNone(machine2)
         self.assertIsNone(pod)
 
     @wait_for_reactor
@@ -2930,12 +2928,10 @@ class TestPodDelete(MAASTransactionServerTestCase):
         decomposable_machine_one = yield deferToDatabase(
             factory.make_Machine,
             bmc=pod,
-            creation_type=NODE_CREATION_TYPE.MANUAL,
         )
         decomposable_machine_two = yield deferToDatabase(
             factory.make_Machine,
             bmc=pod,
-            creation_type=NODE_CREATION_TYPE.MANUAL,
         )
         delete_machine = yield deferToDatabase(factory.make_Machine, bmc=pod)
         client = Mock()
@@ -2946,7 +2942,7 @@ class TestPodDelete(MAASTransactionServerTestCase):
         self.patch(
             bmc_module, "getClientFromIdentifiers"
         ).return_value = client
-        yield pod.async_delete()
+        yield pod.async_delete(decompose=True)
         # All the machines should have been deleted.
         decomposable_machine_one = yield deferToDatabase(
             reload_object, decomposable_machine_one

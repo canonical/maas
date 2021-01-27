@@ -41,7 +41,6 @@ from maasserver.enum import (
     BMC_TYPE_CHOICES,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
-    NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_TYPE,
 )
@@ -866,7 +865,7 @@ class Pod(BMC):
         discovered_machine,
         commissioning_user,
         skip_commissioning=False,
-        creation_type=NODE_CREATION_TYPE.PRE_EXISTING,
+        dynamic=False,
         interfaces=None,
         requested_machine=None,
         **kwargs,
@@ -909,7 +908,7 @@ class Pod(BMC):
             cpu_speed=discovered_machine.cpu_speed,
             memory=discovered_machine.memory,
             power_state=discovered_machine.power_state,
-            creation_type=creation_type,
+            dynamic=dynamic,
             pool=pool,
             zone=zone,
             bios_boot_method=discovered_machine.bios_boot_method,
@@ -1219,15 +1218,11 @@ class Pod(BMC):
                 id__in=iface_ids
             ).delete()
 
-        # If this machine is pre-existing or manually composed then we skip
-        # syncing all the remaining information because MAAS commissioning
-        # will discover this information. Any changes on the MAAS in the pod
-        # for pre-existing and manual require the machine to be
-        # re-commissioned.
-        if existing_machine.creation_type in [
-            NODE_CREATION_TYPE.PRE_EXISTING,
-            NODE_CREATION_TYPE.MANUAL,
-        ]:
+        # If this machine is not composed on allocation we skip syncing all the
+        # remaining information because MAAS commissioning will discover this
+        # information. Any changes on the MAAS in the pod for pre-existing and
+        # manual require the machine to be re-commissioned.
+        if not existing_machine.dynamic:
             existing_machine.save()
             return
 
@@ -1748,55 +1743,48 @@ class Pod(BMC):
         # machines. We allow maximum of 60 seconds per machine plus 60 seconds
         # for the pod.
         pod = self.as_pod()
-        num_machines = Machine.objects.filter(bmc=pod)
-        num_machines = num_machines.exclude(
-            creation_type=NODE_CREATION_TYPE.PRE_EXISTING
-        )
-        pod.async_delete().wait((num_machines.count() * 60) + 60)
+        num_machines = Machine.objects.filter(bmc=pod).count()
+        pod.async_delete().wait((num_machines * 60) + 60)
 
     @asynchronous
-    def async_delete(self):
+    def async_delete(self, decompose=False):
         """Delete a pod asynchronously.
 
-        Any machine in the pod that needs to be decomposed will be decomposed
+        If `decompose` is True, any machine in the pod will be decomposed
         before it is removed from the database.  If there are any errors during
         decomposition, the deletion of the machine and ultimately the pod are
         not stopped.
+
         """
 
         @transactional
         def gather_clients_and_machines(pod):
-            decompose, pre_existing = [], []
-            for machine in (
-                Machine.objects.filter(bmc__id=pod.id)
-                .order_by("id")
-                .select_related("bmc")
-            ):
-                if machine.creation_type == NODE_CREATION_TYPE.PRE_EXISTING:
-                    pre_existing.append(machine.id)
-                else:
-                    decompose.append((machine.id, machine.power_parameters))
+            machine_details = [
+                (machine.id, machine.power_parameters)
+                for machine in Machine.objects.filter(
+                    bmc__id=pod.id
+                ).select_related("bmc")
+            ]
             return (
                 pod.id,
                 pod.name,
                 pod.power_type,
                 pod.get_client_identifiers(),
-                decompose,
-                pre_existing,
+                machine_details,
             )
 
         @inlineCallbacks
-        def decompose(result):
+        def decompose_machines(result):
             (
                 pod_id,
                 pod_name,
                 pod_type,
                 client_idents,
-                decompose,
-                pre_existing,
+                machine_details,
             ) = result
-            decomposed = []
-            for machine_id, parameters in decompose:
+            decomposed_ids = []
+            for machine_id, parameters in machine_details:
+                decomposed_ids.append(machine_id)
                 # Get a new client for every decompose because we might lose
                 # a connection to a rack during this operation.
                 client = yield getClientFromIdentifiers(client_idents)
@@ -1811,45 +1799,50 @@ class Pod(BMC):
                 except PodProblem:
                     # Catch all errors and continue.
                     break
-                finally:
-                    # Set the machine to decomposed regardless
-                    # if it actually decomposed or not.
-                    decomposed.append(machine_id)
-            return pod_id, decomposed, pre_existing
+            return pod_id, decomposed_ids
+
+        def get_pod_and_machine_ids(result):
+            (
+                pod_id,
+                pod_name,
+                pod_type,
+                client_idents,
+                machine_details,
+            ) = result
+            return pod_id, [
+                machine_id for machine_id, parameters in machine_details
+            ]
 
         @transactional
         def perform_deletion(result):
-            (pod_id, decomposed_ids, pre_existing_ids) = result
-            pod = Pod.objects.get(id=pod_id)
-            machines = Machine.objects.filter(id__in=decomposed_ids)
-            for machine in machines:
+            pod_id, decomposed_ids = result
+            for machine in Machine.objects.filter(id__in=decomposed_ids):
                 # Clear BMC (aka. this pod) so the signal handler does not
                 # try to decompose it. Its already been decomposed.
                 machine.bmc = None
                 machine.delete()
 
-            # Delete the pre-existing machines and finally the pod.
-            for machine in Machine.objects.filter(id__in=pre_existing_ids):
-                # We loop and call delete to ensure the `delete` method
-                # on the machine object is actually called.
-                machine.delete()
-
-            from maasserver.models.node import RackController
-
             # Update bmc types for any matches.  Only delete the BMC
             # when no controllers are using the same BMC.
-            racks_with_matching_bmc = RackController.objects.filter(bmc=pod)
-            if len(racks_with_matching_bmc) > 0:
+            from maasserver.models.node import RackController
+
+            racks_with_matching_bmc = list(
+                RackController.objects.filter(bmc__id=pod_id)
+            )
+            if racks_with_matching_bmc:
                 for rack in racks_with_matching_bmc:
                     rack.bmc.bmc_type = BMC_TYPE.BMC
                     rack.bmc.save()
             else:
                 # Call delete by bypassing the override that prevents its call.
+                pod = Pod.objects.get(id=pod_id)
                 super(BMC, pod).delete()
 
         # Don't catch any errors here they are raised to the caller.
         d = deferToDatabase(gather_clients_and_machines, self)
-        d.addCallback(decompose)
+        d.addCallback(
+            decompose_machines if decompose else get_pod_and_machine_ids
+        )
         d.addCallback(partial(deferToDatabase, perform_deletion))
         return d
 

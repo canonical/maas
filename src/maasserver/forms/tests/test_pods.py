@@ -24,12 +24,7 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 
-from maasserver.enum import (
-    BMC_TYPE,
-    INTERFACE_TYPE,
-    NODE_CREATION_TYPE,
-    NODE_STATUS,
-)
+from maasserver.enum import BMC_TYPE, INTERFACE_TYPE, NODE_STATUS
 from maasserver.exceptions import PodProblem, StaticIPAddressUnavailable
 from maasserver.forms import pods as pods_module
 from maasserver.forms.pods import (
@@ -2540,11 +2535,11 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
             MockCallsMatch(
                 call(
                     skip_commissioning=True,
-                    creation_type=NODE_CREATION_TYPE.DYNAMIC,
+                    dynamic=True,
                 ),
                 call(
                     skip_commissioning=True,
-                    creation_type=NODE_CREATION_TYPE.DYNAMIC,
+                    dynamic=True,
                 ),
             ),
         )
@@ -2573,15 +2568,15 @@ class TestComposeMachineForPodsForm(MAASServerTestCase):
             MockCallsMatch(
                 call(
                     skip_commissioning=True,
-                    creation_type=NODE_CREATION_TYPE.DYNAMIC,
+                    dynamic=True,
                 ),
                 call(
                     skip_commissioning=True,
-                    creation_type=NODE_CREATION_TYPE.DYNAMIC,
+                    dynamic=True,
                 ),
                 call(
                     skip_commissioning=True,
-                    creation_type=NODE_CREATION_TYPE.DYNAMIC,
+                    dynamic=True,
                 ),
             ),
         )

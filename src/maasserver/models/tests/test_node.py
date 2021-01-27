@@ -60,7 +60,6 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
-    NODE_CREATION_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
@@ -1618,17 +1617,6 @@ class TestNode(MAASServerTestCase):
         node.save()
         node.delete()
         self.assertIsNotNone(reload_object(pod))
-
-    def test_delete_deletes_existing_virtual_machine(self):
-        pod = factory.make_Pod()
-        machine = factory.make_Machine(
-            bmc=pod, creation_type=NODE_CREATION_TYPE.PRE_EXISTING
-        )
-        vm = factory.make_VirtualMachine(bmc=pod, machine=machine)
-        vm.save()
-        with post_commit_hooks:
-            machine.delete()
-        self.assertIsNone(reload_object(vm))
 
     def test_delete_node_deletes_related_interface(self):
         node = factory.make_Node()
@@ -6004,14 +5992,6 @@ class TestDecomposeMachine(MAASServerTestCase, TestDecomposeMachineMixin):
         machine.delete()
         self.assertThat(client, MockNotCalled())
 
-    def test_does_nothing_if_pre_existing_machine(self):
-        client = self.fake_rpc_client()
-        machine = factory.make_Node()
-        machine.bmc = self.make_composable_pod()
-        machine.save()
-        machine.delete()
-        self.assertThat(client, MockNotCalled())
-
 
 class TestDecomposeMachineTransactional(
     MAASTransactionServerTestCase, TestDecomposeMachineMixin
@@ -6036,9 +6016,17 @@ class TestDecomposeMachineTransactional(
         }
         return pod, machine, hints, client
 
+    def test_delete_deletes_virtual_machine(self):
+        pod, machine, hints, client = self.create_pod_machine_and_hints()
+        vm = factory.make_VirtualMachine(bmc=pod, machine=machine)
+        with post_commit_hooks:
+            machine.delete()
+        self.assertIsNone(reload_object(vm))
+        client.assert_called_once()
+
     def test_performs_decompose_machine(self):
         pod, machine, hints, client = self.create_pod_machine_and_hints(
-            creation_type=NODE_CREATION_TYPE.MANUAL, interface=True
+            interface=True
         )
         interface = transactional(machine.interface_set.first)()
         with post_commit_hooks:
@@ -6068,9 +6056,7 @@ class TestDecomposeMachineTransactional(
         self.assertIsNone(interface)
 
     def test_errors_raised_up(self):
-        pod, machine, hints, client = self.create_pod_machine_and_hints(
-            creation_type=NODE_CREATION_TYPE.MANUAL
-        )
+        pod, machine, hints, client = self.create_pod_machine_and_hints()
         client.return_value = defer.fail(PodActionFail())
         with ExpectedException(PodProblem):
             with post_commit_hooks:
@@ -6083,7 +6069,7 @@ class TestDecomposeMachineTransactional(
         pod, machine, hints, client = self.create_pod_machine_and_hints(
             status=NODE_STATUS.ALLOCATED,
             owner=owner,
-            creation_type=NODE_CREATION_TYPE.DYNAMIC,
+            dynamic=True,
             power_state=POWER_STATE.OFF,
             interface=True,
         )
@@ -6115,9 +6101,7 @@ class TestDecomposeMachineTransactional(
         self.assertIsNone(interface)
 
     def test_delete_virtual_machine_for_machine(self):
-        pod, machine, hints, client = self.create_pod_machine_and_hints(
-            creation_type=NODE_CREATION_TYPE.MANUAL
-        )
+        pod, machine, hints, client = self.create_pod_machine_and_hints()
         vm = transactional(factory.make_VirtualMachine)(
             bmc=pod, machine=machine
         )

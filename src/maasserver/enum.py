@@ -200,18 +200,6 @@ class BMC_TYPE:
 BMC_TYPE_CHOICES = ((BMC_TYPE.BMC, "BMC"), (BMC_TYPE.POD, "POD"))
 
 
-class NODE_CREATION_TYPE:
-    """Creation types a machine can have in a node."""
-
-    #: Pre-existing, machine already exists in Pod when MAAS discovered it.
-    PRE_EXISTING = 1
-    #: Manual, machine was manually composed through MAAS.
-    MANUAL = 2
-    #: Dynamic, machine was composed during allocation and should be decomposed
-    # upon release of the machine.
-    DYNAMIC = 3
-
-
 class NODE_ACTION_TYPE:
     """Types of action a node can have done."""
 

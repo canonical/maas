@@ -38,7 +38,7 @@ from maasserver.clusterrpc.pods import (
     get_best_discovered_result,
     send_pod_commissioning_results,
 )
-from maasserver.enum import BMC_TYPE, INTERFACE_TYPE, NODE_CREATION_TYPE
+from maasserver.enum import BMC_TYPE, INTERFACE_TYPE
 from maasserver.exceptions import PodProblem
 from maasserver.forms import MAASModelForm
 from maasserver.models import (
@@ -762,7 +762,7 @@ class ComposeMachineForm(forms.Form):
     def compose(
         self,
         timeout=120,
-        creation_type=NODE_CREATION_TYPE.MANUAL,
+        dynamic=False,
         skip_commissioning=None,
     ):
         """Compose the machine.
@@ -804,7 +804,7 @@ class ComposeMachineForm(forms.Form):
                 discovered_machine,
                 self.request.user,
                 skip_commissioning=skip_commissioning,
-                creation_type=creation_type,
+                dynamic=dynamic,
                 interfaces=self.get_value_for("interfaces"),
                 requested_machine=requested_machine,
                 domain=self.get_value_for("domain"),
@@ -932,7 +932,7 @@ class ComposeMachineForPodsForm(forms.Form):
             try:
                 return form.compose(
                     skip_commissioning=True,
-                    creation_type=NODE_CREATION_TYPE.DYNAMIC,
+                    dynamic=True,
                 )
             except Exception:
                 continue
@@ -941,7 +941,7 @@ class ComposeMachineForPodsForm(forms.Form):
             try:
                 return form.compose(
                     skip_commissioning=True,
-                    creation_type=NODE_CREATION_TYPE.DYNAMIC,
+                    dynamic=True,
                 )
             except Exception:
                 continue

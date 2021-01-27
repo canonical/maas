@@ -480,7 +480,6 @@ CREATE TABLE public.maasserver_node (
     current_commissioning_script_set_id integer,
     current_installation_script_set_id integer,
     current_testing_script_set_id integer,
-    creation_type integer NOT NULL,
     install_rackd boolean NOT NULL,
     locked boolean NOT NULL,
     pool_id integer,
@@ -489,6 +488,7 @@ CREATE TABLE public.maasserver_node (
     hardware_uuid character varying(36),
     ephemeral_deploy boolean NOT NULL,
     description text NOT NULL,
+    dynamic boolean NOT NULL,
     CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0))
 );
 
@@ -4824,270 +4824,271 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
-1	contenttypes	0001_initial	2021-01-25 08:30:33.179806+00
-2	auth	0001_initial	2021-01-25 08:30:33.206181+00
-3	auth	0002_auto_20151119_1629	2021-01-25 08:30:33.293081+00
-4	auth	0003_django_1_11_update	2021-01-25 08:30:33.312245+00
-5	auth	0004_user_email_allow_null	2021-01-25 08:30:33.319382+00
-6	auth	0005_auto_20200626_1049	2021-01-25 08:30:33.335507+00
-7	contenttypes	0002_remove_content_type_name	2021-01-25 08:30:33.351668+00
-8	piston3	0001_initial	2021-01-25 08:30:33.379937+00
-9	maasserver	0001_initial	2021-01-25 08:30:34.759918+00
-10	metadataserver	0001_initial	2021-01-25 08:30:35.031785+00
-11	maasserver	0002_remove_candidate_name_model	2021-01-25 08:30:35.055042+00
-12	maasserver	0003_add_node_type_to_node	2021-01-25 08:30:35.143632+00
-13	maasserver	0004_migrate_installable_to_node_type	2021-01-25 08:30:35.278981+00
-14	maasserver	0005_delete_installable_from_node	2021-01-25 08:30:35.335141+00
-15	maasserver	0006_add_lease_time_to_staticipaddress	2021-01-25 08:30:35.383798+00
-16	maasserver	0007_create_node_proxy_models	2021-01-25 08:30:35.395479+00
-17	maasserver	0008_use_new_arrayfield	2021-01-25 08:30:35.54205+00
-18	maasserver	0009_remove_routers_field_from_node	2021-01-25 08:30:35.57577+00
-19	maasserver	0010_add_dns_models	2021-01-25 08:30:35.765172+00
-20	maasserver	0011_domain_data	2021-01-25 08:30:35.88794+00
-21	maasserver	0012_drop_dns_fields	2021-01-25 08:30:35.977718+00
-22	maasserver	0013_remove_boot_type_from_node	2021-01-25 08:30:36.007484+00
-23	maasserver	0014_add_region_models	2021-01-25 08:30:36.175729+00
-24	maasserver	0015_add_bmc_model	2021-01-25 08:30:36.29413+00
-25	maasserver	0016_migrate_power_data_node_to_bmc	2021-01-25 08:30:36.358236+00
-26	maasserver	0017_remove_node_power_type	2021-01-25 08:30:36.390964+00
-27	maasserver	0018_add_dnsdata	2021-01-25 08:30:36.608037+00
-28	maasserver	0019_add_iprange	2021-01-25 08:30:36.651274+00
-29	maasserver	0020_nodegroup_to_rackcontroller	2021-01-25 08:30:36.76365+00
-30	maasserver	0021_nodegroupinterface_to_iprange	2021-01-25 08:30:36.836429+00
-31	maasserver	0022_extract_ip_for_bmcs	2021-01-25 08:30:36.905308+00
-32	maasserver	0023_add_ttl_field	2021-01-25 08:30:37.063389+00
-33	maasserver	0024_remove_nodegroupinterface	2021-01-25 08:30:37.63788+00
-34	maasserver	0025_create_node_system_id_sequence	2021-01-25 08:30:37.647014+00
-35	maasserver	0026_create_zone_serial_sequence	2021-01-25 08:30:37.650883+00
-36	maasserver	0027_replace_static_range_with_admin_reserved_ranges	2021-01-25 08:30:37.713544+00
-37	maasserver	0028_update_default_vlan_on_interface_and_subnet	2021-01-25 08:30:37.800207+00
-38	maasserver	0029_add_rdns_mode	2021-01-25 08:30:37.816259+00
-39	maasserver	0030_drop_all_old_funcs	2021-01-25 08:30:37.875434+00
-40	maasserver	0031_add_region_rack_rpc_conn_model	2021-01-25 08:30:38.138606+00
-41	maasserver	0032_loosen_vlan	2021-01-25 08:30:38.215453+00
-42	maasserver	0033_iprange_minor_changes	2021-01-25 08:30:38.3205+00
-43	maasserver	0034_rename_mount_params_as_mount_options	2021-01-25 08:30:38.372721+00
-44	maasserver	0035_convert_ether_wake_to_manual_power_type	2021-01-25 08:30:38.441833+00
-45	maasserver	0036_add_service_model	2021-01-25 08:30:38.519388+00
-46	maasserver	0037_node_last_image_sync	2021-01-25 08:30:38.556359+00
-47	maasserver	0038_filesystem_ramfs_tmpfs_support	2021-01-25 08:30:38.641934+00
-48	maasserver	0039_create_template_and_versionedtextfile_models	2021-01-25 08:30:38.667392+00
-49	maasserver	0040_fix_id_seq	2021-01-25 08:30:38.680449+00
-50	maasserver	0041_change_bmc_on_delete_to_set_null	2021-01-25 08:30:38.729303+00
-51	maasserver	0042_add_routable_rack_controllers_to_bmc	2021-01-25 08:30:38.810899+00
-52	maasserver	0043_dhcpsnippet	2021-01-25 08:30:39.008291+00
-53	maasserver	0044_remove_di_bootresourcefiles	2021-01-25 08:30:39.093821+00
-54	maasserver	0045_add_node_to_filesystem	2021-01-25 08:30:39.151968+00
-55	maasserver	0046_add_bridge_interface_type	2021-01-25 08:30:39.198102+00
-56	maasserver	0047_fix_spelling_of_degraded	2021-01-25 08:30:39.296963+00
-57	maasserver	0048_add_subnet_allow_proxy	2021-01-25 08:30:39.310056+00
-58	maasserver	0049_add_external_dhcp_present_to_vlan	2021-01-25 08:30:39.433432+00
-59	maasserver	0050_modify_external_dhcp_on_vlan	2021-01-25 08:30:39.576401+00
-60	maasserver	0051_space_fabric_unique	2021-01-25 08:30:39.862551+00
-61	maasserver	0052_add_codename_title_eol_to_bootresourcecache	2021-01-25 08:30:39.917953+00
-62	maasserver	0053_add_ownerdata_model	2021-01-25 08:30:40.03608+00
-63	maasserver	0054_controller	2021-01-25 08:30:40.052742+00
-64	maasserver	0055_dns_publications	2021-01-25 08:30:40.082083+00
-65	maasserver	0056_zone_serial_ownership	2021-01-25 08:30:40.097772+00
-66	maasserver	0057_initial_dns_publication	2021-01-25 08:30:40.199518+00
-67	maasserver	0058_bigger_integer_for_dns_publication_serial	2021-01-25 08:30:40.210594+00
-68	maasserver	0056_add_description_to_fabric_and_space	2021-01-25 08:30:40.343241+00
-69	maasserver	0057_merge	2021-01-25 08:30:40.34525+00
-70	maasserver	0059_merge	2021-01-25 08:30:40.347332+00
-71	maasserver	0060_amt_remove_mac_address	2021-01-25 08:30:40.402037+00
-72	maasserver	0061_maas_nodegroup_worker_to_maas	2021-01-25 08:30:40.457711+00
-73	maasserver	0062_fix_bootsource_daily_label	2021-01-25 08:30:40.516525+00
-74	maasserver	0063_remove_orphaned_bmcs_and_ips	2021-01-25 08:30:40.583887+00
-75	maasserver	0064_remove_unneeded_event_triggers	2021-01-25 08:30:40.81115+00
-76	maasserver	0065_larger_osystem_and_distro_series	2021-01-25 08:30:40.878035+00
-77	maasserver	0066_allow_squashfs	2021-01-25 08:30:40.887284+00
-78	maasserver	0067_add_size_to_largefile	2021-01-25 08:30:40.951751+00
-79	maasserver	0068_drop_node_system_id_sequence	2021-01-25 08:30:40.956237+00
-80	maasserver	0069_add_previous_node_status_to_node	2021-01-25 08:30:40.992316+00
-81	maasserver	0070_allow_null_vlan_on_interface	2021-01-25 08:30:41.03783+00
-82	maasserver	0071_ntp_server_to_ntp_servers	2021-01-25 08:30:41.042539+00
-83	maasserver	0072_packagerepository	2021-01-25 08:30:41.051556+00
-84	maasserver	0073_migrate_package_repositories	2021-01-25 08:30:41.174624+00
-85	maasserver	0072_update_status_and_previous_status	2021-01-25 08:30:41.244456+00
-86	maasserver	0074_merge	2021-01-25 08:30:41.246418+00
-87	maasserver	0075_modify_packagerepository	2021-01-25 08:30:41.274276+00
-88	maasserver	0076_interface_discovery_rescue_mode	2021-01-25 08:30:41.828086+00
-89	maasserver	0077_static_routes	2021-01-25 08:30:41.951958+00
-90	maasserver	0078_remove_packagerepository_description	2021-01-25 08:30:41.965531+00
-91	maasserver	0079_add_keysource_model	2021-01-25 08:30:42.060437+00
-92	maasserver	0080_change_packagerepository_url_type	2021-01-25 08:30:42.069645+00
-93	maasserver	0081_allow_larger_bootsourcecache_fields	2021-01-25 08:30:42.112717+00
-94	maasserver	0082_add_kflavor	2021-01-25 08:30:42.254989+00
-95	maasserver	0083_device_discovery	2021-01-25 08:30:42.316922+00
-96	maasserver	0084_add_default_user_to_node_model	2021-01-25 08:30:42.366965+00
-97	maasserver	0085_no_intro_on_upgrade	2021-01-25 08:30:42.448154+00
-98	maasserver	0086_remove_powerpc_from_ports_arches	2021-01-25 08:30:42.530908+00
-99	maasserver	0087_add_completed_intro_to_userprofile	2021-01-25 08:30:42.552817+00
-100	maasserver	0088_remove_node_disable_ipv4	2021-01-25 08:30:42.769248+00
-101	maasserver	0089_active_discovery	2021-01-25 08:30:42.852354+00
-102	maasserver	0090_bootloaders	2021-01-25 08:30:42.889991+00
-103	maasserver	0091_v2_to_v3	2021-01-25 08:30:42.967844+00
-104	maasserver	0092_rolling	2021-01-25 08:30:42.97596+00
-105	maasserver	0093_add_rdns_model	2021-01-25 08:30:43.052548+00
-106	maasserver	0094_add_unmanaged_subnets	2021-01-25 08:30:43.070352+00
-107	maasserver	0095_vlan_relay_vlan	2021-01-25 08:30:43.116391+00
-108	maasserver	0096_set_default_vlan_field	2021-01-25 08:30:43.174923+00
-109	maasserver	0097_node_chassis_storage_hints	2021-01-25 08:30:43.372784+00
-110	maasserver	0098_add_space_to_vlan	2021-01-25 08:30:43.416886+00
-111	maasserver	0099_set_default_vlan_field	2021-01-25 08:30:43.478076+00
-112	maasserver	0100_migrate_spaces_from_subnet_to_vlan	2021-01-25 08:30:43.718886+00
-113	maasserver	0101_filesystem_btrfs_support	2021-01-25 08:30:43.753142+00
-114	maasserver	0102_remove_space_from_subnet	2021-01-25 08:30:43.824153+00
-115	maasserver	0103_notifications	2021-01-25 08:30:43.883886+00
-116	maasserver	0104_notifications_dismissals	2021-01-25 08:30:43.953024+00
-117	metadataserver	0002_script_models	2021-01-25 08:30:44.234682+00
-118	maasserver	0105_add_script_sets_to_node_model	2021-01-25 08:30:44.593122+00
-119	maasserver	0106_testing_status	2021-01-25 08:30:44.697383+00
-120	maasserver	0107_chassis_to_pods	2021-01-25 08:30:45.113412+00
-121	maasserver	0108_generate_bmc_names	2021-01-25 08:30:45.204493+00
-122	maasserver	0109_bmc_names_unique	2021-01-25 08:30:45.244605+00
-123	maasserver	0110_notification_category	2021-01-25 08:30:45.274601+00
-124	maasserver	0111_remove_component_error	2021-01-25 08:30:45.281343+00
-125	maasserver	0112_update_notification	2021-01-25 08:30:45.401158+00
-126	maasserver	0113_set_filepath_limit_to_linux_max	2021-01-25 08:30:45.642178+00
-127	maasserver	0114_node_dynamic_to_creation_type	2021-01-25 08:30:45.723687+00
-128	maasserver	0115_additional_boot_resource_filetypes	2021-01-25 08:30:45.735018+00
-129	maasserver	0116_add_disabled_components_for_mirrors	2021-01-25 08:30:45.745029+00
-130	maasserver	0117_add_iscsi_block_device	2021-01-25 08:30:45.799407+00
-131	maasserver	0118_add_iscsi_storage_pod	2021-01-25 08:30:45.868375+00
-132	maasserver	0119_set_default_vlan_field	2021-01-25 08:30:45.950011+00
-133	maasserver	0120_bootsourcecache_extra	2021-01-25 08:30:45.960738+00
-134	maasserver	0121_relax_staticipaddress_unique_constraint	2021-01-25 08:30:46.026106+00
-135	maasserver	0122_make_virtualblockdevice_uuid_editable	2021-01-25 08:30:46.043644+00
-136	maasserver	0123_make_iprange_comment_default_to_empty_string	2021-01-25 08:30:46.074578+00
-137	maasserver	0124_staticipaddress_address_family_index	2021-01-25 08:30:46.081852+00
-138	maasserver	0125_add_switch_model	2021-01-25 08:30:46.142308+00
-139	maasserver	0126_add_controllerinfo_model	2021-01-25 08:30:46.279325+00
-140	maasserver	0127_nodemetadata	2021-01-25 08:30:46.365567+00
-141	maasserver	0128_events_created_index	2021-01-25 08:30:46.37278+00
-142	maasserver	0129_add_install_rackd_flag	2021-01-25 08:30:46.413101+00
-143	maasserver	0130_node_locked_flag	2021-01-25 08:30:46.455571+00
-144	maasserver	0131_update_event_model_for_audit_logs	2021-01-25 08:30:46.876494+00
-145	maasserver	0132_consistent_model_name_validation	2021-01-25 08:30:46.943175+00
-146	maasserver	0133_add_resourcepool_model	2021-01-25 08:30:46.950794+00
-147	maasserver	0134_create_default_resourcepool	2021-01-25 08:30:47.04285+00
-148	maasserver	0135_add_pool_reference_to_node	2021-01-25 08:30:47.29152+00
-149	maasserver	0136_add_user_role_models	2021-01-25 08:30:47.465486+00
-150	maasserver	0137_create_default_roles	2021-01-25 08:30:47.599389+00
-151	maasserver	0138_add_ip_and_user_agent_to_event_model	2021-01-25 08:30:47.673755+00
-152	maasserver	0139_add_endpoint_and_increase_user_agent_length_for_event	2021-01-25 08:30:47.748819+00
-153	maasserver	0140_add_usergroup_model	2021-01-25 08:30:48.226192+00
-154	maasserver	0141_add_default_usergroup	2021-01-25 08:30:48.322751+00
-155	maasserver	0142_pod_default_resource_pool	2021-01-25 08:30:48.459772+00
-156	maasserver	0143_blockdevice_firmware	2021-01-25 08:30:48.48049+00
-157	maasserver	0144_filesystem_zfsroot_support	2021-01-25 08:30:48.524843+00
-158	maasserver	0145_interface_firmware	2021-01-25 08:30:48.657439+00
-159	maasserver	0146_add_rootkey	2021-01-25 08:30:48.673831+00
-160	maasserver	0147_pod_zones	2021-01-25 08:30:48.7668+00
-161	maasserver	0148_add_tags_on_pods	2021-01-25 08:30:48.846039+00
-162	maasserver	0149_userprofile_auth_last_check	2021-01-25 08:30:48.902049+00
-163	maasserver	0150_add_pod_commit_ratios	2021-01-25 08:30:48.978818+00
-164	maasserver	0151_userprofile_is_local	2021-01-25 08:30:48.999313+00
-165	maasserver	0152_add_usergroup_local	2021-01-25 08:30:49.022437+00
-166	maasserver	0153_add_skip_bmc_config	2021-01-25 08:30:49.060189+00
-167	maasserver	0154_link_usergroup_role	2021-01-25 08:30:49.22826+00
-168	maasserver	0155_add_globaldefaults_model	2021-01-25 08:30:49.891339+00
-169	maasserver	0156_drop_ssh_unique_key_index	2021-01-25 08:30:49.949099+00
-170	maasserver	0157_drop_usergroup_and_role	2021-01-25 08:30:50.364372+00
-171	maasserver	0158_pod_default_pool_to_pod	2021-01-25 08:30:50.451253+00
-172	maasserver	0159_userprofile_auth_last_check_no_now_default	2021-01-25 08:30:50.478752+00
-173	maasserver	0160_pool_only_for_machines	2021-01-25 08:30:50.571191+00
-174	maasserver	0161_pod_storage_pools	2021-01-25 08:30:51.02767+00
-175	maasserver	0162_storage_pools_notification	2021-01-25 08:30:51.148748+00
-176	maasserver	0163_create_new_power_parameters_with_jsonfield	2021-01-25 08:30:51.240823+00
-177	maasserver	0164_copy_over_existing_power_parameters	2021-01-25 08:30:51.32043+00
-178	maasserver	0165_remove_and_rename_power_parameters	2021-01-25 08:30:51.546146+00
-179	maasserver	0166_auto_select_s390x_extra_arches	2021-01-25 08:30:51.861298+00
-180	maasserver	0167_add_pod_host	2021-01-25 08:30:51.921724+00
-181	maasserver	0168_add_pod_default_macvlan_mode	2021-01-25 08:30:51.969963+00
-182	maasserver	0169_find_pod_host	2021-01-25 08:30:51.971722+00
-183	maasserver	0170_add_subnet_allow_dns	2021-01-25 08:30:51.990965+00
-184	maasserver	0171_remove_pod_host	2021-01-25 08:30:52.052534+00
-185	maasserver	0172_partition_tags	2021-01-25 08:30:52.065755+00
-186	maasserver	0173_add_node_install_kvm	2021-01-25 08:30:52.112463+00
-187	maasserver	0174_add_user_id_and_node_system_id_for_events	2021-01-25 08:30:52.18821+00
-188	maasserver	0175_copy_user_id_and_node_system_id_for_events	2021-01-25 08:30:52.274196+00
-189	maasserver	0176_rename_user_id_migrate_to_user_id_for_events	2021-01-25 08:30:52.41677+00
-190	maasserver	0177_remove_unique_together_on_bmc	2021-01-25 08:30:52.457209+00
-191	maasserver	0178_break_apart_linked_bmcs	2021-01-25 08:30:52.544233+00
-192	maasserver	0179_rbacsync	2021-01-25 08:30:52.55249+00
-193	maasserver	0180_rbaclastsync	2021-01-25 08:30:52.561385+00
-194	maasserver	0181_packagerepository_disable_sources	2021-01-25 08:30:52.571762+00
-195	maasserver	0182_remove_duplicate_null_ips	2021-01-25 08:30:52.58266+00
-196	maasserver	0183_node_uuid	2021-01-25 08:30:52.625556+00
-197	maasserver	0184_add_ephemeral_deploy_setting_to_node	2021-01-25 08:30:52.671674+00
-198	maasserver	0185_vmfs6	2021-01-25 08:30:52.94002+00
-199	maasserver	0186_node_description	2021-01-25 08:30:52.99686+00
-200	maasserver	0187_status_messages_change_event_logging_levels	2021-01-25 08:30:53.104096+00
-201	maasserver	0192_event_node_no_set_null	2021-01-25 08:30:53.17378+00
-202	maasserver	0194_machine_listing_event_index	2021-01-25 08:30:53.221683+00
-203	maasserver	0188_network_testing	2021-01-25 08:30:53.350028+00
-204	maasserver	0189_staticipaddress_temp_expires_on	2021-01-25 08:30:53.390253+00
-205	maasserver	0190_bmc_clean_duplicates	2021-01-25 08:30:53.486629+00
-206	maasserver	0191_bmc_unique_power_type_and_parameters	2021-01-25 08:30:53.492644+00
-207	maasserver	0193_merge_maasserver_0191_1092	2021-01-25 08:30:53.494883+00
-208	maasserver	0195_merge_20190902_1357	2021-01-25 08:30:53.500433+00
-209	maasserver	0196_numa_model	2021-01-25 08:30:54.12758+00
-210	maasserver	0197_remove_duplicate_physical_interfaces	2021-01-25 08:30:54.236948+00
-211	maasserver	0198_interface_physical_unique_mac	2021-01-25 08:30:54.241894+00
-212	maasserver	0199_bootresource_tbz_txz	2021-01-25 08:30:54.253396+00
-213	maasserver	0200_interface_sriov_max_vf	2021-01-25 08:30:54.296996+00
-214	maasserver	0195_event_username_max_length	2021-01-25 08:30:54.401485+00
-215	maasserver	0201_merge_20191008_1426	2021-01-25 08:30:54.403674+00
-216	maasserver	0202_event_node_on_delete	2021-01-25 08:30:54.480222+00
-217	maasserver	0203_interface_node_name_duplicates_delete	2021-01-25 08:30:54.573127+00
-218	maasserver	0204_interface_node_name_unique_together	2021-01-25 08:30:54.619182+00
-219	maasserver	0205_pod_nodes	2021-01-25 08:30:54.678937+00
-220	maasserver	0206_remove_node_token	2021-01-25 08:30:54.748261+00
-221	maasserver	0207_notification_dismissable	2021-01-25 08:30:54.769561+00
-222	maasserver	0208_no_power_query_events	2021-01-25 08:30:54.853057+00
-223	maasserver	0209_default_partitiontable_gpt	2021-01-25 08:30:54.87111+00
-224	maasserver	0210_filepathfield_to_charfield	2021-01-25 08:30:54.907814+00
-225	maasserver	0211_jsonfield_default_callable	2021-01-25 08:30:54.997491+00
-226	maasserver	0212_notifications_fields	2021-01-25 08:30:55.290148+00
-227	maasserver	0213_virtual_machine	2021-01-25 08:30:55.435425+00
-228	maasserver	0214_virtualmachine_one_to_one	2021-01-25 08:30:55.503661+00
-229	maasserver	0215_numanode_hugepages	2021-01-25 08:30:55.563452+00
-230	maasserver	0216_remove_skip_bmc_config_column	2021-01-25 08:30:55.617795+00
-231	maasserver	0217_notification_dismissal_timestamp	2021-01-25 08:30:55.655932+00
-232	maasserver	0218_images_maas_io_daily_to_stable	2021-01-25 08:30:55.742722+00
-233	maasserver	0219_vm_nic_link	2021-01-25 08:30:55.816957+00
-234	maasserver	0220_nodedevice	2021-01-25 08:30:55.908859+00
-235	maasserver	0221_track_lxd_project	2021-01-25 08:30:56.109937+00
-236	metadataserver	0003_remove_noderesult	2021-01-25 08:30:56.464233+00
-237	metadataserver	0004_aborted_script_status	2021-01-25 08:30:56.483653+00
-238	metadataserver	0005_store_powerstate_on_scriptset_creation	2021-01-25 08:30:56.512828+00
-239	metadataserver	0006_scriptresult_combined_output	2021-01-25 08:30:56.533128+00
-240	metadataserver	0007_migrate-commissioningscripts	2021-01-25 08:30:56.628516+00
-241	metadataserver	0008_remove-commissioningscripts	2021-01-25 08:30:56.63472+00
-242	metadataserver	0009_remove_noderesult_schema	2021-01-25 08:30:56.641605+00
-243	metadataserver	0010_scriptresult_time_and_script_title	2021-01-25 08:30:56.688109+00
-244	metadataserver	0011_script_metadata	2021-01-25 08:30:56.773996+00
-245	metadataserver	0012_store_script_results	2021-01-25 08:30:56.826825+00
-246	metadataserver	0013_scriptresult_physicalblockdevice	2021-01-25 08:30:56.964641+00
-247	metadataserver	0014_rename_dhcp_unconfigured_ifaces	2021-01-25 08:30:57.072323+00
-248	metadataserver	0015_migrate_storage_tests	2021-01-25 08:30:57.172115+00
-249	metadataserver	0016_script_model_fw_update_and_hw_config	2021-01-25 08:30:57.206595+00
-250	metadataserver	0017_store_requested_scripts	2021-01-25 08:30:57.280951+00
-251	metadataserver	0018_script_result_skipped	2021-01-25 08:30:57.309378+00
-252	metadataserver	0019_add_script_result_suppressed	2021-01-25 08:30:57.335989+00
-253	metadataserver	0020_network_testing	2021-01-25 08:30:57.427461+00
-254	metadataserver	0021_scriptresult_applying_netconf	2021-01-25 08:30:57.477232+00
-255	metadataserver	0022_internet-connectivity-network-validation	2021-01-25 08:30:57.483297+00
-256	metadataserver	0023_reorder_network_scripts	2021-01-25 08:30:57.844893+00
-257	metadataserver	0024_reorder_commissioning_scripts	2021-01-25 08:30:57.957308+00
-258	metadataserver	0025_nodedevice	2021-01-25 08:30:57.973468+00
-259	metadataserver	0026_drop_ipaddr_script	2021-01-25 08:30:58.087672+00
-260	piston3	0002_auto_20151209_1652	2021-01-25 08:30:58.106121+00
-261	piston3	0003_piston_nonce_index	2021-01-25 08:30:58.116991+00
-262	sessions	0001_initial	2021-01-25 08:30:58.127168+00
-263	sites	0001_initial	2021-01-25 08:30:58.137954+00
-264	sites	0002_alter_domain_unique	2021-01-25 08:30:58.149668+00
+1	contenttypes	0001_initial	2021-01-25 12:48:30.515729+00
+2	auth	0001_initial	2021-01-25 12:48:30.547875+00
+3	auth	0002_auto_20151119_1629	2021-01-25 12:48:30.625957+00
+4	auth	0003_django_1_11_update	2021-01-25 12:48:30.64502+00
+5	auth	0004_user_email_allow_null	2021-01-25 12:48:30.652255+00
+6	auth	0005_auto_20200626_1049	2021-01-25 12:48:30.665911+00
+7	contenttypes	0002_remove_content_type_name	2021-01-25 12:48:30.678462+00
+8	piston3	0001_initial	2021-01-25 12:48:30.702674+00
+9	maasserver	0001_initial	2021-01-25 12:48:31.848403+00
+10	metadataserver	0001_initial	2021-01-25 12:48:32.051392+00
+11	maasserver	0002_remove_candidate_name_model	2021-01-25 12:48:32.062042+00
+12	maasserver	0003_add_node_type_to_node	2021-01-25 12:48:32.089383+00
+13	maasserver	0004_migrate_installable_to_node_type	2021-01-25 12:48:32.134285+00
+14	maasserver	0005_delete_installable_from_node	2021-01-25 12:48:32.160516+00
+15	maasserver	0006_add_lease_time_to_staticipaddress	2021-01-25 12:48:32.187122+00
+16	maasserver	0007_create_node_proxy_models	2021-01-25 12:48:32.195036+00
+17	maasserver	0008_use_new_arrayfield	2021-01-25 12:48:32.275022+00
+18	maasserver	0009_remove_routers_field_from_node	2021-01-25 12:48:32.298277+00
+19	maasserver	0010_add_dns_models	2021-01-25 12:48:32.464819+00
+20	maasserver	0011_domain_data	2021-01-25 12:48:32.577556+00
+21	maasserver	0012_drop_dns_fields	2021-01-25 12:48:32.652039+00
+22	maasserver	0013_remove_boot_type_from_node	2021-01-25 12:48:32.675824+00
+23	maasserver	0014_add_region_models	2021-01-25 12:48:32.820391+00
+24	maasserver	0015_add_bmc_model	2021-01-25 12:48:32.928651+00
+25	maasserver	0016_migrate_power_data_node_to_bmc	2021-01-25 12:48:32.98766+00
+26	maasserver	0017_remove_node_power_type	2021-01-25 12:48:33.014689+00
+27	maasserver	0018_add_dnsdata	2021-01-25 12:48:33.208507+00
+28	maasserver	0019_add_iprange	2021-01-25 12:48:33.24585+00
+29	maasserver	0020_nodegroup_to_rackcontroller	2021-01-25 12:48:33.331415+00
+30	maasserver	0021_nodegroupinterface_to_iprange	2021-01-25 12:48:33.393618+00
+31	maasserver	0022_extract_ip_for_bmcs	2021-01-25 12:48:33.446635+00
+32	maasserver	0023_add_ttl_field	2021-01-25 12:48:33.635418+00
+33	maasserver	0024_remove_nodegroupinterface	2021-01-25 12:48:34.33951+00
+34	maasserver	0025_create_node_system_id_sequence	2021-01-25 12:48:34.349454+00
+35	maasserver	0026_create_zone_serial_sequence	2021-01-25 12:48:34.353893+00
+36	maasserver	0027_replace_static_range_with_admin_reserved_ranges	2021-01-25 12:48:34.404279+00
+37	maasserver	0028_update_default_vlan_on_interface_and_subnet	2021-01-25 12:48:34.4781+00
+38	maasserver	0029_add_rdns_mode	2021-01-25 12:48:34.493881+00
+39	maasserver	0030_drop_all_old_funcs	2021-01-25 12:48:34.583937+00
+40	maasserver	0031_add_region_rack_rpc_conn_model	2021-01-25 12:48:34.933634+00
+41	maasserver	0032_loosen_vlan	2021-01-25 12:48:35.037556+00
+42	maasserver	0033_iprange_minor_changes	2021-01-25 12:48:35.193045+00
+43	maasserver	0034_rename_mount_params_as_mount_options	2021-01-25 12:48:35.270545+00
+44	maasserver	0035_convert_ether_wake_to_manual_power_type	2021-01-25 12:48:35.381977+00
+45	maasserver	0036_add_service_model	2021-01-25 12:48:35.5795+00
+46	maasserver	0037_node_last_image_sync	2021-01-25 12:48:35.647412+00
+47	maasserver	0038_filesystem_ramfs_tmpfs_support	2021-01-25 12:48:35.791434+00
+48	maasserver	0039_create_template_and_versionedtextfile_models	2021-01-25 12:48:35.830153+00
+49	maasserver	0040_fix_id_seq	2021-01-25 12:48:35.847862+00
+50	maasserver	0041_change_bmc_on_delete_to_set_null	2021-01-25 12:48:35.901336+00
+51	maasserver	0042_add_routable_rack_controllers_to_bmc	2021-01-25 12:48:35.986779+00
+52	maasserver	0043_dhcpsnippet	2021-01-25 12:48:36.184758+00
+53	maasserver	0044_remove_di_bootresourcefiles	2021-01-25 12:48:36.284529+00
+54	maasserver	0045_add_node_to_filesystem	2021-01-25 12:48:36.342838+00
+55	maasserver	0046_add_bridge_interface_type	2021-01-25 12:48:36.385822+00
+56	maasserver	0047_fix_spelling_of_degraded	2021-01-25 12:48:36.485352+00
+57	maasserver	0048_add_subnet_allow_proxy	2021-01-25 12:48:36.499418+00
+58	maasserver	0049_add_external_dhcp_present_to_vlan	2021-01-25 12:48:36.621877+00
+59	maasserver	0050_modify_external_dhcp_on_vlan	2021-01-25 12:48:36.769828+00
+60	maasserver	0051_space_fabric_unique	2021-01-25 12:48:37.046176+00
+61	maasserver	0052_add_codename_title_eol_to_bootresourcecache	2021-01-25 12:48:37.068903+00
+62	maasserver	0053_add_ownerdata_model	2021-01-25 12:48:37.140911+00
+63	maasserver	0054_controller	2021-01-25 12:48:37.147974+00
+64	maasserver	0055_dns_publications	2021-01-25 12:48:37.154451+00
+65	maasserver	0056_zone_serial_ownership	2021-01-25 12:48:37.162172+00
+66	maasserver	0057_initial_dns_publication	2021-01-25 12:48:37.238816+00
+67	maasserver	0058_bigger_integer_for_dns_publication_serial	2021-01-25 12:48:37.248128+00
+68	maasserver	0056_add_description_to_fabric_and_space	2021-01-25 12:48:37.391862+00
+69	maasserver	0057_merge	2021-01-25 12:48:37.393787+00
+70	maasserver	0059_merge	2021-01-25 12:48:37.395345+00
+71	maasserver	0060_amt_remove_mac_address	2021-01-25 12:48:37.457017+00
+72	maasserver	0061_maas_nodegroup_worker_to_maas	2021-01-25 12:48:37.524786+00
+73	maasserver	0062_fix_bootsource_daily_label	2021-01-25 12:48:37.594033+00
+74	maasserver	0063_remove_orphaned_bmcs_and_ips	2021-01-25 12:48:37.663163+00
+75	maasserver	0064_remove_unneeded_event_triggers	2021-01-25 12:48:37.883993+00
+76	maasserver	0065_larger_osystem_and_distro_series	2021-01-25 12:48:37.956652+00
+77	maasserver	0066_allow_squashfs	2021-01-25 12:48:37.965782+00
+78	maasserver	0067_add_size_to_largefile	2021-01-25 12:48:38.045387+00
+79	maasserver	0068_drop_node_system_id_sequence	2021-01-25 12:48:38.050086+00
+80	maasserver	0069_add_previous_node_status_to_node	2021-01-25 12:48:38.086639+00
+81	maasserver	0070_allow_null_vlan_on_interface	2021-01-25 12:48:38.141645+00
+82	maasserver	0071_ntp_server_to_ntp_servers	2021-01-25 12:48:38.146729+00
+83	maasserver	0072_packagerepository	2021-01-25 12:48:38.15582+00
+84	maasserver	0073_migrate_package_repositories	2021-01-25 12:48:38.29065+00
+85	maasserver	0072_update_status_and_previous_status	2021-01-25 12:48:38.359012+00
+86	maasserver	0074_merge	2021-01-25 12:48:38.36071+00
+87	maasserver	0075_modify_packagerepository	2021-01-25 12:48:38.388258+00
+88	maasserver	0076_interface_discovery_rescue_mode	2021-01-25 12:48:38.876226+00
+89	maasserver	0077_static_routes	2021-01-25 12:48:38.941014+00
+90	maasserver	0078_remove_packagerepository_description	2021-01-25 12:48:38.951612+00
+91	maasserver	0079_add_keysource_model	2021-01-25 12:48:39.037909+00
+92	maasserver	0080_change_packagerepository_url_type	2021-01-25 12:48:39.047203+00
+93	maasserver	0081_allow_larger_bootsourcecache_fields	2021-01-25 12:48:39.089552+00
+94	maasserver	0082_add_kflavor	2021-01-25 12:48:39.235935+00
+95	maasserver	0083_device_discovery	2021-01-25 12:48:39.291511+00
+96	maasserver	0084_add_default_user_to_node_model	2021-01-25 12:48:39.341138+00
+97	maasserver	0085_no_intro_on_upgrade	2021-01-25 12:48:39.416542+00
+98	maasserver	0086_remove_powerpc_from_ports_arches	2021-01-25 12:48:39.493892+00
+99	maasserver	0087_add_completed_intro_to_userprofile	2021-01-25 12:48:39.518563+00
+100	maasserver	0088_remove_node_disable_ipv4	2021-01-25 12:48:39.751929+00
+101	maasserver	0089_active_discovery	2021-01-25 12:48:39.837028+00
+102	maasserver	0090_bootloaders	2021-01-25 12:48:39.875843+00
+103	maasserver	0091_v2_to_v3	2021-01-25 12:48:39.961177+00
+104	maasserver	0092_rolling	2021-01-25 12:48:39.969978+00
+105	maasserver	0093_add_rdns_model	2021-01-25 12:48:40.05115+00
+106	maasserver	0094_add_unmanaged_subnets	2021-01-25 12:48:40.071187+00
+107	maasserver	0095_vlan_relay_vlan	2021-01-25 12:48:40.120895+00
+108	maasserver	0096_set_default_vlan_field	2021-01-25 12:48:40.181747+00
+109	maasserver	0097_node_chassis_storage_hints	2021-01-25 12:48:40.396197+00
+110	maasserver	0098_add_space_to_vlan	2021-01-25 12:48:40.448417+00
+111	maasserver	0099_set_default_vlan_field	2021-01-25 12:48:40.509863+00
+112	maasserver	0100_migrate_spaces_from_subnet_to_vlan	2021-01-25 12:48:40.758334+00
+113	maasserver	0101_filesystem_btrfs_support	2021-01-25 12:48:40.793383+00
+114	maasserver	0102_remove_space_from_subnet	2021-01-25 12:48:40.861723+00
+115	maasserver	0103_notifications	2021-01-25 12:48:40.914105+00
+116	maasserver	0104_notifications_dismissals	2021-01-25 12:48:40.96416+00
+117	metadataserver	0002_script_models	2021-01-25 12:48:41.249811+00
+118	maasserver	0105_add_script_sets_to_node_model	2021-01-25 12:48:41.632985+00
+119	maasserver	0106_testing_status	2021-01-25 12:48:41.729061+00
+120	maasserver	0107_chassis_to_pods	2021-01-25 12:48:42.131675+00
+121	maasserver	0108_generate_bmc_names	2021-01-25 12:48:42.218986+00
+122	maasserver	0109_bmc_names_unique	2021-01-25 12:48:42.254272+00
+123	maasserver	0110_notification_category	2021-01-25 12:48:42.276728+00
+124	maasserver	0111_remove_component_error	2021-01-25 12:48:42.284516+00
+125	maasserver	0112_update_notification	2021-01-25 12:48:42.40036+00
+126	maasserver	0113_set_filepath_limit_to_linux_max	2021-01-25 12:48:42.702342+00
+127	maasserver	0114_node_dynamic_to_creation_type	2021-01-25 12:48:42.822829+00
+128	maasserver	0115_additional_boot_resource_filetypes	2021-01-25 12:48:42.842762+00
+129	maasserver	0116_add_disabled_components_for_mirrors	2021-01-25 12:48:42.854743+00
+130	maasserver	0117_add_iscsi_block_device	2021-01-25 12:48:42.906354+00
+131	maasserver	0118_add_iscsi_storage_pod	2021-01-25 12:48:42.982207+00
+132	maasserver	0119_set_default_vlan_field	2021-01-25 12:48:43.072335+00
+133	maasserver	0120_bootsourcecache_extra	2021-01-25 12:48:43.085656+00
+134	maasserver	0121_relax_staticipaddress_unique_constraint	2021-01-25 12:48:43.14455+00
+135	maasserver	0122_make_virtualblockdevice_uuid_editable	2021-01-25 12:48:43.163157+00
+136	maasserver	0123_make_iprange_comment_default_to_empty_string	2021-01-25 12:48:43.203555+00
+137	maasserver	0124_staticipaddress_address_family_index	2021-01-25 12:48:43.210728+00
+138	maasserver	0125_add_switch_model	2021-01-25 12:48:43.287623+00
+139	maasserver	0126_add_controllerinfo_model	2021-01-25 12:48:43.548006+00
+140	maasserver	0127_nodemetadata	2021-01-25 12:48:43.691988+00
+141	maasserver	0128_events_created_index	2021-01-25 12:48:43.703992+00
+142	maasserver	0129_add_install_rackd_flag	2021-01-25 12:48:43.777693+00
+143	maasserver	0130_node_locked_flag	2021-01-25 12:48:43.832081+00
+144	maasserver	0131_update_event_model_for_audit_logs	2021-01-25 12:48:44.486097+00
+145	maasserver	0132_consistent_model_name_validation	2021-01-25 12:48:44.624353+00
+146	maasserver	0133_add_resourcepool_model	2021-01-25 12:48:44.641795+00
+147	maasserver	0134_create_default_resourcepool	2021-01-25 12:48:44.847128+00
+148	maasserver	0135_add_pool_reference_to_node	2021-01-25 12:48:45.189121+00
+149	maasserver	0136_add_user_role_models	2021-01-25 12:48:45.360706+00
+150	maasserver	0137_create_default_roles	2021-01-25 12:48:45.622309+00
+151	maasserver	0138_add_ip_and_user_agent_to_event_model	2021-01-25 12:48:45.822059+00
+152	maasserver	0139_add_endpoint_and_increase_user_agent_length_for_event	2021-01-25 12:48:46.015215+00
+153	maasserver	0140_add_usergroup_model	2021-01-25 12:48:46.704241+00
+154	maasserver	0141_add_default_usergroup	2021-01-25 12:48:46.964933+00
+155	maasserver	0142_pod_default_resource_pool	2021-01-25 12:48:47.339477+00
+156	maasserver	0143_blockdevice_firmware	2021-01-25 12:48:47.409373+00
+157	maasserver	0144_filesystem_zfsroot_support	2021-01-25 12:48:47.514046+00
+158	maasserver	0145_interface_firmware	2021-01-25 12:48:47.821882+00
+159	maasserver	0146_add_rootkey	2021-01-25 12:48:47.84188+00
+160	maasserver	0147_pod_zones	2021-01-25 12:48:47.980686+00
+161	maasserver	0148_add_tags_on_pods	2021-01-25 12:48:48.080734+00
+162	maasserver	0149_userprofile_auth_last_check	2021-01-25 12:48:48.144455+00
+163	maasserver	0150_add_pod_commit_ratios	2021-01-25 12:48:48.342059+00
+164	maasserver	0151_userprofile_is_local	2021-01-25 12:48:48.404543+00
+165	maasserver	0152_add_usergroup_local	2021-01-25 12:48:48.482066+00
+166	maasserver	0153_add_skip_bmc_config	2021-01-25 12:48:48.627165+00
+167	maasserver	0154_link_usergroup_role	2021-01-25 12:48:49.085711+00
+168	maasserver	0155_add_globaldefaults_model	2021-01-25 12:48:50.090465+00
+169	maasserver	0156_drop_ssh_unique_key_index	2021-01-25 12:48:50.146393+00
+170	maasserver	0157_drop_usergroup_and_role	2021-01-25 12:48:50.851246+00
+171	maasserver	0158_pod_default_pool_to_pod	2021-01-25 12:48:50.984547+00
+172	maasserver	0159_userprofile_auth_last_check_no_now_default	2021-01-25 12:48:51.049395+00
+173	maasserver	0160_pool_only_for_machines	2021-01-25 12:48:51.311145+00
+174	maasserver	0161_pod_storage_pools	2021-01-25 12:48:52.033873+00
+175	maasserver	0162_storage_pools_notification	2021-01-25 12:48:52.133985+00
+176	maasserver	0163_create_new_power_parameters_with_jsonfield	2021-01-25 12:48:52.236717+00
+177	maasserver	0164_copy_over_existing_power_parameters	2021-01-25 12:48:52.35518+00
+178	maasserver	0165_remove_and_rename_power_parameters	2021-01-25 12:48:52.567486+00
+179	maasserver	0166_auto_select_s390x_extra_arches	2021-01-25 12:48:52.667297+00
+180	maasserver	0167_add_pod_host	2021-01-25 12:48:52.933086+00
+181	maasserver	0168_add_pod_default_macvlan_mode	2021-01-25 12:48:52.979865+00
+182	maasserver	0169_find_pod_host	2021-01-25 12:48:52.982224+00
+183	maasserver	0170_add_subnet_allow_dns	2021-01-25 12:48:53.00448+00
+184	maasserver	0171_remove_pod_host	2021-01-25 12:48:53.091101+00
+185	maasserver	0172_partition_tags	2021-01-25 12:48:53.10445+00
+186	maasserver	0173_add_node_install_kvm	2021-01-25 12:48:53.171447+00
+187	maasserver	0174_add_user_id_and_node_system_id_for_events	2021-01-25 12:48:53.265308+00
+188	maasserver	0175_copy_user_id_and_node_system_id_for_events	2021-01-25 12:48:53.356114+00
+189	maasserver	0176_rename_user_id_migrate_to_user_id_for_events	2021-01-25 12:48:53.481507+00
+190	maasserver	0177_remove_unique_together_on_bmc	2021-01-25 12:48:53.533164+00
+191	maasserver	0178_break_apart_linked_bmcs	2021-01-25 12:48:53.641008+00
+192	maasserver	0179_rbacsync	2021-01-25 12:48:53.651551+00
+193	maasserver	0180_rbaclastsync	2021-01-25 12:48:53.661902+00
+194	maasserver	0181_packagerepository_disable_sources	2021-01-25 12:48:53.674198+00
+195	maasserver	0182_remove_duplicate_null_ips	2021-01-25 12:48:53.691295+00
+196	maasserver	0183_node_uuid	2021-01-25 12:48:53.783749+00
+197	maasserver	0184_add_ephemeral_deploy_setting_to_node	2021-01-25 12:48:53.94347+00
+198	maasserver	0185_vmfs6	2021-01-25 12:48:54.009077+00
+199	maasserver	0186_node_description	2021-01-25 12:48:54.27584+00
+200	maasserver	0187_status_messages_change_event_logging_levels	2021-01-25 12:48:54.385149+00
+201	maasserver	0192_event_node_no_set_null	2021-01-25 12:48:54.461567+00
+202	maasserver	0194_machine_listing_event_index	2021-01-25 12:48:54.519446+00
+203	maasserver	0188_network_testing	2021-01-25 12:48:54.662722+00
+204	maasserver	0189_staticipaddress_temp_expires_on	2021-01-25 12:48:54.702682+00
+205	maasserver	0190_bmc_clean_duplicates	2021-01-25 12:48:54.825041+00
+206	maasserver	0191_bmc_unique_power_type_and_parameters	2021-01-25 12:48:54.830911+00
+207	maasserver	0193_merge_maasserver_0191_1092	2021-01-25 12:48:54.833142+00
+208	maasserver	0195_merge_20190902_1357	2021-01-25 12:48:54.835271+00
+209	maasserver	0196_numa_model	2021-01-25 12:48:55.222503+00
+210	maasserver	0197_remove_duplicate_physical_interfaces	2021-01-25 12:48:55.629378+00
+211	maasserver	0198_interface_physical_unique_mac	2021-01-25 12:48:55.63502+00
+212	maasserver	0199_bootresource_tbz_txz	2021-01-25 12:48:55.648054+00
+213	maasserver	0200_interface_sriov_max_vf	2021-01-25 12:48:55.729267+00
+214	maasserver	0195_event_username_max_length	2021-01-25 12:48:55.858742+00
+215	maasserver	0201_merge_20191008_1426	2021-01-25 12:48:55.861461+00
+216	maasserver	0202_event_node_on_delete	2021-01-25 12:48:55.941796+00
+217	maasserver	0203_interface_node_name_duplicates_delete	2021-01-25 12:48:56.072988+00
+218	maasserver	0204_interface_node_name_unique_together	2021-01-25 12:48:56.131249+00
+219	maasserver	0205_pod_nodes	2021-01-25 12:48:56.205208+00
+220	maasserver	0206_remove_node_token	2021-01-25 12:48:56.288556+00
+221	maasserver	0207_notification_dismissable	2021-01-25 12:48:56.309103+00
+222	maasserver	0208_no_power_query_events	2021-01-25 12:48:56.401126+00
+223	maasserver	0209_default_partitiontable_gpt	2021-01-25 12:48:56.424302+00
+224	maasserver	0210_filepathfield_to_charfield	2021-01-25 12:48:56.487633+00
+225	maasserver	0211_jsonfield_default_callable	2021-01-25 12:48:56.581397+00
+226	maasserver	0212_notifications_fields	2021-01-25 12:48:56.880158+00
+227	maasserver	0213_virtual_machine	2021-01-25 12:48:57.046972+00
+228	maasserver	0214_virtualmachine_one_to_one	2021-01-25 12:48:57.135224+00
+229	maasserver	0215_numanode_hugepages	2021-01-25 12:48:57.204421+00
+230	maasserver	0216_remove_skip_bmc_config_column	2021-01-25 12:48:57.265398+00
+231	maasserver	0217_notification_dismissal_timestamp	2021-01-25 12:48:57.310415+00
+232	maasserver	0218_images_maas_io_daily_to_stable	2021-01-25 12:48:57.400009+00
+233	maasserver	0219_vm_nic_link	2021-01-25 12:48:57.468108+00
+234	maasserver	0220_nodedevice	2021-01-25 12:48:57.552928+00
+235	maasserver	0221_track_lxd_project	2021-01-25 12:48:57.734811+00
+236	maasserver	0222_replace_node_creation_type	2021-01-25 12:48:58.16303+00
+237	metadataserver	0003_remove_noderesult	2021-01-25 12:48:58.252818+00
+238	metadataserver	0004_aborted_script_status	2021-01-25 12:48:58.269656+00
+239	metadataserver	0005_store_powerstate_on_scriptset_creation	2021-01-25 12:48:58.299004+00
+240	metadataserver	0006_scriptresult_combined_output	2021-01-25 12:48:58.320525+00
+241	metadataserver	0007_migrate-commissioningscripts	2021-01-25 12:48:58.547746+00
+242	metadataserver	0008_remove-commissioningscripts	2021-01-25 12:48:58.56009+00
+243	metadataserver	0009_remove_noderesult_schema	2021-01-25 12:48:58.572785+00
+244	metadataserver	0010_scriptresult_time_and_script_title	2021-01-25 12:48:58.707551+00
+245	metadataserver	0011_script_metadata	2021-01-25 12:48:58.810454+00
+246	metadataserver	0012_store_script_results	2021-01-25 12:48:58.851815+00
+247	metadataserver	0013_scriptresult_physicalblockdevice	2021-01-25 12:48:58.991536+00
+248	metadataserver	0014_rename_dhcp_unconfigured_ifaces	2021-01-25 12:48:59.086723+00
+249	metadataserver	0015_migrate_storage_tests	2021-01-25 12:48:59.196759+00
+250	metadataserver	0016_script_model_fw_update_and_hw_config	2021-01-25 12:48:59.240024+00
+251	metadataserver	0017_store_requested_scripts	2021-01-25 12:48:59.550081+00
+252	metadataserver	0018_script_result_skipped	2021-01-25 12:48:59.57665+00
+253	metadataserver	0019_add_script_result_suppressed	2021-01-25 12:48:59.609704+00
+254	metadataserver	0020_network_testing	2021-01-25 12:48:59.709946+00
+255	metadataserver	0021_scriptresult_applying_netconf	2021-01-25 12:48:59.780099+00
+256	metadataserver	0022_internet-connectivity-network-validation	2021-01-25 12:48:59.789878+00
+257	metadataserver	0023_reorder_network_scripts	2021-01-25 12:49:00.005664+00
+258	metadataserver	0024_reorder_commissioning_scripts	2021-01-25 12:49:00.184322+00
+259	metadataserver	0025_nodedevice	2021-01-25 12:49:00.197502+00
+260	metadataserver	0026_drop_ipaddr_script	2021-01-25 12:49:00.295794+00
+261	piston3	0002_auto_20151209_1652	2021-01-25 12:49:00.313978+00
+262	piston3	0003_piston_nonce_index	2021-01-25 12:49:00.32204+00
+263	sessions	0001_initial	2021-01-25 12:49:00.33404+00
+264	sites	0001_initial	2021-01-25 12:49:00.345347+00
+265	sites	0002_alter_domain_unique	2021-01-25 12:49:00.354878+00
 \.
 
 
@@ -5225,7 +5226,7 @@ COPY public.maasserver_dnsdata (id, created, updated, rrtype, rrdata, dnsresourc
 --
 
 COPY public.maasserver_dnspublication (id, serial, created, source) FROM stdin;
-1	1	2021-01-25 08:30:40.197528+00	Initial publication
+1	1	2021-01-25 12:48:37.237171+00	Initial publication
 \.
 
 
@@ -5250,7 +5251,7 @@ COPY public.maasserver_dnsresource_ip_addresses (id, dnsresource_id, staticipadd
 --
 
 COPY public.maasserver_domain (id, created, updated, name, authoritative, ttl) FROM stdin;
-0	2021-01-25 08:30:35.831939+00	2021-01-25 08:30:35.831939+00	maas	t	\N
+0	2021-01-25 12:48:32.525956+00	2021-01-25 12:48:32.525956+00	maas	t	\N
 \.
 
 
@@ -5315,7 +5316,7 @@ COPY public.maasserver_filesystemgroup (id, created, updated, uuid, group_type, 
 --
 
 COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdin;
-0	2021-01-25 08:30:49.785523+00	2021-01-25 08:30:49.789533+00	0
+0	2021-01-25 12:48:49.825357+00	2021-01-25 12:48:49.836992+00	0
 \.
 
 
@@ -5403,7 +5404,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, creation_type, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic) FROM stdin;
 \.
 
 
@@ -5484,8 +5485,8 @@ COPY public.maasserver_ownerdata (id, key, value, node_id) FROM stdin;
 --
 
 COPY public.maasserver_packagerepository (id, created, updated, name, url, components, arches, key, "default", enabled, disabled_pockets, distributions, disabled_components, disable_sources) FROM stdin;
-1	2021-01-25 08:30:41.109431+00	2021-01-25 08:30:41.109431+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
-2	2021-01-25 08:30:41.109431+00	2021-01-25 08:30:41.109431+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
+1	2021-01-25 12:48:38.223536+00	2021-01-25 12:48:38.223536+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
+2	2021-01-25 12:48:38.223536+00	2021-01-25 12:48:38.223536+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
 \.
 
 
@@ -5590,7 +5591,7 @@ COPY public.maasserver_regionrackrpcconnection (id, created, updated, endpoint_i
 --
 
 COPY public.maasserver_resourcepool (id, created, updated, name, description) FROM stdin;
-0	2021-01-25 08:30:47.036941+00	2021-01-25 08:30:47.036941+00	default	Default pool
+0	2021-01-25 12:48:44.836185+00	2021-01-25 12:48:44.836185+00	default	Default pool
 \.
 
 
@@ -5735,7 +5736,7 @@ COPY public.maasserver_vlan (id, created, updated, name, vid, mtu, fabric_id, dh
 --
 
 COPY public.maasserver_zone (id, created, updated, name, description) FROM stdin;
-1	2021-01-25 08:30:34.17084+00	2021-01-25 08:30:34.17084+00	default	
+1	2021-01-25 12:48:31.254333+00	2021-01-25 12:48:31.254333+00	default	
 \.
 
 
@@ -5856,7 +5857,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 105, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 264, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 265, true);
 
 
 --
