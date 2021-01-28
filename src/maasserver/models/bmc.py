@@ -1733,7 +1733,7 @@ class Pod(BMC):
             "an asynchronous action."
         )
 
-    def delete_and_wait(self):
+    def delete_and_wait(self, decompose=False):
         """Block the current thread while waiting for the pod to be deleted.
 
         This must not be called from a deferToDatabase thread; use the
@@ -1743,8 +1743,10 @@ class Pod(BMC):
         # machines. We allow maximum of 60 seconds per machine plus 60 seconds
         # for the pod.
         pod = self.as_pod()
-        num_machines = Machine.objects.filter(bmc=pod).count()
-        pod.async_delete().wait((num_machines * 60) + 60)
+        machine_wait = 0
+        if decompose:
+            machine_wait = Machine.objects.filter(bmc=pod).count() * 60
+        pod.async_delete(decompose=decompose).wait(machine_wait + 60)
 
     @asynchronous
     def async_delete(self, decompose=False):

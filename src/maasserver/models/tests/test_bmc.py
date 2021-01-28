@@ -2957,6 +2957,32 @@ class TestPodDelete(MAASTransactionServerTestCase):
         self.assertIsNone(delete_machine)
         self.assertIsNone(pod)
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_delete_and_wait_with_decompose(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        yield deferToDatabase(factory.make_Machine, bmc=pod)
+        yield deferToDatabase(factory.make_Machine, bmc=pod)
+        mock_result = Mock()
+        mock_async_delete = self.patch(pod, "async_delete")
+        mock_async_delete.return_value = mock_result
+        yield deferToDatabase(pod.delete_and_wait, decompose=True)
+        mock_async_delete.assert_called_with(decompose=True)
+        mock_result.wait.assert_called_with(180)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_delete_and_wait_no_decompose(self):
+        pod = yield deferToDatabase(factory.make_Pod)
+        yield deferToDatabase(factory.make_Machine, bmc=pod)
+        yield deferToDatabase(factory.make_Machine, bmc=pod)
+        mock_result = Mock()
+        mock_async_delete = self.patch(pod, "async_delete")
+        mock_async_delete.return_value = mock_result
+        yield deferToDatabase(pod.delete_and_wait)
+        mock_async_delete.assert_called_with(decompose=False)
+        mock_result.wait.assert_called_with(60)
+
 
 class TestPodDefaultMACVlanMode(MAASServerTestCase):
     def test_allows_default_macvlan_mode(self):

@@ -952,7 +952,12 @@ class ComposeMachineForPodsForm(forms.Form):
         self.valid_pod_forms = [
             pod_form for pod_form in self.pod_forms if pod_form.is_valid()
         ]
-        if len(self.valid_pod_forms) == 0:
+        if not self.valid_pod_forms:
             self.add_error(
                 "__all__", "No current pod resources match constraints."
             )
+
+
+class DeletePodForm(forms.Form):
+
+    decompose = BooleanField(required=False, initial=False)

@@ -12,7 +12,7 @@ from piston3.utils import rc
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms.pods import ComposeMachineForm, PodForm
+from maasserver.forms.pods import ComposeMachineForm, DeletePodForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.permissions import PodPermission
 from provisioningserver.drivers.pod import Capabilities
@@ -170,6 +170,9 @@ class PodHandler(OperationsHandler):
         @description Deletes a pod with the given pod ID.
 
         @param (int) "{id}" [required=true] The pod's ID.
+        @param (boolean) "decompose" [required=false] Whether to also also
+        decompose all machines in the pod on removal. If not provided, machines
+        will not be removed.
 
         @success (http-status-code) "204" 204
 
@@ -183,9 +186,13 @@ class PodHandler(OperationsHandler):
         to delete the pod.
         @error-example (content) "no-perms"
             This method is reserved for admin users.
+
         """
         pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
-        pod.delete_and_wait()
+        form = DeletePodForm(data=request.GET)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        pod.delete_and_wait(decompose=form.cleaned_data["decompose"])
         return rc.DELETED
 
     @admin_method

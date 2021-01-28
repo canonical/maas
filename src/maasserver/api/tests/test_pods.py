@@ -573,7 +573,6 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         pod = factory.make_Pod()
         for _ in range(3):
             factory.make_Machine(bmc=pod)
-            factory.make_Machine(bmc=pod, dynamic=True)
         mock_eventual = MagicMock()
         mock_async_delete = self.patch(Pod, "async_delete")
         mock_async_delete.return_value = mock_eventual
@@ -581,7 +580,22 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
         )
-        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60 * 7))
+        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60))
+
+    def test_DELETE_calls_async_delete_decompose(self):
+        pod = factory.make_Pod()
+        for _ in range(3):
+            factory.make_Machine(bmc=pod)
+        mock_eventual = MagicMock()
+        mock_async_delete = self.patch(Pod, "async_delete")
+        mock_async_delete.return_value = mock_eventual
+        response = self.client.delete(
+            get_pod_uri(pod), query={"decompose": True}
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60 * 4))
 
     def test_add_tag_to_pod(self):
         pod = factory.make_Pod()

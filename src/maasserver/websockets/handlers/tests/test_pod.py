@@ -14,6 +14,7 @@ from twisted.internet.defer import inlineCallbacks, succeed
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import pods
 from maasserver.forms.pods import PodForm
+from maasserver.models import Pod
 from maasserver.models.virtualmachine import MB, VirtualMachineInterface
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -519,6 +520,17 @@ class TestPodHandler(MAASTransactionServerTestCase):
         yield handler.delete({"id": pod.id})
         expected_pod = yield deferToDatabase(reload_object, pod)
         self.assertIsNone(expected_pod)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_delete_decompose(self):
+        user = yield deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        pod = yield deferToDatabase(self.make_pod_with_hints)
+        mock_async_delete = self.patch(Pod, "async_delete")
+        yield deferToDatabase(factory.make_Machine, bmc=pod)
+        yield handler.delete({"id": pod.id, "decompose": True})
+        mock_async_delete.assert_called_once_with(decompose=True)
 
     @wait_for_reactor
     @inlineCallbacks

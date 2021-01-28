@@ -329,8 +329,9 @@ class PodHandler(TimestampedModelHandler):
                 raise HandlerPermissionError()
             return obj
 
+        decompose = params.get("decompose", False)
         d = deferToDatabase(get_object, params)
-        d.addCallback(lambda pod: pod.async_delete())
+        d.addCallback(lambda pod: pod.async_delete(decompose=decompose))
         return d
 
     @asynchronous
