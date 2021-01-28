@@ -241,6 +241,8 @@ class LXDPodDriver(PodDriver):
                 "Please upgrade your LXD host to 3.19+ for virtual machine support."
             )
 
+        self._ensure_project(client)
+
         # get MACs for host interfaces. "unknown" interfaces are considered too
         # to match ethernets in containers
         networks_state = [
@@ -436,6 +438,25 @@ class LXDPodDriver(PodDriver):
         machine.delete(wait=True)
         # Hints are updated on the region for LXDPodDriver.
         return DiscoveredPodHints()
+
+    def _ensure_project(self, client):
+        """Ensure the project that the client is configured with exists."""
+        if client.projects.exists(client.project):
+            return
+
+        # when creating a project, by default don't enable per-project
+        # resources. Enabling storage volumes requires setting up at least one
+        # manually so that VMs can be created, and enabling profiles would
+        # create a default profile with no root nor NIC devices.
+        client.projects.create(
+            name=client.project,
+            description="Project managed by MAAS",
+            config={
+                "features.images": "false",
+                "features.profiles": "false",
+                "features.storage.volumes": "false",
+            },
+        )
 
     def _get_best_nic_device_from_profile(self, devices):
         """Return the nic name and device that is most likely to be

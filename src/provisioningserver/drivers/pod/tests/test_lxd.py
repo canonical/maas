@@ -373,6 +373,56 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_pod = yield driver.discover(None, context)
         self.assertEqual(discovered_pod.mac_addresses, [mac_address])
 
+    @inlineCallbacks
+    def test_discover_existing_project(self):
+        context = self.make_parameters_context()
+        project_name = context["project"]
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.project = project_name
+        client.has_api_extension.return_value = True
+        client.host_info = {
+            "environment": {
+                "architectures": ["x86_64", "i686"],
+                "kernel_architecture": "x86_64",
+                "server_name": factory.make_name("hostname"),
+            }
+        }
+        client.projects.exists.return_value = True
+        driver = lxd_module.LXDPodDriver()
+        yield driver.discover(None, context)
+        client.projects.exists.assert_called_once_with(project_name)
+        client.projects.create.assert_not_called()
+
+    @inlineCallbacks
+    def test_discover_new_project(self):
+        context = self.make_parameters_context()
+        project_name = context["project"]
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.project = project_name
+        client.has_api_extension.return_value = True
+        client.host_info = {
+            "environment": {
+                "architectures": ["x86_64", "i686"],
+                "kernel_architecture": "x86_64",
+                "server_name": factory.make_name("hostname"),
+            }
+        }
+        client.projects.exists.return_value = False
+        driver = lxd_module.LXDPodDriver()
+        yield driver.discover(None, context)
+        client.projects.exists.assert_called_once_with(project_name)
+        client.projects.create.assert_called_once_with(
+            name=project_name,
+            description="Project managed by MAAS",
+            config={
+                "features.images": "false",
+                "features.profiles": "false",
+                "features.storage.volumes": "false",
+            },
+        )
+
     def test_get_discovered_pod_storage_pool(self):
         driver = lxd_module.LXDPodDriver()
         mock_storage_pool = Mock()
