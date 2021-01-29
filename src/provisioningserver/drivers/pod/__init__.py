@@ -173,21 +173,8 @@ InterfaceAttachTypeChoices = (
 )
 
 
-class AttrHelperMixin:
-    """Mixin to add the `fromdict` and `asdict` to the classes."""
-
-    @classmethod
-    def fromdict(cls, data):
-        """Convert from a dictionary."""
-        return cls(**data)
-
-    def asdict(self):
-        """Convert to a dictionary."""
-        return attr.asdict(self)
-
-
 @attr.s
-class DiscoveredMachineInterface(AttrHelperMixin):
+class DiscoveredMachineInterface:
     """Discovered machine interface."""
 
     mac_address = attr.ib(converter=converter_obj(str, optional=True))
@@ -203,7 +190,7 @@ class DiscoveredMachineInterface(AttrHelperMixin):
 
 
 @attr.s
-class DiscoveredMachineBlockDevice(AttrHelperMixin):
+class DiscoveredMachineBlockDevice:
     """Discovered machine block device."""
 
     model = attr.ib(converter=converter_obj(str, optional=True))
@@ -231,7 +218,7 @@ class DiscoveredMachineBlockDevice(AttrHelperMixin):
 
 
 @attr.s
-class DiscoveredMachine(AttrHelperMixin):
+class DiscoveredMachine:
     """Discovered machine."""
 
     architecture = attr.ib(converter=str)
@@ -258,7 +245,7 @@ class DiscoveredMachine(AttrHelperMixin):
 
 
 @attr.s
-class DiscoveredPodStoragePool(AttrHelperMixin):
+class DiscoveredPodStoragePool:
     """Discovered pod storage pool.
 
     Provide information on the storage pool.
@@ -272,7 +259,7 @@ class DiscoveredPodStoragePool(AttrHelperMixin):
 
 
 @attr.s
-class DiscoveredPodHints(AttrHelperMixin):
+class DiscoveredPodHints:
     """Discovered pod hints.
 
     Hints provide helpful information to a user trying to compose a machine.
@@ -288,7 +275,7 @@ class DiscoveredPodHints(AttrHelperMixin):
 
 
 @attr.s
-class DiscoveredPod(AttrHelperMixin):
+class DiscoveredPod:
     """Discovered pod information."""
 
     architectures = attr.ib(converter=converter_list(str))
@@ -322,7 +309,7 @@ class DiscoveredPod(AttrHelperMixin):
 
 
 @attr.s
-class RequestedMachineBlockDevice(AttrHelperMixin):
+class RequestedMachineBlockDevice:
     """Requested machine block device information."""
 
     size = attr.ib(converter=int)
@@ -330,7 +317,7 @@ class RequestedMachineBlockDevice(AttrHelperMixin):
 
 
 @attr.s
-class RequestedMachineInterface(AttrHelperMixin):
+class RequestedMachineInterface:
     """Requested machine interface information."""
 
     ifname = attr.ib(converter=converter_obj(str, optional=True), default=None)
@@ -355,7 +342,7 @@ class RequestedMachineInterface(AttrHelperMixin):
 
 
 @attr.s
-class KnownHostInterface(AttrHelperMixin):
+class KnownHostInterface:
     """Known host interface information."""
 
     ifname = attr.ib(converter=str, default=None)
@@ -368,7 +355,7 @@ class KnownHostInterface(AttrHelperMixin):
 
 
 @attr.s
-class RequestedMachine(AttrHelperMixin):
+class RequestedMachine:
     """Requested machine information."""
 
     hostname = attr.ib(converter=str)
@@ -393,15 +380,6 @@ class RequestedMachine(AttrHelperMixin):
         default=attr.Factory(list),
     )
     hugepages_backed = attr.ib(converter=bool, default=False)
-
-    @classmethod
-    def fromdict(cls, data):
-        """Convert from a dictionary."""
-        return cls(**data)
-
-    def asdict(self):
-        """Convert to a dictionary."""
-        return attr.asdict(self)
 
 
 class PodDriverBase(PowerDriverBase):

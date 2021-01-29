@@ -4,10 +4,12 @@
 """Additional AMP argument classes."""
 
 from collections.abc import Mapping
+import importlib
 import json
 import urllib.parse
 import zlib
 
+import attr
 import netaddr
 from twisted.protocols import amp
 
@@ -111,6 +113,31 @@ class StructureAsJSON(amp.Argument):
         return json.loads(zlib.decompress(inString).decode("ascii"))
 
 
+class AttrsClassArgument(StructureAsJSON):
+    """Encode and decode an `attr.s` class over the wire.
+
+    The class name to import is specified as a string with full path.
+    """
+
+    def __init__(self, class_name, optional=False):
+        super().__init__(optional=optional)
+        self._class = self._get_class(class_name)
+
+    def _get_class(self, name):
+        module_name, cls = name.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        return getattr(module, cls)
+
+    def toString(self, obj):
+        if not isinstance(obj, self._class):
+            raise TypeError(f"{obj!r} is not of type {self._class.__name__}")
+        return super().toString(attr.asdict(obj))
+
+    def fromString(self, string):
+        data = super().fromString(string)
+        return self._class(**data)
+
+
 def _toByteString(string):
     """Encode `string` as (ASCII) bytes if it's a Unicode string.
 
@@ -198,79 +225,3 @@ class IPNetwork(amp.Argument):
         )
         network.prefixlen = prefixlen
         return network
-
-
-class AmpDiscoveredPod(StructureAsJSON):
-    """Encode and decode `DiscoveredPod` over the wire."""
-
-    def toString(self, inObject):
-        # Circular imports.
-        from provisioningserver.drivers.pod import DiscoveredPod
-
-        if not isinstance(inObject, DiscoveredPod):
-            raise TypeError("%r is not of type DiscoveredPod." % inObject)
-        return super().toString(inObject.asdict())
-
-    def fromString(self, inString):
-        # Circular imports.
-        from provisioningserver.drivers.pod import DiscoveredPod
-
-        data = super().fromString(inString)
-        return DiscoveredPod.fromdict(data)
-
-
-class AmpDiscoveredPodHints(StructureAsJSON):
-    """Encode and decode `DiscoveredPodHints` over the wire."""
-
-    def toString(self, inObject):
-        # Circular imports.
-        from provisioningserver.drivers.pod import DiscoveredPodHints
-
-        if not isinstance(inObject, DiscoveredPodHints):
-            raise TypeError("%r is not of type DiscoveredPodHints." % inObject)
-        return super().toString(inObject.asdict())
-
-    def fromString(self, inString):
-        # Circular imports.
-        from provisioningserver.drivers.pod import DiscoveredPodHints
-
-        data = super().fromString(inString)
-        return DiscoveredPodHints.fromdict(data)
-
-
-class AmpDiscoveredMachine(StructureAsJSON):
-    """Encode and decode `DiscoveredMachine` over the wire."""
-
-    def toString(self, inObject):
-        # Circular imports.
-        from provisioningserver.drivers.pod import DiscoveredMachine
-
-        if not isinstance(inObject, DiscoveredMachine):
-            raise TypeError("%r is not of type DiscoveredMachine." % inObject)
-        return super().toString(inObject.asdict())
-
-    def fromString(self, inString):
-        # Circular imports.
-        from provisioningserver.drivers.pod import DiscoveredMachine
-
-        data = super().fromString(inString)
-        return DiscoveredMachine.fromdict(data)
-
-
-class AmpRequestedMachine(StructureAsJSON):
-    """Encode and decode `RequestedMachine` over the wire."""
-
-    def toString(self, inObject):
-        # Circular imports.
-        from provisioningserver.drivers.pod import RequestedMachine
-
-        if not isinstance(inObject, RequestedMachine):
-            raise TypeError("%r is not of type RequestedMachine." % inObject)
-        return super().toString(inObject.asdict())
-
-    def fromString(self, inString):
-        # Circular imports.
-        from provisioningserver.drivers.pod import RequestedMachine
-
-        data = super().fromString(inString)
-        return RequestedMachine.fromdict(data)

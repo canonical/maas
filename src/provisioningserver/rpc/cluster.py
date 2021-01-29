@@ -38,11 +38,8 @@ from twisted.protocols import amp
 
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
-    AmpDiscoveredMachine,
-    AmpDiscoveredPod,
-    AmpDiscoveredPodHints,
     AmpList,
-    AmpRequestedMachine,
+    AttrsClassArgument,
     Bytes,
     CompressedAmpList,
     IPAddress,
@@ -763,7 +760,12 @@ class DiscoverPod(amp.Command):
         # variable bag of arguments from a variety of sources.
         (b"context", StructureAsJSON()),
     ]
-    response = [(b"pod", AmpDiscoveredPod())]
+    response = [
+        (
+            b"pod",
+            AttrsClassArgument("provisioningserver.drivers.pod.DiscoveredPod"),
+        )
+    ]
     errors = {
         exceptions.UnknownPodType: b"UnknownPodType",
         NotImplementedError: b"NotImplementedError",
@@ -808,11 +810,26 @@ class ComposeMachine(amp.Command):
         # We can't define a tighter schema here because this is a highly
         # variable bag of arguments from a variety of sources.
         (b"context", StructureAsJSON()),
-        (b"request", AmpRequestedMachine()),
+        (
+            b"request",
+            AttrsClassArgument(
+                "provisioningserver.drivers.pod.RequestedMachine"
+            ),
+        ),
     ]
     response = [
-        (b"machine", AmpDiscoveredMachine()),
-        (b"hints", AmpDiscoveredPodHints()),
+        (
+            b"machine",
+            AttrsClassArgument(
+                "provisioningserver.drivers.pod.DiscoveredMachine"
+            ),
+        ),
+        (
+            b"hints",
+            AttrsClassArgument(
+                "provisioningserver.drivers.pod.DiscoveredPodHints"
+            ),
+        ),
     ]
     errors = {
         exceptions.UnknownPodType: b"UnknownPodType",
@@ -836,7 +853,14 @@ class DecomposeMachine(amp.Command):
         # variable bag of arguments from a variety of sources.
         (b"context", StructureAsJSON()),
     ]
-    response = [(b"hints", AmpDiscoveredPodHints())]
+    response = [
+        (
+            b"hints",
+            AttrsClassArgument(
+                "provisioningserver.drivers.pod.DiscoveredPodHints"
+            ),
+        )
+    ]
     errors = {
         exceptions.UnknownPodType: b"UnknownPodType",
         NotImplementedError: b"NotImplementedError",

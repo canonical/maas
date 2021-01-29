@@ -7,6 +7,7 @@
 import random
 import zlib
 
+import attr
 import netaddr
 from testtools import ExpectedException
 from testtools.matchers import Equals, HasLength, IsInstance, LessThan
@@ -14,16 +15,6 @@ from twisted.protocols import amp
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.pod import (
-    DiscoveredMachine,
-    DiscoveredMachineBlockDevice,
-    DiscoveredMachineInterface,
-    DiscoveredPod,
-    DiscoveredPodHints,
-    RequestedMachine,
-    RequestedMachineBlockDevice,
-    RequestedMachineInterface,
-)
 from provisioningserver.rpc import arguments
 
 
@@ -82,6 +73,25 @@ class TestStructureAsJSON(MAASTestCase):
         self.assertThat(encoded, IsInstance(bytes))
         decoded = argument.fromString(encoded)
         self.assertThat(decoded, Equals(self.example))
+
+
+@attr.s
+class SampleAttrs:
+
+    foo = attr.ib(converter=str)
+    bar = attr.ib(converter=int)
+
+
+class TestAttrsClassArgument(MAASTestCase):
+    def test_round_trip(self):
+        sample = SampleAttrs(foo="foo", bar=10)
+        argument = arguments.AttrsClassArgument(
+            "provisioningserver.rpc.tests.test_arguments.SampleAttrs"
+        )
+        encoded = argument.toString(sample)
+        self.assertIsInstance(encoded, bytes)
+        decoded = argument.fromString(encoded)
+        self.assertEqual(decoded, sample)
 
 
 class TestParsedURL(MAASTestCase):
@@ -201,102 +211,3 @@ class TestIPNetwork(MAASTestCase):
         self.assertThat(encoded, HasLength(17))
         decoded = self.argument.fromString(encoded)
         self.assertThat(decoded, Equals(network))
-
-
-class TestDiscoveredPod(MAASTestCase):
-
-    example = DiscoveredPod(
-        architectures=["amd64/generic"],
-        cores=random.randint(1, 8),
-        cpu_speed=random.randint(1000, 3000),
-        memory=random.randint(1024, 8192),
-        local_storage=0,
-        hints=DiscoveredPodHints(
-            cores=random.randint(1, 8),
-            cpu_speed=random.randint(1000, 2000),
-            memory=random.randint(1024, 8192),
-            local_storage=0,
-        ),
-        machines=[],
-    )
-
-    def test_round_trip(self):
-        argument = arguments.AmpDiscoveredPod()
-        encoded = argument.toString(self.example)
-        self.assertThat(encoded, IsInstance(bytes))
-        decoded = argument.fromString(encoded)
-        self.assertThat(decoded, Equals(self.example))
-
-
-class TestDiscoveredPodHints(MAASTestCase):
-
-    example = DiscoveredPodHints(
-        cores=random.randint(1, 8),
-        cpu_speed=random.randint(1000, 2000),
-        memory=random.randint(1024, 8192),
-        local_storage=0,
-    )
-
-    def test_round_trip(self):
-        argument = arguments.AmpDiscoveredPodHints()
-        encoded = argument.toString(self.example)
-        self.assertThat(encoded, IsInstance(bytes))
-        decoded = argument.fromString(encoded)
-        self.assertThat(decoded, Equals(self.example))
-
-
-class TestDiscoveredMachine(MAASTestCase):
-
-    example = DiscoveredMachine(
-        hostname=factory.make_name("hostname"),
-        architecture="amd64/generic",
-        cores=random.randint(1, 8),
-        cpu_speed=random.randint(1000, 2000),
-        memory=random.randint(1024, 8192),
-        power_state=factory.make_name("unknown"),
-        power_parameters={"power_id": factory.make_name("power_id")},
-        interfaces=[
-            DiscoveredMachineInterface(mac_address=factory.make_mac_address())
-            for _ in range(3)
-        ],
-        block_devices=[
-            DiscoveredMachineBlockDevice(
-                model=factory.make_name("model"),
-                serial=factory.make_name("serial"),
-                size=random.randint(512, 1024),
-                id_path=factory.make_name("/dev/vda"),
-            )
-            for _ in range(3)
-        ],
-        tags=[factory.make_name("tag") for _ in range(3)],
-    )
-
-    def test_round_trip(self):
-        argument = arguments.AmpDiscoveredMachine()
-        encoded = argument.toString(self.example)
-        self.assertThat(encoded, IsInstance(bytes))
-        decoded = argument.fromString(encoded)
-        self.assertThat(decoded, Equals(self.example))
-
-
-class TestRequestedMachine(MAASTestCase):
-
-    example = RequestedMachine(
-        hostname=factory.make_name("hostname"),
-        architecture="amd64/generic",
-        cores=random.randint(1, 8),
-        cpu_speed=random.randint(1000, 2000),
-        memory=random.randint(1024, 8192),
-        interfaces=[RequestedMachineInterface() for _ in range(3)],
-        block_devices=[
-            RequestedMachineBlockDevice(size=random.randint(512, 1024))
-            for _ in range(3)
-        ],
-    )
-
-    def test_round_trip(self):
-        argument = arguments.AmpRequestedMachine()
-        encoded = argument.toString(self.example)
-        self.assertThat(encoded, IsInstance(bytes))
-        decoded = argument.fromString(encoded)
-        self.assertThat(decoded, Equals(self.example))
