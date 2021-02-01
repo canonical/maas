@@ -491,7 +491,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
             http.client.BAD_REQUEST, response.status_code, response.content
         )
         self.assertEqual(
-            b"Pod does not support composability.", response.content
+            b"VM host does not support composability.", response.content
         )
 
     def test_compose_composes_with_defaults(self):
