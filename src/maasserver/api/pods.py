@@ -332,7 +332,6 @@ class PodHandler(OperationsHandler):
         to delete the pod.
         @error-example (content) "no-perms"
             This method is reserved for admin users.
-
         """
         pod = Pod.objects.get_pod_or_404(
             id, request.user, PodPermission.compose

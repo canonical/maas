@@ -45,7 +45,7 @@ class NetworkHandler(OperationsHandler):
     This endpoint is deprecated. Use the new 'subnet' endpoint instead.
     """
 
-    api_doc_section_name = "Network"
+    api_doc_section_name = "Network (deprecated)"
     create = None
 
     def read(self, request, name):

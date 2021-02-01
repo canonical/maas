@@ -37,7 +37,7 @@ class CommissioningScriptsHandler(OperationsHandler):
     This endpoint has been deprecated in favor of the node-scripts endpoint.
     """
 
-    api_doc_section_name = "Commissioning scripts"
+    api_doc_section_name = "Commissioning scripts (deprecated)"
 
     update = delete = None
 
@@ -118,7 +118,7 @@ class CommissioningScriptHandler(OperationsHandler):
     This endpoint has been deprecated in favor of the node-script endpoint.
     """
 
-    api_doc_section_name = "Commissioning script"
+    api_doc_section_name = "Commissioning script (deprecated)"
 
     # Relies on Piston's built-in DELETE implementation.  There is no POST.
     create = None
