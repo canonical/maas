@@ -62,7 +62,7 @@ class TestCommands(MAASServerTestCase):
         # should not exceed 3 levels deep.)
         self.assertThat(
             result[:100],
-            StartsWith(":tocdepth: 3\n.. _region-controller-api:"),
+            StartsWith(":tocdepth: 3\n.. _maas-api:"),
         )
         # It also contains a ReST title (not indented).
         self.assertIn("===", result[:100])

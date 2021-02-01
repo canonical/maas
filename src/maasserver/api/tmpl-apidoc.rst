@@ -1,9 +1,7 @@
 .. raw:: html
 
   <details>
-    <summary>``{{ http_method }} {{ uri }}{{if operation != ""}}?{{ operation }}{{endif}}``</summary>
-
-######################################################################################################
+    <summary><code>{{ http_method }} {{ uri }}{{if operation != ""}}?{{ operation }}{{endif}}</code></summary>
 
 {{py:
 params_length = len(params)
