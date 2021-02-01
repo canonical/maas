@@ -30,7 +30,8 @@ def get_content_parameter(request):
 
 
 class CommissioningScriptsHandler(OperationsHandler):
-    """Manage custom commissioning scripts.
+    """
+    Manage custom commissioning scripts.
 
     This functionality is only available to administrators.
 
@@ -111,7 +112,8 @@ class CommissioningScriptsHandler(OperationsHandler):
 
 
 class CommissioningScriptHandler(OperationsHandler):
-    """Manage a custom commissioning script.
+    """
+    Manage a custom commissioning script.
 
     This functionality is only available to administrators.
 

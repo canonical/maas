@@ -40,7 +40,8 @@ def render_networks_json(subnets):
 
 
 class NetworkHandler(OperationsHandler):
-    """Manage a network.
+    """
+    Manage a network.
 
     This endpoint is deprecated. Use the new 'subnet' endpoint instead.
     """
@@ -147,7 +148,8 @@ class NetworkHandler(OperationsHandler):
 
 
 class NetworksHandler(OperationsHandler):
-    """Manage the networks.
+    """
+    Manage the networks.
 
     This endpoint is deprecated. Use the new 'subnets' endpoint instead.
     """

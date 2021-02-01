@@ -56,7 +56,7 @@ class SSHKeysHandler(OperationsHandler):
         should be provided in the request payload as form data with the name
         'key':
 
-            key: "key-type public-key-data"
+        ``key: "key-type public-key-data"``
 
         - ``key-type``: ecdsa-sha2-nistp256, ecdsa-sha2-nistp384,
           ecdsa-sha2-nistp521, ssh-dss, ssh-ed25519, ssh-rsa
@@ -112,7 +112,7 @@ class SSHKeysHandler(OperationsHandler):
 
         E.g.
 
-            source:user
+        ``source:user``
 
         - ``source``: lp (Launchpad), gh (GitHub)
         - ``user``: User login

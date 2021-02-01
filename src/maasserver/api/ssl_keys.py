@@ -50,7 +50,7 @@ class SSLKeysHandler(OperationsHandler):
         should be provided in the request payload as form data with the name
         'key':
 
-            key: "key data"
+        ``key: "key data"``
 
         - ``key data``: The contents of a pem file.
 
