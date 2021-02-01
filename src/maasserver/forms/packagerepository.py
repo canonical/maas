@@ -102,9 +102,13 @@ class PackageRepositoryForm(MAASModelForm):
                     "'%s' is not a valid architecture. Known architectures: "
                     "%s" % (value, ", ".join(sorted(known_arches)))
                 )
-        # If no arches provided, use MAIN_ARCHES.
+        # If no arches provided, use PORTS_ARCHES for the ports archive,
+        # MAIN_ARCHES as default fallback.
         if len(arches) == 0:
-            arches = PackageRepository.MAIN_ARCHES
+            if self.cleaned_data.get("name") == "ports_archive":
+                arches = PackageRepository.PORTS_ARCHES
+            else:
+                arches = PackageRepository.MAIN_ARCHES
         return arches
 
     def clean_distributions(self):
