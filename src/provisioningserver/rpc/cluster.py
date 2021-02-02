@@ -746,6 +746,35 @@ class AddChassis(amp.Command):
     errors = {}
 
 
+class DiscoverPodProjects(amp.Command):
+    """Discover pod projects names.
+
+    :since: 2.10
+    """
+
+    arguments = [
+        (b"type", amp.Unicode()),
+        # We can't define a tighter schema here because this is a highly
+        # variable bag of arguments from a variety of sources.
+        (b"context", StructureAsJSON()),
+    ]
+    response = [
+        (
+            b"projects",
+            amp.ListOf(
+                AttrsClassArgument(
+                    "provisioningserver.drivers.pod.DiscoveredPodProject"
+                )
+            ),
+        )
+    ]
+    errors = {
+        exceptions.UnknownPodType: b"UnknownPodType",
+        NotImplementedError: b"NotImplementedError",
+        exceptions.PodActionFail: b"PodActionFail",
+    }
+
+
 class DiscoverPod(amp.Command):
     """Discover all the pod information.
 

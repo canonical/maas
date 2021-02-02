@@ -13,6 +13,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodProject,
     get_error_message,
 )
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
@@ -27,6 +28,31 @@ from provisioningserver.utils.twisted import asynchronous
 
 maaslog = get_maas_logger("pod")
 log = LegacyLogger()
+
+
+@asynchronous
+def discover_pod_projects(pod_type, context):
+    """Discover projects in the specified pod."""
+    pod_driver = PodDriverRegistry.get_item(pod_type)
+    if pod_driver is None:
+        raise UnknownPodType(pod_type)
+
+    # there's no database ID for the pod yet as it's not register. The ID is
+    # only used for logging, so we pass 0 to distinguish from existing pods.
+    d = ensureDeferred(pod_driver.discover_projects(0, context))
+
+    def convert(projects):
+        return {
+            "projects": [
+                DiscoveredPodProject(
+                    name=project["name"], description=project["description"]
+                )
+                for project in projects
+            ]
+        }
+
+    d.addCallback(convert)
+    return d
 
 
 @asynchronous

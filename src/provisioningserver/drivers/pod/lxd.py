@@ -202,7 +202,7 @@ class LXDPodDriver(PodDriver):
     @typed
     @asynchronous
     @threadDeferred
-    def power_on(self, pod_id: str, context: dict):
+    def power_on(self, pod_id: int, context: dict):
         """Power on LXD VM."""
         machine = self._get_machine(pod_id, context)
         if LXD_VM_POWER_STATE[machine.status_code] == "off":
@@ -211,7 +211,7 @@ class LXDPodDriver(PodDriver):
     @typed
     @asynchronous
     @threadDeferred
-    def power_off(self, pod_id: str, context: dict):
+    def power_off(self, pod_id: int, context: dict):
         """Power off LXD VM."""
         machine = self._get_machine(pod_id, context)
         if LXD_VM_POWER_STATE[machine.status_code] == "on":
@@ -220,7 +220,7 @@ class LXDPodDriver(PodDriver):
     @typed
     @asynchronous
     @threadDeferred
-    def power_query(self, pod_id: str, context: dict):
+    def power_query(self, pod_id: int, context: dict):
         """Power query LXD VM."""
         machine = self._get_machine(pod_id, context)
         state = machine.status_code
@@ -232,7 +232,20 @@ class LXDPodDriver(PodDriver):
             )
 
     @threadDeferred
-    def discover(self, pod_id, context):
+    def discover_projects(self, pod_id: int, context: dict):
+        """Discover the list of projects in a pod."""
+        client = self._get_client(pod_id, context)
+        if not client.has_api_extension("projects"):
+            raise LXDPodError(
+                "Please upgrade your LXD host to 3.6+ for projects support."
+            )
+        return [
+            {"name": project.name, "description": project.description}
+            for project in client.projects.all()
+        ]
+
+    @threadDeferred
+    def discover(self, pod_id: int, context: dict):
         """Discover all Pod host resources."""
         # Connect to the Pod and make sure it is valid.
         client = self._get_client(pod_id, context)
@@ -319,7 +332,7 @@ class LXDPodDriver(PodDriver):
         return discovered_pod
 
     @threadDeferred
-    def get_commissioning_data(self, pod_id, context):
+    def get_commissioning_data(self, pod_id: int, context: dict):
         """Retreive commissioning data from LXD."""
         client = self._get_client(pod_id, context)
         resources = {
@@ -335,7 +348,7 @@ class LXDPodDriver(PodDriver):
         return {LXD_OUTPUT_NAME: resources}
 
     @threadDeferred
-    def compose(self, pod_id: str, context: dict, request: RequestedMachine):
+    def compose(self, pod_id: int, context: dict, request: RequestedMachine):
         """Compose a virtual machine."""
         client = self._get_client(pod_id, context)
         # Check to see if there is a maas profile.  If not, use the default.
@@ -429,7 +442,7 @@ class LXDPodDriver(PodDriver):
         return discovered_machine, DiscoveredPodHints()
 
     @threadDeferred
-    def decompose(self, pod_id, context):
+    def decompose(self, pod_id: int, context: dict):
         """Decompose a virtual machine."""
         client = self._get_client(pod_id, context)
         machine = client.virtual_machines.get(context["instance_name"])
@@ -701,7 +714,7 @@ class LXDPodDriver(PodDriver):
         )
 
     @typed
-    def _get_machine(self, pod_id: str, context: dict):
+    def _get_machine(self, pod_id: int, context: dict):
         """Retrieve LXD VM."""
         client = self._get_client(pod_id, context)
         instance_name = context.get("instance_name")
@@ -714,9 +727,9 @@ class LXDPodDriver(PodDriver):
 
     @typed
     def _get_client(
-        self, pod_id: str, context: dict, project: Optional[str] = None
+        self, pod_id: int, context: dict, project: Optional[str] = None
     ):
-        """Connect pylxd client."""
+        """Connect PyLXD client."""
         if not project:
             project = context.get("project", "default")
         endpoint = self.get_url(context)

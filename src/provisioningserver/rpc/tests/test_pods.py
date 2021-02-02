@@ -20,6 +20,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodProject,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -27,6 +28,38 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.refresh.maas_api_helper import SignalException
 from provisioningserver.rpc import exceptions, pods
+
+
+class TestDiscoverPodProjects(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_unknown_pod_raises_UnknownPodType(self):
+        unknown_type = factory.make_name("unknown")
+        with ExpectedException(exceptions.UnknownPodType):
+            yield pods.discover_pod_projects(unknown_type, {})
+
+    @inlineCallbacks
+    def test_return_projects(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        projects = [
+            {"name": "p1", "description": "Project 1"},
+            {"name": "p2", "description": "Project 2"},
+        ]
+        fake_driver.discover_projects.return_value = succeed(projects)
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        result = yield pods.discover_pod_projects(fake_driver.name, {})
+        self.assertEqual(
+            result,
+            {
+                "projects": [
+                    DiscoveredPodProject(name="p1", description="Project 1"),
+                    DiscoveredPodProject(name="p2", description="Project 2"),
+                ]
+            },
+        )
 
 
 class TestDiscoverPod(MAASTestCase):

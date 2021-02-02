@@ -174,6 +174,14 @@ InterfaceAttachTypeChoices = (
 
 
 @attr.s
+class DiscoveredPodProject:
+    """Discovered project in a pod."""
+
+    name = attr.ib(converter=str)
+    description = attr.ib(converter=str)
+
+
+@attr.s
 class DiscoveredMachineInterface:
     """Discovered machine interface."""
 

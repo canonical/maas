@@ -423,6 +423,51 @@ class TestLXDPodDriver(MAASTestCase):
             },
         )
 
+    @inlineCallbacks
+    def test_discover_projects_requires_projects_support(self):
+        context = self.make_parameters_context()
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = False
+        error_msg = "Please upgrade your LXD host to *."
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            yield driver.discover_projects(None, context)
+        self.assertThat(
+            client.has_api_extension, MockCalledOnceWith("projects")
+        )
+
+    @inlineCallbacks
+    def test_discover_projects(self):
+        context = self.make_parameters_context()
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = True
+        name = factory.make_name("hostname")
+        client.host_info = {
+            "environment": {
+                "architectures": ["x86_64", "i686"],
+                "kernel_architecture": "x86_64",
+                "server_name": name,
+            }
+        }
+        proj1 = Mock()
+        proj1.name = "proj1"
+        proj1.description = "Project 1"
+        proj2 = Mock()
+        proj2.name = "proj2"
+        proj2.description = "Project 2"
+        client.projects.all.return_value = [proj1, proj2]
+        projects = yield driver.discover_projects(None, context)
+        self.assertEqual(
+            projects,
+            [
+                {"name": "proj1", "description": "Project 1"},
+                {"name": "proj2", "description": "Project 2"},
+            ],
+        )
+
     def test_get_discovered_pod_storage_pool(self):
         driver = lxd_module.LXDPodDriver()
         mock_storage_pool = Mock()

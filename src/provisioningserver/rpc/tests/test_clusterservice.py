@@ -84,6 +84,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodProject,
     RequestedMachine,
     RequestedMachineBlockDevice,
     RequestedMachineInterface,
@@ -3969,6 +3970,48 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             },
         )
         self.assertEqual({}, response.result)
+
+
+class TestClusterProtocol_DiscoverPodProjects(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.DiscoverPodProjects.commandName
+        )
+        self.assertIsNotNone(responder)
+
+    def test_calls_discover_pod_projects(self):
+        mock_discover_pod_projects = self.patch_autospec(
+            pods, "discover_pod_projects"
+        )
+        mock_discover_pod_projects.return_value = succeed(
+            {
+                "projects": [
+                    DiscoveredPodProject(
+                        name="p1",
+                        description="Project 1",
+                    ),
+                    DiscoveredPodProject(
+                        name="p2",
+                        description="Project 2",
+                    ),
+                ]
+            }
+        )
+        pod_type = factory.make_name("pod_type")
+        context = {}
+        call_responder(
+            Cluster(),
+            cluster.DiscoverPodProjects,
+            {
+                "type": pod_type,
+                "context": context,
+            },
+        )
+        mock_discover_pod_projects.assert_called_once_with(pod_type, context)
 
 
 class TestClusterProtocol_DiscoverPod(MAASTestCase):

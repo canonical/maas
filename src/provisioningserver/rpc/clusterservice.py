@@ -883,6 +883,16 @@ class Cluster(RPCProtocol):
             maaslog.error(message)
         return {}
 
+    @cluster.DiscoverPodProjects.responder
+    def discover_pod_projects(self, type, context):
+        """DiscoverPod()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.DiscoverPodProjects`.
+        """
+
+        return pods.discover_pod_projects(type, context)
+
     @cluster.DiscoverPod.responder
     def discover_pod(self, type, context, pod_id=None, name=None):
         """DiscoverPod()
