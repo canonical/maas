@@ -80,7 +80,6 @@ from maasserver.utils import build_absolute_uri
 # the two.
 api_doc_title = dedent(
     """
-    :tocdepth: 3
     .. _maas-api:
 
     ========

@@ -12,7 +12,7 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from requests.exceptions import RequestException
-from testtools.matchers import AfterPreprocessing, HasLength, StartsWith
+from testtools.matchers import AfterPreprocessing, HasLength
 
 from apiclient.creds import convert_tuple_to_string
 from maasserver.enum import KEYS_PROTOCOL_TYPE
@@ -57,15 +57,11 @@ class TestCommands(MAASServerTestCase):
         # Just check that the documentation looks all right.
         self.assertIn("POST /MAAS/api/2.0/account/", result)
         self.assertIn("MAAS API", result)
-        # The documentation starts with a link target: "region-controller-api".
-        # (And also a specification that the left-side table-of-contents depth
-        # should not exceed 3 levels deep.)
-        self.assertThat(
-            result[:100],
-            StartsWith(":tocdepth: 3\n.. _maas-api:"),
+        self.assertTrue(
+            result[:20].startswith(".. _maas-api:"),
         )
         # It also contains a ReST title (not indented).
-        self.assertIn("===", result[:100])
+        self.assertIn("===", result[:20])
 
     def test_createadmin_prompts_for_password_if_not_given(self):
         stderr = StringIO()
