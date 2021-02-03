@@ -5,11 +5,13 @@
 
 from io import BytesIO
 import json
+from urllib.parse import urlencode, urlparse
 
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.web.client import FileBodyProducer
 
 from provisioningserver.drivers import (
+    IP_EXTRACTOR_PATTERNS,
     make_ip_extractor,
     make_setting_field,
     SETTING_SCOPE,
@@ -62,16 +64,30 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
         ),
     ]
 
-    ip_extractor = make_ip_extractor("power_address")
+    ip_extractor = make_ip_extractor(
+        "power_address", IP_EXTRACTOR_PATTERNS.URL
+    )
 
     def _get_url(self, context, endpoint, params=None):
-        uri = f"https://{context['power_address']}:8006/api2/json/{endpoint}"
+        url = urlparse(context["power_address"])
+        if not url.scheme:
+            # When the scheme is not included in the power address
+            # urlparse puts the url into path.
+            url = url._replace(scheme="https", netloc=url.path, path="")
+        if not url.port:
+            if url.netloc:
+                url = url._replace(netloc="%s:8006" % url.netloc)
+            else:
+                # Similar to above, we need to swap netloc and path.
+                url = url._replace(netloc="%s:8006" % url.path, path="")
         if params:
-            uri = "%s?%s" % (
-                uri,
-                "&".join([f"{key}={value}" for key, value in params.items()]),
-            )
-        return uri.encode()
+            query = urlencode(params)
+        else:
+            query = ""
+        url = url._replace(
+            path="/api2/json/%s" % endpoint, query=query, fragment=""
+        )
+        return url.geturl().encode()
 
     def _login(self, system_id, context):
         power_token_name = context.get("power_token_name")
