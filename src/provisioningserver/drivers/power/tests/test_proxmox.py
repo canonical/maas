@@ -52,6 +52,26 @@ class TestProxmoxPowerDriver(MAASTestCase):
             ),
         )
 
+    def test_get_url_funky_params(self):
+        power_address = factory.make_name("power_address")
+        endpoint = factory.make_name("endpoint")
+        params = {"test": "? /"}
+        params_str = "test=%3F+%2F"
+        self.assertEqual(
+            f"https://{power_address}:8006/api2/json/{endpoint}?{params_str}".encode(),
+            self.proxmox._get_url(
+                {"power_address": power_address}, endpoint, params
+            ),
+        )
+
+    def test_get_url_allows_custom_port(self):
+        power_address = "%s:443" % factory.make_name("power_address")
+        endpoint = factory.make_name("endpoint")
+        self.assertEqual(
+            f"https://{power_address}/api2/json/{endpoint}".encode(),
+            self.proxmox._get_url({"power_address": power_address}, endpoint),
+        )
+
     @inlineCallbacks
     def test_login(self):
         system_id = factory.make_name("system_id")
