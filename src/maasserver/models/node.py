@@ -2942,7 +2942,7 @@ class Node(CleanSave, TimestampedModel):
             client_idents = pod.get_client_identifiers()
 
             @transactional
-            def _save(machine_id, pod_id, hints):
+            def _save(machine_id, pod_id, result):
                 from maasserver.models.bmc import Pod
 
                 machine = Machine.objects.filter(id=machine_id).first()
@@ -2958,9 +2958,16 @@ class Node(CleanSave, TimestampedModel):
                         machine_id=machine_id
                     ).delete()
                     super(Node, machine).delete()
+
+                if isinstance(result, Failure):
+                    maaslog.warning(
+                        f"{self.hostname}: Failure decomposing machine: {result.value}"
+                    )
+                    return
+
                 pod = Pod.objects.filter(id=pod_id).first()
                 if pod is not None:
-                    pod.sync_hints(hints)
+                    pod.sync_hints(result)
 
             maaslog.info("%s: Decomposing machine", self.hostname)
 
@@ -2973,8 +2980,10 @@ class Node(CleanSave, TimestampedModel):
                 pod_id=pod.id,
                 name=pod.name,
             )
-            d.addCallback(
-                lambda hints: (deferToDatabase(_save, self.id, pod.id, hints))
+            d.addBoth(
+                lambda result: (
+                    deferToDatabase(_save, self.id, pod.id, result)
+                )
             )
             d.addCallback(lambda _: request_commissioning_results(pod))
         else:
