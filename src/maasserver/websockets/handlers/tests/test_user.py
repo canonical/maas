@@ -396,3 +396,63 @@ class TestUserHandler(MAASServerTestCase):
         )
         self.assertEqual(self.dehydrate_user(user, for_self=True), observed)
         self.assertTrue(user.check_password("newpassword"))
+
+    def test_change_other_users_password_as_admin(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+        user = factory.make_User()
+
+        response = handler.admin_change_password(
+            {
+                "id": user.id,
+                "password1": "newpassword",
+                "password2": "newpassword",
+            }
+        )
+        user = reload_object(user)
+
+        self.assertIsNone(response)
+        self.assertTrue(
+            user.check_password("newpassword"),
+            "Password not correctly changed",
+        )
+
+    def test_cannot_change_other_users_password_as_unprivileged(self):
+        unprivileged_user = factory.make_User()
+        handler = UserHandler(unprivileged_user, {}, None)
+        user = factory.make_User()
+
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.admin_change_password,
+            {
+                "id": user.id,
+                "password1": "newpassword",
+                "password2": "newpassword",
+            },
+        )
+
+    def test_cannot_change_own_password_as_unprivileged_using_admin(self):
+        unprivileged_user = factory.make_User()
+        handler = UserHandler(unprivileged_user, {}, None)
+
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.admin_change_password,
+            {
+                "id": unprivileged_user.id,
+                "password1": "newpassword",
+                "password2": "newpassword",
+            },
+        )
+
+    def test_cannot_change_other_users_password_as_admin_bad_password(self):
+        admin_user = factory.make_admin()
+        handler = UserHandler(admin_user, {}, None)
+        user = factory.make_User()
+
+        self.assertRaises(
+            HandlerValidationError,
+            handler.admin_change_password,
+            {"id": user.id, "password1": "foo", "password2": "bar"},
+        )

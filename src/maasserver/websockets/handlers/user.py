@@ -5,7 +5,10 @@
 
 __all__ = ["UserHandler"]
 
-from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.forms import (
+    AdminPasswordChangeForm,
+    PasswordChangeForm,
+)
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.http import HttpRequest
@@ -51,6 +54,7 @@ class UserHandler(Handler):
             "auth_user",
             "mark_intro_complete",
             "change_password",
+            "admin_change_password",
         ]
         fields = [
             "id",
@@ -206,5 +210,16 @@ class UserHandler(Handler):
             self.user.sshkeys_count = self.user.sshkey_set.count()
             self.user.machines_count = self.user.node_set.count()
             return self.full_dehydrate(self.user)
+        else:
+            raise HandlerValidationError(form.errors)
+
+    def admin_change_password(self, params):
+        """As Admin, update another user's password."""
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+        user = self.get_object(params)
+        form = AdminPasswordChangeForm(user=user, data=get_QueryDict(params))
+        if form.is_valid():
+            form.save()
         else:
             raise HandlerValidationError(form.errors)
