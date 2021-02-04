@@ -63,18 +63,19 @@ commit_and_tag() {
 }
 
 version="$1"
+major_version="$(echo "${version}" | cut -d'.' -f-2)"
+current_branch="$(git branch --show-current)"
 
 if [ -z "$version" ]; then
     exit_error "Usage $SCRIPT <MAJOR>.<MINOR>.<MICRO>(a<num>|b<num>|rc<num>)"
 elif ! echo "$version" | grep -Eq "^[2-9]+\.[0-9]+\.[0-9]+((a|b|rc)[0-9]+)?$"; then
     echo "Invalid version!" >&2
     exit_error "Usage $SCRIPT <MAJOR>.<MINOR>.<MICRO>(a<num>|b<num>|rc<num>)"
-elif [[ $version != *$(git branch --show-current)* ]]; then
+elif [[ "$major_version" != *${current_branch}* ]]; then
     # Verify tags are created from the branch for that version if it exists.
     for branch in $(git ls-remote --heads origin | awk 'FS="/" { print $3 }'); do
-	if [[ $version == *${branch}* ]]; then
-	    echo "Branch($branch) exists for version($version)!"
-	    exit_error "Usage $SCRIPT <MAJOR>.<MINOR>.<MICRO>(a<num>|b<num>|rc<num>)"
+	if [[ "$major_version" == *${branch}* ]]; then
+	    exit_error "Branch ${branch} exists for version ${version}. Refusing to tag ${current_branch}."
 	fi
     done
 fi
