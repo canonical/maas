@@ -8,6 +8,7 @@ from contextlib import suppress
 import re
 from typing import Optional
 from urllib.parse import urlparse
+import uuid
 
 from pylxd import Client
 from pylxd.exceptions import ClientConnectionFailed, NotFound
@@ -364,26 +365,32 @@ class LXDPodDriver(PodDriver):
                     "profile or a 'default' profile, defined."
                 )
         definition = get_lxd_machine_definition(request, profile.name)
-
-        # Add disk to the definition.
-        # XXX: LXD VMs currently only support one virtual block device.
-        # Loop will need to be modified once LXD has multiple virtual
-        # block device support.
+        # Add disks to the definition.
         devices = {}
         storage_pools = client.storage_pools.all()
         default_storage_pool = context.get(
             "default_storage_pool_id", context.get("default_storage_pool")
         )
         for idx, disk in enumerate(request.block_devices):
-            usable_pool = self._get_usable_storage_pool(
+            pool = self._get_usable_storage_pool(
                 disk, storage_pools, default_storage_pool
             )
-            devices["root"] = {
-                "path": "/",
+            size = str(disk.size)
+            if idx == 0:
+                path = "/"
+                extra_conf = {
+                    "boot.priority": "0",
+                    "size": size,
+                }
+            else:
+                path = ""
+                volume = self._create_volume(pool, size)
+                extra_conf = {"source": volume.name}
+            devices[f"disk{idx}"] = {
+                "path": path,
                 "type": "disk",
-                "pool": usable_pool,
-                "size": str(disk.size),
-                "boot.priority": "0",
+                "pool": pool.name,
+                **extra_conf,
             }
 
         # Create and attach interfaces to the machine.
@@ -444,13 +451,48 @@ class LXDPodDriver(PodDriver):
     @threadDeferred
     def decompose(self, pod_id: int, context: dict):
         """Decompose a virtual machine."""
-        client = self._get_client(pod_id, context)
-        machine = client.virtual_machines.get(context["instance_name"])
+        machine = self._get_machine(pod_id, context)
+        if not machine:
+            maaslog.warning(
+                f"Pod {pod_id}: machine {context['instance_name']} not found"
+            )
+            return DiscoveredPodHints()
+
         if machine.status_code != 102:  # 102 - Stopped
             machine.stop(force=True, wait=True)
+        # collect machine attributes before removing it
+        devices = machine.devices
+        client = machine.client
         machine.delete(wait=True)
+        self._delete_machine_volumes(client, pod_id, devices)
         # Hints are updated on the region for LXDPodDriver.
         return DiscoveredPodHints()
+
+    def _create_volume(self, pool, size):
+        """Create a storage volume."""
+        name = f"maas-{uuid.uuid4()}"
+        return pool.volumes.create(
+            "custom",
+            {"name": name, "content_type": "block", "config": {"size": size}},
+        )
+
+    def _delete_machine_volumes(self, client, pod_id: int, devices: dict):
+        """Delete machine volumes.
+
+        The VM root volume is not removed as it's handled automatically by LXD.
+        """
+        for device in devices.values():
+            source = device.get("source")
+            if device["type"] != "disk" or not source:
+                continue
+            pool_name = device["pool"]
+            try:
+                pool = client.storage_pools.get(pool_name)
+                pool.volumes.get("custom", source).delete()
+            except Exception:
+                maaslog.warning(
+                    f"Pod {pod_id}: failed to delete volume {source} in pool {pool_name}"
+                )
 
     def _ensure_project(self, client):
         """Ensure the project that the client is configured with exists."""
@@ -510,7 +552,7 @@ class LXDPodDriver(PodDriver):
                 resources = storage_pool.resources.get()
                 available = resources.space["total"] - resources.space["used"]
                 if disk.size <= available:
-                    return storage_pool.name
+                    return storage_pool
             raise PodInvalidResources(
                 "Not enough storage space on storage pools: %s"
                 % (
@@ -534,7 +576,7 @@ class LXDPodDriver(PodDriver):
                 resources = default_storage_pool.resources.get()
                 available = resources.space["total"] - resources.space["used"]
                 if disk.size <= available:
-                    return default_storage_pool.name
+                    return default_storage_pool
                 raise PodInvalidResources(
                     f"Not enough space in default storage pool: {default_storage_pool.name}"
                 )
@@ -547,7 +589,7 @@ class LXDPodDriver(PodDriver):
             resources = storage_pool.resources.get()
             available = resources.space["total"] - resources.space["used"]
             if disk.size <= available:
-                return storage_pool.name
+                return storage_pool
         raise PodInvalidResources(
             "Not enough storage space on any storage pools: %s"
             % (
@@ -576,7 +618,7 @@ class LXDPodDriver(PodDriver):
 
         # Discover block devices.
         block_devices = []
-        for idx, device in enumerate(expanded_devices):
+        for device in expanded_devices:
             # Block device.
             # When request is provided map the tags from the request block
             # devices to the discovered block devices. This ensures that
@@ -714,16 +756,21 @@ class LXDPodDriver(PodDriver):
         )
 
     @typed
-    def _get_machine(self, pod_id: int, context: dict):
-        """Retrieve LXD VM."""
+    def _get_machine(self, pod_id: int, context: dict, fail: bool = True):
+        """Retrieve LXD VM.
+
+        If "fail" is False, return None instead of raising an exception.
+        """
         client = self._get_client(pod_id, context)
         instance_name = context.get("instance_name")
         try:
             return client.virtual_machines.get(instance_name)
         except NotFound:
-            raise LXDPodError(
-                f"Pod {pod_id}: LXD VM {instance_name} not found."
-            )
+            if fail:
+                raise LXDPodError(
+                    f"Pod {pod_id}: LXD VM {instance_name} not found."
+                )
+            return None
 
     @typed
     def _get_client(

@@ -628,11 +628,6 @@ class ComposeMachineForm(forms.Form):
         storage_constraints = get_storage_constraints_from_string(
             self.get_value_for("storage")
         )
-        # LXD Pods currently only support one block device.
-        if self.pod.power_type == "lxd" and len(storage_constraints) > 1:
-            raise PodProblem(
-                "LXD Pod virtual machines currently only support one block device."
-            )
         for _, size, tags in storage_constraints:
             if tags is None:
                 tags = []

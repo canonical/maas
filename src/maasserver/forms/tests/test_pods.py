@@ -1168,29 +1168,6 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test_get_machine_with_multiple_disks_fails_for_lxd_pods(self):
-        request = MagicMock()
-        pod_host = factory.make_Machine_with_Interface_on_Subnet()
-        pod_host.boot_interface.vlan.dhcp_on = False
-        pod_host.boot_interface.vlan.save()
-        pod = make_pod_with_hints(host=pod_host)
-        pod.power_type = "lxd"
-        disk_1 = random.randint(8, 16) * (1000 ** 3)
-        disk_2 = random.randint(8, 16) * (1000 ** 3)
-        storage = "root:%d,extra:%d" % (
-            disk_1 // (1000 ** 3),
-            disk_2 // (1000 ** 3),
-        )
-        form = ComposeMachineForm(
-            data={"storage": storage}, request=request, pod=pod
-        )
-        self.assertTrue(form.is_valid(), form.errors)
-        with ExpectedException(
-            PodProblem,
-            ".*virtual machines currently only support one block device.",
-        ):
-            form.get_requested_machine(get_known_host_interfaces(pod))
-
     def test_get_machine_with_interfaces_fails_no_dhcp_for_vlan(self):
         request = MagicMock()
         pod_host = factory.make_Machine_with_Interface_on_Subnet()
