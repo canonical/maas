@@ -4,7 +4,7 @@
 from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field
 from math import ceil
-from typing import List
+from typing import List, Optional
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
@@ -128,14 +128,14 @@ class NUMAPinningMemoryResources:
 @dataclass
 class NUMAPinningVirtualMachineNetworkResources:
     host_nic_id: int
-    guest_nic_id: int = None
+    guest_nic_id: Optional[int] = None
 
 
 @dataclass
 class NUMAPinningVirtualMachineResources:
-    """Resource usaage for a VM in a NUMA node."""
+    """Resource usage for a VM in a NUMA node."""
 
-    system_id: str
+    system_id: Optional[str]
     pinned_cores: List[int] = field(default_factory=list)
     networks: List[NUMAPinningVirtualMachineNetworkResources] = field(
         default_factory=list
@@ -144,12 +144,15 @@ class NUMAPinningVirtualMachineResources:
 
 @dataclass
 class NUMAPinningVirtualFunctionResources:
+    """Resource usage for network interfaces VFs in a NUMA node."""
+
     free: int = 0
     allocated: int = 0
 
 
 @dataclass
 class NUMAPinningHostInterfaceResources:
+    """Network interfaces details in a NUMA node."""
 
     id: int
     name: str
