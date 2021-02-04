@@ -592,3 +592,35 @@ class TestCmdConfig(MAASTestCase):
         options = self.parser.parse_args([])
         self.assertIsNone(self.cmd(options))
         self.assertEqual(stdout.getvalue(), "Mode: none\n")
+
+    def test_enable_debugging(self):
+        mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
+        mock_sighup_supervisord = self.patch(snappy, "sighup_supervisord")
+        options = self.parser.parse_args(["--enable-debug"])
+        stdout = io.StringIO()
+        self.patch(sys, "stdout", stdout)
+
+        self.cmd(options)
+        mock_maas_configuration().update.assert_called_once_with(
+            {"debug": True}
+        )
+        # After config is changed, services are restarted
+        self.assertEqual(stdout.getvalue(), "Stopping services\n")
+        mock_sighup_supervisord.assert_called_once_with()
+
+    def test_reenable_debugging(self):
+        mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
+        config_manager = mock_maas_configuration()
+        mock_sighup_supervisord = self.patch(snappy, "sighup_supervisord")
+        options = self.parser.parse_args(["--enable-debug"])
+        stdout = io.StringIO()
+        self.patch(sys, "stdout", stdout)
+
+        # Simulate the value already being enabled
+        current_config = config_manager.get()
+        current_config.get.side_effect = {"debug": True}.__getitem__
+
+        self.cmd(options)
+        config_manager.update.assert_not_called()
+        self.assertEqual(stdout.getvalue(), "")
+        mock_sighup_supervisord.assert_not_called()
