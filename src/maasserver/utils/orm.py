@@ -1145,10 +1145,10 @@ class MAASQueriesMixin:
             # If we got a dictionary, treat it as one of the entries in a
             # LabeledConstraintMap. That is, each key is a specifier, and
             # each value is a list of values (which must be OR'd together).
-            for key in specifiers.keys():
-                assert isinstance(specifiers[key], list)
+            for key, constraint_list in specifiers.items():
+                assert isinstance(constraint_list, list)
                 constraints = [
-                    key + separator + value for value in specifiers[key]
+                    key + separator + value for value in constraint_list
                 ]
                 # Leave off specifier_types here because this recursion
                 # will go back to the subclass to get the types filled in.
@@ -1165,7 +1165,7 @@ class MAASQueriesMixin:
                     specifier_type, specifier_types, item, separator=separator
                 )
                 current_q = query(current_q, op, item)
-        if len(kwargs) > 0:
+        if kwargs:
             current_q &= Q(**kwargs)
         return current_q
 
@@ -1267,7 +1267,7 @@ class MAASQueriesMixin:
         object_name = get_model_object_name(self)
         if isinstance(specifiers, str):
             specifiers = specifiers.strip()
-        if specifiers is None or specifiers == "":
+        if not specifiers:
             raise MAASAPIBadRequest("%s specifier required." % object_name)
         try:
             object = get_one(self.filter_by_specifiers(specifiers, **kwargs))

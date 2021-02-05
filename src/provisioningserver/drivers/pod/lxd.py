@@ -671,7 +671,6 @@ class LXDPodDriver(PodDriver):
         for name, device in expanded_devices.items():
             if device["type"] != "nic":
                 continue
-            device = expanded_devices[name]
             if "network" in device:
                 # Try finding the nictype from the networks.
                 # XXX: This should work for "bridge" networks,
