@@ -83,9 +83,75 @@ class TestGetVMHostResources(MAASServerTestCase):
             pinned_cores=[0, 2],
             bmc=pod,
         )
-        self.assertEqual(get_vm_host_resources(pod), [])
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(resources.cores.free, 0)
+        self.assertEqual(resources.cores.allocated, 0)
+        self.assertEqual(resources.memory.general.free, 0)
+        self.assertEqual(resources.memory.general.allocated, 0)
+        self.assertEqual(resources.memory.hugepages.free, 0)
+        self.assertEqual(resources.memory.hugepages.allocated, 0)
+        self.assertEqual(resources.numa, [])
 
-    def test_get_resources_aligned(self):
+    def test_get_resources_global_resources(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 1]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        factory.make_NUMANode(node=node, cores=[2, 3], memory=2048)
+        factory.make_NUMANode(node=node, cores=[4, 5], memory=2048)
+        factory.make_NUMANode(node=node, cores=[6, 7], memory=2048)
+        factory.make_NUMANodeHugepages(
+            numa_node=numa_node0, page_size=1024 * MB, total=2048 * MB
+        )
+        pod = factory.make_Pod(pod_type="lxd", host=node)
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[0, 1],
+            hugepages_backed=False,
+            bmc=pod,
+        )
+        factory.make_VirtualMachine(
+            memory=1024,
+            pinned_cores=[2],
+            hugepages_backed=False,
+            bmc=pod,
+        )
+        factory.make_VirtualMachine(
+            memory=1024, unpinned_cores=2, hugepages_backed=True, bmc=pod
+        )
+        factory.make_VirtualMachine(
+            memory=2048, unpinned_cores=1, hugepages_backed=False, bmc=pod
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(resources.cores.free, 2)
+        self.assertEqual(resources.cores.allocated, 6)
+        self.assertEqual(resources.memory.general.free, 6144 * MB)
+        self.assertEqual(resources.memory.general.allocated, 4096 * MB)
+        self.assertEqual(resources.memory.hugepages.free, 1024 * MB)
+        self.assertEqual(resources.memory.hugepages.allocated, 1024 * MB)
+
+    def test_get_resources_global_resources_pinned_cores_overlap(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 1]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        factory.make_NUMANode(node=node, cores=[2, 3], memory=2048)
+        pod = factory.make_Pod(pod_type="lxd", host=node)
+        factory.make_VirtualMachine(
+            pinned_cores=[0, 1],
+            bmc=pod,
+        )
+        factory.make_VirtualMachine(
+            pinned_cores=[1, 2],
+            bmc=pod,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(resources.cores.free, 0)
+        self.assertEqual(resources.cores.allocated, 4)
+
+    def test_get_resources_numa_aligned(self):
         node = factory.make_Node()
         numa_node0 = node.default_numanode
         numa_node0.cores = [0, 3]
@@ -110,7 +176,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
-            [asdict(r) for r in resources],
+            [asdict(r) for r in resources.numa],
             [
                 {
                     "cores": {"allocated": [0], "free": [3]},
@@ -157,7 +223,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             ],
         )
 
-    def test_get_resources_aligned_hugepages(self):
+    def test_get_resources_numa_aligned_hugepages(self):
         node = factory.make_Node()
         numa_node0 = node.default_numanode
         numa_node0.cores = [0, 1]
@@ -190,7 +256,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
-            [asdict(r) for r in resources],
+            [asdict(r) for r in resources.numa],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},
@@ -239,7 +305,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             ],
         )
 
-    def test_get_resources_unaligned(self):
+    def test_get_resources_numa_unaligned(self):
         node = factory.make_Node()
         numa_node0 = node.default_numanode
         numa_node0.cores = [0, 1]
@@ -257,7 +323,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
-            [asdict(r) for r in resources],
+            [asdict(r) for r in resources.numa],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},
@@ -294,7 +360,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             ],
         )
 
-    def test_get_resources_unaligned_hugepages(self):
+    def test_get_resources_numa_unaligned_hugepages(self):
         node = factory.make_Node()
         numa_node0 = node.default_numanode
         numa_node0.cores = [0, 1]
@@ -320,7 +386,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
-            [asdict(r) for r in resources],
+            [asdict(r) for r in resources.numa],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},
@@ -369,7 +435,7 @@ class TestGetVMHostResources(MAASServerTestCase):
             ],
         )
 
-    def test_get_resources_hugepages_round(self):
+    def test_get_resources_numa_hugepages_round(self):
         node = factory.make_Node()
         numa_node0 = node.default_numanode
         numa_node0.cores = [0, 1]
@@ -395,7 +461,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
-            [asdict(r) for r in resources],
+            [asdict(r) for r in resources.numa],
             [
                 {
                     "cores": {"allocated": [0], "free": [1]},

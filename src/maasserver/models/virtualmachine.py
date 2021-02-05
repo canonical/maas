@@ -98,7 +98,7 @@ class NUMAPinningCoresResources:
 
 @dataclass
 class NUMAPinningGeneralMemoryResources:
-    """Core usage details for NUMA pinning."""
+    """General memory usage details for NUMA pinning."""
 
     allocated: int = 0
     free: int = 0
@@ -178,10 +178,39 @@ class NUMAPinningNodeResources:
     )
 
 
+@dataclass
+class VMHostResources:
+    """Usage for a resource type in a VM host."""
+
+    allocated: int = 0
+    free: int = 0
+
+
+@dataclass
+class VMHostMemoryResources:
+    """Memory usage details for a VM host."""
+
+    hugepages: VMHostResources = field(default_factory=VMHostResources)
+    general: VMHostResources = field(default_factory=VMHostResources)
+
+
+@dataclass
+class VMHostResources:
+    """Resources for a VM host."""
+
+    cores: VMHostResources = field(default_factory=VMHostResources)
+    memory: VMHostMemoryResources = field(
+        default_factory=VMHostMemoryResources
+    )
+    numa: List[NUMAPinningNodeResources] = field(default_factory=list)
+
+
 def get_vm_host_resources(pod):
     """Return used resources for a VM host by its ID."""
+    resources = VMHostResources()
     if pod.host is None:
-        return []
+        return resources
+
     vms = list(
         VirtualMachine.objects.annotate(
             system_id=Coalesce("machine__system_id", None)
@@ -197,6 +226,9 @@ def get_vm_host_resources(pod):
         .all()
     )
 
+    total_memory = 0
+    total_cores = 0
+    total_hugepages = 0
     # to track how many cores are not used by pinned VMs in each NUMA node
     available_numanode_cores = {}
     # to track how much general memory is allocated in each NUMA node
@@ -208,7 +240,13 @@ def get_vm_host_resources(pod):
     allocated_numanode_hugepages = defaultdict(int)
     for numa_idx, numa_node in numanodes.items():
         available_numanode_cores[numa_idx] = set(numa_node.cores)
-        numanode_hugepages[numa_idx] = numa_node.hugepages_set.first()
+        hugepages = numa_node.hugepages_set.first()
+        numanode_hugepages[numa_idx] = hugepages
+        # update global totals
+        total_cores += len(numa_node.cores)
+        total_memory += numa_node.memory * MB
+        if hugepages:
+            total_hugepages += hugepages.total
 
     numanode_interfaces = defaultdict(list)
     for interface in Interface.objects.annotate(
@@ -227,8 +265,12 @@ def get_vm_host_resources(pod):
     for vm_interface in all_vm_interfaces:
         vm_interfaces[vm_interface.vm_id].append(vm_interface)
 
-    # map VM IDs to host NUMA nodes indexes
     for vm in vms:
+        resources.cores.allocated += vm.unpinned_cores + len(vm.pinned_cores)
+        if vm.hugepages_backed:
+            resources.memory.hugepages.allocated += vm.memory * MB
+        else:
+            resources.memory.general.allocated += vm.memory * MB
         _update_numanode_resources_usage(
             vm,
             vm_interfaces[vm.id],
@@ -240,8 +282,14 @@ def get_vm_host_resources(pod):
             numanode_vms_resources,
             numanode_interfaces,
         )
-
-    return [
+    resources.cores.free = total_cores - resources.cores.allocated
+    resources.memory.general.free = (
+        total_memory - resources.memory.general.allocated
+    )
+    resources.memory.hugepages.free = (
+        total_hugepages - resources.memory.hugepages.allocated
+    )
+    resources.numa = [
         _get_numa_pinning_resources(
             numa_node,
             available_numanode_cores[numa_idx],
@@ -253,6 +301,7 @@ def get_vm_host_resources(pod):
         )
         for numa_idx, numa_node in numanodes.items()
     ]
+    return resources
 
 
 def _update_numanode_resources_usage(

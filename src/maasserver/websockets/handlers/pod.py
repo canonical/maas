@@ -245,14 +245,8 @@ class PodHandler(TimestampedModelHandler):
 
     def dehydrate_numa_pinning(self, obj):
         """Dehydrate NUMA pinning info."""
-        if obj.host is None:
-            return []
-
-        resources = [
-            dataclasses.asdict(entry) for entry in get_vm_host_resources(obj)
-        ]
-
-        return resources
+        host_resources = get_vm_host_resources(obj)
+        return [dataclasses.asdict(entry) for entry in host_resources.numa]
 
     @asynchronous
     @inlineCallbacks
