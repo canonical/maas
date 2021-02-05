@@ -23,6 +23,7 @@ from maasserver.clusterrpc.pods import (
     compose_machine,
     decompose_machine,
     discover_pod,
+    discover_pod_projects,
     get_best_discovered_result,
     send_pod_commissioning_results,
 )
@@ -35,7 +36,11 @@ from maasserver.testing.testcase import (
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.models import NodeKey
-from provisioningserver.drivers.pod import DiscoveredPod, DiscoveredPodHints
+from provisioningserver.drivers.pod import (
+    DiscoveredPod,
+    DiscoveredPodHints,
+    DiscoveredPodProject,
+)
 from provisioningserver.rpc.cluster import (
     ComposeMachine,
     DecomposeMachine,
@@ -44,6 +49,79 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import PodActionFail, UnknownPodType
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
+
+
+class TestDiscoverPodProjects(MAASTransactionServerTestCase):
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_DiscoverPodProjects_on_all_clients(self):
+        rack_ids = [factory.make_name("system_id") for _ in range(3)]
+        projects = [
+            DiscoveredPodProject(name="p1", description="Project 1"),
+            DiscoveredPodProject(name="p2", description="Project 2"),
+        ]
+        clients = []
+        for rack_id in rack_ids:
+            client = Mock()
+            client.ident = rack_id
+            client.return_value = succeed({"projects": projects})
+            clients.append(client)
+
+        self.patch(pods_module, "getAllClients").return_value = clients
+        discovered = yield discover_pod_projects(factory.make_name("pod"), {})
+        self.assertEqual(
+            ({rack_id: projects for rack_id in rack_ids}, {}), discovered
+        )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_returns_discovered_projects_and_errors(self):
+        pod_type = factory.make_name("pod")
+        projects = [
+            DiscoveredPodProject(name="p1", description="Project 1"),
+            DiscoveredPodProject(name="p2", description="Project 2"),
+        ]
+
+        clients = []
+        client = Mock()
+        error_rack_id = factory.make_name("system_id")
+        client.ident = error_rack_id
+        exception = UnknownPodType(pod_type)
+        client.return_value = fail(exception)
+        clients.append(client)
+
+        valid_rack_id = factory.make_name("system_id")
+        client = Mock()
+        client.ident = valid_rack_id
+        client.return_value = succeed({"projects": projects})
+        clients.append(client)
+
+        self.patch(pods_module, "getAllClients").return_value = clients
+        discovered = yield discover_pod_projects(pod_type, {})
+        self.assertEqual(
+            ({valid_rack_id: projects}, {error_rack_id: exception}), discovered
+        )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_handles_timeout(self):
+        def defer_way_later(*args, **kwargs):
+            # Create a defer that will finish in 1 minute.
+            return deferLater(reactor, 60 * 60, lambda: None)
+
+        rack_id = factory.make_name("system_id")
+        client = Mock()
+        client.ident = rack_id
+        client.side_effect = defer_way_later
+
+        self.patch(pods_module, "getAllClients").return_value = [client]
+        discovered = yield discover_pod_projects(
+            factory.make_name("pod"), {}, timeout=0.5
+        )
+        self.assertThat(discovered[0], Equals({}))
+        self.assertThat(
+            discovered[1], MatchesDict({rack_id: IsInstance(CancelledError)})
+        )
 
 
 class TestDiscoverPod(MAASTransactionServerTestCase):

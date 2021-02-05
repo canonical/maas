@@ -12,6 +12,7 @@ from provisioningserver.rpc.cluster import (
     ComposeMachine,
     DecomposeMachine,
     DiscoverPod,
+    DiscoverPodProjects,
     SendPodCommissioningResults,
 )
 from provisioningserver.rpc.exceptions import PodActionFail, UnknownPodType
@@ -20,6 +21,24 @@ from provisioningserver.utils.twisted import (
     deferWithTimeout,
     FOREVER,
 )
+
+
+@asynchronous(timeout=FOREVER)
+def discover_pod_projects(pod_type, context, timeout=120):
+    """Discover projects from a Pod."""
+
+    def discover_projects(client):
+        return deferWithTimeout(
+            timeout,
+            client,
+            DiscoverPodProjects,
+            type=pod_type,
+            context=context,
+        )
+
+    clients = getAllClients()
+    dl = DeferredList(map(discover_projects, clients), consumeErrors=True)
+    return dl.addCallback(_collect_results_and_failures, clients, "projects")
 
 
 @asynchronous(timeout=FOREVER)
@@ -50,28 +69,19 @@ def discover_pod(pod_type, context, pod_id=None, name=None, timeout=120):
 
     clients = getAllClients()
     dl = DeferredList(map(discover, clients), consumeErrors=True)
-
-    def cb_results(results):
-        discovered, failures = {}, {}
-        for client, (success, result) in zip(clients, results):
-            if success:
-                discovered[client.ident] = result["pod"]
-            else:
-                failures[client.ident] = result.value
-        return discovered, failures
-
-    return dl.addCallback(cb_results)
+    return dl.addCallback(_collect_results_and_failures, clients, "pod")
 
 
 def get_best_discovered_result(discovered):
-    """Return the `DiscoveredPod` from `discovered` or raise an error
-    if nothing was discovered or the best error return from the rack
-    controlllers."""
+    """Return the result of a discover action on multiple clients, or raise an
+    error if nothing was discovered or the best error return from the rack
+    controllers.
+    """
     discovered, exceptions = discovered
-    if len(discovered) > 0:
+    if discovered:
         # Return the first `DiscoveredPod`. They should all be the same.
         return list(discovered.values())[0]
-    elif len(exceptions) > 0:
+    elif exceptions:
         # Raise the best exception that provides the most detail.
         for exc_type in [
             PodActionFail,
@@ -232,3 +242,14 @@ def decompose_machine(client, pod_type, context, pod_id, name):
     d.addCallback(lambda result: result["hints"])
     d.addErrback(wrap_failure)
     return d
+
+
+def _collect_results_and_failures(results, clients, result_key):
+    """Return dicts with results and failures from an RPC to multiple clients."""
+    discovered, failures = {}, {}
+    for client, (success, result) in zip(clients, results):
+        if success:
+            discovered[client.ident] = result[result_key]
+        else:
+            failures[client.ident] = result.value
+    return discovered, failures

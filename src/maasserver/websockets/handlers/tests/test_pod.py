@@ -5,7 +5,7 @@
 
 
 import random
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, sentinel
 
 from crochet import wait_for
 from testtools.matchers import Equals
@@ -20,6 +20,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
+from maasserver.websockets.handlers import pod
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
@@ -490,6 +491,37 @@ class TestPodHandler(MAASTransactionServerTestCase):
         expected_data = [handler.full_dehydrate(pod, for_list=True)]
         result = handler.list({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_projects(self):
+        user = yield deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        params = {
+            "type": "lxd",
+            "power_address": "1.2.3.4",
+            "project": "p1",
+            "password": "secret",
+        }
+        mock_discover_pod_projects = self.patch(pod, "discover_pod_projects")
+        mock_discover_pod_projects.return_value = succeed(None)
+        mock_get_best_discovered_result = self.patch(
+            pod, "get_best_discovered_result"
+        )
+        mock_get_best_discovered_result.return_value = succeed(
+            sentinel.projects
+        )
+        projects = yield handler.get_projects(params)
+        self.assertIs(projects, sentinel.projects)
+        mock_discover_pod_projects.assert_called_once_with(
+            "lxd",
+            {
+                "power_address": "1.2.3.4",
+                "project": "p1",
+                "password": "secret",
+            },
+        )
+        mock_get_best_discovered_result.assert_called_once()
 
     @wait_for_reactor
     @inlineCallbacks

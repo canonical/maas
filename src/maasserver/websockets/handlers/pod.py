@@ -8,7 +8,12 @@ import dataclasses
 from functools import partial
 
 from django.http import HttpRequest
+from twisted.internet.defer import inlineCallbacks, returnValue
 
+from maasserver.clusterrpc.pods import (
+    discover_pod_projects,
+    get_best_discovered_result,
+)
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import PodProblem
 from maasserver.forms.pods import ComposeMachineForm, PodForm
@@ -248,6 +253,15 @@ class PodHandler(TimestampedModelHandler):
         ]
 
         return resources
+
+    @asynchronous
+    @inlineCallbacks
+    def get_projects(self, params):
+        """Return projects from the specified pod."""
+        pod_type = params.pop("type")
+        results = yield discover_pod_projects(pod_type, params)
+        projects = yield get_best_discovered_result(results)
+        returnValue(projects)
 
     @asynchronous
     def create(self, params):
