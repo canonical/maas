@@ -179,26 +179,31 @@ class NUMAPinningNodeResources:
 
 
 @dataclass
-class VMHostResources:
+class VMHostResource:
     """Usage for a resource type in a VM host."""
 
-    allocated: int = 0
+    allocated_tracked: int = 0
+    allocated_other: int = 0
     free: int = 0
+
+    @property
+    def allocated(self):
+        return self.allocated_tracked + self.allocated_other
 
 
 @dataclass
 class VMHostMemoryResources:
     """Memory usage details for a VM host."""
 
-    hugepages: VMHostResources = field(default_factory=VMHostResources)
-    general: VMHostResources = field(default_factory=VMHostResources)
+    hugepages: VMHostResource = field(default_factory=VMHostResource)
+    general: VMHostResource = field(default_factory=VMHostResource)
 
 
 @dataclass
 class VMHostResources:
     """Resources for a VM host."""
 
-    cores: VMHostResources = field(default_factory=VMHostResources)
+    cores: VMHostResource = field(default_factory=VMHostResource)
     memory: VMHostMemoryResources = field(
         default_factory=VMHostMemoryResources
     )
@@ -265,12 +270,22 @@ def get_vm_host_resources(pod):
     for vm_interface in all_vm_interfaces:
         vm_interfaces[vm_interface.vm_id].append(vm_interface)
 
+    tracked_project = pod.power_parameters.get("project")
     for vm in vms:
-        resources.cores.allocated += vm.unpinned_cores + len(vm.pinned_cores)
-        if vm.hugepages_backed:
-            resources.memory.hugepages.allocated += vm.memory * MB
+        vm_mem = vm.memory * MB
+        vm_cores = vm.unpinned_cores + len(vm.pinned_cores)
+        if vm.project == tracked_project:
+            resources.cores.allocated_tracked += vm_cores
+            if vm.hugepages_backed:
+                resources.memory.hugepages.allocated_tracked += vm_mem
+            else:
+                resources.memory.general.allocated_tracked += vm_mem
         else:
-            resources.memory.general.allocated += vm.memory * MB
+            resources.cores.allocated_other += vm_cores
+            if vm.hugepages_backed:
+                resources.memory.hugepages.allocated_other += vm_mem
+            else:
+                resources.memory.general.allocated_other += vm_mem
         _update_numanode_resources_usage(
             vm,
             vm_interfaces[vm.id],

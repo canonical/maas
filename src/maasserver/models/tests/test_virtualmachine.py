@@ -104,12 +104,16 @@ class TestGetVMHostResources(MAASServerTestCase):
         factory.make_NUMANodeHugepages(
             numa_node=numa_node0, page_size=1024 * MB, total=2048 * MB
         )
-        pod = factory.make_Pod(pod_type="lxd", host=node)
+        project = factory.make_string()
+        pod = factory.make_Pod(
+            pod_type="lxd", parameters={"project": project}, host=node
+        )
         factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[0, 1],
             hugepages_backed=False,
             bmc=pod,
+            project=project,
         )
         factory.make_VirtualMachine(
             memory=1024,
@@ -118,7 +122,11 @@ class TestGetVMHostResources(MAASServerTestCase):
             bmc=pod,
         )
         factory.make_VirtualMachine(
-            memory=1024, unpinned_cores=2, hugepages_backed=True, bmc=pod
+            memory=1024,
+            unpinned_cores=2,
+            hugepages_backed=True,
+            project=project,
+            bmc=pod,
         )
         factory.make_VirtualMachine(
             memory=2048, unpinned_cores=1, hugepages_backed=False, bmc=pod
@@ -126,10 +134,18 @@ class TestGetVMHostResources(MAASServerTestCase):
         resources = get_vm_host_resources(pod)
         self.assertEqual(resources.cores.free, 2)
         self.assertEqual(resources.cores.allocated, 6)
+        self.assertEqual(resources.cores.allocated_tracked, 4)
+        self.assertEqual(resources.cores.allocated_other, 2)
         self.assertEqual(resources.memory.general.free, 6144 * MB)
         self.assertEqual(resources.memory.general.allocated, 4096 * MB)
+        self.assertEqual(resources.memory.general.allocated_tracked, 1024 * MB)
+        self.assertEqual(resources.memory.general.allocated_other, 3072 * MB)
         self.assertEqual(resources.memory.hugepages.free, 1024 * MB)
         self.assertEqual(resources.memory.hugepages.allocated, 1024 * MB)
+        self.assertEqual(
+            resources.memory.hugepages.allocated_tracked, 1024 * MB
+        )
+        self.assertEqual(resources.memory.hugepages.allocated_other, 0)
 
     def test_get_resources_global_resources_pinned_cores_overlap(self):
         node = factory.make_Node()
