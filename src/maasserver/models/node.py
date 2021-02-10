@@ -4335,9 +4335,11 @@ class Node(CleanSave, TimestampedModel):
                     bridge_fd=bridge_fd,
                 )
 
-    def claim_auto_ips(self, temp_expires_after=None):
+    def claim_auto_ips(self, exclude_addresses=None, temp_expires_after=None):
         """Assign IP addresses to all interface links set to AUTO."""
-        exclude_addresses = set()
+        exclude_addresses = (
+            exclude_addresses.copy() if exclude_addresses else set()
+        )
         allocated_ips = set()
         # Query for the interfaces again here; if we use the cached
         # interface_set, we could skip a newly-created bridge if it was created
@@ -4500,6 +4502,7 @@ class Node(CleanSave, TimestampedModel):
             yield deferToDatabase(clean_expired)
             allocated_ips = yield deferToDatabase(
                 transactional(self.claim_auto_ips),
+                exclude_addresses=attempted_ips,
                 temp_expires_after=timedelta(minutes=5),
             )
             if not allocated_ips:

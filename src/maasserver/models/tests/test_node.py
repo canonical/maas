@@ -8664,6 +8664,71 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(auto_ip.ip, Equals(third_ip.ip))
         self.assertThat(auto_ip.temp_expires_on, Is(None))
 
+    def test_claims_auto_ip_addresses_skips_used_ip_discovery_disabled(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual"
+        )
+        node_interface = node.get_boot_interface()
+        [auto_ip] = node_interface.ip_addresses.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO
+        )
+
+        # Create a rack controller that has an interface on the same subnet
+        # as the node. Don't enable neighbour discovery
+        rack = factory.make_RackController()
+        rack.interface_set.all().delete()
+        rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
+        rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
+        rackif.link_subnet(
+            INTERFACE_LINK_TYPE.STATIC, auto_ip.subnet, rackif_ip
+        )
+
+        # Mock the rack controller connected to the region controller.
+        client = Mock()
+        client.ident = rack.system_id
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Must be executed in a transaction as `allocate_new` uses savepoints.
+        with transaction.atomic():
+            # Get two IPs and remove them so they're unknown
+            ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet, alloc_type=IPADDRESS_TYPE.AUTO
+            )
+            ip1 = ip.ip
+            ip.delete()
+            ip = StaticIPAddress.objects.allocate_new(
+                subnet=auto_ip.subnet,
+                alloc_type=IPADDRESS_TYPE.AUTO,
+                exclude_addresses=[ip1],
+            )
+            ip2 = ip.ip
+            ip.delete()
+
+        client.side_effect = [
+            defer.succeed(
+                {
+                    "ip_addresses": [
+                        {
+                            "ip_address": ip1,
+                            "used": True,
+                            "mac_address": factory.make_mac_address(),
+                        }
+                    ]
+                }
+            ),
+            defer.succeed(
+                {"ip_addresses": [{"ip_address": ip2, "used": False}]}
+            ),
+        ]
+
+        with post_commit_hooks:
+            node.start(user)
+
+        auto_ip = reload_object(auto_ip)
+        self.assertThat(auto_ip.ip, Equals(ip2))
+        self.assertThat(auto_ip.temp_expires_on, Is(None))
+
     def test_claims_auto_ip_addresses_retries_on_failure_from_rack(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
