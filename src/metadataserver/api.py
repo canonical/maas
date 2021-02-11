@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -1065,6 +1065,32 @@ class UserDataHandler(MetadataViewHandler):
                 )
             else:
                 user_data = NodeUserData.objects.get_user_data(node)
+                # user-data must be sent as plain text or MIME encoded. If the
+                # user uploaded user_data base64 encoded decode it.
+                try:
+                    # Check if its valid base64 data with no new lines or spaces.
+                    user_data_decoded = base64.b64decode(
+                        user_data, validate=True
+                    )
+                    user_data_stripped = None
+                except Exception:
+                    # Check if its valid base64 data with new lines or spaces.
+                    try:
+                        # Remove new lines and spaces, validator chokes on them.
+                        user_data_stripped = "".join(
+                            [l.strip() for l in user_data.decode().split()]
+                        ).encode()
+                        user_data_decoded = base64.b64decode(
+                            user_data_stripped, validate=True
+                        )
+                    except Exception:
+                        # Data can't be decoded either way, send it as is.
+                        user_data_decoded = None
+                # If the encoded user_data is the same as the decoded data its base64 encoded.
+                if user_data_decoded is not None and base64.b64encode(
+                    user_data_decoded
+                ) in {user_data, user_data_stripped}:
+                    user_data = user_data_decoded
             if node.status == NODE_STATUS.COMMISSIONING:
                 # Create a status message for GATHERING_INFO.
                 Event.objects.create_node_event(

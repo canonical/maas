@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 __all__ = [
@@ -8,7 +8,6 @@ __all__ = [
     "store_node_power_parameters",
 ]
 
-from base64 import b64decode
 from itertools import chain
 import json
 
@@ -1052,8 +1051,8 @@ class PowerMixin:
             raise NodeStateViolation(
                 "Can't start node: it hasn't been allocated."
             )
-        if user_data is not None:
-            user_data = b64decode(user_data)
+        if isinstance(user_data, str):
+            user_data = user_data.encode()
         try:
             # These parameters are passed in the request from
             # maasserver.api.machines.deploy when powering on

@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the metadata API."""
@@ -1111,6 +1111,39 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
         node = reload_object(node)
         self.assertEqual(node.agent_name, "maas-kvm-pod")
+
+    def test_returns_plain_text_user_data_when_uploaded_as_plain_text(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        user_data = factory.make_name("user_data").encode()
+        NodeUserData.objects.set_user_data(node, user_data)
+        client = make_node_client(node)
+        response = client.get(reverse("metadata-user-data", args=["latest"]))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+        self.assertEqual(user_data, response.content)
+
+    def test_returns_plain_text_user_data_when_uploaded_as_b64(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        user_data = factory.make_name("user_data").encode()
+        NodeUserData.objects.set_user_data(node, base64.b64encode(user_data))
+        client = make_node_client(node)
+        response = client.get(reverse("metadata-user-data", args=["latest"]))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+        self.assertEqual(user_data, response.content)
+
+    def test_returns_plain_text_user_data_when_uploaded_as_b64_with_nl(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        user_data = factory.make_name("user_data").encode()
+        b64_user_data = base64.b64encode(user_data).decode()
+        mid = len(b64_user_data) // 2
+        b64_user_data = b64_user_data[:mid] + "\n" + b64_user_data[mid:]
+        NodeUserData.objects.set_user_data(node, b64_user_data.encode())
+        client = make_node_client(node)
+        response = client.get(reverse("metadata-user-data", args=["latest"]))
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+        self.assertEqual(user_data, response.content)
 
 
 class TestCurtinMetadataUserData(
