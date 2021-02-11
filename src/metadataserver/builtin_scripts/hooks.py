@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Builtin script hooks, run upon receipt of ScriptResult"""
@@ -511,22 +511,38 @@ def _add_or_update_node_device(
         node_device.commissioning_driver = commissioning_driver
         node_device.save()
     else:
-        NodeDevice.objects.create(
-            bus=bus,
-            hardware_type=hardware_type,
-            node=node,
-            numa_node=numa_node,
-            physical_blockdevice=storage_device,
-            physical_interface=network_device,
-            vendor_id=device["vendor_id"],
-            product_id=device["product_id"],
-            vendor_name=device.get("vendor"),
-            product_name=device.get("product"),
-            commissioning_driver=commissioning_driver,
-            bus_number=device.get("bus_address"),
-            device_number=device.get("device_address"),
-            pci_address=device.get("pci_address"),
-        )
+        pci_address = device.get("pci_address")
+        create_args = {
+            "bus": bus,
+            "hardware_type": hardware_type,
+            "node": node,
+            "numa_node": numa_node,
+            "physical_blockdevice": storage_device,
+            "physical_interface": network_device,
+            "vendor_id": device["vendor_id"],
+            "product_id": device["product_id"],
+            "vendor_name": device.get("vendor"),
+            "product_name": device.get("product"),
+            "commissioning_driver": commissioning_driver,
+            "bus_number": device.get("bus_address"),
+            "device_number": device.get("device_address"),
+            "pci_address": pci_address,
+        }
+        try:
+            NodeDevice.objects.create(**create_args)
+        except ValidationError:
+            # A device was replaced, delete the old one before creating
+            # the new one.
+            qs = NodeDevice.objects.filter(node=node)
+            if pci_address is not None:
+                qs = qs.filter(pci_address=pci_address)
+            else:
+                qs = qs.filter(
+                    bus_number=device.get("bus_address"),
+                    device_number=device.get("device_address"),
+                )
+            qs.delete()
+            NodeDevice.objects.create(**create_args)
 
 
 def _process_pcie_devices(add_func, data):

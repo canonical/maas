@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test hooks."""
@@ -419,10 +419,14 @@ def make_lxd_pcie_device(numa_node=0, pci_address=None):
     }
 
 
-def make_lxd_usb_device():
+def make_lxd_usb_device(bus_address=None, device_address=None):
+    if bus_address is None:
+        bus_address = random.randint(0, 2 ** 16)
+    if device_address is None:
+        device_address = random.randint(0, 2 ** 16)
     return {
-        "bus_address": random.randint(0, 2 ** 16),
-        "device_address": random.randint(0, 2 ** 16),
+        "bus_address": bus_address,
+        "device_address": device_address,
         "interfaces": [
             {
                 "class": factory.make_name("class"),
@@ -1778,6 +1782,49 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         self.assertEquals(16, node_device.numa_node.index)
         self.assertEquals(16, node_device.physical_interface.numa_node.index)
+
+    def test_replace_existing_device_pcie(self):
+        node = factory.make_Node()
+        old_node_device = factory.make_NodeDevice(
+            node=node, bus=NODE_DEVICE_BUS.PCIE
+        )
+        pci_address = old_node_device.pci_address
+        lxd_output = make_lxd_output()
+        lxd_output["resources"]["pci"] = {
+            "devices": [make_lxd_pcie_device(pci_address=pci_address)],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        self.assertIsNone(reload_object(old_node_device))
+        self.assertIsNotNone(node.node_devices.get(pci_address=pci_address))
+
+    def test_replace_existing_device_usb(self):
+        node = factory.make_Node()
+        old_node_device = factory.make_NodeDevice(
+            node=node, bus=NODE_DEVICE_BUS.USB
+        )
+        bus_number = old_node_device.bus_number
+        device_number = old_node_device.device_number
+        lxd_output = make_lxd_output()
+        lxd_output["resources"]["usb"] = {
+            "devices": [
+                make_lxd_usb_device(
+                    bus_address=bus_number, device_address=device_number
+                )
+            ],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        self.assertIsNone(reload_object(old_node_device))
+        self.assertIsNotNone(
+            node.node_devices.get(
+                bus_number=bus_number, device_number=device_number
+            )
+        )
 
     def test_updates_interfaces_speed(self):
         node = factory.make_Node()
