@@ -562,7 +562,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "vlan": "44",
                 "type": "nic",
             },
-            "disk0": {
+            "root": {
                 "path": "/",
                 "pool": "default",
                 "type": "disk",
@@ -612,13 +612,13 @@ class TestLXDPodDriver(MAASTestCase):
             discovered_machine.block_devices[0],
             DiscoveredMachineBlockDevice(
                 model="QEMU HARDDISK",
-                serial="lxd_disk0",
-                id_path="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_disk0",
+                serial="lxd_root",
+                id_path="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_root",
                 size=20 * 1000 ** 3,
                 block_size=512,
                 tags=[],
                 type="physical",
-                storage_pool=expanded_devices["disk0"]["pool"],
+                storage_pool=expanded_devices["root"]["pool"],
                 iscsi_target=None,
             ),
         )
@@ -794,7 +794,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "parent": "virbr1",
                 "type": "nic",
             },
-            "disk0": {"path": "/", "pool": "default", "type": "disk"},
+            "root": {"path": "/", "pool": "default", "type": "disk"},
         }
         mock_machine.expanded_config = expanded_config
         mock_machine.expanded_devices = expanded_devices
@@ -1021,7 +1021,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "parent": "virbr1",
                 "type": "nic",
             },
-            "disk0": {
+            "root": {
                 "boot.priority": "0",
                 "path": "/",
                 "pool": "default",
@@ -1059,7 +1059,7 @@ class TestLXDPodDriver(MAASTestCase):
             "profiles": [mock_profile.name],
             "source": {"type": "none"},
             "devices": {
-                "disk0": {
+                "root": {
                     "path": "/",
                     "type": "disk",
                     "pool": usable_pool.name,
@@ -1146,7 +1146,7 @@ class TestLXDPodDriver(MAASTestCase):
             "profiles": [mock_profile.name],
             "source": {"type": "none"},
             "devices": {
-                "disk0": {
+                "root": {
                     "path": "/",
                     "type": "disk",
                     "pool": usable_pool.name,
@@ -1248,7 +1248,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "parent": "virbr1",
                 "type": "nic",
             },
-            "disk0": {
+            "root": {
                 "boot.priority": "0",
                 "path": "/",
                 "pool": "default",
@@ -1286,7 +1286,7 @@ class TestLXDPodDriver(MAASTestCase):
             "profiles": [mock_profile.name],
             "source": {"type": "none"},
             "devices": {
-                "disk0": {
+                "root": {
                     "path": "/",
                     "type": "disk",
                     "pool": usable_pool.name,
@@ -1332,7 +1332,7 @@ class TestLXDPodDriver(MAASTestCase):
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
         devices = {
-            "disk0": {
+            "root": {
                 "path": "/",
                 "type": "disk",
                 "pool": "default",
@@ -1369,7 +1369,7 @@ class TestLXDPodDriver(MAASTestCase):
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
         devices = {
-            "disk0": {
+            "root": {
                 "path": "/",
                 "type": "disk",
                 "pool": "default",
@@ -1400,7 +1400,7 @@ class TestLXDPodDriver(MAASTestCase):
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
         devices = {
-            "disk0": {
+            "root": {
                 "path": "/",
                 "type": "disk",
                 "pool": "default",
@@ -1430,7 +1430,7 @@ class TestLXDPodDriver(MAASTestCase):
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
         devices = {
-            "disk0": {
+            "root": {
                 "path": "/",
                 "type": "disk",
                 "pool": "default",

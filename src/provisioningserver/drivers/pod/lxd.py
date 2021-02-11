@@ -377,16 +377,18 @@ class LXDPodDriver(PodDriver):
             )
             size = str(disk.size)
             if idx == 0:
+                label = "root"
                 path = "/"
                 extra_conf = {
                     "boot.priority": "0",
                     "size": size,
                 }
             else:
+                label = f"disk{idx}"
                 path = ""
                 volume = self._create_volume(pool, size)
                 extra_conf = {"source": volume.name}
-            devices[f"disk{idx}"] = {
+            devices[label] = {
                 "path": path,
                 "type": "disk",
                 "pool": pool.name,
