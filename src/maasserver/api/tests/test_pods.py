@@ -275,6 +275,7 @@ def make_compose_machine_result(pod):
         cores=1,
         memory=1024,
         cpu_speed=300,
+        power_parameters={"instance_name": factory.make_name("instance")},
         block_devices=[],
         interfaces=[],
     )

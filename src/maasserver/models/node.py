@@ -1415,6 +1415,15 @@ class Node(CleanSave, TimestampedModel):
         return {**bmc_parameters, **instance_parameters}
 
     @property
+    def instance_name(self):
+        """Return the name of the VM instance for this machine, or None."""
+        return self.instance_power_parameters.get(
+            "instance_name"
+        ) or self.instance_power_parameters.get(  # for LXD
+            "power_id"
+        )  # for virsh
+
+    @property
     def fqdn(self):
         """Fully qualified domain name for this node.
 

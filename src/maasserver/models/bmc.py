@@ -1152,71 +1152,66 @@ class Pod(BMC):
             discovered_machine.power_parameters
         )
 
-        if self.power_type == "lxd":
-            from maasserver.models.virtualmachine import (
-                VirtualMachine,
-                VirtualMachineInterface,
+        from maasserver.models.virtualmachine import (
+            VirtualMachine,
+            VirtualMachineInterface,
+        )
+
+        host_interfaces = {}
+        if self.host:
+            for interface in self.host.interface_set.all():
+                host_interfaces[interface.name] = interface
+
+        # sync machines (and link to VMs) for the tracked project
+        vm = getattr(existing_machine, "virtualmachine", None)
+        if not vm:
+            vm, _ = VirtualMachine.objects.get_or_create(
+                identifier=existing_machine.instance_name,
+                project=self.power_parameters.get("project", ""),
+                bmc=self,
             )
-
-            host_interfaces = {}
-            if self.host is not None:
-                for interface in self.host.interface_set.all():
-                    host_interfaces[interface.name] = interface
-
-            # sync machines (and link to VMs) for the tracked project
-            vm = getattr(existing_machine, "virtualmachine", None)
-            if vm is None:
-                vm, _ = VirtualMachine.objects.get_or_create(
-                    identifier=existing_machine.instance_power_parameters[
-                        "instance_name"
-                    ],
-                    project=self.power_parameters["project"],
-                    bmc=self,
+            vm.machine = existing_machine
+        vm.memory = discovered_machine.memory
+        vm.hugepages_backed = discovered_machine.hugepages_backed
+        vm.pinned_cores = discovered_machine.pinned_cores
+        vm.unpinned_cores = (
+            0 if discovered_machine.pinned_cores else discovered_machine.cores
+        )
+        vm.save()
+        iface_ids = set()
+        existing_vm_ifaces = list(
+            VirtualMachineInterface.objects.filter(vm=vm).all()
+        )
+        for discovered_interface in discovered_machine.interfaces:
+            found_iface = None
+            for existing_vm_iface in existing_vm_ifaces:
+                if discovered_interface.mac_address is not None:
+                    if (
+                        discovered_interface.mac_address
+                        == existing_vm_iface.mac_address
+                    ):
+                        found_iface = existing_vm_iface
+                        break
+            if found_iface is not None:
+                iface = found_iface
+                existing_vm_ifaces.remove(found_iface)
+            else:
+                iface = VirtualMachineInterface.objects.create(
+                    vm=vm,
+                    mac_address=discovered_interface.mac_address,
+                    attachment_type=discovered_interface.attach_type,
                 )
-                vm.machine = existing_machine
-            vm.memory = discovered_machine.memory
-            vm.hugepages_backed = discovered_machine.hugepages_backed
-            vm.pinned_cores = discovered_machine.pinned_cores
-            vm.unpinned_cores = (
-                0
-                if discovered_machine.pinned_cores
-                else discovered_machine.cores
-            )
-            vm.save()
-            iface_ids = set()
-            existing_vm_ifaces = list(
-                VirtualMachineInterface.objects.filter(vm=vm).all()
-            )
-            for discovered_interface in discovered_machine.interfaces:
-                found_iface = None
-                for existing_vm_iface in existing_vm_ifaces:
-                    if discovered_interface.mac_address is not None:
-                        if (
-                            discovered_interface.mac_address
-                            == existing_vm_iface.mac_address
-                        ):
-                            found_iface = existing_vm_iface
-                            break
-                if found_iface is not None:
-                    iface = found_iface
-                    existing_vm_ifaces.remove(found_iface)
-                else:
-                    iface = VirtualMachineInterface.objects.create(
-                        vm=vm,
-                        mac_address=discovered_interface.mac_address,
-                        attachment_type=discovered_interface.attach_type,
-                    )
 
-                iface_ids.add(iface.id)
+            iface_ids.add(iface.id)
 
-                iface.attachment_type = discovered_interface.attach_type
-                iface.host_interface = host_interfaces.get(
-                    discovered_interface.attach_name
-                )
-                iface.save()
-            VirtualMachineInterface.objects.filter(vm=vm).exclude(
-                id__in=iface_ids
-            ).delete()
+            iface.attachment_type = discovered_interface.attach_type
+            iface.host_interface = host_interfaces.get(
+                discovered_interface.attach_name
+            )
+            iface.save()
+        VirtualMachineInterface.objects.filter(vm=vm).exclude(
+            id__in=iface_ids
+        ).delete()
 
         # If this machine is not composed on allocation we skip syncing all the
         # remaining information because MAAS commissioning will discover this
@@ -1384,56 +1379,55 @@ class Pod(BMC):
     def sync_machines(self, discovered_machines, commissioning_user):
         """Sync the machines on this pod from `discovered_machines`."""
         tracked_machines = []
-        if self.power_type == "lxd":
-            # only track machines that are in the LXD project, but sync VMs across all
-            tracked_project = self.power_parameters["project"]
-            vms_by_project = defaultdict(list)
+        discovered_by_project = defaultdict(list)
+        # if a project is specified for the Pod, only track (i.e. create
+        # machines for) VMs in that project, but sync VirtualMachine objects
+        # across all projects
+        tracked_project = self.power_parameters.get("project", "")
+        if tracked_project:
             for discovered_machine in discovered_machines:
-                machine_project = discovered_machine.power_parameters[
-                    "project"
-                ]
-                vms_by_project[machine_project].append(discovered_machine)
+                machine_project = discovered_machine.power_parameters.get(
+                    "project", ""
+                )
+                discovered_by_project[machine_project].append(
+                    discovered_machine
+                )
                 if machine_project == tracked_project:
                     tracked_machines.append(discovered_machine)
-
-            # sync VirtualMachine instances across all projects
-            from maasserver.models.virtualmachine import VirtualMachine
-
-            # delete all VMs in projects that are no longer found (either
-            # they're empty or have been removed)
-            VirtualMachine.objects.filter(bmc=self).exclude(
-                project__in=vms_by_project
-            ).delete()
-
-            for project, vms in vms_by_project.items():
-                vm_names = [
-                    machine.power_parameters["instance_name"]
-                    for machine in vms
-                ]
-                VirtualMachine.objects.filter(
-                    bmc=self, project=project
-                ).exclude(identifier__in=vm_names).delete()
-                for discovered_vm in vms:
-                    VirtualMachine.objects.update_or_create(
-                        identifier=discovered_vm.power_parameters[
-                            "instance_name"
-                        ],
-                        project=project,
-                        bmc=self,
-                        defaults={
-                            "memory": discovered_vm.memory,
-                            "hugepages_backed": discovered_vm.hugepages_backed,
-                            "pinned_cores": discovered_vm.pinned_cores,
-                            "unpinned_cores": (
-                                0
-                                if discovered_vm.pinned_cores
-                                else discovered_vm.cores
-                            ),
-                        },
-                    )
-
         else:
             tracked_machines = discovered_machines
+            discovered_by_project[""] = discovered_machines
+
+        from maasserver.models.virtualmachine import VirtualMachine
+
+        # delete all VMs in projects that are no longer found (either
+        # they're empty or have been removed)
+        VirtualMachine.objects.filter(bmc=self).exclude(
+            project__in=discovered_by_project
+        ).delete()
+
+        for project, discovered in discovered_by_project.items():
+            vm_names = [machine.instance_name for machine in discovered]
+            VirtualMachine.objects.filter(bmc=self, project=project).exclude(
+                identifier__in=vm_names
+            ).delete()
+            for discovered_vm in discovered:
+                VirtualMachine.objects.update_or_create(
+                    identifier=discovered_vm.instance_name,
+                    project=project,
+                    bmc=self,
+                    defaults={
+                        "memory": discovered_vm.memory,
+                        "hugepages_backed": discovered_vm.hugepages_backed,
+                        "pinned_cores": discovered_vm.pinned_cores,
+                        "unpinned_cores": (
+                            0
+                            if discovered_vm.pinned_cores
+                            else discovered_vm.cores
+                        ),
+                    },
+                )
+
         all_macs = [
             interface.mac_address
             for machine in tracked_machines

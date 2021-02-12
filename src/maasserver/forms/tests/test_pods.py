@@ -871,6 +871,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
     def make_compose_machine_result(self, pod):
         composed_machine = DiscoveredMachine(
             hostname=factory.make_name("hostname"),
+            power_parameters={"instance_name": factory.make_name("instance")},
             architecture=pod.architectures[0],
             cores=DEFAULT_COMPOSED_CORES,
             memory=DEFAULT_COMPOSED_MEMORY,
@@ -1987,7 +1988,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
         composed_machine.interfaces = [
             DiscoveredMachineInterface(
-                mac_address="00:01:02:03:04:05", boot=True
+                mac_address="00:01:02:03:04:05",
+                boot=True,
+                attach_type=InterfaceAttachType.NETWORK,
             )
         ]
         mock_compose_machine = self.patch(pods_module, "compose_machine")

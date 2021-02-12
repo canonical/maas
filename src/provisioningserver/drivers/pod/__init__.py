@@ -251,6 +251,15 @@ class DiscoveredMachine:
         converter=converter_obj(str, optional=True), default=None
     )
 
+    @property
+    def instance_name(self):
+        """Return the name of the discovered VM, or None."""
+        return self.power_parameters.get(
+            "instance_name"
+        ) or self.power_parameters.get(  # for LXD
+            "power_id"
+        )  # for virsh
+
 
 @attr.s
 class DiscoveredPodStoragePool:

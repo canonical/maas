@@ -53,7 +53,7 @@ class VirtualMachine(CleanSave, TimestampedModel):
         editable=False,
         related_name="virtualmachine",
     )
-    project = TextField()
+    project = TextField(default="", blank=True)
     bmc = ForeignKey(BMC, editable=False, on_delete=CASCADE)
 
     class Meta:

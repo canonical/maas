@@ -1174,6 +1174,20 @@ class TestNode(MAASServerTestCase):
             ValidationError, factory.make_Node, hostname=bad_hostname
         )
 
+    def test_instance_name_no_vm(self):
+        node = factory.make_Node()
+        self.assertIsNone(node.instance_name)
+
+    def test_instance_name_virsh_vm(self):
+        node = factory.make_Node()
+        node.instance_power_parameters = {"power_id": "vm"}
+        self.assertEqual(node.instance_name, "vm")
+
+    def test_instance_name_lxd_vm(self):
+        node = factory.make_Node()
+        node.instance_power_parameters = {"instance_name": "vm"}
+        self.assertEqual(node.instance_name, "vm")
+
     def test_default_pool_for_machine(self):
         node = factory.make_Node()
         self.assertEqual(
