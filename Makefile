@@ -269,7 +269,7 @@ check: clean test
 api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_api_doc > $@
 
-sampledata: bin/maas-region bin/database syncdb
+sampledata: bin/maas-region bin/database syncdb machine-resources
 	$(dbrun) bin/maas-region generate_sample_data
 .PHONY: sampledata
 
