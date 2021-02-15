@@ -14,7 +14,7 @@ from twisted.internet.defer import inlineCallbacks, succeed
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import pods
 from maasserver.forms.pods import PodForm
-from maasserver.models import Pod
+from maasserver.models import Pod, PodStoragePool
 from maasserver.models.virtualmachine import MB, VirtualMachineInterface
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -227,6 +227,21 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 },
             ],
         )
+
+    def test_get_with_pod_host_no_storage_pools(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        node = factory.make_Node()
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            host=node,
+        )
+        pod.default_storage_pool = None
+        pod.save()
+        PodStoragePool.objects.all().delete()
+        result = handler.get({"id": pod.id})
+        self.assertIsNone(result["default_storage_pool"])
+        self.assertEqual(result["storage_pools"], [])
 
     def test_get_with_pod_host_no_vlan(self):
         admin = factory.make_admin()
