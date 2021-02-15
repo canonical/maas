@@ -888,7 +888,6 @@ class Pod(BMC):
         zone = kwargs.pop("zone", None)
         if zone is None:
             zone = self.zone
-
         pool = kwargs.pop("pool", None)
         if pool is None:
             pool = self.pool
@@ -920,7 +919,8 @@ class Pod(BMC):
             machine.set_random_hostname()
         machine.save()
 
-        self._assign_tags(machine, discovered_machine)
+        self._sync_vm(discovered_machine, machine)
+        self._sync_tags(discovered_machine, machine)
         self._assign_storage(machine, discovered_machine, skip_commissioning)
         created_interfaces = self._assign_interfaces(
             machine, discovered_machine, interfaces, skip_commissioning
@@ -928,7 +928,6 @@ class Pod(BMC):
         self._assign_ip_addresses(
             discovered_machine, created_interfaces, requested_ips, ip_modes
         )
-        self._sync_machine(discovered_machine, machine)
 
         # New machines get commission started immediately unless skipped.
         if not skip_commissioning:
@@ -1056,18 +1055,12 @@ class Pod(BMC):
         if skip_commissioning:
             machine.set_default_storage_layout()
 
-    def _assign_tags(self, machine, discovered_machine):
-        # Assign the discovered tags.
-        for discovered_tag in discovered_machine.tags:
-            tag, _ = Tag.objects.get_or_create(name=discovered_tag)
-            machine.tags.add(tag)
-        # Assign the Pod's tags.
-        existing_tags = machine.tags.all().values("name")
-        for pod_tag in self.tags:
-            # Only if not a duplicate.
-            if pod_tag not in existing_tags:
-                tag, _ = Tag.objects.get_or_create(name=pod_tag)
-                machine.tags.add(tag)
+    def _sync_tags(self, discovered_machine, machine):
+        tags = []
+        for tag_name in set(discovered_machine.tags + self.tags):
+            tag, _ = Tag.objects.get_or_create(name=tag_name)
+            tags.append(tag)
+        machine.tags.set(tags)
 
     def _update_vlans_based_on_pod_host(
         self, created_interfaces, discovered_machine
@@ -1152,25 +1145,40 @@ class Pod(BMC):
             discovered_machine.power_parameters
         )
 
-        from maasserver.models.virtualmachine import (
-            VirtualMachine,
-            VirtualMachineInterface,
-        )
+        self._sync_vm(discovered_machine, existing_machine)
 
-        host_interfaces = {}
-        if self.host:
-            for interface in self.host.interface_set.all():
-                host_interfaces[interface.name] = interface
+        # If this machine is not composed on allocation we skip syncing all the
+        # remaining information because MAAS commissioning will discover this
+        # information. Any changes on the MAAS in the pod for pre-existing and
+        # manual require the machine to be re-commissioned.
+        if not existing_machine.dynamic:
+            existing_machine.save()
+            return
 
-        # sync machines (and link to VMs) for the tracked project
-        vm = getattr(existing_machine, "virtualmachine", None)
+        # Sync machine instance values.
+        # We are skipping hostname syncing so that any changes to the
+        # hostname in MAAS are not overwritten.
+        existing_machine.architecture = discovered_machine.architecture
+        existing_machine.cpu_count = discovered_machine.cores
+        existing_machine.cpu_speed = discovered_machine.cpu_speed
+        existing_machine.memory = discovered_machine.memory
+        existing_machine.save()
+
+        self._sync_tags(discovered_machine, existing_machine)
+        self._sync_block_devices(discovered_machine, existing_machine)
+        self._sync_interfaces(discovered_machine, existing_machine)
+
+    def _sync_vm(self, discovered_machine, machine):
+        from maasserver.models.virtualmachine import VirtualMachine
+
+        vm = getattr(machine, "virtualmachine", None)
         if not vm:
             vm, _ = VirtualMachine.objects.get_or_create(
-                identifier=existing_machine.instance_name,
+                identifier=machine.instance_name,
                 project=self.power_parameters.get("project", ""),
                 bmc=self,
             )
-            vm.machine = existing_machine
+            vm.machine = machine
         vm.memory = discovered_machine.memory
         vm.hugepages_backed = discovered_machine.hugepages_backed
         vm.pinned_cores = discovered_machine.pinned_cores
@@ -1178,6 +1186,19 @@ class Pod(BMC):
             0 if discovered_machine.pinned_cores else discovered_machine.cores
         )
         vm.save()
+        self._sync_vm_interfaces(vm, discovered_machine)
+        return vm
+
+    def _sync_vm_interfaces(self, vm, discovered_machine):
+        from maasserver.models.virtualmachine import VirtualMachineInterface
+
+        host_interfaces = {}
+        if self.host:
+            host_interfaces = {
+                interface.name: interface
+                for interface in self.host.interface_set.all()
+            }
+
         iface_ids = set()
         existing_vm_ifaces = list(
             VirtualMachineInterface.objects.filter(vm=vm).all()
@@ -1213,42 +1234,9 @@ class Pod(BMC):
             id__in=iface_ids
         ).delete()
 
-        # If this machine is not composed on allocation we skip syncing all the
-        # remaining information because MAAS commissioning will discover this
-        # information. Any changes on the MAAS in the pod for pre-existing and
-        # manual require the machine to be re-commissioned.
-        if not existing_machine.dynamic:
-            existing_machine.save()
-            return
-
-        # Sync machine instance values.
-        # We are skipping hostname syncing so that any changes to the
-        # hostname in MAAS are not overwritten.
-        existing_machine.architecture = discovered_machine.architecture
-        existing_machine.cpu_count = discovered_machine.cores
-        existing_machine.cpu_speed = discovered_machine.cpu_speed
-        existing_machine.memory = discovered_machine.memory
-        existing_machine.save()
-
-        # Sync the tags to make sure they match the discovered machine.
-        add_tags = set(discovered_machine.tags)
-        for existing_tag_inst in existing_machine.tags.all():
-            if existing_tag_inst.name in add_tags:
-                add_tags.remove(existing_tag_inst.name)
-            else:
-                existing_machine.tags.remove(existing_tag_inst)
-        for tag in add_tags:
-            tag, _ = Tag.objects.get_or_create(name=tag)
-            existing_machine.tags.add(tag)
-
-        # Sync the block devices and interfaces on the machine.
-        self._sync_block_devices(
-            discovered_machine.block_devices, existing_machine
-        )
-        self._sync_interfaces(discovered_machine.interfaces, existing_machine)
-
-    def _sync_block_devices(self, block_devices, existing_machine):
+    def _sync_block_devices(self, discovered_machine, existing_machine):
         """Sync the `block_devices` to the `existing_machine`."""
+        block_devices = discovered_machine.block_devices
         model_mapping = {
             "%s/%s" % (block_device.model, block_device.serial): block_device
             for block_device in block_devices
@@ -1336,9 +1324,11 @@ class Pod(BMC):
 
         existing_bd.save()
 
-    def _sync_interfaces(self, interfaces, existing_machine):
+    def _sync_interfaces(self, discovered_machine, existing_machine):
         """Sync the `interfaces` to the `existing_machine`."""
-        mac_mapping = {nic.mac_address: nic for nic in interfaces}
+        mac_mapping = {
+            nic.mac_address: nic for nic in discovered_machine.interfaces
+        }
         # interface_set has been preloaded so filtering is done locally.
         physical_interfaces = [
             nic

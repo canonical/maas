@@ -1945,7 +1945,10 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         # Mock the result of the composed machine.
         composed_machine, pod_hints = self.make_compose_machine_result(pod)
         composed_machine.interfaces = [
-            DiscoveredMachineInterface(mac_address="00:01:02:03:04:05")
+            DiscoveredMachineInterface(
+                mac_address="00:01:02:03:04:05",
+                attach_type=InterfaceAttachType.NETWORK,
+            )
         ]
         mock_compose_machine = self.patch(pods_module, "compose_machine")
         mock_compose_machine.return_value = succeed(
