@@ -77,6 +77,7 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
 )
 from maasserver.models import (
+    BMCRoutableRackControllerRelationship,
     BondInterface,
     BootResource,
     BridgeInterface,
@@ -84,11 +85,13 @@ from maasserver.models import (
     Controller,
     Device,
     Domain,
+    Event,
     EventType,
     Fabric,
     Interface,
     LicenseKey,
     Machine,
+    Neighbour,
     Node,
 )
 from maasserver.models import (
@@ -98,6 +101,7 @@ from maasserver.models import (
     RAID,
     RegionController,
     RegionRackRPCConnection,
+    ResourcePool,
     Service,
     StaticIPAddress,
     Subnet,
@@ -106,12 +110,10 @@ from maasserver.models import (
     VLANInterface,
     VolumeGroup,
 )
-from maasserver.models import Bcache
+from maasserver.models import Bcache, BMC
 from maasserver.models import bmc as bmc_module
 from maasserver.models import node as node_module
-from maasserver.models.bmc import BMC, BMCRoutableRackControllerRelationship
 from maasserver.models.config import NetworkDiscoveryConfig
-from maasserver.models.event import Event
 import maasserver.models.interface as interface_module
 from maasserver.models.node import (
     DEFAULT_BIOS_BOOT_METHOD,
@@ -121,7 +123,6 @@ from maasserver.models.node import (
     PowerInfo,
 )
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
-from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import (
@@ -8742,6 +8743,9 @@ class TestNode_Start(MAASTransactionServerTestCase):
         auto_ip = reload_object(auto_ip)
         self.assertThat(auto_ip.ip, Equals(ip2))
         self.assertThat(auto_ip.temp_expires_on, Is(None))
+        self.assertCountEqual(
+            [ip1], Neighbour.objects.values_list("ip", flat=True)
+        )
 
     def test_claims_auto_ip_addresses_retries_on_failure_from_rack(self):
         user = factory.make_User()
@@ -9963,21 +9967,51 @@ class TestControllerUpdateDiscoveryState(MAASServerTestCase):
 class TestReportNeighbours(MAASServerTestCase):
     """Tests for `Controller.report_neighbours()."""
 
-    def test_calls_update_neighbour_for_each_neighbour(self):
+    def test_no_update_neighbours_calls_if_discovery_disabled(self):
         rack = factory.make_RackController()
         factory.make_Interface(name="eth0", node=rack)
-        factory.make_Interface(name="eth1", node=rack)
         update_neighbour = self.patch(
             interface_module.Interface, "update_neighbour"
         )
         neighbours = [
-            {"interface": "eth0", "mac": factory.make_mac_address()},
-            {"interface": "eth1", "mac": factory.make_mac_address()},
+            {
+                "interface": "eth0",
+                "mac": factory.make_mac_address(),
+                "ip": factory.make_ipv4_address(),
+                "time": datetime.now(),
+            },
         ]
         rack.report_neighbours(neighbours)
-        self.assertThat(
-            update_neighbour,
-            MockCallsMatch(*[call(neighbour) for neighbour in neighbours]),
+        update_neighbour.assert_not_called()
+
+    def test_calls_update_neighbour_for_each_neighbour(self):
+        rack = factory.make_RackController()
+        if1 = factory.make_Interface(name="eth0", node=rack)
+        if1.neighbour_discovery_state = True
+        if1.save()
+        if2 = factory.make_Interface(name="eth1", node=rack)
+        if2.neighbour_discovery_state = True
+        if2.save()
+        update_neighbour = self.patch(
+            interface_module.Interface, "update_neighbour"
+        )
+        neighbours = [
+            {
+                "interface": "eth0",
+                "mac": factory.make_mac_address(),
+                "ip": factory.make_ipv4_address(),
+                "time": datetime.now(),
+            },
+            {
+                "interface": "eth1",
+                "mac": factory.make_mac_address(),
+                "ip": factory.make_ipv4_address(),
+                "time": datetime.now(),
+            },
+        ]
+        rack.report_neighbours(neighbours)
+        update_neighbour.assert_has_calls(
+            [call(n["ip"], n["mac"], n["time"], vid=None) for n in neighbours]
         )
 
     def test_calls_report_vid_for_each_vid(self):
@@ -9988,11 +10022,23 @@ class TestReportNeighbours(MAASServerTestCase):
         self.patch(interface_module.Interface, "update_neighbour")
         report_vid = self.patch(interface_module.Interface, "report_vid")
         neighbours = [
-            {"interface": "eth0", "mac": factory.make_mac_address(), "vid": 3},
-            {"interface": "eth1", "mac": factory.make_mac_address(), "vid": 7},
+            {
+                "interface": "eth0",
+                "ip": factory.make_ipv4_address(),
+                "time": datetime.now(),
+                "mac": factory.make_mac_address(),
+                "vid": 3,
+            },
+            {
+                "interface": "eth1",
+                "ip": factory.make_ipv4_address(),
+                "time": datetime.now(),
+                "mac": factory.make_mac_address(),
+                "vid": 7,
+            },
         ]
         rack.report_neighbours(neighbours)
-        self.assertThat(report_vid, MockCallsMatch(call(3), call(7)))
+        report_vid.assert_has_calls([call(3), call(7)])
 
 
 class TestReportMDNSEntries(MAASServerTestCase):

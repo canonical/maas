@@ -4489,11 +4489,9 @@ class Node(CleanSave, TimestampedModel):
                             rack_interface = rack_interface.order_by("id")
                             rack_interface = rack_interface.first()
                             rack_interface.update_neighbour(
-                                {
-                                    "ip": ip_obj.ip,
-                                    "mac": ip_result.get("mac_address"),
-                                    "time": time.time(),
-                                }
+                                ip_obj.ip,
+                                ip_result.get("mac_address"),
+                                time.time(),
                             )
                             ip_obj.ip = None
                             ip_obj.temp_expires_on = None
@@ -6733,8 +6731,14 @@ class Controller(Node):
         for neighbour in neighbours:
             interface = interfaces.get(neighbour["interface"], None)
             if interface is not None:
-                interface.update_neighbour(neighbour)
                 vid = neighbour.get("vid", None)
+                if interface.neighbour_discovery_state:
+                    interface.update_neighbour(
+                        neighbour["ip"],
+                        neighbour["mac"],
+                        neighbour["time"],
+                        vid=vid,
+                    )
                 if vid is not None:
                     interface.report_vid(vid)
 
