@@ -4337,9 +4337,11 @@ class Node(CleanSave, TimestampedModel):
                     bridge_fd=bridge_fd,
                 )
 
-    def claim_auto_ips(self, temp_expires_after=None):
+    def claim_auto_ips(self, exclude_addresses=None, temp_expires_after=None):
         """Assign IP addresses to all interface links set to AUTO."""
-        exclude_addresses = set()
+        exclude_addresses = (
+            exclude_addresses.copy() if exclude_addresses else set()
+        )
         allocated_ips = set()
         # Query for the interfaces again here; if we use the cached
         # interface_set, we could skip a newly-created bridge if it was created
@@ -4480,11 +4482,9 @@ class Node(CleanSave, TimestampedModel):
                             rack_interface = rack_interface.order_by("id")
                             rack_interface = rack_interface.first()
                             rack_interface.update_neighbour(
-                                {
-                                    "ip": ip_obj.ip,
-                                    "mac": ip_result.get("mac_address"),
-                                    "time": time.time(),
-                                }
+                                ip_obj.ip,
+                                ip_result.get("mac_address"),
+                                time.time(),
                             )
                             ip_obj.ip = None
                             ip_obj.temp_expires_on = None
@@ -4502,6 +4502,7 @@ class Node(CleanSave, TimestampedModel):
             yield deferToDatabase(clean_expired)
             allocated_ips = yield deferToDatabase(
                 transactional(self.claim_auto_ips),
+                exclude_addresses=attempted_ips,
                 temp_expires_after=timedelta(minutes=5),
             )
             if not allocated_ips:
@@ -6723,8 +6724,14 @@ class Controller(Node):
         for neighbour in neighbours:
             interface = interfaces.get(neighbour["interface"], None)
             if interface is not None:
-                interface.update_neighbour(neighbour)
                 vid = neighbour.get("vid", None)
+                if interface.neighbour_discovery_state:
+                    interface.update_neighbour(
+                        neighbour["ip"],
+                        neighbour["mac"],
+                        neighbour["time"],
+                        vid=vid,
+                    )
                 if vid is not None:
                     interface.report_vid(vid)
 
