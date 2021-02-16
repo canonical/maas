@@ -49,6 +49,7 @@ from maasserver.models.iscsiblockdevice import (
 )
 from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
+from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.virtualmachine import (
@@ -1874,6 +1875,44 @@ class TestPod(MAASServerTestCase):
             ),
         )
 
+    def test_create_machine_with_disks_creates_vmdisk(self):
+        d_storage_pool1 = self.make_discovered_storage_pool()
+        d_storage_pool2 = self.make_discovered_storage_pool()
+        d_block_device1 = self.make_discovered_block_device(
+            id_path="/dev/sda",
+            block_type=BlockDeviceType.PHYSICAL,
+            storage_pools=[d_storage_pool1],
+        )
+        d_block_device2 = self.make_discovered_block_device(
+            id_path="/dev/sdb",
+            block_type=BlockDeviceType.PHYSICAL,
+            storage_pools=[d_storage_pool2],
+        )
+        discovered_machine = self.make_discovered_machine(
+            block_devices=[d_block_device1, d_block_device2],
+        )
+        discovered_pool = self.make_discovered_pod(
+            machines=[], storage_pools=[d_storage_pool1, d_storage_pool2]
+        )
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        pod = factory.make_Pod()
+        pod.sync(discovered_pool, factory.make_User())
+
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        vm = machine.virtualmachine
+        vmdisk1, vmdisk2 = vm.disks_set.order_by("block_device__id_path")
+        disk1, disk2 = machine.blockdevice_set.order_by("id_path")
+        pool1 = PodStoragePool.objects.get(pool_id=d_storage_pool1.id)
+        pool2 = PodStoragePool.objects.get(pool_id=d_storage_pool2.id)
+        self.assertEqual(disk1.vmdisk, vmdisk1)
+        self.assertEqual(disk2.vmdisk, vmdisk2)
+        self.assertEqual(vmdisk1.backing_pool, pool1)
+        self.assertEqual(vmdisk2.backing_pool, pool2)
+        self.assertEqual(disk1.size, vmdisk1.size)
+        self.assertEqual(disk2.size, vmdisk2.size)
+
     def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
         discovered = self.make_discovered_pod()
         mock_set_default_storage_layout = self.patch(
@@ -2400,6 +2439,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+        self.assertEqual(keep_model_bd.vmdisk.size, dkeep_model_bd.size)
         self.assertThat(
             keep_path_bd,
             MatchesStructure(
@@ -2410,6 +2450,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+        self.assertEqual(keep_path_bd.vmdisk.size, dkeep_path_bd.size)
         self.assertThat(
             keep_iscsi_bd,
             MatchesStructure(
@@ -2420,6 +2461,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+        self.assertEqual(keep_iscsi_bd.vmdisk.size, dkeep_iscsi_bd.size)
         self.assertThat(
             other_iscsi_bd,
             MatchesStructure(
@@ -2431,6 +2473,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+        self.assertEqual(other_iscsi_bd.vmdisk.size, dother_iscsi_bd.size)
         self.assertThat(
             new_model_bd,
             MatchesStructure(
@@ -2441,6 +2484,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+        self.assertEqual(new_model_bd.vmdisk.size, dnew_model_bd.size)
         self.assertThat(
             new_path_bd,
             MatchesStructure(
@@ -2451,6 +2495,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+        self.assertEqual(new_path_bd.vmdisk.size, dnew_path_bd.size)
         self.assertThat(
             new_iscsi_bd,
             MatchesStructure(
@@ -2461,6 +2506,7 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+        self.assertEqual(new_iscsi_bd.vmdisk.size, dnew_iscsi_bd.size)
 
     def test_sync_updates_existing_machine_interfaces_for_dynamic(self):
         pod = factory.make_Pod()
@@ -2513,7 +2559,83 @@ class TestPod(MAASServerTestCase):
         )
         self.assertEqual(new_interface, machine.boot_interface)
 
-    def test_sync_assoicates_existing_node(self):
+    def test_sync_updates_existing_machine_vmdisks(self):
+        pod = factory.make_Pod()
+        machine = factory.make_Node(with_boot_disk=False, dynamic=True)
+        boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=machine
+        )
+        disk1 = factory.make_PhysicalBlockDevice(
+            node=machine,
+            id_path=factory.make_name("id_path"),
+        )
+        disk2 = factory.make_PhysicalBlockDevice(
+            node=machine,
+            id_path=factory.make_name("id_path"),
+        )
+        d_disk1 = self.make_discovered_block_device(id_path=disk1.id_path)
+        d_disk2 = self.make_discovered_block_device(id_path=disk2.id_path)
+        discovered_machine = self.make_discovered_machine(
+            block_devices=[d_disk1, d_disk2],
+            interfaces=[
+                self.make_discovered_interface(
+                    mac_address=boot_interface.mac_address
+                )
+            ],
+        )
+        discovered_machine.power_parameters[
+            "instance_name"
+        ] = factory.make_string()
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine]
+        )
+        pod.sync(discovered_pod, factory.make_User())
+        machine = reload_object(machine)
+        vmdisk1 = disk1.vmdisk
+        vmdisk2 = disk2.vmdisk
+        self.assertIsNotNone(vmdisk1)
+        self.assertIsNotNone(vmdisk2)
+        discovered_machine.block_devices = [d_disk1]
+        pod.sync(discovered_pod, factory.make_User())
+        # the second disk and its VirtualMachineDisk are removed
+        self.assertIsNone(reload_object(disk2))
+        self.assertIsNone(reload_object(vmdisk2))
+
+    def test_sync_creates_vmdisk_other_project(self):
+        pod = factory.make_Pod(
+            pod_type="lxd", parameters={"project": factory.make_string()}
+        )
+        discovered_pool1 = self.make_discovered_storage_pool()
+        discovered_pool2 = self.make_discovered_storage_pool()
+        discovered_machine = self.make_discovered_machine(
+            block_devices=[
+                self.make_discovered_block_device(
+                    storage_pools=[discovered_pool1]
+                ),
+                self.make_discovered_block_device(
+                    storage_pools=[discovered_pool2]
+                ),
+            ],
+        )
+        instance_name = factory.make_string()
+        discovered_machine.power_parameters = {
+            "instance_name": instance_name,
+            "project": factory.make_string(),
+        }
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine],
+            storage_pools=[discovered_pool1, discovered_pool2],
+        )
+        pod.sync(discovered_pod, factory.make_User())
+        self.assertEqual(Machine.objects.count(), 0)
+        vm = VirtualMachine.objects.get(identifier=instance_name)
+        vmdisk1, vmdisk2 = vm.disks_set.order_by("backing_pool_id")
+        pool1 = PodStoragePool.objects.get(name=discovered_pool1.name)
+        pool2 = PodStoragePool.objects.get(name=discovered_pool2.name)
+        self.assertEqual(vmdisk1.backing_pool, pool1)
+        self.assertEqual(vmdisk2.backing_pool, pool2)
+
+    def test_sync_associates_existing_node(self):
         pod = factory.make_Pod()
         node = factory.make_Node_with_Interface_on_Subnet()
         pod.sync(

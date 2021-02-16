@@ -9,6 +9,7 @@ from typing import List, Optional
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import (
+    BigIntegerField,
     BooleanField,
     CASCADE,
     CharField,
@@ -21,12 +22,15 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 
+from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
+from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import BMC
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
 from maasserver.models.node import Machine
 from maasserver.models.numa import NUMANode
+from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.drivers.pod import (
     InterfaceAttachType,
@@ -46,7 +50,7 @@ class VirtualMachine(CleanSave, TimestampedModel):
     hugepages_backed = BooleanField(default=False)
     machine = OneToOneField(
         Machine,
-        SET_NULL,
+        on_delete=SET_NULL,
         default=None,
         blank=True,
         null=True,
@@ -86,6 +90,38 @@ class VirtualMachineInterface(CleanSave, TimestampedModel):
 
     class Meta:
         unique_together = [("vm", "mac_address")]
+
+
+class VirtualMachineDisk(CleanSave, TimestampedModel):
+    """A disk attached to a virtual machine."""
+
+    class Meta(DefaultMeta):
+        unique_together = ("vm", "name")
+
+    name = CharField(max_length=255, blank=False)
+    vm = ForeignKey(
+        VirtualMachine,
+        editable=False,
+        on_delete=CASCADE,
+        related_name="disks_set",
+    )
+    backing_pool = ForeignKey(
+        PodStoragePool,
+        editable=False,
+        null=True,
+        on_delete=CASCADE,
+        related_name="vmdisks_set",
+    )
+    block_device = OneToOneField(
+        BlockDevice,
+        on_delete=SET_NULL,
+        default=None,
+        blank=True,
+        null=True,
+        editable=False,
+        related_name="vmdisk",
+    )
+    size = BigIntegerField()
 
 
 @dataclass

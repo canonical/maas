@@ -768,7 +768,8 @@ class Pod(BMC):
             storage_pool = self._get_storage_pool_by_id(
                 discovered_bd.storage_pool
             )
-        return PhysicalBlockDevice.objects.create(
+
+        block_device = PhysicalBlockDevice.objects.create(
             numa_node=machine.default_numanode,
             name=name,
             id_path=discovered_bd.id_path,
@@ -779,6 +780,8 @@ class Pod(BMC):
             tags=discovered_bd.tags,
             storage_pool=storage_pool,
         )
+        self._sync_vm_disk(block_device, storage_pool=storage_pool)
+        return block_device
 
     def _create_iscsi_block_device(self, discovered_bd, machine, name=None):
         """Create's a new `ISCSIBlockDevice` for `machine`.
@@ -816,6 +819,7 @@ class Pod(BMC):
             block_device.block_size = discovered_bd.block_size
             block_device.tags = discovered_bd.tags
             block_device.save()
+        self._sync_vm_disk(block_device)
         return block_device
 
     def _create_interface(self, discovered_nic, machine, name=None):
@@ -1234,6 +1238,25 @@ class Pod(BMC):
             id__in=iface_ids
         ).delete()
 
+    def _sync_vm_disk(self, block_device, storage_pool=None):
+        """Ensure a VirtualMachineDisk exists and is updated for a block device."""
+        from maasserver.models.virtualmachine import VirtualMachineDisk
+
+        vmdisk = getattr(block_device, "vmdisk", None)
+        if vmdisk:
+            vmdisk.size = block_device.size
+            vmdisk.storage_pool = storage_pool
+            vmdisk.save()
+        else:
+            vmdisk = VirtualMachineDisk.objects.create(
+                name=block_device.name,
+                vm=block_device.node.virtualmachine,
+                size=block_device.size,
+                backing_pool=storage_pool,
+                block_device=block_device,
+            )
+        return vmdisk
+
     def _sync_block_devices(self, discovered_machine, existing_machine):
         """Sync the `block_devices` to the `existing_machine`."""
         block_devices = discovered_machine.block_devices
@@ -1263,6 +1286,7 @@ class Pod(BMC):
             lambda bd: bd.actual_instance,
             existing_machine.blockdevice_set.all(),
         )
+        disks_to_delete = []
         for block_device in existing_block_devices:
             if isinstance(block_device, PhysicalBlockDevice):
                 if block_device.model and block_device.serial:
@@ -1272,7 +1296,7 @@ class Pod(BMC):
                             model_mapping.pop(key), block_device
                         )
                     else:
-                        block_device.delete()
+                        disks_to_delete.append(block_device.id)
                 else:
                     if block_device.id_path in path_mapping:
                         self._sync_block_device(
@@ -1280,7 +1304,7 @@ class Pod(BMC):
                             block_device,
                         )
                     else:
-                        block_device.delete()
+                        disks_to_delete.append(block_device.id)
             elif isinstance(block_device, ISCSIBlockDevice):
                 target = get_iscsi_target(block_device.target)
                 if target in iscsi_mapping:
@@ -1288,7 +1312,16 @@ class Pod(BMC):
                         iscsi_mapping.pop(target), block_device
                     )
                 else:
-                    block_device.delete()
+                    disks_to_delete.append(block_device.id)
+
+        if disks_to_delete:
+            from maasserver.models.virtualmachine import VirtualMachineDisk
+
+            VirtualMachineDisk.objects.filter(
+                block_device__id__in=disks_to_delete
+            ).delete()
+            BlockDevice.objects.filter(id__in=disks_to_delete).delete()
+
         for _, discovered_block_device in model_mapping.items():
             self._create_physical_block_device(
                 discovered_block_device, existing_machine
@@ -1313,15 +1346,17 @@ class Pod(BMC):
         existing_bd.block_size = discovered_bd.block_size
         existing_bd.tags = discovered_bd.tags
 
-        # Update or remove the storage pool on physical block devices.
+        storage_pool = None
         if isinstance(existing_bd, PhysicalBlockDevice):
             if discovered_bd.storage_pool:
-                existing_bd.storage_pool = self._get_storage_pool_by_id(
+                storage_pool = self._get_storage_pool_by_id(
                     discovered_bd.storage_pool
                 )
+                existing_bd.storage_pool = storage_pool
             elif existing_bd.storage_pool:
                 existing_bd.storage_pool = None
 
+        self._sync_vm_disk(existing_bd, storage_pool=storage_pool)
         existing_bd.save()
 
     def _sync_interfaces(self, discovered_machine, existing_machine):
@@ -1388,7 +1423,10 @@ class Pod(BMC):
             tracked_machines = discovered_machines
             discovered_by_project[""] = discovered_machines
 
-        from maasserver.models.virtualmachine import VirtualMachine
+        from maasserver.models.virtualmachine import (
+            VirtualMachine,
+            VirtualMachineDisk,
+        )
 
         # delete all VMs in projects that are no longer found (either
         # they're empty or have been removed)
@@ -1402,7 +1440,7 @@ class Pod(BMC):
                 identifier__in=vm_names
             ).delete()
             for discovered_vm in discovered:
-                VirtualMachine.objects.update_or_create(
+                vm, _ = VirtualMachine.objects.update_or_create(
                     identifier=discovered_vm.instance_name,
                     project=project,
                     bmc=self,
@@ -1417,6 +1455,23 @@ class Pod(BMC):
                         ),
                     },
                 )
+                existing_disks = []
+                for idx, device in enumerate(discovered_vm.block_devices):
+                    vmdisk, _ = VirtualMachineDisk.objects.update_or_create(
+                        name=f"vd{idx}",
+                        vm=vm,
+                        defaults={
+                            "size": device.size,
+                            "backing_pool": self._get_storage_pool_by_id(
+                                device.storage_pool
+                            ),
+                        },
+                    )
+                    existing_disks.append(vmdisk.id)
+                # delete any other disk
+                VirtualMachineDisk.objects.filter(vm=vm).exclude(
+                    id__in=existing_disks
+                ).delete()
 
         all_macs = [
             interface.mac_address
