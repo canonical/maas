@@ -65,6 +65,7 @@ from maasserver.models import (
     Event,
     LargeFile,
 )
+from maasserver.release_notifications import ReleaseNotifications
 from maasserver.rpc import getAllClients
 from maasserver.utils import (
     absolute_reverse,
@@ -1129,6 +1130,10 @@ class BootResourceRepoWriter(BasicMirrorWriter):
                     % (product_name, supported_version)
                 )
                 return
+        if item["ftype"] == "notifications":
+            ReleaseNotifications(
+                data["release_notification"]
+            ).maybe_check_release_notifications()
         if (
             item["ftype"] == BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
             and BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE in items.keys()

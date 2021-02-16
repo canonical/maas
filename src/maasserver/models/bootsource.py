@@ -115,4 +115,17 @@ class BootSource(CleanSave, TimestampedModel):
                     "labels": ["*"],
                 }
             )
+        # Always download all release notifications from the stream.
+        for release_notification in self.bootsourcecache_set.filter(
+            release="notifications"
+        ):
+            data["selections"].append(
+                {
+                    "os": release_notification.os,
+                    "release": release_notification.release,
+                    "arches": [release_notification.arch],
+                    "subarches": ["*"],
+                    "labels": ["*"],
+                }
+            )
         return data
