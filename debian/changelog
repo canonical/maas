@@ -1,3 +1,9 @@
+maas (1:2.9.3~alpha1-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 alpha1.
+
+ -- Alberto Donato <alberto.donato@canonical.com>  Tue, 16 Feb 2021 15:28:40 +0000
+
 maas (1:2.9.2-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.2.
