@@ -44,7 +44,8 @@ from provisioningserver.utils.network import generate_mac_address
 def make_requested_machine(num_disks=1, **kwargs):
     block_devices = [
         RequestedMachineBlockDevice(
-            size=random.randint(1024 ** 3, 4 * 1024 ** 3)
+            size=random.randint(1024 ** 3, 4 * 1024 ** 3),
+            tags=[factory.make_name("tag")],
         )
         for _ in range(num_disks)
     ]
@@ -748,6 +749,80 @@ class TestLXDPodDriver(MAASTestCase):
         )
         self.assertTrue(discovered_machine.hugepages_backed)
         self.assertEqual(discovered_machine.pinned_cores, [0, 1, 2])
+
+    def test_get_discovered_machine_with_request(self):
+        request = make_requested_machine(num_disks=2)
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(driver, "_get_client")
+        client = Client.return_value
+        mock_profile = Mock()
+        mock_profile.name = random.choice(["maas", "default"])
+        profile_devices = {
+            "eth0": {
+                "name": "eth0",
+                "nictype": "bridged",
+                "parent": "lxdbr0",
+                "type": "nic",
+            },
+        }
+        mock_profile.devices = profile_devices
+        client.profiles.get.return_value = mock_profile
+        mock_storage_pools = Mock()
+        client.storage_pools.all.return_value = mock_storage_pools
+        mock_get_usable_storage_pool = self.patch(
+            driver, "_get_usable_storage_pool"
+        )
+        # a volume is created for the second disk
+        volume = Mock()
+        volume.name = factory.make_name("vol")
+        volume.config = {"size": request.block_devices[1].size}
+        usable_pool = Mock()
+        usable_pool.name = factory.make_name("pool")
+        usable_pool.volumes.create.return_value = volume
+        usable_pool.volumes.get.return_value = volume
+        mock_get_usable_storage_pool.return_value = usable_pool
+        client.storage_pools.get.return_value = usable_pool
+        mock_machine = Mock(architecture="x86_64")
+        expanded_config = {
+            "limits.cpu": "2",
+            "limits.memory": "1024",
+            "volatile.eth0.hwaddr": "00:16:3e:78:be:04",
+        }
+        expanded_devices = {
+            "root": {
+                "path": "/",
+                "type": "disk",
+                "pool": usable_pool.name,
+                "size": str(request.block_devices[0].size),
+                "boot.priority": "0",
+            },
+            "disk1": {
+                "path": "",
+                "type": "disk",
+                "pool": usable_pool.name,
+                "source": volume.name,
+            },
+            "eth0": {
+                "boot.priority": "1",
+                "name": "eth0",
+                "nictype": "bridged",
+                "parent": "lxdbr0",
+                "type": "nic",
+            },
+        }
+        mock_machine.expanded_config = expanded_config
+        mock_machine.expanded_devices = expanded_devices
+        client.virtual_machines.create.return_value = mock_machine
+        discovered_machine = driver._get_discovered_machine(
+            client, mock_machine, [usable_pool], request
+        )
+        # invert sort as the root device shows up last because of name ordering
+        discovered_devices = sorted(
+            discovered_machine.block_devices, reverse=True
+        )
+        for idx, device in enumerate(discovered_devices):
+            self.assertEqual(device.size, request.block_devices[idx].size)
+            self.assertEqual(device.tags, request.block_devices[idx].tags)
 
     def test_get_hugepages_info_int_value_as_bool(self):
         driver = lxd_module.LXDPodDriver()

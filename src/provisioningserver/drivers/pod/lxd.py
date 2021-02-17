@@ -78,6 +78,7 @@ LXD_BYTE_SUFFIXES = {
 def convert_lxd_byte_suffixes(value, divisor=None):
     """Takes the value and converts to a proper integer
     using LXD_BYTE_SUFFIXES."""
+    value = str(value)
     result = re.match(
         r"(?P<size>[0-9]+)(?P<unit>%s)" % "|".join(LXD_BYTE_SUFFIXES.keys()),
         value,
@@ -615,64 +616,44 @@ class LXDPodDriver(PodDriver):
             )
             power_state = "unknown"
 
+        def _get_discovered_block_device(name, device, requested_device=None):
+            tags = requested_device.tags if requested_device else []
+            # When LXD creates a QEMU disk the serial is always
+            # lxd_{device name}. The device_name is defined by
+            # the LXD profile or when adding a device. This is
+            # commonly "root" for the first disk. The model and
+            # serial must be correctly defined here otherwise
+            # MAAS will delete the disk created during composition
+            # which results in losing the storage pool link. Without
+            # the storage pool link MAAS can't determine how much
+            # of the storage pool has been used.
+            serial = f"lxd_{name}"
+            source = device.get("source")
+            if source:
+                pool = client.storage_pools.get(device["pool"])
+                volume = pool.volumes.get("custom", source)
+                size = volume.config.get("size")
+            else:
+                size = device.get("size")
+            # Default disk size is 10GB in LXD
+            size = convert_lxd_byte_suffixes(size or "10GB")
+            return DiscoveredMachineBlockDevice(
+                model="QEMU HARDDISK",
+                serial=serial,
+                id_path=f"/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_{serial}",
+                size=size,
+                tags=tags,
+                storage_pool=device.get("pool"),
+            )
+
         expanded_config = machine.expanded_config
-        expanded_devices = machine.expanded_devices
+        iface_to_mac = {
+            key.split(".")[1]: value
+            for key, value in expanded_config.items()
+            if key.endswith("hwaddr")
+        }
 
-        # Discover block devices.
-        block_devices = []
-        for device in expanded_devices:
-            # Block device.
-            # When request is provided map the tags from the request block
-            # devices to the discovered block devices. This ensures that
-            # composed machine has the requested tags on the block device.
-
-            tags = []
-            if (
-                request is not None
-                and expanded_devices[device]["type"] == "disk"
-            ):
-                tags = request.block_devices[0].tags
-
-            device_info = expanded_devices[device]
-            if device_info["type"] == "disk":
-                # When LXD creates a QEMU disk the serial is always
-                # lxd_{device name}. The device_name is defined by
-                # the LXD profile or when adding a device. This is
-                # commonly "root" for the first disk. The model and
-                # serial must be correctly defined here otherwise
-                # MAAS will delete the disk created during composition
-                # which results in losing the storage pool link. Without
-                # the storage pool link MAAS can't determine how much
-                # of the storage pool has been used.
-                serial = f"lxd_{device}"
-                # Default disk size is 10GB.
-                size = convert_lxd_byte_suffixes(
-                    device_info.get("size", "10GB")
-                )
-                storage_pool = device_info.get("pool")
-                block_devices.append(
-                    DiscoveredMachineBlockDevice(
-                        model="QEMU HARDDISK",
-                        serial=serial,
-                        id_path=f"/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_{serial}",
-                        size=size,
-                        tags=tags,
-                        storage_pool=storage_pool,
-                    )
-                )
-
-        # Discover interfaces.
-        interfaces = []
-        boot = True
-        config_mac_address = {}
-        for configuration in expanded_config:
-            if configuration.endswith("hwaddr"):
-                mac = expanded_config[configuration]
-                name = configuration.split(".")[1]
-                config_mac_address[name] = mac
-        for name, device in expanded_devices.items():
-            if device["type"] != "nic":
-                continue
+        def _get_discovered_interface(name, device, boot):
             if "network" in device:
                 # Try finding the nictype from the networks.
                 # XXX: This should work for "bridge" networks,
@@ -691,18 +672,40 @@ class LXDPodDriver(PodDriver):
                 )
             mac = device.get("hwaddr")
             if mac is None:
-                mac = config_mac_address.get(name)
-
-            interfaces.append(
-                DiscoveredMachineInterface(
-                    mac_address=mac,
-                    vid=int(device.get("vlan", get_vid_from_ifname(name))),
-                    boot=boot,
-                    attach_type=attach_type,
-                    attach_name=attach_name,
-                )
+                mac = iface_to_mac.get(name)
+            return DiscoveredMachineInterface(
+                mac_address=mac,
+                vid=int(device.get("vlan", get_vid_from_ifname(name))),
+                boot=boot,
+                attach_type=attach_type,
+                attach_name=attach_name,
             )
-            boot = False
+
+        extra_block_devices = 0
+        block_devices = []
+        interfaces = []
+        for name, device in machine.expanded_devices.items():
+            if device["type"] == "disk":
+                requested_device = None
+                if request:
+                    # for composed VMs, the root disk is always the first
+                    # one. Adjust the index so that it matches the requested
+                    # device
+                    if name == "root":
+                        index = 0
+                    else:
+                        extra_block_devices += 1
+                        index = extra_block_devices
+                    requested_device = request.block_devices[index]
+                block_devices.append(
+                    _get_discovered_block_device(
+                        name, device, requested_device=requested_device
+                    )
+                )
+            elif device["type"] == "nic":
+                interfaces.append(
+                    _get_discovered_interface(name, device, not interfaces)
+                )
 
         # LXD uses different suffixes to store memory so make
         # sure we convert to MiB, which is what MAAS uses.
