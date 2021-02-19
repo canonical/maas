@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:24292209dbef48f20ee3594f8a53fe5741d8b9137dfc35ff6c9023ac313bae3f"
+  name = "github.com/digitalocean/go-smbios"
+  packages = ["smbios"]
+  pruneopts = ""
+  revision = "390a4f403a8e94ca0acdcf609eb18eeae9d6d1ac"
+
+[[projects]]
   digest = "1:184f59086e68cdf85d7a909b6410367f3415dd8b46da68fb176ae5438bcec642"
   name = "github.com/flosch/pongo2"
   packages = ["."]
@@ -10,12 +18,12 @@
   version = "v4.0.2"
 
 [[projects]]
-  digest = "1:26d581d6bb4fe26c77058a2b47e038ede7bdceb8f407ac87c4ea166bcd507340"
+  digest = "1:2ee8fb0204229e6d81621c98509299ae60ff7abb6b6675e2d7740640567e683e"
   name = "github.com/google/uuid"
   packages = ["."]
   pruneopts = ""
-  revision = "85223faccf99409308cd169d9608753a95d21083"
-  version = "v1.1.4"
+  revision = "bfb86fa49a73e4194d93bea18d7acfe3694438ce"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:5122b0b5a933bd0e16b887aa7844933c8a09fb5ba9b5f5651253cb5336c6462a"
@@ -26,16 +34,24 @@
   version = "v1.4.2"
 
 [[projects]]
-  digest = "1:0c9cf259a0f3c81866f5fd5f8c11827542f7b8c917d59dafa0730f1bc73b66a8"
+  digest = "1:8d1a9745418c91b3ed3eebd6fb6e3809c4c94eee50a77daf0583743b69889e53"
   name = "github.com/jaypipes/pcidb"
   packages = ["."]
   pruneopts = ""
-  revision = "98ef3ee36c69f20650fe7855047ad042338c6983"
-  version = "v0.5.0"
+  revision = "f3b478a191f90a04ce95062686970c94810b41aa"
+  version = "v0.6.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:2f89b2ecf31fcb4cf3892f5aa99d106e07a0299c63a91088d7667804a89655b6"
+  digest = "1:63e7368fcf6b54804076eaec26fd9cf0c4466166b272393db4b93102e1e962df"
+  name = "github.com/kballard/go-shellquote"
+  packages = ["."]
+  pruneopts = ""
+  revision = "95032a82bc518f77982ea72343cc1ade730072f0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:1828e128e6903bb9730830b7e41c25b01b5c40a4fe56534ad0f8e9bc2284c3dd"
   name = "github.com/lxc/lxd"
   packages = [
     "lxd/include",
@@ -52,7 +68,7 @@
     "shared/version",
   ]
   pruneopts = ""
-  revision = "357b4934c37f258706b0eba81f3d34d54549d93e"
+  revision = "5c78d5623f3f42b960c83efd5e427406f4281688"
 
 [[projects]]
   digest = "1:6dbb0eb72090871f2e58d1e37973fe3cb8c0f45f49459398d3fc740cb30e13bd"
@@ -80,7 +96,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:48ddc32875983a47dc5f0b9243cb804773f94b2b0b5b997df519f8f529344828"
+  digest = "1:7dd85370a7db523be20ea49c18e5cd8999e853a2ebe9d571b61d91904013b535"
   name = "golang.org/x/sys"
   packages = [
     "internal/unsafeheader",
@@ -88,7 +104,7 @@
     "windows",
   ]
   pruneopts = ""
-  revision = "16f7687f5001b816ff9f6b586071238941e88a9d"
+  revision = "57ea560cfca1821fc4708b1919dbe8a372862388"
 
 [[projects]]
   branch = "v2"
