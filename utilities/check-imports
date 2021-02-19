@@ -164,6 +164,7 @@ TestingLibraries = Pattern(
     "testresources|testresources.**",
     "testscenarios|testscenarios.**",
     "testtools|testtools.**",
+    "zhmcclient_mock.**",
 )
 
 
@@ -235,6 +236,7 @@ RackControllerRule = Rule(
     Allow("urllib3|urllib3.**"),
     Allow("uvloop"),
     Allow("yaml"),
+    Allow("zhmcclient.**"),
     Allow("zope.interface|zope.interface.**"),
     Allow(StandardLibraries),
 )

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """HMC Power Driver.
@@ -35,7 +35,7 @@ class HMCPowerDriver(PowerDriver):
     name = "hmc"
     chassis = True
     can_probe = False
-    description = "IBM Hardware Management Console (HMC)"
+    description = "IBM Hardware Management Console (HMC) for PowerPC"
     settings = [
         make_setting_field("power_address", "IP for HMC", required=True),
         make_setting_field("power_user", "HMC username"),

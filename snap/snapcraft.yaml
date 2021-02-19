@@ -149,6 +149,7 @@ parts:
       - python3-txtftp
       - python3-urllib3 # for macaroonbakery
       - python3-yaml
+      - python3-zhmcclient
       - python3-zope.interface
       - rsyslog
       - snmp # APC

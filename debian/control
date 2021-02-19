@@ -154,6 +154,7 @@ Depends: lshw,
          iproute2,
          ${misc:Depends},
          ${python3:Depends}
+Suggests: python3-zhmcclient (>= 0.22.0-0ubuntu1) 
 Description: MAAS server provisioning libraries (Python 3)
  This package provides the MAAS provisioning server python libraries.
  .

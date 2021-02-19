@@ -60,6 +60,7 @@ python3-tz
 python3-uvloop
 python3-venv
 python3-yaml
+python3-zhmcclient
 python3-zope.interface
 syslinux-common
 ubuntu-keyring
