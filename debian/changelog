@@ -1,3 +1,9 @@
+maas (2.8.3-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.8.3.
+
+ -- Adam Collard <adam.collard@canonical.com>  Fri, 19 Feb 2021 13:42:20 +0000
+
 maas (2.8.3~rc1-0ubuntu1) bionic; urgency=medium
 
   * New upstream release, MAAS 2.8.3 RC1.
