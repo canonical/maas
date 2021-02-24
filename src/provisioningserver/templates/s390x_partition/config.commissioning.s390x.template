@@ -1,0 +1,7 @@
+PROMPT 0
+DEFAULT netboot
+TIMEOUT 0
+LABEL netboot
+  kernel={{kernel_params | kernel_path }}
+  initrd={{kernel_params | initrd_path }}
+  append={{kernel_params | kernel_command}}

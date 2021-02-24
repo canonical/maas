@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node objects."""
@@ -235,7 +235,9 @@ maaslog = get_maas_logger("node")
 
 # Holds the known `bios_boot_methods`. If `bios_boot_method` is not in this
 # list then it will fallback to `DEFAULT_BIOS_BOOT_METHOD`.
-KNOWN_BIOS_BOOT_METHODS = frozenset(["pxe", "uefi", "powernv", "powerkvm"])
+KNOWN_BIOS_BOOT_METHODS = frozenset(
+    ["pxe", "uefi", "powernv", "powerkvm", "s390x_partition"]
+)
 
 # Default `bios_boot_method`. See `KNOWN_BIOS_BOOT_METHOD` above for usage.
 DEFAULT_BIOS_BOOT_METHOD = "pxe"

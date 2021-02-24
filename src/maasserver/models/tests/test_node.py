@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -1368,6 +1368,10 @@ class TestNode(MAASServerTestCase):
     def test_get_bios_boot_method_returns_powerkvm(self):
         node = factory.make_Node(bios_boot_method="powerkvm")
         self.assertEqual("powerkvm", node.get_bios_boot_method())
+
+    def test_get_bios_boot_method_returns_s390x_partition(self):
+        node = factory.make_Node(bios_boot_method="s390x_partition")
+        self.assertEqual("s390x_partition", node.get_bios_boot_method())
 
     def test_get_bios_boot_method_ipmi_efi_fallback(self):
         ipmi_efi = factory.make_BMC(

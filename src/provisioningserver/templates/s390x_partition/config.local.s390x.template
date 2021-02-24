@@ -1,0 +1,2 @@
+# S390X partition must be configured via the HMC to boot locally
+# No config will cause the partition to turn off.

@@ -1,4 +1,4 @@
-# Copyright 2012-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Methods."""
@@ -439,6 +439,9 @@ from provisioningserver.boot.pxe import PXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.boot.s390x import (  # noqa:E402 isort:skip
     S390XBootMethod,
 )
+from provisioningserver.boot.s390x_partition import (  # noqa:E402 isort:skip
+    S390XPartitionBootMethod,
+)
 from provisioningserver.boot.uefi_amd64 import (  # noqa:E402 isort:skip
     UEFIAMD64BootMethod,
 )
@@ -460,6 +463,7 @@ builtin_boot_methods = [
     PowerNVBootMethod(),
     WindowsPXEBootMethod(),
     S390XBootMethod(),
+    S390XPartitionBootMethod(),
 ]
 for method in builtin_boot_methods:
     BootMethodRegistry.register_item(method.name, method)
