@@ -54,6 +54,7 @@ class PodHandler(TimestampedModelHandler):
             "set_active",
             "refresh",
             "compose",
+            "get_projects",
         ]
         exclude = [
             "bmc_type",

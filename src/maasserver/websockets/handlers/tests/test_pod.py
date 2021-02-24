@@ -108,6 +108,23 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod.save()
         return pod
 
+    def test_allowed_methods(self):
+        handler = PodHandler(factory.make_admin(), {}, None)
+        self.assertCountEqual(
+            handler.Meta.allowed_methods,
+            [
+                "list",
+                "get",
+                "create",
+                "update",
+                "delete",
+                "set_active",
+                "refresh",
+                "compose",
+                "get_projects",
+            ],
+        )
+
     def test_get(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)
