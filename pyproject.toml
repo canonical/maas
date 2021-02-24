@@ -30,7 +30,9 @@ maasserver
 maastesting
 metadataserver
 provisioningserver
+snippets
 """
+default_section = "THIRDPARTY"
 line_length = 79
 multi_line_output = 3
 not_skip = "__init__.py"
