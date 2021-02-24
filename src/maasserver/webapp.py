@@ -181,6 +181,8 @@ class DocsFallbackFile(NoListingFile):
         self.childNotFound = DefaultFile(self.child(fallback).path)
 
     def getChild(self, path, request):
+        if path == b"":
+            return self.getChild("maas-documentation-25.html", request)
         child = super().getChild(path, request)
         if child is self.childNotFound and not path.endswith(b".html"):
             child = super().getChild(path + b".html", request)
