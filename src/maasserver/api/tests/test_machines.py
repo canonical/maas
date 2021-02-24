@@ -1254,7 +1254,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 "cpu_count": pod.hints.cores,
                 "mem": pod.hints.memory,
                 "arch": pod.architectures[0],
-                "not_pod_type": "rsd",
+                "not_pod_type": "lxd",
             },
         )
         self.assertEqual(http.client.OK, response.status_code)

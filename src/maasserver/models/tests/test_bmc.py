@@ -739,25 +739,6 @@ class TestPodManager(MAASServerTestCase):
             pod, Pod.objects.get_pod_or_404(pod.id, user, PodPermission.view)
         )
 
-    def test_have_rsd_with_no_rsd(self):
-        factory.make_Pod()
-        user = factory.make_User()
-        self.patch(user, "has_perm").return_value = True
-        self.assertFalse(Pod.objects.have_rsd(user, PodPermission.view))
-
-    def test_have_rsd_with_rsd(self):
-        factory.make_Pod(pod_type="rsd")
-        user = factory.make_User()
-        self.patch(user, "has_perm").return_value = True
-        self.assertTrue(Pod.objects.have_rsd(user, PodPermission.view))
-
-    def test_have_rsd_with_forbidden_rsd(self):
-        self.enable_rbac()
-        factory.make_Pod(pod_type="rsd")
-        user = factory.make_User()
-        self.patch(user, "has_perm").return_value = False
-        self.assertFalse(Pod.objects.have_rsd(user, PodPermission.view))
-
 
 class TestPod(MAASServerTestCase):
     def make_discovered_block_device(

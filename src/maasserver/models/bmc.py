@@ -620,20 +620,6 @@ class PodManager(BaseBMCManager):
         else:
             raise PermissionDenied()
 
-    def have_rsd(self, user, perm):
-        """Are there any RSD hosts?
-
-        :param user: The user that should be used in the permission check.
-        :type user: User_
-        :param perm: Type of access requested.
-        :type perm: `PodPermission`
-
-        .. _User: https://
-           docs.djangoproject.com/en/dev/topics/auth/
-           #django.contrib.auth.models.User
-        """
-        return self.get_pods(user, perm).filter(power_type="rsd").exists()
-
 
 class Pod(BMC):
     """A `Pod` represents a `BMC` that controls multiple machines."""

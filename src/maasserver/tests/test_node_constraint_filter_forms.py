@@ -1680,7 +1680,7 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
         pod1 = factory.make_Pod(pod_type=node1.power_type, name="pod1")
         node2 = factory.make_Node(
-            power_type="rsd",
+            power_type="lxd",
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type, name="pod2")
@@ -1699,7 +1699,7 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
         pod1 = factory.make_Pod(pod_type=node1.power_type, name="pod1")
         node2 = factory.make_Node(
-            power_type="rsd",
+            power_type="lxd",
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type, name="pod2")
@@ -1720,7 +1720,7 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
         pod1 = factory.make_Pod(pod_type=node1.power_type)
         node2 = factory.make_Node(
-            power_type="rsd",
+            power_type="lxd",
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type)
@@ -1741,7 +1741,7 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
         pod1 = factory.make_Pod(pod_type=node1.power_type)
         node2 = factory.make_Node(
-            power_type="rsd",
+            power_type="lxd",
             power_parameters={"power_address": factory.make_ip_address()},
         )
         pod2 = factory.make_Pod(pod_type=node2.power_type)

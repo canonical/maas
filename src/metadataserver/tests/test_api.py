@@ -2935,29 +2935,6 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual("mscm", node.power_type)
         self.assertNotEqual(params, node.power_parameters)
 
-    def test_signal_current_power_type_rsd_does_not_store_params(self):
-        node = factory.make_Node(
-            power_type="rsd",
-            status=NODE_STATUS.COMMISSIONING,
-            with_empty_script_sets=True,
-        )
-        client = make_node_client(node=node)
-        params = dict(
-            power_address=factory.make_ipv4_address(),
-            power_user=factory.make_string(),
-            power_pass=factory.make_string(),
-        )
-        with SignalsDisabled("power"):
-            response = call_signal(
-                client, power_type="rsd", power_parameters=json.dumps(params)
-            )
-        self.assertEqual(
-            http.client.OK, response.status_code, response.content
-        )
-        node = reload_object(node)
-        self.assertEqual("rsd", node.power_type)
-        self.assertNotEqual(params, node.power_parameters)
-
     def test_signal_refuses_bad_power_type(self):
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True

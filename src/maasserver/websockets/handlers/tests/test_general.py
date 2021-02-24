@@ -312,4 +312,4 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_navigation_options(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertEqual({"rsd": False}, handler.navigation_options({}))
+        self.assertEqual({}, handler.navigation_options({}))

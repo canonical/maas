@@ -516,8 +516,8 @@ class VMHostsHandler(OperationsHandler):
             This method is reserved for admin users.
 
         @error (http-status-code) "503" 503
-        @error (content) "failed-login" MAAS could not find the RSD
-        VM host or could not authenticate with the VM host.
+        @error (content) "failed-login" MAAS could not find or could not
+            authenticate with the VM host.
         @error-example (content) "failed-login"
             Failed talking to VM host: Failed to authenticate to the VM host.
 

@@ -109,7 +109,7 @@ def make_unique_hostname():
 def request_commissioning_results(pod):
     """Request commissioning results from machines associated with the Pod."""
     nodes = yield deferToDatabase(lambda: list(pod.hints.nodes.all()))
-    # Intel RSD and libvirt Pods don't create machines for the host.
+    # libvirt Pods don't create machines for the host.
     if not nodes:
         return pod
     client_identifiers = yield deferToDatabase(pod.get_client_identifiers)

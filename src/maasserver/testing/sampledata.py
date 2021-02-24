@@ -773,32 +773,6 @@ def populate_main():
         pod.default_storage_pool = pool
         pod.save()
         pods.append(pod)
-    for _ in range(3):
-        subnet = random.choice(ipv4_subnets)
-        ip = factory.pick_ip_in_Subnet(subnet)
-        ip_address = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet
-        )
-        power_address = "%s" % ip
-        pod = factory.make_Pod(
-            pod_type="rsd",
-            parameters={
-                "power_address": power_address,
-                "power_user": "user",
-                "power_pass": "pass",
-            },
-            ip_address=ip_address,
-            capabilities=[
-                Capabilities.DYNAMIC_LOCAL_STORAGE,
-                Capabilities.COMPOSABLE,
-            ],
-        )
-        for _ in range(3):
-            pool = factory.make_PodStoragePool(pod)
-            pod_storage_pools[pod].append(pool)
-        pod.default_storage_pool = pool
-        pod.save()
-        pods.append(pod)
     for machine in machines:
         # Add the machine to the pod if its lucky day!
         pod = random.choice(pods)

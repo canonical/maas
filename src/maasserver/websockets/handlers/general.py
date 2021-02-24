@@ -20,7 +20,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
-from maasserver.permissions import NodePermission, PodPermission
+from maasserver.permissions import NodePermission
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
@@ -209,6 +209,4 @@ class GeneralHandler(Handler):
 
     def navigation_options(self, params):
         """Return the options for navigation."""
-        from maasserver.models.bmc import Pod  # circular import
-
-        return {"rsd": Pod.objects.have_rsd(self.user, PodPermission.view)}
+        return {}
