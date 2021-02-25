@@ -3708,8 +3708,8 @@ class Node(CleanSave, TimestampedModel):
         if len(hosted_pods) > 0:
             if dry_run:
                 raise ValidationError(
-                    "The following pods must be removed first: %s"
-                    % (", ".join(hosted_pods))
+                    "The following VM hosts must be removed first:"
+                    f" {', '.join(hosted_pods)}"
                 )
             for pod in self.get_hosted_pods():
                 if isInIOThread():
