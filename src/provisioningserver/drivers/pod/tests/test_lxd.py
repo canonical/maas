@@ -333,11 +333,9 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(-1, discovered_pod.cpu_speed)
         self.assertEqual(-1, discovered_pod.memory)
         self.assertEqual(0, discovered_pod.local_storage)
-        self.assertEqual(-1, discovered_pod.local_disks)
         self.assertEqual(-1, discovered_pod.hints.cores)
         self.assertEqual(-1, discovered_pod.hints.cpu_speed)
         self.assertEqual(-1, discovered_pod.hints.local_storage)
-        self.assertEqual(-1, discovered_pod.hints.local_disks)
         self.assertItemsEqual(
             [
                 Capabilities.COMPOSABLE,
@@ -1160,7 +1158,6 @@ class TestLXDPodDriver(MAASTestCase):
                     cpu_speed=Equals(-1),
                     memory=Equals(-1),
                     local_storage=Equals(-1),
-                    local_disks=Equals(-1),
                 ),
             ),
         )
@@ -1257,7 +1254,6 @@ class TestLXDPodDriver(MAASTestCase):
                     cpu_speed=Equals(-1),
                     memory=Equals(-1),
                     local_storage=Equals(-1),
-                    local_disks=Equals(-1),
                 ),
             ),
         )
@@ -1388,7 +1384,6 @@ class TestLXDPodDriver(MAASTestCase):
                     cpu_speed=Equals(-1),
                     memory=Equals(-1),
                     local_storage=Equals(-1),
-                    local_disks=Equals(-1),
                 ),
             ),
         )
@@ -1424,7 +1419,6 @@ class TestLXDPodDriver(MAASTestCase):
                     cpu_speed=Equals(-1),
                     memory=Equals(-1),
                     local_storage=Equals(-1),
-                    local_disks=Equals(-1),
                 ),
             ),
         )

@@ -182,13 +182,11 @@ class TestDiscoveredClasses(MAASTestCase):
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
-        local_disks = random.randint(1, 8)
         hints = DiscoveredPodHints(
             cores=cores,
             cpu_speed=cpu_speed,
             memory=memory,
             local_storage=local_storage,
-            local_disks=local_disks,
         )
         self.assertEqual(cores, hints.cores)
         self.assertEqual(cpu_speed, hints.cpu_speed)

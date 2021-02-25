@@ -115,11 +115,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
         )
 
     def test_read_returns_limited_fields(self):
-        pod = factory.make_Pod(
-            capabilities=[
-                Capabilities.FIXED_LOCAL_STORAGE,
-            ]
-        )
+        pod = factory.make_Pod(capabilities=[])
         for _ in range(3):
             factory.make_PodStoragePool(pod=pod)
         response = self.client.get(reverse("pods_handler"))
@@ -151,7 +147,6 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
                 "cores",
                 "memory",
                 "local_storage",
-                "local_disks",
             ],
             list(parsed_result[0]["total"]),
         )
@@ -160,7 +155,6 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
                 "cores",
                 "memory",
                 "local_storage",
-                "local_disks",
             ],
             list(parsed_result[0]["used"]),
         )
@@ -169,7 +163,6 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
                 "cores",
                 "memory",
                 "local_storage",
-                "local_disks",
             ],
             list(parsed_result[0]["available"]),
         )

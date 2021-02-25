@@ -59,7 +59,6 @@ class PodHandler(TimestampedModelHandler):
         exclude = [
             "bmc_type",
             "cores",
-            "local_disks",
             "local_storage",
             "memory",
             "power_type",
@@ -157,37 +156,31 @@ class PodHandler(TimestampedModelHandler):
 
     def dehydrate_total(self, obj):
         """Dehydrate total Pod resources."""
-        result = {
+        return {
             "cores": obj.cores,
             "memory": obj.memory,
             "memory_gb": "%.1f" % (obj.memory / 1024.0),
             "local_storage": obj.local_storage,
             "local_storage_gb": "%.1f" % (obj.local_storage / (1024 ** 3)),
         }
-        if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
-            result["local_disks"] = obj.local_disks
-        return result
 
     def dehydrate_used(self, obj):
         """Dehydrate used Pod resources."""
         used_memory = obj.get_used_memory()
         used_local_storage = obj.get_used_local_storage()
-        result = {
+        return {
             "cores": obj.get_used_cores(),
             "memory": used_memory,
             "memory_gb": "%.1f" % (used_memory / 1024.0),
             "local_storage": used_local_storage,
             "local_storage_gb": "%.1f" % (used_local_storage / (1024 ** 3)),
         }
-        if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
-            result["local_disks"] = obj.get_used_local_disks()
-        return result
 
     def dehydrate_available(self, obj):
         """Dehydrate available Pod resources."""
         used_memory = obj.get_used_memory()
         used_local_storage = obj.get_used_local_storage()
-        result = {
+        return {
             "cores": obj.cores - obj.get_used_cores(),
             "memory": obj.memory - used_memory,
             "memory_gb": "%.1f" % ((obj.memory - used_memory) / 1024.0),
@@ -195,11 +188,6 @@ class PodHandler(TimestampedModelHandler):
             "local_storage_gb": "%.1f"
             % ((obj.local_storage - used_local_storage) / (1024 ** 3)),
         }
-        if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
-            result["local_disks"] = (
-                obj.local_disks - obj.get_used_local_disks()
-            )
-        return result
 
     def dehydrate_hints(self, hints):
         """Dehydrate Pod hints."""
@@ -210,7 +198,6 @@ class PodHandler(TimestampedModelHandler):
             "memory_gb": "%.1f" % (hints.memory / 1024.0),
             "local_storage": hints.local_storage,
             "local_storage_gb": "%.1f" % (hints.local_storage / (1024 ** 3)),
-            "local_disks": hints.local_disks,
         }
 
     def dehydrate_storage_pool(self, pool):

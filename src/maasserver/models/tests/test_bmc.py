@@ -875,13 +875,11 @@ class TestPod(MAASServerTestCase):
             cpu_speed=random.randint(2000, 4000),
             memory=random.randint(8192, 8192 * 8),
             local_storage=random.randint(20000, 40000),
-            local_disks=1,
             hints=DiscoveredPodHints(
                 cores=random.randint(8, 16),
                 cpu_speed=random.randint(2000, 4000),
                 memory=random.randint(8192, 8192 * 2),
                 local_storage=random.randint(10000, 20000),
-                local_disks=1,
             ),
             storage_pools=storage_pools,
             machines=machines,
@@ -956,7 +954,6 @@ class TestPod(MAASServerTestCase):
                 cpu_speed=Equals(discovered.cpu_speed),
                 memory=Equals(discovered.memory),
                 local_storage=Equals(discovered.local_storage),
-                local_disks=Equals(discovered.local_disks),
                 capabilities=Equals(discovered.capabilities),
                 tags=MatchesSetwise(*[Equals(tag) for tag in discovered.tags]),
                 hints=MatchesStructure(
@@ -964,7 +961,6 @@ class TestPod(MAASServerTestCase):
                     cpu_speed=Equals(discovered.hints.cpu_speed),
                     memory=Equals(discovered.hints.memory),
                     local_storage=Equals(discovered.hints.local_storage),
-                    local_disks=Equals(discovered.hints.local_disks),
                 ),
                 default_storage_pool=MatchesStructure(
                     pool_id=Equals(discovered.storage_pools[0].id)
@@ -1280,12 +1276,10 @@ class TestPod(MAASServerTestCase):
         self.assertNotEquals(-1, pod.cpu_speed)
         self.assertNotEquals(-1, pod.memory)
         self.assertNotEquals(-1, pod.local_storage)
-        self.assertNotEquals(-1, pod.local_disks)
         self.assertNotEquals(-1, pod.hints.cores)
         self.assertNotEquals(-1, pod.hints.cpu_speed)
         self.assertNotEquals(-1, pod.hints.memory)
         self.assertNotEquals(-1, pod.hints.local_storage)
-        self.assertNotEquals(-1, pod.hints.local_disks)
 
     def test_create_machine_ensures_unique_hostname(self):
         existing_machine = factory.make_Node()
@@ -2708,7 +2702,6 @@ class TestPod(MAASServerTestCase):
             f"Wrong hint ({pod.hints.cpu_speed}) for CPU speed. CPU speeds of nodes: {cpu_speeds}",
         )
         self.assertEqual(pod.hints.memory, memory)
-        self.assertEqual(pod.hints.local_disks, len(nodes))
 
     def test_get_used_cores(self):
         pod = factory.make_Pod()
@@ -2737,14 +2730,6 @@ class TestPod(MAASServerTestCase):
             node = factory.make_Node(bmc=pod, with_boot_disk=False)
             factory.make_PhysicalBlockDevice(node=node, size=storage)
         self.assertEqual(total_storage, pod.get_used_local_storage())
-
-    def test_get_used_local_disks(self):
-        pod = factory.make_Pod()
-        for _ in range(3):
-            node = factory.make_Node(bmc=pod, with_boot_disk=False)
-            for _ in range(3):
-                factory.make_PhysicalBlockDevice(node=node)
-        self.assertEqual(9, pod.get_used_local_disks())
 
     def test_sync_machine_memory(self):
         pod = factory.make_Pod(

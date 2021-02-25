@@ -204,9 +204,6 @@ class BMC(CleanSave, TimestampedModel):
     # Total storage available in the pod (bytes).
     local_storage = BigIntegerField(blank=False, null=False, default=0)
 
-    # Number of disks in the pod (if applicable, otherwise set to -1).
-    local_disks = IntegerField(blank=False, null=False, default=-1)
-
     # Resource pool for this pod.
     pool = ForeignKey(
         ResourcePool,
@@ -668,8 +665,6 @@ class Pod(BMC):
             hints.memory = discovered_hints.memory
         if discovered_hints.local_storage != -1:
             hints.local_storage = discovered_hints.local_storage
-        if discovered_hints.local_disks != -1:
-            hints.local_disks = discovered_hints.local_disks
         hints.save()
 
     def add_tag(self, tag):
@@ -1570,8 +1565,6 @@ class Pod(BMC):
             self.memory = discovered_pod.memory
         if discovered_pod.local_storage != -1:
             self.local_storage = discovered_pod.local_storage
-        if discovered_pod.local_disks != -1:
-            self.local_disks = discovered_pod.local_disks
         self.tags = list(set(self.tags).union(discovered_pod.tags))
         self.save()
         self.sync_hints(discovered_pod.hints)
@@ -1628,7 +1621,6 @@ class Pod(BMC):
         self.cores = hints.cores = 0
         self.cpu_speed = hints.cpu_speed = 0
         self.memory = hints.memory = 0
-        self.local_disks = hints.local_disks = 0
         cpu_speeds = []
         # Set the hints for the Pod to the total amount for all nodes in a
         # cluster.
@@ -1642,10 +1634,6 @@ class Pod(BMC):
                 self.memory += numa.memory
             if node.cpu_speed != 0:
                 cpu_speeds.append(node.cpu_speed)
-            for bd in node.blockdevice_set.all():
-                if bd.type == "physical":
-                    hints.local_disks += 1
-                    self.local_disks += 1
         self.cpu_speed = hints.cpu_speed = (
             mean(cpu_speeds) if cpu_speeds else 0
         )
@@ -1693,29 +1681,6 @@ class Pod(BMC):
             for machine in machines
             for blockdevice in machine.blockdevice_set.all()
             if isinstance(blockdevice.actual_instance, PhysicalBlockDevice)
-        )
-
-    def get_used_local_disks(self, machines=None):
-        """Get the amount of used local disks in the pod.
-
-        :param machines: Deployed machines on this clusted. Only used when
-            the deployed machines have already been pulled from the database
-            and no extra query needs to be performed.
-        """
-        if machines is None:
-            machines = (
-                Machine.objects.filter(bmc__id=self.id)
-                .prefetch_related("blockdevice_set__iscsiblockdevice")
-                .prefetch_related("blockdevice_set__virtualblockdevice")
-                .prefetch_related("blockdevice_set__physicalblockdevice")
-            )
-        return len(
-            [
-                blockdevice
-                for machine in machines
-                for blockdevice in machine.blockdevice_set.all()
-                if isinstance(blockdevice.actual_instance, PhysicalBlockDevice)
-            ]
         )
 
     def delete(self, *args, **kwargs):

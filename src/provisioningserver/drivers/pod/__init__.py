@@ -116,10 +116,6 @@ class Capabilities:
     # implement the `compose` and `decompose` methods when set.
     COMPOSABLE = "composable"
 
-    # Supports fixed local storage. Block devices are fixed in size locally
-    # and its possible to get a disk larger than requested.
-    FIXED_LOCAL_STORAGE = "fixed_local_storage"
-
     # Supports dynamic local storage. Block devices are dynamically created,
     # attached locally and will always be the exact requested size.
     DYNAMIC_LOCAL_STORAGE = "dynamic_local_storage"
@@ -283,7 +279,6 @@ class DiscoveredPodHints:
     cpu_speed = attr.ib(converter=int, default=-1)
     memory = attr.ib(converter=int, default=-1)
     local_storage = attr.ib(converter=int, default=-1)
-    local_disks = attr.ib(converter=int, default=-1)
 
 
 @attr.s
@@ -300,14 +295,13 @@ class DiscoveredPod:
         converter=converter_obj(DiscoveredPodHints),
         default=DiscoveredPodHints(),
     )
-    local_disks = attr.ib(converter=int, default=-1)
     # XXX - This should be the hardware UUID but LXD doesn't provide it.
     mac_addresses = attr.ib(
         converter=converter_list(str), default=attr.Factory(list)
     )
     capabilities = attr.ib(
         converter=converter_list(str),
-        default=attr.Factory(lambda: [Capabilities.FIXED_LOCAL_STORAGE]),
+        default=attr.Factory(list),
     )
     machines = attr.ib(
         converter=converter_list(DiscoveredMachine), default=attr.Factory(list)

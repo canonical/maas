@@ -91,7 +91,6 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod = factory.make_Pod(
             architectures=architectures,
             capabilities=[
-                Capabilities.FIXED_LOCAL_STORAGE,
                 Capabilities.COMPOSABLE,
                 Capabilities.STORAGE_POOLS,
             ],

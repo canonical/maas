@@ -57,25 +57,19 @@ class VMHostHandler(OperationsHandler):
 
     @classmethod
     def total(cls, pod):
-        result = {
+        return {
             "cores": pod.cores,
             "memory": pod.memory,
             "local_storage": pod.local_storage,
         }
-        if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
-            result["local_disks"] = pod.local_disks
-        return result
 
     @classmethod
     def used(cls, pod):
-        result = {
+        return {
             "cores": pod.get_used_cores(),
             "memory": pod.get_used_memory(),
             "local_storage": pod.get_used_local_storage(),
         }
-        if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
-            result["local_disks"] = pod.get_used_local_disks()
-        return result
 
     @classmethod
     def available(cls, pod):
