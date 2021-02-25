@@ -9,6 +9,7 @@ import os
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 import tempfile
 
+from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.maas_api_helper import (
     capture_script_output,
@@ -42,9 +43,12 @@ def get_architecture():
 @lru_cache(maxsize=1)
 def get_resources_bin_path():
     """Return the path of the resources binary."""
-    prefix = get_snap_path() or ""
-    arch = get_architecture()
-    return f"{prefix}/usr/share/maas/machine-resources/{arch}"
+    if is_dev_environment():
+        path = "src/machine-resources/bin"
+    else:
+        prefix = get_snap_path() or ""
+        path = f"{prefix}/usr/share/maas/machine-resources"
+    return os.path.join(path, get_architecture())
 
 
 def signal_wrapper(*args, **kwargs):
