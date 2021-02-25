@@ -124,10 +124,6 @@ class Capabilities:
     # attached locally and will always be the exact requested size.
     DYNAMIC_LOCAL_STORAGE = "dynamic_local_storage"
 
-    # Supports built-in iscsi storage. Remote block devices can be created of
-    # exact size with this pod connected storage systems.
-    ISCSI_STORAGE = "iscsi_storage"
-
     # Ability to overcommit the cores and memory of the pod. Mainly used
     # for virtual pod.
     OVER_COMMIT = "over_commit"
@@ -288,7 +284,6 @@ class DiscoveredPodHints:
     memory = attr.ib(converter=int, default=-1)
     local_storage = attr.ib(converter=int, default=-1)
     local_disks = attr.ib(converter=int, default=-1)
-    iscsi_storage = attr.ib(converter=int, default=-1)
 
 
 @attr.s
@@ -306,7 +301,6 @@ class DiscoveredPod:
         default=DiscoveredPodHints(),
     )
     local_disks = attr.ib(converter=int, default=-1)
-    iscsi_storage = attr.ib(converter=int, default=-1)
     # XXX - This should be the hardware UUID but LXD doesn't provide it.
     mac_addresses = attr.ib(
         converter=converter_list(str), default=attr.Factory(list)

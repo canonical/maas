@@ -207,11 +207,6 @@ class BMC(CleanSave, TimestampedModel):
     # Number of disks in the pod (if applicable, otherwise set to -1).
     local_disks = IntegerField(blank=False, null=False, default=-1)
 
-    # Total iSCSI storage available in the pod (if applicable, otherwise -1).
-    iscsi_storage = BigIntegerField(  # Bytes
-        blank=False, null=False, default=-1
-    )
-
     # Resource pool for this pod.
     pool = ForeignKey(
         ResourcePool,
@@ -675,8 +670,6 @@ class Pod(BMC):
             hints.local_storage = discovered_hints.local_storage
         if discovered_hints.local_disks != -1:
             hints.local_disks = discovered_hints.local_disks
-        if discovered_hints.iscsi_storage != -1:
-            hints.iscsi_storage = discovered_hints.iscsi_storage
         hints.save()
 
     def add_tag(self, tag):
@@ -1579,8 +1572,6 @@ class Pod(BMC):
             self.local_storage = discovered_pod.local_storage
         if discovered_pod.local_disks != -1:
             self.local_disks = discovered_pod.local_disks
-        if discovered_pod.iscsi_storage != -1:
-            self.iscsi_storage = discovered_pod.iscsi_storage
         self.tags = list(set(self.tags).union(discovered_pod.tags))
         self.save()
         self.sync_hints(discovered_pod.hints)
@@ -1638,7 +1629,6 @@ class Pod(BMC):
         self.cpu_speed = hints.cpu_speed = 0
         self.memory = hints.memory = 0
         self.local_disks = hints.local_disks = 0
-        self.iscsi_storage = hints.iscsi_storage = 0
         cpu_speeds = []
         # Set the hints for the Pod to the total amount for all nodes in a
         # cluster.
@@ -1656,9 +1646,6 @@ class Pod(BMC):
                 if bd.type == "physical":
                     hints.local_disks += 1
                     self.local_disks += 1
-                elif bd.type == "iscsi":
-                    hints.iscsi_storage += bd.size
-                    self.iscsi_storage += bd.size
         self.cpu_speed = hints.cpu_speed = (
             mean(cpu_speeds) if cpu_speeds else 0
         )
@@ -1729,27 +1716,6 @@ class Pod(BMC):
                 for blockdevice in machine.blockdevice_set.all()
                 if isinstance(blockdevice.actual_instance, PhysicalBlockDevice)
             ]
-        )
-
-    def get_used_iscsi_storage(self, machines=None):
-        """Get the amount of used iSCSI storage in the pod.
-
-        :param machines: Deployed machines on this clusted. Only used when
-            the deployed machines have already been pulled from the database
-            and no extra query needs to be performed.
-        """
-        if machines is None:
-            machines = (
-                Machine.objects.filter(bmc__id=self.id)
-                .prefetch_related("blockdevice_set__iscsiblockdevice")
-                .prefetch_related("blockdevice_set__virtualblockdevice")
-                .prefetch_related("blockdevice_set__physicalblockdevice")
-            )
-        return sum(
-            blockdevice.size
-            for machine in machines
-            for blockdevice in machine.blockdevice_set.all()
-            if isinstance(blockdevice.actual_instance, ISCSIBlockDevice)
         )
 
     def delete(self, *args, **kwargs):

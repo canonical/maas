@@ -92,7 +92,6 @@ class TestPodHandler(MAASTransactionServerTestCase):
             architectures=architectures,
             capabilities=[
                 Capabilities.FIXED_LOCAL_STORAGE,
-                Capabilities.ISCSI_STORAGE,
                 Capabilities.COMPOSABLE,
                 Capabilities.STORAGE_POOLS,
             ],

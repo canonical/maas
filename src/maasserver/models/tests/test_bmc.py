@@ -876,14 +876,12 @@ class TestPod(MAASServerTestCase):
             memory=random.randint(8192, 8192 * 8),
             local_storage=random.randint(20000, 40000),
             local_disks=1,
-            iscsi_storage=random.randint(20000, 40000),
             hints=DiscoveredPodHints(
                 cores=random.randint(8, 16),
                 cpu_speed=random.randint(2000, 4000),
                 memory=random.randint(8192, 8192 * 2),
                 local_storage=random.randint(10000, 20000),
                 local_disks=1,
-                iscsi_storage=random.randint(20000, 40000),
             ),
             storage_pools=storage_pools,
             machines=machines,
@@ -959,7 +957,6 @@ class TestPod(MAASServerTestCase):
                 memory=Equals(discovered.memory),
                 local_storage=Equals(discovered.local_storage),
                 local_disks=Equals(discovered.local_disks),
-                iscsi_storage=Equals(discovered.iscsi_storage),
                 capabilities=Equals(discovered.capabilities),
                 tags=MatchesSetwise(*[Equals(tag) for tag in discovered.tags]),
                 hints=MatchesStructure(
@@ -1284,13 +1281,11 @@ class TestPod(MAASServerTestCase):
         self.assertNotEquals(-1, pod.memory)
         self.assertNotEquals(-1, pod.local_storage)
         self.assertNotEquals(-1, pod.local_disks)
-        self.assertNotEquals(-1, pod.iscsi_storage)
         self.assertNotEquals(-1, pod.hints.cores)
         self.assertNotEquals(-1, pod.hints.cpu_speed)
         self.assertNotEquals(-1, pod.hints.memory)
         self.assertNotEquals(-1, pod.hints.local_storage)
         self.assertNotEquals(-1, pod.hints.local_disks)
-        self.assertNotEquals(-1, pod.hints.iscsi_storage)
 
     def test_create_machine_ensures_unique_hostname(self):
         existing_machine = factory.make_Node()
@@ -2697,7 +2692,6 @@ class TestPod(MAASServerTestCase):
         cpu_speeds = []
         memory = 0
         local_storage = 0
-        iscsi_storage = 0
         for node in nodes:
             for numa in node.numanode_set.all():
                 cores += len(numa.cores)
@@ -2706,8 +2700,6 @@ class TestPod(MAASServerTestCase):
             for bd in node.blockdevice_set.all():
                 if bd.type == "physical":
                     local_storage += bd.size
-                elif bd.type == "iscsi":
-                    iscsi_storage += bd.size
 
         self.assertEqual(pod.hints.cores, cores)
         self.assertEqual(
@@ -2717,7 +2709,6 @@ class TestPod(MAASServerTestCase):
         )
         self.assertEqual(pod.hints.memory, memory)
         self.assertEqual(pod.hints.local_disks, len(nodes))
-        self.assertEqual(pod.hints.iscsi_storage, iscsi_storage)
 
     def test_get_used_cores(self):
         pod = factory.make_Pod()
@@ -2754,16 +2745,6 @@ class TestPod(MAASServerTestCase):
             for _ in range(3):
                 factory.make_PhysicalBlockDevice(node=node)
         self.assertEqual(9, pod.get_used_local_disks())
-
-    def test_get_used_iscsi_storage(self):
-        pod = factory.make_Pod()
-        total_storage = 0
-        for _ in range(3):
-            storage = random.randint(1024 ** 3, 4 * (1024 ** 3))
-            total_storage += storage
-            node = factory.make_Node(bmc=pod, with_boot_disk=False)
-            factory.make_ISCSIBlockDevice(node=node, size=storage)
-        self.assertEqual(total_storage, pod.get_used_iscsi_storage())
 
     def test_sync_machine_memory(self):
         pod = factory.make_Pod(

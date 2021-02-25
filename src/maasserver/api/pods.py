@@ -64,8 +64,6 @@ class VMHostHandler(OperationsHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
             result["local_disks"] = pod.local_disks
-        if Capabilities.ISCSI_STORAGE in pod.capabilities:
-            result["iscsi_storage"] = pod.iscsi_storage
         return result
 
     @classmethod
@@ -77,8 +75,6 @@ class VMHostHandler(OperationsHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in pod.capabilities:
             result["local_disks"] = pod.get_used_local_disks()
-        if Capabilities.ISCSI_STORAGE in pod.capabilities:
-            result["iscsi_storage"] = pod.get_used_iscsi_storage()
         return result
 
     @classmethod

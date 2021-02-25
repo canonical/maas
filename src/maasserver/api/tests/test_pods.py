@@ -118,7 +118,6 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
         pod = factory.make_Pod(
             capabilities=[
                 Capabilities.FIXED_LOCAL_STORAGE,
-                Capabilities.ISCSI_STORAGE,
             ]
         )
         for _ in range(3):
@@ -153,7 +152,6 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
                 "memory",
                 "local_storage",
                 "local_disks",
-                "iscsi_storage",
             ],
             list(parsed_result[0]["total"]),
         )
@@ -163,7 +161,6 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
                 "memory",
                 "local_storage",
                 "local_disks",
-                "iscsi_storage",
             ],
             list(parsed_result[0]["used"]),
         )
@@ -173,7 +170,6 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
                 "memory",
                 "local_storage",
                 "local_disks",
-                "iscsi_storage",
             ],
             list(parsed_result[0]["available"]),
         )

@@ -61,7 +61,6 @@ class PodHandler(TimestampedModelHandler):
             "cores",
             "local_disks",
             "local_storage",
-            "iscsi_storage",
             "memory",
             "power_type",
             "power_parameters",
@@ -167,11 +166,6 @@ class PodHandler(TimestampedModelHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
             result["local_disks"] = obj.local_disks
-        if Capabilities.ISCSI_STORAGE in obj.capabilities:
-            result["iscsi_storage"] = obj.iscsi_storage
-            result["iscsi_storage_gb"] = "%.1f" % (
-                obj.iscsi_storage / (1024 ** 3)
-            )
         return result
 
     def dehydrate_used(self, obj):
@@ -187,12 +181,6 @@ class PodHandler(TimestampedModelHandler):
         }
         if Capabilities.FIXED_LOCAL_STORAGE in obj.capabilities:
             result["local_disks"] = obj.get_used_local_disks()
-        if Capabilities.ISCSI_STORAGE in obj.capabilities:
-            used_iscsi_storage = obj.get_used_iscsi_storage()
-            result["iscsi_storage"] = used_iscsi_storage
-            result["iscsi_storage_gb"] = "%.1f" % (
-                used_iscsi_storage / (1024 ** 3)
-            )
         return result
 
     def dehydrate_available(self, obj):
@@ -211,12 +199,6 @@ class PodHandler(TimestampedModelHandler):
             result["local_disks"] = (
                 obj.local_disks - obj.get_used_local_disks()
             )
-        if Capabilities.ISCSI_STORAGE in obj.capabilities:
-            used_iscsi_storage = obj.get_used_iscsi_storage()
-            result["iscsi_storage"] = obj.iscsi_storage - used_iscsi_storage
-            result["iscsi_storage_gb"] = "%.1f" % (
-                (obj.iscsi_storage - used_iscsi_storage) / (1024 ** 3)
-            )
         return result
 
     def dehydrate_hints(self, hints):
@@ -229,8 +211,6 @@ class PodHandler(TimestampedModelHandler):
             "local_storage": hints.local_storage,
             "local_storage_gb": "%.1f" % (hints.local_storage / (1024 ** 3)),
             "local_disks": hints.local_disks,
-            "iscsi_storage": hints.iscsi_storage,
-            "iscsi_storage_gb": "%.1f" % (hints.iscsi_storage / (1024 ** 3)),
         }
 
     def dehydrate_storage_pool(self, pool):

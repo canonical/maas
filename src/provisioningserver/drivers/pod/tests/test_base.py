@@ -183,20 +183,17 @@ class TestDiscoveredClasses(MAASTestCase):
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
         local_disks = random.randint(1, 8)
-        iscsi_storage = random.randint(4096, 8192)
         hints = DiscoveredPodHints(
             cores=cores,
             cpu_speed=cpu_speed,
             memory=memory,
             local_storage=local_storage,
             local_disks=local_disks,
-            iscsi_storage=iscsi_storage,
         )
         self.assertEqual(cores, hints.cores)
         self.assertEqual(cpu_speed, hints.cpu_speed)
         self.assertEqual(memory, hints.memory)
         self.assertEqual(local_storage, hints.local_storage)
-        self.assertEqual(iscsi_storage, hints.iscsi_storage)
 
     def test_pod(self):
         hostname = factory.make_name("hostname")
@@ -204,13 +201,11 @@ class TestDiscoveredClasses(MAASTestCase):
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
         local_storage = random.randint(4096, 8192)
-        iscsi_storage = random.randint(4096, 8192)
         hints = DiscoveredPodHints(
             cores=random.randint(1, 8),
             cpu_speed=random.randint(1000, 2000),
             memory=random.randint(4096, 8192),
             local_storage=random.randint(4096, 8192),
-            iscsi_storage=random.randint(4096, 8192),
         )
         machines = []
         for _ in range(3):
@@ -240,7 +235,6 @@ class TestDiscoveredClasses(MAASTestCase):
                         serial=None,
                         size=random.randint(512, 1024),
                         type=BlockDeviceType.ISCSI,
-                        iscsi_target=self.make_iscsi_target(),
                     )
                 )
             tags = [factory.make_name("tag") for _ in range(3)]
@@ -264,7 +258,6 @@ class TestDiscoveredClasses(MAASTestCase):
             cpu_speed=cpu_speed,
             memory=memory,
             local_storage=local_storage,
-            iscsi_storage=iscsi_storage,
             hints=hints,
             machines=machines,
         )
@@ -272,7 +265,6 @@ class TestDiscoveredClasses(MAASTestCase):
         self.assertEqual(cpu_speed, pod.cpu_speed)
         self.assertEqual(memory, pod.memory)
         self.assertEqual(local_storage, pod.local_storage)
-        self.assertEqual(iscsi_storage, pod.iscsi_storage)
         self.assertEqual(machines, pod.machines)
 
 

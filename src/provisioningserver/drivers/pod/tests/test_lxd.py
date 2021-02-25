@@ -334,12 +334,10 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(-1, discovered_pod.memory)
         self.assertEqual(0, discovered_pod.local_storage)
         self.assertEqual(-1, discovered_pod.local_disks)
-        self.assertEqual(-1, discovered_pod.iscsi_storage)
         self.assertEqual(-1, discovered_pod.hints.cores)
         self.assertEqual(-1, discovered_pod.hints.cpu_speed)
         self.assertEqual(-1, discovered_pod.hints.local_storage)
         self.assertEqual(-1, discovered_pod.hints.local_disks)
-        self.assertEqual(-1, discovered_pod.hints.iscsi_storage)
         self.assertItemsEqual(
             [
                 Capabilities.COMPOSABLE,
@@ -620,7 +618,6 @@ class TestLXDPodDriver(MAASTestCase):
                 tags=[],
                 type="physical",
                 storage_pool=expanded_devices["root"]["pool"],
-                iscsi_target=None,
             ),
         )
         self.assertEqual(
@@ -1164,7 +1161,6 @@ class TestLXDPodDriver(MAASTestCase):
                     memory=Equals(-1),
                     local_storage=Equals(-1),
                     local_disks=Equals(-1),
-                    iscsi_storage=Equals(-1),
                 ),
             ),
         )
@@ -1262,7 +1258,6 @@ class TestLXDPodDriver(MAASTestCase):
                     memory=Equals(-1),
                     local_storage=Equals(-1),
                     local_disks=Equals(-1),
-                    iscsi_storage=Equals(-1),
                 ),
             ),
         )
@@ -1394,7 +1389,6 @@ class TestLXDPodDriver(MAASTestCase):
                     memory=Equals(-1),
                     local_storage=Equals(-1),
                     local_disks=Equals(-1),
-                    iscsi_storage=Equals(-1),
                 ),
             ),
         )
@@ -1431,7 +1425,6 @@ class TestLXDPodDriver(MAASTestCase):
                     memory=Equals(-1),
                     local_storage=Equals(-1),
                     local_disks=Equals(-1),
-                    iscsi_storage=Equals(-1),
                 ),
             ),
         )
