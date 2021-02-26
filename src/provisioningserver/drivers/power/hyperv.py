@@ -40,7 +40,8 @@ class HypervPowerDriver(PowerDriver):
 
     name = "hyperv"
     chassis = False
-    description = "Hyper-V Power Driver."
+    can_probe = True
+    description = "Hyper-V Power Driver"
     settings = [
         make_setting_field(
             "power_id", 

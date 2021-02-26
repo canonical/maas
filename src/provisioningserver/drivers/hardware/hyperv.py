@@ -1,8 +1,25 @@
 import sys
 
-from winrm import protocol
+from importlib import import_module
 from provisioningserver.logger import get_maas_logger
+protocol = None
 maaslog = get_maas_logger("drivers.power.hyperv")
+
+#from winrm import protocol
+
+def try_winrm_import():
+    """Attempt to import the winrm API. This API is provided by the
+    pywinrm package; if it doesn't work out, we need to notify
+    the user so they can install it.
+    """
+    global protocol
+    try:
+        if protocol is None:
+            protocol = import_module("winrm.protocol")
+    except ImportError:
+        return False
+    else:
+        return True
 
 ########## https://github.com/diyan/pywinrm/issues/269
 import logging
@@ -48,28 +65,37 @@ VM_STATE_TO_POWER_STATE = {
     VM_PAUSED: "off",
 }
 
+class HypervException(Exception):
+    """Failure talking to the WinRM API."""
 
-class HypervCmdError(Exception):
+class WinRMClientNotFound(HypervException):
+    """A usable WinRM API client was not found."""
+
+class HypervCmdError(HypervException):
     """Failed to run command on remote Hyper-V node"""
-
 
 class WinRM(object):
 
     def __init__(self, power_address, username, password, use_ssl=True):
+        maaslog.info("Starting HyperV initializing")
         self.hostname = power_address
         self.use_ssl = use_ssl
-        maaslog.warning("HV init")
-
         self.protocol = self._protocol(username, password)
+        maaslog.info("HyperV initialized")
 
     def _protocol(self, username, password):
-        protocol.Protocol.DEFAULT_TIMEOUT = "PT3600S"
-        p = protocol.Protocol(endpoint=self._url,
-                              transport=AUTH_TRANSPORT_MAP[AUTH_NTLM],
-                              username=username,
-                              password=password,
-                              server_cert_validation='ignore')
-        return p
+        if try_winrm_import():
+            protocol.Protocol.DEFAULT_TIMEOUT = "PT3600S"
+            p = protocol.Protocol(endpoint=self._url,
+                                transport=AUTH_TRANSPORT_MAP[AUTH_NTLM],
+                                username=username,
+                                password=password,
+                                server_cert_validation='ignore')
+            return p
+        else:
+            raise WinRMClientNotFound(
+                "Could not find a suitable WinRM API (install pywinrm)"
+            )
 
     def _run_command(self, cmd):
         if type(cmd) is not list:
