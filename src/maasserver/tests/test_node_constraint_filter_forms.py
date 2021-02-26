@@ -1032,28 +1032,6 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         # all nodes with physical devices larger than 2gb
         self.assertConstrainedNodes([node2, node3], {"storage": "0,4,4,4"})
 
-    def test_storage_multi_contraint_matches_iscsi_and_unused(self):
-        node1 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node1, formatted_root=True)
-        # 1gb, 2gb, 3gb block device
-        factory.make_ISCSIBlockDevice(node=node1, size=1 * (1000 ** 3))
-        factory.make_ISCSIBlockDevice(node=node1, size=2 * (1000 ** 3))
-        factory.make_ISCSIBlockDevice(node=node1, size=3 * (1000 ** 3))
-        node2 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node2, formatted_root=True)
-        # 5gb, 6gb, 7gb block device
-        factory.make_ISCSIBlockDevice(node=node2, size=5 * (1000 ** 3))
-        factory.make_ISCSIBlockDevice(node=node2, size=6 * (1000 ** 3))
-        factory.make_ISCSIBlockDevice(node=node2, size=7 * (1000 ** 3))
-        node3 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node3, formatted_root=True)
-        # 8gb, 9gb, 10gb block device
-        factory.make_ISCSIBlockDevice(node=node3, size=8 * (1000 ** 3))
-        factory.make_ISCSIBlockDevice(node=node3, size=9 * (1000 ** 3))
-        factory.make_ISCSIBlockDevice(node=node3, size=10 * (1000 ** 3))
-        # all nodes with physical devices larger than 2gb
-        self.assertConstrainedNodes([node2, node3], {"storage": "0,4,4,4"})
-
     def test_storage_multi_contraint_matches_partition_unused(self):
         node1 = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(node=node1, formatted_root=True)
@@ -1188,11 +1166,11 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         physical = factory.make_PhysicalBlockDevice(
             node=node1, size=6 * (1000 ** 3), tags=["rotary", "5400rpm"]
         )
-        iscsi = factory.make_ISCSIBlockDevice(
+        other = factory.make_PhysicalBlockDevice(
             node=node1, size=21 * (1000 ** 3)
         )
         form = FilterNodeForm(
-            {"storage": "root:8(lvm),physical:5(rotary,5400rpm),iscsi:20"}
+            {"storage": "root:8(lvm),physical:5(rotary,5400rpm),other:20"}
         )
         self.assertTrue(form.is_valid(), form.errors)
         filtered_nodes, constraint_map, _ = form.filter_nodes(
@@ -1206,8 +1184,8 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertEqual(virtual.id, disk0.id)
         disk1 = node.blockdevice_set.get(id=constraints["physical"])
         self.assertEqual(physical.id, disk1.id)
-        disk2 = node.blockdevice_set.get(id=constraints["iscsi"])
-        self.assertEqual(iscsi.id, disk2.id)
+        disk2 = node.blockdevice_set.get(id=constraints["other"])
+        self.assertEqual(other.id, disk2.id)
 
     def test_fabrics_constraint(self):
         fabric1 = factory.make_Fabric(name="fabric1")

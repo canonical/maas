@@ -614,7 +614,7 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 24
+        expected_query_count = 23
         self.assertEqual(
             queries_one,
             expected_query_count,
@@ -667,7 +667,7 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 24
+        expected_query_count = 23
         self.assertEqual(
             queries_one,
             expected_query_count,
@@ -711,7 +711,7 @@ class TestMachineHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            52,
+            51,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -2015,13 +2015,14 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node()
         factory.make_PhysicalBlockDevice(node)
-        factory.make_ISCSIBlockDevice(node=node)
+        factory.make_VirtualBlockDevice(node=node)
         result = handler.get({"system_id": node.system_id})
         for disk in result["disks"]:
             if disk["type"] == "physical":
                 self.assertEqual(disk["numa_node"], 0)
             else:
-                self.assertIsNone(disk["numa_node"])
+                # None for LVM VGs, doesn't exist for other virtual devices
+                self.assertIsNone(disk.get("numa_node"))
 
     def test_get_includes_not_acquired_special_filesystems(self):
         owner = factory.make_User()
@@ -4237,10 +4238,9 @@ class TestMachineHandler(MAASServerTestCase):
         rotary = factory.make_PhysicalBlockDevice(
             node, tags=["rotary"], size=size
         )
-        iscsi = factory.make_PhysicalBlockDevice(node, tags=["iscsi"])
         handler = MachineHandler(user, {}, None)
         self.assertThat(
-            handler.get_grouped_storages([ssd, hdd, rotary, iscsi]),
+            handler.get_grouped_storages([ssd, hdd, rotary]),
             MatchesListwise(
                 [
                     MatchesDict(
@@ -4255,13 +4255,6 @@ class TestMachineHandler(MAASServerTestCase):
                             "count": Equals(2),
                             "size": Equals(hdd.size),
                             "disk_type": Equals("hdd"),
-                        }
-                    ),
-                    MatchesDict(
-                        {
-                            "count": Equals(1),
-                            "size": Equals(iscsi.size),
-                            "disk_type": Equals("iscsi"),
                         }
                     ),
                 ]

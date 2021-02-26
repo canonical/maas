@@ -130,7 +130,6 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
-from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.ownerdata import OwnerData
@@ -2006,15 +2005,6 @@ class Node(CleanSave, TimestampedModel):
         return round(self.memory / 1024.0, 1)
 
     @property
-    def iscsiblockdevice_set(self):
-        """Return `QuerySet` for all `ISCSIBlockDevice` assigned to node.
-
-        This is need as Django doesn't add this attribute to the `Node` model,
-        it only adds blockdevice_set.
-        """
-        return ISCSIBlockDevice.objects.filter(node=self)
-
-    @property
     def physicalblockdevice_set(self):
         """Return `QuerySet` for all `PhysicalBlockDevice` assigned to node.
 
@@ -2044,10 +2034,7 @@ class Node(CleanSave, TimestampedModel):
         size = sum(
             block_device.size
             for block_device in self.blockdevice_set.all()
-            if isinstance(
-                block_device.actual_instance,
-                (ISCSIBlockDevice, PhysicalBlockDevice),
-            )
+            if isinstance(block_device.actual_instance, PhysicalBlockDevice)
         )
         return size / 1000 / 1000
 
@@ -4255,18 +4242,15 @@ class Node(CleanSave, TimestampedModel):
         """Clear's the full storage configuration for this node.
 
         This will remove all related models to `PhysicalBlockDevice`'s and
-        `ISCSIBlockDevice`'s' on this node and all `VirtualBlockDevice`'s.
+        on this node and all `VirtualBlockDevice`'s.
 
         This is used before commissioning to clear the entire storage model
-        except for the `PhysicalBlockDevice`'s and `ISCSIBlockDevice`'s.
+        except for the `PhysicalBlockDevice`'s.
         Commissioning will update the `PhysicalBlockDevice` information
         on this node.
         """
         block_device_ids = list(
             self.physicalblockdevice_set.values_list("id", flat=True)
-        )
-        block_device_ids += list(
-            self.iscsiblockdevice_set.values_list("id", flat=True)
         )
         PartitionTable.objects.filter(
             block_device__id__in=block_device_ids

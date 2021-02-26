@@ -52,7 +52,6 @@ from maasserver.forms.ephemeral import TestForm
 from maasserver.models import (
     Filesystem,
     Interface,
-    ISCSIBlockDevice,
     Node,
     NUMANode,
     OwnerData,
@@ -91,23 +90,6 @@ NODES_PREFETCH = [
     ),
     Prefetch(
         "blockdevice_set__partitiontable_set__partitions__filesystem_set",
-        queryset=Filesystem.objects.select_related(
-            "cache_set", "filesystem_group"
-        ),
-    ),
-    Prefetch(
-        "blockdevice_set__iscsiblockdevice",
-        queryset=ISCSIBlockDevice.objects.select_related("node"),
-    ),
-    Prefetch(
-        "blockdevice_set__iscsiblockdevice__filesystem_set",
-        queryset=Filesystem.objects.select_related(
-            "cache_set", "filesystem_group"
-        ),
-    ),
-    Prefetch(
-        "blockdevice_set__iscsiblockdevice__partitiontable_set__partitions__"
-        "filesystem_set",
         queryset=Filesystem.objects.select_related(
             "cache_set", "filesystem_group"
         ),

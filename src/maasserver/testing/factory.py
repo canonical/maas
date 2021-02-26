@@ -68,7 +68,6 @@ from maasserver.models import (
     Filesystem,
     FilesystemGroup,
     IPRange,
-    ISCSIBlockDevice,
     KeySource,
     LargeFile,
     LicenseKey,
@@ -2532,64 +2531,6 @@ class Factory(maastesting.factory.Factory):
             tags = [self.make_name("tag") for _ in range(3)]
         return BlockDevice.objects.create(
             node=node, name=name, size=size, block_size=block_size, tags=tags
-        )
-
-    def make_ISCSIBlockDevice(
-        self,
-        node=None,
-        name=None,
-        size=None,
-        block_size=None,
-        tags=None,
-        target=None,
-    ):
-        if node is None:
-            node = self.make_Node()
-        if name is None:
-            name = self.make_name("name")
-        if block_size is None:
-            block_size = random.choice([512, 1024, 4096])
-        if size is None:
-            # We need space for MakePartition to choose "largest" _3_ times,
-            # because of TestManagersFilterByNode.test__bcache_on_partitions
-            # in maasserver/models/tests/test_filesystemgroup.py.
-            size = round_size_to_nearest_block(
-                random.randint(
-                    max(MIN_BLOCK_DEVICE_SIZE, MIN_PARTITION_SIZE) * 16,
-                    MIN_BLOCK_DEVICE_SIZE * 1024,
-                ),
-                block_size,
-            )
-        if tags is None:
-            tags = [self.make_name("tag") for _ in range(3)]
-        if target is None:
-            user = factory.make_name("user")
-            password = factory.make_name("pass")
-            init_user = factory.make_name("init_user")
-            init_pass = factory.make_name("init_pass")
-            host = factory.make_ipv4_address()
-            proto = random.choice(["", "6"])
-            port = random.choice(["", str(random.randint(3260, 3269))])
-            lun = random.randint(0, 9)
-            target_name = factory.make_name("target")
-            target = "%s:%s:%s:%s@%s:%s:%s:%s:%s" % (
-                user,
-                password,
-                init_user,
-                init_pass,
-                host,
-                proto,
-                port,
-                lun,
-                target_name,
-            )
-        return ISCSIBlockDevice.objects.create(
-            node=node,
-            name=name,
-            size=size,
-            block_size=block_size,
-            tags=tags,
-            target=target,
         )
 
     def make_PhysicalBlockDevice(

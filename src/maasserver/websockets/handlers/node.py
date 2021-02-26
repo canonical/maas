@@ -75,7 +75,6 @@ def node_prefetch(queryset, *args):
             "owner", "zone", "pool", "domain", "bmc", *args
         )
         .prefetch_related("blockdevice_set__partitiontable_set__partitions")
-        .prefetch_related("blockdevice_set__iscsiblockdevice")
         .prefetch_related("blockdevice_set__physicalblockdevice")
         .prefetch_related("blockdevice_set__physicalblockdevice__numa_node")
         .prefetch_related("blockdevice_set__virtualblockdevice")
@@ -971,11 +970,11 @@ class NodeHandler(TimestampedModelHandler):
         disk_data = [
             (blockdevice.size, "hdd" if disk_type == "rotary" else disk_type)
             for blockdevice in blockdevices
-            for disk_type in ("ssd", "hdd", "rotary", "iscsi")
+            for disk_type in ("ssd", "hdd", "rotary")
             if disk_type in blockdevice.tags
         ]
         grouped_storages = []
-        for disk_type in ("ssd", "hdd", "rotary", "iscsi"):
+        for disk_type in ("ssd", "hdd", "rotary"):
             c = Counter(elem[0] for elem in disk_data if elem[1] == disk_type)
             for size, count in c.items():
                 grouped_storages.append(

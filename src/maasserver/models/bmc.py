@@ -49,10 +49,6 @@ from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import PhysicalInterface, VLANInterface
-from maasserver.models.iscsiblockdevice import (
-    get_iscsi_target,
-    ISCSIBlockDevice,
-)
 from maasserver.models.node import get_default_zone, Machine, Node
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podhints import PodHints
@@ -757,45 +753,6 @@ class Pod(BMC):
         self._sync_vm_disk(block_device, storage_pool=storage_pool)
         return block_device
 
-    def _create_iscsi_block_device(self, discovered_bd, machine, name=None):
-        """Create's a new `ISCSIBlockDevice` for `machine`.
-
-        `ISCSIBlockDevice.target` are unique. So if one exists on another
-        machine it will be moved from that machine to this machine.
-        """
-        if name is None:
-            name = machine.get_next_block_device_name()
-        target = get_iscsi_target(discovered_bd.iscsi_target)
-        block_device, created = ISCSIBlockDevice.objects.get_or_create(
-            target=target,
-            defaults={
-                "name": name,
-                "node": machine,
-                "size": discovered_bd.size,
-                "block_size": discovered_bd.block_size,
-                "tags": discovered_bd.tags,
-            },
-        )
-        if not created:
-            podlog.warning(
-                "%s: ISCSI block device with target %s was discovered on "
-                "machine %s and was moved from %s."
-                % (
-                    self.name,
-                    target,
-                    machine.hostname,
-                    block_device.node.hostname,
-                )
-            )
-            block_device.name = name
-            block_device.node = machine
-            block_device.size = discovered_bd.size
-            block_device.block_size = discovered_bd.block_size
-            block_device.tags = discovered_bd.tags
-            block_device.save()
-        self._sync_vm_disk(block_device)
-        return block_device
-
     def _create_interface(self, discovered_nic, machine, name=None):
         """Create's a new physical `Interface` for `machine`."""
         # XXX blake_r 2017-03-09: At the moment just connect the boot interface
@@ -1018,14 +975,6 @@ class Pod(BMC):
                         # otherwise this is allowed to fail as commissioning
                         # will discover this information.
                         raise
-            elif discovered_bd.type == BlockDeviceType.ISCSI:
-                # iSCSI block devices cannot fail, they must provide the
-                # required information.
-                self._create_iscsi_block_device(
-                    discovered_bd,
-                    machine,
-                    name=BlockDevice._get_block_name_from_idx(idx),
-                )
             else:
                 raise ValueError(
                     "Unknown block device type: %s" % discovered_bd.type
@@ -1251,11 +1200,6 @@ class Pod(BMC):
                 and (not block_device.model or not block_device.serial)
             )
         }
-        iscsi_mapping = {
-            block_device.iscsi_target: block_device
-            for block_device in block_devices
-            if block_device.type == BlockDeviceType.ISCSI
-        }
         existing_block_devices = map(
             lambda bd: bd.actual_instance,
             existing_machine.blockdevice_set.all(),
@@ -1279,14 +1223,6 @@ class Pod(BMC):
                         )
                     else:
                         disks_to_delete.append(block_device.id)
-            elif isinstance(block_device, ISCSIBlockDevice):
-                target = get_iscsi_target(block_device.target)
-                if target in iscsi_mapping:
-                    self._sync_block_device(
-                        iscsi_mapping.pop(target), block_device
-                    )
-                else:
-                    disks_to_delete.append(block_device.id)
 
         if disks_to_delete:
             from maasserver.models.virtualmachine import VirtualMachineDisk
@@ -1302,10 +1238,6 @@ class Pod(BMC):
             )
         for _, discovered_block_device in path_mapping.items():
             self._create_physical_block_device(
-                discovered_block_device, existing_machine
-            )
-        for _, discovered_block_device in iscsi_mapping.items():
-            self._create_iscsi_block_device(
                 discovered_block_device, existing_machine
             )
 
@@ -1672,7 +1604,6 @@ class Pod(BMC):
         if machines is None:
             machines = (
                 Machine.objects.filter(bmc__id=self.id)
-                .prefetch_related("blockdevice_set__iscsiblockdevice")
                 .prefetch_related("blockdevice_set__virtualblockdevice")
                 .prefetch_related("blockdevice_set__physicalblockdevice")
             )

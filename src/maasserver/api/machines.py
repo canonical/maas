@@ -80,7 +80,6 @@ from maasserver.models import (
     Config,
     Domain,
     Interface,
-    ISCSIBlockDevice,
     Machine,
     NodeMetadata,
     PhysicalBlockDevice,
@@ -156,7 +155,6 @@ DISPLAYED_MACHINE_FIELDS = (
     "constraints_by_type",
     "boot_disk",
     "blockdevice_set",
-    "iscsiblockdevice_set",
     "physicalblockdevice_set",
     "virtualblockdevice_set",
     "volume_groups",
@@ -419,15 +417,6 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
             }
         else:
             return None
-
-    @classmethod
-    def iscsiblockdevice_set(handler, machine):
-        """Use precached queries instead of attribute on the object."""
-        return [
-            block_device.actual_instance
-            for block_device in machine.blockdevice_set.all()
-            if isinstance(block_device.actual_instance, ISCSIBlockDevice)
-        ]
 
     @classmethod
     def physicalblockdevice_set(handler, machine):

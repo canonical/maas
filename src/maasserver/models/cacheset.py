@@ -181,8 +181,8 @@ class CacheSet(CleanSave, TimestampedModel):
     def get_device(self):
         """Return the device that is apart of this cache set.
 
-        Returns either a `ISCSIBlockDevice`, `PhysicalBlockDevice`,
-        `VirtualBlockDevice`, or `Partition`.
+        Returns either a `PhysicalBlockDevice`, `VirtualBlockDevice`, or
+        `Partition`.
         """
         filesystem = self.get_filesystem()
         if filesystem is None:

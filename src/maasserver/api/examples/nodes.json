@@ -429,7 +429,6 @@
         "resource_uri": "/MAAS/api/2.0/nodes/g8xyqs/blockdevices/76/"
       }
     ],
-    "iscsiblockdevice_set": [],
     "testing_status": 2,
     "default_gateways": {
       "ipv4": {
@@ -1284,7 +1283,6 @@
       }
     ],
     "bcaches": [],
-    "iscsiblockdevice_set": [],
     "cpu_test_status": 2,
     "other_test_status_name": "Failed",
     "memory": 1024,
@@ -1486,7 +1484,6 @@
     "osystem": "ubuntu",
     "cpu_test_status_name": "Unknown",
     "testing_status": 2,
-    "iscsiblockdevice_set": [],
     "bios_boot_method": "pxe",
     "boot_interface": {
       "vlan": {
@@ -1883,7 +1880,6 @@
     "osystem": "ubuntu",
     "cpu_test_status_name": "Unknown",
     "testing_status": 2,
-    "iscsiblockdevice_set": [],
     "bios_boot_method": "pxe",
     "boot_interface": {
       "vlan": {
@@ -2304,7 +2300,6 @@
       "id": 1,
       "resource_uri": "/MAAS/api/2.0/zones/default/"
     },
-    "iscsiblockdevice_set": [],
     "current_commissioning_result_id": 6,
     "current_testing_result_id": 49,
     "osystem": "ubuntu",

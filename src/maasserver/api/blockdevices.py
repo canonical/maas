@@ -24,7 +24,6 @@ from maasserver.forms import (
 from maasserver.forms.filesystem import MountFilesystemForm
 from maasserver.models import (
     BlockDevice,
-    ISCSIBlockDevice,
     Machine,
     PhysicalBlockDevice,
     VirtualBlockDevice,
@@ -728,21 +727,6 @@ class BlockDeviceHandler(OperationsHandler):
         device.node.boot_disk = device
         device.node.save()
         return rc.ALL_OK
-
-
-class ISCSIBlockDeviceHandler(BlockDeviceHandler):
-    """
-    This handler only exists because piston requires a unique handler per
-    class type. Without this class the resource_uri will not be added to any
-    object that is of type `ISCSIBlockDevice` when it is emitted from the
-    `BlockDeviceHandler`.
-
-    Important: This should not be used in the urls_api.py. This is only here
-        to support piston.
-    """
-
-    hidden = True
-    model = ISCSIBlockDevice
 
 
 class PhysicalBlockDeviceHandler(BlockDeviceHandler):

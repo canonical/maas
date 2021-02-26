@@ -12,7 +12,6 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import make_setting_field
 from provisioningserver.drivers.pod import (
-    BlockDeviceType,
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
     DiscoveredMachineInterface,
@@ -32,12 +31,6 @@ from provisioningserver.drivers.pod import (
 
 
 class TestDiscoveredClasses(MAASTestCase):
-    def make_iscsi_target(self):
-        return "%s:6:3260:0:iqn.maas.io:%s" % (
-            factory.make_ipv4_address(),
-            factory.make_name("target"),
-        )
-
     def test_interface_mac(self):
         mac = factory.make_mac_address()
         nic = DiscoveredMachineInterface(mac_address=mac)
@@ -114,31 +107,6 @@ class TestDiscoveredClasses(MAASTestCase):
         self.assertEqual(size, device.size)
         self.assertEqual(block_size, device.block_size)
         self.assertEqual(tags, device.tags)
-
-    def test_block_device_iscsi(self):
-        size = random.randint(512, 512 * 1024)
-        block_size = random.randint(512, 4096)
-        tags = [factory.make_name("tag") for _ in range(3)]
-        iscsi_target = "%s:6:3260:0:iqn.maas.io:%s" % (
-            factory.make_ipv4_address(),
-            factory.make_name("target"),
-        )
-        device = DiscoveredMachineBlockDevice(
-            model=None,
-            serial=None,
-            size=size,
-            block_size=block_size,
-            tags=tags,
-            type=BlockDeviceType.ISCSI,
-            iscsi_target=iscsi_target,
-        )
-        self.assertIsNone(device.model)
-        self.assertIsNone(device.serial)
-        self.assertEqual(size, device.size)
-        self.assertEqual(block_size, device.block_size)
-        self.assertEqual(tags, device.tags)
-        self.assertEqual(BlockDeviceType.ISCSI, device.type)
-        self.assertEqual(iscsi_target, device.iscsi_target)
 
     def test_machine(self):
         hostname = factory.make_name("hostname")
@@ -226,15 +194,6 @@ class TestDiscoveredClasses(MAASTestCase):
                 )
                 for _ in range(3)
             ]
-            for _ in range(3):
-                block_devices.append(
-                    DiscoveredMachineBlockDevice(
-                        model=None,
-                        serial=None,
-                        size=random.randint(512, 1024),
-                        type=BlockDeviceType.ISCSI,
-                    )
-                )
             tags = [factory.make_name("tag") for _ in range(3)]
             machines.append(
                 DiscoveredMachine(

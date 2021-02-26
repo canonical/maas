@@ -43,10 +43,6 @@ from maasserver.models.bmc import (
 from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.interface import Interface
-from maasserver.models.iscsiblockdevice import (
-    get_iscsi_target,
-    ISCSIBlockDevice,
-)
 from maasserver.models.node import Machine
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podstoragepool import PodStoragePool
@@ -746,7 +742,6 @@ class TestPod(MAASServerTestCase):
         model=None,
         serial=None,
         id_path=None,
-        target=None,
         block_type=BlockDeviceType.PHYSICAL,
         storage_pools=None,
     ):
@@ -759,12 +754,6 @@ class TestPod(MAASServerTestCase):
             else:
                 model = None
                 serial = None
-        elif block_type == BlockDeviceType.ISCSI:
-            if target is None:
-                target = "%s::::%s" % (
-                    factory.make_name("host"),
-                    factory.make_name("target"),
-                )
         else:
             raise ValueError("Unknown block_type: %s" % block_type)
         storage_pool = None
@@ -778,7 +767,6 @@ class TestPod(MAASServerTestCase):
             tags=[factory.make_name("tag") for _ in range(3)],
             id_path=id_path,
             type=block_type,
-            iscsi_target=target,
             storage_pool=storage_pool,
         )
 
@@ -814,11 +802,6 @@ class TestPod(MAASServerTestCase):
                 self.make_discovered_block_device(
                     block_type=BlockDeviceType.PHYSICAL,
                     storage_pools=storage_pools,
-                )
-                for _ in range(3)
-            ] + [
-                self.make_discovered_block_device(
-                    block_type=BlockDeviceType.ISCSI
                 )
                 for _ in range(3)
             ]
@@ -1047,27 +1030,6 @@ class TestPod(MAASServerTestCase):
                                 )
                                 for idx, bd in enumerate(machine.block_devices)
                                 if bd.type == BlockDeviceType.PHYSICAL
-                            ]
-                        ),
-                        iscsiblockdevice_set=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(
-                                    name=Equals(
-                                        BlockDevice._get_block_name_from_idx(
-                                            idx
-                                        )
-                                    ),
-                                    target=Equals(
-                                        get_iscsi_target(bd.iscsi_target)
-                                    ),
-                                    size=Equals(bd.size),
-                                    block_size=Equals(bd.block_size),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in bd.tags]
-                                    ),
-                                )
-                                for idx, bd in enumerate(machine.block_devices)
-                                if bd.type == BlockDeviceType.ISCSI
                             ]
                         ),
                         boot_interface=IsInstance(Interface),
@@ -1954,27 +1916,6 @@ class TestPod(MAASServerTestCase):
                                 if bd.type == BlockDeviceType.PHYSICAL
                             ]
                         ),
-                        iscsiblockdevice_set=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(
-                                    name=Equals(
-                                        BlockDevice._get_block_name_from_idx(
-                                            idx
-                                        )
-                                    ),
-                                    target=Equals(
-                                        get_iscsi_target(bd.iscsi_target)
-                                    ),
-                                    size=Equals(bd.size),
-                                    block_size=Equals(bd.block_size),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in bd.tags]
-                                    ),
-                                )
-                                for idx, bd in enumerate(machine.block_devices)
-                                if bd.type == BlockDeviceType.ISCSI
-                            ]
-                        ),
                         boot_interface=IsInstance(Interface),
                         interface_set=MatchesSetwiseWithAll(
                             *[
@@ -2326,43 +2267,26 @@ class TestPod(MAASServerTestCase):
         keep_path_bd = factory.make_PhysicalBlockDevice(
             node=machine, id_path=factory.make_name("id_path")
         )
-        keep_iscsi_bd = factory.make_ISCSIBlockDevice(node=machine)
-        # ISCIBlockDevice that exists on another machine. It should be
-        # moved to this machine.
-        other_iscsi_bd = factory.make_ISCSIBlockDevice()
         delete_model_bd = factory.make_PhysicalBlockDevice(node=machine)
         delete_path_bd = factory.make_PhysicalBlockDevice(
             node=machine, id_path=factory.make_name("id_path")
         )
-        delete_iscsi_bd = factory.make_ISCSIBlockDevice(node=machine)
         dkeep_model_bd = self.make_discovered_block_device(
             model=keep_model_bd.model, serial=keep_model_bd.serial
         )
         dkeep_path_bd = self.make_discovered_block_device(
             id_path=keep_path_bd.id_path
         )
-        dkeep_iscsi_bd = self.make_discovered_block_device(
-            target=keep_iscsi_bd.target, block_type=BlockDeviceType.ISCSI
-        )
-        dother_iscsi_bd = self.make_discovered_block_device(
-            target=other_iscsi_bd.target, block_type=BlockDeviceType.ISCSI
-        )
         dnew_model_bd = self.make_discovered_block_device()
         dnew_path_bd = self.make_discovered_block_device(
             id_path=factory.make_name("id_path")
-        )
-        dnew_iscsi_bd = self.make_discovered_block_device(
-            block_type=BlockDeviceType.ISCSI
         )
         discovered_machine = self.make_discovered_machine(
             block_devices=[
                 dkeep_model_bd,
                 dkeep_path_bd,
-                dkeep_iscsi_bd,
-                dother_iscsi_bd,
                 dnew_model_bd,
                 dnew_path_bd,
-                dnew_iscsi_bd,
             ],
             interfaces=[
                 self.make_discovered_interface(
@@ -2380,11 +2304,8 @@ class TestPod(MAASServerTestCase):
         machine = reload_object(machine)
         keep_model_bd = reload_object(keep_model_bd)
         keep_path_bd = reload_object(keep_path_bd)
-        keep_iscsi_bd = reload_object(keep_iscsi_bd)
-        other_iscsi_bd = reload_object(other_iscsi_bd)
         delete_model_bd = reload_object(delete_model_bd)
         delete_path_bd = reload_object(delete_path_bd)
-        delete_iscsi_bd = reload_object(delete_iscsi_bd)
         new_model_bd = PhysicalBlockDevice.objects.filter(
             node=machine,
             model=dnew_model_bd.model,
@@ -2393,12 +2314,8 @@ class TestPod(MAASServerTestCase):
         new_path_bd = PhysicalBlockDevice.objects.filter(
             node=machine, id_path=dnew_path_bd.id_path
         ).first()
-        new_iscsi_bd = ISCSIBlockDevice.objects.filter(
-            node=machine, target=get_iscsi_target(dnew_iscsi_bd.iscsi_target)
-        ).first()
         self.assertIsNone(delete_model_bd)
         self.assertIsNone(delete_path_bd)
-        self.assertIsNone(delete_iscsi_bd)
         self.assertThat(
             keep_model_bd,
             MatchesStructure(
@@ -2422,29 +2339,6 @@ class TestPod(MAASServerTestCase):
         )
         self.assertEqual(keep_path_bd.vmdisk.size, dkeep_path_bd.size)
         self.assertThat(
-            keep_iscsi_bd,
-            MatchesStructure(
-                size=Equals(dkeep_iscsi_bd.size),
-                block_size=Equals(dkeep_iscsi_bd.block_size),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dkeep_iscsi_bd.tags]
-                ),
-            ),
-        )
-        self.assertEqual(keep_iscsi_bd.vmdisk.size, dkeep_iscsi_bd.size)
-        self.assertThat(
-            other_iscsi_bd,
-            MatchesStructure(
-                node=Equals(machine),
-                size=Equals(dother_iscsi_bd.size),
-                block_size=Equals(dother_iscsi_bd.block_size),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dother_iscsi_bd.tags]
-                ),
-            ),
-        )
-        self.assertEqual(other_iscsi_bd.vmdisk.size, dother_iscsi_bd.size)
-        self.assertThat(
             new_model_bd,
             MatchesStructure(
                 size=Equals(dnew_model_bd.size),
@@ -2466,17 +2360,6 @@ class TestPod(MAASServerTestCase):
             ),
         )
         self.assertEqual(new_path_bd.vmdisk.size, dnew_path_bd.size)
-        self.assertThat(
-            new_iscsi_bd,
-            MatchesStructure(
-                size=Equals(dnew_iscsi_bd.size),
-                block_size=Equals(dnew_iscsi_bd.block_size),
-                tags=MatchesSetwise(
-                    *[Equals(tag) for tag in dnew_iscsi_bd.tags]
-                ),
-            ),
-        )
-        self.assertEqual(new_iscsi_bd.vmdisk.size, dnew_iscsi_bd.size)
 
     def test_sync_updates_existing_machine_interfaces_for_dynamic(self):
         pod = factory.make_Pod()
@@ -2677,7 +2560,6 @@ class TestPod(MAASServerTestCase):
             numa.save()
             for _ in range(2 ** random.randint(0, 4) - 1):
                 factory.make_NUMANode(node=node)
-            factory.make_ISCSIBlockDevice(node=node)
             pod.hints.nodes.add(node)
 
         pod.sync_hints_from_nodes()

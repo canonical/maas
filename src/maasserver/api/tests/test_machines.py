@@ -1328,12 +1328,12 @@ class TestMachinesAPI(APITestCase.ForUser):
             tags=["local"],
             formatted_root=True,
         )
-        disk_2 = factory.make_ISCSIBlockDevice(
+        disk_2 = factory.make_PhysicalBlockDevice(
             node=machine,
             size=(random.randint(8, 16) * (1000 ** 3)),
-            tags=["iscsi"],
+            tags=["other"],
         )
-        storage = "root:%d(local),remote:%d(iscsi)" % (
+        storage = "root:%d(local),remote:%d(other)" % (
             disk_1.size // (1000 ** 3),
             disk_2.size // (1000 ** 3),
         )
@@ -1488,7 +1488,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         pod.hints.cores = random.randint(8, 16)
         pod.hints.memory = random.randint(4096, 8192)
         pod.hints.save()
-        storage = "root:%d(local),remote:%d(iscsi)" % (
+        storage = "root:%d(local),remote:%d(other)" % (
             random.randint(8, 16),
             random.randint(8, 16),
         )

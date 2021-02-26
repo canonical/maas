@@ -14,7 +14,6 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
 from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
@@ -90,9 +89,7 @@ class CurtinStorageGenerator:
         """
         for block_device in self.node.blockdevice_set.order_by("id"):
             block_device = block_device.actual_instance
-            if isinstance(
-                block_device, (ISCSIBlockDevice, PhysicalBlockDevice)
-            ):
+            if isinstance(block_device, PhysicalBlockDevice):
                 self.operations["disk"].append(block_device)
             elif isinstance(block_device, VirtualBlockDevice):
                 filesystem_group = block_device.filesystem_group
@@ -233,20 +230,13 @@ class CurtinStorageGenerator:
             "type": "disk",
             "wipe": "superblock",
         }
-        if isinstance(block_device, ISCSIBlockDevice):
-            # ISCSIBlockDevice just sets the path to the ISCSI target.
-            target = block_device.target
-            if not target.startswith("iscsi:"):
-                target = "iscsi:%s" % target
-            disk_operation["path"] = target
+        # Set model and serial unless not set, then curtin will use a
+        # device path to match.
+        if block_device.model and block_device.serial:
+            disk_operation["model"] = block_device.model
+            disk_operation["serial"] = block_device.serial
         else:
-            # Set model and serial unless not set, then curtin will use a
-            # device path to match.
-            if block_device.model and block_device.serial:
-                disk_operation["model"] = block_device.model
-                disk_operation["serial"] = block_device.serial
-            else:
-                disk_operation["path"] = block_device.id_path
+            disk_operation["path"] = block_device.id_path
 
         # Set the partition table type if a partition table exists or if this
         # is the boot disk.

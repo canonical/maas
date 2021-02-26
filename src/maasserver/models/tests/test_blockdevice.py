@@ -15,14 +15,12 @@ from testtools.matchers import Equals
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE
 from maasserver.models import (
     FilesystemGroup,
-    ISCSIBlockDevice,
     PhysicalBlockDevice,
     VirtualBlockDevice,
     VolumeGroup,
 )
 from maasserver.models import BlockDevice
 from maasserver.models import blockdevice as blockdevice_module
-from maasserver.models.iscsiblockdevice import validate_iscsi_target
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
@@ -30,15 +28,6 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledWith
 from maastesting.testcase import MAASTestCase
-
-
-class TestValidateISCSITarget(MAASTestCase):
-    """Tests for the `validate_iscsi_target`."""
-
-    def test_raises_no_errors_with_iscsi_prefix(self):
-        host = factory.make_ipv4_address()
-        target_name = factory.make_name("target")
-        validate_iscsi_target("iscsi:%s::::%s" % (host, target_name))
 
 
 class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
@@ -340,10 +329,6 @@ class TestBlockDevice(MAASServerTestCase):
             "/dev/disk/by-dname/%s" % block_device.name, block_device.path
         )
 
-    def test_type_iscsi(self):
-        block_device = factory.make_ISCSIBlockDevice()
-        self.assertEqual("iscsi", block_device.type)
-
     def test_type_physical(self):
         block_device = factory.make_PhysicalBlockDevice()
         self.assertEqual("physical", block_device.type)
@@ -356,11 +341,6 @@ class TestBlockDevice(MAASServerTestCase):
         block_device = factory.make_BlockDevice()
         with ExpectedException(ValueError):
             block_device.type
-
-    def test_actual_instance_returns_ISCSIBlockDevice(self):
-        block_device = factory.make_ISCSIBlockDevice()
-        parent_type = BlockDevice.objects.get(id=block_device.id)
-        self.assertIsInstance(parent_type.actual_instance, ISCSIBlockDevice)
 
     def test_actual_instance_returns_PhysicalBlockDevice(self):
         block_device = factory.make_PhysicalBlockDevice()

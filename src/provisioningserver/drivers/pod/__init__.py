@@ -135,9 +135,6 @@ class BlockDeviceType:
     # Block device is connected physically to the discovered machine.
     PHYSICAL = "physical"
 
-    # Block device is connected to the discovered device over iSCSI.
-    ISCSI = "iscsi"
-
 
 class InterfaceAttachType:
     """Different interface attachment types."""
@@ -206,13 +203,6 @@ class DiscoveredMachineBlockDevice:
     # Optional id of the storage pool this block device exists on. Only
     # used when the Pod supports STORAGE_POOLS.
     storage_pool = attr.ib(
-        converter=converter_obj(str, optional=True), default=None
-    )
-
-    # Used when `type` is set to `BlockDeviceType.ISCSI`. The pod driver must
-    # define an `iscsi_target` or it will not create the device for the
-    # discovered machine.
-    iscsi_target = attr.ib(
         converter=converter_obj(str, optional=True), default=None
     )
 

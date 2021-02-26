@@ -93,10 +93,6 @@ class MachineHandler(NodeHandler):
         queryset = (
             node_prefetch(Machine.objects.all())
             .prefetch_related(
-                "blockdevice_set__iscsiblockdevice__"
-                "partitiontable_set__partitions"
-            )
-            .prefetch_related(
                 "blockdevice_set__physicalblockdevice__"
                 "partitiontable_set__partitions__filesystem_set"
             )
@@ -107,10 +103,6 @@ class MachineHandler(NodeHandler):
         )
         list_queryset = (
             Machine.objects.select_related("owner", "zone", "domain", "bmc")
-            .prefetch_related(
-                "blockdevice_set__iscsiblockdevice__"
-                "partitiontable_set__partitions"
-            )
             .prefetch_related(
                 "blockdevice_set__physicalblockdevice__"
                 "partitiontable_set__partitions"

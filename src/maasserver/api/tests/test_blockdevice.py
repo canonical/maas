@@ -73,12 +73,6 @@ class TestBlockDevices(APITestCase.ForUser):
             filesystem_group=filesystem_group, size=10 * 1000 ** 3
         )
 
-        # Add some iSCSI block devices.
-        iscsi_block_devices = [
-            factory.make_ISCSIBlockDevice(node=node, size=10 * 1000 ** 3)
-            for _ in range(3)
-        ]
-
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)
 
@@ -88,25 +82,18 @@ class TestBlockDevices(APITestCase.ForUser):
 
         devices = json_load_bytes(response.content)
 
-        # We should have seven devices, three physical, one virtual, and
-        # three iscsi.
-        self.assertEqual(len(devices), 7)
+        # We should have 4 devices, three physical and one virtual
+        self.assertEqual(len(devices), 4)
         self.assertEqual(
             len([d for d in devices if d["type"] == "physical"]), 3
         )
         self.assertEqual(
             len([d for d in devices if d["type"] == "virtual"]), 1
         )
-        self.assertEqual(len([d for d in devices if d["type"] == "iscsi"]), 3)
 
         # The IDs we expect and the IDs we got through the API should match.
         expected_device_ids = [
-            d.id
-            for d in (
-                physical_block_devices
-                + [virtual_block_device]
-                + iscsi_block_devices
-            )
+            d.id for d in physical_block_devices + [virtual_block_device]
         ]
         result_device_ids = [d["id"] for d in devices]
         self.assertItemsEqual(expected_device_ids, result_device_ids)

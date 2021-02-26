@@ -155,23 +155,18 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     @property
     def type(self):
-        # Circular imports, since ISCSIBlockDevice, PhysicalBlockDevice and
-        # VirtualBlockDevice extend from this calss.
-        from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
         actual_instance = self.actual_instance
-        if isinstance(actual_instance, ISCSIBlockDevice):
-            return "iscsi"
-        elif isinstance(actual_instance, PhysicalBlockDevice):
+        if isinstance(actual_instance, PhysicalBlockDevice):
             return "physical"
         elif isinstance(actual_instance, VirtualBlockDevice):
             return "virtual"
         else:
             raise ValueError(
                 "BlockDevice is not a subclass of "
-                "ISCSIBlockDevice, PhysicalBlockDevice or VirtualBlockDevice"
+                "PhysicalBlockDevice or VirtualBlockDevice"
             )
 
     @property
@@ -179,32 +174,22 @@ class BlockDevice(CleanSave, TimestampedModel):
         """Return the instance as its correct type.
 
         By default all references from Django will be to `BlockDevice`, when
-        the native type `ISCSIBlockDevice`, `PhysicalBlockDevice` or
-        `VirtualBlockDevice` is needed use this property to get its actual
-        instance.
+        the native type PhysicalBlockDevice` or `VirtualBlockDevice` is needed
+        use this property to get its actual instance.
+
         """
-        # Circular imports, since ISCSIBlockDevice, PhysicalBlockDevice and
-        # VirtualBlockDevice extend from this calss.
-        from maasserver.models.iscsiblockdevice import ISCSIBlockDevice
         from maasserver.models.physicalblockdevice import PhysicalBlockDevice
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
-        if (
-            isinstance(self, ISCSIBlockDevice)
-            or isinstance(self, PhysicalBlockDevice)
-            or isinstance(self, VirtualBlockDevice)
-        ):
+        if isinstance(self, (PhysicalBlockDevice, VirtualBlockDevice)):
             return self
         try:
-            return self.iscsiblockdevice
-        except Exception:
+            return self.physicalblockdevice
+        except PhysicalBlockDevice.DoesNotExist:
             try:
-                return self.physicalblockdevice
-            except PhysicalBlockDevice.DoesNotExist:
-                try:
-                    return self.virtualblockdevice
-                except VirtualBlockDevice.DoesNotExist:
-                    pass
+                return self.virtualblockdevice
+            except VirtualBlockDevice.DoesNotExist:
+                pass
         return self
 
     def get_effective_filesystem(self):
