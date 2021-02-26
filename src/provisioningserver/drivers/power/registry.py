@@ -12,6 +12,7 @@ from provisioningserver.drivers.power.amt import AMTPowerDriver
 from provisioningserver.drivers.power.apc import APCPowerDriver
 from provisioningserver.drivers.power.dli import DLIPowerDriver
 from provisioningserver.drivers.power.eaton import EatonPowerDriver
+from provisioningserver.drivers.power.hyperv import HypervPowerDriver
 from provisioningserver.drivers.power.hmc import HMCPowerDriver
 from provisioningserver.drivers.power.ipmi import IPMIPowerDriver
 from provisioningserver.drivers.power.manual import ManualPowerDriver
@@ -53,6 +54,7 @@ power_drivers = [
     DLIPowerDriver(),
     EatonPowerDriver(),
     HMCPowerDriver(),
+    HypervPowerDriver(),
     IPMIPowerDriver(),
     ManualPowerDriver(),
     MoonshotIPMIPowerDriver(),
