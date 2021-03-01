@@ -591,7 +591,7 @@ sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) \
 		$(UI_BUILD) $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/
 	$(RSYNC) \
-		$(OFFLINE_DOCS)/production-html/ $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/docs/
+		$(OFFLINE_DOCS)/production-html-snap/ $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/docs/
 	$(RSYNC) snap/local/tree/ $(DEV_SNAP_PRIME_DIR)/
 	$(RSYNC) src/machine-resources/bin/ \
 		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/machine-resources/
