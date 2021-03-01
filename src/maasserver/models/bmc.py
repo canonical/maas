@@ -26,8 +26,11 @@ from django.db.models import (
     PROTECT,
     SET_DEFAULT,
     SET_NULL,
+    Sum,
     TextField,
+    Value,
 )
+from django.db.models.functions import Coalesce
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from netaddr import AddrFormatError, IPAddress
@@ -748,7 +751,6 @@ class Pod(BMC):
             size=discovered_bd.size,
             block_size=discovered_bd.block_size,
             tags=discovered_bd.tags,
-            storage_pool=storage_pool,
         )
         self._sync_vm_disk(block_device, storage_pool=storage_pool)
         return block_device
@@ -1253,14 +1255,10 @@ class Pod(BMC):
         existing_bd.tags = discovered_bd.tags
 
         storage_pool = None
-        if isinstance(existing_bd, PhysicalBlockDevice):
-            if discovered_bd.storage_pool:
-                storage_pool = self._get_storage_pool_by_id(
-                    discovered_bd.storage_pool
-                )
-                existing_bd.storage_pool = storage_pool
-            elif existing_bd.storage_pool:
-                existing_bd.storage_pool = None
+        if discovered_bd.storage_pool:
+            storage_pool = self._get_storage_pool_by_id(
+                discovered_bd.storage_pool
+            )
 
         self._sync_vm_disk(existing_bd, storage_pool=storage_pool)
         existing_bd.save()
@@ -1594,25 +1592,14 @@ class Pod(BMC):
             machines = Machine.objects.filter(bmc__id=self.id)
         return sum(machine.memory for machine in machines)
 
-    def get_used_local_storage(self, machines=None):
-        """Get the amount of used local storage in the pod.
+    def get_used_local_storage(self):
+        """Get the amount of used local storage in the pod."""
+        from maasserver.models.virtualmachine import VirtualMachineDisk
 
-        :param machines: Deployed machines on this pod. Only used when
-            the deployed machines have already been pulled from the database
-            and no extra query needs to be performed.
-        """
-        if machines is None:
-            machines = (
-                Machine.objects.filter(bmc__id=self.id)
-                .prefetch_related("blockdevice_set__virtualblockdevice")
-                .prefetch_related("blockdevice_set__physicalblockdevice")
-            )
-        return sum(
-            blockdevice.size
-            for machine in machines
-            for blockdevice in machine.blockdevice_set.all()
-            if isinstance(blockdevice.actual_instance, PhysicalBlockDevice)
+        count = VirtualMachineDisk.objects.filter(vm__bmc=self).aggregate(
+            used=Coalesce(Sum("size"), Value(0))
         )
+        return count["used"]
 
     def delete(self, *args, **kwargs):
         raise AttributeError(

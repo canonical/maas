@@ -782,12 +782,21 @@ def populate_main():
             machine.save()
             machines_in_pods[pod].append(machine)
 
+            vm = factory.make_VirtualMachine(
+                identifier=machine.hostname,
+                bmc=pod,
+                machine=machine,
+                unpinned_cores=machine.cpu_count,
+            )
+
             # Assign the block devices on the machine to a storage pool.
             for block_device in machine.physicalblockdevice_set.all():
-                block_device.storage_pool = random.choice(
-                    pod_storage_pools[pod]
+                factory.make_VirtualMachineDisk(
+                    vm=vm,
+                    name=block_device.name,
+                    size=block_device.size,
+                    backing_pool=random.choice(pod_storage_pools[pod]),
                 )
-                block_device.save()
 
     # Update the pod attributes so that it has more available then used.
     for pod in pods[1:]:

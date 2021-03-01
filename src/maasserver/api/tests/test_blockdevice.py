@@ -136,8 +136,12 @@ class TestBlockDevices(APITestCase.ForUser):
 
     def test_read_returns_storage_pool(self):
         node = factory.make_Node(with_boot_disk=False)
+        vm = factory.make_VirtualMachine(machine=node)
         pool = factory.make_PodStoragePool()
-        factory.make_PhysicalBlockDevice(node=node, storage_pool=pool)
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_VirtualMachineDisk(
+            vm, backing_pool=pool, block_device=block_device
+        )
 
         uri = get_blockdevices_uri(node)
         response = self.client.get(uri)

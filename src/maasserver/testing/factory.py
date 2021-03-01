@@ -112,7 +112,7 @@ from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.models.switch import Switch
-from maasserver.models.virtualmachine import VirtualMachine
+from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
@@ -2545,7 +2545,6 @@ class Factory(maastesting.factory.Factory):
         id_path=None,
         formatted_root=False,
         firmware_version=None,
-        storage_pool=None,
         numa_node=None,
     ):
         if node is None and numa_node is None:
@@ -2587,7 +2586,6 @@ class Factory(maastesting.factory.Factory):
             serial=serial,
             id_path=id_path,
             firmware_version=firmware_version,
-            storage_pool=storage_pool,
             numa_node=numa_node,
         )
         # Only NVMe drives have a NodeDevice assoicated with them since
@@ -3168,6 +3166,30 @@ class Factory(maastesting.factory.Factory):
             machine=machine,
             pinned_cores=pinned_cores,
             unpinned_cores=unpinned_cores,
+        )
+
+    def make_VirtualMachineDisk(
+        self,
+        vm=None,
+        name=None,
+        size=None,
+        block_device=None,
+        backing_pool=None,
+    ):
+        if vm is None:
+            vm = factory.make_VirtualMachine()
+        if name is None:
+            name = factory.make_name("vmdisk")
+        if size is None:
+            size = random.randint(
+                MIN_BLOCK_DEVICE_SIZE * 4, MIN_BLOCK_DEVICE_SIZE * 1024
+            )
+        return VirtualMachineDisk.objects.create(
+            name=name,
+            vm=vm,
+            size=size,
+            block_device=block_device,
+            backing_pool=backing_pool,
         )
 
     def make_NodeDevice(

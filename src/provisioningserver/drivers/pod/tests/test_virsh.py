@@ -1155,9 +1155,6 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(architecture, discovered_machine.architecture)
         self.assertEqual(cores, discovered_machine.cores)
         self.assertEqual(memory, discovered_machine.memory)
-        self.assertIsNone(discovered_machine.block_devices[0].storage_pool)
-        self.assertIsNone(discovered_machine.block_devices[1].storage_pool)
-        self.assertIsNone(discovered_machine.block_devices[2].storage_pool)
         self.assertItemsEqual(
             local_storage, [bd.size for bd in discovered_machine.block_devices]
         )

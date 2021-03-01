@@ -240,11 +240,13 @@ class BlockDeviceHandler(OperationsHandler):
     @classmethod
     def storage_pool(cls, block_device):
         block_device = block_device.actual_instance
-        if (
-            isinstance(block_device, PhysicalBlockDevice)
-            and block_device.storage_pool is not None
-        ):
-            return block_device.storage_pool.pool_id
+        if not isinstance(block_device, PhysicalBlockDevice):
+            return None
+
+        vmdisk = getattr(block_device, "vmdisk", None)
+        if vmdisk and vmdisk.backing_pool:
+            return vmdisk.backing_pool.pool_id
+
         return None
 
     @classmethod

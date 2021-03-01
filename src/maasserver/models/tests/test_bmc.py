@@ -1022,11 +1022,6 @@ class TestPod(MAASServerTestCase):
                                     tags=MatchesSetwise(
                                         *[Equals(tag) for tag in bd.tags]
                                     ),
-                                    storage_pool=Equals(
-                                        pod._get_storage_pool_by_id(
-                                            bd.storage_pool
-                                        )
-                                    ),
                                 )
                                 for idx, bd in enumerate(machine.block_devices)
                                 if bd.type == BlockDeviceType.PHYSICAL
@@ -1906,11 +1901,6 @@ class TestPod(MAASServerTestCase):
                                     tags=MatchesSetwise(
                                         *[Equals(tag) for tag in bd.tags]
                                     ),
-                                    storage_pool=Equals(
-                                        pod._get_storage_pool_by_id(
-                                            bd.storage_pool
-                                        )
-                                    ),
                                 )
                                 for idx, bd in enumerate(machine.block_devices)
                                 if bd.type == BlockDeviceType.PHYSICAL
@@ -2605,12 +2595,17 @@ class TestPod(MAASServerTestCase):
 
     def test_get_used_local_storage(self):
         pod = factory.make_Pod()
-        total_storage = 0
-        for _ in range(3):
-            storage = random.randint(1024 ** 3, 4 * (1024 ** 3))
-            total_storage += storage
-            node = factory.make_Node(bmc=pod, with_boot_disk=False)
-            factory.make_PhysicalBlockDevice(node=node, size=storage)
+        vm1 = factory.make_VirtualMachine(bmc=pod)
+        disk1 = factory.make_VirtualMachineDisk(vm=vm1)
+        disk2 = factory.make_VirtualMachineDisk(vm=vm1)
+        vm2 = factory.make_VirtualMachine(bmc=pod)
+        disk3 = factory.make_VirtualMachineDisk(vm=vm2)
+        disk4 = factory.make_VirtualMachineDisk(vm=vm2)
+        # a VM on another host, disks are not counted
+        vm3 = factory.make_VirtualMachine(bmc=factory.make_Pod())
+        factory.make_VirtualMachineDisk(vm=vm3)
+        factory.make_VirtualMachineDisk(vm=vm3)
+        total_storage = disk1.size + disk2.size + disk3.size + disk4.size
         self.assertEqual(total_storage, pod.get_used_local_storage())
 
     def test_sync_machine_memory(self):

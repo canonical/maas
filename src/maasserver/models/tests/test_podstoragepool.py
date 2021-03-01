@@ -13,8 +13,8 @@ class TestPodStoragePool(MAASServerTestCase):
         pool = factory.make_PodStoragePool()
         size = 0
         for _ in range(3):
-            bd = factory.make_PhysicalBlockDevice(storage_pool=pool)
-            size += bd.size
+            disk = factory.make_VirtualMachineDisk(backing_pool=pool)
+            size += disk.size
         self.assertEqual(size, pool.get_used_storage())
 
     def test_get_used_storage_returns_zero(self):

@@ -5,11 +5,10 @@
 
 
 from django.core.exceptions import ValidationError
-from django.db.models import CASCADE, CharField, ForeignKey, SET_NULL
+from django.db.models import CASCADE, CharField, ForeignKey
 
 from maasserver import DefaultMeta
 from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
-from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.utils.converters import human_readable_bytes
 
 
@@ -52,17 +51,6 @@ class PhysicalBlockDevice(BlockDevice):
         blank=True,
         null=True,
         help_text="Firmware version of block device.",
-    )
-
-    # Only used when the machine is composed in a Pod that supports
-    # storage pool.
-    storage_pool = ForeignKey(
-        PodStoragePool,
-        blank=True,
-        null=True,
-        on_delete=SET_NULL,
-        related_name="block_devices",
-        help_text="Storage pool that this block device belongs to",
     )
 
     numa_node = ForeignKey(
