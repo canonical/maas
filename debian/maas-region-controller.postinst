@@ -9,7 +9,8 @@ if [ -f /usr/share/dbconfig-common/dpkg/postinst.pgsql ]; then
     . /usr/share/dbconfig-common/dpkg/postinst.pgsql
 fi
 
-RELEASE=`lsb_release -rs` || RELEASE=""
+. /etc/lsb-release
+RELEASE="${DISTRIB_RELEASE:-}"
 
 maas_sync_migrate_db(){
     maas-region dbupgrade

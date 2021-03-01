@@ -5,7 +5,8 @@ set -e
 . /usr/share/debconf/confmodule
 db_version 2.0
 
-RELEASE=`lsb_release -rs` || RELEASE=""
+. /etc/lsb-release
+RELEASE="${DISTRIB_RELEASE:-}"
 
 configure_logging() {
     # Give appropriate permissions
