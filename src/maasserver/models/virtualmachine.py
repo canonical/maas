@@ -313,18 +313,12 @@ def get_vm_host_resources(pod):
         .all()
     )
 
-    host_interfaces = {}  # VMHostNetworkInterface by interface id
     numanode_interfaces = defaultdict(list)
     for interface in Interface.objects.annotate(
         numa_index=F("numa_node__index")
     ).filter(node=pod.host):
         interface.allocated_vfs = 0
         numanode_interfaces[interface.numa_index].append(interface)
-        host_interfaces[interface.id] = VMHostNetworkInterface(
-            id=interface.id,
-            name=interface.name,
-            virtual_functions=VMHostResource(free=interface.sriov_max_vf),
-        )
     all_vm_interfaces = (
         VirtualMachineInterface.objects.filter(
             vm__in=vms, host_interface__isnull=False
@@ -337,16 +331,6 @@ def get_vm_host_resources(pod):
         vm_interfaces[vm_interface.vm_id].append(vm_interface)
 
     for vm in vms:
-        for interface in vm_interfaces[vm.id]:
-            if interface.attachment_type == InterfaceAttachType.SRIOV:
-                vfs = host_interfaces[
-                    interface.host_interface_id
-                ].virtual_functions
-                if vm.project == pod.tracked_project:
-                    vfs.allocated_tracked += 1
-                else:
-                    vfs.allocated_other += 1
-                vfs.free -= 1
         _update_numanode_resources_usage(
             vm,
             vm_interfaces[vm.id],
@@ -358,7 +342,6 @@ def get_vm_host_resources(pod):
             numanode_vms_resources,
             numanode_interfaces,
         )
-    resources.interfaces = list(host_interfaces.values())
     resources.numa = [
         _get_numa_pinning_resources(
             numa_node,
@@ -429,6 +412,44 @@ def _update_global_resource_counters(pod, resources):
     resources.memory.hugepages.free = (
         totals["hugepages"] - resources.memory.hugepages.allocated
     )
+
+    host_interfaces = {}
+    interfaces = (
+        Interface.objects.filter(node=pod.host)
+        .values("id", "name", "sriov_max_vf")
+        .annotate(
+            allocated=Count("virtualmachineinterface"),
+            tracked=ExpressionWrapper(
+                Q(virtualmachineinterface__vm__project=pod.tracked_project),
+                output_field=BooleanField(),
+            ),
+            sriov_attached=ExpressionWrapper(
+                Q(
+                    virtualmachineinterface__attachment_type=InterfaceAttachType.SRIOV
+                ),
+                output_field=BooleanField(),
+            ),
+        )
+    )
+    for entry in interfaces:
+        interface = host_interfaces.get(entry["id"])
+        if not interface:
+            interface = VMHostNetworkInterface(
+                id=entry["id"],
+                name=entry["name"],
+                virtual_functions=VMHostResource(free=entry["sriov_max_vf"]),
+            )
+            host_interfaces[entry["id"]] = interface
+        if not entry["sriov_attached"]:
+            continue
+        vfs = interface.virtual_functions
+        allocated = entry["allocated"]
+        if entry["tracked"]:
+            vfs.allocated_tracked += allocated
+        else:
+            vfs.allocated_other += allocated
+        vfs.free -= allocated
+    resources.interfaces = list(host_interfaces.values())
 
 
 def _update_numanode_resources_usage(

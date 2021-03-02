@@ -242,6 +242,69 @@ class TestGetVMHostResources(MAASServerTestCase):
             ],
         )
 
+    def test_get_resources_interfaces_no_vm_link(self):
+        node = factory.make_Node()
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            numa_node=node.default_numanode,
+            sriov_max_vf=8,
+        )
+        pod = factory.make_Pod(
+            pod_type="lxd",
+            host=node,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            resources.interfaces,
+            [
+                VMHostNetworkInterface(
+                    id=iface.id,
+                    name="eth0",
+                    virtual_functions=VMHostResource(
+                        allocated_tracked=0,
+                        allocated_other=0,
+                        free=8,
+                    ),
+                ),
+            ],
+        )
+
+    def test_get_resources_interfaces_not_sriov(self):
+        node = factory.make_Node()
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            numa_node=node.default_numanode,
+            sriov_max_vf=8,
+        )
+        project = factory.make_string()
+        pod = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+            host=node,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=factory.make_VirtualMachine(bmc=pod, project=project),
+            host_interface=iface,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            resources.interfaces,
+            [
+                VMHostNetworkInterface(
+                    id=iface.id,
+                    name="eth0",
+                    virtual_functions=VMHostResource(
+                        allocated_tracked=0,
+                        allocated_other=0,
+                        free=8,
+                    ),
+                ),
+            ],
+        )
+
     def test_get_resources_numa_aligned(self):
         node = factory.make_Node()
         numa_node0 = node.default_numanode
