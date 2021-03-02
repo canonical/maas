@@ -7,7 +7,11 @@ from twisted.internet.defer import inlineCallbacks
 from zhmcclient_mock import FakedSession
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnce,
+    MockCalledOnceWith,
+    MockNotCalled,
+)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import hmcz as hmcz_module
 from provisioningserver.drivers.power import PowerActionError
@@ -109,6 +113,40 @@ class TestHMCZPowerDriver(MAASTestCase):
         mock_get_partition = self.patch(self.hmcz, "_get_partition")
         yield self.hmcz.power_on(None, self.make_context())
         self.assertThat(
+            mock_get_partition.return_value.stop,
+            MockNotCalled(),
+        )
+        self.assertThat(
+            mock_get_partition.return_value.start,
+            MockCalledOnceWith(wait_for_completion=False),
+        )
+
+    @inlineCallbacks
+    def test_power_on_stops_in_a_paused_state(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = "paused"
+        yield self.hmcz.power_on(None, self.make_context())
+        self.assertThat(
+            mock_get_partition.return_value.stop,
+            MockCalledOnceWith(wait_for_completion=True),
+        )
+        self.assertThat(
+            mock_get_partition.return_value.start,
+            MockCalledOnceWith(wait_for_completion=False),
+        )
+
+    @inlineCallbacks
+    def test_power_on_stops_in_a_terminated_state(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = (
+            "terminated"
+        )
+        yield self.hmcz.power_on(None, self.make_context())
+        self.assertThat(
+            mock_get_partition.return_value.stop,
+            MockCalledOnceWith(wait_for_completion=True),
+        )
+        self.assertThat(
             mock_get_partition.return_value.start,
             MockCalledOnceWith(wait_for_completion=False),
         )
@@ -157,6 +195,28 @@ class TestHMCZPowerDriver(MAASTestCase):
             {
                 "name": power_partition_name,
                 "status": "active",
+            }
+        )
+
+        status = yield self.hmcz.power_query(
+            None, self.make_context(power_partition_name)
+        )
+
+        self.assertEqual("on", status)
+
+    @inlineCallbacks
+    def test_power_query_degraded(self):
+        power_partition_name = factory.make_name("power_partition_name")
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        cpc.partitions.add(
+            {
+                "name": power_partition_name,
+                "status": "degraded",
             }
         )
 
@@ -230,7 +290,29 @@ class TestHMCZPowerDriver(MAASTestCase):
             None, self.make_context(power_partition_name)
         )
 
-        self.assertEqual("unknown", status)
+        self.assertEqual("off", status)
+
+    @inlineCallbacks
+    def test_power_query_terminated(self):
+        power_partition_name = factory.make_name("power_partition_name")
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        cpc.partitions.add(
+            {
+                "name": power_partition_name,
+                "status": "terminated",
+            }
+        )
+
+        status = yield self.hmcz.power_query(
+            None, self.make_context(power_partition_name)
+        )
+
+        self.assertEqual("off", status)
 
     @inlineCallbacks
     def test_power_query_other(self):

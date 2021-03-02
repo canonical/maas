@@ -89,6 +89,14 @@ class HMCZPowerDriver(PowerDriver):
     def power_on(self, system_id: str, context: dict):
         """Power on IBM Z DPM."""
         partition = self._get_partition(context)
+        status = partition.get_property("status")
+        if status in {"paused", "terminated"}:
+            # A "paused" or "terminated" partition can only be started if
+            # it is stopped first. MAAS can't execute the start action until
+            # the stop action completes. This holds the thread in MAAS for ~30s.
+            # IBM is aware this isn't optimal for us so they are looking into
+            # modifying IBM Z to go into a stopped state.
+            partition.stop(wait_for_completion=True)
         partition.start(wait_for_completion=False)
 
     @typed
@@ -110,12 +118,16 @@ class HMCZPowerDriver(PowerDriver):
         # transitional state during this time. Associate the transitional
         # state with on or off so MAAS doesn't repeatedly issue a power
         # on or off command.
-        if status in {"starting", "active"}:
-            # When a partition is starting it can go into a "paused" state.
-            # This isn't on or off, just that the partition isn't currently
-            # executing instructions.
+        if status in {"starting", "active", "degraded"}:
             return "on"
-        elif status in {"stopping", "stopped"}:
+        elif status in {"stopping", "stopped", "paused", "terminated"}:
+            # A "paused" state isn't on or off, it just means the partition
+            # isn't currently executing instructions. A partition can go into
+            # a "paused" state if `shutdown -h now` is executed in the
+            # partition. "paused" also happens when transitioning between
+            # "starting" and "active". Consider it off so MAAS can start
+            # it again when needed. IBM is aware this is weird and is working
+            # on a solution.
             return "off"
         else:
             return "unknown"
