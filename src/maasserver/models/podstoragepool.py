@@ -47,7 +47,8 @@ class PodStoragePool(CleanSave, Model):
         """Calculate the used storage for this pod."""
         from maasserver.models.virtualmachine import VirtualMachineDisk
 
-        count = VirtualMachineDisk.objects.filter(backing_pool=self).aggregate(
-            used=Coalesce(Sum("size"), Value(0))
-        )
+        count = VirtualMachineDisk.objects.filter(
+            vm__project=self.pod.tracked_project,
+            backing_pool=self,
+        ).aggregate(used=Coalesce(Sum("size"), Value(0)))
         return count["used"]

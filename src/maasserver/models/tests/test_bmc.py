@@ -2594,17 +2594,24 @@ class TestPod(MAASServerTestCase):
         self.assertEqual(total_memory, pod.get_used_memory())
 
     def test_get_used_local_storage(self):
-        pod = factory.make_Pod()
-        vm1 = factory.make_VirtualMachine(bmc=pod)
+        project = factory.make_string()
+        pod = factory.make_Pod(parameters={"project": project})
+        vm1 = factory.make_VirtualMachine(bmc=pod, project=project)
         disk1 = factory.make_VirtualMachineDisk(vm=vm1)
         disk2 = factory.make_VirtualMachineDisk(vm=vm1)
-        vm2 = factory.make_VirtualMachine(bmc=pod)
+        vm2 = factory.make_VirtualMachine(bmc=pod, project=project)
         disk3 = factory.make_VirtualMachineDisk(vm=vm2)
         disk4 = factory.make_VirtualMachineDisk(vm=vm2)
+        # a VM on the same host, but different project
+        vm3 = factory.make_VirtualMachine(
+            bmc=pod, project=factory.make_string()
+        )
+        factory.make_VirtualMachineDisk(vm=vm3)
+        factory.make_VirtualMachineDisk(vm=vm3)
         # a VM on another host, disks are not counted
-        vm3 = factory.make_VirtualMachine(bmc=factory.make_Pod())
-        factory.make_VirtualMachineDisk(vm=vm3)
-        factory.make_VirtualMachineDisk(vm=vm3)
+        vm4 = factory.make_VirtualMachine(bmc=factory.make_Pod())
+        factory.make_VirtualMachineDisk(vm=vm4)
+        factory.make_VirtualMachineDisk(vm=vm4)
         total_storage = disk1.size + disk2.size + disk3.size + disk4.size
         self.assertEqual(total_storage, pod.get_used_local_storage())
 

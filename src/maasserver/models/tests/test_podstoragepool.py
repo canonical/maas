@@ -10,11 +10,18 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestPodStoragePool(MAASServerTestCase):
     def test_get_used_storage(self):
-        pool = factory.make_PodStoragePool()
+        project = factory.make_string()
+        pod = factory.make_Pod(parameters={"project": project})
+        pool = factory.make_PodStoragePool(pod=pod)
         size = 0
         for _ in range(3):
-            disk = factory.make_VirtualMachineDisk(backing_pool=pool)
+            vm = factory.make_VirtualMachine(project=project)
+            disk = factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool)
             size += disk.size
+        # disks for VMs in other projects are not counted
+        for _ in range(4):
+            vm = factory.make_VirtualMachine(project=factory.make_string())
+            factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool)
         self.assertEqual(size, pool.get_used_storage())
 
     def test_get_used_storage_returns_zero(self):

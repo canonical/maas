@@ -639,6 +639,11 @@ class Pod(BMC):
             raise ValidationError("A pod needs to have a pool")
 
     @property
+    def tracked_project(self) -> str:
+        """Return the project tracked by the Pod, or empty string."""
+        return self.power_parameters.get("project", "")
+
+    @property
     def host(self):
         node = self.hints.nodes.first()
         if node:
@@ -1104,7 +1109,7 @@ class Pod(BMC):
         if not vm:
             vm, _ = VirtualMachine.objects.get_or_create(
                 identifier=machine.instance_name,
-                project=self.power_parameters.get("project", ""),
+                project=self.tracked_project,
                 bmc=self,
             )
             vm.machine = machine
@@ -1312,8 +1317,7 @@ class Pod(BMC):
         # if a project is specified for the Pod, only track (i.e. create
         # machines for) VMs in that project, but sync VirtualMachine objects
         # across all projects
-        tracked_project = self.power_parameters.get("project", "")
-        if tracked_project:
+        if self.tracked_project:
             for discovered_machine in discovered_machines:
                 machine_project = discovered_machine.power_parameters.get(
                     "project", ""
@@ -1321,7 +1325,7 @@ class Pod(BMC):
                 discovered_by_project[machine_project].append(
                     discovered_machine
                 )
-                if machine_project == tracked_project:
+                if machine_project == self.tracked_project:
                     tracked_machines.append(discovered_machine)
         else:
             tracked_machines = discovered_machines
@@ -1593,12 +1597,15 @@ class Pod(BMC):
         return sum(machine.memory for machine in machines)
 
     def get_used_local_storage(self):
-        """Get the amount of used local storage in the pod."""
+        """Get the amount of used local storage in the pod.
+
+        Only storage used by VMs in project tracked by the POD is returned.
+        """
         from maasserver.models.virtualmachine import VirtualMachineDisk
 
-        count = VirtualMachineDisk.objects.filter(vm__bmc=self).aggregate(
-            used=Coalesce(Sum("size"), Value(0))
-        )
+        count = VirtualMachineDisk.objects.filter(
+            vm__bmc=self, vm__project=self.tracked_project
+        ).aggregate(used=Coalesce(Sum("size"), Value(0)))
         return count["used"]
 
     def delete(self, *args, **kwargs):
