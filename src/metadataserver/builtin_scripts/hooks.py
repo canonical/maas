@@ -4,6 +4,7 @@
 """Builtin script hooks, run upon receipt of ScriptResult"""
 
 
+from collections import defaultdict
 import fnmatch
 from functools import partial
 import json
@@ -742,8 +743,10 @@ def get_tags_from_block_info(block_info):
     if block_info["rpm"] > 0:
         tags.append("rotary")
         tags.append("%srpm" % block_info["rpm"])
-    else:
+    elif not block_info.get("maas_multipath"):
         tags.append("ssd")
+    if block_info.get("maas_multipath"):
+        tags.append("multipath")
     if block_info["removable"]:
         tags.append("removable")
     if block_info["type"] == "sata":
@@ -765,6 +768,59 @@ def get_matching_block_device(block_devices, serial=None, id_path=None):
     return None
 
 
+def _condense_luns(disks):
+    """Condense disks by LUN.
+
+    LUNs are used in multipath devices to identify a single storage source
+    for the operating system to use. Multiple disks may still show up on the
+    system pointing to the same source using different paths. MAAS should only
+    model one storage source and ignore the paths. On deployment Curtin will
+    detect multipath and properly set it up.
+    """
+    condensed_luns = defaultdict(list)
+    processed_disks = []
+    for disk in disks:
+        device_path = {}
+        key = None
+        # LXD provides the LUN as part of the device_path. Try to detect it
+        # and other keys for later use.
+        for i in disk.get("device_path", "").split("-"):
+            if key is None:
+                key = i
+            else:
+                device_path[key] = i
+                key = None
+        if "lun" in device_path:
+            condensed_luns[device_path["lun"]].append(disk)
+        else:
+            processed_disks.append(disk)
+
+    for lun, paths in condensed_luns.items():
+        # The first disk is usually the smallest id however doesn't usually
+        # have the device_id associated with it.
+        condensed_disk = paths[0]
+        if len(paths) > 1:
+            # Only tag a disk as multipath if it actually has multiple
+            # pathes to it.
+            condensed_disk["maas_multipath"] = True
+        for path in paths[1:]:
+            # Make sure the disk processed has the lowest id. Each path is
+            # given a name variant on a normal id. e.g sda, sdaa, sdab, sdb
+            # sdba, sdbb results in just sda and sdb for two multipath disks.
+            if path["id"] < condensed_disk["id"]:
+                condensed_disk["id"] = path["id"]
+                # The device differs per id, at least on IBM Z. MAAS doesn't
+                # use the device but keep it consistent anyway.
+                condensed_disk["device"] = path["device"]
+            # Only one path is given the device_id. Make sure the disk that
+            # is processed has it for the id_path.
+            if not condensed_disk.get("device_id") and path.get("device_id"):
+                condensed_disk["device_id"] = path["device_id"]
+        processed_disks.append(condensed_disk)
+
+    return sorted(processed_disks, key=lambda disk: disk["id"])
+
+
 def update_node_physical_block_devices(node, data, numa_nodes):
     block_devices = {}
     # Skip storage configuration if set by the user.
@@ -774,11 +830,10 @@ def update_node_physical_block_devices(node, data, numa_nodes):
         node.save(update_fields=["skip_storage"])
         return block_devices
 
-    blockdevs = data.get("storage", {}).get("disks", [])
     previous_block_devices = list(
         PhysicalBlockDevice.objects.filter(node=node).all()
     )
-    for block_info in blockdevs:
+    for block_info in _condense_luns(data.get("storage", {}).get("disks", [])):
         # Skip the read-only devices or cdroms. We keep them in the output
         # for the user to view but they do not get an entry in the database.
         if block_info["read_only"] or block_info["type"] == "cdrom":
