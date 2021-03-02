@@ -236,6 +236,15 @@ class VMHostMemoryResources:
 
 
 @dataclass
+class VMHostNetworkInterface:
+    """Network interface details for a VM host."""
+
+    id: int
+    name: str
+    virtual_functions: VMHostResource = field(default_factory=VMHostResource)
+
+
+@dataclass
 class VMHostResources:
     """Resources for a VM host."""
 
@@ -243,6 +252,7 @@ class VMHostResources:
     memory: VMHostMemoryResources = field(
         default_factory=VMHostMemoryResources
     )
+    interfaces: List[VMHostResource] = field(default_factory=list)
     numa: List[NUMAPinningNodeResources] = field(default_factory=list)
 
 
@@ -289,12 +299,18 @@ def get_vm_host_resources(pod):
         if hugepages:
             total_hugepages += hugepages.total
 
+    host_interfaces = {}  # VMHostNetworkInterface by interface id
     numanode_interfaces = defaultdict(list)
     for interface in Interface.objects.annotate(
         numa_index=F("numa_node__index")
     ).filter(node=pod.host):
         interface.allocated_vfs = 0
         numanode_interfaces[interface.numa_index].append(interface)
+        host_interfaces[interface.id] = VMHostNetworkInterface(
+            id=interface.id,
+            name=interface.name,
+            virtual_functions=VMHostResource(free=interface.sriov_max_vf),
+        )
     all_vm_interfaces = (
         VirtualMachineInterface.objects.filter(
             vm__in=vms, host_interface__isnull=False
@@ -306,8 +322,19 @@ def get_vm_host_resources(pod):
     for vm_interface in all_vm_interfaces:
         vm_interfaces[vm_interface.vm_id].append(vm_interface)
 
-    tracked_project = pod.power_parameters.get("project")
+    tracked_project = pod.power_parameters.get("project") or ""
     for vm in vms:
+        vm_tracked = vm.project == tracked_project
+        for interface in vm_interfaces[vm.id]:
+            if interface.attachment_type == InterfaceAttachType.SRIOV:
+                vfs = host_interfaces[
+                    interface.host_interface_id
+                ].virtual_functions
+                if vm_tracked:
+                    vfs.allocated_tracked += 1
+                else:
+                    vfs.allocated_other += 1
+                vfs.free -= 1
         vm_mem = vm.memory * MB
         vm_cores = vm.unpinned_cores + len(vm.pinned_cores)
         if vm.project == tracked_project:
@@ -333,6 +360,7 @@ def get_vm_host_resources(pod):
             numanode_vms_resources,
             numanode_interfaces,
         )
+    resources.interfaces = list(host_interfaces.values())
     resources.cores.free = total_cores - resources.cores.allocated
     resources.memory.general.free = (
         total_memory - resources.memory.general.allocated

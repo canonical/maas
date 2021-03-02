@@ -6,13 +6,18 @@ import random
 
 from django.core.exceptions import ValidationError
 
+from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.virtualmachine import (
     get_vm_host_resources,
     MB,
     VirtualMachine,
+    VirtualMachineInterface,
+    VMHostNetworkInterface,
+    VMHostResource,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.drivers.pod import InterfaceAttachType
 
 
 class TestVirtualMachine(MAASServerTestCase):
@@ -166,6 +171,74 @@ class TestGetVMHostResources(MAASServerTestCase):
         resources = get_vm_host_resources(pod)
         self.assertEqual(resources.cores.free, 0)
         self.assertEqual(resources.cores.allocated, 4)
+
+    def test_get_resources_interfaces(self):
+        node = factory.make_Node()
+        if0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            numa_node=node.default_numanode,
+            sriov_max_vf=8,
+        )
+        if1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth1",
+            numa_node=node.default_numanode,
+            sriov_max_vf=4,
+        )
+        project = factory.make_string()
+        pod = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+            host=node,
+        )
+        vm0 = factory.make_VirtualMachine(bmc=pod, project=project)
+        for _ in range(3):
+            VirtualMachineInterface.objects.create(
+                vm=vm0,
+                host_interface=if0,
+                attachment_type=InterfaceAttachType.SRIOV,
+            )
+        vm1 = factory.make_VirtualMachine(
+            bmc=pod, project=factory.make_string()
+        )
+        for _ in range(2):
+            VirtualMachineInterface.objects.create(
+                vm=vm1,
+                host_interface=if0,
+                attachment_type=InterfaceAttachType.SRIOV,
+            )
+        vm2 = factory.make_VirtualMachine(bmc=pod)
+        for _ in range(2):
+            VirtualMachineInterface.objects.create(
+                vm=vm2,
+                host_interface=if1,
+                attachment_type=InterfaceAttachType.SRIOV,
+            )
+        resources = get_vm_host_resources(pod)
+        self.assertCountEqual(
+            resources.interfaces,
+            [
+                VMHostNetworkInterface(
+                    id=if0.id,
+                    name="eth0",
+                    virtual_functions=VMHostResource(
+                        allocated_tracked=3,
+                        allocated_other=2,
+                        free=3,
+                    ),
+                ),
+                VMHostNetworkInterface(
+                    id=if1.id,
+                    name="eth1",
+                    virtual_functions=VMHostResource(
+                        allocated_tracked=0,
+                        allocated_other=2,
+                        free=2,
+                    ),
+                ),
+            ],
+        )
 
     def test_get_resources_numa_aligned(self):
         node = factory.make_Node()
