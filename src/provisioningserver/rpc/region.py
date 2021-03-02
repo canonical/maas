@@ -578,11 +578,24 @@ class UpdateServices(amp.Command):
 class RequestRackRefresh(amp.Command):
     """Request a refresh of the rack from the region.
 
+    The credentials for posting the commissioning script results to the
+    metadata server is returned.
+
+    It's the caller's responsibility to run the commissioning script and
+    finish the refresh by posting the results.
+
     :since: 2.0
     """
 
-    arguments = [(b"system_id", amp.Unicode())]
-    response = []
+    arguments = [
+        (b"system_id", amp.Unicode()),
+        (b"maas_version", amp.Unicode()),
+    ]
+    response = [
+        (b"consumer_key", amp.Unicode()),
+        (b"token_key", amp.Unicode()),
+        (b"token_secret", amp.Unicode()),
+    ]
     errors = []
 
 

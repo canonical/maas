@@ -207,7 +207,6 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PodActionFail,
     PowerActionFail,
-    RefreshAlreadyInProgress,
     UnknownPowerType,
 )
 from provisioningserver.rpc.testing.doubles import DummyConnection
@@ -5127,6 +5126,7 @@ class TestNode(MAASServerTestCase):
                 EVENT_TYPES.REQUEST_NODE_START,
                 type_level=event_details.level,
                 type_description=event_details.description,
+                user=user,
                 event_action=event_action,
                 event_description=event_description,
                 system_id=node.system_id,
@@ -5150,6 +5150,7 @@ class TestNode(MAASServerTestCase):
                 EVENT_TYPES.REQUEST_NODE_START,
                 type_level=event_details.level,
                 type_description=event_details.description,
+                user=None,
                 event_action=event_action,
                 event_description=event_description,
                 system_id=node.system_id,
@@ -13490,69 +13491,44 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
             self.rackcontroller, RefreshRackControllerInfo
         )
 
-    def get_token_for_rackcontroller(self):
-        token = NodeKey.objects.get_token_for_node(self.rackcontroller)
-        token.consumer.key  # Fetch this now while we're in the database.
-        return token
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_processes_version(self):
+        def get_version(rack):
+            reload_object(rack)
+            return rack.controllerinfo.version
 
-    def test_refresh_calls_region_refresh_when_on_node(self):
-        rack = factory.make_RackController()
-        self.patch(node_module, "get_maas_id").return_value = rack.system_id
-        mock_refresh = self.patch(node_module.RegionController, "refresh")
-        rack.refresh()
-        self.assertThat(mock_refresh, MockCalledOnce())
+        rack = yield deferToDatabase(factory.make_RackController)
+        yield rack.start_refresh("1.2.3")
+        recorded_version = yield deferToDatabase(get_version, rack)
+
+        self.assertEqual("1.2.3", recorded_version)
 
     @wait_for_reactor
     @defer.inlineCallbacks
-    def test_refresh_issues_rpc_call(self):
-        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed(
-            {"maas_version": "2.10.0"}
+    def test_prepares_for_refresh(self):
+        def get_events(rack):
+            return [
+                (event.type.name, event.owner, event.action)
+                for event in Event.objects.filter(
+                    node_system_id=rack.system_id
+                )
+            ]
+
+        rack = yield deferToDatabase(factory.make_RackController)
+        credentials = yield rack.start_refresh("1.2.3")
+        self.assertCountEqual(
+            ["consumer_key", "token_key", "token_secret"], credentials.keys()
         )
 
-        yield self.rackcontroller.refresh()
-        token = yield deferToDatabase(self.get_token_for_rackcontroller)
-
-        self.expectThat(
-            self.protocol.RefreshRackControllerInfo,
-            MockCalledOnceWith(
-                ANY,
-                system_id=self.rackcontroller.system_id,
-                consumer_key=token.consumer.key,
-                token_key=token.key,
-                token_secret=token.secret,
-            ),
-        )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_refresh_logs_user_request(self):
-        self.protocol.RefreshRackControllerInfo.return_value = defer.succeed(
-            {"maas_version": "2.10.0"}
-        )
-
-        register_event = self.patch(
-            self.rackcontroller, "_register_request_event"
-        )
-
-        yield self.rackcontroller.refresh()
-        self.assertThat(
-            register_event,
-            MockCalledOnceWith(
-                self.rackcontroller.owner,
-                EVENT_TYPES.REQUEST_CONTROLLER_REFRESH,
-                action="starting refresh",
-            ),
-        )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_refresh_does_nothing_when_locked(self):
-        self.protocol.RefreshRackControllerInfo.return_value = defer.fail(
-            RefreshAlreadyInProgress()
-        )
-        mock_save = self.patch(self.rackcontroller, "save")
-        yield self.rackcontroller.refresh()
-        self.assertThat(mock_save, MockNotCalled())
+        events = yield deferToDatabase(get_events, rack)
+        [(event_name, event_owner, event_action)] = [
+            (event_name, event_owner, event_action)
+            for (event_name, event_owner, event_action) in events
+            if event_name == "REQUEST_CONTROLLER_REFRESH"
+        ]
+        self.assertEqual(rack.owner.username, event_owner)
+        self.assertEqual("starting refresh", event_action)
 
 
 class TestRackController(MAASTransactionServerTestCase):

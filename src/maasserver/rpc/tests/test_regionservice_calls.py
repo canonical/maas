@@ -45,11 +45,7 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockCalledWith,
-)
+from maastesting.matchers import MockCalledOnceWith, MockCalledWith
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.rpc.exceptions import NoSuchCluster, NoSuchNode
@@ -1320,18 +1316,48 @@ class TestRegionProtocol_RequestRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_calls_refresh(self):
+    def test_processes_version(self):
+        def get_version(rack):
+            reload_object(rack)
+            return rack.controllerinfo.version
+
         rack = yield deferToDatabase(factory.make_RackController)
         self.patch(regionservice, "deferToDatabase").return_value = succeed(
             rack
         )
-        mock_refresh = self.patch(rack, "refresh")
         response = yield call_responder(
-            Region(), RequestRackRefresh, {"system_id": rack.system_id}
+            Region(),
+            RequestRackRefresh,
+            {"system_id": rack.system_id, "maas_version": "1.2.3"},
         )
         self.assertIsNotNone(response)
+        recorded_version = yield deferToDatabase(get_version, rack)
 
-        self.assertThat(mock_refresh, MockCalledOnce())
+        self.assertEqual("1.2.3", recorded_version)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_prepares_for_refresh(self):
+        def get_events(rack):
+            return [
+                event.type.name
+                for event in Event.objects.filter(
+                    node_system_id=rack.system_id
+                )
+            ]
+
+        rack = yield deferToDatabase(factory.make_RackController)
+        response = yield call_responder(
+            Region(),
+            RequestRackRefresh,
+            {"system_id": rack.system_id, "maas_version": "2.3.4"},
+        )
+        self.assertCountEqual(
+            ["consumer_key", "token_key", "token_secret"], response.keys()
+        )
+
+        event_names = yield deferToDatabase(get_events, rack)
+        self.assertIn("REQUEST_CONTROLLER_REFRESH", event_names)
 
 
 class TestRegionProtocol_GetControllerType(MAASTransactionServerTestCase):

@@ -507,15 +507,14 @@ class Region(RPCProtocol):
         return deferToDatabase(update_services, system_id, services)
 
     @region.RequestRackRefresh.responder
-    def request_rack_refresh(self, system_id):
+    def request_rack_refresh(self, system_id, maas_version):
         """Request a refresh of the rack
 
         Implementation of
         :py:class:`~provisioningserver.rpc.region.RequestRackRefresh`.
         """
         d = deferToDatabase(RackController.objects.get, system_id=system_id)
-        d.addCallback(lambda rack: rack.refresh())
-        d.addCallback(lambda _: {})
+        d.addCallback(lambda rack: rack.start_refresh(maas_version))
         return d
 
     @region.GetControllerType.responder

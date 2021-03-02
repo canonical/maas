@@ -52,6 +52,7 @@ from provisioningserver.utils.twisted import (
     pause,
     terminateProcess,
 )
+from provisioningserver.utils.version import get_running_version
 
 maaslog = get_maas_logger("networks.monitor")
 log = LegacyLogger()
@@ -961,7 +962,11 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
     interval = timedelta(seconds=30).total_seconds()
 
     def __init__(
-        self, clock=None, enable_monitoring=True, enable_beaconing=True
+        self,
+        clock=None,
+        enable_monitoring=True,
+        enable_beaconing=True,
+        update_interfaces_deferred=None,
     ):
         # Order is very important here. First we set the clock to the passed-in
         # reactor, so that unit tests can fake out the clock if necessary.
@@ -994,6 +999,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self.interface_monitor.clock = self.clock
         self.interface_monitor.setServiceParent(self)
         self.beaconing_protocol = None
+        self.maas_version = None
+        self._update_interfaces_deferred = update_interfaces_deferred
 
     @inlineCallbacks
     def updateInterfaces(self):
@@ -1002,8 +1009,12 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         This can be overridden by subclasses to conditionally update based on
         some external configuration.
         """
+        if not self.running:
+            return
         responsible = self._assumeSoleResponsibility()
         if responsible:
+            if self.maas_version is None:
+                self.maas_version = yield deferToThread(get_running_version)
             interfaces = None
             try:
                 interfaces = yield maybeDeferred(self.getInterfaces)
@@ -1014,6 +1025,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                     "configuration: %s; interfaces: %r" % (e, interfaces)
                 )
                 log.err(None, msg)
+        if self._update_interfaces_deferred is not None:
+            self._update_interfaces_deferred.callback(interfaces)
 
     def getInterfaces(self):
         """Get the current network interfaces configuration.

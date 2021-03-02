@@ -4,9 +4,11 @@
 """Networks monitoring service for rack controllers."""
 
 
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, returnValue
+from twisted.internet.threads import deferToThread
 
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.refresh import refresh
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetDiscoveryState,
@@ -47,21 +49,29 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
     @inlineCallbacks
     def recordInterfaces(self, interfaces, hints=None):
         """Record the interfaces information to the region."""
-        while self.running:
-            try:
-                client = yield self.clientService.getClientNow()
-            except NoConnectionsAvailable:
-                yield pause(1.0)
-                continue
-            if self._recorded is None:
-                yield client(RequestRackRefresh, system_id=client.localIdent)
-            yield client(
-                UpdateInterfaces,
-                system_id=client.localIdent,
-                interfaces=interfaces,
-                topology_hints=hints,
-            )
-            break
+        client = yield self._getRPCClient()
+        if client is None:
+            return
+        credentials = yield client(
+            RequestRackRefresh,
+            system_id=client.localIdent,
+            maas_version=str(self.maas_version),
+        )
+        yield deferToThread(
+            refresh,
+            client.localIdent,
+            credentials["consumer_key"],
+            credentials["token_key"],
+            credentials["token_secret"],
+            self.clientService.maas_url,
+        )
+
+        yield client(
+            UpdateInterfaces,
+            system_id=client.localIdent,
+            interfaces=interfaces,
+            topology_hints=hints,
+        )
 
     def reportNeighbours(self, neighbours):
         """Report neighbour information to the region."""
@@ -84,3 +94,14 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
             )
         )
         return d
+
+    @inlineCallbacks
+    def _getRPCClient(self):
+        while self.running:
+            try:
+                client = yield self.clientService.getClientNow()
+            except NoConnectionsAvailable:
+                yield pause(1.0)
+                continue
+            else:
+                returnValue(client)

@@ -60,6 +60,7 @@ from provisioningserver.utils.services import (
     ProtocolForObserveARP,
     ProtocolForObserveBeacons,
 )
+from provisioningserver.utils.version import get_running_version
 
 
 class StubNetworksMonitoringService(NetworksMonitoringService):
@@ -89,6 +90,7 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
 
     def recordInterfaces(self, interfaces, hints=None):
         self.interfaces.append(interfaces)
+        self.record_maas_version = self.maas_version
 
     def reportNeighbours(self, neighbours):
         pass
@@ -121,10 +123,12 @@ class TestNetworksMonitoringService(MAASTestCase):
             service.interface_monitor.call,
             Equals((service.updateInterfaces, (), {})),
         )
+        self.assertIsNone(service.maas_version)
 
     @inlineCallbacks
     def test_get_all_interfaces_definition_is_called_in_thread(self):
         service = self.makeService()
+        service.running = 1
         self.patch(
             services, "get_all_interfaces_definition", threading.current_thread
         )
@@ -137,6 +141,7 @@ class TestNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_getInterfaces_called_to_get_configuration(self):
         service = self.makeService()
+        service.running = 1
         getInterfaces = self.patch(service, "getInterfaces")
         getInterfaces.return_value = succeed(sentinel.config)
         yield service.updateInterfaces()
@@ -145,6 +150,7 @@ class TestNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_logs_errors(self):
         service = self.makeService()
+        service.running = 1
         with TwistedLoggerFixture() as logger:
             error_message = factory.make_string()
             get_interfaces = self.patch(
@@ -176,11 +182,19 @@ class TestNetworksMonitoringService(MAASTestCase):
         get_interfaces.side_effect = [sentinel.config]
 
         service = self.makeService()
+        service.running = 1
         self.assertThat(service.interfaces, Equals([]))
         yield service.updateInterfaces()
         self.assertThat(service.interfaces, Equals([sentinel.config]))
 
         self.assertThat(get_interfaces, MockCalledOnceWith())
+
+    @inlineCallbacks
+    def test_recordInterfaces_has_maas_version(self):
+        service = self.makeService()
+        service.running = 1
+        yield service.updateInterfaces()
+        self.assertEqual(get_running_version(), service.record_maas_version)
 
     @inlineCallbacks
     def test_recordInterfaces_called_when_interfaces_changed(self):
@@ -189,6 +203,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         get_interfaces.side_effect = [sentinel.config1, sentinel.config2]
 
         service = self.makeService()
+        service.running = 1
         self.assertThat(service.interfaces, HasLength(0))
         yield service.updateInterfaces()
         self.assertThat(service.interfaces, Equals([sentinel.config1]))
@@ -206,6 +221,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         get_interfaces.side_effect = [{}, {}]
 
         service = self.makeService()
+        service.running = 1
         self.assertThat(service.interfaces, HasLength(0))
         yield service.updateInterfaces()
         self.assertThat(service.interfaces, Equals([{}]))
@@ -220,6 +236,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         get_interfaces.return_value = {}
 
         service = self.makeService()
+        service.running = 1
         recordInterfaces = self.patch(service, "recordInterfaces")
         recordInterfaces.side_effect = [Exception, None, None]
 
@@ -281,6 +298,7 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         with lock:
             service = self.makeService()
+            service.running = 1
             # Iterate a few times.
             yield service.updateInterfaces()
             yield service.updateInterfaces()
@@ -297,6 +315,7 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         with lock:
             service = self.makeService()
+            service.running = 1
             # Iterate one time.
             yield service.updateInterfaces()
 

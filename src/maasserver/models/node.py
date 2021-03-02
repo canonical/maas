@@ -67,6 +67,7 @@ from twisted.internet.defer import (
     Deferred,
     DeferredList,
     inlineCallbacks,
+    returnValue,
     succeed,
 )
 from twisted.internet.error import ConnectionClosed, ConnectionDone
@@ -203,12 +204,10 @@ from provisioningserver.rpc.cluster import (
     CheckIPs,
     DisableAndShutoffRackd,
     IsImportBootImagesRunning,
-    RefreshRackControllerInfo,
 )
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionFail,
-    RefreshAlreadyInProgress,
     UnknownPowerType,
 )
 from provisioningserver.utils import flatten, sorttop, znums
@@ -222,7 +221,6 @@ from provisioningserver.utils.network import (
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
-    deferWithTimeout,
     synchronous,
     undefined,
 )
@@ -1468,6 +1466,7 @@ class Node(CleanSave, TimestampedModel):
             type_name,
             type_level=event_details.level,
             type_description=event_details.description,
+            user=user,
             event_action=action,
             event_description=description,
             system_id=self.system_id,
@@ -6865,8 +6864,7 @@ class Controller(Node):
         )
 
     @transactional
-    def _process_maas_version(self, response):
-        maas_version = response.get("maas_version")
+    def _process_maas_version(self, maas_version):
         if maas_version and self.version != maas_version:
             # Circular imports.
             from maasserver.models import ControllerInfo
@@ -6913,6 +6911,27 @@ class Controller(Node):
             interface.update_discovery_state(discovery_mode, settings)
         return interfaces
 
+    @inlineCallbacks
+    def start_refresh(self, maas_version):
+        """Start refreshing the hardware and networking information.
+
+        It signals the start of the refresh as an event and returns the
+        credentials needed to post commissioning data to the metadata
+        server.
+        """
+        token = yield deferToDatabase(self._get_token_for_controller)
+
+        yield deferToDatabase(self._signal_start_of_refresh)
+
+        yield deferToDatabase(self._process_maas_version, maas_version)
+        returnValue(
+            {
+                "consumer_key": token.consumer.key,
+                "token_key": token.key,
+                "token_secret": token.secret,
+            }
+        )
+
 
 class RackController(Controller):
     """A node which is running rackd."""
@@ -6924,43 +6943,6 @@ class RackController(Controller):
 
     def __init__(self, *args, **kwargs):
         super().__init__(node_type=NODE_TYPE.RACK_CONTROLLER, *args, **kwargs)
-
-    @inlineCallbacks
-    def refresh(self):
-        """Refresh the hardware and networking columns of the rack controller.
-
-        :raises NoConnectionsAvailable: If no connections to the cluster
-            are available.
-        """
-        if self.system_id == get_maas_id():
-            # If the refresh is occuring on the running region execute it using
-            # the region process. This avoids using RPC and sends the node
-            # results back to this host when in HA.
-            yield self.as_region_controller().refresh()
-            return
-
-        client = yield getClientFor(self.system_id, timeout=1)
-
-        token = yield deferToDatabase(self._get_token_for_controller)
-
-        yield deferToDatabase(self._signal_start_of_refresh)
-
-        try:
-            response = yield deferWithTimeout(
-                30,
-                client,
-                RefreshRackControllerInfo,
-                system_id=self.system_id,
-                consumer_key=token.consumer.key,
-                token_key=token.key,
-                token_secret=token.secret,
-            )
-        except RefreshAlreadyInProgress:
-            # If another refresh is in progress let the other process
-            # handle it and don't update the database.
-            return
-        else:
-            yield deferToDatabase(self._process_maas_version, response)
 
     def add_chassis(
         self,
@@ -7331,18 +7313,14 @@ class RegionController(Controller):
 
         try:
             with NamedLock("refresh"):
-                token = yield deferToDatabase(self._get_token_for_controller)
-                yield deferToDatabase(self._signal_start_of_refresh)
-                maas_version = yield deferToThread(
-                    lambda: {"maas_version": str(get_running_version())}
-                )
-                yield deferToDatabase(self._process_maas_version, maas_version)
+                maas_version = yield deferToThread(get_running_version)
+                credentials = yield self.start_refresh(str(maas_version))
                 yield deferToThread(
                     refresh,
                     self.system_id,
-                    token.consumer.key,
-                    token.key,
-                    token.secret,
+                    credentials["consumer_key"],
+                    credentials["token_key"],
+                    credentials["token_secret"],
                 )
         except NamedLock.NotAvailable:
             # Refresh already running.

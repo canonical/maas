@@ -6,13 +6,20 @@
 
 from unittest.mock import call, Mock
 
-from twisted.internet.defer import inlineCallbacks, maybeDeferred, succeed
+from twisted.internet.defer import (
+    Deferred,
+    inlineCallbacks,
+    maybeDeferred,
+    returnValue,
+    succeed,
+)
 from twisted.internet.task import Clock
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import services
+from provisioningserver.rackdservices import networks_monitoring_service
 from provisioningserver.rackdservices.networks_monitoring_service import (
     RackNetworksMonitoringService,
 )
@@ -30,48 +37,36 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         self.patch(
             clusterservice, "get_all_interfaces_definition"
         ).return_value = {}
+        self.mock_refresh = self.patch(networks_monitoring_service, "refresh")
+        self.metadata_creds = {
+            "consumer_key": factory.make_string(),
+            "token_key": factory.make_string(),
+            "token_secret": factory.make_string(),
+        }
 
     @inlineCallbacks
-    def test_runs_refresh_first_time(self):
+    def create_fake_rpc_service(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(region.RequestRackRefresh)
+        protocol, connecting = fixture.makeEventLoop(
+            region.UpdateInterfaces, region.RequestRackRefresh
+        )
         self.addCleanup((yield connecting))
-
-        rpc_service = services.getServiceNamed("rpc")
-        service = RackNetworksMonitoringService(
-            rpc_service,
-            Clock(),
-            enable_monitoring=False,
-            enable_beaconing=False,
-        )
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-        service.getInterfaces = lambda: succeed(interfaces)
-        yield maybeDeferred(service.startService)
-        # By stopping the interface_monitor first, we assure that the loop
-        # happens at least once before the service stops completely.
-        yield maybeDeferred(service.interface_monitor.stopService)
-        yield maybeDeferred(service.stopService)
-
-        self.assertThat(
-            protocol.RequestRackRefresh,
-            MockCalledOnceWith(
-                protocol, system_id=rpc_service.getClient().localIdent
-            ),
-        )
+        protocol.RequestRackRefresh.return_value = self.metadata_creds
+        returnValue(protocol)
 
     @inlineCallbacks
     def test_reports_interfaces_to_region(self):
-        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(region.UpdateInterfaces)
-        self.addCleanup((yield connecting))
+        def refresh(
+            system_id, consumer_key, token_key, token_secret, maas_url=None
+        ):
+            self.assertEqual("", system_id)
+            self.assertEqual(self.metadata_creds["consumer_key"], consumer_key)
+            self.assertEqual(self.metadata_creds["token_key"], token_key)
+            self.assertEqual(self.metadata_creds["token_secret"], token_secret)
+            self.assertEqual("http://localhost/MAAS", maas_url)
+
+        protocol = yield self.create_fake_rpc_service()
+        self.mock_refresh.side_effect = refresh
 
         interfaces = {
             "eth0": {
@@ -83,12 +78,14 @@ class TestRackNetworksMonitoringService(MAASTestCase):
             }
         }
 
+        update_interfaces_deferred = Deferred()
         rpc_service = services.getServiceNamed("rpc")
         service = RackNetworksMonitoringService(
             rpc_service,
             Clock(),
             enable_monitoring=False,
             enable_beaconing=False,
+            update_interfaces_deferred=update_interfaces_deferred,
         )
         service.getInterfaces = lambda: succeed(interfaces)
         # Put something in the cache. This tells recordInterfaces that refresh
@@ -97,6 +94,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         service._recorded = {}
 
         service.startService()
+        yield update_interfaces_deferred
         yield service.stopService()
 
         self.assertThat(
@@ -108,17 +106,16 @@ class TestRackNetworksMonitoringService(MAASTestCase):
                 topology_hints=None,
             ),
         )
+        self.assertEquals(1, self.mock_refresh.call_count)
 
     @inlineCallbacks
     def test_reports_interfaces_with_hints_if_beaconing_enabled(self):
-        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(region.UpdateInterfaces)
+        protocol = yield self.create_fake_rpc_service()
         # Don't actually wait for beaconing to complete.
         pause_mock = self.patch(services_module, "pause")
         queue_mcast_mock = self.patch(
             services_module.BeaconingSocketProtocol, "queueMulticastBeaconing"
         )
-        self.addCleanup((yield connecting))
 
         interfaces = {
             "eth0": {
@@ -138,12 +135,11 @@ class TestRackNetworksMonitoringService(MAASTestCase):
             enable_beaconing=True,
         )
         service.getInterfaces = lambda: succeed(interfaces)
-        # Put something in the cache. This tells recordInterfaces that refresh
-        # has already run but the interfaces have changed thus they need to be
-        # updated.
-        service._recorded = {}
 
         service.startService()
+        # By stopping the interface_monitor first, we assure that the loop
+        # happens at least once before the service stops completely.
+        yield maybeDeferred(service.interface_monitor.stopService)
         yield service.stopService()
 
         self.assertThat(
