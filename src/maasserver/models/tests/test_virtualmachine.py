@@ -137,6 +137,8 @@ class TestGetVMHostResources(MAASServerTestCase):
             memory=2048, unpinned_cores=1, hugepages_backed=False, bmc=pod
         )
         resources = get_vm_host_resources(pod)
+        self.assertEqual(resources.vm_count.tracked, 2)
+        self.assertEqual(resources.vm_count.other, 2)
         self.assertEqual(resources.cores.free, 2)
         self.assertEqual(resources.cores.allocated, 6)
         self.assertEqual(resources.cores.allocated_tracked, 4)

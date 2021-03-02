@@ -13,12 +13,18 @@ from django.db.models import (
     BooleanField,
     CASCADE,
     CharField,
+    Count,
+    ExpressionWrapper,
     F,
     ForeignKey,
+    Func,
     IntegerField,
     OneToOneField,
+    Q,
     SET_NULL,
+    Sum,
     TextField,
+    Value,
 )
 from django.db.models.functions import Coalesce
 
@@ -228,6 +234,18 @@ class VMHostResource:
 
 
 @dataclass
+class VMHostCount:
+    """Count a resources for a VM host."""
+
+    tracked: int = 0
+    other: int = 0
+
+    @property
+    def total(self):
+        return self.tracked + self.other
+
+
+@dataclass
 class VMHostMemoryResources:
     """Memory usage details for a VM host."""
 
@@ -252,6 +270,7 @@ class VMHostResources:
     memory: VMHostMemoryResources = field(
         default_factory=VMHostMemoryResources
     )
+    vm_count: VMHostCount = field(default_factory=VMHostCount)
     interfaces: List[VMHostResource] = field(default_factory=list)
     numa: List[NUMAPinningNodeResources] = field(default_factory=list)
 
@@ -262,13 +281,8 @@ def get_vm_host_resources(pod):
     if pod.host is None:
         return resources
 
-    vms = list(
-        VirtualMachine.objects.annotate(
-            system_id=Coalesce("machine__system_id", None)
-        )
-        .filter(bmc=pod)
-        .all()
-    )
+    _update_global_resource_counters(pod, resources)
+
     numanodes = OrderedDict(
         (node.index, node)
         for node in NUMANode.objects.prefetch_related("hugepages_set")
@@ -277,9 +291,6 @@ def get_vm_host_resources(pod):
         .all()
     )
 
-    total_memory = 0
-    total_cores = 0
-    total_hugepages = 0
     # to track how many cores are not used by pinned VMs in each NUMA node
     available_numanode_cores = {}
     # to track how much general memory is allocated in each NUMA node
@@ -293,11 +304,14 @@ def get_vm_host_resources(pod):
         available_numanode_cores[numa_idx] = set(numa_node.cores)
         hugepages = numa_node.hugepages_set.first()
         numanode_hugepages[numa_idx] = hugepages
-        # update global totals
-        total_cores += len(numa_node.cores)
-        total_memory += numa_node.memory * MB
-        if hugepages:
-            total_hugepages += hugepages.total
+
+    vms = list(
+        VirtualMachine.objects.annotate(
+            system_id=Coalesce("machine__system_id", None)
+        )
+        .filter(bmc=pod)
+        .all()
+    )
 
     host_interfaces = {}  # VMHostNetworkInterface by interface id
     numanode_interfaces = defaultdict(list)
@@ -322,33 +336,17 @@ def get_vm_host_resources(pod):
     for vm_interface in all_vm_interfaces:
         vm_interfaces[vm_interface.vm_id].append(vm_interface)
 
-    tracked_project = pod.power_parameters.get("project") or ""
     for vm in vms:
-        vm_tracked = vm.project == tracked_project
         for interface in vm_interfaces[vm.id]:
             if interface.attachment_type == InterfaceAttachType.SRIOV:
                 vfs = host_interfaces[
                     interface.host_interface_id
                 ].virtual_functions
-                if vm_tracked:
+                if vm.project == pod.tracked_project:
                     vfs.allocated_tracked += 1
                 else:
                     vfs.allocated_other += 1
                 vfs.free -= 1
-        vm_mem = vm.memory * MB
-        vm_cores = vm.unpinned_cores + len(vm.pinned_cores)
-        if vm.project == tracked_project:
-            resources.cores.allocated_tracked += vm_cores
-            if vm.hugepages_backed:
-                resources.memory.hugepages.allocated_tracked += vm_mem
-            else:
-                resources.memory.general.allocated_tracked += vm_mem
-        else:
-            resources.cores.allocated_other += vm_cores
-            if vm.hugepages_backed:
-                resources.memory.hugepages.allocated_other += vm_mem
-            else:
-                resources.memory.general.allocated_other += vm_mem
         _update_numanode_resources_usage(
             vm,
             vm_interfaces[vm.id],
@@ -361,13 +359,6 @@ def get_vm_host_resources(pod):
             numanode_interfaces,
         )
     resources.interfaces = list(host_interfaces.values())
-    resources.cores.free = total_cores - resources.cores.allocated
-    resources.memory.general.free = (
-        total_memory - resources.memory.general.allocated
-    )
-    resources.memory.hugepages.free = (
-        total_hugepages - resources.memory.hugepages.allocated
-    )
     resources.numa = [
         _get_numa_pinning_resources(
             numa_node,
@@ -381,6 +372,63 @@ def get_vm_host_resources(pod):
         for numa_idx, numa_node in numanodes.items()
     ]
     return resources
+
+
+def _update_global_resource_counters(pod, resources):
+    def ArrayLength(field):
+        return Coalesce(
+            Func(
+                F(field),
+                Value(1),
+                function="array_length",
+                output_field=IntegerField(),
+            ),
+            Value(0),
+        )
+
+    totals = NUMANode.objects.filter(node=pod.host).aggregate(
+        cores=Sum(ArrayLength("cores")),
+        memory=Sum("memory") * MB,
+        hugepages=Coalesce(Sum("hugepages_set__total"), Value(0)),
+    )
+
+    vms = (
+        VirtualMachine.objects.filter(bmc=pod)
+        .values("hugepages_backed")
+        .annotate(
+            tracked=ExpressionWrapper(
+                Q(project=pod.tracked_project),
+                output_field=BooleanField(),
+            ),
+            vms=Count("id"),
+            cores=Sum(F("unpinned_cores") + ArrayLength("pinned_cores")),
+            memory=Sum("memory"),
+        )
+    )
+    for entry in vms:
+        mem = entry["memory"] * MB
+        if entry["tracked"]:
+            resources.cores.allocated_tracked += entry["cores"]
+            resources.vm_count.tracked += entry["vms"]
+            if entry["hugepages_backed"]:
+                resources.memory.hugepages.allocated_tracked += mem
+            else:
+                resources.memory.general.allocated_tracked += mem
+        else:
+            resources.cores.allocated_other += entry["cores"]
+            resources.vm_count.other += entry["vms"]
+            if entry["hugepages_backed"]:
+                resources.memory.hugepages.allocated_other += mem
+            else:
+                resources.memory.general.allocated_other += mem
+
+    resources.cores.free = totals["cores"] - resources.cores.allocated
+    resources.memory.general.free = (
+        totals["memory"] - resources.memory.general.allocated
+    )
+    resources.memory.hugepages.free = (
+        totals["hugepages"] - resources.memory.hugepages.allocated
+    )
 
 
 def _update_numanode_resources_usage(
