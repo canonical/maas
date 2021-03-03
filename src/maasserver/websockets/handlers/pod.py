@@ -128,6 +128,7 @@ class PodHandler(TimestampedModelHandler):
                 ),
                 "host": obj.host.system_id if obj.host else None,
                 "numa_pinning": self.dehydrate_numa_pinning(obj),
+                "resources": self.dehydrate_resources(obj, for_list=for_list),
             }
         )
         if not for_list:
@@ -212,6 +213,12 @@ class PodHandler(TimestampedModelHandler):
             "used": used,
             "available": pool.storage - used,
         }
+
+    def dehydrate_resources(self, obj, for_list=False):
+        """Dehydrate resources info."""
+        return dataclasses.asdict(
+            get_vm_host_resources(obj, detailed=not for_list)
+        )
 
     def dehydrate_numa_pinning(self, obj):
         """Dehydrate NUMA pinning info."""

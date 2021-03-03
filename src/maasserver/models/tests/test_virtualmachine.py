@@ -97,6 +97,12 @@ class TestGetVMHostResources(MAASServerTestCase):
         self.assertEqual(resources.memory.hugepages.allocated, 0)
         self.assertEqual(resources.numa, [])
 
+    def test_get_resources_no_detailed(self):
+        pod = factory.make_Pod(pod_type="lxd", host=factory.make_Node())
+        resources = get_vm_host_resources(pod, detailed=False)
+        # NUMA info is not reported when not in detailed mode
+        self.assertEqual(resources.numa, [])
+
     def test_get_resources_global_resources(self):
         node = factory.make_Node()
         numa_node0 = node.default_numanode

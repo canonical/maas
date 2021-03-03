@@ -180,68 +180,91 @@ class TestPodHandler(MAASTransactionServerTestCase):
             machine=factory.make_Node(system_id="vm1"),
         )
 
-        expected_data = handler.full_dehydrate(pod)
+        expected_numa_details = [
+            {
+                "cores": {"allocated": [0], "free": [3]},
+                "interfaces": [
+                    {
+                        "id": node.boot_interface.id,
+                        "name": node.boot_interface.name,
+                        "virtual_functions": {"allocated": 0, "free": 0},
+                    },
+                ],
+                "memory": {
+                    "general": {"allocated": 1024 * MB, "free": 3072 * MB},
+                    "hugepages": [],
+                },
+                "node_id": 0,
+                "vms": [
+                    {
+                        "pinned_cores": [0],
+                        "system_id": "vm0",
+                        "networks": [],
+                    },
+                ],
+            },
+            {
+                "cores": {"allocated": [], "free": [1, 4]},
+                "interfaces": [],
+                "memory": {
+                    "general": {"allocated": 0, "free": 1024 * MB},
+                    "hugepages": [],
+                },
+                "node_id": 1,
+                "vms": [],
+            },
+            {
+                "cores": {"allocated": [2, 5], "free": []},
+                "interfaces": [],
+                "memory": {
+                    "general": {"allocated": 1024 * MB, "free": 1024 * MB},
+                    "hugepages": [],
+                },
+                "node_id": 2,
+                "vms": [
+                    {
+                        "pinned_cores": [2, 5],
+                        "system_id": "vm1",
+                        "networks": [],
+                    },
+                ],
+            },
+        ]
+        expected_resources_details = {
+            "cores": {"allocated_other": 3, "allocated_tracked": 0, "free": 3},
+            "interfaces": [
+                {
+                    "id": node.boot_interface.id,
+                    "name": node.boot_interface.name,
+                    "virtual_functions": {
+                        "allocated_other": 0,
+                        "allocated_tracked": 0,
+                        "free": 0,
+                    },
+                }
+            ],
+            "memory": {
+                "general": {
+                    "allocated_other": 2147483648,
+                    "allocated_tracked": 0,
+                    "free": 5368709120,
+                },
+                "hugepages": {
+                    "allocated_other": 0,
+                    "allocated_tracked": 0,
+                    "free": 0,
+                },
+            },
+            "numa": expected_numa_details,
+            "vm_count": {"other": 2, "tracked": 0},
+        }
+
         result = handler.get({"id": pod.id})
-        self.assertItemsEqual(expected_data.keys(), result.keys())
-        for key in expected_data:
-            self.assertEqual(expected_data[key], result[key], key)
-        self.assertThat(result, Equals(expected_data))
         self.assertThat(result["host"], Equals(node.system_id))
         self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
         self.assertThat(result["boot_vlans"], Equals([subnet.vlan_id]))
-        self.assertEqual(
-            result["numa_pinning"],
-            [
-                {
-                    "cores": {"allocated": [0], "free": [3]},
-                    "interfaces": [
-                        {
-                            "id": node.boot_interface.id,
-                            "name": node.boot_interface.name,
-                            "virtual_functions": {"allocated": 0, "free": 0},
-                        },
-                    ],
-                    "memory": {
-                        "general": {"allocated": 1024 * MB, "free": 3072 * MB},
-                        "hugepages": [],
-                    },
-                    "node_id": 0,
-                    "vms": [
-                        {
-                            "pinned_cores": [0],
-                            "system_id": "vm0",
-                            "networks": [],
-                        },
-                    ],
-                },
-                {
-                    "cores": {"allocated": [], "free": [1, 4]},
-                    "interfaces": [],
-                    "memory": {
-                        "general": {"allocated": 0, "free": 1024 * MB},
-                        "hugepages": [],
-                    },
-                    "node_id": 1,
-                    "vms": [],
-                },
-                {
-                    "cores": {"allocated": [2, 5], "free": []},
-                    "interfaces": [],
-                    "memory": {
-                        "general": {"allocated": 1024 * MB, "free": 1024 * MB},
-                        "hugepages": [],
-                    },
-                    "node_id": 2,
-                    "vms": [
-                        {
-                            "pinned_cores": [2, 5],
-                            "system_id": "vm1",
-                            "networks": [],
-                        },
-                    ],
-                },
-            ],
-        )
+        self.assertEqual(result["numa_pinning"], expected_numa_details)
+        self.assertEqual(result["resources"], expected_resources_details)
 
     def test_get_with_pod_host_no_storage_pools(self):
         admin = factory.make_admin()
@@ -521,6 +544,27 @@ class TestPodHandler(MAASTransactionServerTestCase):
         expected_data = [handler.full_dehydrate(pod, for_list=True)]
         result = handler.list({"id": pod.id})
         self.assertThat(result, Equals(expected_data))
+
+    def test_full_dehydrate_for_list_no_details(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        vlan = factory.make_VLAN(dhcp_on=True)
+        subnet = factory.make_Subnet(vlan=vlan)
+        node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
+        ip = factory.make_StaticIPAddress(
+            interface=node.boot_interface, subnet=subnet
+        )
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 3]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        factory.make_NUMANode(node=node, cores=[1, 4], memory=1024)
+        factory.make_NUMANode(node=node, cores=[2, 5], memory=2048)
+        pod = self.make_pod_with_hints(
+            pod_type="lxd", host=node, ip_address=ip
+        )
+        result = handler.full_dehydrate(pod, for_list=True)
+        self.assertEqual(result["resources"]["numa"], [])
 
     @wait_for_reactor
     @inlineCallbacks

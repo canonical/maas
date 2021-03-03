@@ -275,14 +275,22 @@ class VMHostResources:
     numa: List[NUMAPinningNodeResources] = field(default_factory=list)
 
 
-def get_vm_host_resources(pod):
-    """Return used resources for a VM host by its ID."""
+def get_vm_host_resources(pod, detailed=True):
+    """Return used resources for a VM host by its ID.
+
+    If `detailed` is true, also include info about NUMA nodes resource usage.
+    """
     resources = VMHostResources()
     if pod.host is None:
         return resources
 
     _update_global_resource_counters(pod, resources)
+    if detailed:
+        _update_detailed_resource_counters(pod, resources)
+    return resources
 
+
+def _update_detailed_resource_counters(pod, resources):
     numanodes = OrderedDict(
         (node.index, node)
         for node in NUMANode.objects.prefetch_related("hugepages_set")
@@ -290,7 +298,6 @@ def get_vm_host_resources(pod):
         .order_by("index")
         .all()
     )
-
     # to track how many cores are not used by pinned VMs in each NUMA node
     available_numanode_cores = {}
     # to track how much general memory is allocated in each NUMA node
