@@ -13552,6 +13552,9 @@ class TestRackController(MAASTransactionServerTestCase):
         power_control = factory.make_name("power_control")
         port = random.randint(0, 65535)
         given_protocol = factory.make_name("protocol")
+        token_name = factory.make_name("token_name")
+        token_secret = factory.make_name("token_secret")
+        verify_ssl = factory.pick_bool()
 
         rackcontroller.add_chassis(
             user,
@@ -13565,6 +13568,9 @@ class TestRackController(MAASTransactionServerTestCase):
             power_control,
             port,
             given_protocol,
+            token_name,
+            token_secret,
+            verify_ssl,
         )
 
         self.expectThat(
@@ -13582,6 +13588,9 @@ class TestRackController(MAASTransactionServerTestCase):
                 power_control=power_control,
                 port=port,
                 protocol=given_protocol,
+                token_name=token_name,
+                token_secret=token_secret,
+                verify_ssl=verify_ssl,
             ),
         )
 
@@ -13605,6 +13614,9 @@ class TestRackController(MAASTransactionServerTestCase):
         power_control = factory.make_name("power_control")
         port = random.randint(0, 65535)
         given_protocol = factory.make_name("protocol")
+        token_name = factory.make_name("token_name")
+        token_secret = factory.make_name("token_secret")
+        verify_ssl = factory.pick_bool()
 
         register_event = self.patch(rackcontroller, "_register_request_event")
         rackcontroller.add_chassis(
@@ -13619,6 +13631,9 @@ class TestRackController(MAASTransactionServerTestCase):
             power_control,
             port,
             given_protocol,
+            token_name,
+            token_secret,
+            verify_ssl,
         )
         post_commit_hooks.reset()  # Ignore these for now.
         self.assertThat(
