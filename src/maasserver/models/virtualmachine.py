@@ -263,6 +263,18 @@ class VMHostNetworkInterface:
 
 
 @dataclass
+class VMHostVirtualMachineResources:
+    """Resource usage for a virtual machine on a VM host."""
+
+    id: int
+    system_id: Optional[str]
+    memory: int
+    hugepages_backed: bool
+    unpinned_cores: int
+    pinned_cores: List[int]
+
+
+@dataclass
 class VMHostResources:
     """Resources for a VM host."""
 
@@ -272,6 +284,7 @@ class VMHostResources:
     )
     vm_count: VMHostCount = field(default_factory=VMHostCount)
     interfaces: List[VMHostResource] = field(default_factory=list)
+    vms: List[VMHostVirtualMachineResources] = field(default_factory=list)
     numa: List[NUMAPinningNodeResources] = field(default_factory=list)
 
 
@@ -312,11 +325,12 @@ def _update_detailed_resource_counters(pod, resources):
         hugepages = numa_node.hugepages_set.first()
         numanode_hugepages[numa_idx] = hugepages
 
+    # only consider VMs in the tracked projects
     vms = list(
         VirtualMachine.objects.annotate(
             system_id=Coalesce("machine__system_id", None)
         )
-        .filter(bmc=pod)
+        .filter(bmc=pod, project=pod.tracked_project)
         .all()
     )
 
@@ -338,6 +352,16 @@ def _update_detailed_resource_counters(pod, resources):
         vm_interfaces[vm_interface.vm_id].append(vm_interface)
 
     for vm in vms:
+        resources.vms.append(
+            VMHostVirtualMachineResources(
+                id=vm.id,
+                system_id=vm.system_id,
+                memory=vm.memory * MB,
+                hugepages_backed=vm.hugepages_backed,
+                unpinned_cores=vm.unpinned_cores,
+                pinned_cores=vm.pinned_cores,
+            )
+        )
         _update_numanode_resources_usage(
             vm,
             vm_interfaces[vm.id],

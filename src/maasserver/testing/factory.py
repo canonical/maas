@@ -3130,7 +3130,7 @@ class Factory(maastesting.factory.Factory):
         self,
         identifier=None,
         bmc=None,
-        project=None,
+        project="",
         machine=None,
         pinned_cores=None,
         unpinned_cores=0,
@@ -3139,8 +3139,6 @@ class Factory(maastesting.factory.Factory):
     ):
         if identifier is None:
             identifier = factory.make_string(20)
-        if project is None:
-            project = factory.make_string(prefix="project-")
         if bmc is None:
             bmc = factory.make_BMC(
                 power_type="lxd",

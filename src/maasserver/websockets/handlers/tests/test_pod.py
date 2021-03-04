@@ -162,17 +162,23 @@ class TestPodHandler(MAASTransactionServerTestCase):
         numa_node0.save()
         factory.make_NUMANode(node=node, cores=[1, 4], memory=1024)
         factory.make_NUMANode(node=node, cores=[2, 5], memory=2048)
+        project = factory.make_string()
         pod = self.make_pod_with_hints(
-            pod_type="lxd", host=node, ip_address=ip
+            pod_type="lxd",
+            parameters={"project": project},
+            host=node,
+            ip_address=ip,
         )
-        factory.make_VirtualMachine(
+        vm0 = factory.make_VirtualMachine(
+            project=project,
             memory=1024,
             pinned_cores=[0],
             hugepages_backed=False,
             bmc=pod,
             machine=factory.make_Node(system_id="vm0"),
         )
-        factory.make_VirtualMachine(
+        vm1 = factory.make_VirtualMachine(
+            project=project,
             memory=1024,
             pinned_cores=[2, 5],
             hugepages_backed=False,
@@ -230,9 +236,19 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 ],
             },
         ]
-        expected_resources_details = {
-            "cores": {"allocated_other": 3, "allocated_tracked": 0, "free": 3},
-            "interfaces": [
+        result = handler.get({"id": pod.id})
+        self.assertThat(result["host"], Equals(node.system_id))
+        self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
+        self.assertThat(result["boot_vlans"], Equals([subnet.vlan_id]))
+        self.assertEqual(result["numa_pinning"], expected_numa_details)
+        resources = result["resources"]
+        self.assertEqual(
+            resources["cores"],
+            {"allocated_other": 0, "allocated_tracked": 3, "free": 3},
+        )
+        self.assertEqual(
+            resources["interfaces"],
+            [
                 {
                     "id": node.boot_interface.id,
                     "name": node.boot_interface.name,
@@ -243,10 +259,13 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     },
                 }
             ],
-            "memory": {
+        )
+        self.assertEqual(
+            resources["memory"],
+            {
                 "general": {
-                    "allocated_other": 2147483648,
-                    "allocated_tracked": 0,
+                    "allocated_other": 0,
+                    "allocated_tracked": 2147483648,
                     "free": 5368709120,
                 },
                 "hugepages": {
@@ -255,16 +274,30 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     "free": 0,
                 },
             },
-            "numa": expected_numa_details,
-            "vm_count": {"other": 2, "tracked": 0},
-        }
-
-        result = handler.get({"id": pod.id})
-        self.assertThat(result["host"], Equals(node.system_id))
-        self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
-        self.assertThat(result["boot_vlans"], Equals([subnet.vlan_id]))
-        self.assertEqual(result["numa_pinning"], expected_numa_details)
-        self.assertEqual(result["resources"], expected_resources_details)
+        )
+        self.assertEqual(resources["numa"], expected_numa_details)
+        self.assertEqual(resources["vm_count"], {"other": 0, "tracked": 2})
+        self.assertCountEqual(
+            resources["vms"],
+            [
+                {
+                    "id": vm0.id,
+                    "system_id": "vm0",
+                    "memory": 1024 * MB,
+                    "hugepages_backed": False,
+                    "pinned_cores": [0],
+                    "unpinned_cores": 0,
+                },
+                {
+                    "id": vm1.id,
+                    "system_id": "vm1",
+                    "memory": 1024 * MB,
+                    "hugepages_backed": False,
+                    "pinned_cores": [2, 5],
+                    "unpinned_cores": 0,
+                },
+            ],
+        )
 
     def test_get_with_pod_host_no_storage_pools(self):
         admin = factory.make_admin()
@@ -560,11 +593,17 @@ class TestPodHandler(MAASTransactionServerTestCase):
         numa_node0.save()
         factory.make_NUMANode(node=node, cores=[1, 4], memory=1024)
         factory.make_NUMANode(node=node, cores=[2, 5], memory=2048)
+        project = factory.make_string()
         pod = self.make_pod_with_hints(
-            pod_type="lxd", host=node, ip_address=ip
+            pod_type="lxd",
+            parameters={"project": project},
+            host=node,
+            ip_address=ip,
         )
+        factory.make_VirtualMachine(bmc=pod, project=project)
         result = handler.full_dehydrate(pod, for_list=True)
         self.assertEqual(result["resources"]["numa"], [])
+        self.assertEqual(result["resources"]["vms"], [])
 
     @wait_for_reactor
     @inlineCallbacks

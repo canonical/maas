@@ -14,6 +14,7 @@ from maasserver.models.virtualmachine import (
     VirtualMachineInterface,
     VMHostNetworkInterface,
     VMHostResource,
+    VMHostVirtualMachineResources,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -96,12 +97,15 @@ class TestGetVMHostResources(MAASServerTestCase):
         self.assertEqual(resources.memory.hugepages.free, 0)
         self.assertEqual(resources.memory.hugepages.allocated, 0)
         self.assertEqual(resources.numa, [])
+        self.assertEqual(resources.vms, [])
 
     def test_get_resources_no_detailed(self):
         pod = factory.make_Pod(pod_type="lxd", host=factory.make_Node())
+        factory.make_VirtualMachine(bmc=pod)
         resources = get_vm_host_resources(pod, detailed=False)
-        # NUMA info is not reported when not in detailed mode
+        # NUMA info and VMs list are not included when not in detailed mode
         self.assertEqual(resources.numa, [])
+        self.assertEqual(resources.vms, [])
 
     def test_get_resources_global_resources(self):
         node = factory.make_Node()
@@ -159,6 +163,62 @@ class TestGetVMHostResources(MAASServerTestCase):
             resources.memory.hugepages.allocated_tracked, 1024 * MB
         )
         self.assertEqual(resources.memory.hugepages.allocated_other, 0)
+
+    def test_get_resources_vms(self):
+        node = factory.make_Node()
+        numa_node0 = node.default_numanode
+        numa_node0.cores = [0, 1, 2, 3]
+        numa_node0.memory = 4096
+        numa_node0.save()
+        project = factory.make_string()
+        pod = factory.make_Pod(
+            pod_type="lxd", parameters={"project": project}, host=node
+        )
+        node = factory.make_Node(bmc=pod)
+        vm0 = factory.make_VirtualMachine(
+            machine=node,
+            memory=1024,
+            pinned_cores=[0, 1],
+            hugepages_backed=False,
+            bmc=pod,
+            project=project,
+        )
+        vm1 = factory.make_VirtualMachine(
+            memory=1024,
+            unpinned_cores=2,
+            hugepages_backed=True,
+            bmc=pod,
+            project=project,
+        )
+        # another VM, in a different project
+        factory.make_VirtualMachine(
+            memory=1024,
+            unpinned_cores=2,
+            bmc=pod,
+            project=factory.make_string(),
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertCountEqual(
+            resources.vms,
+            [
+                VMHostVirtualMachineResources(
+                    id=vm0.id,
+                    system_id=node.system_id,
+                    pinned_cores=[0, 1],
+                    unpinned_cores=0,
+                    memory=1024 * MB,
+                    hugepages_backed=False,
+                ),
+                VMHostVirtualMachineResources(
+                    id=vm1.id,
+                    system_id=None,
+                    pinned_cores=[],
+                    unpinned_cores=2,
+                    memory=1024 * MB,
+                    hugepages_backed=True,
+                ),
+            ],
+        )
 
     def test_get_resources_global_resources_pinned_cores_overlap(self):
         node = factory.make_Node()
