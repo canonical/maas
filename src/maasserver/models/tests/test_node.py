@@ -181,12 +181,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
 )
-from metadataserver.models import (
-    NodeKey,
-    NodeUserData,
-    ScriptResult,
-    ScriptSet,
-)
+from metadataserver.models import NodeUserData, ScriptResult, ScriptSet
 from provisioningserver.drivers.pod import Capabilities, DiscoveredPodHints
 from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
@@ -213,7 +208,6 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum, map_enum_reverse
 from provisioningserver.utils.env import get_maas_id
-from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.network import inet_ntop
 from provisioningserver.utils.testing import MAASIDFixture
 
@@ -14084,104 +14078,6 @@ class TestRegionController(MAASServerTestCase):
         region = factory.make_RegionController()
         region.delete()
         self.assertIsNone(reload_object(region))
-
-
-class TestRegionControllerRefresh(MAASTransactionServerTestCase):
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_only_runs_on_running_region(self):
-        region = yield deferToDatabase(factory.make_RegionController)
-
-        with ExpectedException(NotImplementedError):
-            yield region.refresh()
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_acquires_and_releases_lock(self):
-        region = yield deferToDatabase(factory.make_RegionController)
-        mock_lock = self.patch_autospec(node_module, "NamedLock", NamedLock)
-        self.patch_autospec(node_module, "refresh")
-        self.patch_autospec(
-            node_module, "get_maas_id"
-        ).return_value = region.system_id
-
-        yield region.refresh()
-        mock_lock.assert_called_once_with("refresh")
-        mock_lock("refresh").__enter__.assert_called_once_with()
-        mock_lock("refresh").__exit__.assert_called_once_with(None, None, None)
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_lock_released_on_error(self):
-        exception = factory.make_exception()
-        self.patch_autospec(node_module, "refresh").side_effect = exception
-        region = yield deferToDatabase(factory.make_RegionController)
-        self.patch_autospec(
-            node_module, "get_maas_id"
-        ).return_value = region.system_id
-
-        with ExpectedException(type(exception)):
-            yield region.refresh()
-        lock = NamedLock("refresh")
-        self.assertFalse(lock.is_locked())
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_does_nothing_when_locked(self):
-        region = yield deferToDatabase(factory.make_RegionController)
-        self.patch(node_module, "get_maas_id").return_value = region.system_id
-        mock_deferToDatabase = self.patch(node_module, "deferToDatabase")
-        with NamedLock("refresh"):
-            yield region.refresh()
-        self.assertThat(mock_deferToDatabase, MockNotCalled())
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_logs_user_request(self):
-        region = yield deferToDatabase(factory.make_RegionController)
-        self.patch_autospec(
-            node_module, "get_maas_id"
-        ).return_value = region.system_id
-        self.patch_autospec(node_module, "refresh")
-        register_event = self.patch(region, "_register_request_event")
-
-        yield region.refresh()
-        self.assertThat(
-            register_event,
-            MockCalledOnceWith(
-                region.owner,
-                EVENT_TYPES.REQUEST_CONTROLLER_REFRESH,
-                action="starting refresh",
-            ),
-        )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_runs_refresh(self):
-        def get_token_for_controller(region):
-            token = NodeKey.objects.get_token_for_node(region)
-            token.consumer.key  # Fetch this now while we're in the database.
-            return token
-
-        region = yield deferToDatabase(factory.make_RegionController)
-        self.patch(node_module, "get_maas_id").return_value = region.system_id
-        mock_refresh = self.patch(node_module, "refresh")
-        self.patch(node_module, "get_sys_info").return_value = {
-            "hostname": region.hostname,
-            "architecture": region.architecture,
-            "osystem": "",
-            "distro_series": "",
-            "interfaces": {},
-        }
-        yield region.refresh()
-        token = yield deferToDatabase(get_token_for_controller, region)
-
-        self.expectThat(
-            mock_refresh,
-            MockCalledOnceWith(
-                region.system_id, token.consumer.key, token.key, token.secret
-            ),
-        )
 
 
 class TestControllerGetDiscoveryState(MAASServerTestCase):

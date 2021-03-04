@@ -71,7 +71,6 @@ from twisted.internet.defer import (
     succeed,
 )
 from twisted.internet.error import ConnectionClosed, ConnectionDone
-from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
@@ -194,7 +193,6 @@ from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.refresh import refresh
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
@@ -213,7 +211,6 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.utils import flatten, sorttop, znums
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.env import get_maas_id, set_maas_id
-from provisioningserver.utils.fs import NamedLock
 from provisioningserver.utils.ipaddr import get_mac_addresses
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
@@ -224,7 +221,6 @@ from provisioningserver.utils.twisted import (
     synchronous,
     undefined,
 )
-from provisioningserver.utils.version import get_running_version
 
 log = LegacyLogger()
 maaslog = get_maas_logger("node")
@@ -7304,33 +7300,6 @@ class RegionController(Controller):
             self.save()
         else:
             super().delete()
-
-    @inlineCallbacks
-    def refresh(self):
-        """Refresh the region controller."""
-        # XXX ltrager 2016-05-25 - MAAS doesn't have an RPC method between
-        # region controllers. If this method refreshes a foreign region
-        # controller the foreign region controller will contain the running
-        # region's hardware and networking information.
-        if self.system_id != get_maas_id():
-            raise NotImplementedError(
-                "Can only refresh the running region controller"
-            )
-
-        try:
-            with NamedLock("refresh"):
-                maas_version = yield deferToThread(get_running_version)
-                credentials = yield self.start_refresh(str(maas_version))
-                yield deferToThread(
-                    refresh,
-                    self.system_id,
-                    credentials["consumer_key"],
-                    credentials["token_key"],
-                    credentials["token_secret"],
-                )
-        except NamedLock.NotAvailable:
-            # Refresh already running.
-            pass
 
 
 class Device(Node):
