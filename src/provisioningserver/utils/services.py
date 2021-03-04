@@ -29,6 +29,7 @@ from zope.interface.verify import verifyObject
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.refresh import refresh
 from provisioningserver.utils.beaconing import (
     age_out_uuid_queue,
     BEACON_IPV4_MULTICAST,
@@ -1043,6 +1044,15 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def getRefreshDetails(self, interfaces, hints=None):
+        """Get the details for posting commissioning script output.
+
+        Returns a 3-tuple of (maas_url, system_id, credentials).
+
+        This MUST be overridden in subclasses.
+        """
+
+    @abstractmethod
     def recordInterfaces(self, interfaces, hints=None):
         """Record the interfaces information.
 
@@ -1134,6 +1144,15 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 )
                 yield pause(3.0)
                 hints = self.beaconing_protocol.getJSONTopologyHints()
+            maas_url, system_id, credentials = yield self.getRefreshDetails()
+            yield deferToThread(
+                refresh,
+                system_id,
+                credentials["consumer_key"],
+                credentials["token_key"],
+                credentials["token_secret"],
+                maas_url,
+            )
             yield maybeDeferred(self.recordInterfaces, interfaces, hints)
             # Note: _interfacesRecorded() will reconfigure discovery after
             # recording the interfaces, so there is no need to call

@@ -67,7 +67,14 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
     """Concrete subclass for testing."""
 
     def __init__(
-        self, enable_monitoring=False, enable_beaconing=False, *args, **kwargs
+        self,
+        enable_monitoring=False,
+        enable_beaconing=False,
+        system_id=None,
+        maas_url="http://localhost:5240/MAAS",
+        credentials=None,
+        *args,
+        **kwargs
     ):
         super().__init__(
             *args,
@@ -78,9 +85,24 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
         self.iterations = DeferredQueue()
         self.interfaces = []
         self.update_interface__calls = 0
+        if system_id is None:
+            system_id = factory.make_string()
+        self.system_id = system_id
+        self.maas_url = maas_url
+        if credentials is None:
+            credentials = {
+                "consumer_key": factory.make_string(),
+                "token_key": factory.make_string(),
+                "token_secret": factory.make_string(),
+            }
+        self.credentials = credentials
 
     def getDiscoveryState(self):
         return {}
+
+    def getRefreshDetails(self):
+        """Record the interfaces information."""
+        return succeed((self.maas_url, self.system_id, self.credentials))
 
     def updateInterfaces(self):
         self.update_interface__calls += 1
@@ -107,9 +129,15 @@ class TestNetworksMonitoringService(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.patch(services, "get_all_interfaces_definition")
+        self.mock_refresh = self.patch(services, "refresh")
 
     def makeService(self, *args, **kwargs):
-        service = StubNetworksMonitoringService(*args, **kwargs)
+        self.update_interfaces_deferred = Deferred()
+        service = StubNetworksMonitoringService(
+            update_interfaces_deferred=self.update_interfaces_deferred,
+            *args,
+            **kwargs
+        )
         self.addCleanup(service._releaseSoleResponsibility)
         return service
 
@@ -170,10 +198,49 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_starting_service_triggers_interface_update(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
         get_interfaces.side_effect = [sentinel.config]
-        clock = Clock()
-        service = self.makeService(clock=clock)
+        service = self.makeService()
         yield service.startService()
-        self.assertThat(service.update_interface__calls, Equals(1))
+        yield self.update_interfaces_deferred
+        self.assertEqual(1, service.update_interface__calls)
+        yield service.stopService()
+
+    @inlineCallbacks
+    def test_runs_refresh(self):
+        def refresh(
+            system_id, consumer_key, token_key, token_secret, maas_url=None
+        ):
+            refresh_args.update(
+                {
+                    "system_id": system_id,
+                    "consumer_key": consumer_key,
+                    "token_key": token_key,
+                    "token_secret": token_secret,
+                    "maas_url": maas_url,
+                }
+            )
+
+        service = self.makeService()
+        service.maas_url = "http://my.example.com/MAAS"
+        service.system_id = "my-system"
+        service.credentials = {
+            "consumer_key": "my-consumer",
+            "token_key": "my-key",
+            "token_secret": "my-secret",
+        }
+        refresh_args = {}
+        self.mock_refresh.side_effect = refresh
+        yield service.startService()
+        yield self.update_interfaces_deferred
+        self.assertEqual(
+            {
+                "system_id": "my-system",
+                "consumer_key": "my-consumer",
+                "token_key": "my-key",
+                "token_secret": "my-secret",
+                "maas_url": "http://my.example.com/MAAS",
+            },
+            refresh_args,
+        )
         yield service.stopService()
 
     @inlineCallbacks

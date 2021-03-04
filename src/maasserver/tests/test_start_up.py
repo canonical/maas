@@ -7,9 +7,8 @@
 import random
 from unittest.mock import call
 
-from testtools.matchers import HasLength, Is, IsInstance, Not
+from testtools.matchers import HasLength, Is, Not
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred
 
 from maasserver import eventloop, locks, start_up
 from maasserver.models.config import Config
@@ -24,12 +23,10 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import post_commit_hooks, reload_object
 from maastesting.matchers import (
-    DocTestMatches,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
 )
-from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils import ipaddr
 from provisioningserver.utils.env import get_maas_id
@@ -154,14 +151,13 @@ class TestInnerStartUp(MAASServerTestCase):
             ).exists()
         )
 
-    def test_calls_refresh_and_generates_certificate_if_master(self):
+    def test_generates_certificate_if_master(self):
         with post_commit_hooks:
             start_up.inner_start_up(master=True)
         region = RegionController.objects.first()
         self.assertThat(
             start_up.post_commit_do,
             MockCallsMatch(
-                call(reactor.callLater, 0, start_up.refreshRegion, region),
                 call(
                     reactor.callLater,
                     0,
@@ -212,30 +208,4 @@ class TestInnerStartUp(MAASServerTestCase):
                 ident__startswith="deprecation_"
             ).count(),
             0,
-        )
-
-
-class TestFunctions(MAASServerTestCase):
-    """Tests for other functions in the `start_up` module."""
-
-    def test_regionRefresh_refreshes_a_region(self):
-        region = factory.make_RegionController()
-        self.patch(region, "refresh").return_value = Deferred()
-        d = start_up.refreshRegion(region)
-        self.assertThat(d, IsInstance(Deferred))
-        exception = factory.make_exception_type()
-        with TwistedLoggerFixture() as logger:
-            d.errback(exception("boom"))
-            # The exception is suppressed ...
-            self.assertThat(extract_result(d), Is(None))
-        # ... but it has been logged.
-        self.assertThat(
-            logger.output,
-            DocTestMatches(
-                """
-                Failure when refreshing region.
-                Traceback (most recent call last):...
-                Failure: maastesting.factory.TestException#...: boom
-                """
-            ),
         )

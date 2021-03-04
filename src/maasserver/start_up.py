@@ -113,7 +113,7 @@ def inner_start_up(master=False):
     # be restricted to masters only. This also ensures that the MAAS ID is set
     # on the filesystem; it will be done in a post-commit hook and will thus
     # happen before `locks.startup` is released.
-    region = RegionController.objects.get_or_create_running_controller()
+    RegionController.objects.get_or_create_running_controller()
     # Ensure that uuid is created after creating
     RegionController.objects.get_or_create_uuid()
 
@@ -148,15 +148,5 @@ def inner_start_up(master=False):
         # Update deprecation notifications if needed
         sync_deprecation_notifications()
 
-        # Refresh soon after this transaction is in.
-        post_commit_do(reactor.callLater, 0, refreshRegion, region)
-
         # Create a certificate for the region.
         post_commit_do(reactor.callLater, 0, generate_certificate_if_needed)
-
-
-def refreshRegion(region):
-    """Refresh the region controller, logging errors."""
-    return region.refresh().addErrback(
-        log.err, "Failure when refreshing region."
-    )

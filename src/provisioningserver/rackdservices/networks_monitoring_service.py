@@ -5,10 +5,8 @@
 
 
 from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.internet.threads import deferToThread
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.refresh import refresh
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetDiscoveryState,
@@ -47,24 +45,26 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
             return d
 
     @inlineCallbacks
-    def recordInterfaces(self, interfaces, hints=None):
-        """Record the interfaces information to the region."""
+    def getRefreshDetails(self):
         client = yield self._getRPCClient()
         if client is None:
+            returnValue((None, None, None))
             return
         credentials = yield client(
             RequestRackRefresh,
             system_id=client.localIdent,
             maas_version=str(self.maas_version),
         )
-        yield deferToThread(
-            refresh,
-            client.localIdent,
-            credentials["consumer_key"],
-            credentials["token_key"],
-            credentials["token_secret"],
-            self.clientService.maas_url,
+        returnValue(
+            (self.clientService.maas_url, client.localIdent, credentials)
         )
+
+    @inlineCallbacks
+    def recordInterfaces(self, interfaces, hints=None):
+        """Record the interfaces information to the region."""
+        client = yield self._getRPCClient()
+        if client is None:
+            return
 
         yield client(
             UpdateInterfaces,

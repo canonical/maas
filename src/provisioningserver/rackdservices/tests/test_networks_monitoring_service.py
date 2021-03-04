@@ -19,7 +19,6 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import services
-from provisioningserver.rackdservices import networks_monitoring_service
 from provisioningserver.rackdservices.networks_monitoring_service import (
     RackNetworksMonitoringService,
 )
@@ -37,7 +36,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         self.patch(
             clusterservice, "get_all_interfaces_definition"
         ).return_value = {}
-        self.mock_refresh = self.patch(networks_monitoring_service, "refresh")
+        self.mock_refresh = self.patch(services_module, "refresh")
         self.metadata_creds = {
             "consumer_key": factory.make_string(),
             "token_key": factory.make_string(),
@@ -53,6 +52,43 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         self.addCleanup((yield connecting))
         protocol.RequestRackRefresh.return_value = self.metadata_creds
         returnValue(protocol)
+
+    @inlineCallbacks
+    def test_get_refresh_details_not_running(self):
+        yield self.create_fake_rpc_service()
+        rpc_service = services.getServiceNamed("rpc")
+        service = RackNetworksMonitoringService(
+            rpc_service,
+            Clock(),
+            enable_monitoring=False,
+            enable_beaconing=False,
+        )
+        service.running = 0
+        details = yield service.getRefreshDetails()
+        self.assertEqual((None, None, None), details)
+
+    @inlineCallbacks
+    def test_get_refresh_details_running(self):
+        yield self.create_fake_rpc_service()
+        rpc_service = services.getServiceNamed("rpc")
+        service = RackNetworksMonitoringService(
+            rpc_service,
+            Clock(),
+            enable_monitoring=False,
+            enable_beaconing=False,
+        )
+        service.running = 1
+        self.metadata_creds.update(
+            {
+                "consumer_key": "my-key",
+                "token_key": "my-token",
+                "token_secret": "my-secret",
+            }
+        )
+        details = yield service.getRefreshDetails()
+        self.assertEqual(
+            ("http://localhost/MAAS", "", self.metadata_creds), details
+        )
 
     @inlineCallbacks
     def test_reports_interfaces_to_region(self):
