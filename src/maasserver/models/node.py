@@ -3024,26 +3024,16 @@ class Node(CleanSave, TimestampedModel):
             raise UnknownPowerType("Node power type is unconfigured")
         return self.bmc.power_type
 
-    def get_effective_kernel_options(self, default_kernel_opts=undefined):
-        """Determine any special kernel parameters for this node.
-
-        :return: (tag, kernel_options)
-            tag is a Tag object or None. If None, the kernel_options came from
-            the global setting.
-            kernel_options, a string indicating extra kernel_options that
-            should be used when booting this node. May be None if no tags match
-            and no global setting has been configured.
-        """
-        # First, see if there are any tags associated with this node that has a
-        # custom kernel parameter
-        tags = self.tags.filter(kernel_opts__isnull=False)
-        tags = tags.order_by("name")
-        for tag in tags:
-            if tag.kernel_opts != "":
-                return tag, tag.kernel_opts
-        if default_kernel_opts is undefined:
-            default_kernel_opts = Config.objects.get_config("kernel_opts")
-        return None, default_kernel_opts
+    def get_effective_kernel_options(self, default_kernel_opts=""):
+        """Return a string with kernel commandline."""
+        options = (
+            self.tags.exclude(kernel_opts="")
+            .order_by("name")
+            .values_list("kernel_opts", flat=True)
+        )
+        if options:
+            return " ".join(options)
+        return default_kernel_opts or ""
 
     def get_osystem(self, default=undefined):
         """Return the operating system to install that node."""

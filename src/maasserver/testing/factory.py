@@ -1930,7 +1930,7 @@ class Factory(maastesting.factory.Factory):
         name=None,
         definition=None,
         comment="",
-        kernel_opts=None,
+        kernel_opts="",
         created=None,
         updated=None,
         populate=True,

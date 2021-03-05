@@ -420,9 +420,9 @@ class TagsHandler(OperationsHandler):
         @param (string) "kernel_opts" [required=false] Nodes associated
         with this tag will add this string to their kernel options
         when booting. The value overrides the global ``kernel_opts``
-        setting. If more than one tag is associated with a node, the
-        one with the lower alphabetical name will be picked. For example,
-        ``01-my-tag`` will be chosen instead of ``99-tag-name``.
+        setting. If more than one tag is associated with a node, command
+        line will be concatenated from all associated tags, in alphabetic
+        tag name order.
         @param-example "kernel_opts"
             nouveau.noaccel=1
 

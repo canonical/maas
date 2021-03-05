@@ -71,7 +71,7 @@ class Tag(CleanSave, TimestampedModel):
     )
     definition = TextField(blank=True)
     comment = TextField(blank=True)
-    kernel_opts = TextField(blank=True, null=True)
+    kernel_opts = TextField(blank=True)
 
     objects = TagManager()
 

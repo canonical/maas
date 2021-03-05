@@ -28,7 +28,7 @@ class TagTest(MAASServerTestCase):
         self.assertEqual("tag-name", tag.name)
         self.assertEqual("//node[@id=display]", tag.definition)
         self.assertEqual("", tag.comment)
-        self.assertIs(None, tag.kernel_opts)
+        self.assertEqual(tag.kernel_opts, "")
         self.assertIsNot(None, tag.updated)
         self.assertIsNot(None, tag.created)
 

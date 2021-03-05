@@ -515,9 +515,7 @@ def get_config(
             machine, configs, purpose
         )
 
-        # We don't care if the kernel opts is from the global setting or a tag,
-        # just get the options
-        _, effective_kernel_opts = machine.get_effective_kernel_options(
+        extra_kernel_opts = machine.get_effective_kernel_options(
             default_kernel_opts=configs["kernel_opts"]
         )
 
@@ -527,21 +525,9 @@ def get_config(
             driver = get_third_party_driver(machine, series=series)
             driver_kernel_opts = driver.get("kernel_opts", "")
 
-            combined_opts = (
-                "%s %s"
-                % (
-                    ""
-                    if effective_kernel_opts is None
-                    else effective_kernel_opts,
-                    driver_kernel_opts,
-                )
-            ).strip()
-            if len(combined_opts):
-                extra_kernel_opts = combined_opts
-            else:
-                extra_kernel_opts = None
-        else:
-            extra_kernel_opts = effective_kernel_opts
+            extra_kernel_opts += f" {driver_kernel_opts}"
+
+        extra_kernel_opts.strip()
 
         kparams = BootResource.objects.get_kparams_for_node(
             machine,

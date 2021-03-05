@@ -4,7 +4,7 @@
       "name": "virtual",
       "definition": "",
       "comment": "",
-      "kernel_opts": null,
+      "kernel_opts": "",
       "resource_uri": "/MAAS/api/2.0/tags/virtual/"
     }
   ],
@@ -12,7 +12,7 @@
     "name": "virtual",
     "definition": "",
     "comment": "",
-    "kernel_opts": null,
+    "kernel_opts": "",
     "resource_uri": "/MAAS/api/2.0/tags/virtual/"
   },
   "get-devices-by-tag": [

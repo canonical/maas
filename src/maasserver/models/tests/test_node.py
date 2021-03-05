@@ -1818,24 +1818,16 @@ class TestNode(MAASServerTestCase):
 
     def test_get_effective_kernel_options_with_nothing_set(self):
         node = factory.make_Node()
-        self.assertEqual((None, None), node.get_effective_kernel_options())
-
-    def test_get_effective_kernel_options_sees_global_config(self):
-        node = factory.make_Node()
-        kernel_opts = factory.make_string()
-        Config.objects.set_config("kernel_opts", kernel_opts)
-        self.assertEqual(
-            (None, kernel_opts), node.get_effective_kernel_options()
-        )
+        self.assertEqual(node.get_effective_kernel_options(), "")
 
     def test_get_effective_kernel_options_not_confused_by_None_opts(self):
         node = factory.make_Node()
         tag = factory.make_Tag()
         node.tags.add(tag)
         kernel_opts = factory.make_string()
-        Config.objects.set_config("kernel_opts", kernel_opts)
         self.assertEqual(
-            (None, kernel_opts), node.get_effective_kernel_options()
+            node.get_effective_kernel_options(default_kernel_opts=kernel_opts),
+            kernel_opts,
         )
 
     def test_get_effective_kernel_options_not_confused_by_empty_str_opts(self):
@@ -1843,69 +1835,44 @@ class TestNode(MAASServerTestCase):
         tag = factory.make_Tag(kernel_opts="")
         node.tags.add(tag)
         kernel_opts = factory.make_string()
-        Config.objects.set_config("kernel_opts", kernel_opts)
         self.assertEqual(
-            (None, kernel_opts), node.get_effective_kernel_options()
+            node.get_effective_kernel_options(default_kernel_opts=kernel_opts),
+            kernel_opts,
         )
 
     def test_get_effective_kernel_options_multiple_tags_with_opts(self):
-        # In this scenario:
-        #     global   kernel_opts='fish-n-chips'
-        #     tag_a    kernel_opts=null
-        #     tag_b    kernel_opts=''
-        #     tag_c    kernel_opts='bacon-n-eggs'
-        # we require that 'bacon-n-eggs' is chosen as it is the first
-        # tag with a valid kernel option.
-        Config.objects.set_config("kernel_opts", "fish-n-chips")
         node = factory.make_Node()
         node.tags.add(factory.make_Tag("tag_a"))
         node.tags.add(factory.make_Tag("tag_b", kernel_opts=""))
         tag_c = factory.make_Tag("tag_c", kernel_opts="bacon-n-eggs")
+        tag_d = factory.make_Tag("tag_d", kernel_opts="foo-bar")
         node.tags.add(tag_c)
-
+        node.tags.add(tag_d)
         self.assertEqual(
-            (tag_c, "bacon-n-eggs"), node.get_effective_kernel_options()
+            node.get_effective_kernel_options(), "bacon-n-eggs foo-bar"
         )
 
     def test_get_effective_kernel_options_ignores_unassociated_tag_value(self):
         node = factory.make_Node()
         factory.make_Tag(kernel_opts=factory.make_string())
-        self.assertEqual((None, None), node.get_effective_kernel_options())
+        self.assertEqual(node.get_effective_kernel_options(), "")
 
     def test_get_effective_kernel_options_uses_tag_value(self):
         node = factory.make_Node()
         tag = factory.make_Tag(kernel_opts=factory.make_string())
         node.tags.add(tag)
-        self.assertEqual(
-            (tag, tag.kernel_opts), node.get_effective_kernel_options()
-        )
+        self.assertEqual(node.get_effective_kernel_options(), tag.kernel_opts)
 
-    def test_get_effective_kernel_options_tag_overrides_global(self):
+    def test_get_effective_kernel_options_tag_overrides_default(self):
         node = factory.make_Node()
-        global_opts = factory.make_string()
-        Config.objects.set_config("kernel_opts", global_opts)
+        default_opts = factory.make_string()
         tag = factory.make_Tag(kernel_opts=factory.make_string())
         node.tags.add(tag)
         self.assertEqual(
-            (tag, tag.kernel_opts), node.get_effective_kernel_options()
-        )
-
-    def test_get_effective_kernel_options_uses_first_real_tag_value(self):
-        node = factory.make_Node()
-        # Intentionally create them in reverse order, so the default 'db' order
-        # doesn't work, and we have asserted that we sort them.
-        tag3 = factory.make_Tag(
-            factory.make_name("tag-03-"), kernel_opts=factory.make_string()
-        )
-        tag2 = factory.make_Tag(
-            factory.make_name("tag-02-"), kernel_opts=factory.make_string()
-        )
-        tag1 = factory.make_Tag(factory.make_name("tag-01-"), kernel_opts=None)
-        self.assertTrue(tag1.name < tag2.name)
-        self.assertTrue(tag2.name < tag3.name)
-        node.tags.add(tag1, tag2, tag3)
-        self.assertEqual(
-            (tag2, tag2.kernel_opts), node.get_effective_kernel_options()
+            node.get_effective_kernel_options(
+                default_kernel_opts=default_opts
+            ),
+            tag.kernel_opts,
         )
 
     def test_acquire(self):
