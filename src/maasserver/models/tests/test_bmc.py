@@ -2351,6 +2351,25 @@ class TestPod(MAASServerTestCase):
         )
         self.assertEqual(new_path_bd.vmdisk.size, dnew_path_bd.size)
 
+    def test_sync_updates_existing_machine_cpu_memory(self):
+        pod = factory.make_Pod(pod_type="virsh")
+        machine = factory.make_Node(interface=True, cpu_count=2, memory=1024)
+        discovered_interface = self.make_discovered_interface(
+            mac_address=machine.interface_set.first().mac_address,
+        )
+        discovered_machine = self.make_discovered_machine(
+            interfaces=[discovered_interface]
+        )
+        discovered_machine.cores = 3
+        discovered_machine.memory = 4096
+        discovered_pod = self.make_discovered_pod(
+            machines=[discovered_machine]
+        )
+        pod.sync(discovered_pod, factory.make_User())
+        machine = reload_object(machine)
+        self.assertEqual(machine.cpu_count, 3)
+        self.assertEqual(machine.memory, 4096)
+
     def test_sync_updates_existing_machine_interfaces_for_dynamic(self):
         pod = factory.make_Pod()
         machine = factory.make_Node(dynamic=True)

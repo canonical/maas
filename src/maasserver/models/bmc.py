@@ -1078,6 +1078,8 @@ class Pod(BMC):
         existing_machine.instance_power_parameters = (
             discovered_machine.power_parameters
         )
+        existing_machine.cpu_count = discovered_machine.cores
+        existing_machine.memory = discovered_machine.memory
 
         self._sync_vm(discovered_machine, existing_machine)
 
@@ -1093,9 +1095,7 @@ class Pod(BMC):
         # We are skipping hostname syncing so that any changes to the
         # hostname in MAAS are not overwritten.
         existing_machine.architecture = discovered_machine.architecture
-        existing_machine.cpu_count = discovered_machine.cores
         existing_machine.cpu_speed = discovered_machine.cpu_speed
-        existing_machine.memory = discovered_machine.memory
         existing_machine.save()
 
         self._sync_tags(discovered_machine, existing_machine)
