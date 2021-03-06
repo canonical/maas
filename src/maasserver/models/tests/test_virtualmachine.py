@@ -123,19 +123,23 @@ class TestGetVMHostResources(MAASServerTestCase):
         pod = factory.make_Pod(
             pod_type="lxd", parameters={"project": project}, host=node
         )
-        factory.make_VirtualMachine(
+        pool1 = factory.make_PodStoragePool(pod=pod)
+        pool2 = factory.make_PodStoragePool(pod=pod)
+        vm1 = factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[0, 1],
             hugepages_backed=False,
             bmc=pod,
             project=project,
         )
-        factory.make_VirtualMachine(
+        disk1 = factory.make_VirtualMachineDisk(vm=vm1, backing_pool=pool1)
+        vm2 = factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[2],
             hugepages_backed=False,
             bmc=pod,
         )
+        disk2 = factory.make_VirtualMachineDisk(vm=vm2, backing_pool=pool2)
         factory.make_VirtualMachine(
             memory=1024,
             unpinned_cores=2,
@@ -163,6 +167,12 @@ class TestGetVMHostResources(MAASServerTestCase):
             resources.memory.hugepages.allocated_tracked, 1024 * MB
         )
         self.assertEqual(resources.memory.hugepages.allocated_other, 0)
+        self.assertEqual(resources.storage.allocated_tracked, disk1.size)
+        self.assertEqual(resources.storage.allocated_other, disk2.size)
+        self.assertEqual(
+            resources.storage.free,
+            pool1.storage + pool2.storage - disk1.size - disk2.size,
+        )
 
     def test_get_resources_vms(self):
         node = factory.make_Node()

@@ -282,6 +282,7 @@ class VMHostResources:
     memory: VMHostMemoryResources = field(
         default_factory=VMHostMemoryResources
     )
+    storage: VMHostResource = field(default_factory=VMHostResource)
     vm_count: VMHostCount = field(default_factory=VMHostCount)
     interfaces: List[VMHostResource] = field(default_factory=list)
     vms: List[VMHostVirtualMachineResources] = field(default_factory=list)
@@ -405,6 +406,30 @@ def _update_global_resource_counters(pod, resources):
         memory=Sum("memory") * MB,
         hugepages=Coalesce(Sum("hugepages_set__total"), Value(0)),
     )
+
+    storage = (
+        VirtualMachineDisk.objects.filter(
+            backing_pool__pod=pod,
+        )
+        .values(
+            tracked_project=ExpressionWrapper(
+                Q(vm__project=pod.tracked_project),
+                output_field=BooleanField(),
+            )
+        )
+        .annotate(
+            used=Sum("size"),
+        )
+    )
+    for entry in storage:
+        if entry["tracked_project"]:
+            resources.storage.allocated_tracked += entry["used"]
+        else:
+            resources.storage.allocated_other += entry["used"]
+    total_storage = PodStoragePool.objects.filter(pod=pod).aggregate(
+        storage=Coalesce(Sum("storage"), Value(0))
+    )["storage"]
+    resources.storage.free = total_storage - resources.storage.allocated
 
     vms = (
         VirtualMachine.objects.filter(bmc=pod)

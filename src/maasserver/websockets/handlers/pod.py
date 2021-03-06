@@ -127,10 +127,14 @@ class PodHandler(TimestampedModelHandler):
                     else None
                 ),
                 "host": obj.host.system_id if obj.host else None,
-                "numa_pinning": self.dehydrate_numa_pinning(obj),
                 "resources": self.dehydrate_resources(obj, for_list=for_list),
             }
         )
+        # XXX for UI compatibility keep a copy of the NUMA data for now. This
+        # should be removed once the UI pulls all data from the "resources"
+        # section
+        data["numa_pinning"] = data["resources"]["numa"]
+
         if not for_list:
             if obj.host:
                 data["attached_vlans"] = list(
@@ -219,11 +223,6 @@ class PodHandler(TimestampedModelHandler):
         return dataclasses.asdict(
             get_vm_host_resources(obj, detailed=not for_list)
         )
-
-    def dehydrate_numa_pinning(self, obj):
-        """Dehydrate NUMA pinning info."""
-        host_resources = get_vm_host_resources(obj)
-        return [dataclasses.asdict(entry) for entry in host_resources.numa]
 
     @asynchronous
     @inlineCallbacks
