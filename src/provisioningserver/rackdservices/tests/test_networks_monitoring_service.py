@@ -93,7 +93,12 @@ class TestRackNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_reports_interfaces_to_region(self):
         def refresh(
-            system_id, consumer_key, token_key, token_secret, maas_url=None
+            system_id,
+            consumer_key,
+            token_key,
+            token_secret,
+            maas_url=None,
+            post_process_hook=None,
         ):
             self.assertEqual("", system_id)
             self.assertEqual(self.metadata_creds["consumer_key"], consumer_key)

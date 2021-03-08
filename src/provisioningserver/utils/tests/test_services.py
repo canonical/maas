@@ -4,11 +4,14 @@
 """Tests for services."""
 
 
+from collections import defaultdict
 from functools import partial
+import json
+from pathlib import Path
 import random
 import socket
 import threading
-from unittest.mock import ANY, call, Mock, sentinel
+from unittest.mock import ANY, call, Mock
 from uuid import uuid1
 
 from testtools import ExpectedException
@@ -41,6 +44,8 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
+from provisioningserver import refresh as refresh_module
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import services
 from provisioningserver.utils.beaconing import (
@@ -63,6 +68,105 @@ from provisioningserver.utils.services import (
 from provisioningserver.utils.version import get_running_version
 
 
+class FakeScriptRun:
+    """Information about a script run.
+
+    The output of the script run be found in the `out`, `err` and
+    `combined` attributes.
+    """
+
+    out = None
+    err = None
+    combined = None
+
+    def __init__(self):
+        self.status = "running"
+
+
+class FakePOpen:
+    def __init__(self, *args, **kwargs):
+        self.returncode = None
+
+
+class FakeRefresher:
+    """A better replacement for simply mocking out the "refresh()" function.
+
+    It hooks into the refresh code and allow to inspect which scripts
+    were being run and what output was sent to the metadata server.
+
+    In addition, it ensures that the credentials were being passed
+    correct, and it keeps track of the metadata URL that was being used.
+
+    The script_runs dict has the metadata URL as key, and the scripts
+    results that were being sent as the value. Normally there should be
+    exactly one key.
+
+    You may control the output of the scripts by using the
+    stdout_content and stderr_contents. The script name is the key, and
+    the content is the value in bytes.
+
+    It only deals with successful runs. If you need to test failed test
+    runs, you'll have to amend this class to cope with it.
+    """
+
+    def __init__(self, testcase, credentials):
+        self.testcase = testcase
+        self.mock_signal = testcase.patch(refresh_module, "signal")
+        self.mock_signal.side_effect = self.fake_signal
+        self.mock_proc = testcase.patch(refresh_module, "Popen")
+        self.mock_proc.side_effect = self.fake_popen
+        self.mock_capture_script_output = testcase.patch(
+            refresh_module, "capture_script_output"
+        )
+        self.mock_capture_script_output.side_effect = (
+            self.fake_capture_script_output
+        )
+        self.credentials = {"consumer_secret": ""}
+        self.credentials.update(credentials)
+        self.reset()
+
+    def reset(self):
+        self.stdout_content = defaultdict(lambda: b"{}")
+        self.stderr_content = defaultdict(bytes)
+        self.script_runs = defaultdict(dict)
+
+    def fake_popen(self, *args, **kwargs):
+        return FakePOpen(*args, **kwargs)
+
+    def fake_capture_script_output(
+        self, proc, combined_path, stdout_path, stderr_path, timeout
+    ):
+        script_name = Path(combined_path).stem
+        stdout = self.stdout_content[script_name]
+        stderr = self.stderr_content[script_name]
+        combined = stderr + stdout
+
+        for content, path in [
+            (stdout, stdout_path),
+            (stderr, stderr_path),
+            (combined, combined_path),
+        ]:
+            Path(path).write_bytes(content)
+        proc.returncode = 0
+
+    def fake_signal(
+        self, url, creds, status, error=None, files=None, exit_status=None
+    ):
+        self.testcase.assertEqual(self.credentials, creds)
+        script_runs = self.script_runs[url]
+        if status == "WORKING":
+            if error.startswith("Starting"):
+                script_name = error.split(" ")[1]
+                assert script_name not in self.script_runs
+                script_runs[script_name] = FakeScriptRun()
+            elif error.startswith("Finished"):
+                script_name = error.split(" ")[1]
+                script_runs[script_name].status = "finished"
+                script_runs[script_name].out = files[f"{script_name}.out"]
+                script_runs[script_name].err = files[f"{script_name}.err"]
+                script_runs[script_name].combined = files[script_name]
+
+
 class StubNetworksMonitoringService(NetworksMonitoringService):
     """Concrete subclass for testing."""
 
@@ -74,13 +178,13 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
         maas_url="http://localhost:5240/MAAS",
         credentials=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             *args,
             enable_monitoring=enable_monitoring,
             enable_beaconing=enable_beaconing,
-            **kwargs
+            **kwargs,
         )
         self.iterations = DeferredQueue()
         self.interfaces = []
@@ -128,41 +232,51 @@ class TestNetworksMonitoringService(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.patch(services, "get_all_interfaces_definition")
-        self.mock_refresh = self.patch(services, "refresh")
+        self.all_interfaces_mock = self.patch(
+            services, "get_all_interfaces_definition"
+        )
+        self.all_interfaces_mock.return_value = {}
+        self.metadata_credentials = {
+            "consumer_key": factory.make_string(),
+            "token_key": factory.make_string(),
+            "token_secret": factory.make_string(),
+        }
+        self.fake_refresher = FakeRefresher(self, self.metadata_credentials)
 
     def makeService(self, *args, **kwargs):
         self.update_interfaces_deferred = Deferred()
         service = StubNetworksMonitoringService(
             update_interfaces_deferred=self.update_interfaces_deferred,
             *args,
-            **kwargs
+            **kwargs,
         )
+        service.credentials = self.metadata_credentials.copy()
         self.addCleanup(service._releaseSoleResponsibility)
         return service
 
     def test_init(self):
         service = self.makeService()
-        self.assertThat(service, IsInstance(MultiService))
-        self.assertThat(
-            service.interface_monitor.step, Equals(service.interval)
-        )
-        self.assertThat(
+        self.assertIsInstance(service, MultiService)
+        self.assertEqual(service.interface_monitor.step, service.interval)
+        self.assertEqual(
+            (service.updateInterfaces, (), {}),
             service.interface_monitor.call,
-            Equals((service.updateInterfaces, (), {})),
         )
         self.assertIsNone(service.maas_version)
 
     @inlineCallbacks
     def test_get_all_interfaces_definition_is_called_in_thread(self):
+        def record_thread():
+            threads.append(threading.current_thread())
+            return {}
+
+        threads = []
         service = self.makeService()
         service.running = 1
-        self.patch(
-            services, "get_all_interfaces_definition", threading.current_thread
-        )
+        self.all_interfaces_mock.side_effect = record_thread
         yield service.updateInterfaces()
-        self.assertThat(service.interfaces, HasLength(1))
-        [thread] = service.interfaces
+        self.assertEqual(1, len(service.interfaces))
+        [thread] = threads
         self.assertThat(thread, IsInstance(threading.Thread))
         self.assertThat(thread, Not(Equals(threadable.ioThread)))
 
@@ -171,9 +285,10 @@ class TestNetworksMonitoringService(MAASTestCase):
         service = self.makeService()
         service.running = 1
         getInterfaces = self.patch(service, "getInterfaces")
-        getInterfaces.return_value = succeed(sentinel.config)
+        my_interfaces = {"foo": "bar"}
+        getInterfaces.return_value = succeed(my_interfaces)
         yield service.updateInterfaces()
-        self.assertThat(service.interfaces, Equals([sentinel.config]))
+        self.assertThat(service.interfaces, Equals([my_interfaces]))
 
     @inlineCallbacks
     def test_logs_errors(self):
@@ -196,8 +311,6 @@ class TestNetworksMonitoringService(MAASTestCase):
 
     @inlineCallbacks
     def test_starting_service_triggers_interface_update(self):
-        get_interfaces = self.patch(services, "get_all_interfaces_definition")
-        get_interfaces.side_effect = [sentinel.config]
         service = self.makeService()
         yield service.startService()
         yield self.update_interfaces_deferred
@@ -205,20 +318,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         yield service.stopService()
 
     @inlineCallbacks
-    def test_runs_refresh(self):
-        def refresh(
-            system_id, consumer_key, token_key, token_secret, maas_url=None
-        ):
-            refresh_args.update(
-                {
-                    "system_id": system_id,
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                    "maas_url": maas_url,
-                }
-            )
-
+    def test_runs_refresh_and_annotates_commissioning(self):
         service = self.makeService()
         service.maas_url = "http://my.example.com/MAAS"
         service.system_id = "my-system"
@@ -227,32 +327,40 @@ class TestNetworksMonitoringService(MAASTestCase):
             "token_key": "my-key",
             "token_secret": "my-secret",
         }
-        refresh_args = {}
-        self.mock_refresh.side_effect = refresh
+        self.fake_refresher.credentials.update(service.credentials)
+        base_lxd_data = {factory.make_string(): factory.make_string()}
+        base_lxd_output = json.dumps(base_lxd_data)
+        self.fake_refresher.stdout_content[
+            LXD_OUTPUT_NAME
+        ] = base_lxd_output.encode("utf-8")
+        interfaces_hints = {"my-interface": "foo"}
+        self.all_interfaces_mock.return_value = interfaces_hints
+
         yield service.startService()
         yield self.update_interfaces_deferred
-        self.assertEqual(
-            {
-                "system_id": "my-system",
-                "consumer_key": "my-consumer",
-                "token_key": "my-key",
-                "token_secret": "my-secret",
-                "maas_url": "http://my.example.com/MAAS",
-            },
-            refresh_args,
-        )
         yield service.stopService()
+
+        metadata_url = service.maas_url + "/metadata/2012-03-01/"
+        script_runs = self.fake_refresher.script_runs[metadata_url]
+        self.assertEqual("finished", script_runs[LXD_OUTPUT_NAME].status)
+        commissioning_data = json.loads(
+            script_runs[LXD_OUTPUT_NAME].out.decode("utf-8")
+        )
+        expected_commisioning_data = base_lxd_data.copy()
+        expected_commisioning_data.update({"network-hints": interfaces_hints})
+        self.assertEqual(expected_commisioning_data, commissioning_data)
 
     @inlineCallbacks
     def test_recordInterfaces_called_when_nothing_previously_recorded(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
-        get_interfaces.side_effect = [sentinel.config]
+        my_interfaces = {"foo": "bar"}
+        get_interfaces.side_effect = [my_interfaces]
 
         service = self.makeService()
         service.running = 1
         self.assertThat(service.interfaces, Equals([]))
         yield service.updateInterfaces()
-        self.assertThat(service.interfaces, Equals([sentinel.config]))
+        self.assertThat(service.interfaces, Equals([my_interfaces]))
 
         self.assertThat(get_interfaces, MockCalledOnceWith())
 
@@ -267,16 +375,19 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_recordInterfaces_called_when_interfaces_changed(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
         # Configuration changes between the first and second call.
-        get_interfaces.side_effect = [sentinel.config1, sentinel.config2]
+        my_interfaces1 = {"foo": "bar"}
+        my_interfaces2 = {"bar": "baz"}
+        get_interfaces.side_effect = [my_interfaces1, my_interfaces2]
 
         service = self.makeService()
         service.running = 1
         self.assertThat(service.interfaces, HasLength(0))
         yield service.updateInterfaces()
-        self.assertThat(service.interfaces, Equals([sentinel.config1]))
+        self.assertThat(service.interfaces, Equals([my_interfaces1]))
+        self.fake_refresher.reset()
         yield service.updateInterfaces()
         self.assertThat(
-            service.interfaces, Equals([sentinel.config1, sentinel.config2])
+            service.interfaces, Equals([my_interfaces1, my_interfaces2])
         )
 
         self.assertThat(get_interfaces, MockCallsMatch(call(), call()))
@@ -311,12 +422,14 @@ class TestNetworksMonitoringService(MAASTestCase):
         # to the logged exception.
         with TwistedLoggerFixture():
             # recordInterfaces is called the first time, as expected.
+            self.fake_refresher.reset()
             recordInterfaces.reset_mock()
             yield service.updateInterfaces()
             self.assertThat(recordInterfaces, MockCalledOnceWith({}, None))
 
             # recordInterfaces is called the second time too; the service noted
             # that it crashed last time and knew to run it again.
+            self.fake_refresher.reset()
             recordInterfaces.reset_mock()
             yield service.updateInterfaces()
             self.assertThat(recordInterfaces, MockCalledOnceWith({}, None))

@@ -7,9 +7,11 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 from datetime import timedelta
+import functools
 import json
 from json.decoder import JSONDecodeError
 import os
+from pathlib import Path
 from pprint import pformat
 import re
 import socket
@@ -30,6 +32,7 @@ from zope.interface.verify import verifyObject
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh import refresh
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils.beaconing import (
     age_out_uuid_queue,
     BEACON_IPV4_MULTICAST,
@@ -1145,13 +1148,8 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 yield pause(3.0)
                 hints = self.beaconing_protocol.getJSONTopologyHints()
             maas_url, system_id, credentials = yield self.getRefreshDetails()
-            yield deferToThread(
-                refresh,
-                system_id,
-                credentials["consumer_key"],
-                credentials["token_key"],
-                credentials["token_secret"],
-                maas_url,
+            yield self._run_refresh(
+                maas_url, system_id, credentials, interfaces
             )
             yield maybeDeferred(self.recordInterfaces, interfaces, hints)
             # Note: _interfacesRecorded() will reconfigure discovery after
@@ -1169,6 +1167,29 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             # If the interfaces didn't change, we still need to poll for
             # monitoring state changes.
             yield maybeDeferred(self._configureNetworkDiscovery, interfaces)
+
+    @inlineCallbacks
+    def _run_refresh(self, maas_url, system_id, credentials, interfaces):
+        yield deferToThread(
+            refresh,
+            system_id,
+            credentials["consumer_key"],
+            credentials["token_key"],
+            credentials["token_secret"],
+            maas_url,
+            post_process_hook=functools.partial(
+                self._annotate_commissioning, interfaces
+            ),
+        )
+
+    def _annotate_commissioning(
+        self, interfaces, script_name, combined_path, stdout_path, stderr_path
+    ):
+        if script_name != LXD_OUTPUT_NAME:
+            return
+        lxd_data = json.loads(Path(stdout_path).read_bytes())
+        lxd_data["network-hints"] = interfaces
+        Path(stdout_path).write_text(json.dumps(lxd_data))
 
     def _getInterfacesForBeaconing(self, interfaces: dict):
         """Return the interfaces which will be used for beaconing.

@@ -60,7 +60,14 @@ def signal_wrapper(*args, **kwargs):
 
 
 @synchronous
-def refresh(system_id, consumer_key, token_key, token_secret, maas_url=None):
+def refresh(
+    system_id,
+    consumer_key,
+    token_key,
+    token_secret,
+    maas_url=None,
+    post_process_hook=None,
+):
     """Run all builtin commissioning scripts and report results to region."""
     maaslog.info("Refreshing rack controller hardware information.")
 
@@ -82,7 +89,13 @@ def refresh(system_id, consumer_key, token_key, token_secret, maas_url=None):
     }
 
     with tempfile.TemporaryDirectory(prefix="maas-commission-") as tmpdir:
-        failed_scripts = runscripts(scripts, url, creds, tmpdir=tmpdir)
+        failed_scripts = runscripts(
+            scripts,
+            url,
+            creds,
+            tmpdir=tmpdir,
+            post_process_hook=post_process_hook,
+        )
 
     if len(failed_scripts) == 0:
         signal_wrapper(url, creds, "OK", "Finished refreshing %s" % system_id)
@@ -92,7 +105,7 @@ def refresh(system_id, consumer_key, token_key, token_secret, maas_url=None):
         )
 
 
-def runscripts(scripts, url, creds, tmpdir):
+def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
     total_scripts = len(scripts)
     current_script = 1
     failed_scripts = []
@@ -173,6 +186,10 @@ def runscripts(scripts, url, creds, tmpdir):
             )
             failed_scripts.append(script_name)
         else:
+            if post_process_hook is not None:
+                post_process_hook(
+                    script_name, combined_path, stdout_path, stderr_path
+                )
             files = {
                 script_name: open(combined_path, "rb").read(),
                 stdout_name: open(stdout_path, "rb").read(),

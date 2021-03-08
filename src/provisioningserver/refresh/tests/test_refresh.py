@@ -536,7 +536,7 @@ class TestRefresh(MAASTestCase):
         tmpdirs_during = set()
         tmpdir_during = None
 
-        def runscripts(*args, tmpdir):
+        def runscripts(*args, tmpdir, **kwargs):
             self.assertThat(tmpdir, DirExists())
             nonlocal tmpdirs_during, tmpdir_during
             tmpdirs_during |= find_temporary_directories()
