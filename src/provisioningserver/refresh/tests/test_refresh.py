@@ -60,7 +60,7 @@ class TestRefresh(MAASTestCase):
         if os.path.exists(path):
             os.remove(path)
 
-    def patch_scripts_success(self, script_name=None, script_content=None):
+    def create_scripts_success(self, script_name=None, script_content=None):
         if script_name is None:
             script_name = factory.make_name("script_name")
         if script_content is None:
@@ -79,11 +79,11 @@ class TestRefresh(MAASTestCase):
         os.chmod(script_path, st.st_mode | stat.S_IEXEC)
         self.addCleanup(self._cleanup, script_path)
 
-        refresh.NODE_INFO_SCRIPTS = OrderedDict(
+        return OrderedDict(
             [(script_name, {"name": script_name, "run_on_controller": True})]
         )
 
-    def patch_scripts_failure(self, script_name=None):
+    def create_scripts_failure(self, script_name=None):
         if script_name is None:
             script_name = factory.make_name("script_name")
         TEST_SCRIPT = dedent(
@@ -102,14 +102,14 @@ class TestRefresh(MAASTestCase):
         os.chmod(script_path, st.st_mode | stat.S_IEXEC)
         self.addCleanup(self._cleanup, script_path)
 
-        refresh.NODE_INFO_SCRIPTS = OrderedDict(
+        return OrderedDict(
             [(script_name, {"name": script_name, "run_on_controller": True})]
         )
 
     def test_refresh_accepts_defined_url(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_success(script_name)
+        info_scripts = self.create_scripts_success(script_name)
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -117,7 +117,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -136,7 +139,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_starting(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_success(script_name)
+        info_scripts = self.create_scripts_success(script_name)
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -144,7 +147,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -170,7 +176,9 @@ class TestRefresh(MAASTestCase):
         echo '{status: skipped}' > $RESULT_PATH
         """
         )
-        self.patch_scripts_success(script_name, script_content=script_content)
+        info_scripts = self.create_scripts_success(
+            script_name, script_content=script_content
+        )
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -178,7 +186,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -204,7 +215,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_sets_env_vars(self):
         self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_failure(script_name)
+        info_scripts = self.create_scripts_failure(script_name)
         mock_popen = self.patch(refresh, "Popen")
         mock_popen.side_effect = OSError(8, "Exec format error")
 
@@ -214,7 +225,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
 
         env = mock_popen.call_args[1]["env"]
         for name in [
@@ -229,7 +243,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_failure_on_unexecutable_script(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_failure(script_name)
+        info_scripts = self.create_scripts_failure(script_name)
         mock_popen = self.patch(refresh, "Popen")
         mock_popen.side_effect = OSError(8, "Exec format error")
 
@@ -239,7 +253,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -263,7 +280,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_failure_on_unexecutable_script_no_errno(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_failure(script_name)
+        info_scripts = self.create_scripts_failure(script_name)
         mock_popen = self.patch(refresh, "Popen")
         mock_popen.side_effect = OSError()
 
@@ -273,7 +290,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -297,7 +317,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_failure_on_unexecutable_script_baderrno(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_failure(script_name)
+        info_scripts = self.create_scripts_failure(script_name)
         mock_popen = self.patch(refresh, "Popen")
         mock_popen.side_effect = OSError(0, "Exec format error")
 
@@ -307,7 +327,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -331,7 +354,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_failure_on_timeout(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_failure(script_name)
+        info_scripts = self.create_scripts_failure(script_name)
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -351,7 +374,10 @@ class TestRefresh(MAASTestCase):
             refresh, "capture_script_output"
         )
         mock_capture_script_output.side_effect = timeout_run
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
 
         self.assertThat(
             signal,
@@ -376,7 +402,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_signals_finished(self):
         signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
-        self.patch_scripts_success(script_name)
+        info_scripts = self.create_scripts_success(script_name)
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -384,7 +410,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -402,7 +431,7 @@ class TestRefresh(MAASTestCase):
 
     def test_refresh_signals_failure(self):
         signal = self.patch(refresh, "signal")
-        self.patch_scripts_failure()
+        info_scripts = self.create_scripts_failure()
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -410,7 +439,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -429,7 +461,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_executes_lxd_binary(self):
         signal = self.patch(refresh, "signal")
         script_name = LXD_OUTPUT_NAME
-        self.patch_scripts_success(script_name)
+        info_scripts = self.create_scripts_success(script_name)
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -437,7 +469,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -456,7 +491,7 @@ class TestRefresh(MAASTestCase):
     def test_refresh_executes_lxd_binary_in_snap(self):
         signal = self.patch(refresh, "signal")
         script_name = LXD_OUTPUT_NAME
-        self.patch_scripts_success(script_name)
+        info_scripts = self.create_scripts_success(script_name)
         path = factory.make_name()
         self.patch(os, "environ", {"SNAP": path})
 
@@ -466,7 +501,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
         self.assertThat(
             signal,
             MockAnyCall(
@@ -527,7 +565,7 @@ class TestRefresh(MAASTestCase):
         maaslog = self.patch(refresh.maaslog, "error")
         error = factory.make_string()
         signal.side_effect = SignalException(error)
-        self.patch_scripts_failure()
+        info_scripts = self.create_scripts_failure()
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -535,7 +573,10 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        refresh.refresh(system_id, consumer_key, token_key, token_secret, url)
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
 
         self.assertThat(
             maaslog, MockAnyCall("Error during controller refresh: %s" % error)
