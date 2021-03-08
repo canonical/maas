@@ -460,9 +460,11 @@ def process_lxd_results(node, output, exit_status):
     # Update memory.
     node.memory, numa_nodes = _parse_memory(data.get("memory", {}), numa_nodes)
 
-    # Create or update NUMA nodes.
-    numa_nodes = [
-        NUMANode.objects.update_or_create(
+    # Create or update NUMA nodes. This must be kept as a dictionary as not all
+    # systems maintain linear continuity. e.g the PPC64 machine in our CI uses
+    # 0, 1, 16, 17.
+    numa_nodes = {
+        numa_index: NUMANode.objects.update_or_create(
             node=node,
             index=numa_index,
             defaults={
@@ -471,7 +473,7 @@ def process_lxd_results(node, output, exit_status):
             },
         )[0]
         for numa_index, numa_data in numa_nodes.items()
-    ]
+    }
 
     # Network interfaces
     # LP: #1849355 -- Don't update the node network information
