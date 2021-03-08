@@ -3487,8 +3487,8 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
         )
 
     def test_chassis_type_proxmox_calls_probe_proxmoxand_enlist(self):
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
+        mock_proxmox = self.patch_autospec(
+            clusterservice, "probe_proxmox_and_enlist"
         )
         user = factory.make_name("user")
         hostname = factory.make_hostname()
@@ -3518,9 +3518,8 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
             },
         )
         self.assertThat(
-            mock_deferToThread,
+            mock_proxmox,
             MockCalledOnceWith(
-                clusterservice.probe_proxmox_and_enlist,
                 user,
                 hostname,
                 username,
@@ -3537,10 +3536,10 @@ class TestClusterProtocol_AddChassis(MAASTestCase):
     def test_chassis_type_proxmox_logs_error_to_maaslog(self):
         fake_error = factory.make_name("error")
         self.patch(clusterservice, "maaslog")
-        mock_deferToThread = self.patch_autospec(
-            clusterservice, "deferToThread"
+        mock_proxmox = self.patch_autospec(
+            clusterservice, "probe_proxmox_and_enlist"
         )
-        mock_deferToThread.return_value = fail(Exception(fake_error))
+        mock_proxmox.return_value = fail(Exception(fake_error))
         user = factory.make_name("user")
         hostname = factory.make_hostname()
         username = factory.make_name("username")
