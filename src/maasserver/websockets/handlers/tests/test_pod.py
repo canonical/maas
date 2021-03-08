@@ -5,7 +5,7 @@
 
 
 import random
-from unittest.mock import MagicMock, sentinel
+from unittest.mock import MagicMock
 
 from crochet import wait_for
 from testtools.matchers import Equals
@@ -27,6 +27,7 @@ from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPod,
     DiscoveredPodHints,
+    DiscoveredPodProject,
     InterfaceAttachType,
 )
 
@@ -622,10 +623,19 @@ class TestPodHandler(MAASTransactionServerTestCase):
             pod, "get_best_discovered_result"
         )
         mock_get_best_discovered_result.return_value = succeed(
-            sentinel.projects
+            [
+                DiscoveredPodProject(name="foo", description="Project foo"),
+                DiscoveredPodProject(name="bar", description="Project bar"),
+            ]
         )
         projects = yield handler.get_projects(params)
-        self.assertIs(projects, sentinel.projects)
+        self.assertEqual(
+            projects,
+            [
+                {"name": "foo", "description": "Project foo"},
+                {"name": "bar", "description": "Project bar"},
+            ],
+        )
         mock_discover_pod_projects.assert_called_once_with(
             "lxd",
             {

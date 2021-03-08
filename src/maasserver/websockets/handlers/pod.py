@@ -7,6 +7,7 @@
 import dataclasses
 from functools import partial
 
+import attr
 from django.http import HttpRequest
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -231,7 +232,7 @@ class PodHandler(TimestampedModelHandler):
         pod_type = params.pop("type")
         results = yield discover_pod_projects(pod_type, params)
         projects = yield get_best_discovered_result(results)
-        returnValue(projects)
+        returnValue([attr.asdict(project) for project in projects])
 
     @asynchronous
     def create(self, params):
