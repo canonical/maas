@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# Helpers to run tests in CI.
+#
+# This runs both nose- and pytest-based tests, and fails if any of the
+# processes fails.
+
+set -o pipefail
+
+bin/test.parallel --subprocess-per-core --emit-subunit | \
+    bin/subunit-1to2 | \
+    bin/subunit2junitxml --no-passthrough -f -o junit.xml | \
+    bin/subunit2pyunit --no-passthrough
+res1=$?
+bin/pytest -n auto --junit-xml=junit-pytest.xml
+res2=$?
+exit $((res1 + res2))

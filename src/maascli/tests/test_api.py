@@ -13,14 +13,8 @@ from textwrap import dedent
 from unittest.mock import Mock, sentinel
 
 import httplib2
-from testtools.matchers import (
-    EndsWith,
-    Equals,
-    IsInstance,
-    MatchesAll,
-    MatchesListwise,
-    Not,
-)
+import pytest
+from testtools.matchers import EndsWith, Equals, IsInstance, MatchesAll, Not
 
 from maascli import api
 from maascli.actions.boot_resources_create import BootResourcesCreateAction
@@ -554,233 +548,139 @@ class TestActionHelp(MAASTestCase):
         self.assertThat(api.print, MockCalledOnceWith(expected_text))
 
 
-class TestPayloadPreparation(MAASTestCase):
-    """Tests for `maascli.api.Action.prepare_payload`."""
-
-    uri_base = "http://example.com/MAAS/api/2.0/"
-
-    # Scenarios for ReSTful operations; i.e. without an "op" parameter.
-    scenarios_without_op = (
-        # Without data, all requests have an empty request body and no extra
-        # headers.
-        (
-            "create",
-            {
-                "method": "POST",
-                "data": [],
-                "expected_uri": uri_base,
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "read",
-            {
-                "method": "GET",
-                "data": [],
-                "expected_uri": uri_base,
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "update",
-            {
-                "method": "PUT",
-                "data": [],
-                "expected_uri": uri_base,
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "delete",
-            {
-                "method": "DELETE",
-                "data": [],
-                "expected_uri": uri_base,
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        # With data, PUT, POST, and DELETE requests have their body and
-        # extra headers prepared by build_multipart_message and
-        # encode_multipart_message. For GET requests, the data is
-        # encoded into the query string, and both the request body and
-        # extra headers are empty.
-        (
-            "create-with-data",
-            {
-                "method": "POST",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base,
-                "expected_body": sentinel.body,
-                "expected_headers": sentinel.headers,
-            },
-        ),
-        (
-            "read-with-data",
-            {
-                "method": "GET",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base + "?foo=bar&foo=baz",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "update-with-data",
-            {
-                "method": "PUT",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base,
-                "expected_body": sentinel.body,
-                "expected_headers": sentinel.headers,
-            },
-        ),
-        (
-            "delete-with-data",
-            {
-                "method": "DELETE",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base + "?foo=bar&foo=baz",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
+class TestPayloadPreparation:
+    @pytest.mark.parametrize(
+        "op,method,data,expected_querystring,expected_body,expected_headers",
+        [
+            # ReSTful operations; i.e. without an "op" parameter.
+            #
+            # Without data, all requests have an empty request body and no
+            # extra headers.
+            (None, "POST", [], "", None, []),
+            (None, "GET", [], "", None, []),
+            (None, "PUT", [], "", None, []),
+            (None, "DELETE", [], "", None, []),
+            # With data, PUT, POST, and DELETE requests have their body and
+            # extra headers prepared by build_multipart_message and
+            # encode_multipart_message. For GET requests, the data is encoded
+            # into the query string, and both the request body and extra
+            # headers are empty.
+            (
+                None,
+                "POST",
+                [("foo", "bar"), ("foo", "baz")],
+                "",
+                sentinel.body,
+                sentinel.headers,
+            ),
+            (
+                None,
+                "GET",
+                [("foo", "bar"), ("foo", "baz")],
+                "?foo=bar&foo=baz",
+                None,
+                [],
+            ),
+            (
+                None,
+                "PUT",
+                [("foo", "bar"), ("foo", "baz")],
+                "",
+                sentinel.body,
+                sentinel.headers,
+            ),
+            (
+                None,
+                "DELETE",
+                [("foo", "bar"), ("foo", "baz")],
+                "?foo=bar&foo=baz",
+                None,
+                [],
+            ),
+            #
+            # non-ReSTful operations; i.e. with an "op" parameter.
+            #
+            # Without data, all requests have an empty request body and no extra
+            # headers. The operation is encoded into the query string.
+            ("something", "POST", [], "?op=something", None, []),
+            ("something", "GET", [], "?op=something", None, []),
+            ("something", "PUT", [], "?op=something", None, []),
+            ("something", "DELETE", [], "?op=something", None, []),
+            # With data, PUT, POST, and DELETE requests have their body and
+            # extra headers prepared by build_multipart_message and
+            # encode_multipart_message. For GET requests, the data is encoded
+            # into the query string, and both the request body and extra
+            # headers are empty. The operation is encoded into the query
+            # string.
+            (
+                "something",
+                "POST",
+                [("foo", "bar"), ("foo", "baz")],
+                "?op=something",
+                sentinel.body,
+                sentinel.headers,
+            ),
+            (
+                "something",
+                "GET",
+                [("foo", "bar"), ("foo", "baz")],
+                "?op=something&foo=bar&foo=baz",
+                None,
+                [],
+            ),
+            (
+                "something",
+                "PUT",
+                [("foo", "bar"), ("foo", "baz")],
+                "?op=something",
+                sentinel.body,
+                sentinel.headers,
+            ),
+            (
+                "something",
+                "DELETE",
+                [("foo", "bar"), ("foo", "baz")],
+                "?op=something&foo=bar&foo=baz",
+                None,
+                [],
+            ),
+        ],
     )
-
-    # Scenarios for non-ReSTful operations; i.e. with an "op" parameter.
-    scenarios_with_op = (
-        # Without data, all requests have an empty request body and no extra
-        # headers. The operation is encoded into the query string.
-        (
-            "create",
-            {
-                "method": "POST",
-                "data": [],
-                "expected_uri": uri_base + "?op=something",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "read",
-            {
-                "method": "GET",
-                "data": [],
-                "expected_uri": uri_base + "?op=something",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "update",
-            {
-                "method": "PUT",
-                "data": [],
-                "expected_uri": uri_base + "?op=something",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "delete",
-            {
-                "method": "DELETE",
-                "data": [],
-                "expected_uri": uri_base + "?op=something",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        # With data, PUT, POST, and DELETE requests have their body and
-        # extra headers prepared by build_multipart_message and
-        # encode_multipart_message. For GET requests, the data is
-        # encoded into the query string, and both the request body and
-        # extra headers are empty. The operation is encoded into the
-        # query string.
-        (
-            "create-with-data",
-            {
-                "method": "POST",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base + "?op=something",
-                "expected_body": sentinel.body,
-                "expected_headers": sentinel.headers,
-            },
-        ),
-        (
-            "read-with-data",
-            {
-                "method": "GET",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base + "?op=something&foo=bar&foo=baz",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-        (
-            "update-with-data",
-            {
-                "method": "PUT",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base + "?op=something",
-                "expected_body": sentinel.body,
-                "expected_headers": sentinel.headers,
-            },
-        ),
-        (
-            "delete-with-data",
-            {
-                "method": "DELETE",
-                "data": [("foo", "bar"), ("foo", "baz")],
-                "expected_uri": uri_base + "?op=something&foo=bar&foo=baz",
-                "expected_body": None,
-                "expected_headers": [],
-            },
-        ),
-    )
-
-    scenarios_without_op = tuple(
-        ("%s-without-op" % name, dict(scenario, op=None))
-        for name, scenario in scenarios_without_op
-    )
-
-    scenarios_with_op = tuple(
-        ("%s-with-op" % name, dict(scenario, op="something"))
-        for name, scenario in scenarios_with_op
-    )
-
-    scenarios = scenarios_without_op + scenarios_with_op
-
-    def test_prepare_payload(self):
-        # Patch build_multipart_message and encode_multipart_message to
-        # match the scenarios.
-        build_multipart_message = self.patch(api, "build_multipart_message")
+    def test_prepare_payload(
+        self,
+        mocker,
+        op,
+        method,
+        data,
+        expected_querystring,
+        expected_body,
+        expected_headers,
+    ):
+        build_multipart_message = mocker.patch.object(
+            api, "build_multipart_message"
+        )
         build_multipart_message.return_value = sentinel.message
-        encode_multipart_message = self.patch(api, "encode_multipart_message")
+        encode_multipart_message = mocker.patch.object(
+            api, "encode_multipart_message"
+        )
         encode_multipart_message.return_value = sentinel.headers, sentinel.body
         # The payload returned is a 3-tuple of (uri, body, headers).
         payload = api.Action.prepare_payload(
-            op=self.op, method=self.method, uri=self.uri_base, data=self.data
+            op=op,
+            method=method,
+            uri="http://example.com/MAAS/api/2.0/",
+            data=data,
         )
-        expected = (
-            Equals(self.expected_uri),
-            Equals(self.expected_body),
-            Equals(self.expected_headers),
+        assert payload == (
+            f"http://example.com/MAAS/api/2.0/{expected_querystring}",
+            expected_body,
+            expected_headers,
         )
-        self.assertThat(payload, MatchesListwise(expected))
         # encode_multipart_message, when called, is passed the data
         # unadulterated.
-        if self.expected_body is sentinel.body:
-            self.assertThat(
-                api.build_multipart_message, MockCalledOnceWith(self.data)
-            )
-            self.assertThat(
-                api.encode_multipart_message,
-                MockCalledOnceWith(sentinel.message),
-            )
+        if expected_body is sentinel.body:
+            build_multipart_message.assert_called_once_with(data)
+            encode_multipart_message.assert_called_once_with(sentinel.message)
 
 
 class TestPayloadPreparationWithFiles(MAASTestCase):

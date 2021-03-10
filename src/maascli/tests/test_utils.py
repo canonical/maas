@@ -11,11 +11,11 @@ import random
 from unittest.mock import sentinel
 
 import httplib2
+import pytest
 from testtools.matchers import AfterPreprocessing, Equals, MatchesListwise
 
 from maascli import utils
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -187,30 +187,24 @@ class TestGetResponseContentType(MAASTestCase):
         self.assertIsNone(utils.get_response_content_type(response))
 
 
-class TestIsResponseTextual(MAASTestCase):
-    """Tests for `is_response_textual`."""
-
-    content_types_textual_map = {
-        "text/plain": True,
-        "text/yaml": True,
-        "text/foobar": True,
-        "application/json": True,
-        "image/png": False,
-        "video/webm": False,
-    }
-
-    scenarios = sorted(
-        (ctype, {"content_type": ctype, "is_textual": is_textual})
-        for ctype, is_textual in content_types_textual_map.items()
+class TestIsResponseTextual:
+    @pytest.mark.parametrize(
+        "content_type,is_textual",
+        [
+            ("text/plain", True),
+            ("text/yaml", True),
+            ("text/foobar", True),
+            ("application/json", True),
+            ("image/png", False),
+            ("video/webm", False),
+        ],
     )
-
-    def test_type(self):
-        grct = self.patch(utils, "get_response_content_type")
-        grct.return_value = self.content_type
-        self.assertEqual(
-            self.is_textual, utils.is_response_textual(sentinel.response)
+    def test_type(self, mocker, content_type, is_textual):
+        grct = mocker.patch.object(
+            utils, "get_response_content_type", return_value=content_type
         )
-        self.assertThat(grct, MockCalledOnceWith(sentinel.response))
+        assert utils.is_response_textual(sentinel.response) == is_textual
+        grct.assert_called_once_with(sentinel.response)
 
 
 class TestPrintResponseHeaders(MAASTestCase):

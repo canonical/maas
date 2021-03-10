@@ -33,7 +33,6 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         assert isinstance(script, str)
         self.script = script
         self.with_subunit = with_subunit
-        self.with_coverage = False
         self.has_script = has_script
 
     @abc.abstractmethod
@@ -56,14 +55,11 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         """
 
     def extendCommand(self, command):
-        """Extend the command (a tuple) with additional arguments.
+        """Provide a hook to extending a command (a tuple) with additional arguments.
 
-        If with_coverage is True, coverage data is collected.
+        Subclasses can extend it.
         """
-        if self.with_coverage:
-            return ("bin/coverage", "run", "--parallel-mode", *command)
-        else:
-            return command
+        return command
 
     def run(self, result):
         with tempfile.NamedTemporaryFile() as log:
@@ -90,7 +86,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         # Build things first, which may do nothing (but is quick).
         with self.lock:
             subprocess.check_call(
-                ("make", "--quiet", "bin/coverage", self.script),
+                ("make", "--quiet", self.script),
                 stdout=log,
                 stderr=log,
             )
@@ -336,13 +332,6 @@ def make_argument_parser(scripts):
     )
     parser = argparse.ArgumentParser(description=description, add_help=False)
     parser.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
-    parser.add_argument(
-        "--with-coverage",
-        dest="with_coverage",
-        action="store_true",
-        default=False,
-    )
-
     core_count = os.cpu_count()
 
     def parse_subprocesses(string):
@@ -434,7 +423,6 @@ def main(args=None):
         TestScriptMonolithic(lock, "bin/test.region.legacy"),
         # The divisible test scripts will each be executed multiple times,
         # each time to work on a distinct "bucket" of tests.
-        TestScript(lock, "bin/test.cli", r"^src/maascli\b", r"^maascli\b"),
         TestScript(
             lock,
             "bin/test.rack",
@@ -456,8 +444,6 @@ def main(args=None):
     # Narrow scripts down to the given selectors.
     scripts = (script.select(args.selectors) for script in scripts)
     scripts = [script for script in scripts if script is not None]
-    for script in scripts:
-        script.with_coverage = args.with_coverage
     suite = unittest.TestSuite(scripts)
     result = args.result_factory(sys.stdout)
     if test(suite, result, args.subprocesses):

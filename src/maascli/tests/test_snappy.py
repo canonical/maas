@@ -17,7 +17,7 @@ from unittest.mock import MagicMock
 
 from fixtures import EnvironmentVariableFixture
 import netifaces
-from testtools.matchers import Contains, Not
+import pytest
 
 from maascli import snappy
 from maascli.command import CommandError
@@ -135,7 +135,7 @@ class TestHelpers(MAASTestCase):
         self.assertEqual("none", snappy.get_current_mode())
 
 
-class TestRenderSupervisord(MAASTestCase):
+class TestRenderSupervisord:
 
     TEST_TEMPLATE = dedent(
         """\
@@ -148,50 +148,39 @@ class TestRenderSupervisord(MAASTestCase):
     """
     )
 
-    scenarios = (
-        (
-            "region+rack",
-            {"mode": "region+rack", "regiond": True, "rackd": True},
-        ),
-        ("region", {"mode": "region", "regiond": True, "rackd": False}),
-        ("rack", {"mode": "rack", "regiond": False, "rackd": True}),
-        ("none", {"mode": "none", "regiond": False, "rackd": False}),
+    @pytest.mark.parametrize(
+        "mode,has_regiond,has_rackd",
+        [
+            ("region+rack", True, True),
+            ("region", True, False),
+            ("rack", False, True),
+            ("none", False, False),
+        ],
     )
+    def test_template_rendered_correctly(
+        self,
+        mocker,
+        monkeypatch,
+        tmp_path_factory,
+        mode,
+        has_regiond,
+        has_rackd,
+    ):
+        snap = tmp_path_factory.mktemp("snap")
+        maas_share = snap / "usr" / "share" / "maas"
+        maas_share.mkdir(parents=True)
+        (maas_share / "supervisord.conf.template").write_text(
+            self.TEST_TEMPLATE
+        )
+        snap_data = tmp_path_factory.mktemp("snap_data")
+        (snap_data / "supervisord").mkdir()
+        monkeypatch.setenv("SNAP", str(snap))
+        monkeypatch.setenv("SNAP_DATA", str(snap_data))
 
-    def setUp(self):
-        super().setUp()
-        snap = self.make_dir()
-        maas_share = os.path.join(snap, "usr", "share", "maas")
-        os.makedirs(maas_share)
-        with open(
-            os.path.join(maas_share, "supervisord.conf.template"), "w"
-        ) as stream:
-            stream.write(self.TEST_TEMPLATE)
-        snap_data = self.make_dir()
-        os.mkdir(os.path.join(snap_data, "supervisord"))
-        self.environ = {"SNAP": snap, "SNAP_DATA": snap_data}
-        self.patch(os, "environ", self.environ)
-
-    def get_rendered_config(self):
-        with open(
-            os.path.join(
-                self.environ["SNAP_DATA"], "supervisord", "supervisord.conf"
-            ),
-            "r",
-        ) as stream:
-            return stream.read()
-
-    def test_template_rended_correctly(self):
-        snappy.render_supervisord(self.mode)
-        output = self.get_rendered_config()
-        if self.regiond:
-            self.assertThat(output, Contains("HAS_REGIOND"))
-        else:
-            self.assertThat(output, Not(Contains("HAS_REGIOND")))
-        if self.rackd:
-            self.assertThat(output, Contains("HAS_RACKD"))
-        else:
-            self.assertThat(output, Not(Contains("HAS_RACKD")))
+        snappy.render_supervisord(mode)
+        output = (snap_data / "supervisord" / "supervisord.conf").read_text()
+        assert ("HAS_REGIOND" in output) == has_regiond
+        assert ("HAS_RACKD" in output) == has_rackd
 
 
 class TestSupervisordHelpers(MAASTestCase):

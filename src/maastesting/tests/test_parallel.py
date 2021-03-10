@@ -58,7 +58,6 @@ class TestSelectorArguments(MAASTestCase):
         self.assertThat(sysexit.code, Equals(0))
         self.assertScriptsMatch(
             MatchesUnselectableScript("bin/test.region.legacy"),
-            MatchesSelectableScript("cli"),
             MatchesSelectableScript("rack"),
             MatchesSelectableScript("region"),
             MatchesSelectableScript("testing"),
@@ -69,7 +68,6 @@ class TestSelectorArguments(MAASTestCase):
             SystemExit,
             parallel.main,
             [
-                "src/maascli/001",
                 "src/provisioningserver/002",
                 "src/maasserver/003",
                 "src/metadataserver/004",
@@ -78,7 +76,6 @@ class TestSelectorArguments(MAASTestCase):
         )
         self.assertThat(sysexit.code, Equals(0))
         self.assertScriptsMatch(
-            MatchesSelectableScript("cli", "src/maascli/001"),
             MatchesSelectableScript("rack", "src/provisioningserver/002"),
             MatchesSelectableScript(
                 "region", "src/maasserver/003", "src/metadataserver/004"
@@ -91,7 +88,6 @@ class TestSelectorArguments(MAASTestCase):
             SystemExit,
             parallel.main,
             [
-                "maascli.001",
                 "provisioningserver.002",
                 "maasserver.003",
                 "metadataserver.004",
@@ -100,7 +96,6 @@ class TestSelectorArguments(MAASTestCase):
         )
         self.assertThat(sysexit.code, Equals(0))
         self.assertScriptsMatch(
-            MatchesSelectableScript("cli", "maascli.001"),
             MatchesSelectableScript("rack", "provisioningserver.002"),
             MatchesSelectableScript(
                 "region", "maasserver.003", "metadataserver.004"

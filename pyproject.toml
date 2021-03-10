@@ -9,7 +9,7 @@ exclude = """
 /.egg
 /.git
 /.mypy_cache
-/.venv
+/.ve
 /build
 /dist
 /parts
@@ -38,3 +38,9 @@ multi_line_output = 3
 not_skip = "__init__.py"
 order_by_type = false
 use_parentheses = true
+
+[tool.pytest.ini_options]
+testpaths = [
+  "src/apiclient",
+  "src/maascli"
+]

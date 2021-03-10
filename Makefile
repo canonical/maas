@@ -50,21 +50,20 @@ endef
 
 define BIN_SCRIPTS
 bin/black \
-bin/coverage \
 bin/flake8 \
 bin/isort \
 bin/maas \
 bin/maas-common \
+bin/maas-power \
 bin/maas-rack \
 bin/maas-region \
-bin/maas-power \
 bin/postgresfixture \
+bin/pytest \
 bin/rackd \
 bin/regiond \
 bin/subunit-1to2 \
 bin/subunit2junitxml \
 bin/subunit2pyunit \
-bin/test.cli \
 bin/test.parallel \
 bin/test.rack \
 bin/test.region \
@@ -159,21 +158,11 @@ machine-resources: machine-resources-vendor
 	$(MAKE) -C src/machine-resources build
 .PHONY: machine-resources
 
-define test-scripts
-  bin/test.cli
-  bin/test.rack
-  bin/test.region
-  bin/test.region.legacy
-  bin/test.testing
-endef
-
 test: test-py
 .PHONY: test
 
-test-py: bin/test.parallel bin/coverage bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit
-	@$(RM) .coverage .coverage.* junit.xml
-	@bash -o pipefail -c 'bin/test.parallel --with-coverage --subprocess-per-core --emit-subunit | bin/subunit-1to2 | bin/subunit2junitxml --no-passthrough -f -o junit.xml | bin/subunit2pyunit --no-passthrough'
-	@bin/coverage combine
+test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit bin/pytest
+	@utilities/run-py-tests-ci
 .PHONY: test-py
 
 clean-failed:
@@ -187,23 +176,6 @@ src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
     # the database to be a clean schema.
 	$(dbrun) bin/maas-region shell -c "from maasserver.models.notification import Notification; Notification.objects.all().delete()"
 	$(dbrun) pg_dump maas --no-owner --no-privileges --format=plain > $@
-
-coverage-report: coverage/index.html
-	sensible-browser $< > /dev/null 2>&1 &
-.PHONY: coverage-report
-
-coverage.xml: bin/coverage .coverage
-	bin/coverage xml -o $@
-
-coverage/index.html: revno = $(or $(shell git rev-parse HEAD 2>/dev/null),???)
-coverage/index.html: bin/coverage .coverage
-	@$(RM) -r $(@D)
-	bin/coverage html \
-	    --title "Coverage for MAAS rev $(revno)" \
-	    --directory $(@D)
-
-.coverage:
-	@$(error Use `$(MAKE) test` to generate coverage)
 
 lint: lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
@@ -304,8 +276,6 @@ clean: stop clean-failed clean-ui clean-machine-resources
 	$(RM) src/maasserver/data/templates.py
 	$(RM) *.log
 	$(RM) api-docs.rst
-	$(RM) .coverage .coverage.* coverage.xml
-	$(RM) -r coverage
 	$(RM) -r .hypothesis
 	$(RM) -r bin include lib local
 	$(RM) -r eggs develop-eggs
@@ -315,7 +285,7 @@ clean: stop clean-failed clean-ui clean-machine-resources
 	$(RM) -r services/*/supervise
 	$(RM) -r .run
 	$(RM) -r .idea
-	$(RM) junit.xml
+	$(RM) junit*.xml
 	$(RM) xunit.*.xml
 	$(RM) .failed
 	$(RM) -r $(VENV)
