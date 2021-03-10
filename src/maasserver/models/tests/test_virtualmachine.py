@@ -261,7 +261,7 @@ class TestGetVMHostResources(MAASServerTestCase):
         if1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
             name="eth1",
-            numa_node=node.default_numanode,
+            numa_node=factory.make_NUMANode(node=node),
             sriov_max_vf=4,
         )
         project = factory.make_string()
@@ -300,6 +300,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 VMHostNetworkInterface(
                     id=if0.id,
                     name="eth0",
+                    numa_index=0,
                     virtual_functions=VMHostResource(
                         allocated_tracked=3,
                         allocated_other=2,
@@ -309,6 +310,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 VMHostNetworkInterface(
                     id=if1.id,
                     name="eth1",
+                    numa_index=1,
                     virtual_functions=VMHostResource(
                         allocated_tracked=0,
                         allocated_other=2,
@@ -337,6 +339,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 VMHostNetworkInterface(
                     id=iface.id,
                     name="eth0",
+                    numa_index=0,
                     virtual_functions=VMHostResource(
                         allocated_tracked=0,
                         allocated_other=0,
@@ -372,6 +375,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                 VMHostNetworkInterface(
                     id=iface.id,
                     name="eth0",
+                    numa_index=0,
                     virtual_functions=VMHostResource(
                         allocated_tracked=0,
                         allocated_other=0,
@@ -390,19 +394,17 @@ class TestGetVMHostResources(MAASServerTestCase):
         factory.make_NUMANode(node=node, cores=[1, 4], memory=1024)
         factory.make_NUMANode(node=node, cores=[2, 5], memory=2048)
         pod = factory.make_Pod(pod_type="lxd", host=node)
-        factory.make_VirtualMachine(
+        vm0 = factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[0],
             hugepages_backed=False,
             bmc=pod,
-            machine=factory.make_Node(system_id="vm0"),
         )
-        factory.make_VirtualMachine(
+        vm1 = factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[2, 5],
             hugepages_backed=False,
             bmc=pod,
-            machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -416,13 +418,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 0,
-                    "vms": [
-                        {
-                            "pinned_cores": [0],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm0.id],
                 },
                 {
                     "cores": {"allocated": [], "free": [1, 4]},
@@ -442,13 +438,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 2,
-                    "vms": [
-                        {
-                            "pinned_cores": [2, 5],
-                            "networks": [],
-                            "system_id": "vm1",
-                        }
-                    ],
+                    "vms": [vm1.id],
                 },
             ],
         )
@@ -470,19 +460,17 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         pod = factory.make_Pod(pod_type="lxd")
         pod.hints.nodes.add(node)
-        factory.make_VirtualMachine(
+        vm0 = factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[0],
             hugepages_backed=True,
             bmc=pod,
-            machine=factory.make_Node(system_id="vm0"),
         )
-        factory.make_VirtualMachine(
+        vm1 = factory.make_VirtualMachine(
             memory=1024,
             pinned_cores=[2, 3],
             hugepages_backed=True,
             bmc=pod,
-            machine=factory.make_Node(system_id="vm1"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -502,13 +490,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 0,
-                    "vms": [
-                        {
-                            "pinned_cores": [0],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm0.id],
                 },
                 {
                     "cores": {"allocated": [2, 3], "free": []},
@@ -524,13 +506,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 1,
-                    "vms": [
-                        {
-                            "pinned_cores": [2, 3],
-                            "networks": [],
-                            "system_id": "vm1",
-                        }
-                    ],
+                    "vms": [vm1.id],
                 },
             ],
         )
@@ -544,12 +520,11 @@ class TestGetVMHostResources(MAASServerTestCase):
         factory.make_NUMANode(node=node, cores=[2, 3], memory=2048)
         pod = factory.make_Pod(pod_type="lxd")
         pod.hints.nodes.add(node)
-        factory.make_VirtualMachine(
+        vm = factory.make_VirtualMachine(
             memory=2048,
             pinned_cores=[0, 2],
             hugepages_backed=False,
             bmc=pod,
-            machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -563,13 +538,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 0,
-                    "vms": [
-                        {
-                            "pinned_cores": [0],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm.id],
                 },
                 {
                     "cores": {"allocated": [2], "free": [3]},
@@ -579,13 +548,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 1,
-                    "vms": [
-                        {
-                            "pinned_cores": [2],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm.id],
                 },
             ],
         )
@@ -607,12 +570,11 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         pod = factory.make_Pod(pod_type="lxd")
         pod.hints.nodes.add(node)
-        factory.make_VirtualMachine(
+        vm = factory.make_VirtualMachine(
             memory=2048,
             pinned_cores=[0, 2],
             hugepages_backed=True,
             bmc=pod,
-            machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -632,13 +594,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 0,
-                    "vms": [
-                        {
-                            "pinned_cores": [0],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm.id],
                 },
                 {
                     "cores": {"allocated": [2], "free": [3]},
@@ -654,13 +610,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 1,
-                    "vms": [
-                        {
-                            "pinned_cores": [2],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm.id],
                 },
             ],
         )
@@ -682,12 +632,11 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         pod = factory.make_Pod(pod_type="lxd")
         pod.hints.nodes.add(node)
-        factory.make_VirtualMachine(
+        vm = factory.make_VirtualMachine(
             memory=2048,
             pinned_cores=[0, 2],
             hugepages_backed=True,
             bmc=pod,
-            machine=factory.make_Node(system_id="vm0"),
         )
         resources = get_vm_host_resources(pod)
         self.assertEqual(
@@ -707,13 +656,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 0,
-                    "vms": [
-                        {
-                            "pinned_cores": [0],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm.id],
                 },
                 {
                     "cores": {"allocated": [2], "free": [3]},
@@ -729,13 +672,7 @@ class TestGetVMHostResources(MAASServerTestCase):
                     },
                     "interfaces": [],
                     "node_id": 1,
-                    "vms": [
-                        {
-                            "pinned_cores": [2],
-                            "networks": [],
-                            "system_id": "vm0",
-                        }
-                    ],
+                    "vms": [vm.id],
                 },
             ],
         )

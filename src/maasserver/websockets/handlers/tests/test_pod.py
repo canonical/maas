@@ -146,7 +146,6 @@ class TestPodHandler(MAASTransactionServerTestCase):
             result["storage_pools"], Equals(expected_data["storage_pools"])
         )
         self.assertThat(result["owners_count"], Equals(2))
-        self.assertEqual(result["numa_pinning"], [])
 
     def test_get_with_pod_host(self):
         admin = factory.make_admin()
@@ -190,25 +189,13 @@ class TestPodHandler(MAASTransactionServerTestCase):
         expected_numa_details = [
             {
                 "cores": {"allocated": [0], "free": [3]},
-                "interfaces": [
-                    {
-                        "id": node.boot_interface.id,
-                        "name": node.boot_interface.name,
-                        "virtual_functions": {"allocated": 0, "free": 0},
-                    },
-                ],
+                "interfaces": [node.boot_interface.id],
                 "memory": {
                     "general": {"allocated": 1024 * MB, "free": 3072 * MB},
                     "hugepages": [],
                 },
                 "node_id": 0,
-                "vms": [
-                    {
-                        "pinned_cores": [0],
-                        "system_id": "vm0",
-                        "networks": [],
-                    },
-                ],
+                "vms": [vm0.id],
             },
             {
                 "cores": {"allocated": [], "free": [1, 4]},
@@ -228,20 +215,13 @@ class TestPodHandler(MAASTransactionServerTestCase):
                     "hugepages": [],
                 },
                 "node_id": 2,
-                "vms": [
-                    {
-                        "pinned_cores": [2, 5],
-                        "system_id": "vm1",
-                        "networks": [],
-                    },
-                ],
+                "vms": [vm1.id],
             },
         ]
         result = handler.get({"id": pod.id})
         self.assertThat(result["host"], Equals(node.system_id))
         self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
         self.assertThat(result["boot_vlans"], Equals([subnet.vlan_id]))
-        self.assertEqual(result["numa_pinning"], expected_numa_details)
         resources = result["resources"]
         self.assertEqual(
             resources["cores"],
@@ -253,6 +233,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 {
                     "id": node.boot_interface.id,
                     "name": node.boot_interface.name,
+                    "numa_index": 0,
                     "virtual_functions": {
                         "allocated_other": 0,
                         "allocated_tracked": 0,
@@ -394,59 +375,45 @@ class TestPodHandler(MAASTransactionServerTestCase):
         )
 
         result = handler.get({"id": pod.id})
-        numa1, numa2 = result["numa_pinning"]
-        self.assertEqual(
+        numa1, numa2 = result["resources"]["numa"]
+        self.assertCountEqual(numa1["interfaces"], [iface1.id, br1.id])
+        self.assertCountEqual(numa1["vms"], [vm0.id, vm1.id])
+        self.assertCountEqual(numa2["interfaces"], [iface2.id])
+        self.assertCountEqual(numa2["vms"], [vm1.id])
+        self.assertCountEqual(
+            result["resources"]["interfaces"],
             [
                 {
                     "id": iface1.id,
                     "name": "eth0",
-                    "virtual_functions": {"allocated": 0, "free": 0},
+                    "numa_index": 0,
+                    "virtual_functions": {
+                        "allocated_tracked": 0,
+                        "allocated_other": 0,
+                        "free": 0,
+                    },
                 },
                 {
                     "id": br1.id,
                     "name": "br0",
-                    "virtual_functions": {"allocated": 0, "free": 0},
+                    "numa_index": 0,
+                    "virtual_functions": {
+                        "allocated_tracked": 0,
+                        "allocated_other": 0,
+                        "free": 0,
+                    },
                 },
-            ],
-            numa1["interfaces"],
-        )
-        self.assertEqual(
-            [
-                [
-                    {
-                        "guest_nic_id": None,
-                        "host_nic_id": br1.id,
-                    },
-                ],
-                [
-                    {
-                        "guest_nic_id": None,
-                        "host_nic_id": br1.id,
-                    },
-                ],
-            ],
-            [vm["networks"] for vm in numa1["vms"]],
-        )
-        self.assertEqual(
-            [
                 {
                     "id": iface2.id,
                     "name": "eth1",
-                    "virtual_functions": {"allocated": 0, "free": 0},
-                }
-            ],
-            numa2["interfaces"],
-        )
-        self.assertEqual(
-            [
-                [
-                    {
-                        "guest_nic_id": None,
-                        "host_nic_id": iface2.id,
+                    "numa_index": 1,
+                    "virtual_functions": {
+                        "allocated_tracked": 0,
+                        "allocated_other": 0,
+                        "free": 0,
                     },
-                ],
+                },
             ],
-            [vm["networks"] for vm in numa2["vms"]],
         )
 
     def test_get_host_interfaces_sriov(self):
@@ -513,26 +480,33 @@ class TestPodHandler(MAASTransactionServerTestCase):
         )
 
         result = handler.get({"id": pod.id})
-        numa1, numa2 = result["numa_pinning"]
-        self.assertEqual(
+        numa1, numa2 = result["resources"]["numa"]
+        self.assertCountEqual(numa1["interfaces"], [iface1.id])
+        self.assertCountEqual(numa2["interfaces"], [iface2.id])
+        self.assertCountEqual(
+            result["resources"]["interfaces"],
             [
                 {
                     "id": iface1.id,
                     "name": "eth0",
-                    "virtual_functions": {"allocated": 2, "free": 6},
+                    "numa_index": 0,
+                    "virtual_functions": {
+                        "allocated_tracked": 2,
+                        "allocated_other": 0,
+                        "free": 6,
+                    },
                 },
-            ],
-            numa1["interfaces"],
-        )
-        self.assertEqual(
-            [
                 {
                     "id": iface2.id,
                     "name": "eth1",
-                    "virtual_functions": {"allocated": 1, "free": 15},
+                    "numa_index": 1,
+                    "virtual_functions": {
+                        "allocated_tracked": 1,
+                        "allocated_other": 0,
+                        "free": 15,
+                    },
                 },
             ],
-            numa2["interfaces"],
         )
 
     def test_get_with_pod_host_determines_vlan_boot_status(self):

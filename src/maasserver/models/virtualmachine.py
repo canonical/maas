@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from math import ceil
 from typing import List, Optional
 
+from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import (
@@ -168,42 +169,6 @@ class NUMAPinningMemoryResources:
 
 
 @dataclass
-class NUMAPinningVirtualMachineNetworkResources:
-    host_nic_id: int
-    guest_nic_id: Optional[int] = None
-
-
-@dataclass
-class NUMAPinningVirtualMachineResources:
-    """Resource usage for a VM in a NUMA node."""
-
-    system_id: Optional[str]
-    pinned_cores: List[int] = field(default_factory=list)
-    networks: List[NUMAPinningVirtualMachineNetworkResources] = field(
-        default_factory=list
-    )
-
-
-@dataclass
-class NUMAPinningVirtualFunctionResources:
-    """Resource usage for network interfaces VFs in a NUMA node."""
-
-    free: int = 0
-    allocated: int = 0
-
-
-@dataclass
-class NUMAPinningHostInterfaceResources:
-    """Network interfaces details in a NUMA node."""
-
-    id: int
-    name: str
-    virtual_functions: NUMAPinningVirtualFunctionResources = field(
-        default_factory=NUMAPinningVirtualFunctionResources
-    )
-
-
-@dataclass
 class NUMAPinningNodeResources:
     """Resource usage for a NUMA node."""
 
@@ -214,10 +179,8 @@ class NUMAPinningNodeResources:
     cores: NUMAPinningCoresResources = field(
         default_factory=NUMAPinningCoresResources
     )
-    vms: List[NUMAPinningVirtualMachineResources] = field(default_factory=list)
-    interfaces: List[NUMAPinningHostInterfaceResources] = field(
-        default_factory=list
-    )
+    vms: List[int] = field(default_factory=list)
+    interfaces: List[int] = field(default_factory=list)
 
 
 @dataclass
@@ -259,6 +222,7 @@ class VMHostNetworkInterface:
 
     id: int
     name: str
+    numa_index: int
     virtual_functions: VMHostResource = field(default_factory=VMHostResource)
 
 
@@ -284,7 +248,7 @@ class VMHostResources:
     )
     storage: VMHostResource = field(default_factory=VMHostResource)
     vm_count: VMHostCount = field(default_factory=VMHostCount)
-    interfaces: List[VMHostResource] = field(default_factory=list)
+    interfaces: List[VMHostNetworkInterface] = field(default_factory=list)
     vms: List[VMHostVirtualMachineResources] = field(default_factory=list)
     numa: List[NUMAPinningNodeResources] = field(default_factory=list)
 
@@ -318,8 +282,8 @@ def _update_detailed_resource_counters(pod, resources):
     allocated_numanode_memory = defaultdict(int)
     # XXX map NUMA nodes to default hugepages entry, since currently LXD only support one size
     numanode_hugepages = {}
-    # map NUMA nodes to list of VMs resources in them
-    numanode_vms_resources = defaultdict(list)
+    # map NUMA nodes to list of VM IDs
+    numanode_vms = defaultdict(list)
     allocated_numanode_hugepages = defaultdict(int)
     for numa_idx, numa_node in numanodes.items():
         available_numanode_cores[numa_idx] = set(numa_node.cores)
@@ -336,21 +300,19 @@ def _update_detailed_resource_counters(pod, resources):
     )
 
     numanode_interfaces = defaultdict(list)
-    for interface in Interface.objects.annotate(
-        numa_index=F("numa_node__index")
-    ).filter(node=pod.host):
-        interface.allocated_vfs = 0
-        numanode_interfaces[interface.numa_index].append(interface)
-    all_vm_interfaces = (
+    for interface in resources.interfaces:
+        numanode_interfaces[interface.numa_index].append(interface.id)
+
+    # map VM IDs to NUMA node indexes for VM host interfaces their interfaces
+    # are attached to
+    vm_ifs_numa_indexes = defaultdict(
+        list,
         VirtualMachineInterface.objects.filter(
             vm__in=vms, host_interface__isnull=False
         )
-        .annotate(numa_index=F("host_interface__numa_node__index"))
-        .all()
+        .values_list("vm_id")
+        .annotate(numa_indexes=ArrayAgg("host_interface__numa_node__index")),
     )
-    vm_interfaces = defaultdict(list)
-    for vm_interface in all_vm_interfaces:
-        vm_interfaces[vm_interface.vm_id].append(vm_interface)
 
     for vm in vms:
         resources.vms.append(
@@ -365,14 +327,13 @@ def _update_detailed_resource_counters(pod, resources):
         )
         _update_numanode_resources_usage(
             vm,
-            vm_interfaces[vm.id],
+            vm_ifs_numa_indexes[vm.id],
             numanodes,
             numanode_hugepages,
             available_numanode_cores,
             allocated_numanode_memory,
             allocated_numanode_hugepages,
-            numanode_vms_resources,
-            numanode_interfaces,
+            numanode_vms,
         )
     resources.numa = [
         _get_numa_pinning_resources(
@@ -381,8 +342,8 @@ def _update_detailed_resource_counters(pod, resources):
             allocated_numanode_memory[numa_idx],
             numanode_hugepages[numa_idx],
             allocated_numanode_hugepages[numa_idx],
-            numanode_vms_resources[numa_idx],
-            numanode_interfaces,
+            numanode_vms[numa_idx],
+            numanode_interfaces[numa_idx],
         )
         for numa_idx, numa_node in numanodes.items()
     ]
@@ -474,6 +435,7 @@ def _update_global_resource_counters(pod, resources):
         Interface.objects.filter(node=pod.host)
         .values("id", "name", "sriov_max_vf")
         .annotate(
+            numa_index=F("numa_node__index"),
             allocated=Count("virtualmachineinterface"),
             tracked=ExpressionWrapper(
                 Q(virtualmachineinterface__vm__project=pod.tracked_project),
@@ -493,6 +455,7 @@ def _update_global_resource_counters(pod, resources):
             interface = VMHostNetworkInterface(
                 id=entry["id"],
                 name=entry["name"],
+                numa_index=entry["numa_index"],
                 virtual_functions=VMHostResource(free=entry["sriov_max_vf"]),
             )
             host_interfaces[entry["id"]] = interface
@@ -510,14 +473,13 @@ def _update_global_resource_counters(pod, resources):
 
 def _update_numanode_resources_usage(
     vm,
-    vm_interfaces,
+    vm_ifs_numa_indexes,
     numanodes,
     numanode_hugepages,
     available_numanode_cores,
     allocated_numanode_memory,
     allocated_numanode_hugepages,
-    numanode_vms_resources,
-    numanode_interfaces,
+    numanode_vms,
 ):
     numanode_weights, used_numanode_cores = _get_vm_numanode_weights_and_cores(
         vm, numanodes
@@ -541,35 +503,8 @@ def _update_numanode_resources_usage(
             )
 
     for numa_idx in numanodes.keys():
-        pinned_cores = list(used_numanode_cores[numa_idx])
-        numa_networks = []
-        for vm_interface in vm_interfaces:
-            if vm_interface.numa_index != numa_idx:
-                continue
-            numa_networks.append(
-                NUMAPinningVirtualMachineNetworkResources(
-                    vm_interface.host_interface_id
-                )
-            )
-            if vm_interface.attachment_type == InterfaceAttachType.SRIOV:
-                for host_interface in numanode_interfaces[numa_idx]:
-                    if host_interface.id == vm_interface.host_interface_id:
-                        host_interface.allocated_vfs += 1
-
-        if pinned_cores or numa_networks:
-            numanode_vms_resources[numa_idx].append(
-                NUMAPinningVirtualMachineResources(
-                    system_id=vm.system_id,
-                    pinned_cores=list(used_numanode_cores[numa_idx]),
-                    networks=[
-                        NUMAPinningVirtualMachineNetworkResources(
-                            vm_interface.host_interface_id
-                        )
-                        for vm_interface in vm_interfaces
-                        if vm_interface.numa_index == numa_idx
-                    ],
-                )
-            )
+        if used_numanode_cores[numa_idx] or numa_idx in vm_ifs_numa_indexes:
+            numanode_vms[numa_idx].append(vm.id)
 
 
 def _get_vm_numanode_weights_and_cores(vm, numanodes):
@@ -599,10 +534,14 @@ def _get_numa_pinning_resources(
     allocated_numanode_memory,
     numanode_hugepages,
     allocated_numanode_hugepages,
-    numanode_vm_resources,
+    numanode_vms,
     numanode_interfaces,
 ):
-    numa_resources = NUMAPinningNodeResources(numa_node.index)
+    numa_resources = NUMAPinningNodeResources(
+        node_id=numa_node.index,
+        vms=numanode_vms,
+        interfaces=numanode_interfaces,
+    )
     # fill in cores details
     numa_resources.cores.free = sorted(available_numanode_cores)
     numa_resources.cores.allocated = sorted(
@@ -624,18 +563,4 @@ def _get_numa_pinning_resources(
         # if hugepages are used, general memory needs to be decreased by the
         # amount reserved for them
         numa_resources.memory.general.free -= numanode_hugepages.total
-    numa_resources.vms = numanode_vm_resources
-    numa_resources.interfaces = [
-        NUMAPinningHostInterfaceResources(
-            interface.id,
-            interface.name,
-            # sriov_max_vf doesn't tell how many VFs are enabled, but
-            # we don't have any better data.
-            NUMAPinningVirtualFunctionResources(
-                free=interface.sriov_max_vf - interface.allocated_vfs,
-                allocated=interface.allocated_vfs,
-            ),
-        )
-        for interface in numanode_interfaces[numa_node.index]
-    ]
     return numa_resources

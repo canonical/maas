@@ -131,11 +131,6 @@ class PodHandler(TimestampedModelHandler):
                 "resources": self.dehydrate_resources(obj, for_list=for_list),
             }
         )
-        # XXX for UI compatibility keep a copy of the NUMA data for now. This
-        # should be removed once the UI pulls all data from the "resources"
-        # section
-        data["numa_pinning"] = data["resources"]["numa"]
-
         if not for_list:
             if obj.host:
                 data["attached_vlans"] = list(
