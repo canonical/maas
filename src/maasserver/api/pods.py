@@ -35,6 +35,7 @@ DISPLAYED_POD_FIELDS = (
     "pool",
     "host",
     "default_macvlan_mode",
+    "version",
 )
 
 

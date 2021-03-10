@@ -163,6 +163,7 @@ class TestDiscoveredClasses(MAASTestCase):
 
     def test_pod(self):
         hostname = factory.make_name("hostname")
+        version = factory.make_name("version")
         cores = random.randint(1, 8)
         cpu_speed = random.randint(1000, 2000)
         memory = random.randint(4096, 8192)
@@ -212,12 +213,14 @@ class TestDiscoveredClasses(MAASTestCase):
         pod = DiscoveredPod(
             architectures=["amd64/generic"],
             cores=cores,
+            version=version,
             cpu_speed=cpu_speed,
             memory=memory,
             local_storage=local_storage,
             hints=hints,
             machines=machines,
         )
+        self.assertEqual(version, pod.version)
         self.assertEqual(cores, pod.cores)
         self.assertEqual(cpu_speed, pod.cpu_speed)
         self.assertEqual(memory, pod.memory)

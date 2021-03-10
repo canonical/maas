@@ -269,6 +269,7 @@ class LXDPodDriver(PodDriver):
             {state.hwaddr for state in networks_state if state.hwaddr}
         )
 
+        environment = client.host_info["environment"]
         # After the region creates the Pod object it will sync LXD commissioning
         # data for all hardware information.
         discovered_pod = DiscoveredPod(
@@ -280,10 +281,11 @@ class LXDPodDriver(PodDriver):
             # safest bet is to just use the kernel_architecture.
             architectures=[
                 kernel_to_debian_architecture(
-                    client.host_info["environment"]["kernel_architecture"]
+                    environment["kernel_architecture"]
                 )
             ],
-            name=client.host_info["environment"]["server_name"],
+            name=environment["server_name"],
+            version=environment["server_version"],
             mac_addresses=mac_addresses,
             capabilities=[
                 Capabilities.COMPOSABLE,

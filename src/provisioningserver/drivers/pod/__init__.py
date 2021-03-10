@@ -277,6 +277,7 @@ class DiscoveredPod:
 
     architectures = attr.ib(converter=converter_list(str))
     name = attr.ib(converter=converter_obj(str, optional=True), default=None)
+    version = attr.ib(converter=converter_obj(str, optional=True), default="")
     cores = attr.ib(converter=int, default=-1)
     cpu_speed = attr.ib(converter=int, default=-1)
     memory = attr.ib(converter=int, default=-1)

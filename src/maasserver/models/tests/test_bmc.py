@@ -854,6 +854,7 @@ class TestPod(MAASServerTestCase):
         return DiscoveredPod(
             architectures=["amd64/generic"],
             name=name,
+            version=factory.make_name("version"),
             cores=random.randint(8, 120),
             cpu_speed=random.randint(2000, 4000),
             memory=random.randint(8192, 8192 * 8),
@@ -933,6 +934,7 @@ class TestPod(MAASServerTestCase):
             MatchesStructure(
                 architectures=Equals(discovered.architectures),
                 name=Equals(discovered.name),
+                version=Equals(discovered.version),
                 cores=Equals(discovered.cores),
                 cpu_speed=Equals(discovered.cpu_speed),
                 memory=Equals(discovered.memory),

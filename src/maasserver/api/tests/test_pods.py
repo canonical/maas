@@ -139,6 +139,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
                 "pool",
                 "host",
                 "default_macvlan_mode",
+                "version",
             ],
             list(parsed_result[0]),
         )

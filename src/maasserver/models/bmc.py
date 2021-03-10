@@ -183,6 +183,8 @@ class BMC(CleanSave, TimestampedModel):
     # Name of the pod.
     name = CharField(max_length=255, default="", blank=True, unique=True)
 
+    version = TextField(default="", blank=True)
+
     # Architectures this pod supports.
     architectures = ArrayField(
         TextField(), blank=True, null=True, default=list
@@ -1487,6 +1489,7 @@ class Pod(BMC):
         interfaces, and/or block devices that do not match the
         `discovered_pod` values will be removed.
         """
+        self.version = discovered_pod.version
         self.architectures = discovered_pod.architectures
         if not self.name and discovered_pod.name:
             self.name = discovered_pod.name

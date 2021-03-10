@@ -310,8 +310,13 @@ class VirshSSH(pexpect.spawn):
 
     def _execute(self, poweraddr):
         """Spawns the pexpect command."""
-        cmd = "virsh --connect %s" % poweraddr
-        self._spawn(cmd)
+        self._spawn(f"virsh --connect {poweraddr}")
+
+    def get_server_version(self):
+        output = self.run(["version", "--daemon"]).strip()
+        for line in output.splitlines():
+            if line.startswith("Running against daemon"):
+                return line.split()[-1]
 
     def get_network_xml(self, network):
         output = self.run(["net-dumpxml", network]).strip()
@@ -668,6 +673,7 @@ class VirshSSH(pexpect.spawn):
         discovered_pod.local_storage = sum(
             pool.storage for pool in discovered_pod.storage_pools
         )
+        discovered_pod.version = self.get_server_version()
         return discovered_pod
 
     def get_pod_hints(self):

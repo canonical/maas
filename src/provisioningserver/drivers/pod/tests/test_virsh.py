@@ -1,9 +1,6 @@
 # Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.drivers.pod.virsh`."""
-
-
 from math import floor
 import os
 import random
@@ -911,12 +908,16 @@ class TestVirshSSH(MAASTestCase):
         mock_get_pod_storage_pools = self.patch(
             virsh.VirshSSH, "get_pod_storage_pools"
         )
+        mock_get_pod_server_version = self.patch(
+            virsh.VirshSSH, "get_server_version"
+        )
         mock_get_pod_nodeinfo.return_value = SAMPLE_NODEINFO
         mock_get_pod_arch.return_value = architecture
         mock_get_pod_cpu_count.return_value = cores
         mock_get_pod_cpu_speed.return_value = cpu_speed
         mock_get_pod_memory.return_value = memory
         mock_get_pod_storage_pools.return_value = storage_pools
+        mock_get_pod_server_version.return_value = "6.0.0"
 
         discovered_pod = conn.get_pod_resources()
         self.assertEqual([architecture], discovered_pod.architectures)
@@ -934,6 +935,24 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(memory, discovered_pod.memory)
         self.assertEqual(storage_pools, discovered_pod.storage_pools)
         self.assertEqual(local_storage, discovered_pod.local_storage)
+        self.assertEqual(discovered_pod.version, "6.0.0")
+
+    def test_get_server_version(self):
+        conn = self.configure_virshssh("")
+        mock_run = self.patch(virsh.VirshSSH, "run")
+        mock_run.return_value = dedent(
+            """\
+            Compiled against library: libvirt 6.6.0
+            Using library: libvirt 6.6.0
+            Using API: QEMU 6.6.0
+            Running hypervisor: QEMU 5.0.0
+            Running against daemon: 6.6.0
+
+            """
+        )
+        version = conn.get_server_version()
+        mock_run.assert_called_with(["version", "--daemon"])
+        self.assertEqual(version, "6.6.0")
 
     def test_get_pod_hints(self):
         conn = self.configure_virshssh("")

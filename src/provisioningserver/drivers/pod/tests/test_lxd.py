@@ -316,6 +316,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": name,
+                "server_version": "1.2.3",
             }
         }
         mac_address = factory.make_mac_address()
@@ -328,6 +329,7 @@ class TestLXDPodDriver(MAASTestCase):
         discovered_pod = yield driver.discover(None, context)
         self.assertItemsEqual(["amd64/generic"], discovered_pod.architectures)
         self.assertEqual(name, discovered_pod.name)
+        self.assertEqual(discovered_pod.version, "1.2.3")
         self.assertItemsEqual([mac_address], discovered_pod.mac_addresses)
         self.assertEqual(-1, discovered_pod.cores)
         self.assertEqual(-1, discovered_pod.cpu_speed)
@@ -362,6 +364,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": name,
+                "server_version": "1.2.3",
             }
         }
         mac_address = factory.make_mac_address()
@@ -384,6 +387,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": factory.make_name("hostname"),
+                "server_version": "1.2.3",
             }
         }
         client.projects.exists.return_value = True
@@ -405,6 +409,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": factory.make_name("hostname"),
+                "server_version": "1.2.3",
             }
         }
         client.projects.exists.return_value = False
@@ -448,6 +453,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": name,
+                "server_version": "1.2.3",
             }
         }
         proj1 = Mock()
