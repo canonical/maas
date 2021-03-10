@@ -160,6 +160,7 @@ TestingLibraries = Pattern(
     "maastesting|maastesting.**",
     "nose|nose.**",
     "postgresfixture|postgresfixture.**",
+    "pytest|pytest.**",
     "subunit|subunit.**",
     "testresources|testresources.**",
     "testscenarios|testscenarios.**",

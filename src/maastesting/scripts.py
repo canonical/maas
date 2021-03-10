@@ -125,22 +125,6 @@ def run_rack():
     test_main()
 
 
-def run_testing():
-    """Entry point for testing test runner."""
-    options = [
-        "--with-resources",
-        "--with-scenarios",
-        "--with-select",
-        "--select-dir=src/maastesting",
-        "--cover-package=maastesting",
-        "--cover-branches",
-    ]
-    inject_test_options(options)
-    update_environ()
-    init_asyncio_reactor()
-    test_main()
-
-
 def run_parallel():
     """Entry point for parallel test runner."""
     init_asyncio_reactor()

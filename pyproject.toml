@@ -40,7 +40,9 @@ order_by_type = false
 use_parentheses = true
 
 [tool.pytest.ini_options]
+filterwarnings = "error::BytesWarning"
 testpaths = [
   "src/apiclient",
-  "src/maascli"
+  "src/maascli",
+  "src/maastesting"
 ]

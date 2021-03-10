@@ -67,8 +67,7 @@ bin/subunit2pyunit \
 bin/test.parallel \
 bin/test.rack \
 bin/test.region \
-bin/test.region.legacy \
-bin/test.testing
+bin/test.region.legacy
 endef
 
 define PY_SOURCES

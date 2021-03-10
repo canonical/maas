@@ -7,9 +7,6 @@
 import os.path
 import random
 from subprocess import CalledProcessError, check_output, STDOUT
-from textwrap import dedent
-
-from testtools.matchers import Equals
 
 from maascli import main
 from maascli.config import ProfileConfig
@@ -17,7 +14,6 @@ from maascli.testing.config import make_configs
 from maascli.utils import handler_command_name
 from maastesting import root
 from maastesting.fixtures import CaptureStandardIO
-from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 
 
@@ -80,18 +76,7 @@ class TestMain(MAASTestCase):
         with CaptureStandardIO() as stdio:
             error = self.assertRaises(SystemExit, main, command)
 
-        self.assertThat(error.code, Equals(2))
-        self.assertThat(
-            stdio.getError(),
-            DocTestMatches(
-                dedent(
-                    """\
-                usage: maas [-h] COMMAND ...
-                <BLANKLINE>
-                ...
-                <BLANKLINE>
-                too few arguments
-                """
-                )
-            ),
-        )
+        self.assertEqual(error.code, 2)
+        error = stdio.getError()
+        self.assertIn("usage: maas [-h] COMMAND ...", error)
+        self.assertIn("too few arguments", error)

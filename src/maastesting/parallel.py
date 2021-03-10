@@ -435,9 +435,6 @@ def main(args=None):
             r"^src/(maas|metadata)server\b",
             r"^(maas|metadata)server\b",
         ),
-        TestScript(
-            lock, "bin/test.testing", r"^src/maastesting\b", r"^maastesting\b"
-        ),
     )
     # Parse arguments.
     args = make_argument_parser(scripts).parse_args(args)

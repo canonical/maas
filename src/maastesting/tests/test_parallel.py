@@ -1,8 +1,6 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maastesting.parallel`."""
-
 
 import os
 import random
@@ -60,7 +58,6 @@ class TestSelectorArguments(MAASTestCase):
             MatchesUnselectableScript("bin/test.region.legacy"),
             MatchesSelectableScript("rack"),
             MatchesSelectableScript("region"),
-            MatchesSelectableScript("testing"),
         )
 
     def test_scripts_can_be_selected_by_path(self):
@@ -71,7 +68,6 @@ class TestSelectorArguments(MAASTestCase):
                 "src/provisioningserver/002",
                 "src/maasserver/003",
                 "src/metadataserver/004",
-                "src/maastesting/005",
             ],
         )
         self.assertThat(sysexit.code, Equals(0))
@@ -80,7 +76,6 @@ class TestSelectorArguments(MAASTestCase):
             MatchesSelectableScript(
                 "region", "src/maasserver/003", "src/metadataserver/004"
             ),
-            MatchesSelectableScript("testing", "src/maastesting/005"),
         )
 
     def test_scripts_can_be_selected_by_module(self):
@@ -91,7 +86,6 @@ class TestSelectorArguments(MAASTestCase):
                 "provisioningserver.002",
                 "maasserver.003",
                 "metadataserver.004",
-                "maastesting.005",
             ],
         )
         self.assertThat(sysexit.code, Equals(0))
@@ -100,7 +94,6 @@ class TestSelectorArguments(MAASTestCase):
             MatchesSelectableScript(
                 "region", "maasserver.003", "metadataserver.004"
             ),
-            MatchesSelectableScript("testing", "maastesting.005"),
         )
 
 
