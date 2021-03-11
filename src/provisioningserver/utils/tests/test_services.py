@@ -318,7 +318,49 @@ class TestNetworksMonitoringService(MAASTestCase):
         yield service.stopService()
 
     @inlineCallbacks
-    def test_runs_refresh_and_annotates_commissioning(self):
+    def test_runs_refresh_and_annotates_commissioning_with_hints(self):
+        # Don't actually wait for beaconing to complete.
+        self.patch(services, "pause")
+        service = self.makeService(enable_beaconing=True)
+        service.maas_url = "http://my.example.com/MAAS"
+        service.system_id = "my-system"
+        service.credentials = {
+            "consumer_key": "my-consumer",
+            "token_key": "my-key",
+            "token_secret": "my-secret",
+        }
+        self.fake_refresher.credentials.update(service.credentials)
+        base_lxd_data = {factory.make_string(): factory.make_string()}
+        base_lxd_output = json.dumps(base_lxd_data)
+        self.fake_refresher.stdout_content[
+            LXD_OUTPUT_NAME
+        ] = base_lxd_output.encode("utf-8")
+        network_extra = {
+            "interfaces": {"my-interface": "foo"},
+            "hints": {"my-hint": "foo"},
+        }
+        self.all_interfaces_mock.return_value = network_extra["interfaces"]
+        beaconing_mock = self.patch(services.BeaconingSocketProtocol)
+        beaconing_mock.return_value.getJSONTopologyHints.return_value = (
+            network_extra["hints"]
+        )
+
+        yield service.startService()
+        yield self.update_interfaces_deferred
+        yield service.stopService()
+
+        metadata_url = service.maas_url + "/metadata/2012-03-01/"
+        script_runs = self.fake_refresher.script_runs[metadata_url]
+        self.assertEqual("finished", script_runs[LXD_OUTPUT_NAME].status)
+        commissioning_data = json.loads(
+            script_runs[LXD_OUTPUT_NAME].out.decode("utf-8")
+        )
+        expected_commisioning_data = base_lxd_data.copy()
+        expected_commisioning_data.update({"network-extra": network_extra})
+        self.assertEqual(expected_commisioning_data, commissioning_data)
+
+    @inlineCallbacks
+    def test_runs_refresh_and_annotates_commissioning_without_hints(self):
         service = self.makeService()
         service.maas_url = "http://my.example.com/MAAS"
         service.system_id = "my-system"
@@ -333,8 +375,11 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.fake_refresher.stdout_content[
             LXD_OUTPUT_NAME
         ] = base_lxd_output.encode("utf-8")
-        interfaces_hints = {"my-interface": "foo"}
-        self.all_interfaces_mock.return_value = interfaces_hints
+        network_extra = {
+            "interfaces": {"my-interface": "foo"},
+            "hints": None,
+        }
+        self.all_interfaces_mock.return_value = network_extra["interfaces"]
 
         yield service.startService()
         yield self.update_interfaces_deferred
@@ -347,7 +392,7 @@ class TestNetworksMonitoringService(MAASTestCase):
             script_runs[LXD_OUTPUT_NAME].out.decode("utf-8")
         )
         expected_commisioning_data = base_lxd_data.copy()
-        expected_commisioning_data.update({"network-hints": interfaces_hints})
+        expected_commisioning_data.update({"network-extra": network_extra})
         self.assertEqual(expected_commisioning_data, commissioning_data)
 
     @inlineCallbacks

@@ -1149,7 +1149,11 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 hints = self.beaconing_protocol.getJSONTopologyHints()
             maas_url, system_id, credentials = yield self.getRefreshDetails()
             yield self._run_refresh(
-                maas_url, system_id, credentials, interfaces
+                maas_url,
+                system_id,
+                credentials,
+                interfaces,
+                hints,
             )
             yield maybeDeferred(self.recordInterfaces, interfaces, hints)
             # Note: _interfacesRecorded() will reconfigure discovery after
@@ -1169,7 +1173,9 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             yield maybeDeferred(self._configureNetworkDiscovery, interfaces)
 
     @inlineCallbacks
-    def _run_refresh(self, maas_url, system_id, credentials, interfaces):
+    def _run_refresh(
+        self, maas_url, system_id, credentials, interfaces, hints
+    ):
         yield deferToThread(
             refresh,
             system_id,
@@ -1178,17 +1184,26 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             credentials["token_secret"],
             maas_url,
             post_process_hook=functools.partial(
-                self._annotate_commissioning, interfaces
+                self._annotate_commissioning, interfaces, hints
             ),
         )
 
     def _annotate_commissioning(
-        self, interfaces, script_name, combined_path, stdout_path, stderr_path
+        self,
+        interfaces,
+        hints,
+        script_name,
+        combined_path,
+        stdout_path,
+        stderr_path,
     ):
         if script_name != LXD_OUTPUT_NAME:
             return
         lxd_data = json.loads(Path(stdout_path).read_bytes())
-        lxd_data["network-hints"] = interfaces
+        lxd_data["network-extra"] = {
+            "interfaces": interfaces,
+            "hints": hints,
+        }
         Path(stdout_path).write_text(json.dumps(lxd_data))
 
     def _getInterfacesForBeaconing(self, interfaces: dict):
