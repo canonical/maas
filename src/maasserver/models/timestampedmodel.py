@@ -15,10 +15,7 @@ def now():
     return timezone.now()
 
 
-# Having 'object' here should not be required, but it is a workaround for the
-# bug in PyCharm described here:
-#     https://youtrack.jetbrains.com/issue/PY-12566
-class TimestampedModel(Model, object):
+class TimestampedModel(Model):
     """Abstract base model with creation/update timestamps.
 
     Timestamps are taken from the database transaction clock.

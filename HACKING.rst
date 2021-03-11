@@ -112,19 +112,6 @@ git repository to remove the branch.
     $ git branch -d new-branch
 
 
-Optional
-^^^^^^^^
-
-The PyCharm_ IDE is a useful tool when developing MAAS. The MAAS team does not
-endorse any particular IDE, but ``.idea`` `project files are included with
-MAAS`_, so PyCharm_ is an easy choice.
-
-.. _PyCharm:
-  https://www.jetbrains.com/pycharm/
-
-.. _project files are included with MAAS:
-  https://intellij-support.jetbrains.com/entries/23393067-How-to-manage-projects-under-Version-Control-Systems
-
 Running tests
 =============
 

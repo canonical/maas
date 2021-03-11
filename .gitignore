@@ -5,16 +5,10 @@
 *.snap
 *.fuse_hidden*
 /.mypy_cache
-/.coverage
-/.coverage.*
 /.db.lock
 /.failed
 /.git
 /.hypothesis
-/.idea
-/.idea/libraries
-/.idea/scopes
-/.idea/workspace.xml
 /.installed.cfg
 /.pybuild/
 /.noseids
@@ -25,8 +19,6 @@
 /bin
 /build
 /build_pkg
-/coverage
-/coverage.xml
 /db
 /debian/build/
 /debian/debhelper-build-stamp

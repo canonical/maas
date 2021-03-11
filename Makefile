@@ -89,8 +89,7 @@ build: \
   $(VENV) \
   $(BIN_SCRIPTS) \
   bin/shellcheck \
-  bin/py \
-  pycharm
+  bin/py
 .PHONY: build
 
 all: build ui machine-resources doc
@@ -250,12 +249,6 @@ doc: api-docs.rst
 .run: run-skel
 	@cp --archive --verbose $^ $@
 
-.idea: contrib/pycharm
-	@cp --archive --verbose $^ $@
-
-pycharm: .idea
-.PHONY: pycharm
-
 clean-ui:
 	$(MAKE) -C src/maasui clean
 .PHONY: clean-ui
@@ -283,7 +276,6 @@ clean: stop clean-failed clean-ui clean-machine-resources
 	$(RM) -r *.egg *.egg-info src/*.egg-info
 	$(RM) -r services/*/supervise
 	$(RM) -r .run
-	$(RM) -r .idea
 	$(RM) junit*.xml
 	$(RM) xunit.*.xml
 	$(RM) .failed
