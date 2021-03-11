@@ -174,6 +174,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
+from metadataserver.builtin_scripts import network as network_module
 from metadataserver.builtin_scripts.tests import test_hooks
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -10081,21 +10082,35 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         if not self.with_beaconing:
             expected_call_order = [
                 call(
-                    "eth0", interfaces["eth0"], create_fabrics=True, hints=None
+                    controller,
+                    "eth0",
+                    interfaces["eth0"],
+                    create_fabrics=True,
+                    hints=None,
                 ),
                 call(
-                    "eth1", interfaces["eth1"], create_fabrics=True, hints=None
+                    controller,
+                    "eth1",
+                    interfaces["eth1"],
+                    create_fabrics=True,
+                    hints=None,
                 ),
                 call(
-                    "eth2", interfaces["eth2"], create_fabrics=True, hints=None
+                    controller,
+                    "eth2",
+                    interfaces["eth2"],
+                    create_fabrics=True,
+                    hints=None,
                 ),
                 call(
+                    controller,
                     "bond0",
                     interfaces["bond0"],
                     create_fabrics=True,
                     hints=None,
                 ),
                 call(
+                    controller,
                     "bond0.10",
                     interfaces["bond0.10"],
                     create_fabrics=True,
@@ -10105,51 +10120,70 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         else:
             expected_call_order = [
                 call(
+                    controller,
                     "eth0",
                     interfaces["eth0"],
                     create_fabrics=False,
                     hints=None,
                 ),
                 call(
+                    controller,
                     "eth1",
                     interfaces["eth1"],
                     create_fabrics=False,
                     hints=None,
                 ),
                 call(
+                    controller,
                     "eth2",
                     interfaces["eth2"],
                     create_fabrics=False,
                     hints=None,
                 ),
                 call(
+                    controller,
                     "bond0",
                     interfaces["bond0"],
                     create_fabrics=False,
                     hints=None,
                 ),
                 call(
+                    controller,
                     "bond0.10",
                     interfaces["bond0.10"],
                     create_fabrics=False,
                     hints=None,
                 ),
                 call(
-                    "eth0", interfaces["eth0"], create_fabrics=True, hints=None
+                    controller,
+                    "eth0",
+                    interfaces["eth0"],
+                    create_fabrics=True,
+                    hints=None,
                 ),
                 call(
-                    "eth1", interfaces["eth1"], create_fabrics=True, hints=None
+                    controller,
+                    "eth1",
+                    interfaces["eth1"],
+                    create_fabrics=True,
+                    hints=None,
                 ),
                 call(
-                    "eth2", interfaces["eth2"], create_fabrics=True, hints=None
+                    controller,
+                    "eth2",
+                    interfaces["eth2"],
+                    create_fabrics=True,
+                    hints=None,
                 ),
                 call(
+                    controller,
                     "bond0",
                     interfaces["bond0"],
                     create_fabrics=True,
                     hints=None,
                 ),
                 call(
+                    controller,
                     "bond0.10",
                     interfaces["bond0.10"],
                     create_fabrics=True,
@@ -10159,7 +10193,9 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         # Perform multiple times to make sure the call order is always
         # the same.
         for _ in range(5):
-            mock_update_interface = self.patch(controller, "_update_interface")
+            mock_update_interface = self.patch(
+                network_module, "update_interface"
+            )
             self.update_interfaces(controller, interfaces)
             self.assertThat(
                 mock_update_interface, MockCallsMatch(*expected_call_order)
@@ -11217,7 +11253,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             "enabled": True,
             "vid": vid_on_fabric,
         }
-        maaslog = self.patch(node_module, "maaslog")
+        maaslog = self.patch(network_module, "maaslog")
         self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
@@ -11355,7 +11391,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             "enabled": True,
             "vid": new_vlan.vid,
         }
-        maaslog = self.patch(node_module, "maaslog")
+        maaslog = self.patch(network_module, "maaslog")
         self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
@@ -11448,7 +11484,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             "enabled": True,
             "vid": other_vlan.vid,
         }
-        maaslog = self.patch(node_module, "maaslog")
+        maaslog = self.patch(network_module, "maaslog")
         self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
