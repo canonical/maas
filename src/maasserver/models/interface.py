@@ -437,7 +437,9 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
             interface.save()
         return interface, created
 
-    def get_or_create_on_node(self, node, name, mac_address, parent_nics):
+    def get_or_create_on_node(
+        self, node, name, mac_address, parent_nics, acquired=False
+    ):
         """Create an interface on the specified node, with the specified MAC
         address and parent NICs.
 
@@ -473,7 +475,11 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 # intentionally changed the interface type.
                 interface.delete()
                 return self.get_or_create_on_node(
-                    node, name, mac_address, parent_nics
+                    node,
+                    name,
+                    mac_address,
+                    parent_nics,
+                    acquired=acquired,
                 )
             interface.mac_address = mac_address
             interface.name = name
@@ -490,7 +496,10 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 interface.node = node
         else:
             interface = self.create(
-                name=name, mac_address=mac_address, node=node
+                name=name,
+                mac_address=mac_address,
+                node=node,
+                acquired=acquired,
             )
             for parent_nic in parent_nics:
                 InterfaceRelationship(
@@ -1467,13 +1476,6 @@ class Interface(CleanSave, TimestampedModel):
         # Verify that the MAC address is legal if it is not empty.
         if self.mac_address:
             validate_mac(self.mac_address)
-
-        # Acquired can only be set on bridge interface types and the node
-        # must be in an allocated state.
-        if self.acquired and self.type != INTERFACE_TYPE.BRIDGE:
-            raise ValueError(
-                "acquired cannot be True on interface type '%s'" % self.type
-            )
 
     def delete(self, remove_ip_address=True):
         # We set the _skip_ip_address_removal so the signal can use it to

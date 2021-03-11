@@ -7038,6 +7038,41 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             [parent.id], [nic.id for nic in static_ip.interface_set.all()]
         )
 
+    def test_release_interface_config_removes_acquired_vlan(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        vlan_if = factory.make_Interface(
+            INTERFACE_TYPE.VLAN, parents=[interface]
+        )
+        vlan_if.acquired = True
+        vlan_if.save()
+        subnet = factory.make_Subnet()
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet,
+            interface=vlan_if,
+        )
+        node.release_interface_config()
+        self.assertIsNone(reload_object(vlan_if))
+        self.assertIsNone(reload_object(static_ip))
+
+    def test_release_interface_config_removes_acquired_physical(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface.acquired = True
+        interface.save()
+        subnet = factory.make_Subnet()
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet,
+            interface=interface,
+        )
+        node.release_interface_config()
+        self.assertIsNone(reload_object(interface))
+        self.assertIsNone(reload_object(static_ip))
+
     def test_clear_networking_configuration(self):
         node = factory.make_Node()
         nic0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -10228,6 +10263,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="eth0",
                 mac_address=interfaces["eth0"]["mac_address"],
                 enabled=True,
+                acquired=True,
             ),
         )
         self.assertThat(list(eth0.parents.all()), Equals([]))
@@ -10239,6 +10275,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="eth1",
                 mac_address=interfaces["eth1"]["mac_address"],
                 enabled=False,
+                acquired=True,
             ),
         )
         self.assertThat(list(eth1.parents.all()), Equals([]))
@@ -10311,6 +10348,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 # always inherit the parent MAC address.
                 mac_address=interfaces["eth0"]["mac_address"],
                 enabled=True,
+                acquired=True,
             ),
         )
         self.assertThat(list(eth0.parents.all()), Equals([]))
@@ -10322,6 +10360,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="vlan0100",
                 mac_address=interfaces["eth0"]["mac_address"],
                 enabled=True,
+                acquired=True,
             ),
         )
         self.assertThat(list(vlan0100.parents.all()), Equals([eth0]))
@@ -10358,6 +10397,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 # always inherit the parent MAC address.
                 mac_address=interfaces["eth0"]["mac_address"],
                 enabled=True,
+                acquired=True,
             ),
         )
         self.assertThat(list(eth0.parents.all()), Equals([]))
@@ -10369,6 +10409,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="vlan0100",
                 mac_address=interfaces["eth0"]["mac_address"],
                 enabled=True,
+                acquired=True,
             ),
         )
         self.assertThat(list(vlan0100.parents.all()), Equals([eth0]))
@@ -10380,6 +10421,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="vlan101",
                 mac_address=interfaces["eth0"]["mac_address"],
                 enabled=True,
+                acquired=True,
             ),
         )
         self.assertThat(list(vlan101.parents.all()), Equals([eth0]))
@@ -10391,6 +10433,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="eth0.0102",
                 mac_address=interfaces["eth0"]["mac_address"],
                 enabled=True,
+                acquired=True,
             ),
         )
         self.assertThat(list(eth0_0102.parents.all()), Equals([eth0]))
@@ -10965,6 +11008,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 mac_address=interface.mac_address,
                 enabled=True,
                 vlan=vlan,
+                acquired=False,
             ),
         )
         addresses = list(interface.ip_addresses.all())
@@ -11022,6 +11066,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="eth0",
                 mac_address=interface.mac_address,
                 enabled=True,
+                acquired=False,
                 vlan=vlan,
             ),
         )
@@ -11083,6 +11128,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="eth0",
                 mac_address=interface.mac_address,
                 enabled=True,
+                acquired=False,
                 vlan=vlan,
             ),
         )
@@ -11597,6 +11643,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 type=INTERFACE_TYPE.VLAN,
                 name=vlan_name,
                 enabled=True,
+                acquired=False,
                 vlan=new_vlan,
             ),
         )
@@ -11767,6 +11814,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="bond0",
                 mac_address=interfaces["bond0"]["mac_address"],
                 enabled=True,
+                acquired=False,
                 vlan=vlan,
             ),
         )
@@ -11824,6 +11872,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 name="br0",
                 mac_address=interfaces["br0"]["mac_address"],
                 enabled=True,
+                acquired=False,
                 vlan=vlan,
             ),
         )

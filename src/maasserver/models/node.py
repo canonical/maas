@@ -4512,22 +4512,25 @@ class Node(CleanSave, TimestampedModel):
     @transactional
     def release_interface_config(self):
         """Release IP addresses on all interface links set to AUTO and
-        remove all acquired bridge interfaces."""
+        remove all acquired interfaces."""
         for interface in self.interface_set.all():
             interface.release_auto_ips()
-            if interface.type == INTERFACE_TYPE.BRIDGE and interface.acquired:
+            if not interface.acquired:
+                continue
+
+            if interface.type == INTERFACE_TYPE.BRIDGE:
                 # Move all IP addresses assigned to an acquired bridge to the
                 # parent of the bridge.
                 parent = interface.parents.first()
-                for sip in interface.ip_addresses.all():
-                    sip.interface_set.remove(interface)
-                    sip.interface_set.add(parent)
-                # Delete the acquired bridge interface, and set a property
-                # to prevent a race condition that would otherwise cause
-                # the IP addresses moved to the physical interface to be
-                # deleted.
-                setattr(interface, "_skip_ip_address_removal", True)
-                interface.delete()
+                if parent:
+                    for sip in interface.ip_addresses.all():
+                        sip.interface_set.remove(interface)
+                        sip.interface_set.add(parent)
+                    # Set flag to prevent a race condition that would otherwise
+                    # cause the IP addresses moved to the parent interface to
+                    # be deleted on interface removal.
+                    setattr(interface, "_skip_ip_address_removal", True)
+            interface.delete()
 
     def _clear_networking_configuration(self):
         """Clear the networking configuration for this node.

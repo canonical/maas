@@ -154,7 +154,12 @@ def update_physical_interface(
     ).delete()
     interface, created = PhysicalInterface.objects.get_or_create(
         mac_address=mac_address,
-        defaults={"node": node, "name": name, "enabled": is_enabled},
+        defaults={
+            "node": node,
+            "name": name,
+            "enabled": is_enabled,
+            "acquired": True,
+        },
     )
     # Don't update the VLAN unless:
     # (1) We're at the phase where we're creating fabrics.
@@ -289,6 +294,7 @@ def update_vlan_interface(node, name, config):
             name=name,
             parents=[parent_nic],
             vlan=vlan,
+            defaults={"acquired": True},
         )
     elif interface.vlan != vlan:
         interface.vlan = vlan
@@ -321,7 +327,11 @@ def update_child_interface(node, name, config, child_type):
 
     mac_address = config["mac_address"]
     interface = child_type.objects.get_or_create_on_node(
-        node, name, mac_address, parent_nics
+        node,
+        name,
+        mac_address,
+        parent_nics,
+        acquired=True,
     )
 
     links = config["links"]

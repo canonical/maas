@@ -1048,20 +1048,6 @@ class InterfaceTest(MAASServerTestCase):
             ),
         )
 
-    def test_doesnt_allow_acquired_to_be_true(self):
-        name = factory.make_name("name")
-        node = factory.make_Node()
-        mac = factory.make_MAC()
-        interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL,
-            name=name,
-            node=node,
-            mac_address=mac,
-            link_connected=False,
-        )
-        interface.acquired = True
-        self.assertRaises(ValueError, interface.save)
-
     def test_string_representation_contains_essential_data(self):
         name = factory.make_name("name")
         node = factory.make_Node()
