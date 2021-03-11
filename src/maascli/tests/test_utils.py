@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maascli.utils`."""
-
-
 from collections import OrderedDict
 import http.client
 import io
@@ -12,7 +9,6 @@ from unittest.mock import sentinel
 
 import httplib2
 import pytest
-from testtools.matchers import AfterPreprocessing, Equals, MatchesListwise
 
 from maascli import utils
 from maastesting.factory import factory
@@ -158,11 +154,7 @@ class TestFunctions(MAASTestCase):
         )
         urls = [url for url, url_out in transformations]
         urls_out = [url_out for url, url_out in transformations]
-        expected = [
-            AfterPreprocessing(utils.api_url, Equals(url_out))
-            for url_out in urls_out
-        ]
-        self.assertThat(urls, MatchesListwise(expected))
+        self.assertEqual([utils.api_url(url) for url in urls], urls_out)
 
 
 class TestGetResponseContentType(MAASTestCase):

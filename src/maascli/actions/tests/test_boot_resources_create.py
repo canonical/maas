@@ -1,9 +1,6 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test for boot-resources create action."""
-
-
 from functools import partial
 import hashlib
 import json
@@ -22,7 +19,6 @@ from maascli.actions.boot_resources_create import (
 from maascli.command import CommandError
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO, TempDirectory
-from maastesting.matchers import IsInstance, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -30,7 +26,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
     """Tests for `BootResourcesCreateAction`."""
 
     def configure_http_request(self, status, content):
-        self.assertThat(content, IsInstance(bytes))
+        self.assertIsInstance(content, bytes)
         response = httplib2.Response(
             {"status": status, "content-type": "text/plain"}
         )
@@ -98,9 +94,8 @@ class TestBootResourcesCreateAction(MAASTestCase):
             boot_resources_create, "encode_multipart_message"
         ).return_value = (None, None)
         action.prepare_initial_payload([("content", stream)])
-        self.assertThat(
-            mock_build_message,
-            MockCalledOnceWith([("sha256", sha256), ("size", "%s" % size)]),
+        mock_build_message.assert_called_once_with(
+            [("sha256", sha256), ("size", "%s" % size)],
         )
 
     def test_get_resource_file_returns_None_when_no_sets(self):
@@ -168,15 +163,12 @@ class TestBootResourcesCreateAction(MAASTestCase):
             "Content-Type": "application/octet-stream",
             "Content-Length": "%s" % len(data),
         }
-        self.assertThat(
-            mock_request,
-            MockCalledOnceWith(
-                "http://example.com",
-                "PUT",
-                body=ANY,
-                headers=headers,
-                insecure=False,
-            ),
+        mock_request.assert_called_once_with(
+            "http://example.com",
+            "PUT",
+            body=ANY,
+            headers=headers,
+            insecure=False,
         )
 
     def test_upload_content_calls_put_upload_with_sizeof_CHUNK_SIZE(self):

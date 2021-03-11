@@ -1,14 +1,10 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maascli`."""
-
-
 import sys
 
 from maascli.parser import ArgumentParser, prepare_parser
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -54,7 +50,7 @@ class TestArgumentParser(MAASTestCase):
             parser.parse_args(argv[1:])
         except TypeError:
             pass
-        self.assertThat(mock_print_help, MockCalledOnceWith(sys.stderr))
+        mock_print_help.assert_called_once_with(sys.stderr)
 
     def test_bad_arguments_calls_sys_exit_2(self):
         argv = ["maas", factory.make_name(prefix="profile"), "nodes"]
@@ -70,4 +66,4 @@ class TestArgumentParser(MAASTestCase):
             parser.parse_args(argv[1:])
         except TypeError:
             pass
-        self.assertThat(mock_exit, MockCalledOnceWith(2))
+        mock_exit.assert_called_once_with(2)

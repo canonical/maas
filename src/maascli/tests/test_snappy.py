@@ -1,9 +1,6 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maascli.snappy`."""
-
-
 import io
 import os
 from pathlib import Path
@@ -23,7 +20,6 @@ from maascli import snappy
 from maascli.command import CommandError
 from maascli.parser import ArgumentParser
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -212,15 +208,12 @@ class TestSupervisordHelpers(MAASTestCase):
         mock_popen = self.patch(subprocess, "Popen")
         mock_popen.return_value = mock_process
         snappy.sighup_supervisord()
-        self.assertThat(mock_kill, MockCalledOnceWith(pid, signal.SIGHUP))
-        self.assertThat(
-            mock_popen,
-            MockCalledOnceWith(
-                [os.path.join(snap, "bin", "run-supervisorctl"), "status"],
-                stdout=subprocess.PIPE,
-            ),
+        mock_kill.assert_called_once_with(pid, signal.SIGHUP)
+        mock_popen.assert_called_once_with(
+            [os.path.join(snap, "bin", "run-supervisorctl"), "status"],
+            stdout=subprocess.PIPE,
         )
-        self.assertThat(mock_process.wait, MockCalledOnceWith())
+        mock_process.wait.assert_called_once_with()
 
     def test_sighup_supervisord_nop_if_not_running(self):
         pid = random.randint(2, 99)
@@ -245,7 +238,7 @@ class TestSupervisordHelpers(MAASTestCase):
         mock_popen = self.patch(subprocess, "Popen")
         mock_popen.return_value = mock_process
         snappy.sighup_supervisord()
-        self.assertThat(mock_kill, MockCalledOnceWith(pid, signal.SIGHUP))
+        mock_kill.assert_called_once_with(pid, signal.SIGHUP)
         self.assertEqual(2, mock_popen.call_count)
 
 
@@ -262,9 +255,7 @@ class TestConfigHelpers(MAASTestCase):
         value = factory.make_name("value")
         config = {key: value}
         snappy.print_config_value(config, key)
-        self.assertThat(
-            mock_print, MockCalledOnceWith("{}={}".format(key, value))
-        )
+        mock_print.assert_called_once_with("{}={}".format(key, value))
 
     def test_print_config_value_hidden(self):
         mock_print = self.patch(snappy, "print_msg")
@@ -272,9 +263,7 @@ class TestConfigHelpers(MAASTestCase):
         value = factory.make_name("value")
         config = {key: value}
         snappy.print_config_value(config, key, hidden=True)
-        self.assertThat(
-            mock_print, MockCalledOnceWith("{}=(hidden)".format(key))
-        )
+        mock_print.assert_called_once_with("{}=(hidden)".format(key))
 
     def test_get_rpc_secret_returns_secret(self):
         secret = factory.make_string()

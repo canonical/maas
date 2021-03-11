@@ -14,7 +14,6 @@ from unittest.mock import Mock, sentinel
 
 import httplib2
 import pytest
-from testtools.matchers import EndsWith, Equals, IsInstance, MatchesAll, Not
 
 from maascli import api
 from maascli.actions.boot_resources_create import BootResourcesCreateAction
@@ -26,7 +25,6 @@ from maascli.testing.config import make_configs
 from maascli.utils import handler_command_name, safe_name
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 
 
@@ -82,14 +80,11 @@ class TestFunctions(MAASTestCase):
         self.assertEqual(
             content, api.fetch_api_description("http://example.com/api/2.0/")
         )
-        self.assertThat(
-            request,
-            MockCalledOnceWith(
-                "http://example.com/api/2.0/describe/",
-                "GET",
-                body=None,
-                headers=None,
-            ),
+        request.assert_called_once_with(
+            "http://example.com/api/2.0/describe/",
+            "GET",
+            body=None,
+            headers=None,
         )
 
     def test_fetch_api_description_not_okay(self):
@@ -202,9 +197,7 @@ class TestAction(MAASTestCase):
         # sequence is a tuple. Of any size. It does this in the name of
         # avoiding *string* input.
         result = api.Action.name_value_pair("foo=bar")
-        self.assertThat(
-            result, MatchesAll(Equals(("foo", "bar")), IsInstance(tuple))
-        )
+        self.assertEqual(result, ("foo", "bar"))
 
     def test_name_value_pair_demands_two_parts(self):
         self.assertRaises(CommandError, api.Action.name_value_pair, "foo bar")
@@ -220,8 +213,8 @@ class TestAction(MAASTestCase):
         response = {"x-maas-api-hash": example_hash}
         with CaptureStandardIO() as stdio:
             api.Action.compare_api_hashes(profile, response)
-        self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(stdio.getError(), Equals(""))
+        self.assertEqual(stdio.getOutput(), "")
+        self.assertEqual(stdio.getError(), "")
 
     def test_compare_api_hashes_prints_nothing_if_remote_has_no_hash(self):
         example_hash = factory.make_name("hash")
@@ -229,8 +222,8 @@ class TestAction(MAASTestCase):
         response = {}
         with CaptureStandardIO() as stdio:
             api.Action.compare_api_hashes(profile, response)
-        self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(stdio.getError(), Equals(""))
+        self.assertEqual(stdio.getOutput(), "")
+        self.assertEqual(stdio.getError(), "")
 
     def test_compare_api_hashes_prints_warning_if_local_has_no_hash(self):
         example_hash = factory.make_name("hash")
@@ -238,19 +231,17 @@ class TestAction(MAASTestCase):
         response = {"x-maas-api-hash": example_hash}
         with CaptureStandardIO() as stdio:
             api.Action.compare_api_hashes(profile, response)
-        self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(
+        self.assertEqual(stdio.getOutput(), "")
+        self.assertEqual(
             stdio.getError(),
-            Equals(
-                dedent(
-                    """\
+            dedent(
+                """\
         **********************************************************************
         *** WARNING! The API on the server differs from the description that
         *** is cached locally. This may result in failed API calls. Refresh
         *** the local API description with `maas refresh`.
         **********************************************************************
         """
-                )
             ),
         )
 
@@ -260,19 +251,17 @@ class TestAction(MAASTestCase):
         response = {"x-maas-api-hash": example_hash + "bar"}
         with CaptureStandardIO() as stdio:
             api.Action.compare_api_hashes(profile, response)
-        self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(
+        self.assertEqual(stdio.getOutput(), "")
+        self.assertEqual(
             stdio.getError(),
-            Equals(
-                dedent(
-                    """\
+            dedent(
+                """\
         **********************************************************************
         *** WARNING! The API on the server differs from the description that
         *** is cached locally. This may result in failed API calls. Refresh
         *** the local API description with `maas refresh`.
         **********************************************************************
-        """
-                )
+                """
             ),
         )
 
@@ -374,9 +363,10 @@ class TestActionHelp(MAASTestCase):
         arg = factory.make_name("arg", sep="_")
         parser = ArgumentParser()
         parser.add_argument(arg)
-        self.assertThat(
-            "\n".join(api.ActionHelp.compose_positional_args(parser)),
-            Not(EndsWith("\n")),
+        self.assertFalse(
+            "\n".join(api.ActionHelp.compose_positional_args(parser)).endswith(
+                "\n"
+            )
         )
 
     def test_compose_epilog_returns_empty_if_no_epilog(self):
@@ -480,7 +470,7 @@ class TestActionHelp(MAASTestCase):
             self.make_values(),
             self.make_option_string(),
         )
-        self.assertThat(sys.exit, MockCalledOnceWith(0))
+        sys.exit.assert_called_once_with(0)
 
     def test_call_shows_full_enchilada(self):
         usage = factory.make_name("usage")
@@ -545,7 +535,7 @@ class TestActionHelp(MAASTestCase):
             self.make_option_string(),
         )
 
-        self.assertThat(api.print, MockCalledOnceWith(expected_text))
+        api.print.assert_called_once_with(expected_text)
 
 
 class TestPayloadPreparation:
