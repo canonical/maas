@@ -116,20 +116,11 @@ def get_lxd_nic_device(interface):
 
 
 def get_lxd_machine_definition(request, profile_name):
-    pinned_cores = request.pinned_cores
-    if pinned_cores:
-        if len(pinned_cores) == 1:
-            limits_cpu = f"{pinned_cores[0]}-{pinned_cores[0]}"
-        else:
-            limits_cpu = ",".join(str(core) for core in pinned_cores)
-    else:
-        limits_cpu = str(request.cores)
-
     return {
         "name": request.hostname,
         "architecture": debian_to_kernel_architecture(request.architecture),
         "config": {
-            "limits.cpu": limits_cpu,
+            "limits.cpu": _get_cpu_limits(request),
             "limits.memory": str(request.memory * 1024 ** 2),
             "limits.memory.hugepages": "true"
             if request.hugepages_backed
@@ -367,85 +358,22 @@ class LXDPodDriver(PodDriver):
                     f"Pod {pod_id}: MAAS needs LXD to have either a 'maas' "
                     "profile or a 'default' profile, defined."
                 )
-        definition = get_lxd_machine_definition(request, profile.name)
-        # Add disks to the definition.
-        devices = {}
         storage_pools = client.storage_pools.all()
         default_storage_pool = context.get(
             "default_storage_pool_id", context.get("default_storage_pool")
         )
-        for idx, disk in enumerate(request.block_devices):
-            pool = self._get_usable_storage_pool(
-                disk, storage_pools, default_storage_pool
-            )
-            size = str(disk.size)
-            if idx == 0:
-                label = "root"
-                path = "/"
-                extra_conf = {
-                    "boot.priority": "0",
-                    "size": size,
-                }
-            else:
-                label = f"disk{idx}"
-                path = ""
-                volume = self._create_volume(pool, size)
-                extra_conf = {"source": volume.name}
-            devices[label] = {
-                "path": path,
-                "type": "disk",
-                "pool": pool.name,
-                **extra_conf,
-            }
 
-        # Create and attach interfaces to the machine.
-        # The reason we are doing this after the machine is created
-        # is because pylxd doesn't have a way to override the devices
-        # that are defined in the profile.  Since the profile is provided
-        # by the user, we have no idea how many interfaces are defined.
-        #
-        # Currently, only the bridged type is supported with virtual machines.
-        # https://lxd.readthedocs.io/en/latest/instances/#device-types
-        nic_devices = {}
-        profile_devices = profile.devices
-        device_names = []
-        boot = True
-        for interface in request.interfaces:
-            if interface.ifname is None:
-                # No interface constraints sent so use the best
-                # nic device from the profile's devices.
-                device_name, device = self._get_best_nic_device_from_profile(
-                    profile_devices
-                )
-                nic_devices[device_name] = device
-                if "boot.priority" not in device and boot:
-                    nic_devices[device_name]["boot.priority"] = "1"
-                    boot = False
-                device_names.append(device_name)
-            else:
-                nic_devices[interface.ifname] = get_lxd_nic_device(interface)
-
-                # Set to boot from the first nic
-                if boot:
-                    nic_devices[interface.ifname]["boot.priority"] = "1"
-                    boot = False
-                device_names.append(interface.ifname)
-
-        # Iterate over all of the profile's devices with type=nic
-        # and set to type=none if not nic_device.  This overrides
-        # the device settings on the profile used by the machine.
-        for dk, dv in profile_devices.items():
-            if dk not in device_names and dv["type"] == "nic":
-                nic_devices[dk] = {"type": "none"}
-
-        # Merge the devices and attach the devices to the defintion.
-        devices.update(nic_devices)
-        definition["devices"] = devices
+        definition = get_lxd_machine_definition(request, profile.name)
+        definition["devices"] = {
+            **self._get_machine_disks(
+                request.block_devices, storage_pools, default_storage_pool
+            ),
+            **self._get_machine_nics(request.interfaces, profile),
+        }
 
         # Create the machine.
         machine = client.virtual_machines.create(definition, wait=True)
-        # Pod hints are updated on the region after the machine
-        # is composed.
+        # Pod hints are updated on the region after the machine is composed.
         discovered_machine = self._get_discovered_machine(
             client, machine, storage_pools, request=request
         )
@@ -472,6 +400,79 @@ class LXDPodDriver(PodDriver):
         self._delete_machine_volumes(client, pod_id, devices)
         # Hints are updated on the region for LXDPodDriver.
         return DiscoveredPodHints()
+
+    def _get_machine_disks(
+        self, requested_disks, storage_pools, default_storage_pool
+    ):
+        """Return definitions for machine disks, after creating needed volumes."""
+        disks = {}
+        for idx, disk in enumerate(requested_disks):
+            pool = self._get_usable_storage_pool(
+                disk, storage_pools, default_storage_pool
+            )
+            size = str(disk.size)
+            if idx == 0:
+                label = "root"
+                path = "/"
+                extra_conf = {
+                    "boot.priority": "0",
+                    "size": size,
+                }
+            else:
+                label = f"disk{idx}"
+                path = ""
+                volume = self._create_volume(pool, size)
+                extra_conf = {"source": volume.name}
+            disks[label] = {
+                "path": path,
+                "type": "disk",
+                "pool": pool.name,
+                **extra_conf,
+            }
+        return disks
+
+    def _get_machine_nics(self, requested_interfaces, profile):
+        # Create and attach interfaces to the machine.
+        # The reason we are doing this after the machine is created
+        # is because pylxd doesn't have a way to override the devices
+        # that are defined in the profile.  Since the profile is provided
+        # by the user, we have no idea how many interfaces are defined.
+        #
+        # Currently, only the bridged type is supported with virtual machines.
+        # https://lxd.readthedocs.io/en/latest/instances/#device-types
+        nics = {}
+        profile_devices = profile.devices
+        device_names = []
+        boot = True
+        for interface in requested_interfaces:
+            if interface.ifname is None:
+                # No interface constraints sent so use the best
+                # nic device from the profile's devices.
+                device_name, device = self._get_best_nic_device_from_profile(
+                    profile_devices
+                )
+                nics[device_name] = device
+                if "boot.priority" not in device and boot:
+                    nics[device_name]["boot.priority"] = "1"
+                    boot = False
+                device_names.append(device_name)
+            else:
+                nics[interface.ifname] = get_lxd_nic_device(interface)
+
+                # Set to boot from the first nic
+                if boot:
+                    nics[interface.ifname]["boot.priority"] = "1"
+                    boot = False
+                device_names.append(interface.ifname)
+
+        # Iterate over all of the profile's devices with type=nic and set to
+        # type=none if it's not a NIC device.  This overrides the device
+        # settings on the profile used by the machine.
+        for name, config in profile_devices.items():
+            if name not in device_names and config["type"] == "nic":
+                nics[name] = {"type": "none"}
+
+        return nics
 
     def _create_volume(self, pool, size):
         """Create a storage volume."""
@@ -823,6 +824,19 @@ def _parse_cpu_cores(cpu_limits):
         else:
             pinned_cores.append(int(cores_range))
     return len(pinned_cores), sorted(pinned_cores)
+
+
+def _get_cpu_limits(request):
+    """Return the `limits.cpu` entry from the request cores configuration."""
+    pinned_cores = request.pinned_cores
+    if pinned_cores:
+        if len(pinned_cores) == 1:
+            limits_cpu = f"{pinned_cores[0]}-{pinned_cores[0]}"
+        else:
+            limits_cpu = ",".join(str(core) for core in pinned_cores)
+    else:
+        limits_cpu = str(request.cores)
+    return limits_cpu
 
 
 def _get_bool(value):
