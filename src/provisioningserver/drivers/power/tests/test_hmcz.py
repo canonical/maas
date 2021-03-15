@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import json
 import random
 import typing
+from unittest.mock import Mock
 
 from twisted.internet.defer import inlineCallbacks, returnValue, succeed
 from zhmcclient_mock import FakedSession
@@ -342,6 +343,92 @@ class TestHMCZPowerDriver(MAASTestCase):
         )
 
         self.assertEqual("unknown", status)
+
+    @inlineCallbacks
+    def test_set_boot_order_network(self):
+        power_partition_name = factory.make_name("power_partition_name")
+        mac_address = factory.make_mac_address()
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        partition = cpc.partitions.add(
+            {
+                "name": power_partition_name,
+                "status": "terminated",
+            }
+        )
+        partition.nics.add({"mac-address": factory.make_mac_address()})
+        nic = partition.nics.add({"mac-address": mac_address})
+
+        yield self.hmcz.set_boot_order(
+            None,
+            self.make_context(power_partition_name),
+            [
+                {
+                    "id": random.randint(0, 100),
+                    "name": factory.make_name("name"),
+                    "mac_address": mac_address,
+                    "vendor": factory.make_name("vendor"),
+                    "product": factory.make_name("product"),
+                }
+            ]
+            + [
+                {
+                    factory.make_name("key"): factory.make_name("value")
+                    for _ in range(5)
+                }
+                for _ in range(5)
+            ],
+        )
+
+        self.assertEqual(
+            "network-adapter", partition.properties["boot-device"]
+        )
+        self.assertEqual(nic.uri, partition.properties["boot-network-device"])
+
+    @inlineCallbacks
+    def test_set_boot_order_storage_volume(self):
+        # zhmcclient_mock doesn't support storage groups.
+        serial = factory.make_UUID()
+        mock_storage_group = Mock()
+        mock_storage_group.storage_volumes.find.return_value.uri = serial
+        mock_partition = Mock()
+        mock_partition.list_attached_storage_groups.return_value = [
+            mock_storage_group,
+        ]
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value = mock_partition
+
+        yield self.hmcz.set_boot_order(
+            None,
+            self.make_context(),
+            [
+                {
+                    "id": random.randint(0, 100),
+                    "name": factory.make_name("name"),
+                    "id_path": factory.make_name("id_path"),
+                    "model": factory.make_name("model"),
+                    "serial": serial,
+                }
+            ]
+            + [
+                {
+                    factory.make_name("key"): factory.make_name("value")
+                    for _ in range(5)
+                }
+                for _ in range(5)
+            ],
+        )
+
+        mock_partition.update_properties.assert_called_once_with(
+            {
+                "boot-device": "storage-volume",
+                "boot-storage-volume": serial,
+            }
+        )
 
 
 @dataclass

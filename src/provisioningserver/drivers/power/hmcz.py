@@ -39,7 +39,7 @@ class HMCZPowerDriver(PowerDriver):
     name = "hmcz"
     chassis = True
     can_probe = True
-    can_set_boot_order = False
+    can_set_boot_order = True
     description = "IBM Hardware Management Console (HMC) for Z"
     settings = [
         make_setting_field("power_address", "HMC Address", required=True),
@@ -135,6 +135,47 @@ class HMCZPowerDriver(PowerDriver):
             return "off"
         else:
             return "unknown"
+
+    @typed
+    @asynchronous
+    @threadDeferred
+    def set_boot_order(self, system_id: str, context: dict, order: list):
+        """Set the specified boot order.
+
+        :param system_id: `Node.system_id`
+        :param context: Power settings for the node.
+        :param order: An ordered list of network or storage devices.
+        """
+        partition = self._get_partition(context)
+        # You can only specify one boot device on IBM Z
+        boot_device = order[0]
+        if boot_device.get("mac_address"):
+            nic = partition.nics.find(
+                **{"mac-address": boot_device["mac_address"]}
+            )
+            partition.update_properties(
+                {
+                    "boot-device": "network-adapter",
+                    "boot-network-device": nic.uri,
+                }
+            )
+        else:
+            for storage_group in partition.list_attached_storage_groups():
+                # MAAS/LXD detects the storage volume UUID as its serial.
+                try:
+                    storage_volume = storage_group.storage_volumes.find(
+                        uuid=boot_device["serial"].upper()
+                    )
+                except NotFound:
+                    pass
+                else:
+                    break
+            partition.update_properties(
+                {
+                    "boot-device": "storage-volume",
+                    "boot-storage-volume": storage_volume.uri,
+                }
+            )
 
 
 @typed
