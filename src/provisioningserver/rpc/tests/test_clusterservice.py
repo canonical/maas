@@ -2556,6 +2556,120 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         )
 
 
+class TestClusterProtocol_SetBootOrder(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(cluster.SetBootOrder.commandName)
+        self.assertIsNotNone(responder)
+
+    @inlineCallbacks
+    def test_set_boot_order(self):
+        mock_get_item = self.patch(PowerDriverRegistry, "get_item")
+        mock_get_item.return_value.can_set_boot_order = True
+        mock_get_item.return_value.set_boot_order.return_value = succeed(None)
+        system_id = factory.make_name("system_id")
+        context = factory.make_name("context")
+        order = [
+            {
+                "id": random.randint(0, 100),
+                "name": factory.make_name("name"),
+                "mac_address": factory.make_mac_address(),
+                "vendor": factory.make_name("vendor"),
+                "product": factory.make_name("product"),
+                "id_path": factory.make_name("id_path"),
+                "model": factory.make_name("model"),
+                "serial": factory.make_name("serial"),
+            }
+            for _ in range(3)
+        ]
+
+        yield call_responder(
+            Cluster(),
+            cluster.SetBootOrder,
+            {
+                "system_id": system_id,
+                "hostname": factory.make_name("hostname"),
+                "power_type": factory.make_name("power_type"),
+                "context": context,
+                "order": order,
+            },
+        )
+
+        mock_get_item.return_value.set_boot_order.assert_called_once_with(
+            system_id, context, order
+        )
+
+    @inlineCallbacks
+    def test_set_boot_order_unknown_power_typer(self):
+        mock_get_item = self.patch(PowerDriverRegistry, "get_item")
+        mock_get_item.return_value = None
+        system_id = factory.make_name("system_id")
+        context = factory.make_name("context")
+        order = [
+            {
+                "id": random.randint(0, 100),
+                "name": factory.make_name("name"),
+                "mac_address": factory.make_mac_address(),
+                "vendor": factory.make_name("vendor"),
+                "product": factory.make_name("product"),
+                "id_path": factory.make_name("id_path"),
+                "model": factory.make_name("model"),
+                "serial": factory.make_name("serial"),
+            }
+            for _ in range(3)
+        ]
+
+        with ExpectedException(exceptions.UnknownPowerType):
+            yield call_responder(
+                Cluster(),
+                cluster.SetBootOrder,
+                {
+                    "system_id": system_id,
+                    "hostname": factory.make_name("hostname"),
+                    "power_type": factory.make_name("power_type"),
+                    "context": context,
+                    "order": order,
+                },
+            )
+
+    @inlineCallbacks
+    def test_set_boot_order_unsupported(self):
+        mock_get_item = self.patch(PowerDriverRegistry, "get_item")
+        mock_get_item.return_value.can_set_boot_order = False
+        system_id = factory.make_name("system_id")
+        context = factory.make_name("context")
+        order = [
+            {
+                "id": random.randint(0, 100),
+                "name": factory.make_name("name"),
+                "mac_address": factory.make_mac_address(),
+                "vendor": factory.make_name("vendor"),
+                "product": factory.make_name("product"),
+                "id_path": factory.make_name("id_path"),
+                "model": factory.make_name("model"),
+                "serial": factory.make_name("serial"),
+            }
+            for _ in range(3)
+        ]
+
+        yield call_responder(
+            Cluster(),
+            cluster.SetBootOrder,
+            {
+                "system_id": system_id,
+                "hostname": factory.make_name("hostname"),
+                "power_type": factory.make_name("power_type"),
+                "context": context,
+                "order": order,
+            },
+        )
+
+        mock_get_item.return_value.set_boot_order.assert_not_called()
+
+
 class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
     scenarios = (

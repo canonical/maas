@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to nodes."""
@@ -7,7 +7,7 @@
 from functools import partial
 
 from twisted.internet import reactor
-from twisted.internet.defer import DeferredList
+from twisted.internet.defer import DeferredList, succeed
 from twisted.protocols.amp import UnhandledCommand
 
 from maasserver.enum import POWER_STATE
@@ -20,6 +20,7 @@ from provisioningserver.rpc.cluster import (
     PowerOff,
     PowerOn,
     PowerQuery,
+    SetBootOrder,
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.twisted import asynchronous, callOut, FOREVER
@@ -286,3 +287,43 @@ def power_query_all(system_id, hostname, power_info, timeout=60):
     # Cancel the canceller once finished.
     dList.addBoth(callOut, done)
     return dList
+
+
+@asynchronous(timeout=30)
+def set_boot_order(client, system_id, hostname, power_info, order):
+    """Remotely set the boot order of a specified machine.
+
+    The power call will be directed to the provided `client`.
+
+    :param client: The `rpc.common.Client` of the rack controller to perform
+        the power action.
+    :param system_id: The Node's system_id
+    :param hostname: The Node's hostname
+    :param power-info: A dict containing the power information for the
+        node.
+    :param order: An ordered list representing the boot order.
+    :return: A :py:class:`twisted.internet.defer.Deferred` that will
+        fire when the `command` call completes. This Defer will return
+        the given client.
+
+    """
+    # If no order was passed there is nothing for the rack to do. This can
+    # happen when the region detects the power driver doesn't support ordering
+    if not order:
+        return succeed(client)
+
+    log.debug(
+        "{hostname}: Asking rack controller to reorder boot order.",
+        hostname=hostname,
+    )
+    d = client(
+        SetBootOrder,
+        system_id=system_id,
+        hostname=hostname,
+        power_type=power_info.power_type,
+        context=power_info.power_parameters,
+        order=order,
+    )
+    d.addCallback(lambda _: client)
+
+    return d

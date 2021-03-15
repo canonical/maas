@@ -1,4 +1,4 @@
-# Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test for :py:mod:`maasserver.clusterrpc.power`."""
@@ -22,6 +22,7 @@ from maasserver.clusterrpc.power import (
     power_on_node,
     power_query,
     power_query_all,
+    set_boot_order,
 )
 from maasserver.enum import POWER_STATE
 from maasserver.exceptions import PowerProblem
@@ -39,10 +40,18 @@ from provisioningserver.rpc.cluster import (
     PowerOff,
     PowerOn,
     PowerQuery,
+    SetBootOrder,
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
+
+
+@transactional
+def make_node_with_power_info():
+    node = factory.make_Node()
+    power_info = node.get_effective_power_info()
+    return node, power_info
 
 
 class TestPowerNode(MAASServerTestCase):
@@ -182,18 +191,10 @@ class TestPowerDriverCheck(MAASServerTestCase):
 class TestPowerQueryAll(MAASTransactionServerTestCase):
     """Tests for `power_query_all`."""
 
-    @transactional
-    def make_node_with_power_info(self):
-        node = factory.make_Node()
-        power_info = node.get_effective_power_info()
-        return node, power_info
-
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_PowerQuery_on_all_clients(self):
-        node, power_info = yield deferToDatabase(
-            self.make_node_with_power_info
-        )
+        node, power_info = yield deferToDatabase(make_node_with_power_info)
 
         successful_rack_ids = [
             factory.make_name("system_id") for _ in range(3)
@@ -232,9 +233,7 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_handles_timeout(self):
-        node, power_info = yield deferToDatabase(
-            self.make_node_with_power_info
-        )
+        node, power_info = yield deferToDatabase(make_node_with_power_info)
 
         def defer_way_later(*args, **kwargs):
             # Create a defer that will finish in 1 minute.
@@ -253,3 +252,39 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
         self.assertEqual(POWER_STATE.UNKNOWN, power_state)
         self.assertItemsEqual([], success_racks)
         self.assertItemsEqual([rack_id], failed_racks)
+
+
+class TestSetBootOrder(MAASTransactionServerTestCase):
+    """Tests for `set_boot_order`."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_set_boot_order(self):
+        client = Mock()
+        node, power_info = yield deferToDatabase(make_node_with_power_info)
+        order = list(range(5))
+
+        yield set_boot_order(
+            client, node.system_id, node.hostname, power_info, order
+        )
+
+        client.assert_called_once_with(
+            SetBootOrder,
+            system_id=node.system_id,
+            hostname=node.hostname,
+            power_type=power_info.power_type,
+            context=power_info.power_parameters,
+            order=order,
+        )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_set_boot_order_does_nothing(self):
+        client = Mock()
+        node, power_info = yield deferToDatabase(make_node_with_power_info)
+
+        yield set_boot_order(
+            client, node.system_id, node.hostname, power_info, []
+        )
+
+        client.assert_not_called()

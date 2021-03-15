@@ -479,6 +479,25 @@ class Cluster(RPCProtocol):
             )
         return {"missing_packages": driver.detect_missing_packages()}
 
+    @cluster.SetBootOrder.responder
+    def set_boot_order(self, system_id, hostname, power_type, context, order):
+        driver = PowerDriverRegistry.get_item(power_type)
+        if driver is None:
+            raise exceptions.UnknownPowerType(
+                f"No driver found for power type '{power_type}'"
+            )
+        elif not driver.can_set_boot_order:
+            # Don't raise NotImplementedError because most boot drivers can
+            # provide a boot config to boot the proper device.
+            log.debug(
+                f"{power_type} does not support configuring the boot order!"
+            )
+            return {}
+        else:
+            d = driver.set_boot_order(system_id, context, order)
+            d.addCallback(lambda _: {})
+            return d
+
     @cluster.ConfigureDHCPv4.responder
     def configure_dhcpv4(
         self,
