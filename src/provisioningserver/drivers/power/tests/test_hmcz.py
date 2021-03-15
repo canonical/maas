@@ -3,7 +3,12 @@
 
 """Tests for `provisioningserver.drivers.power.hmcz`."""
 
-from twisted.internet.defer import inlineCallbacks
+from dataclasses import dataclass
+import json
+import random
+import typing
+
+from twisted.internet.defer import inlineCallbacks, returnValue, succeed
 from zhmcclient_mock import FakedSession
 
 from maastesting.factory import factory
@@ -15,6 +20,8 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import hmcz as hmcz_module
 from provisioningserver.drivers.power import PowerActionError
+from provisioningserver.rpc import clusterservice, region
+from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
 
 class TestHMCZPowerDriver(MAASTestCase):
@@ -335,3 +342,191 @@ class TestHMCZPowerDriver(MAASTestCase):
         )
 
         self.assertEqual("unknown", status)
+
+
+@dataclass
+class FakeNode:
+
+    architecture: str
+    power_type: str
+    power_parameters: dict
+    mac_addresses: typing.List[str]
+    domain: str
+    hostname: str
+    status: str
+    owner: str
+
+
+class FakeRPCService:
+    def __init__(self, testcase):
+        self.testcase = testcase
+        self.nodes = {}
+
+    @inlineCallbacks
+    def set_up(self):
+        fixture = self.testcase.useFixture(MockLiveClusterToRegionRPCFixture())
+        self.protocol, connecting = fixture.makeEventLoop(
+            region.CreateNode, region.CommissionNode
+        )
+        self.testcase.addCleanup((yield connecting))
+        self.protocol.CreateNode.side_effect = self.create_node
+        self.protocol.CommissionNode.side_effect = self.commission_node
+
+    @region.CreateNode.responder
+    def create_node(
+        self,
+        protocol,
+        architecture,
+        power_type,
+        power_parameters,
+        mac_addresses,
+        domain=None,
+        hostname=None,
+    ):
+        system_id = factory.make_name("system_id")
+        self.nodes[system_id] = FakeNode(
+            architecture,
+            power_type,
+            json.loads(power_parameters),
+            mac_addresses,
+            domain,
+            hostname,
+            "new",
+            None,
+        )
+        return succeed({"system_id": system_id})
+
+    @region.CommissionNode.responder
+    def commission_node(
+        self,
+        protocol,
+        system_id,
+        user,
+    ):
+        self.nodes[system_id].status = "commissioning"
+        self.nodes[system_id].owner = user
+        return succeed({})
+
+
+class TestProbeHMCZAndEnlist(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            clusterservice, "get_all_interfaces_definition"
+        ).return_value = {}
+        self.user = factory.make_name("user")
+        self.hostname = factory.make_ip_address()
+        self.username = factory.make_name("username")
+        self.password = factory.make_name("password")
+        self.domain = factory.make_name("domain")
+        self.fake_session = FakedSession(
+            self.hostname,
+            factory.make_name("hmc_name"),
+            # The version and API version below were taken from
+            # the test environment given by IBM.
+            "2.14.1",
+            "2.40",
+        )
+        self.patch(hmcz_module, "Session").return_value = self.fake_session
+
+        # Add a CPC which does not have dpm enabled to verify its ignored.
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": False,
+            }
+        )
+        cpc.partitions.add(
+            {
+                "name": factory.make_name("partition"),
+                "status": "stopped",
+            }
+        )
+
+        cpc = self.fake_session.hmc.cpcs.add(
+            {
+                "name": factory.make_name("cpc"),
+                "dpm-enabled": True,
+            }
+        )
+        self.partitions = {}
+        for i in range(3):
+            partition_name = f"partition_{i}"
+            partition = cpc.partitions.add(
+                {
+                    "name": partition_name,
+                    "status": "stopped",
+                }
+            )
+            macs = [factory.make_mac_address() for _ in range(2)]
+            for mac in macs:
+                partition.nics.add({"mac-address": mac})
+            self.partitions[partition_name] = macs
+
+    @inlineCallbacks
+    def create_fake_rpc_service(self):
+        rpc = FakeRPCService(self)
+        yield rpc.set_up()
+        returnValue(rpc)
+
+    def assertRPC(self, rpc, status, partition_names=None):
+        if partition_names:
+            partitions_len = len(partition_names)
+        else:
+            partitions_len = len(self.partitions)
+        self.assertEqual(partitions_len, len(rpc.nodes))
+        for partition_name, macs in self.partitions.items():
+            if partition_names and partition_name not in partition_names:
+                continue
+            [node] = [
+                node
+                for node in rpc.nodes.values()
+                if node.power_parameters["power_partition_name"]
+                == partition_name
+            ]
+            self.assertEqual(sorted(macs), sorted(node.mac_addresses))
+            self.assertEqual(node.status, status)
+
+    @inlineCallbacks
+    def test_probe_hmcz_and_enlist(self):
+        rpc = yield self.create_fake_rpc_service()
+        yield hmcz_module.probe_hmcz_and_enlist(
+            self.user,
+            self.hostname,
+            self.username,
+            self.password,
+            accept_all=False,
+            domain=self.domain,
+        )
+        self.assertRPC(rpc, "new")
+
+    @inlineCallbacks
+    def test_probe_hmcz_and_enlist_filters(self):
+        rpc = yield self.create_fake_rpc_service()
+        partition_name = random.choice(list(self.partitions.keys()))
+        yield hmcz_module.probe_hmcz_and_enlist(
+            self.user,
+            self.hostname,
+            self.username,
+            self.password,
+            accept_all=False,
+            domain=self.domain,
+            prefix_filter=partition_name,
+        )
+        self.assertRPC(rpc, "new", [partition_name])
+
+    @inlineCallbacks
+    def test_probe_hmcz_and_enlist_commissions(self):
+        rpc = yield self.create_fake_rpc_service()
+        yield hmcz_module.probe_hmcz_and_enlist(
+            self.user,
+            self.hostname,
+            self.username,
+            self.password,
+            accept_all=True,
+            domain=self.domain,
+        )
+        self.assertRPC(rpc, "commissioning")

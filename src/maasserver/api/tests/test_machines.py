@@ -2793,6 +2793,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         accessible_by_url.return_value = rack
         self.patch(rack, "add_chassis")
         for chassis_type in (
+            "hmcz",
             "mscm",
             "msftocs",
             "recs_box",
@@ -2822,6 +2823,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         accessible_by_url.return_value = rack
         self.patch(rack, "add_chassis")
         for chassis_type in (
+            "hmcz",
             "mscm",
             "msftocs",
             "recs_box",
@@ -3042,7 +3044,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         accessible_by_url.return_value = rack
         add_chassis = self.patch(rack, "add_chassis")
         hostname = factory.make_url()
-        for chassis_type in ("powerkvm", "virsh", "vmware", "proxmox"):
+        for chassis_type in ("powerkvm", "virsh", "vmware", "proxmox", "hmcz"):
             prefix_filter = factory.make_name("prefix_filter")
             password = factory.make_name("password")
             params = {
@@ -3052,7 +3054,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 "password": password,
                 "prefix_filter": prefix_filter,
             }
-            if chassis_type in {"vmware", "proxmox"}:
+            if chassis_type in {"vmware", "proxmox", "hmcz"}:
                 username = factory.make_name("username")
                 params["username"] = username
             else:

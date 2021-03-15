@@ -2574,6 +2574,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         @param (string) "chassis_type" [required=true,formatting=true] The type
         of hardware:
 
+        - ``hmcz``: IBM Hardware Management Console (HMC) for Z
         - ``mscm``: Moonshot Chassis Manager.
         - ``msftocs``: Microsoft OCS Chassis Manager.
         - ``powerkvm``: Virtual Machines on Power KVM, managed by Virsh.
@@ -2589,12 +2590,12 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         @param (string) "username" [required=false] The username used to access
         the chassis. This field is required for the recs_box, seamicro15k,
-        vmware, mscm, msftocs, and ucsm chassis types.
+        vmware, mscm, msftocs, ucsm, and hmcz chassis types.
 
         @param (string) "password" [required=false] The password used to access
         the chassis. This field is required for the ``recs_box``,
-        ``seamicro15k``, ``vmware``, ``mscm``, ``msftocs``, and ``ucsm``
-        chassis types.
+        ``seamicro15k``, ``vmware``, ``mscm``, ``msftocs``, ``ucsm``, and
+        ``hmcz`` chassis types.
 
         @param (string) "accept_all" [required=false] If true, all enlisted
         machines will be commissioned.
@@ -2607,8 +2608,8 @@ class MachinesHandler(NodesHandler, PowersMixin):
         machine added should use.
 
         @param (string) "prefix_filter" [required=false] (``virsh``,
-        ``vmware``, ``powerkvm``, ``proxmox`` only.) Filter machines with
-        supplied prefix.
+        ``vmware``, ``powerkvm``, ``proxmox``, ``hmcz`` only.) Filter machines
+        with supplied prefix.
 
         @param (string) "power_control" [required=false] (``seamicro15k`` only)
         The power_control to use, either ipmi (default), restapi, or restapi2.
@@ -2662,6 +2663,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         hostname = get_mandatory_param(request.POST, "hostname")
 
         if chassis_type in (
+            "hmcz",
             "mscm",
             "msftocs",
             "recs_box",
@@ -2714,6 +2716,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
         # Only available with virsh, vmware, powerkvm, and proxmox
         prefix_filter = get_optional_param(request.POST, "prefix_filter")
         if prefix_filter is not None and chassis_type not in (
+            "hmcz",
             "powerkvm",
             "virsh",
             "vmware",

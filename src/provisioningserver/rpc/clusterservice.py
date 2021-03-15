@@ -47,6 +47,7 @@ from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
 from provisioningserver.drivers.nos.registry import NOSDriverRegistry
+from provisioningserver.drivers.power.hmcz import probe_hmcz_and_enlist
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
 from provisioningserver.drivers.power.proxmox import probe_proxmox_and_enlist
@@ -822,6 +823,17 @@ class Cluster(RPCProtocol):
                 prefix_filter,
             )
             d.addErrback(partial(catch_probe_and_enlist_error, "proxmox"))
+        elif chassis_type == "hmcz":
+            d = probe_hmcz_and_enlist(
+                user,
+                hostname,
+                username,
+                password,
+                accept_all,
+                domain,
+                prefix_filter,
+            )
+            d.addErrback(partial(catch_probe_and_enlist_error, "hmcz"))
         elif chassis_type == "vmware":
             d = deferToThread(
                 probe_vmware_and_enlist,
