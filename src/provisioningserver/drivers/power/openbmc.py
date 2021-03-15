@@ -1,4 +1,4 @@
-# Copyright 2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2019-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """OpenBMC Power Driver."""
@@ -39,6 +39,7 @@ class OpenBMCPowerDriver(PowerDriver):
 
     chassis = False
     can_probe = False
+    can_set_boot_order = False
 
     name = "openbmc"
     description = "OpenBMC Power Driver"

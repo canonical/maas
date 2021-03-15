@@ -1,4 +1,4 @@
-# Copyright 2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2020-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """LXD Pod Driver."""
@@ -143,6 +143,7 @@ class LXDPodDriver(PodDriver):
     name = "lxd"
     chassis = True
     can_probe = False
+    can_set_boot_order = False
     description = "LXD (virtual systems)"
     settings = [
         make_setting_field("power_address", "LXD address", required=True),

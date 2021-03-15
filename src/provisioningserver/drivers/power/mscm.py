@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Moonshot HP iLO Chassis Power Driver.
@@ -56,6 +56,7 @@ class MSCMPowerDriver(PowerDriver):
     name = "mscm"
     chassis = True
     can_probe = True
+    can_set_boot_order = False
     description = "HP Moonshot - iLO Chassis Manager"
     settings = [
         make_setting_field(

@@ -1,4 +1,4 @@
-# Copyright 2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Base power driver."""
@@ -36,6 +36,7 @@ JSON_POWER_DRIVER_SCHEMA = {
         "name": {"type": "string"},
         "chassis": {"type": "boolean"},
         "can_probe": {"type": "boolean"},
+        "can_set_boot_order": {"type": "boolean"},
         "description": {"type": "string"},
         "fields": {"type": "array", "items": SETTING_PARAMETER_FIELD_SCHEMA},
         "ip_extractor": IP_EXTRACTOR_SCHEMA,
@@ -159,6 +160,10 @@ class PowerDriverBase(metaclass=ABCMeta):
     def can_probe(self):
         """Return True if the power driver can be used with add_chassis."""
 
+    @abstractproperty
+    def can_set_boot_order(self):
+        """Returns True if the boot order can be remotely set."""
+
     @abstractmethod
     def detect_missing_packages(self):
         """Implement this method for the actual implementation
@@ -200,6 +205,15 @@ class PowerDriverBase(metaclass=ABCMeta):
             up to this method to report the actual issue to the Region. The
             calling function should ignore this error, and continue on.
         """
+
+    def set_boot_order(self, system_id, context, order):
+        """Set the specified boot order.
+
+        :param system_id: `Node.system_id`
+        :param context: Power settings for the node.
+        :param order: An ordered list of network or storage devices.
+        """
+        raise NotImplementedError()
 
     def get_schema(self, detect_missing_packages=True):
         """Returns the JSON schema for the driver.

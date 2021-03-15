@@ -35,6 +35,7 @@ class HMCPowerDriver(PowerDriver):
     name = "hmc"
     chassis = True
     can_probe = False
+    can_set_boot_order = False
     description = "IBM Hardware Management Console (HMC) for PowerPC"
     settings = [
         make_setting_field("power_address", "IP for HMC", required=True),

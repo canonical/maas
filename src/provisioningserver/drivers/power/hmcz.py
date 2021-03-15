@@ -39,6 +39,7 @@ class HMCZPowerDriver(PowerDriver):
     name = "hmcz"
     chassis = True
     can_probe = True
+    can_set_boot_order = False
     description = "IBM Hardware Management Console (HMC) for Z"
     settings = [
         make_setting_field("power_address", "HMC Address", required=True),

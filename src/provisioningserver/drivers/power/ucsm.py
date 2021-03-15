@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Cisco UCS Power Driver."""
@@ -30,6 +30,7 @@ class UCSMPowerDriver(PowerDriver):
     name = "ucsm"
     chassis = True
     can_probe = True
+    can_set_boot_order = False
     description = "Cisco UCS Manager"
     settings = [
         make_setting_field(

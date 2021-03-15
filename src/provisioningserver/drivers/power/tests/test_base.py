@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power`."""
@@ -43,6 +43,7 @@ class FakePowerDriverBase(PowerDriverBase):
     name = ""
     chassis = False
     can_probe = False
+    can_set_boot_order = False
     description = ""
     settings = []
     ip_extractor = None
@@ -161,6 +162,16 @@ class TestFakePowerDriverBase(MAASTestCase):
             sentinel.context,
         )
 
+    def test_set_boot_order_raises_not_implemented(self):
+        fake_driver = make_power_driver_base()
+        self.assertRaises(
+            NotImplementedError,
+            fake_driver.set_boot_order,
+            sentinel.system_id,
+            sentinel.context,
+            sentinel.order,
+        )
+
 
 class TestPowerDriverBase(MAASTestCase):
     def test_get_schema(self):
@@ -253,6 +264,7 @@ class FakePowerDriver(PowerDriver):
     name = ""
     chassis = False
     can_probe = False
+    can_set_boot_order = False
     description = ""
     settings = []
     ip_extractor = None

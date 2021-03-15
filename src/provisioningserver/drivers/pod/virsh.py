@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Virsh pod driver."""
@@ -1298,6 +1298,7 @@ class VirshPodDriver(PodDriver):
     name = "virsh"
     description = "Virsh (virtual systems)"
     can_probe = True
+    can_set_boot_order = False
     settings = [
         make_setting_field("power_address", "Address", required=True),
         make_setting_field(

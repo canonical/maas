@@ -1,4 +1,4 @@
-# Copyright 2017 christmann informationstechnik + medien GmbH & Co. KG. This
+# Copyright 2017-2021 christmann informationstechnik + medien GmbH & Co. KG. This
 # software is licensed under the GNU Affero General Public License version 3
 # (see the file LICENSE).
 
@@ -206,6 +206,7 @@ class RECSPowerDriver(PowerDriver):
     name = "recs_box"
     chassis = True
     can_probe = True
+    can_set_boot_order = False
     description = "Christmann RECS|Box Power Driver"
     settings = [
         make_setting_field(

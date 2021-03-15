@@ -38,6 +38,7 @@ class WebhookPowerDriver(PowerDriver):
     name = "webhook"
     chassis = False
     can_probe = False
+    can_set_boot_order = False
     description = "Webhook"
     settings = [
         make_setting_field(

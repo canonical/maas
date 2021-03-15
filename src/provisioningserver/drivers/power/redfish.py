@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Redfish Power Driver."""
@@ -135,6 +135,7 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
 
     chassis = True  # Redfish API endpoints can be probed and enlisted.
     can_probe = False
+    can_set_boot_order = False
 
     name = "redfish"
     description = "Redfish"

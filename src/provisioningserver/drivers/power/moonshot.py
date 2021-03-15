@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Moonshot IPMI Power Driver."""
@@ -25,6 +25,7 @@ class MoonshotIPMIPowerDriver(PowerDriver):
     name = "moonshot"
     chassis = True
     can_probe = False
+    can_set_boot_order = False
     description = "HP Moonshot - iLO4 (IPMI)"
     settings = [
         make_setting_field("power_address", "Power address", required=True),

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """American Power Conversion (APC) Power Driver.
@@ -29,6 +29,7 @@ class APCPowerDriver(PowerDriver):
     name = "apc"
     chassis = True
     can_probe = False
+    can_set_boot_order = False
     description = "American Power Conversion (APC) PDU"
     settings = [
         make_setting_field("power_address", "IP for APC PDU", required=True),

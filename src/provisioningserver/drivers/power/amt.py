@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """AMT Power Driver."""
@@ -47,6 +47,7 @@ class AMTPowerDriver(PowerDriver):
     name = "amt"
     chassis = False
     can_probe = False
+    can_set_boot_order = False
     description = "Intel AMT"
     settings = [
         make_setting_field(

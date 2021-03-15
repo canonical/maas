@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Nova Power Driver."""
@@ -39,6 +39,7 @@ class NovaPowerDriver(PowerDriver):
     name = "nova"
     chassis = True
     can_probe = False
+    can_set_boot_order = False
     description = "OpenStack Nova"
     settings = [
         make_setting_field(

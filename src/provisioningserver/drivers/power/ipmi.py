@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """IPMI Power Driver."""
@@ -237,6 +237,7 @@ class IPMIPowerDriver(PowerDriver):
     name = "ipmi"
     chassis = False
     can_probe = False
+    can_set_boot_order = False
     description = "IPMI"
     settings = [
         make_setting_field(

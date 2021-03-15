@@ -1,4 +1,4 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Manual Power Driver."""
@@ -17,6 +17,7 @@ class ManualPowerDriver(PowerDriver):
     name = "manual"
     chassis = False
     can_probe = False
+    can_set_boot_order = False
     description = "Manual"
     settings = []
     ip_extractor = None

@@ -296,6 +296,7 @@ class FakePodDriverBase(PodDriverBase):
     name = ""
     chassis = True
     can_probe = True
+    can_set_boot_order = True
     description = ""
     settings = []
     ip_extractor = None
@@ -410,6 +411,16 @@ class TestFakePodDriverBase(MAASTestCase):
             fake_driver.decompose,
             sentinel.system_id,
             sentinel.context,
+        )
+
+    def test_set_boot_order(self):
+        fake_driver = make_pod_driver_base()
+        self.assertRaises(
+            NotImplementedError,
+            fake_driver.set_boot_order,
+            sentinel.system_id,
+            sentinel.context,
+            sentinel.order,
         )
 
 

@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DLI Power Driver."""
@@ -29,6 +29,7 @@ class DLIPowerDriver(PowerDriver):
     name = "dli"
     chassis = True
     can_probe = False
+    can_set_boot_order = False
     description = "Digital Loggers, Inc. PDU"
     settings = [
         make_setting_field(

@@ -33,6 +33,7 @@ class ProxmoxPowerDriver(WebhookPowerDriver):
     name = "proxmox"
     chassis = True
     can_probe = True
+    can_set_boot_order = False
     description = "Proxmox"
     settings = [
         make_setting_field(
