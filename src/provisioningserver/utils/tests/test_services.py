@@ -352,12 +352,18 @@ class TestNetworksMonitoringService(MAASTestCase):
         metadata_url = service.maas_url + "/metadata/2012-03-01/"
         script_runs = self.fake_refresher.script_runs[metadata_url]
         self.assertEqual("finished", script_runs[LXD_OUTPUT_NAME].status)
-        commissioning_data = json.loads(
+        commissioning_data_out = json.loads(
             script_runs[LXD_OUTPUT_NAME].out.decode("utf-8")
+        )
+        commissioning_data_combined = json.loads(
+            script_runs[LXD_OUTPUT_NAME].combined.decode("utf-8")
         )
         expected_commisioning_data = base_lxd_data.copy()
         expected_commisioning_data.update({"network-extra": network_extra})
-        self.assertEqual(expected_commisioning_data, commissioning_data)
+        self.assertEqual(expected_commisioning_data, commissioning_data_out)
+        self.assertEqual(
+            expected_commisioning_data, commissioning_data_combined
+        )
 
     @inlineCallbacks
     def test_runs_refresh_and_annotates_commissioning_without_hints(self):
@@ -388,12 +394,18 @@ class TestNetworksMonitoringService(MAASTestCase):
         metadata_url = service.maas_url + "/metadata/2012-03-01/"
         script_runs = self.fake_refresher.script_runs[metadata_url]
         self.assertEqual("finished", script_runs[LXD_OUTPUT_NAME].status)
-        commissioning_data = json.loads(
+        commissioning_data_out = json.loads(
             script_runs[LXD_OUTPUT_NAME].out.decode("utf-8")
+        )
+        commissioning_data_combined = json.loads(
+            script_runs[LXD_OUTPUT_NAME].combined.decode("utf-8")
         )
         expected_commisioning_data = base_lxd_data.copy()
         expected_commisioning_data.update({"network-extra": network_extra})
-        self.assertEqual(expected_commisioning_data, commissioning_data)
+        self.assertEqual(expected_commisioning_data, commissioning_data_out)
+        self.assertEqual(
+            expected_commisioning_data, commissioning_data_combined
+        )
 
     @inlineCallbacks
     def test_recordInterfaces_called_when_nothing_previously_recorded(self):

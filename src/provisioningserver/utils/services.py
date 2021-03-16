@@ -1204,7 +1204,10 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             "interfaces": interfaces,
             "hints": hints,
         }
-        Path(stdout_path).write_text(json.dumps(lxd_data))
+        Path(stdout_path).write_text(json.dumps(lxd_data, indent=4))
+        Path(combined_path).write_text(
+            Path(stdout_path).read_text() + Path(stderr_path).read_text()
+        )
 
     def _getInterfacesForBeaconing(self, interfaces: dict):
         """Return the interfaces which will be used for beaconing.
