@@ -1,8 +1,6 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.drivers.pod.lxd`."""
-
 from os.path import join
 import random
 from unittest.mock import ANY, Mock, PropertyMock, sentinel
@@ -21,6 +19,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredMachineInterface,
     DiscoveredPodHints,
     InterfaceAttachType,
+    KnownHostInterface,
 )
 from provisioningserver.drivers.pod import (
     RequestedMachine,
@@ -41,7 +40,16 @@ from provisioningserver.utils import (
 from provisioningserver.utils.network import generate_mac_address
 
 
-def make_requested_machine(num_disks=1, **kwargs):
+def make_requested_machine(num_disks=1, known_host_interfaces=None, **kwargs):
+    if known_host_interfaces is None:
+        known_host_interfaces = [
+            KnownHostInterface(
+                ifname="lxdbr0",
+                attach_type=InterfaceAttachType.BRIDGE,
+                attach_name="lxdbr0",
+                dhcp_enabled=True,
+            ),
+        ]
     block_devices = [
         RequestedMachineBlockDevice(
             size=random.randint(1024 ** 3, 4 * 1024 ** 3),
@@ -58,6 +66,7 @@ def make_requested_machine(num_disks=1, **kwargs):
         cpu_speed=random.randint(2000, 3000),
         block_devices=block_devices,
         interfaces=interfaces,
+        known_host_interfaces=known_host_interfaces,
         **kwargs,
     )
 
@@ -1057,23 +1066,6 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_compose_errors_if_not_default_or_maas_profile(self):
-        pod_id = factory.make_name("pod_id")
-        driver = lxd_module.LXDPodDriver()
-        Client = self.patch(driver, "_get_client")
-        client = Client.return_value
-        client.profiles.get.side_effect = [
-            lxd_module.NotFound("Error"),
-            lxd_module.NotFound("Error"),
-        ]
-        error_msg = (
-            f"Pod {pod_id}: MAAS needs LXD to have either a 'maas' "
-            "profile or a 'default' profile, defined."
-        )
-        with ExpectedException(lxd_module.LXDPodError, error_msg):
-            yield driver.compose(pod_id, {}, None)
-
-    @inlineCallbacks
     def test_compose_no_interface_constraints(self):
         pod_id = factory.make_name("pod_id")
         context = self.make_parameters_context()
@@ -1081,32 +1073,6 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
-        mock_profile = Mock()
-        mock_profile.name = random.choice(["maas", "default"])
-        profile_devices = {
-            "eth0": {
-                "name": "eth0",
-                "nictype": "bridged",
-                "parent": "lxdbr0",
-                "type": "nic",
-            },
-            "eth1": {
-                "boot.priority": "1",
-                "name": "eth1",
-                "nictype": "bridged",
-                "parent": "virbr1",
-                "type": "nic",
-            },
-            "root": {
-                "boot.priority": "0",
-                "path": "/",
-                "pool": "default",
-                "type": "disk",
-                "size": "20GB",
-            },
-        }
-        mock_profile.devices = profile_devices
-        client.profiles.get.return_value = mock_profile
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1132,7 +1098,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
-            "profiles": [mock_profile.name],
+            "profiles": [],
             "source": {"type": "none"},
             "devices": {
                 "root": {
@@ -1142,8 +1108,13 @@ class TestLXDPodDriver(MAASTestCase):
                     "size": str(request.block_devices[0].size),
                     "boot.priority": "0",
                 },
-                "eth1": profile_devices["eth1"],
-                "eth0": {"type": "none"},
+                "eth0": {
+                    "name": "eth0",
+                    "type": "nic",
+                    "parent": "lxdbr0",
+                    "nictype": "bridged",
+                    "boot.priority": "1",
+                },
             },
         }
 
@@ -1169,6 +1140,52 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
+    def test_compose_no_host_known_interfaces(self):
+        pod_id = factory.make_name("pod_id")
+        context = self.make_parameters_context()
+        request = make_requested_machine(known_host_interfaces=[])
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(driver, "_get_client")
+        client = Client.return_value
+        mock_storage_pools = Mock()
+        client.storage_pools.all.return_value = mock_storage_pools
+        mock_get_usable_storage_pool = self.patch(
+            driver, "_get_usable_storage_pool"
+        )
+        usable_pool = Mock()
+        usable_pool.name = factory.make_name("pool")
+        mock_get_usable_storage_pool.return_value = usable_pool
+        with ExpectedException(
+            lxd_module.LXDPodError,
+            "No host network to attach VM interfaces to",
+        ):
+            yield driver.compose(pod_id, context, request)
+
+    @inlineCallbacks
+    def test_compose_no_host_known_interfaces_with_dhcp(self):
+        pod_id = factory.make_name("pod_id")
+        context = self.make_parameters_context()
+        request = make_requested_machine()
+        for host_interface in request.known_host_interfaces:
+            host_interface.dhcp_enabled = False
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(driver, "_get_client")
+        client = Client.return_value
+        mock_storage_pools = Mock()
+        client.storage_pools.all.return_value = mock_storage_pools
+        mock_get_usable_storage_pool = self.patch(
+            driver, "_get_usable_storage_pool"
+        )
+        usable_pool = Mock()
+        usable_pool.name = factory.make_name("pool")
+        mock_get_usable_storage_pool.return_value = usable_pool
+        with ExpectedException(
+            lxd_module.LXDPodError,
+            "No host network to attach VM interfaces to",
+        ):
+            yield driver.compose(pod_id, context, request)
+
+    @inlineCallbacks
     def test_compose_multiple_disks(self):
         pod_id = factory.make_name("pod_id")
         context = self.make_parameters_context()
@@ -1176,18 +1193,6 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
-        mock_profile = Mock()
-        mock_profile.name = random.choice(["maas", "default"])
-        profile_devices = {
-            "eth0": {
-                "name": "eth0",
-                "nictype": "bridged",
-                "parent": "lxdbr0",
-                "type": "nic",
-            },
-        }
-        mock_profile.devices = profile_devices
-        client.profiles.get.return_value = mock_profile
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1217,7 +1222,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
-            "profiles": [mock_profile.name],
+            "profiles": [],
             "source": {"type": "none"},
             "devices": {
                 "root": {
@@ -1304,32 +1309,6 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
-        mock_profile = Mock()
-        mock_profile.name = random.choice(["maas", "default"])
-        profile_devices = {
-            "eth0": {
-                "name": "eth0",
-                "nictype": "bridged",
-                "parent": "lxdbr0",
-                "type": "nic",
-            },
-            "eth1": {
-                "boot.priority": "1",
-                "name": "eth1",
-                "nictype": "bridged",
-                "parent": "virbr1",
-                "type": "nic",
-            },
-            "root": {
-                "boot.priority": "0",
-                "path": "/",
-                "pool": "default",
-                "type": "disk",
-                "size": "20GB",
-            },
-        }
-        mock_profile.devices = profile_devices
-        client.profiles.get.return_value = mock_profile
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1355,7 +1334,7 @@ class TestLXDPodDriver(MAASTestCase):
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
-            "profiles": [mock_profile.name],
+            "profiles": [],
             "source": {"type": "none"},
             "devices": {
                 "root": {
@@ -1365,11 +1344,7 @@ class TestLXDPodDriver(MAASTestCase):
                     "size": str(request.block_devices[0].size),
                     "boot.priority": "0",
                 },
-                expected_interfaces[0]["name"]: expected_interfaces[0],
-                expected_interfaces[1]["name"]: expected_interfaces[1],
-                expected_interfaces[2]["name"]: expected_interfaces[2],
-                "eth1": {"type": "none"},
-                "eth0": {"type": "none"},
+                **{iface["name"]: iface for iface in expected_interfaces},
             },
         }
 
@@ -1529,17 +1504,20 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
 
-class TestLXDGetNicDevice(MAASTestCase):
+class TestGetLXDNICDevice(MAASTestCase):
     def test_bridged(self):
+        ifname = factory.make_name("ifname")
         interface = RequestedMachineInterface(
-            ifname=factory.make_name("ifname"),
+            ifname=ifname,
             attach_name=factory.make_name("bridge_name"),
             attach_type=InterfaceAttachType.BRIDGE,
         )
-        device = lxd_module.get_lxd_nic_device(interface)
+        device = lxd_module.get_lxd_nic_device(
+            ifname, interface, sentinel.default_parent
+        )
         self.assertEqual(
             {
-                "name": interface.ifname,
+                "name": ifname,
                 "parent": interface.attach_name,
                 "nictype": "bridged",
                 "type": "nic",
@@ -1548,15 +1526,18 @@ class TestLXDGetNicDevice(MAASTestCase):
         )
 
     def test_macvlan(self):
+        ifname = factory.make_name("ifname")
         interface = RequestedMachineInterface(
-            ifname=factory.make_name("ifname"),
+            ifname=ifname,
             attach_name=factory.make_name("bridge_name"),
             attach_type=InterfaceAttachType.MACVLAN,
         )
-        device = lxd_module.get_lxd_nic_device(interface)
+        device = lxd_module.get_lxd_nic_device(
+            ifname, interface, sentinel.default_parent
+        )
         self.assertEqual(
             {
-                "name": interface.ifname,
+                "name": ifname,
                 "parent": interface.attach_name,
                 "nictype": "macvlan",
                 "type": "nic",
@@ -1565,18 +1546,21 @@ class TestLXDGetNicDevice(MAASTestCase):
         )
 
     def test_sriov(self):
+        ifname = factory.make_name("ifname")
         interface = RequestedMachineInterface(
-            ifname=factory.make_name("ifname"),
+            ifname=ifname,
             attach_name=factory.make_name("sriov"),
             attach_type=InterfaceAttachType.SRIOV,
         )
         generated_mac_address = generate_mac_address()
         mock_generate_mac = self.patch(lxd_module, "generate_mac_address")
         mock_generate_mac.return_value = generated_mac_address
-        device = lxd_module.get_lxd_nic_device(interface)
+        device = lxd_module.get_lxd_nic_device(
+            ifname, interface, sentinel.default_parent
+        )
         self.assertEqual(
             {
-                "name": interface.ifname,
+                "name": ifname,
                 "hwaddr": generated_mac_address,
                 "parent": interface.attach_name,
                 "nictype": "sriov",
@@ -1586,8 +1570,9 @@ class TestLXDGetNicDevice(MAASTestCase):
         )
 
     def test_sriov_vlan(self):
+        ifname = factory.make_name("ifname")
         interface = RequestedMachineInterface(
-            ifname=factory.make_name("ifname"),
+            ifname=ifname,
             attach_name=factory.make_name("sriov"),
             attach_type=InterfaceAttachType.SRIOV,
             attach_vlan=42,
@@ -1595,10 +1580,12 @@ class TestLXDGetNicDevice(MAASTestCase):
         generated_mac_address = generate_mac_address()
         mock_generate_mac = self.patch(lxd_module, "generate_mac_address")
         mock_generate_mac.return_value = generated_mac_address
-        device = lxd_module.get_lxd_nic_device(interface)
+        device = lxd_module.get_lxd_nic_device(
+            ifname, interface, sentinel.default_parent
+        )
         self.assertEqual(
             {
-                "name": interface.ifname,
+                "name": ifname,
                 "hwaddr": generated_mac_address,
                 "parent": interface.attach_name,
                 "nictype": "sriov",
@@ -1608,14 +1595,55 @@ class TestLXDGetNicDevice(MAASTestCase):
             device,
         )
 
+    def test_empty_interface_request_parent_macvlan(self):
+        ifname = factory.make_name("ifname")
+        interface = RequestedMachineInterface()
+        parent_ifname = factory.make_name("ifname")
+        default_parent = KnownHostInterface(
+            ifname=parent_ifname,
+            attach_type=InterfaceAttachType.MACVLAN,
+            attach_name=parent_ifname,
+        )
+        device = lxd_module.get_lxd_nic_device(
+            ifname, interface, default_parent
+        )
+        self.assertEqual(
+            device,
+            {
+                "name": ifname,
+                "parent": parent_ifname,
+                "nictype": InterfaceAttachType.MACVLAN,
+                "type": "nic",
+            },
+        )
+
+    def test_empty_interface_request_parent_bridge(self):
+        ifname = factory.make_name("ifname")
+        interface = RequestedMachineInterface()
+        parent_ifname = factory.make_name("ifname")
+        default_parent = KnownHostInterface(
+            ifname=parent_ifname,
+            attach_type=InterfaceAttachType.BRIDGE,
+            attach_name=parent_ifname,
+        )
+        device = lxd_module.get_lxd_nic_device(
+            ifname, interface, default_parent
+        )
+        self.assertEqual(
+            device,
+            {
+                "name": ifname,
+                "parent": parent_ifname,
+                "nictype": "bridged",
+                "type": "nic",
+            },
+        )
+
 
 class TestGetLXDMachineDefinition(MAASTestCase):
     def test_definition(self):
         request = make_requested_machine()
-        definition = lxd_module.get_lxd_machine_definition(
-            request,
-            "maas-profile",
-        )
+        definition = lxd_module.get_lxd_machine_definition(request)
         self.assertEqual(
             definition,
             {
@@ -1627,35 +1655,26 @@ class TestGetLXDMachineDefinition(MAASTestCase):
                     "security.secureboot": "false",
                 },
                 "name": request.hostname,
-                "profiles": ["maas-profile"],
+                "profiles": [],
                 "source": {"type": "none"},
             },
         )
 
     def test_hugepages(self):
         request = make_requested_machine(hugepages_backed=True)
-        definition = lxd_module.get_lxd_machine_definition(
-            request,
-            "maas-profile",
-        )
+        definition = lxd_module.get_lxd_machine_definition(request)
         self.assertEqual(
             definition["config"]["limits.memory.hugepages"], "true"
         )
 
     def test_pinned_cores(self):
         request = make_requested_machine(pinned_cores=[0, 3, 5])
-        definition = lxd_module.get_lxd_machine_definition(
-            request,
-            "maas-profile",
-        )
+        definition = lxd_module.get_lxd_machine_definition(request)
         self.assertEqual(definition["config"]["limits.cpu"], "0,3,5")
 
     def test_pinned_single(self):
         request = make_requested_machine(pinned_cores=[4])
-        definition = lxd_module.get_lxd_machine_definition(
-            request,
-            "maas-profile",
-        )
+        definition = lxd_module.get_lxd_machine_definition(request)
         self.assertEqual(definition["config"]["limits.cpu"], "4-4")
 
 

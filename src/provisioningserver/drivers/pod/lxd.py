@@ -93,19 +93,22 @@ def convert_lxd_byte_suffixes(value, divisor=None):
     return int(value)
 
 
-def get_lxd_nic_device(interface):
+def get_lxd_nic_device(name, interface, default_parent):
     """Convert a RequestedMachineInterface into a LXD device definition."""
-    # LXD uses 'bridged' while MAAS uses 'bridge' so convert
-    # the nictype.
-    nictype = (
-        "bridged"
-        if interface.attach_type == InterfaceAttachType.BRIDGE
-        else interface.attach_type
-    )
+    parent = interface.attach_name
+    nictype = interface.attach_type
+    if not parent:
+        parent = default_parent.attach_name
+        nictype = default_parent.attach_type
+
+    # LXD uses 'bridged' while MAAS uses 'bridge' so convert the nictype.
+    if nictype == InterfaceAttachType.BRIDGE:
+        nictype = "bridged"
+
     device = {
-        "name": interface.ifname,
-        "parent": interface.attach_name,
+        "name": name,
         "nictype": nictype,
+        "parent": parent,
         "type": "nic",
     }
     if interface.attach_type == InterfaceAttachType.SRIOV:
@@ -115,7 +118,7 @@ def get_lxd_nic_device(interface):
     return device
 
 
-def get_lxd_machine_definition(request, profile_name):
+def get_lxd_machine_definition(request):
     return {
         "name": request.hostname,
         "architecture": debian_to_kernel_architecture(request.architecture),
@@ -128,7 +131,7 @@ def get_lxd_machine_definition(request, profile_name):
             # LP: 1867387 - Disable secure boot until its fixed in MAAS
             "security.secureboot": "false",
         },
-        "profiles": [profile_name],
+        "profiles": [],
         # Image source is empty as we get images from MAAS when netbooting.
         "source": {"type": "none"},
     }
@@ -347,29 +350,18 @@ class LXDPodDriver(PodDriver):
     def compose(self, pod_id: int, context: dict, request: RequestedMachine):
         """Compose a virtual machine."""
         client = self._get_client(pod_id, context)
-        # Check to see if there is a maas profile.  If not, use the default.
-        try:
-            profile = client.profiles.get("maas")
-        except NotFound:
-            # Fall back to default
-            try:
-                profile = client.profiles.get("default")
-            except NotFound:
-                raise LXDPodError(
-                    f"Pod {pod_id}: MAAS needs LXD to have either a 'maas' "
-                    "profile or a 'default' profile, defined."
-                )
+
         storage_pools = client.storage_pools.all()
         default_storage_pool = context.get(
             "default_storage_pool_id", context.get("default_storage_pool")
         )
 
-        definition = get_lxd_machine_definition(request, profile.name)
+        definition = get_lxd_machine_definition(request)
         definition["devices"] = {
             **self._get_machine_disks(
                 request.block_devices, storage_pools, default_storage_pool
             ),
-            **self._get_machine_nics(request.interfaces, profile),
+            **self._get_machine_nics(request),
         }
 
         # Create the machine.
@@ -432,47 +424,41 @@ class LXDPodDriver(PodDriver):
             }
         return disks
 
-    def _get_machine_nics(self, requested_interfaces, profile):
-        # Create and attach interfaces to the machine.
-        # The reason we are doing this after the machine is created
-        # is because pylxd doesn't have a way to override the devices
-        # that are defined in the profile.  Since the profile is provided
-        # by the user, we have no idea how many interfaces are defined.
-        #
-        # Currently, only the bridged type is supported with virtual machines.
-        # https://lxd.readthedocs.io/en/latest/instances/#device-types
+    def _get_machine_nics(self, request):
+        usable_parents = sorted(
+            (
+                iface
+                for iface in request.known_host_interfaces
+                if iface.dhcp_enabled
+            ),
+            # sort bridges first
+            key=lambda iface: iface.attach_type != InterfaceAttachType.BRIDGE,
+        )
+        try:
+            default_parent = usable_parents[0]
+        except IndexError:
+            raise LXDPodError("No host network to attach VM interfaces to")
+
         nics = {}
-        profile_devices = profile.devices
-        device_names = []
-        boot = True
-        for interface in requested_interfaces:
-            if interface.ifname is None:
-                # No interface constraints sent so use the best
-                # nic device from the profile's devices.
-                device_name, device = self._get_best_nic_device_from_profile(
-                    profile_devices
-                )
-                nics[device_name] = device
-                if "boot.priority" not in device and boot:
-                    nics[device_name]["boot.priority"] = "1"
-                    boot = False
-                device_names.append(device_name)
-            else:
-                nics[interface.ifname] = get_lxd_nic_device(interface)
+        ifnames = set(
+            iface.ifname for iface in request.interfaces if iface.ifname
+        )
+        ifindex = 0
+        for idx, interface in enumerate(request.interfaces):
+            ifname = interface.ifname
+            if ifname is None:
+                # get the next available interface name
+                ifname = f"eth{ifindex}"
+                while ifname in ifnames:
+                    ifindex += 1
+                    ifname = f"eth{ifindex}"
+                ifnames.add(ifname)
 
-                # Set to boot from the first nic
-                if boot:
-                    nics[interface.ifname]["boot.priority"] = "1"
-                    boot = False
-                device_names.append(interface.ifname)
-
-        # Iterate over all of the profile's devices with type=nic and set to
-        # type=none if it's not a NIC device.  This overrides the device
-        # settings on the profile used by the machine.
-        for name, config in profile_devices.items():
-            if name not in device_names and config["type"] == "nic":
-                nics[name] = {"type": "none"}
-
+            nic = get_lxd_nic_device(ifname, interface, default_parent)
+            # Set to boot from the first nic
+            if idx == 0:
+                nic["boot.priority"] = "1"
+            nics[ifname] = nic
         return nics
 
     def _create_volume(self, pool, size):
@@ -519,30 +505,6 @@ class LXDPodDriver(PodDriver):
                 "features.storage.volumes": "false",
             },
         )
-
-    def _get_best_nic_device_from_profile(self, devices):
-        """Return the nic name and device that is most likely to be
-        on a MAAS DHCP enabled subnet.  This is used when no interface
-        constraints are in the request."""
-        nic_devices = {k: v for k, v in devices.items() if v["type"] == "nic"}
-
-        # Check for boot.priority flag by sorting.
-        # If the boot.priority flag is set, this will
-        # most likely be an interface that is expected
-        # to boot off the network.
-        boot_priorities = sorted(
-            {k: v for k, v in nic_devices.items() if "boot.priority" in v},
-            key=lambda i: nic_devices[i]["boot.priority"],
-            reverse=True,
-        )
-
-        if boot_priorities:
-            return boot_priorities[0], nic_devices[boot_priorities[0]]
-
-        # Since we couldn't find a nic device with boot.priority set
-        # just choose the first nic device.
-        device_name = list(nic_devices.keys())[0]
-        return device_name, nic_devices[device_name]
 
     def _get_usable_storage_pool(
         self, disk, storage_pools, default_storage_pool=None
@@ -622,15 +584,12 @@ class LXDPodDriver(PodDriver):
 
         def _get_discovered_block_device(name, device, requested_device=None):
             tags = requested_device.tags if requested_device else []
-            # When LXD creates a QEMU disk the serial is always
-            # lxd_{device name}. The device_name is defined by
-            # the LXD profile or when adding a device. This is
-            # commonly "root" for the first disk. The model and
-            # serial must be correctly defined here otherwise
-            # MAAS will delete the disk created during composition
-            # which results in losing the storage pool link. Without
-            # the storage pool link MAAS can't determine how much
-            # of the storage pool has been used.
+            # When LXD creates a QEMU disk the serial is always lxd_{device
+            # name}. The device name is commonly "root" for the first disk. The
+            # model and serial must be correctly defined here otherwise MAAS
+            # will delete the disk created during composition which results in
+            # losing the storage pool link. Without the storage pool link MAAS
+            # can't determine how much of the storage pool has been used.
             serial = f"lxd_{name}"
             source = device.get("source")
             if source:
