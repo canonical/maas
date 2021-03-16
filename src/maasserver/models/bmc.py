@@ -69,7 +69,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import RESULT_TYPE
 from provisioningserver.drivers import SETTING_SCOPE
-from provisioningserver.drivers.pod import BlockDeviceType, InterfaceAttachType
+from provisioningserver.drivers.pod import InterfaceAttachType
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.enum import MACVLAN_MODE_CHOICES
 from provisioningserver.logger import get_maas_logger
@@ -969,25 +969,20 @@ class Pod(BMC):
         # Create the discovered block devices and set the initial storage
         # layout for the machine.
         for idx, discovered_bd in enumerate(discovered_machine.block_devices):
-            if discovered_bd.type == BlockDeviceType.PHYSICAL:
-                try:
-                    self._create_physical_block_device(
-                        discovered_bd,
-                        machine,
-                        name=BlockDevice._get_block_name_from_idx(idx),
-                    )
-                except Exception:
-                    if skip_commissioning:
-                        # Commissioning is not being performed for this
-                        # machine. When not performing commissioning it is
-                        # required for all physical block devices be created,
-                        # otherwise this is allowed to fail as commissioning
-                        # will discover this information.
-                        raise
-            else:
-                raise ValueError(
-                    "Unknown block device type: %s" % discovered_bd.type
+            try:
+                self._create_physical_block_device(
+                    discovered_bd,
+                    machine,
+                    name=BlockDevice._get_block_name_from_idx(idx),
                 )
+            except Exception:
+                if skip_commissioning:
+                    # Commissioning is not being performed for this
+                    # machine. When not performing commissioning it is
+                    # required for all physical block devices be created,
+                    # otherwise this is allowed to fail as commissioning
+                    # will discover this information.
+                    raise
         if skip_commissioning:
             machine.set_default_storage_layout()
 
@@ -1195,19 +1190,12 @@ class Pod(BMC):
         model_mapping = {
             "%s/%s" % (block_device.model, block_device.serial): block_device
             for block_device in block_devices
-            if (
-                block_device.type == BlockDeviceType.PHYSICAL
-                and block_device.model
-                and block_device.serial
-            )
+            if block_device.model and block_device.serial
         }
         path_mapping = {
             block_device.id_path: block_device
             for block_device in block_devices
-            if (
-                block_device.type == BlockDeviceType.PHYSICAL
-                and (not block_device.model or not block_device.serial)
-            )
+            if not block_device.model or not block_device.serial
         }
         existing_block_devices = map(
             lambda bd: bd.actual_instance,

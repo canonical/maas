@@ -629,7 +629,6 @@ class TestLXDPodDriver(MAASTestCase):
                 size=20 * 1000 ** 3,
                 block_size=512,
                 tags=[],
-                type="physical",
                 storage_pool=expanded_devices["root"]["pool"],
             ),
         )

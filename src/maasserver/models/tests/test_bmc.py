@@ -64,7 +64,6 @@ from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
-    BlockDeviceType,
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
     DiscoveredMachineInterface,
@@ -742,20 +741,16 @@ class TestPod(MAASServerTestCase):
         model=None,
         serial=None,
         id_path=None,
-        block_type=BlockDeviceType.PHYSICAL,
         storage_pools=None,
     ):
-        if block_type == BlockDeviceType.PHYSICAL:
-            if id_path is None:
-                if model is None:
-                    model = factory.make_name("model")
-                if serial is None:
-                    serial = factory.make_name("serial")
-            else:
-                model = None
-                serial = None
+        if id_path is None:
+            if model is None:
+                model = factory.make_name("model")
+            if serial is None:
+                serial = factory.make_name("serial")
         else:
-            raise ValueError("Unknown block_type: %s" % block_type)
+            model = None
+            serial = None
         storage_pool = None
         if storage_pools is not None:
             storage_pool = random.choice(storage_pools).id
@@ -766,7 +761,6 @@ class TestPod(MAASServerTestCase):
             block_size=random.choice([512, 4096]),
             tags=[factory.make_name("tag") for _ in range(3)],
             id_path=id_path,
-            type=block_type,
             storage_pool=storage_pool,
         )
 
@@ -800,7 +794,6 @@ class TestPod(MAASServerTestCase):
         if block_devices is None:
             block_devices = [
                 self.make_discovered_block_device(
-                    block_type=BlockDeviceType.PHYSICAL,
                     storage_pools=storage_pools,
                 )
                 for _ in range(3)
@@ -1026,7 +1019,6 @@ class TestPod(MAASServerTestCase):
                                     ),
                                 )
                                 for idx, bd in enumerate(machine.block_devices)
-                                if bd.type == BlockDeviceType.PHYSICAL
                             ]
                         ),
                         boot_interface=IsInstance(Interface),
@@ -1809,12 +1801,10 @@ class TestPod(MAASServerTestCase):
         d_storage_pool2 = self.make_discovered_storage_pool()
         d_block_device1 = self.make_discovered_block_device(
             id_path="/dev/sda",
-            block_type=BlockDeviceType.PHYSICAL,
             storage_pools=[d_storage_pool1],
         )
         d_block_device2 = self.make_discovered_block_device(
             id_path="/dev/sdb",
-            block_type=BlockDeviceType.PHYSICAL,
             storage_pools=[d_storage_pool2],
         )
         discovered_machine = self.make_discovered_machine(
@@ -1905,7 +1895,6 @@ class TestPod(MAASServerTestCase):
                                     ),
                                 )
                                 for idx, bd in enumerate(machine.block_devices)
-                                if bd.type == BlockDeviceType.PHYSICAL
                             ]
                         ),
                         boot_interface=IsInstance(Interface),

@@ -129,13 +129,6 @@ class Capabilities:
     STORAGE_POOLS = "storage_pools"
 
 
-class BlockDeviceType:
-    """Different types of block devices."""
-
-    # Block device is connected physically to the discovered machine.
-    PHYSICAL = "physical"
-
-
 class InterfaceAttachType:
     """Different interface attachment types."""
 
@@ -198,7 +191,6 @@ class DiscoveredMachineBlockDevice:
     id_path = attr.ib(
         converter=converter_obj(str, optional=True), default=None
     )
-    type = attr.ib(converter=str, default=BlockDeviceType.PHYSICAL)
 
     # Optional id of the storage pool this block device exists on. Only
     # used when the Pod supports STORAGE_POOLS.
