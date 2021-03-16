@@ -357,41 +357,6 @@ class TestRegionServer(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_register_updates_interfaces(self):
-        yield self.installFakeRegion()
-        rack_controller = yield deferToDatabase(factory.make_RackController)
-        protocol = self.make_Region()
-        protocol.transport = MagicMock()
-        nic_name = factory.make_name("eth0")
-        interfaces = {
-            nic_name: {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-        response = yield call_responder(
-            protocol,
-            RegisterRackController,
-            {
-                "system_id": rack_controller.system_id,
-                "hostname": rack_controller.hostname,
-                "interfaces": interfaces,
-            },
-        )
-
-        @transactional
-        def has_interface(system_id, nic_name):
-            rack_controller = RackController.objects.get(system_id=system_id)
-            interfaces = rack_controller.interface_set.filter(name=nic_name)
-            self.assertThat(interfaces, HasLength(1))
-
-        yield deferToDatabase(has_interface, response["system_id"], nic_name)
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_register_calls_handle_upgrade(self):
         yield self.installFakeRegion()
         rack_controller = yield deferToDatabase(factory.make_RackController)

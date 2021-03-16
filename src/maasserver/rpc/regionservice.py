@@ -695,17 +695,12 @@ class RegionServer(Region):
         beacon_support=False,
         version=None,
     ):
-        # Hold off on fabric creation if the remote controller
-        # supports beacons; it will happen later when UpdateInterfaces is
-        # called.
-        create_fabrics = False if beacon_support else True
         result = yield self._register(
             system_id,
             hostname,
             interfaces,
             url,
             nodegroup_uuid=nodegroup_uuid,
-            create_fabrics=create_fabrics,
             version=version,
         )
         if beacon_support:
@@ -724,7 +719,6 @@ class RegionServer(Region):
         interfaces,
         url,
         nodegroup_uuid=None,
-        create_fabrics=True,
         version=None,
     ):
         try:
@@ -737,7 +731,6 @@ class RegionServer(Region):
                 interfaces=interfaces,
                 url=url,
                 is_loopback=is_loopback,
-                create_fabrics=create_fabrics,
                 version=version,
             )
 

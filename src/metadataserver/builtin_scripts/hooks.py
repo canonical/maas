@@ -27,6 +27,7 @@ from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
+from metadataserver.builtin_scripts.network import update_node_interfaces
 from metadataserver.enum import HARDWARE_TYPE, SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
@@ -1023,6 +1024,12 @@ def process_lxd_results(node, output, exit_status):
         not missing_extensions
     ), f"Missing required LXD API extensions {sorted(missing_extensions)}"
 
+    if "network-extra" in data:
+        update_node_interfaces(
+            node,
+            data["network-extra"]["interfaces"],
+            data["network-extra"]["hints"],
+        )
     _process_lxd_environment(node, data["environment"])
     _process_lxd_resources(node, data)
 

@@ -5,12 +5,9 @@
 
 
 from crochet import wait_for
-from fixtures import FakeLogger
-from testtools.matchers import Contains, Equals, HasLength, IsInstance
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred, inlineCallbacks, succeed
+from twisted.internet.defer import Deferred, inlineCallbacks
 
-from maasserver.models.interface import PhysicalInterface
 from maasserver.regiondservices.networks_monitoring import (
     RegionNetworksMonitoringService,
 )
@@ -28,57 +25,6 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         self.mock_refresh = self.patch(services, "refresh")
-
-    @wait_for(30)
-    @inlineCallbacks
-    def test_updates_interfaces_in_database(self):
-        region = yield deferToDatabase(factory.make_RegionController)
-        region.owner = yield deferToDatabase(factory.make_admin)
-        yield deferToDatabase(region.save)
-        # Declare this region controller as the one running here.
-        self.useFixture(MAASIDFixture(region.system_id))
-
-        interfaces = {
-            factory.make_name("eth"): {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-
-        update_deferred = Deferred()
-        service = RegionNetworksMonitoringService(
-            reactor,
-            enable_beaconing=False,
-            update_interfaces_deferred=update_deferred,
-        )
-        service.getInterfaces = lambda: succeed(interfaces)
-
-        with FakeLogger("maas") as logger:
-            service.startService()
-            yield update_deferred
-            yield service.stopService()
-
-        # Nothing was logged.
-        self.assertIn(
-            "Networks monitoring service: Process ID ", logger.output
-        )
-
-        def get_interfaces():
-            return list(region.interface_set.all())
-
-        interfaces_observed = yield deferToDatabase(get_interfaces)
-        self.assertThat(interfaces_observed, HasLength(1))
-        interface_observed = interfaces_observed[0]
-        self.assertThat(interface_observed, IsInstance(PhysicalInterface))
-        self.assertThat(interfaces, Contains(interface_observed.name))
-        interface_expected = interfaces[interface_observed.name]
-        self.assertThat(
-            interface_observed.mac_address.raw,
-            Equals(interface_expected["mac_address"]),
-        )
 
     @wait_for(30)
     @inlineCallbacks

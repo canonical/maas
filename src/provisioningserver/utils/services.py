@@ -1029,7 +1029,10 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                     "configuration: %s; interfaces: %r" % (e, interfaces)
                 )
                 log.err(None, msg)
-        if self._update_interfaces_deferred is not None:
+        if (
+            self._update_interfaces_deferred is not None
+            and not self._update_interfaces_deferred.called
+        ):
             self._update_interfaces_deferred.callback(interfaces)
 
     def getInterfaces(self):
@@ -1051,13 +1054,6 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         """Get the details for posting commissioning script output.
 
         Returns a 3-tuple of (maas_url, system_id, credentials).
-
-        This MUST be overridden in subclasses.
-        """
-
-    @abstractmethod
-    def recordInterfaces(self, interfaces, hints=None):
-        """Record the interfaces information.
 
         This MUST be overridden in subclasses.
         """
@@ -1155,7 +1151,6 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
                 interfaces,
                 hints,
             )
-            yield maybeDeferred(self.recordInterfaces, interfaces, hints)
             # Note: _interfacesRecorded() will reconfigure discovery after
             # recording the interfaces, so there is no need to call
             # _configureNetworkDiscovery() here.

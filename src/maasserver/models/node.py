@@ -74,7 +74,7 @@ from twisted.internet.error import ConnectionClosed, ConnectionDone
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
-from maasserver import DefaultMeta, locks
+from maasserver import DefaultMeta
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
     power_cycle,
@@ -160,7 +160,6 @@ from maasserver.storage_layouts import (
     StorageLayoutMissingBootDiskError,
     VMFS6StorageLayout,
 )
-from maasserver.utils import synchronised
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -169,7 +168,6 @@ from maasserver.utils.orm import (
     post_commit,
     post_commit_do,
     transactional,
-    with_connection,
 )
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
@@ -6197,22 +6195,6 @@ class Controller(Node):
             interface.name: interface.get_discovery_state()
             for interface in interfaces
         }
-
-    @with_connection
-    @synchronised(locks.startup)
-    def update_interfaces(
-        self, interfaces, topology_hints=None, create_fabrics=True
-    ):
-        from metadataserver.builtin_scripts.network import (
-            update_node_interfaces,
-        )
-
-        return update_node_interfaces(
-            self,
-            interfaces,
-            topology_hints=topology_hints,
-            create_fabrics=create_fabrics,
-        )
 
     @transactional
     def _get_token_for_controller(self):

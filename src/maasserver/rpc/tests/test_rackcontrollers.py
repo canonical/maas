@@ -9,12 +9,6 @@ from unittest.mock import sentinel
 from urllib.parse import urlparse
 
 from fixtures import FakeLogger
-from testtools.matchers import (
-    IsInstance,
-    MatchesAll,
-    MatchesSetwise,
-    MatchesStructure,
-)
 
 from maasserver import locks, worker_user
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
@@ -24,7 +18,6 @@ from maasserver.models import (
     RackController,
     RegionController,
 )
-from maasserver.models.interface import PhysicalInterface
 from maasserver.models.timestampedmodel import now
 from maasserver.rpc import rackcontrollers
 from maasserver.rpc.rackcontrollers import (
@@ -40,6 +33,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
+from metadataserver.builtin_scripts.network import update_node_interfaces
 
 
 class TestHandleUpgrade(MAASServerTestCase):
@@ -63,7 +57,7 @@ class TestHandleUpgrade(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack.update_interfaces(interfaces)
+        update_node_interfaces(rack, interfaces)
         ng_uuid = factory.make_UUID()
         NodeGroupToRackController.objects.create(uuid=ng_uuid, subnet=subnet)
         handle_upgrade(rack, ng_uuid)
@@ -93,7 +87,7 @@ class TestHandleUpgrade(MAASServerTestCase):
                 "enabled": True,
             }
         }
-        rack.update_interfaces(interfaces)
+        update_node_interfaces(rack, interfaces)
         ng_uuid = factory.make_UUID()
         NodeGroupToRackController.objects.create(uuid=ng_uuid, subnet=subnet)
         handle_upgrade(rack, ng_uuid)
@@ -279,74 +273,11 @@ class TestRegisterRackController(MAASServerTestCase):
             logger.output.strip(),
         )
 
-    def test_sets_interfaces(self):
-        # Interfaces are set on new rack controllers.
-        interfaces = {
-            factory.make_name("eth0"): {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-        rack_registered = register(interfaces=interfaces)
-        self.assertThat(
-            rack_registered.interface_set.all(),
-            MatchesSetwise(
-                *(
-                    MatchesAll(
-                        IsInstance(PhysicalInterface),
-                        MatchesStructure.byEquality(
-                            name=name,
-                            mac_address=interface["mac_address"],
-                            enabled=interface["enabled"],
-                        ),
-                        first_only=True,
-                    )
-                    for name, interface in interfaces.items()
-                )
-            ),
-        )
-
     def test_sets_version_of_controller(self):
         version = "1.10.2"
         node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
         register(system_id=node.system_id, version=version)
         self.assertEqual(version, node.as_rack_controller().version)
-
-    def test_updates_interfaces(self):
-        # Interfaces are set on existing rack controllers.
-        rack_controller = factory.make_RackController()
-        interfaces = {
-            factory.make_name("eth0"): {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-        rack_registered = register(
-            rack_controller.system_id, interfaces=interfaces
-        )
-        self.assertThat(
-            rack_registered.interface_set.all(),
-            MatchesSetwise(
-                *(
-                    MatchesAll(
-                        IsInstance(PhysicalInterface),
-                        MatchesStructure.byEquality(
-                            name=name,
-                            mac_address=interface["mac_address"],
-                            enabled=interface["enabled"],
-                        ),
-                        first_only=True,
-                    )
-                    for name, interface in interfaces.items()
-                )
-            ),
-        )
 
     def test_registers_with_startup_lock_held(self):
         lock_status = []

@@ -46,9 +46,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def create_fake_rpc_service(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(
-            region.UpdateInterfaces, region.RequestRackRefresh
-        )
+        protocol, connecting = fixture.makeEventLoop(region.RequestRackRefresh)
         self.addCleanup((yield connecting))
         protocol.RequestRackRefresh.return_value = self.metadata_creds
         returnValue(protocol)
@@ -106,7 +104,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
             self.assertEqual(self.metadata_creds["token_secret"], token_secret)
             self.assertEqual("http://localhost/MAAS", maas_url)
 
-        protocol = yield self.create_fake_rpc_service()
+        yield self.create_fake_rpc_service()
         self.mock_refresh.side_effect = refresh
 
         interfaces = {
@@ -138,20 +136,11 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         yield update_interfaces_deferred
         yield service.stopService()
 
-        self.assertThat(
-            protocol.UpdateInterfaces,
-            MockCalledOnceWith(
-                protocol,
-                system_id=rpc_service.getClient().localIdent,
-                interfaces=interfaces,
-                topology_hints=None,
-            ),
-        )
         self.assertEquals(1, self.mock_refresh.call_count)
 
     @inlineCallbacks
     def test_reports_interfaces_with_hints_if_beaconing_enabled(self):
-        protocol = yield self.create_fake_rpc_service()
+        yield self.create_fake_rpc_service()
         # Don't actually wait for beaconing to complete.
         pause_mock = self.patch(services_module, "pause")
         queue_mcast_mock = self.patch(
@@ -183,15 +172,6 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         yield maybeDeferred(service.interface_monitor.stopService)
         yield service.stopService()
 
-        self.assertThat(
-            protocol.UpdateInterfaces,
-            MockCalledOnceWith(
-                protocol,
-                system_id=rpc_service.getClient().localIdent,
-                interfaces=interfaces,
-                topology_hints=[],
-            ),
-        )
         # The service should have sent out beacons, waited three seconds,
         # solicited for more beacons, then waited another three seconds before
         # deciding that beaconing is complete.
@@ -210,9 +190,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_reports_neighbours_to_region(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(
-            region.UpdateInterfaces, region.ReportNeighbours
-        )
+        protocol, connecting = fixture.makeEventLoop(region.ReportNeighbours)
         self.addCleanup((yield connecting))
         rpc_service = services.getServiceNamed("rpc")
         service = RackNetworksMonitoringService(
@@ -235,9 +213,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_reports_mdns_to_region(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(
-            region.UpdateInterfaces, region.ReportMDNSEntries
-        )
+        protocol, connecting = fixture.makeEventLoop(region.ReportMDNSEntries)
         self.addCleanup((yield connecting))
         rpc_service = services.getServiceNamed("rpc")
         service = RackNetworksMonitoringService(
@@ -266,9 +242,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_asks_region_for_monitoring_state(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(
-            region.UpdateInterfaces, region.GetDiscoveryState
-        )
+        protocol, connecting = fixture.makeEventLoop(region.GetDiscoveryState)
         self.addCleanup((yield connecting))
         rpc_service = services.getServiceNamed("rpc")
         reactor = Clock()
@@ -296,9 +270,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
     @inlineCallbacks
     def test_requests_beaconing_when_timer_fires(self):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(
-            region.UpdateInterfaces, region.GetDiscoveryState
-        )
+        protocol, connecting = fixture.makeEventLoop(region.GetDiscoveryState)
         self.addCleanup((yield connecting))
         rpc_service = services.getServiceNamed("rpc")
         reactor = Clock()

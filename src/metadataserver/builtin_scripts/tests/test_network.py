@@ -31,6 +31,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import get_one, reload_object
 from maastesting.matchers import MockCallsMatch
 from metadataserver.builtin_scripts import network as network_module
+from metadataserver.builtin_scripts.network import update_node_interfaces
 from metadataserver.builtin_scripts.tests import test_hooks
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 
@@ -94,12 +95,16 @@ class UpdateInterfacesMixin:
     def update_interfaces(self, controller, interfaces, topology_hints=None):
         for _ in range(self.passes):
             if not self.with_beaconing:
-                controller.update_interfaces(interfaces)
+                update_node_interfaces(controller, interfaces)
             else:
-                controller.update_interfaces(
-                    interfaces, topology_hints=None, create_fabrics=False
+                update_node_interfaces(
+                    controller,
+                    interfaces,
+                    topology_hints=None,
+                    create_fabrics=False,
                 )
-                controller.update_interfaces(
+                update_node_interfaces(
+                    controller,
                     interfaces,
                     topology_hints=topology_hints,
                     create_fabrics=True,
@@ -2142,7 +2147,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         bond0 = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[eth0, eth1], vlan=vlan
         )
-        controller.update_interfaces({})
+        update_node_interfaces(controller, {})
         self.assertThat(reload_object(eth0), Is(None))
         self.assertThat(reload_object(eth1), Is(None))
         self.assertThat(reload_object(bond0), Is(None))
@@ -2720,8 +2725,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         }
         controller1 = self.create_empty_controller()
         controller2 = self.create_empty_controller()
-        controller1.update_interfaces(interfaces1)
-        controller2.update_interfaces(interfaces2)
+        update_node_interfaces(controller1, interfaces1)
+        update_node_interfaces(controller2, interfaces2)
         r1_ens5_16 = get_one(Interface.objects.filter_by_ip("10.16.0.2"))
         self.assertIsNotNone(r1_ens5_16)
         r2_ens5_16 = get_one(Interface.objects.filter_by_ip("10.16.0.3"))
@@ -2994,7 +2999,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 "enabled": True,
             },
         }
-        controller.update_interfaces(interfaces_old)
+        update_node_interfaces(controller, interfaces_old)
         eth0 = PhysicalInterface.objects.get(
             node=controller, mac_address=interfaces_old["eth0"]["mac_address"]
         )

@@ -75,7 +75,6 @@ def register(
     interfaces=None,
     url=None,
     is_loopback=None,
-    create_fabrics=True,
     version=None,
 ):
     """Register a new rack controller if not already registered.
@@ -164,8 +163,6 @@ def register(
     if rackcontroller.owner is None:
         rackcontroller.owner = worker_user.get_worker_user()
     rackcontroller.save()
-    # Update interfaces, if requested.
-    rackcontroller.update_interfaces(interfaces, create_fabrics=create_fabrics)
     # Update the version.
     if version is not None:
         ControllerInfo.objects.set_version(rackcontroller, version)

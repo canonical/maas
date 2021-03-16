@@ -21,6 +21,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
     DeferredQueue,
+    fail,
     inlineCallbacks,
     succeed,
 )
@@ -214,7 +215,8 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
         d.addBoth(self.iterations.put)
         return d
 
-    def recordInterfaces(self, interfaces, hints=None):
+    def _interfacesRecorded(self, interfaces):
+        super()._interfacesRecorded(interfaces)
         self.interfaces.append(interfaces)
         self.record_maas_version = self.maas_version
 
@@ -408,20 +410,6 @@ class TestNetworksMonitoringService(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_recordInterfaces_called_when_nothing_previously_recorded(self):
-        get_interfaces = self.patch(services, "get_all_interfaces_definition")
-        my_interfaces = {"foo": "bar"}
-        get_interfaces.side_effect = [my_interfaces]
-
-        service = self.makeService()
-        service.running = 1
-        self.assertThat(service.interfaces, Equals([]))
-        yield service.updateInterfaces()
-        self.assertThat(service.interfaces, Equals([my_interfaces]))
-
-        self.assertThat(get_interfaces, MockCalledOnceWith())
-
-    @inlineCallbacks
     def test_recordInterfaces_has_maas_version(self):
         service = self.makeService()
         service.running = 1
@@ -472,30 +460,33 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         service = self.makeService()
         service.running = 1
-        recordInterfaces = self.patch(service, "recordInterfaces")
-        recordInterfaces.side_effect = [Exception, None, None]
+        run_refresh = self.patch(service, "_run_refresh")
+        run_refresh.side_effect = [
+            fail(Exception()),
+            succeed(None),
+            succeed(None),
+        ]
 
         # Using the logger fixture prevents the test case from failing due
         # to the logged exception.
         with TwistedLoggerFixture():
-            # recordInterfaces is called the first time, as expected.
-            self.fake_refresher.reset()
-            recordInterfaces.reset_mock()
+            # _run_refresh is called the first time, as expected.
+            run_refresh.reset_mock()
             yield service.updateInterfaces()
-            self.assertThat(recordInterfaces, MockCalledOnceWith({}, None))
+            self.assertEqual(1, run_refresh.call_count)
 
-            # recordInterfaces is called the second time too; the service noted
+            # _run_refresh is called the second time too; the service noted
             # that it crashed last time and knew to run it again.
-            self.fake_refresher.reset()
-            recordInterfaces.reset_mock()
+            run_refresh.reset_mock()
             yield service.updateInterfaces()
-            self.assertThat(recordInterfaces, MockCalledOnceWith({}, None))
+            self.assertEqual(1, run_refresh.call_count)
 
-            # recordInterfaces is NOT called the third time; the service noted
+            # _run_refresh is NOT called the third time; the service noted
             # that the configuration had not changed.
-            recordInterfaces.reset_mock()
+            run_refresh.reset_mock()
+            self.assertEqual(0, run_refresh.call_count)
             yield service.updateInterfaces()
-            self.assertThat(recordInterfaces, MockNotCalled())
+            self.assertEqual(0, run_refresh.call_count)
 
     @inlineCallbacks
     def test_assumes_sole_responsibility_before_updating(self):
