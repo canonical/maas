@@ -52,6 +52,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 maaslog = get_maas_logger("drivers.pod.lxd")
 
+LXD_MAAS_PROFILE = "maas"
+
 # LXD status codes
 LXD_VM_POWER_STATE = {101: "on", 102: "off", 103: "on", 110: "off"}
 
@@ -118,7 +120,10 @@ def get_lxd_nic_device(name, interface, default_parent):
     return device
 
 
-def get_lxd_machine_definition(request):
+def get_lxd_machine_definition(request, include_profile=False):
+    profiles = []
+    if include_profile:
+        profiles.append(LXD_MAAS_PROFILE)
     return {
         "name": request.hostname,
         "architecture": debian_to_kernel_architecture(request.architecture),
@@ -131,7 +136,7 @@ def get_lxd_machine_definition(request):
             # LP: 1867387 - Disable secure boot until its fixed in MAAS
             "security.secureboot": "false",
         },
-        "profiles": [],
+        "profiles": profiles,
         # Image source is empty as we get images from MAAS when netbooting.
         "source": {"type": "none"},
     }
@@ -356,7 +361,10 @@ class LXDPodDriver(PodDriver):
             "default_storage_pool_id", context.get("default_storage_pool")
         )
 
-        definition = get_lxd_machine_definition(request)
+        include_profile = client.profiles.exists(LXD_MAAS_PROFILE)
+        definition = get_lxd_machine_definition(
+            request, include_profile=include_profile
+        )
         definition["devices"] = {
             **self._get_machine_disks(
                 request.block_devices, storage_pools, default_storage_pool
@@ -492,16 +500,16 @@ class LXDPodDriver(PodDriver):
         if client.projects.exists(client.project):
             return
 
-        # when creating a project, by default don't enable per-project
-        # resources. Enabling storage volumes requires setting up at least one
-        # manually so that VMs can be created, and enabling profiles would
-        # create a default profile with no root nor NIC devices.
+        # When creating a project, by default don't enable per-project images
+        # and storage. Enabling those setting up at least one storage pool so
+        # that VMs can be created. Users can change those settings later
+        # without affecting MAAS functionality.
         client.projects.create(
             name=client.project,
             description="Project managed by MAAS",
             config={
                 "features.images": "false",
-                "features.profiles": "false",
+                "features.profiles": "true",
                 "features.storage.volumes": "false",
             },
         )

@@ -430,7 +430,7 @@ class TestLXDPodDriver(MAASTestCase):
             description="Project managed by MAAS",
             config={
                 "features.images": "false",
-                "features.profiles": "false",
+                "features.profiles": "true",
                 "features.storage.volumes": "false",
             },
         )
@@ -1072,6 +1072,7 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1146,6 +1147,7 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1170,6 +1172,7 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1192,6 +1195,7 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1308,6 +1312,7 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
         mock_get_usable_storage_pool = self.patch(
@@ -1367,6 +1372,69 @@ class TestLXDPodDriver(MAASTestCase):
                 ),
             ),
         )
+
+    @inlineCallbacks
+    def test_compose_with_maas_profile(self):
+        pod_id = factory.make_name("pod_id")
+        context = self.make_parameters_context()
+        request = make_requested_machine()
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(driver, "_get_client")
+        client = Client.return_value
+        mock_profiles_exists = client.profiles.exists
+        mock_profiles_exists.return_value = True
+        mock_storage_pools = Mock()
+        client.storage_pools.all.return_value = mock_storage_pools
+        mock_get_usable_storage_pool = self.patch(
+            driver, "_get_usable_storage_pool"
+        )
+        usable_pool = Mock()
+        usable_pool.name = factory.make_name("pool")
+        mock_get_usable_storage_pool.return_value = usable_pool
+        mock_machine = Mock()
+        client.virtual_machines.create.return_value = mock_machine
+        mock_get_discovered_machine = self.patch(
+            driver, "_get_discovered_machine"
+        )
+        mock_get_discovered_machine.return_value = sentinel.discovered_machine
+        definition = {
+            "name": request.hostname,
+            "architecture": debian_to_kernel_architecture(
+                request.architecture
+            ),
+            "config": {
+                "limits.cpu": str(request.cores),
+                "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory.hugepages": "false",
+                "security.secureboot": "false",
+            },
+            "profiles": ["maas"],
+            "source": {"type": "none"},
+            "devices": {
+                "root": {
+                    "path": "/",
+                    "type": "disk",
+                    "pool": usable_pool.name,
+                    "size": str(request.block_devices[0].size),
+                    "boot.priority": "0",
+                },
+                "eth0": {
+                    "name": "eth0",
+                    "type": "nic",
+                    "nictype": "bridged",
+                    "parent": "lxdbr0",
+                    "boot.priority": "1",
+                },
+            },
+        }
+
+        discovered_machine, empty_hints = yield driver.compose(
+            pod_id, context, request
+        )
+        client.virtual_machines.create.assert_called_once_with(
+            definition, wait=True
+        )
+        mock_profiles_exists.assert_called_once_with("maas")
 
     @inlineCallbacks
     def test_decompose(self):
