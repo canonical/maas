@@ -1,4 +1,4 @@
-# Copyright 2020-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test bmc_config functions."""
@@ -790,41 +790,6 @@ EndSection
                     "2",
                     "cipher_privs",
                     "XXaXXXXXXXXXXXX",
-                ],
-                timeout=60,
-            ),
-        )
-        self.assertEqual("17", self.ipmi._cipher_suite_id)
-
-    def test_config_ipmitool_cipher_suite_ids_with_gaps(self):
-        mock_get_ipmitool_lan_print = self.patch(
-            self.ipmi, "_get_ipmitool_lan_print"
-        )
-        mock_get_ipmitool_lan_print.return_value = (
-            "2",
-            factory.make_name("output"),
-        )
-
-        # This tests a BMC which has IPMI ciphers 0, 4, 5, 9, 10, 13, and
-        # 14. The BMC has options for all supported ciphers plus 4 vendor
-        # ciphers which are not listed. ciphers 1, 2, 3 and two vendor
-        # ciphers are currently enabled while the others are disabled.
-        self.ipmi._config_ipmitool_cipher_suite_ids(
-            17, [1, 2, 3, 6, 7, 8, 11, 12, 15, 16, 17], "aaaXXXXXXXXXXaa"
-        )
-
-        # This verifies MAAS would keep cipher 3 and the two vendor ciphers
-        # as is while enabling cipher 17 for MAAS to use.
-        self.assertThat(
-            self.mock_check_call,
-            MockCalledOnceWith(
-                [
-                    "ipmitool",
-                    "lan",
-                    "set",
-                    "2",
-                    "cipher_privs",
-                    "XXaXXXXXXXaXXaa",
                 ],
                 timeout=60,
             ),

@@ -622,32 +622,32 @@ class IPMI(BMCConfig):
         supported_cipher_suite_ids,
         cipher_suite_privs,
     ):
-        cipher_suite_privs_list = list(cipher_suite_privs)
-        for i, cipher_suite_id in enumerate(supported_cipher_suite_ids):
-            if cipher_suite_id > 17:
-                # The IPMI spec reserves ciphers > 17 for vendor use.
-                # Don't touch them
-                continue
-            elif cipher_suite_id == max_cipher_suite_id:
-                if cipher_suite_privs_list[i] != "a":
-                    # Make sure the maximum supported cipher suite is enabled,
-                    # this is the cipher suite MAAS will use.
-                    cipher_suite_privs_list[i] = "a"
-                    print(
-                        'INFO: Enabling IPMI cipher suite id "%s" '
-                        "for MAAS use..." % cipher_suite_id
-                    )
-            elif cipher_suite_id not in [17, 3, 8, 12]:
-                # Disable any cipher suite which isn't a known secure
-                # cipher suite.
-                if cipher_suite_privs_list[i] != "X":
-                    cipher_suite_privs_list[i] = "X"
-                    print(
-                        "INFO: Disabling insecure IPMI cipher suite id "
-                        '"%s"' % cipher_suite_id
-                    )
+        new_cipher_suite_privs = ""
+        for i, v in enumerate(cipher_suite_privs):
+            if i < len(supported_cipher_suite_ids):
+                cipher_suite_id = supported_cipher_suite_ids[i]
+                if cipher_suite_id in [17, 3, 8, 12]:
+                    if cipher_suite_id == max_cipher_suite_id and v != "a":
+                        print(
+                            'INFO: Enabling IPMI cipher suite id "%s" '
+                            "for MAAS use..." % cipher_suite_id
+                        )
+                        new_cipher_suite_privs += "a"
+                    else:
+                        new_cipher_suite_privs += v
+                else:
+                    if v != "X":
+                        print(
+                            "INFO: Disabling insecure IPMI cipher suite id "
+                            '"%s"' % cipher_suite_id
+                        )
+                    new_cipher_suite_privs = "X"
+            else:
+                # 15 characters are usually given even if there
+                # aren't 15 ciphers supported. Copy the current value
+                # incase there is some OEM use for them.
+                new_cipher_suite_privs += v
 
-        new_cipher_suite_privs = "".join(cipher_suite_privs_list)
         if cipher_suite_privs == new_cipher_suite_privs:
             # Cipher suites are already properly configured, nothing
             # to do.
