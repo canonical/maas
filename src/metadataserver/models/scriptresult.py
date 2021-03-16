@@ -464,13 +464,9 @@ class ScriptResult(CleanSave, TimestampedModel):
                         self.physical_blockdevice = param["value"].pop(
                             "physical_blockdevice"
                         )
-                        param["value"][
-                            "physical_blockdevice_id"
-                        ] = self.physical_blockdevice.id
                         purge_unlinked_blockdevice = True
                     elif "interface" in param["value"]:
                         self.interface = param["value"].pop("interface")
-                        param["value"]["interface_id"] = self.interface.id
                         purge_unlinked_interface = True
             if True in {purge_unlinked_blockdevice, purge_unlinked_interface}:
                 # Cleanup previous ScriptResults which failed to map to a

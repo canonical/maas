@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a nodes block device."""
@@ -233,6 +233,14 @@ class BlockDevice(CleanSave, TimestampedModel):
     def used_for(self):
         """Return what the block device is being used for."""
         return used_for(self)
+
+    def serialize(self):
+        """Serialize the model so it can be detected outside of MAAS."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "id_path": self.id_path,
+        }
 
     def __str__(self):
         return "{size} attached to {node}".format(

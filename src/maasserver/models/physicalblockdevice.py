@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a nodes physical block device."""
@@ -86,3 +86,13 @@ class PhysicalBlockDevice(BlockDevice):
             size=human_readable_bytes(self.size),
             node=self.node,
         )
+
+    def serialize(self):
+        """Serialize the model so it can be detected outside of MAAS."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "id_path": self.id_path,
+            "model": self.model,
+            "serial": self.serial,
+        }

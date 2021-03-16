@@ -503,6 +503,7 @@ class TestScriptResult(MAASServerTestCase):
                 "storage": {
                     "type": "storage",
                     "value": {
+                        "id": physical_blockdevice.id,
                         "name": physical_blockdevice.name,
                         "id_path": physical_blockdevice.id_path,
                         "model": physical_blockdevice.model,
@@ -520,11 +521,11 @@ class TestScriptResult(MAASServerTestCase):
                 "storage": {
                     "type": "storage",
                     "value": {
+                        "id": physical_blockdevice.id,
                         "name": physical_blockdevice.name,
                         "id_path": physical_blockdevice.id_path,
                         "model": physical_blockdevice.model,
                         "serial": physical_blockdevice.serial,
-                        "physical_blockdevice_id": physical_blockdevice.id,
                     },
                 }
             },
@@ -541,6 +542,7 @@ class TestScriptResult(MAASServerTestCase):
                 "interface": {
                     "type": "interface",
                     "value": {
+                        "id": interface.id,
                         "name": interface.name,
                         "mac_address": str(interface.mac_address),
                         "vendor": interface.vendor,
@@ -557,11 +559,11 @@ class TestScriptResult(MAASServerTestCase):
                 "interface": {
                     "type": "interface",
                     "value": {
+                        "id": interface.id,
                         "name": interface.name,
                         "mac_address": str(interface.mac_address),
                         "vendor": interface.vendor,
                         "product": interface.product,
-                        "interface_id": interface.id,
                     },
                 }
             },

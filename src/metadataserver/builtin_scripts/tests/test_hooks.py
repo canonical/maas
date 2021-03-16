@@ -2352,10 +2352,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 "storage": {
                     "type": "storage",
                     "value": {
+                        "id": node.physicalblockdevice_set.first().id,
                         "id_path": "/dev/disk/by-id/wwn-0x12345",
-                        "physical_blockdevice_id": (
-                            node.physicalblockdevice_set.first().id
-                        ),
                         "name": device["id"],
                         "serial": device["serial"],
                         "model": device["model"],
@@ -3156,11 +3154,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
                 "interface": {
                     "type": "interface",
                     "value": {
+                        "id": node.boot_interface.id,
                         "name": node.boot_interface.name,
                         "mac_address": str(node.boot_interface.mac_address),
                         "vendor": node.boot_interface.vendor,
                         "product": node.boot_interface.product,
-                        "interface_id": node.boot_interface.id,
                     },
                 }
             },

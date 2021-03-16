@@ -1,4 +1,4 @@
-# Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `PhysicalBlockDevice`."""
@@ -155,4 +155,17 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             block_size=1024,
             node=node,
             numa_node=numa_node,
+        )
+
+    def test_serialize(self):
+        block_device = factory.make_PhysicalBlockDevice()
+        self.assertEqual(
+            {
+                "id": block_device.id,
+                "name": block_device.name,
+                "id_path": block_device.id_path,
+                "model": block_device.model,
+                "serial": block_device.serial,
+            },
+            block_device.serialize(),
         )

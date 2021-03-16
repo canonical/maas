@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for Parameters form."""
@@ -458,6 +458,7 @@ class TestParametersForm(MAASServerTestCase):
             self.assertEqual(script.timeout.seconds, i["runtime"]["value"])
             self.assertDictEqual(
                 {
+                    "id": bd.id,
                     "name": bd.name,
                     "id_path": bd.id_path,
                     "model": bd.model,
@@ -489,6 +490,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertEqual(script.timeout.seconds, input[0]["runtime"]["value"])
         self.assertDictEqual(
             {
+                "id": bd.id,
                 "name": bd.name,
                 "id_path": bd.id_path,
                 "model": bd.model,
@@ -552,6 +554,7 @@ class TestParametersForm(MAASServerTestCase):
             self.assertEqual(script.timeout.seconds, i["runtime"]["value"])
             self.assertDictEqual(
                 {
+                    "id": bd.id,
                     "name": bd.name,
                     "id_path": bd.id_path,
                     "model": bd.model,
@@ -627,6 +630,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertEqual(1, len(form.cleaned_data["input"]))
         self.assertDictEqual(
             {
+                "id": node.boot_interface.id,
                 "name": node.boot_interface.name,
                 "mac_address": str(node.boot_interface.mac_address),
                 "vendor": node.boot_interface.vendor,
@@ -664,6 +668,7 @@ class TestParametersForm(MAASServerTestCase):
                     break
             self.assertDictEqual(
                 {
+                    "id": interface.id,
                     "name": interface.name,
                     "mac_address": str(interface.mac_address),
                     "vendor": interface.vendor,
@@ -693,6 +698,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertEqual(1, len(input))
         self.assertDictEqual(
             {
+                "id": bond.id,
                 "name": bond.name,
                 "mac_address": str(bond.mac_address),
                 "vendor": bond.vendor,
@@ -723,6 +729,7 @@ class TestParametersForm(MAASServerTestCase):
         self.assertEqual(1, len(input))
         self.assertDictEqual(
             {
+                "id": interface.id,
                 "name": interface.name,
                 "mac_address": str(interface.mac_address),
                 "vendor": interface.vendor,
@@ -818,6 +825,7 @@ class TestParametersForm(MAASServerTestCase):
                     break
             self.assertDictEqual(
                 {
+                    "id": nic.id,
                     "name": nic.name,
                     "mac_address": str(nic.mac_address),
                     "vendor": nic.vendor,

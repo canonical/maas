@@ -1363,11 +1363,11 @@ class TestScriptSet(MAASServerTestCase):
                 "storage": {
                     "type": "storage",
                     "value": {
+                        "id": bd.id,
                         "name": bd.name,
                         "model": bd.model,
                         "serial": bd.serial,
                         "id_path": bd.id_path,
-                        "physical_blockdevice_id": bd.id,
                     },
                 }
             },
@@ -1465,11 +1465,11 @@ class TestScriptSet(MAASServerTestCase):
                 "interface": {
                     "type": "interface",
                     "value": {
+                        "id": interface.id,
                         "name": interface.name,
                         "mac_address": str(interface.mac_address),
                         "vendor": interface.vendor,
                         "product": interface.product,
-                        "interface_id": interface.id,
                     },
                 }
             },
@@ -1535,11 +1535,11 @@ class TestScriptSet(MAASServerTestCase):
                 "interface": {
                     "type": "interface",
                     "value": {
+                        "id": interface.id,
                         "name": interface.name,
                         "mac_address": str(interface.mac_address),
                         "vendor": interface.vendor,
                         "product": interface.product,
-                        "interface_id": interface.id,
                     },
                 },
                 "url": {

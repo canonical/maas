@@ -1,4 +1,4 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `BlockDevice`."""
@@ -411,6 +411,17 @@ class TestBlockDevice(MAASServerTestCase):
         tag = factory.make_name("tag")
         #: Test is this doesn't raise an exception
         block_device.remove_tag(tag)
+
+    def test_serialize(self):
+        block_device = factory.make_BlockDevice()
+        self.assertEqual(
+            {
+                "id": block_device.id,
+                "name": block_device.name,
+                "id_path": block_device.id_path,
+            },
+            block_device.serialize(),
+        )
 
     def test_negative_size(self):
         node = factory.make_Node()

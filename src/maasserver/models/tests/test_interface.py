@@ -1543,6 +1543,19 @@ class TestPhysicalInterface(MAASServerTestCase):
         )
         self.assertItemsEqual([parent], PhysicalInterface.objects.all())
 
+    def test_serialize(self):
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        self.assertEqual(
+            {
+                "id": interface.id,
+                "name": interface.name,
+                "mac_address": str(interface.mac_address),
+                "vendor": interface.vendor,
+                "product": interface.product,
+            },
+            interface.serialize(),
+        )
+
     def test_get_node_returns_its_node(self):
         node = factory.make_Node()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)

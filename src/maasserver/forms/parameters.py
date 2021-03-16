@@ -1,4 +1,4 @@
-# Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Parameters form."""
@@ -397,10 +397,7 @@ class ParametersForm(Form):
     def _blockdevice_to_dict(self, block_device):
         """Convert a block device to a dictionary with limited fields."""
         return {
-            "name": block_device.name,
-            "id_path": block_device.id_path,
-            "model": block_device.model,
-            "serial": block_device.serial,
+            **block_device.serialize(),
             "physical_blockdevice": block_device,
         }
 
@@ -489,10 +486,7 @@ class ParametersForm(Form):
     def _interface_to_dict(self, interface):
         """Convert an interface to a dictionary with limited fields."""
         return {
-            "name": interface.name,
-            "mac_address": str(interface.mac_address),
-            "vendor": interface.vendor,
-            "product": interface.product,
+            **interface.serialize(),
             "interface": interface,
         }
 
