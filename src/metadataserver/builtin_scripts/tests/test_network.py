@@ -37,64 +37,30 @@ from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 
 
 class UpdateInterfacesMixin:
-
-    scenarios = (
-        (
-            "rack",
-            dict(
-                node_type=NODE_TYPE.RACK_CONTROLLER,
-                with_beaconing=False,
-                passes=1,
-            ),
-        ),
-        (
-            "region",
-            dict(
-                node_type=NODE_TYPE.REGION_CONTROLLER,
-                with_beaconing=False,
-                passes=2,
-            ),
-        ),
-        (
-            "region+rack",
-            dict(
-                node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                with_beaconing=False,
-                passes=1,
-            ),
-        ),
-        (
-            "rack_with_beaconing",
-            dict(
-                node_type=NODE_TYPE.RACK_CONTROLLER,
-                with_beaconing=True,
-                passes=2,
-            ),
-        ),
-        (
-            "region_with_beaconing",
-            dict(
-                node_type=NODE_TYPE.REGION_CONTROLLER,
-                with_beaconing=True,
-                passes=1,
-            ),
-        ),
-        (
-            "region+rack_with_beaconing",
-            dict(
-                node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                with_beaconing=True,
-                passes=2,
-            ),
-        ),
-    )
-
     def create_empty_controller(self, **kwargs):
-        return factory.make_Node(node_type=self.node_type, **kwargs).as_self()
+        node_type = random.choice(
+            [
+                NODE_TYPE.REGION_CONTROLLER,
+                NODE_TYPE.RACK_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            ]
+        )
+        return factory.make_Node(node_type=node_type, **kwargs).as_self()
 
-    def update_interfaces(self, controller, interfaces, topology_hints=None):
-        for _ in range(self.passes):
-            if not self.with_beaconing:
+    def update_interfaces(
+        self,
+        controller,
+        interfaces,
+        topology_hints=None,
+        with_beaconing=False,
+        passes=None,
+    ):
+        # update_node_interfaces() is idempotent, so it doesn't matter
+        # if it's called once or twice.
+        if passes is None:
+            passes = random.randint(1, 2)
+        for _ in range(passes):
+            if not with_beaconing:
                 update_node_interfaces(controller, interfaces)
             else:
                 update_node_interfaces(
@@ -109,13 +75,11 @@ class UpdateInterfacesMixin:
                     topology_hints=topology_hints,
                     create_fabrics=True,
                 )
+        return passes
 
 
 class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
-
-    scenarios = UpdateInterfacesMixin.scenarios
-
-    def test_order_of_calls_to_update_interface_is_always_the_same(self):
+    def test_order_of_calls_to_update_interface_without_beaconing(self):
         controller = self.create_empty_controller()
         interfaces = {
             "eth0": {
@@ -154,124 +118,178 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 "enabled": True,
             },
         }
-        if not self.with_beaconing:
-            expected_call_order = [
-                call(
-                    controller,
-                    "eth0",
-                    interfaces["eth0"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "eth1",
-                    interfaces["eth1"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "eth2",
-                    interfaces["eth2"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "bond0",
-                    interfaces["bond0"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "bond0.10",
-                    interfaces["bond0.10"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-            ] * self.passes
-        else:
-            expected_call_order = [
-                call(
-                    controller,
-                    "eth0",
-                    interfaces["eth0"],
-                    create_fabrics=False,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "eth1",
-                    interfaces["eth1"],
-                    create_fabrics=False,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "eth2",
-                    interfaces["eth2"],
-                    create_fabrics=False,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "bond0",
-                    interfaces["bond0"],
-                    create_fabrics=False,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "bond0.10",
-                    interfaces["bond0.10"],
-                    create_fabrics=False,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "eth0",
-                    interfaces["eth0"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "eth1",
-                    interfaces["eth1"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "eth2",
-                    interfaces["eth2"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "bond0",
-                    interfaces["bond0"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-                call(
-                    controller,
-                    "bond0.10",
-                    interfaces["bond0.10"],
-                    create_fabrics=True,
-                    hints=None,
-                ),
-            ] * self.passes
+        passes = 2
+        expected_call_order = [
+            call(
+                controller,
+                "eth0",
+                interfaces["eth0"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "eth1",
+                interfaces["eth1"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "eth2",
+                interfaces["eth2"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "bond0",
+                interfaces["bond0"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "bond0.10",
+                interfaces["bond0.10"],
+                create_fabrics=True,
+                hints=None,
+            ),
+        ] * passes
         # Perform multiple times to make sure the call order is always
         # the same.
         for _ in range(5):
             mock_update_interface = self.patch(
                 network_module, "update_interface"
             )
-            self.update_interfaces(controller, interfaces)
+            self.update_interfaces(
+                controller, interfaces, passes=passes, with_beaconing=False
+            )
+            self.assertThat(
+                mock_update_interface, MockCallsMatch(*expected_call_order)
+            )
+
+    def test_order_of_calls_to_update_interface_with_beaconing(self):
+        controller = self.create_empty_controller()
+        interfaces = {
+            "eth0": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            "eth1": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+            "bond0": {
+                "type": "bond",
+                "mac_address": factory.make_mac_address(),
+                "parents": ["eth1", "eth0"],
+                "links": [],
+                "enabled": True,
+            },
+            "bond0.10": {
+                "type": "vlan",
+                "vid": 10,
+                "parents": ["bond0"],
+                "links": [],
+                "enabled": True,
+            },
+            "eth2": {
+                "type": "physical",
+                "mac_address": factory.make_mac_address(),
+                "parents": [],
+                "links": [],
+                "enabled": True,
+            },
+        }
+        passes = 2
+        expected_call_order = [
+            call(
+                controller,
+                "eth0",
+                interfaces["eth0"],
+                create_fabrics=False,
+                hints=None,
+            ),
+            call(
+                controller,
+                "eth1",
+                interfaces["eth1"],
+                create_fabrics=False,
+                hints=None,
+            ),
+            call(
+                controller,
+                "eth2",
+                interfaces["eth2"],
+                create_fabrics=False,
+                hints=None,
+            ),
+            call(
+                controller,
+                "bond0",
+                interfaces["bond0"],
+                create_fabrics=False,
+                hints=None,
+            ),
+            call(
+                controller,
+                "bond0.10",
+                interfaces["bond0.10"],
+                create_fabrics=False,
+                hints=None,
+            ),
+            call(
+                controller,
+                "eth0",
+                interfaces["eth0"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "eth1",
+                interfaces["eth1"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "eth2",
+                interfaces["eth2"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "bond0",
+                interfaces["bond0"],
+                create_fabrics=True,
+                hints=None,
+            ),
+            call(
+                controller,
+                "bond0.10",
+                interfaces["bond0.10"],
+                create_fabrics=True,
+                hints=None,
+            ),
+        ] * passes
+        # Perform multiple times to make sure the call order is always
+        # the same.
+        for _ in range(5):
+            mock_update_interface = self.patch(
+                network_module, "update_interface"
+            )
+            self.update_interfaces(
+                controller, interfaces, passes=passes, with_beaconing=True
+            )
             self.assertThat(
                 mock_update_interface, MockCallsMatch(*expected_call_order)
             )
@@ -1329,7 +1347,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             "vid": vid_on_fabric,
         }
         maaslog = self.patch(network_module, "maaslog")
-        self.update_interfaces(controller, interfaces)
+        passes = self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface),
@@ -1379,7 +1397,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                         f"but links are on VLAN {other_vlan.vid}"
                     ),
                 ]
-                * self.passes
+                * passes
             ),
         )
 
@@ -1467,7 +1485,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             "vid": new_vlan.vid,
         }
         maaslog = self.patch(network_module, "maaslog")
-        self.update_interfaces(controller, interfaces)
+        passes = self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface),
@@ -1508,7 +1526,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                         f"is not on the same fabric as VLAN interface '{vlan_interface.name}'."
                     )
                 ]
-                * self.passes
+                * passes
             ),
         )
 
@@ -1560,7 +1578,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             "vid": other_vlan.vid,
         }
         maaslog = self.patch(network_module, "maaslog")
-        self.update_interfaces(controller, interfaces)
+        passes = self.update_interfaces(controller, interfaces)
         self.assertThat(controller.interface_set.count(), Equals(2))
         self.assertThat(
             reload_object(interface),
@@ -1597,7 +1615,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                         f"but links are on VLAN {new_vlan.vid}"
                     ),
                 ]
-                * self.passes
+                * passes
             ),
         )
         for link in links_to_remove:
@@ -3351,10 +3369,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 class TestUpdateInterfacesWithHints(
     MAASTransactionServerTestCase, UpdateInterfacesMixin
 ):
-
-    scenarios = UpdateInterfacesMixin.scenarios
-
-    def test_seen_on_second_controller_with_hints(self):
+    def test_seen_on_second_controller_with_hints_no_beaconing(self):
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
@@ -3418,8 +3433,10 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_interfaces)
-        self.update_interfaces(bob, bob_interfaces, bob_hints)
+        self.update_interfaces(alice, alice_interfaces, with_beaconing=False)
+        self.update_interfaces(
+            bob, bob_interfaces, bob_hints, with_beaconing=False
+        )
         alice_eth0 = get_one(
             PhysicalInterface.objects.filter(node=alice, name="eth0")
         )
@@ -3429,18 +3446,94 @@ class TestUpdateInterfacesWithHints(
         bob_eth1 = get_one(
             PhysicalInterface.objects.filter(node=bob, name="eth1")
         )
-        if not self.with_beaconing:
-            # Legacy mode; we'll see lots of VLANs and fabrics if an older
-            # rack registers with this configuration.
-            self.assertThat(alice_eth0.vlan, Not(Equals(bob_eth0.vlan)))
-            self.assertThat(bob_eth1.vlan, Not(Equals(bob_eth0.vlan)))
-        else:
-            # Registration with beaconing; we should see all these interfaces
-            # appear on the same VLAN.
-            self.assertThat(alice_eth0.vlan, Equals(bob_eth0.vlan))
-            self.assertThat(bob_eth1.vlan, Equals(bob_eth0.vlan))
+        # Legacy mode; we'll see lots of VLANs and fabrics if an older
+        # rack registers with this configuration.
+        self.assertThat(alice_eth0.vlan, Not(Equals(bob_eth0.vlan)))
+        self.assertThat(bob_eth1.vlan, Not(Equals(bob_eth0.vlan)))
 
-    def test_bridge_seen_on_second_controller_with_hints(self):
+    def test_seen_on_second_controller_with_hints_with_beaconing(self):
+        alice = self.create_empty_controller()
+        bob = self.create_empty_controller()
+        factory.make_Node()
+        alice_interfaces = {
+            "eth0": {
+                "enabled": True,
+                "links": [{"address": "192.168.0.1/24", "mode": "dhcp"}],
+                "mac_address": "52:54:00:77:15:e3",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            },
+            "eth1": {
+                "enabled": False,
+                "links": [],
+                "mac_address": "52:54:00:77:15:e4",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            },
+        }
+        bob_interfaces = {
+            "eth0": {
+                "enabled": True,
+                "links": [],
+                "mac_address": "52:54:00:87:25:f3",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            },
+            "eth1": {
+                "enabled": True,
+                "links": [],
+                "mac_address": "52:54:00:87:25:f4",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            },
+        }
+        bob_hints = [
+            {
+                "hint": "same_local_fabric_as",
+                "ifname": "eth0",
+                "related_ifname": "eth1",
+            },
+            {
+                "hint": "on_remote_network",
+                "ifname": "eth0",
+                "related_ifname": "eth0",
+                "related_mac": "52:54:00:77:15:e3",
+            },
+            {
+                "hint": "routable_to",
+                "ifname": "eth0",
+                "related_ifname": "eth0",
+                "related_mac": "52:54:00:77:15:e3",
+            },
+            {
+                "hint": "rx_own_beacon_on_other_interface",
+                "ifname": "eth1",
+                "related_ifname": "eth0",
+            },
+        ]
+        self.update_interfaces(alice, alice_interfaces, with_beaconing=True)
+        self.update_interfaces(
+            bob, bob_interfaces, bob_hints, with_beaconing=True
+        )
+        alice_eth0 = get_one(
+            PhysicalInterface.objects.filter(node=alice, name="eth0")
+        )
+        bob_eth0 = get_one(
+            PhysicalInterface.objects.filter(node=bob, name="eth0")
+        )
+        bob_eth1 = get_one(
+            PhysicalInterface.objects.filter(node=bob, name="eth1")
+        )
+        # Registration with beaconing; we should see all these interfaces
+        # appear on the same VLAN.
+        self.assertThat(alice_eth0.vlan, Equals(bob_eth0.vlan))
+        self.assertThat(bob_eth1.vlan, Equals(bob_eth0.vlan))
+
+    def test_bridge_seen_on_second_controller_with_hints_and_beaconing(self):
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
@@ -3504,8 +3597,10 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_interfaces)
-        self.update_interfaces(bob, bob_interfaces, bob_hints)
+        self.update_interfaces(alice, alice_interfaces, with_beaconing=True)
+        self.update_interfaces(
+            bob, bob_interfaces, bob_hints, with_beaconing=True
+        )
         alice_br0 = get_one(
             BridgeInterface.objects.filter(node=alice, name="br0")
         )
@@ -3515,16 +3610,94 @@ class TestUpdateInterfacesWithHints(
         bob_eth1 = get_one(
             PhysicalInterface.objects.filter(node=bob, name="eth1")
         )
-        if not self.with_beaconing:
-            # Legacy mode; we'll see lots of VLANs and fabrics if an older
-            # rack registers with this configuration.
-            self.assertThat(alice_br0.vlan, Not(Equals(bob_eth0.vlan)))
-            self.assertThat(bob_eth1.vlan, Not(Equals(bob_eth0.vlan)))
-        else:
-            # Registration with beaconing; we should see all these interfaces
-            # appear on the same VLAN.
-            self.assertThat(alice_br0.vlan, Equals(bob_eth0.vlan))
-            self.assertThat(bob_eth1.vlan, Equals(bob_eth0.vlan))
+        # Registration with beaconing; we should see all these interfaces
+        # appear on the same VLAN.
+        self.assertThat(alice_br0.vlan, Equals(bob_eth0.vlan))
+        self.assertThat(bob_eth1.vlan, Equals(bob_eth0.vlan))
+
+    def test_bridge_seen_on_second_controller_with_hints_and_no_beaconing(
+        self,
+    ):
+        alice = self.create_empty_controller()
+        bob = self.create_empty_controller()
+        factory.make_Node()
+        alice_interfaces = {
+            "br0": {
+                "enabled": True,
+                "links": [{"address": "192.168.0.1/24", "mode": "dhcp"}],
+                "mac_address": "52:54:00:77:15:e3",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "bridge",
+            },
+            "eth1": {
+                "enabled": False,
+                "links": [],
+                "mac_address": "52:54:00:77:15:e4",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            },
+        }
+        bob_interfaces = {
+            "eth0": {
+                "enabled": True,
+                "links": [],
+                "mac_address": "52:54:00:87:25:f3",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            },
+            "eth1": {
+                "enabled": True,
+                "links": [],
+                "mac_address": "52:54:00:87:25:f4",
+                "parents": [],
+                "source": "ipaddr",
+                "type": "physical",
+            },
+        }
+        bob_hints = [
+            {
+                "hint": "same_local_fabric_as",
+                "ifname": "eth0",
+                "related_ifname": "eth1",
+            },
+            {
+                "hint": "on_remote_network",
+                "ifname": "eth0",
+                "related_ifname": "br0",
+                "related_mac": "52:54:00:77:15:e3",
+            },
+            {
+                "hint": "routable_to",
+                "ifname": "eth0",
+                "related_ifname": "br0",
+                "related_mac": "52:54:00:77:15:e3",
+            },
+            {
+                "hint": "rx_own_beacon_on_other_interface",
+                "ifname": "eth1",
+                "related_ifname": "eth0",
+            },
+        ]
+        self.update_interfaces(alice, alice_interfaces, with_beaconing=False)
+        self.update_interfaces(
+            bob, bob_interfaces, bob_hints, with_beaconing=False
+        )
+        alice_br0 = get_one(
+            BridgeInterface.objects.filter(node=alice, name="br0")
+        )
+        bob_eth0 = get_one(
+            PhysicalInterface.objects.filter(node=bob, name="eth0")
+        )
+        bob_eth1 = get_one(
+            PhysicalInterface.objects.filter(node=bob, name="eth1")
+        )
+        # Legacy mode; we'll see lots of VLANs and fabrics if an older
+        # rack registers with this configuration.
+        self.assertThat(alice_br0.vlan, Not(Equals(bob_eth0.vlan)))
+        self.assertThat(bob_eth1.vlan, Not(Equals(bob_eth0.vlan)))
 
     def test_update_interfaces_iface_changed_mac(self):
         node = self.create_empty_controller()
