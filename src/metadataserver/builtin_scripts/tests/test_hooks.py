@@ -1079,9 +1079,9 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         for k, v in data.items():
             if isinstance(v, dict):
-                for l, w in v.items():
+                for x, w in v.items():
                     if not w or w in ["0123456789", "none"]:
-                        del data[k][v][l]
+                        del data[k][v][x]
             else:
                 if not v or v in ["0123456789", "none"]:
                     del data[k]
@@ -1855,9 +1855,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         modified_sample_lxd_data = make_lxd_output()
         for k, v in modified_sample_lxd_data["resources"]["system"].items():
             if isinstance(v, dict):
-                for l, w in v.items():
+                for x, w in v.items():
                     modified_sample_lxd_data["resources"]["system"][k][
-                        l
+                        x
                     ] = random.choice([None, "0123456789", "none"])
             else:
                 modified_sample_lxd_data["resources"]["system"][

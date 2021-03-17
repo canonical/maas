@@ -120,7 +120,7 @@ class TestPrometheusHandler(MAASServerTestCase):
         for metric in metrics:
             for line in content.splitlines():
                 if line.startswith("maas_"):
-                    self.assertIn('maas_id="abcde"'.format(metric), line)
+                    self.assertIn('maas_id="abcde"', line)
 
 
 class TestPrometheus(MAASServerTestCase):

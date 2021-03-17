@@ -1078,7 +1078,7 @@ class UserDataHandler(MetadataViewHandler):
                     try:
                         # Remove new lines and spaces, validator chokes on them.
                         user_data_stripped = "".join(
-                            [l.strip() for l in user_data.decode().split()]
+                            [x.strip() for x in user_data.decode().split()]
                         ).encode()
                         user_data_decoded = base64.b64decode(
                             user_data_stripped, validate=True

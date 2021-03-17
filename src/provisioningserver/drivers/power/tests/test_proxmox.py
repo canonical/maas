@@ -644,14 +644,14 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
                             {
                                 "node": node1,
                                 "vmid": 100,
-                                "name": f"vm 100",
+                                "name": "vm 100",
                                 "type": "qemu",
                                 "status": "stopped",
                             },
                             {
                                 "node": node2,
                                 "vmid": 200,
-                                "name": f"vm 200",
+                                "name": "vm 200",
                                 "type": "qemu",
                                 "status": "stopped",
                             },
@@ -702,7 +702,7 @@ class TestProxmoxProbeAndEnlist(MAASTestCase):
                     "power_verify_ssl": SSL_INSECURE_NO,
                 },
                 domain,
-                hostname=f"vm-100",
+                hostname="vm-100",
             ),
         )
         self.assertThat(self.mock_commission_node, MockNotCalled())

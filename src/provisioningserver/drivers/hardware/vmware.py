@@ -324,9 +324,7 @@ class VMwarePyvmomiAPI(VMwareAPI):
                 vm.PowerOff()
             else:
                 raise ValueError(
-                    "set_power_state: Invalid power_change state: {state}".format(
-                        power_change
-                    )
+                    f"set_power_state: Invalid power_change state: {power_change}"
                 )
 
     def set_pxe_boot(self, vm_properties):
