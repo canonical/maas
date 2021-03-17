@@ -7,7 +7,6 @@ distro-info
 dnsutils
 freeipmi-tools
 golang-go
-go-dep
 iputils-ping
 isc-dhcp-common
 isc-dhcp-server
