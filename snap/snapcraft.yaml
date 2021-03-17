@@ -232,8 +232,6 @@ parts:
     source: src/machine-resources
     build-snaps:
       - go
-    build-packages:
-      - go-dep
 
   tree:
     plugin: dump
