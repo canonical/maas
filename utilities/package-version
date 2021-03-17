@@ -2,12 +2,15 @@
 
 SCRIPT_PATH="$(realpath "$(dirname "$0")")"
 
+# Return a Debian-compatible version from the Python version
+to_debian() {
+    sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end'
+}
+
 maas_version() {
-    local repo_path="$SCRIPT_PATH/.."
     # need the full path, otherwise the python from the stage area is used when
-    # run inside a snap.  Also, return a deb-compatible version
-    /usr/bin/python3 "$repo_path/setup.py" --version | \
-        sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end'
+    # run inside a snap.
+    /usr/bin/python3 "$SCRIPT_PATH/../setup.py" --version | to_debian
 }
 
 # need the full path, otherwise the python from the stage area is used when run
