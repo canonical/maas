@@ -166,7 +166,7 @@ def check_SMART_support(blockdevice, device=None):
     """Check if SMART support is available for blockdevice device."""
     device_name = make_device_name(blockdevice, device)
     print(
-        "INFO: Veriying SMART support for the following drive: %s"
+        "INFO: Verifying SMART support for the following drive: %s"
         % device_name
     )
     try:
