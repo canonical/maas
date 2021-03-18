@@ -291,11 +291,6 @@ class TestControllerListener(
     def set_version(self, controller, version):
         ControllerInfo.objects.set_version(controller, version)
 
-    def set_interface_update_info(self, controller, interfaces, hints):
-        ControllerInfo.objects.set_interface_update_info(
-            controller, interfaces, hints
-        )
-
     def delete_controllerinfo(self, controller):
         ControllerInfo.objects.filter(node=controller).delete()
 
@@ -329,26 +324,6 @@ class TestControllerListener(
         try:
             yield deferToDatabase(self.set_version, controller, "2.10.1")
             yield dv.get(timeout=2)
-        finally:
-            yield listener.stopService()
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_skips_notify_on_controllerinfo_interface_update(self):
-        yield deferToDatabase(register_websocket_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        params = self.params.copy()
-        controller = yield deferToDatabase(self.create_node, params)
-        yield deferToDatabase(self.set_version, controller, "2.10.0")
-        listener.register(self.listener, lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.set_interface_update_info, controller, "{]", "{}"
-            )
-            with ExpectedException(CancelledError):
-                yield dv.get(timeout=0.2)
         finally:
             yield listener.stopService()
 

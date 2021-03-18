@@ -6222,20 +6222,6 @@ class Controller(Node):
         except ObjectDoesNotExist:
             return None
 
-    @property
-    def interfaces(self):
-        try:
-            return self.controllerinfo.interfaces
-        except ObjectDoesNotExist:
-            return None
-
-    @property
-    def interface_update_hints(self):
-        try:
-            return self.controllerinfo.interface_update_hints
-        except ObjectDoesNotExist:
-            return None
-
     def update_discovery_state(self, discovery_mode):
         """Update network discovery state on this Controller's interfaces.
 

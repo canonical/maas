@@ -32,16 +32,6 @@ class TestControllerInfo(MAASServerTestCase):
         ControllerInfo.objects.set_version(controller, "2.3.0")
         self.assertThat(controller.version, Equals("2.3.0"))
 
-    def test_controllerinfo_set_infterface_update_info(self):
-        controller = factory.make_RackController()
-        interfaces = {"eth0": {}}
-        hints = ["a", "b", "c"]
-        ControllerInfo.objects.set_interface_update_info(
-            controller, interfaces, hints
-        )
-        self.assertThat(controller.interfaces, Equals(interfaces))
-        self.assertThat(controller.interface_update_hints, Equals(hints))
-
 
 class TestGetControllerVersionInfo(MAASServerTestCase):
     def test_sorts_controllerversioninfo_by_most_recent_version_first(self):
