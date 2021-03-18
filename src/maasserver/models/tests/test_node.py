@@ -189,7 +189,6 @@ from provisioningserver.rpc.cluster import (
     DecomposeMachine,
     DisableAndShutoffRackd,
     IsImportBootImagesRunning,
-    RefreshRackControllerInfo,
 )
 from provisioningserver.rpc.exceptions import (
     CannotDisableAndShutoffRackd,
@@ -10000,22 +9999,6 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         self.rpc = self.useFixture(MockLiveRegionToClusterRPCFixture())
         self.rackcontroller = factory.make_RackController()
-        self.protocol = self.rpc.makeCluster(
-            self.rackcontroller, RefreshRackControllerInfo
-        )
-
-    @wait_for_reactor
-    @defer.inlineCallbacks
-    def test_processes_version(self):
-        def get_version(rack):
-            reload_object(rack)
-            return rack.controllerinfo.version
-
-        rack = yield deferToDatabase(factory.make_RackController)
-        yield rack.start_refresh("1.2.3")
-        recorded_version = yield deferToDatabase(get_version, rack)
-
-        self.assertEqual("1.2.3", recorded_version)
 
     @wait_for_reactor
     @defer.inlineCallbacks
@@ -10029,7 +10012,7 @@ class TestRackControllerRefresh(MAASTransactionServerTestCase):
             ]
 
         rack = yield deferToDatabase(factory.make_RackController)
-        credentials = yield rack.start_refresh("1.2.3")
+        credentials = yield rack.start_refresh()
         self.assertCountEqual(
             ["consumer_key", "token_key", "token_secret"], credentials.keys()
         )

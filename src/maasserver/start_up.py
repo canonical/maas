@@ -14,10 +14,13 @@ from twisted.internet.defer import inlineCallbacks
 from maasserver import locks, security
 from maasserver.deprecations import sync_deprecation_notifications
 from maasserver.fields import register_mac_type
-from maasserver.models.config import Config
+from maasserver.models import (
+    Config,
+    ControllerInfo,
+    Notification,
+    RegionController,
+)
 from maasserver.models.domain import dns_kms_setting_changed
-from maasserver.models.node import RegionController
-from maasserver.models.notification import Notification
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_psycopg2_exception,
@@ -31,6 +34,7 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.maas_certificates import generate_certificate_if_needed
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
+from provisioningserver.utils.version import get_running_version
 
 maaslog = get_maas_logger("start-up")
 logger = logging.getLogger(__name__)
@@ -113,7 +117,9 @@ def inner_start_up(master=False):
     # be restricted to masters only. This also ensures that the MAAS ID is set
     # on the filesystem; it will be done in a post-commit hook and will thus
     # happen before `locks.startup` is released.
-    RegionController.objects.get_or_create_running_controller()
+    node = RegionController.objects.get_or_create_running_controller()
+    # Update region version
+    ControllerInfo.objects.set_version(node, get_running_version())
     # Ensure that uuid is created after creating
     RegionController.objects.get_or_create_uuid()
 

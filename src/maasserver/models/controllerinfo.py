@@ -55,7 +55,7 @@ class ControllerVersionInfo(_ControllerVersionInfo):
 
 class ControllerInfoManager(Manager):
     def set_version(self, controller, version):
-        self.update_or_create(defaults=dict(version=version), node=controller)
+        self.update_or_create(defaults={"version": version}, node=controller)
 
     def set_interface_update_info(self, controller, interfaces, hints):
         self.update_or_create(

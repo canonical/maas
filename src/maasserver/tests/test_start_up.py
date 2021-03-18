@@ -31,6 +31,7 @@ from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils import ipaddr
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.testing import MAASIDFixture
+from provisioningserver.utils.version import get_running_version
 
 
 class TestStartUp(MAASTransactionServerTestCase):
@@ -209,3 +210,9 @@ class TestInnerStartUp(MAASServerTestCase):
             ).count(),
             0,
         )
+
+    def test_updates_version(self):
+        with post_commit_hooks:
+            start_up.inner_start_up()
+        region = RegionController.objects.first()
+        self.assertEqual(region.version, str(get_running_version()))

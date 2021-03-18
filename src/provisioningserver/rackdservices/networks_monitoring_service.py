@@ -52,7 +52,6 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
         credentials = yield client(
             RequestRackRefresh,
             system_id=client.localIdent,
-            maas_version=str(self.maas_version),
         )
         returnValue(
             (self.clientService.maas_url, client.localIdent, credentials)

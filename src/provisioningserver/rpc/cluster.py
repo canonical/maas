@@ -742,22 +742,6 @@ class IsImportBootImagesRunning(amp.Command):
     errors = {}
 
 
-class RefreshRackControllerInfo(amp.Command):
-    """Refresh the rack controller's hardware and network details.
-
-    :since: 2.0
-    """
-
-    arguments = [
-        (b"system_id", amp.Unicode()),
-        (b"consumer_key", amp.Unicode()),
-        (b"token_key", amp.Unicode()),
-        (b"token_secret", amp.Unicode()),
-    ]
-    response = [(b"maas_version", amp.Unicode())]
-    errors = {exceptions.RefreshAlreadyInProgress: b"RefreshAlreadyInProgress"}
-
-
 class AddChassis(amp.Command):
     """Probe and enlist the chassis which a rack controller can connect to.
 

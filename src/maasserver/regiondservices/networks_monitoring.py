@@ -25,7 +25,7 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
     def getRefreshDetails(self):
         """Record the interfaces information."""
         regiond = yield deferToDatabase(self._getRegion)
-        credentials = yield regiond.start_refresh(str(self.maas_version))
+        credentials = yield regiond.start_refresh()
         returnValue((None, regiond.system_id, credentials))
 
     def reportNeighbours(self, neighbours):

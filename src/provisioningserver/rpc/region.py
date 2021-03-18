@@ -573,7 +573,6 @@ class RequestRackRefresh(amp.Command):
 
     arguments = [
         (b"system_id", amp.Unicode()),
-        (b"maas_version", amp.Unicode()),
     ]
     response = [
         (b"consumer_key", amp.Unicode()),

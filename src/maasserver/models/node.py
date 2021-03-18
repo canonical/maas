@@ -6215,14 +6215,6 @@ class Controller(Node):
             action="starting refresh",
         )
 
-    @transactional
-    def _process_maas_version(self, maas_version):
-        if maas_version and self.version != maas_version:
-            # Circular imports.
-            from maasserver.models import ControllerInfo
-
-            ControllerInfo.objects.set_version(self, maas_version)
-
     @property
     def version(self):
         try:
@@ -6264,7 +6256,7 @@ class Controller(Node):
         return interfaces
 
     @inlineCallbacks
-    def start_refresh(self, maas_version):
+    def start_refresh(self):
         """Start refreshing the hardware and networking information.
 
         It signals the start of the refresh as an event and returns the
@@ -6274,8 +6266,6 @@ class Controller(Node):
         token = yield deferToDatabase(self._get_token_for_controller)
 
         yield deferToDatabase(self._signal_start_of_refresh)
-
-        yield deferToDatabase(self._process_maas_version, maas_version)
         returnValue(
             {
                 "consumer_key": token.consumer.key,

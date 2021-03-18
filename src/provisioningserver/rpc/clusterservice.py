@@ -56,7 +56,6 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.prometheus.metrics import set_global_labels
-from provisioningserver.refresh import refresh
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -759,40 +758,6 @@ class Cluster(RPCProtocol):
             self.service.maas_url,
         )
         return d.addCallback(lambda _: {})
-
-    @cluster.RefreshRackControllerInfo.responder
-    def refresh(self, system_id, consumer_key, token_key, token_secret):
-        """RefreshRackControllerInfo()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.RefreshRackControllerInfo`.
-        """
-
-        def _refresh():
-            return deferToThread(
-                refresh,
-                system_id,
-                consumer_key,
-                token_key,
-                token_secret,
-                self.service.maas_url,
-            )
-
-        lock = NamedLock("refresh")
-        try:
-            lock.acquire()
-        except lock.NotAvailable:
-            # Refresh is already running, don't do anything
-            raise exceptions.RefreshAlreadyInProgress()
-        else:
-            # Start gathering node results (lshw, lsblk, etc) but don't wait.
-            maybeDeferred(_refresh).addBoth(callOut, lock.release).addErrback(
-                log.err, "Failed to refresh the rack controller."
-            )
-
-        return deferToThread(
-            lambda: {"maas_version": str(get_running_version())}
-        )
 
     @cluster.AddChassis.responder
     def add_chassis(

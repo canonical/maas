@@ -138,9 +138,5 @@ class CannotDisableAndShutoffRackd(Exception):
     """Rackd cannot be disabled and shutoff."""
 
 
-class RefreshAlreadyInProgress(Exception):
-    """Refresh is already running, request ignored."""
-
-
 class ScanNetworksAlreadyInProgress(Exception):
     """Already scanning all networks; request ignored."""

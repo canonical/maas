@@ -1286,27 +1286,6 @@ class TestRegionProtocol_RequestRefresh(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_processes_version(self):
-        def get_version(rack):
-            reload_object(rack)
-            return rack.controllerinfo.version
-
-        rack = yield deferToDatabase(factory.make_RackController)
-        self.patch(regionservice, "deferToDatabase").return_value = succeed(
-            rack
-        )
-        response = yield call_responder(
-            Region(),
-            RequestRackRefresh,
-            {"system_id": rack.system_id, "maas_version": "1.2.3"},
-        )
-        self.assertIsNotNone(response)
-        recorded_version = yield deferToDatabase(get_version, rack)
-
-        self.assertEqual("1.2.3", recorded_version)
-
-    @wait_for_reactor
-    @inlineCallbacks
     def test_prepares_for_refresh(self):
         def get_events(rack):
             return [
@@ -1320,7 +1299,7 @@ class TestRegionProtocol_RequestRefresh(MAASTransactionServerTestCase):
         response = yield call_responder(
             Region(),
             RequestRackRefresh,
-            {"system_id": rack.system_id, "maas_version": "2.3.4"},
+            {"system_id": rack.system_id},
         )
         self.assertCountEqual(
             ["consumer_key", "token_key", "token_secret"], response.keys()
