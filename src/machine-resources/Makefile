@@ -12,6 +12,7 @@ GOARCH_ppc64el = ppc64le
 GOARCH_s390x = s390x
 
 export GOPATH = $(CURDIR)
+export GO111MODULE = off
 
 BINDIR := bin
 BINARIES := $(addprefix $(BINDIR)/,$(DEB_ARCHES))
