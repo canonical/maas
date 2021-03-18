@@ -13,7 +13,6 @@ from provisioningserver.rpc.region import (
     ReportMDNSEntries,
     ReportNeighbours,
     RequestRackRefresh,
-    UpdateInterfaces,
 )
 from provisioningserver.utils.services import NetworksMonitoringService
 from provisioningserver.utils.twisted import pause
@@ -57,20 +56,6 @@ class RackNetworksMonitoringService(NetworksMonitoringService):
         )
         returnValue(
             (self.clientService.maas_url, client.localIdent, credentials)
-        )
-
-    @inlineCallbacks
-    def recordInterfaces(self, interfaces, hints=None):
-        """Record the interfaces information to the region."""
-        client = yield self._getRPCClient()
-        if client is None:
-            return
-
-        yield client(
-            UpdateInterfaces,
-            system_id=client.localIdent,
-            interfaces=interfaces,
-            topology_hints=hints,
         )
 
     def reportNeighbours(self, neighbours):

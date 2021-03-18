@@ -6,7 +6,6 @@
 __all__ = [
     "handle_upgrade",
     "register",
-    "update_interfaces",
     "update_last_image_sync",
 ]
 
@@ -235,14 +234,6 @@ def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
             if interface.vlan.external_dhcp != dhcp_ip:
                 interface.vlan.external_dhcp = dhcp_ip
                 interface.vlan.save()
-
-
-@synchronous
-@transactional
-def update_interfaces(system_id, interfaces, topology_hints=None):
-    """Update the interface definition on the rack controller."""
-    rack_controller = RackController.objects.get(system_id=system_id)
-    rack_controller.update_interfaces(interfaces, topology_hints)
 
 
 @synchronous

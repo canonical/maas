@@ -196,8 +196,7 @@ class ControllerInfo(CleanSave, TimestampedModel):
     :ivar node: `Node` this `ControllerInfo` represents metadata for.
     :ivar version: The last known version of the controller.
     :ivar interfaces: Interfaces JSON last sent by the controller.
-    :ivar interface_udpate_hints: Topology hints last sent by the controller
-        during a call to update_interfaces().
+    :ivar interface_update_hints: Topology hints last sent by the controller.
     """
 
     class Meta(DefaultMeta):

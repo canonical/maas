@@ -74,7 +74,6 @@ from provisioningserver.rpc.region import (
     RequestRackRefresh,
     SendEvent,
     SendEventMACAddress,
-    UpdateInterfaces,
     UpdateLease,
     UpdateNodePowerState,
     UpdateServices,
@@ -1195,35 +1194,6 @@ class TestRegionProtocol_CommissionNode(MAASTransactionServerTestCase):
         self.assertThat(
             commission_node_function,
             MockCalledOnceWith(params["system_id"], params["user"]),
-        )
-
-
-class TestRegionProtocol_UpdateInterfaces(MAASTransactionServerTestCase):
-    def test_update_interfaces_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(UpdateInterfaces.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_update_interfaces_function(self):
-        update_interfaces = self.patch(
-            regionservice.rackcontrollers, "update_interfaces"
-        )
-
-        params = {
-            "system_id": factory.make_name("system_id"),
-            "interfaces": {"eth0": {"type": "physical"}},
-        }
-
-        response = yield call_responder(Region(), UpdateInterfaces, params)
-        self.assertIsNotNone(response)
-
-        self.assertThat(
-            update_interfaces,
-            MockCalledOnceWith(
-                params["system_id"], params["interfaces"], topology_hints=None
-            ),
         )
 
 

@@ -31,7 +31,6 @@ __all__ = [
     "RequestNodeInfoByMACAddress",
     "SendEvent",
     "SendEventMACAddress",
-    "UpdateInterfaces",
     "UpdateLastImageSync",
     "UpdateNodePowerState",
 ]
@@ -483,21 +482,6 @@ class CommissionNode(amp.Command):
     arguments = [(b"system_id", amp.Unicode()), (b"user", amp.Unicode())]
     response = []
     errors = {CommissionNodeFailed: b"CommissionNodeFailed"}
-
-
-class UpdateInterfaces(amp.Command):
-    """Called by a rack controller to update its interface definition.
-
-    :since: 2.0
-    """
-
-    arguments = [
-        (b"system_id", amp.Unicode()),
-        (b"interfaces", StructureAsJSON()),
-        (b"topology_hints", StructureAsJSON(optional=True)),
-    ]
-    response = []
-    errors = []
 
 
 class GetDiscoveryState(amp.Command):

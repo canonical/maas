@@ -25,7 +25,6 @@ from maasserver.rpc.rackcontrollers import (
     register,
     report_neighbours,
     update_foreign_dhcp,
-    update_interfaces,
     update_last_image_sync,
 )
 from maasserver.testing.factory import factory
@@ -438,19 +437,6 @@ class TestUpdateForeignDHCP(MAASServerTestCase):
         )
         update_foreign_dhcp(rack_controller.system_id, interface.name, dhcp_ip)
         self.assertIsNone(reload_object(interface.vlan).external_dhcp)
-
-
-class TestUpdateInterfaces(MAASServerTestCase):
-    def test_calls_update_interfaces_on_rack_controller(self):
-        rack_controller = factory.make_RackController()
-        patched_update_interfaces = self.patch(
-            RackController, "update_interfaces"
-        )
-        update_interfaces(rack_controller.system_id, sentinel.interfaces)
-        self.assertThat(
-            patched_update_interfaces,
-            MockCalledOnceWith(sentinel.interfaces, None),
-        )
 
 
 class TestReportNeighbours(MAASServerTestCase):

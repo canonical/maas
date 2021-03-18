@@ -28,12 +28,6 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
         credentials = yield regiond.start_refresh(str(self.maas_version))
         returnValue((None, regiond.system_id, credentials))
 
-    def recordInterfaces(self, interfaces, hints=None):
-        """Record the interfaces information."""
-        return deferToDatabase(
-            self.recordInterfacesIntoDatabase, interfaces, hints
-        )
-
     def reportNeighbours(self, neighbours):
         """Record the specified list of neighbours."""
         return deferToDatabase(self.recordNeighboursIntoDatabase, neighbours)
@@ -47,12 +41,6 @@ class RegionNetworksMonitoringService(NetworksMonitoringService):
         """Record the interfaces information."""
         region_controller = RegionController.objects.get_running_controller()
         return region_controller.get_discovery_state()
-
-    @transactional
-    def recordInterfacesIntoDatabase(self, interfaces, hints):
-        """Record the interfaces information."""
-        region_controller = RegionController.objects.get_running_controller()
-        region_controller.update_interfaces(interfaces, hints)
 
     @transactional
     def recordNeighboursIntoDatabase(self, neighbours):

@@ -419,28 +419,12 @@ class Region(RPCProtocol):
         d.addCallback(lambda args: {})
         return d
 
-    @region.UpdateInterfaces.responder
-    def update_interfaces(self, system_id, interfaces, topology_hints=None):
-        """update_interfaces()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.UpdateInterfaces`.
-        """
-        d = deferToDatabase(
-            rackcontrollers.update_interfaces,
-            system_id,
-            interfaces,
-            topology_hints=topology_hints,
-        )
-        d.addCallback(lambda args: {})
-        return d
-
     @region.GetDiscoveryState.responder
     def get_discovery_state(self, system_id):
         """get_interface_monitoring_state()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.region.UpdateInterfaces`.
+        :py:class:`~provisioningserver.rpc.region.GetDiscoveryState`.
         """
         d = deferToDatabase(rackcontrollers.get_discovery_state, system_id)
         d.addCallback(lambda args: {"interfaces": args})
