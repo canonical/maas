@@ -303,6 +303,20 @@ def get_cloud_init_reporting(request, node, token):
     }
 
 
+def get_snap_config(request, node):
+    """Return the cloud-init snap configuration."""
+    proxy = get_apt_proxy(request, node.get_boot_rack_controller(), node)
+    if not proxy:
+        return {}
+    return {
+        "snap": {
+            "commands": [
+                f'snap set system proxy.http="{proxy}" proxy.https="{proxy}"',
+            ],
+        },
+    }
+
+
 def get_rsyslog_host_port(request, node):
     """Return the rsyslog host and port to use."""
     configs = Config.objects.get_configs(["remote_syslog", "maas_syslog_port"])
@@ -509,6 +523,8 @@ def _compose_cloud_init_preseed(
     cloud_config.update(
         get_archive_config(request, node, preserve_sources=False)
     )
+    # Add snaps configuration
+    cloud_config.update(get_snap_config(request, node))
 
     enable_ssh = (
         node.status in {NODE_STATUS.COMMISSIONING, NODE_STATUS.TESTING}

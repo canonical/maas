@@ -1,8 +1,5 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `maasserver.compose_preseed`."""
-
 
 import random
 
@@ -473,6 +470,14 @@ class TestComposePreseed(MAASServerTestCase):
                 }
             ),
         )
+        self.assertEqual(
+            config["snap"],
+            {
+                "commands": [
+                    f'snap set system proxy.http="{apt_proxy}" proxy.https="{apt_proxy}"',
+                ],
+            },
+        )
 
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
         # Disable boot source cache signals.
@@ -524,6 +529,14 @@ class TestComposePreseed(MAASServerTestCase):
         )
         self.assertThat(preseed["rsyslog"]["remotes"], KeysEqual("maas"))
         self.assertAptConfig(preseed, apt_proxy)
+        self.assertEqual(
+            preseed["snap"],
+            {
+                "commands": [
+                    f'snap set system proxy.http="{apt_proxy}" proxy.https="{apt_proxy}"',
+                ],
+            },
+        )
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
         rack_controller = factory.make_RackController()
@@ -870,6 +883,14 @@ class TestComposePreseed(MAASServerTestCase):
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
         self.assertAptConfig(preseed, expected_apt_proxy)
+        self.assertEqual(
+            preseed["snap"],
+            {
+                "commands": [
+                    f'snap set system proxy.http="{expected_apt_proxy}" proxy.https="{expected_apt_proxy}"',
+                ],
+            },
+        )
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
         # Disable boot source cache signals.
@@ -890,6 +911,7 @@ class TestComposePreseed(MAASServerTestCase):
         )
 
         self.assertNotIn("proxy", preseed["apt"])
+        self.assertNotIn("snap", preseed)
 
     # LP: #1743966 - Test for archive key work around
     def test_compose_preseed_for_curtin_and_trusty_aptsources(self):

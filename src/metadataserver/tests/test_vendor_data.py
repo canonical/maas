@@ -32,6 +32,7 @@ from metadataserver.vendor_data import (
     generate_ephemeral_deployment_network_configuration,
     generate_ntp_configuration,
     generate_rack_controller_configuration,
+    generate_snap_configuration,
     generate_system_info,
     get_vendor_data,
 )
@@ -113,6 +114,30 @@ class TestGenerateSystemInfo(MAASServerTestCase):
                     }
                 }
             ),
+        )
+
+
+class TestGenerateSnapConfiguration(MAASServerTestCase):
+    def test_no_proxy(self):
+        node = factory.make_Node()
+        config = generate_snap_configuration(node, None)
+        self.assertEqual(list(config), [])
+
+    def test_proxy(self):
+        node = factory.make_Node()
+        config = generate_snap_configuration(node, "http://proxy.example.com/")
+        self.assertEqual(
+            list(config),
+            [
+                (
+                    "snap",
+                    {
+                        "commands": [
+                            'snap set system proxy.http="http://proxy.example.com/" proxy.https="http://proxy.example.com/"'
+                        ],
+                    },
+                ),
+            ],
         )
 
 
@@ -203,84 +228,84 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
 
     def test_yields_nothing_when_node_is_not_netboot_disabled(self):
         configuration = generate_rack_controller_configuration(
-            node=factory.make_Node(osystem="ubuntu"),
-            proxy="http://proxy.example.com/",
+            node=factory.make_Node(osystem="ubuntu")
         )
-        self.assertThat(dict(configuration), Equals({}))
+        self.assertEqual(list(configuration), [])
 
     def test_yields_nothing_when_node_is_not_ubuntu(self):
         tag = factory.make_Tag(name="switch")
         node = factory.make_Node(osystem="centos", netboot=False)
         node.tags.add(tag)
-        configuration = generate_rack_controller_configuration(
-            node, proxy="http://proxy.example.com/"
-        )
-        self.assertThat(dict(configuration), Equals({}))
+        configuration = generate_rack_controller_configuration(node)
+        self.assertEqual(list(configuration), [])
 
     def test_yields_configuration_with_ubuntu(self):
         tag = factory.make_Tag(name="wedge100")
         node = factory.make_Node(osystem="ubuntu", netboot=False)
         node.tags.add(tag)
-        configuration = generate_rack_controller_configuration(
-            node, proxy="http://proxy.example.com/"
-        )
+        configuration = generate_rack_controller_configuration(node)
         secret = "1234"
         Config.objects.set_config("rpc_shared_secret", secret)
         channel = version.get_maas_version_track_channel()
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
         )
-        cmd = "/bin/snap/maas init --mode rack"
-
-        self.assertThat(
-            dict(configuration),
-            KeysEqual(
-                {
-                    "runcmd": [
-                        f"snap install maas --channel={channel}",
-                        "%s --maas-url %s --secret %s"
-                        % (cmd, maas_url, secret),
-                    ]
-                }
-            ),
+        self.assertEqual(
+            list(configuration),
+            [
+                (
+                    "runcmd",
+                    [
+                        ["snap", "install", "maas", f"--channel={channel}"],
+                        [
+                            "/snap/bin/maas",
+                            "init",
+                            "rack",
+                            "--maas-url",
+                            maas_url,
+                            "--secret",
+                            secret,
+                        ],
+                    ],
+                ),
+            ],
         )
 
     def test_yields_nothing_when_machine_install_rackd_false(self):
         node = factory.make_Node(osystem="ubuntu", netboot=False)
         node.install_rackd = False
-        configuration = generate_rack_controller_configuration(
-            node, proxy="http://proxy.example.com/"
-        )
-        self.assertThat(dict(configuration), Equals({}))
+        configuration = generate_rack_controller_configuration(node)
+        self.assertEqual(list(configuration), [])
 
     def test_yields_configuration_when_machine_install_rackd_true(self):
         node = factory.make_Node(osystem="ubuntu", netboot=False)
         node.install_rackd = True
-        proxy = "http://proxy.example.com/"
-        configuration = generate_rack_controller_configuration(
-            node, proxy=proxy
-        )
+        configuration = generate_rack_controller_configuration(node)
         secret = "1234"
         Config.objects.set_config("rpc_shared_secret", secret)
         channel = version.get_maas_version_track_channel()
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
         )
-        cmd = "/bin/snap/maas init --mode rack"
-
-        self.assertThat(
-            dict(configuration),
-            KeysEqual(
-                {
-                    "runcmd": [
-                        "snap set system proxy.http=%s proxy.https=%s"
-                        % (proxy, proxy),
-                        f"snap install maas --channel={channel}",
-                        "%s --maas-url %s --secret %s"
-                        % (cmd, maas_url, secret),
-                    ]
-                }
-            ),
+        self.assertEqual(
+            list(configuration),
+            [
+                (
+                    "runcmd",
+                    [
+                        ["snap", "install", "maas", f"--channel={channel}"],
+                        [
+                            "/snap/bin/maas",
+                            "init",
+                            "rack",
+                            "--maas-url",
+                            maas_url,
+                            "--secret",
+                            secret,
+                        ],
+                    ],
+                ),
+            ],
         )
 
     def test_yields_configuration_when_machine_install_kvm_true(self):
@@ -415,7 +440,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         )
         config = get_vendor_data(node, None)
         self.assertThat(mock_get_configs, MockNotCalled())
-        self.assertDictEqual({}, config)
+        self.assertNotIn(config, "write_files")
 
     def test_returns_nothing_if_no_values_set(self):
         node = factory.make_Node(
@@ -425,7 +450,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         )
         node.nodemetadata_set.create(key="vcenter_registration", value="True")
         config = get_vendor_data(node, None)
-        self.assertDictEqual({}, config)
+        self.assertNotIn(config, "write_files")
 
     def test_returns_vcenter_yaml(self):
         node = factory.make_Node(
@@ -435,24 +460,22 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         )
         node.nodemetadata_set.create(key="vcenter_registration", value="True")
         vcenter = {
-            "vcenter_server": factory.make_name("vcenter_server"),
-            "vcenter_username": factory.make_name("vcenter_username"),
-            "vcenter_password": factory.make_name("vcenter_password"),
             "vcenter_datacenter": factory.make_name("vcenter_datacenter"),
+            "vcenter_server": factory.make_name("vcenter_server"),
+            "vcenter_password": factory.make_name("vcenter_password"),
+            "vcenter_username": factory.make_name("vcenter_username"),
         }
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
         config = get_vendor_data(node, None)
-        self.assertDictEqual(
-            {
-                "write_files": [
-                    {
-                        "content": yaml.safe_dump(vcenter),
-                        "path": "/altbootbank/maas/vcenter.yaml",
-                    }
-                ]
-            },
-            config,
+        self.assertEqual(
+            config["write_files"],
+            [
+                {
+                    "content": yaml.safe_dump(vcenter),
+                    "path": "/altbootbank/maas/vcenter.yaml",
+                },
+            ],
         )
 
     def test_returns_vcenter_yaml_if_rbac_admin(self):
@@ -466,24 +489,22 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         rbac.store.add_pool(node.pool)
         rbac.store.allow(node.owner.username, node.pool, "admin-machines")
         vcenter = {
-            "vcenter_server": factory.make_name("vcenter_server"),
-            "vcenter_username": factory.make_name("vcenter_username"),
-            "vcenter_password": factory.make_name("vcenter_password"),
             "vcenter_datacenter": factory.make_name("vcenter_datacenter"),
+            "vcenter_server": factory.make_name("vcenter_server"),
+            "vcenter_password": factory.make_name("vcenter_password"),
+            "vcenter_username": factory.make_name("vcenter_username"),
         }
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
         config = get_vendor_data(node, None)
-        self.assertDictEqual(
-            {
-                "write_files": [
-                    {
-                        "content": yaml.safe_dump(vcenter),
-                        "path": "/altbootbank/maas/vcenter.yaml",
-                    }
-                ]
-            },
-            config,
+        self.assertEqual(
+            config["write_files"],
+            [
+                {
+                    "content": yaml.safe_dump(vcenter),
+                    "path": "/altbootbank/maas/vcenter.yaml",
+                },
+            ],
         )
 
     def test_returns_nothing_if_rbac_user(self):
@@ -497,23 +518,23 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         rbac.store.add_pool(node.pool)
         rbac.store.allow(node.owner.username, node.pool, "deploy-machines")
         vcenter = {
+            "vcenter_datacenter": factory.make_name("vcenter_datacenter"),
+            "vcenter_password": factory.make_name("vcenter_password"),
             "vcenter_server": factory.make_name("vcenter_server"),
             "vcenter_username": factory.make_name("vcenter_username"),
-            "vcenter_password": factory.make_name("vcenter_password"),
-            "vcenter_datacenter": factory.make_name("vcenter_datacenter"),
         }
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
         config = get_vendor_data(node, None)
-        self.assertDictEqual({}, config)
+        self.assertNotIn(config, "write_files")
 
     def test_returns_nothing_if_no_user(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING, osystem="esxi")
-        for i in ["server", "username", "password", "datacenter"]:
+        for i in ["datacenter", "password", "server", "username"]:
             key = "vcenter_%s" % i
             Config.objects.set_config(key, factory.make_name(key))
         config = get_vendor_data(node, None)
-        self.assertDictEqual({}, config)
+        self.assertNotIn(config, "write_files")
 
     def test_returns_nothing_if_user(self):
         node = factory.make_Node(
@@ -525,7 +546,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
             key = "vcenter_%s" % i
             Config.objects.set_config(key, factory.make_name(key))
         config = get_vendor_data(node, None)
-        self.assertDictEqual({}, config)
+        self.assertNotIn(config, "write_files")
 
     def test_returns_nothing_if_vcenter_registration_not_set(self):
         node = factory.make_Node(
@@ -537,4 +558,4 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
             key = "vcenter_%s" % i
             Config.objects.set_config(key, factory.make_name(key))
         config = get_vendor_data(node, None)
-        self.assertDictEqual({}, config)
+        self.assertNotIn(config, "write_files")

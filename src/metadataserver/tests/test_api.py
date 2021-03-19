@@ -28,7 +28,6 @@ from testtools.matchers import (
     ContainsAll,
     ContainsDict,
     Equals,
-    KeysEqual,
     StartsWith,
 )
 import yaml
@@ -981,9 +980,9 @@ class TestMetadataCommon(MAASServerTestCase):
         content = yaml.safe_load(response.content)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(content, LooksLikeCloudInit)
-        self.assertThat(
+        self.assertCountEqual(
             yaml.safe_load(content["cloud-init"]),
-            KeysEqual("system_info", "runcmd"),
+            ["runcmd", "snap", "system_info"],
         )
 
     def test_vendor_data_node_without_def_user_includes_no_system_info(self):
@@ -998,8 +997,9 @@ class TestMetadataCommon(MAASServerTestCase):
         content = yaml.safe_load(response.content)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(content, LooksLikeCloudInit)
-        self.assertThat(
-            yaml.safe_load(content["cloud-init"]), KeysEqual("runcmd")
+        self.assertCountEqual(
+            yaml.safe_load(content["cloud-init"]),
+            ["runcmd", "snap"],
         )
 
     def test_vendor_data_for_node_without_owner_includes_no_system_info(self):
@@ -1010,8 +1010,9 @@ class TestMetadataCommon(MAASServerTestCase):
         content = yaml.safe_load(response.content)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(content, LooksLikeCloudInit)
-        self.assertThat(
-            yaml.safe_load(content["cloud-init"]), KeysEqual("runcmd")
+        self.assertCountEqual(
+            yaml.safe_load(content["cloud-init"]),
+            ["runcmd", "snap"],
         )
 
     def test_vendor_data_calls_through_to_get_vendor_data(self):

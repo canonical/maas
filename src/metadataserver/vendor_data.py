@@ -28,8 +28,9 @@ def get_vendor_data(node, proxy):
     return dict(
         chain(
             generate_system_info(node),
+            generate_snap_configuration(node, proxy),
             generate_ntp_configuration(node),
-            generate_rack_controller_configuration(node, proxy),
+            generate_rack_controller_configuration(node),
             generate_kvm_pod_configuration(node),
             generate_ephemeral_netplan_lock_removal(node),
             generate_ephemeral_deployment_network_configuration(node),
@@ -47,6 +48,17 @@ def generate_system_info(node):
         yield "system_info", {
             "default_user": {"name": username, "gecos": gecos}
         }
+
+
+def generate_snap_configuration(node, proxy):
+    """Generate cloud-init configuration for snapd."""
+    if not proxy:
+        return
+    yield "snap", {
+        "commands": [
+            f'snap set system proxy.http="{proxy}" proxy.https="{proxy}"',
+        ],
+    }
 
 
 def generate_ntp_configuration(node):
@@ -76,7 +88,7 @@ def generate_ntp_configuration(node):
         yield "ntp", {"servers": servers, "pools": pools}
 
 
-def generate_rack_controller_configuration(node, proxy):
+def generate_rack_controller_configuration(node):
     """Generate cloud-init configuration to install the rack controller."""
 
     # FIXME: For now, we are using a tag ('switch') to deploy the rack
@@ -103,20 +115,10 @@ def generate_rack_controller_configuration(node, proxy):
         secret = Config.objects.get_config("rpc_shared_secret")
         source = get_maas_version_track_channel()
         yield "runcmd", [
-            [
-                "snap",
-                "set",
-                "system",
-                f"proxy.http={proxy}",
-                f"proxy.https={proxy}",
-            ],
             ["snap", "install", "maas", f"--channel={source}"],
-            ["systemctl", "restart", "snapd"],
-            ["export", "PATH=$PATH"],
             [
                 "/snap/bin/maas",
                 "init",
-                "--mode",
                 "rack",
                 "--maas-url",
                 maas_url,
