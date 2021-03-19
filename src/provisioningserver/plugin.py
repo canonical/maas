@@ -46,9 +46,10 @@ class ProvisioningServiceMaker:
 
     def _makeHTTPService(self):
         """Create the HTTP service."""
-        from provisioningserver.rackdservices.http import HTTPResource
         from twisted.application.internet import StreamServerEndpointService
         from twisted.internet.endpoints import AdoptedStreamServerEndpoint
+
+        from provisioningserver.rackdservices.http import HTTPResource
         from provisioningserver.utils.twisted import SiteNoLog
 
         port = 5249
@@ -89,9 +90,10 @@ class ProvisioningServiceMaker:
         # If the TFTP port has been set to zero, use the experimental offload
         # service. Otherwise stick to the normal in-process TFTP service.
         if tftp_port == 0:
+            from twisted.internet.endpoints import UNIXServerEndpoint
+
             from provisioningserver.path import get_maas_data_path
             from provisioningserver.rackdservices import tftp_offload
-            from twisted.internet.endpoints import UNIXServerEndpoint
 
             tftp_offload_socket = get_maas_data_path("tftp-offload.sock")
             tftp_offload_endpoint = UNIXServerEndpoint(

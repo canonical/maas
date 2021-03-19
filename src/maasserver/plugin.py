@@ -78,6 +78,7 @@ class RegionWorkerServiceMaker:
         # Configure the provisioningserver settings based on the Django
         # django settings.
         from django.conf import settings as django_settings
+
         from provisioningserver import settings
 
         settings.DEBUG = django_settings.DEBUG

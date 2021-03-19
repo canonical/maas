@@ -52,22 +52,22 @@ import yaml
 
 try:
     from maas_api_helper import (
+        capture_script_output,
         geturl,
         MD_VERSION,
         read_config,
         signal,
         SignalException,
-        capture_script_output,
     )
 except ImportError:
     # For running unit tests.
     from snippets.maas_api_helper import (
+        capture_script_output,
         geturl,
         MD_VERSION,
         read_config,
         signal,
         SignalException,
-        capture_script_output,
     )
 
 

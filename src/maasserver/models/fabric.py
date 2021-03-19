@@ -197,7 +197,7 @@ class Fabric(CleanSave, TimestampedModel):
         super().delete()
 
     def _create_default_vlan(self):
-        from maasserver.models.vlan import VLAN, DEFAULT_VLAN_NAME, DEFAULT_VID
+        from maasserver.models.vlan import DEFAULT_VID, DEFAULT_VLAN_NAME, VLAN
 
         VLAN.objects.create(
             name=DEFAULT_VLAN_NAME, vid=DEFAULT_VID, fabric=self

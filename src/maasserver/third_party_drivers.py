@@ -26,7 +26,6 @@ from formencode.validators import String
 from provisioningserver.config import ConfigBase, ConfigMeta
 from provisioningserver.utils.config import ByteString, Schema
 
-
 """
 Here's a description of fields for each entry for a third_party_driver.
 

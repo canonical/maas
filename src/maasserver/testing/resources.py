@@ -85,8 +85,8 @@ class DjangoPristineDatabaseManager(TestResourceManager):
         # Import other modules without risk of toy throwing from Django.
         from django.conf import settings
         from django.core.management import call_command
-        from maasserver import dbviews
-        from maasserver import triggers
+
+        from maasserver import dbviews, triggers
 
         # For each database, create a ${name}_test database.
         databases = DjangoDatabases(

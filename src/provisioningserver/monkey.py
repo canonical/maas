@@ -14,34 +14,33 @@ def fix_tftp_requests():
 
     See https://bugs.launchpad.net/ubuntu/+source/python-tx-tftp/1614581
     """
-    import tftp.protocol
-
+    from netaddr import IPAddress
+    from tftp.bootstrap import (
+        RemoteOriginReadSession,
+        RemoteOriginWriteSession,
+    )
     from tftp.datagram import (
-        OP_WRQ,
-        ERRORDatagram,
-        ERR_NOT_DEFINED,
         ERR_ACCESS_VIOLATION,
         ERR_FILE_EXISTS,
-        ERR_ILLEGAL_OP,
-        OP_RRQ,
         ERR_FILE_NOT_FOUND,
+        ERR_ILLEGAL_OP,
+        ERR_NOT_DEFINED,
+        ERRORDatagram,
+        OP_RRQ,
+        OP_WRQ,
     )
-    from tftp.bootstrap import (
-        RemoteOriginWriteSession,
-        RemoteOriginReadSession,
+    from tftp.errors import (
+        AccessViolation,
+        BackendError,
+        FileExists,
+        FileNotFound,
+        Unsupported,
     )
     from tftp.netascii import NetasciiReceiverProxy, NetasciiSenderProxy
+    import tftp.protocol
     from twisted.internet import reactor
     from twisted.internet.defer import inlineCallbacks, returnValue
     from twisted.python.context import call
-    from tftp.errors import (
-        FileExists,
-        Unsupported,
-        AccessViolation,
-        BackendError,
-        FileNotFound,
-    )
-    from netaddr import IPAddress
 
     @inlineCallbacks
     def new_startSession(self, datagram, addr, mode):
@@ -117,6 +116,7 @@ def fix_tftp_requests():
 def get_patched_URI():
     """Create the patched `twisted.web.client.URI` to handle IPv6."""
     import re
+
     from twisted.web import http
     from twisted.web.client import URI
 
@@ -263,8 +263,8 @@ def fix_twisted_web_server_addressToTuple():
 
     See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
     """
-    import twisted.web.server
     from twisted.internet import address
+    import twisted.web.server
 
     def new_addressToTuple(addr):
         if isinstance(addr, address.IPv4Address):
@@ -291,6 +291,7 @@ def fix_twisted_internet_tcp():
     See https://bugs.launchpad.net/ubuntu/+source/twisted/+bug/1604608
     """
     import socket
+
     import twisted.internet.tcp
     from twisted.internet.tcp import _NUMERIC_ONLY
 
@@ -306,6 +307,7 @@ def augment_twisted_deferToThreadPool():
     """Wrap every function deferred to a thread in `synchronous`."""
     from twisted.internet import threads
     from twisted.internet.threads import deferToThreadPool
+
     from provisioningserver.utils.twisted import ISynchronous, synchronous
 
     def new_deferToThreadPool(reactor, threadpool, f, *args, **kwargs):

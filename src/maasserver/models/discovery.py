@@ -144,7 +144,7 @@ class DiscoveryManager(Manager, DiscoveryQueriesMixin):
 
     def delete_by_mac_and_ip(self, ip, mac, user=None):
         # Circular imports.
-        from maasserver.models import Neighbour, MDNS, RDNS
+        from maasserver.models import MDNS, Neighbour, RDNS
 
         delete_result = Neighbour.objects.filter(
             ip=ip, mac_address=mac

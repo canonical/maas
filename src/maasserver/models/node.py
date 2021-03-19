@@ -1675,8 +1675,8 @@ class Node(CleanSave, TimestampedModel):
     def _start_deployment(self):
         """Mark a node as being deployed."""
         # Avoid circular dependencies
-        from metadataserver.models import ScriptSet
         from maasserver.models.event import Event
+        from metadataserver.models import ScriptSet
 
         if not self.on_network():
             raise ValidationError(
@@ -2189,8 +2189,8 @@ class Node(CleanSave, TimestampedModel):
             time.
         """
         # Avoid circular imports.
-        from metadataserver.models import ScriptSet
         from maasserver.models.event import Event
+        from metadataserver.models import ScriptSet
 
         # Only commission if power type is configured.
         if self.power_type == "":
@@ -2397,8 +2397,8 @@ class Node(CleanSave, TimestampedModel):
     ):
         """Run tests on a node."""
         # Avoid circular imports.
-        from metadataserver.models import ScriptSet
         from maasserver.models.event import Event
+        from metadataserver.models import ScriptSet
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't enter test mode on a node you don't own,
@@ -5822,8 +5822,8 @@ class Node(CleanSave, TimestampedModel):
     def start_rescue_mode(self, user):
         """Start rescue mode."""
         # Avoid circular imports.
-        from metadataserver.models import NodeUserData
         from maasserver.models.event import Event
+        from metadataserver.models import NodeUserData
 
         if not user.has_perm(NodePermission.edit, self):
             # You can't enter rescue mode on a node you don't own,
@@ -6484,8 +6484,8 @@ class RackController(Controller):
         """
         # Circular imports.
         from maasserver.models import (
-            RegionRackRPCConnection,
             RegionControllerProcess,
+            RegionRackRPCConnection,
         )
 
         connections = RegionRackRPCConnection.objects.filter(

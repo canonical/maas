@@ -38,8 +38,9 @@ def execute_from_command_line():
     threads.install_default_pool(maxthreads=1)
     threads.install_database_unpool(maxthreads=1)
     # Disable all database connections in the reactor.
-    from maasserver.utils import orm
     from twisted.internet import reactor
+
+    from maasserver.utils import orm
 
     assert not reactor.running, "The reactor has been started too early."
     reactor.callFromThread(orm.disable_all_database_connections)

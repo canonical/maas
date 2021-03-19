@@ -112,8 +112,8 @@ class Tag(CleanSave, TimestampedModel):
         the current thread. This could be costly.
         """
         # Avoid circular imports.
-        from maasserver.populate_tags import populate_tag_for_multiple_nodes
         from maasserver.models.node import Node
+        from maasserver.populate_tags import populate_tag_for_multiple_nodes
 
         if self.is_defined:
             # Do the work here and now in this thread. This is probably a

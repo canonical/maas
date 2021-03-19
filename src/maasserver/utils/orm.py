@@ -944,7 +944,9 @@ def parse_item_operation(specifier):
     """
     specifier = specifier.strip()
 
-    from operator import and_ as AND, inv as INV, or_ as OR
+    from operator import and_ as AND
+    from operator import inv as INV
+    from operator import or_ as OR
 
     def AND_NOT(current, next_):
         return AND(current, INV(next_))

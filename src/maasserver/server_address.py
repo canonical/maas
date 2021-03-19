@@ -89,8 +89,7 @@ def get_maas_facing_server_addresses(
         maas_id = get_maas_id()
         if maas_id is not None:
             # Circular imports
-            from maasserver.models import Subnet
-            from maasserver.models import StaticIPAddress
+            from maasserver.models import StaticIPAddress, Subnet
 
             # Don't include more than one alternate IP address, per region,
             # per address-family.

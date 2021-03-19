@@ -35,8 +35,8 @@ def lldpd_capture(reference_file, time_delay):
 
     """
     from os.path import getmtime
-    from time import sleep, time
     from subprocess import check_call
+    from time import sleep, time
 
     time_ref = getmtime(reference_file)
     time_remaining = time_ref + time_delay - time()
