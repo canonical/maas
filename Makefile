@@ -46,9 +46,6 @@ endef
 .DEFAULT_GOAL := build
 
 define BIN_SCRIPTS
-bin/black \
-bin/flake8 \
-bin/isort \
 bin/maas \
 bin/maas-common \
 bin/maas-power \
@@ -65,16 +62,6 @@ bin/test.parallel \
 bin/test.rack \
 bin/test.region \
 bin/test.region.legacy
-endef
-
-define PY_SOURCES
-src/apiclient \
-src/maascli \
-src/maasserver \
-src/maastesting \
-src/metadataserver \
-src/provisioningserver \
-utilities/release-upload
 endef
 
 UI_BUILD := src/maasui/build
@@ -175,15 +162,10 @@ src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
 lint: lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
 
-lint-py: sources = $(wildcard *.py contrib/*.py) $(PY_SOURCES) utilities etc
-lint-py: bin/flake8 bin/black bin/isort
-	@bin/isort --check-only --diff --recursive $(sources)
-	@bin/black $(sources) --check
-	@bin/flake8 $(sources)
+lint-py:
+	@tox -e lint
 .PHONY: lint-py
 
-# Statically check imports against policy.
-lint-py-imports: sources = setup.py $(PY_SOURCES)
 lint-py-imports:
 	@utilities/check-imports
 .PHONY: lint-py-imports
@@ -220,10 +202,8 @@ format.parallel:
 format: format-py format-go
 .PHONY: format
 
-format-py: sources = $(wildcard *.py contrib/*.py) $(PY_SOURCES) utilities etc
-format-py: bin/black bin/isort
-	@bin/isort --recursive $(sources)
-	@bin/black -q $(sources)
+format-py:
+	@tox -e format
 .PHONY: format-py
 
 format-go:
@@ -277,6 +257,7 @@ clean: stop clean-failed clean-ui clean-machine-resources
 	$(RM) xunit.*.xml
 	$(RM) .failed
 	$(RM) -r $(VENV)
+	$(RM) -r .tox
 .PHONY: clean
 
 clean+db: clean
