@@ -257,7 +257,7 @@ def make_maas_user_agent_request():
 STATS_SERVICE_PERIOD = timedelta(hours=24)
 
 
-class StatsService(TimerService, object):
+class StatsService(TimerService):
     """Service to periodically get stats.
 
     This will run immediately when it's started, then once again every

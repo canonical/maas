@@ -25,7 +25,7 @@ maaslog = get_maas_logger("boot_image_download_service")
 log = LegacyLogger()
 
 
-class ImageDownloadService(TimerService, object):
+class ImageDownloadService(TimerService):
     """Twisted service to periodically refresh ephemeral images."""
 
     check_interval = timedelta(minutes=5).total_seconds()

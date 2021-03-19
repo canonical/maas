@@ -464,7 +464,7 @@ class TransferTimeTrackingTFTP(TFTP):
         return filename
 
 
-class TFTPService(MultiService, object):
+class TFTPService(MultiService):
     """An umbrella service representing a set of running TFTP servers.
 
     Creates a UDP server individually for each discovered network

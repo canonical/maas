@@ -860,7 +860,7 @@ class RackClient(common.Client):
             return d
 
 
-class RegionService(service.Service, object):
+class RegionService(service.Service):
     """A region controller RPC service.
 
     This is a service - in the Twisted sense - that exposes the

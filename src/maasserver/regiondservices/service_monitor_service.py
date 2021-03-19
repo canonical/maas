@@ -21,7 +21,7 @@ from provisioningserver.logger import LegacyLogger
 log = LegacyLogger()
 
 
-class ServiceMonitorService(TimerService, object):
+class ServiceMonitorService(TimerService):
     """Service to monitor external services that the region requires."""
 
     check_interval = timedelta(seconds=30).total_seconds()

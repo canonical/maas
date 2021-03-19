@@ -47,7 +47,7 @@ class WorkerProcess(protocol.ProcessProtocol):
             self.transport.reapProcess()
 
 
-class WorkersService(service.Service, object):
+class WorkersService(service.Service):
     """
     Workers service.
 

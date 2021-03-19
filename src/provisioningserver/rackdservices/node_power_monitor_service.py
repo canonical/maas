@@ -23,7 +23,7 @@ maaslog = get_maas_logger("power_monitor_service")
 log = LegacyLogger()
 
 
-class NodePowerMonitorService(TimerService, object):
+class NodePowerMonitorService(TimerService):
     """Service to monitor the power status of all nodes in this cluster."""
 
     check_interval = timedelta(seconds=15).total_seconds()

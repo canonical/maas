@@ -21,7 +21,7 @@ maaslog = get_maas_logger("service_monitor_service")
 log = LegacyLogger()
 
 
-class ServiceMonitorService(TimerService, object):
+class ServiceMonitorService(TimerService):
     """Service to monitor external services that the cluster requires."""
 
     # Services that we don't perform any checks on at the moment and we

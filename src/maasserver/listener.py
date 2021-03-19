@@ -51,7 +51,7 @@ class PostgresListenerUnregistrationError(Exception):
 
 
 @implementer(interfaces.IReadDescriptor)
-class PostgresListenerService(Service, object):
+class PostgresListenerService(Service):
     """Listens for NOTIFY messages from postgres.
 
     A new connection is made to postgres with the isolation level of

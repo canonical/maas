@@ -808,7 +808,7 @@ class ThreadUnpool:
         return ctxfunc
 
 
-class ThreadPool(threadpool.ThreadPool, object):
+class ThreadPool(threadpool.ThreadPool):
     """Thread-pool that wraps a context around each worker."""
 
     log = Logger()

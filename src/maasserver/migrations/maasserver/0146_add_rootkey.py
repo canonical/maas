@@ -25,6 +25,6 @@ class Migration(migrations.Migration):
                 ("expiration", models.DateTimeField()),
             ],
             options={"abstract": False},
-            bases=(models.Model, object),
+            bases=[models.Model],
         )
     ]

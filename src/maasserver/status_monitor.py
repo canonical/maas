@@ -211,7 +211,7 @@ def check_status():
     mark_nodes_failed_after_missing_script_timeout(current_time, node_timeout)
 
 
-class StatusMonitorService(TimerService, object):
+class StatusMonitorService(TimerService):
     """Service to periodically monitor node statues and mark them failed.
 
     This will run immediately when it's started, then once every 60 seconds,

@@ -24,7 +24,7 @@ class DatabaseTaskAlreadyRunning(Exception):
     """The database task is running and can no longer be cancelled."""
 
 
-class DatabaseTasksService(Service, object):
+class DatabaseTasksService(Service):
     """Run deferred database operations one at a time.
 
     Once the service is started, `deferTask` and `addTask` can be used to

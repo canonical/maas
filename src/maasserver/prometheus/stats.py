@@ -242,7 +242,7 @@ def push_stats_to_prometheus(maas_name, push_gateway):
 PROMETHEUS_SERVICE_PERIOD = timedelta(minutes=60)
 
 
-class PrometheusService(TimerService, object):
+class PrometheusService(TimerService):
     """Service to periodically push stats to Prometheus
 
     This will run immediately when it's started, by default, it will run

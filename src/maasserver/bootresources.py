@@ -1504,7 +1504,7 @@ def stop_import_resources():
 IMPORT_RESOURCES_SERVICE_PERIOD = timedelta(hours=1)
 
 
-class ImportResourcesService(TimerService, object):
+class ImportResourcesService(TimerService):
     """Service to periodically import boot resources.
 
     This will run immediately when it's started, then once again every hour,
@@ -1542,7 +1542,7 @@ class ImportResourcesService(TimerService, object):
             )
 
 
-class ImportResourcesProgressService(TimerService, object):
+class ImportResourcesProgressService(TimerService):
     """Service to periodically check on the progress of boot imports."""
 
     def __init__(self, interval=timedelta(minutes=3)):

@@ -41,7 +41,7 @@ from provisioningserver.utils.twisted import (
 log = LegacyLogger()
 
 
-class CleanPathRequest(Request, object):
+class CleanPathRequest(Request):
     """A request that supports '/+' in the path.
 
     It converts all '/+' in the path to a single '/'.
@@ -107,7 +107,7 @@ class OverlaySite(Site):
             return result
 
 
-class ResourceOverlay(Resource, object):
+class ResourceOverlay(Resource):
     """A resource that can fall-back to a basis resource.
 
     Children can be set using `putChild()` as usual. However, if path

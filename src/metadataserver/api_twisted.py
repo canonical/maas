@@ -227,7 +227,7 @@ def _create_pod_for_deployment(node):
             log.msg("Error while creating KVM pod: %s" % dict(pod_form.errors))
 
 
-class StatusWorkerService(TimerService, object):
+class StatusWorkerService(TimerService):
     """Service to update nodes from recieved status messages."""
 
     check_interval = 60  # Every second.

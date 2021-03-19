@@ -1282,7 +1282,7 @@ class ClusterClient(Cluster):
         log.msg("Peer certificate: %r" % self.peerCertificate)
 
 
-class ClusterClientService(TimerService, object):
+class ClusterClientService(TimerService):
     """A cluster controller RPC client service.
 
     This is a service - in the Twisted sense - that connects to a set of
@@ -1913,7 +1913,7 @@ class ClusterClientService(TimerService, object):
         self._update_interval(0, 0, reset=True)
 
 
-class ClusterClientCheckerService(TimerService, object):
+class ClusterClientCheckerService(TimerService):
     """A cluster controller RPC client checker service.
 
     This is a service - in the Twisted sense - that cordinates with the

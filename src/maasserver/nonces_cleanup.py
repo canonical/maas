@@ -90,7 +90,7 @@ def find_checkpoint_nonce():
         return None
 
 
-class NonceCleanupService(TimerService, object):
+class NonceCleanupService(TimerService):
     """Service to periodically clean-up old nonces.
 
     This will run immediately when it's started, then once again each
