@@ -18,7 +18,9 @@ from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
     get_error_message,
+    InterfaceAttachType,
     JSON_POD_DRIVER_SCHEMA,
+    KnownHostInterface,
     PodActionError,
     PodAuthError,
     PodConnError,
@@ -460,8 +462,71 @@ class TestPodDriverBase(MAASTestCase):
 
     def test_get_schema_returns_valid_schema(self):
         fake_driver = make_pod_driver_base()
-        #: doesn't raise ValidationError
+        # doesn't raise ValidationError
         validate(fake_driver.get_schema(), JSON_POD_DRIVER_SCHEMA)
+
+    def test_get_default_interface_parent_only_dhcp_enabled(self):
+        if1 = KnownHostInterface(
+            ifname="eth0",
+            attach_type=InterfaceAttachType.MACVLAN,
+            attach_name="eth0",
+            dhcp_enabled=False,
+        )
+        if2 = KnownHostInterface(
+            ifname="br0",
+            attach_type=InterfaceAttachType.BRIDGE,
+            attach_name="br0",
+            dhcp_enabled=False,
+        )
+        if3 = KnownHostInterface(
+            ifname="eth1",
+            attach_type=InterfaceAttachType.MACVLAN,
+            attach_name="eth1",
+            dhcp_enabled=True,
+        )
+        driver = make_pod_driver_base()
+        self.assertEqual(
+            driver.get_default_interface_parent([if1, if2, if3]), if3
+        )
+
+    def test_get_default_interface_parent_none(self):
+        if1 = KnownHostInterface(
+            ifname="eth0",
+            attach_type=InterfaceAttachType.MACVLAN,
+            attach_name="eth0",
+            dhcp_enabled=False,
+        )
+        if2 = KnownHostInterface(
+            ifname="br0",
+            attach_type=InterfaceAttachType.BRIDGE,
+            attach_name="br0",
+            dhcp_enabled=False,
+        )
+        driver = make_pod_driver_base()
+        self.assertIsNone(driver.get_default_interface_parent([if1, if2]))
+
+    def test_get_default_interface_parent_order(self):
+        def make_interface(attach_type):
+            name = factory.make_name()
+            return KnownHostInterface(
+                ifname=name,
+                attach_type=attach_type,
+                attach_name=name,
+                dhcp_enabled=True,
+            )
+
+        if1 = make_interface(InterfaceAttachType.MACVLAN)
+        if2 = make_interface(InterfaceAttachType.NETWORK)
+        if3 = make_interface(InterfaceAttachType.SRIOV)
+        if4 = make_interface(InterfaceAttachType.BRIDGE)
+        driver = make_pod_driver_base()
+        self.assertEqual(
+            driver.get_default_interface_parent([if1, if2, if3, if4]), if4
+        )
+        self.assertEqual(
+            driver.get_default_interface_parent([if1, if2, if3]), if3
+        )
+        self.assertEqual(driver.get_default_interface_parent([if1, if2]), if2)
 
 
 class TestGetErrorMessage(MAASTestCase):

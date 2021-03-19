@@ -433,18 +433,10 @@ class LXDPodDriver(PodDriver):
         return disks
 
     def _get_machine_nics(self, request):
-        usable_parents = sorted(
-            (
-                iface
-                for iface in request.known_host_interfaces
-                if iface.dhcp_enabled
-            ),
-            # sort bridges first
-            key=lambda iface: iface.attach_type != InterfaceAttachType.BRIDGE,
+        default_parent = self.get_default_interface_parent(
+            request.known_host_interfaces
         )
-        try:
-            default_parent = usable_parents[0]
-        except IndexError:
+        if default_parent is None:
             raise LXDPodError("No host network to attach VM interfaces to")
 
         nics = {}

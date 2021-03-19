@@ -1292,7 +1292,7 @@ class TestLXDPodDriver(MAASTestCase):
             RequestedMachineInterface(
                 ifname=factory.make_name("ifname"),
                 attach_name=factory.make_name("bridge_name"),
-                attach_type="bridge",
+                attach_type=InterfaceAttachType.BRIDGE,
                 attach_options=None,
             )
             for _ in range(3)

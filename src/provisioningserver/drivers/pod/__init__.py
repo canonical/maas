@@ -132,9 +132,8 @@ class Capabilities:
 class InterfaceAttachType:
     """Different interface attachment types."""
 
-    # Interface attached to a network predefined in the hypervisor.
-    # (This is the default if no constraints are specified; MAAS will look for
-    # a 'maas' network, and then fall back to a 'default' network.)
+    # Interface attached to a network predefined in the hypervisor. This is
+    # used only by the Virsh driver.
     NETWORK = "network"
 
     # Interface attached to a bridge interface on the hypervisor.
@@ -422,6 +421,23 @@ class PodDriverBase(PowerDriverBase):
         )
         schema["driver_type"] = "pod"
         return schema
+
+    def get_default_interface_parent(self, known_host_interfaces):
+        """Return the default KnownHostInterface to connect interfaces to.
+
+        If no valid parent interfaces are found, None is returned.
+        """
+        attach_preference = [
+            InterfaceAttachType.BRIDGE,
+            InterfaceAttachType.SRIOV,
+            InterfaceAttachType.NETWORK,
+            InterfaceAttachType.MACVLAN,
+        ]
+        return min(
+            (iface for iface in known_host_interfaces if iface.dhcp_enabled),
+            default=None,
+            key=lambda iface: attach_preference.index(iface.attach_type),
+        )
 
 
 def get_error_message(err):
