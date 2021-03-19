@@ -103,7 +103,7 @@ from provisioningserver.utils.shell import (
     ExternalProcessError,
     get_env_with_bytes_locale,
 )
-from provisioningserver.utils.snappy import running_in_snap
+from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import (
     call,
     callOut,

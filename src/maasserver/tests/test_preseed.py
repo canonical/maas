@@ -801,7 +801,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
                 }
             }
         }
-        snappy_config = {"snappy": {"email": node.owner.email}}
+        snap_config = {"snap": {"email": node.owner.email}}
         reporting_config = {
             "reporting": {
                 "maas": {
@@ -833,7 +833,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             yaml.safe_load(
                 config["cloudconfig"]["maas-ubuntu-sso"]["content"]
             ),
-            Equals(snappy_config),
+            Equals(snap_config),
         )
         self.assertThat(
             config["cloudconfig"]["maas-reporting"]["content"],

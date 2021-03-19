@@ -13,7 +13,7 @@ from unittest.mock import sentinel
 from django.core import management
 
 from apiclient.creds import convert_string_to_tuple
-from maascli import cli, init, snappy
+from maascli import cli, init, snap
 from maascli.auth import UnexpectedResponse
 from maascli.parser import ArgumentParser
 from maascli.tests.test_auth import make_options
@@ -102,9 +102,7 @@ class TestRegisterCommands(MAASTestCase):
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
         subparser = parser.subparsers.choices.get("init")
-        self.assertIsInstance(
-            subparser.get_default("execute"), snappy.cmd_init
-        )
+        self.assertIsInstance(subparser.get_default("execute"), snap.cmd_init)
 
     def test_load_init_command_no_snap(self):
         environ = {}
@@ -214,11 +212,11 @@ class TestCmdInit(MAASTestCase):
 
 class TestReconfigureSupervisord(MAASTestCase):
     def test_cmd_configure_supervisord(self):
-        self.patch(snappy, "get_current_mode").return_value = "region+rack"
-        mock_render_supervisord = self.patch(snappy, "render_supervisord")
-        mock_sighup_supervisord = self.patch(snappy, "sighup_supervisord")
+        self.patch(snap, "get_current_mode").return_value = "region+rack"
+        mock_render_supervisord = self.patch(snap, "render_supervisord")
+        mock_sighup_supervisord = self.patch(snap, "sighup_supervisord")
         parser = ArgumentParser()
-        cmd = snappy.cmd_reconfigure_supervisord(parser)
+        cmd = snap.cmd_reconfigure_supervisord(parser)
         cmd(parser.parse_args([]))
         mock_render_supervisord.assert_called_once_with("region+rack")
         mock_sighup_supervisord.assert_called_once()

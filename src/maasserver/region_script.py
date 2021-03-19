@@ -34,7 +34,7 @@ def run_django(is_snap, is_devenv):
         snap_data = os.environ["SNAP_DATA"]
         os.environ.update(
             {
-                "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snappy",
+                "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snap",
                 "MAAS_PATH": os.environ["SNAP"],
                 "MAAS_ROOT": snap_data,
                 "MAAS_DATA": os.path.join(os.environ["SNAP_COMMON"], "maas"),

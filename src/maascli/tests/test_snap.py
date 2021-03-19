@@ -16,7 +16,7 @@ from fixtures import EnvironmentVariableFixture
 import netifaces
 import pytest
 
-from maascli import snappy
+from maascli import snap
 from maascli.command import CommandError
 from maascli.parser import ArgumentParser
 from maastesting.factory import factory
@@ -33,7 +33,7 @@ class TestHelpers(MAASTestCase):
 
     def test_get_default_gateway_ip_no_defaults(self):
         self.patch(netifaces, "gateways").return_value = {}
-        self.assertIsNone(snappy.get_default_gateway_ip())
+        self.assertIsNone(snap.get_default_gateway_ip())
 
     def test_get_default_gateway_ip_returns_ipv4(self):
         gw_address = factory.make_ipv4_address()
@@ -45,7 +45,7 @@ class TestHelpers(MAASTestCase):
         self.patch(netifaces, "ifaddresses").return_value = {
             netifaces.AF_INET: [{"addr": ipv4_address}]
         }
-        self.assertEqual(ipv4_address, snappy.get_default_gateway_ip())
+        self.assertEqual(ipv4_address, snap.get_default_gateway_ip())
 
     def test_get_default_gateway_ip_returns_ipv6(self):
         gw_address = factory.make_ipv6_address()
@@ -57,7 +57,7 @@ class TestHelpers(MAASTestCase):
         self.patch(netifaces, "ifaddresses").return_value = {
             netifaces.AF_INET6: [{"addr": ipv6_address}]
         }
-        self.assertEqual(ipv6_address, snappy.get_default_gateway_ip())
+        self.assertEqual(ipv6_address, snap.get_default_gateway_ip())
 
     def test_get_default_gateway_ip_returns_ipv4_over_ipv6(self):
         gw4_address = factory.make_ipv4_address()
@@ -75,7 +75,7 @@ class TestHelpers(MAASTestCase):
             netifaces.AF_INET: [{"addr": ipv4_address}],
             netifaces.AF_INET6: [{"addr": ipv6_address}],
         }
-        self.assertEqual(ipv4_address, snappy.get_default_gateway_ip())
+        self.assertEqual(ipv4_address, snap.get_default_gateway_ip())
 
     def test_get_default_gateway_ip_returns_first_ip(self):
         gw_address = factory.make_ipv4_address()
@@ -91,44 +91,40 @@ class TestHelpers(MAASTestCase):
                 {"addr": ipv4_address2},
             ]
         }
-        self.assertEqual(ipv4_address1, snappy.get_default_gateway_ip())
+        self.assertEqual(ipv4_address1, snap.get_default_gateway_ip())
 
     def test_get_default_url_uses_gateway_ip(self):
         ipv4_address = factory.make_ipv4_address()
-        self.patch(
-            snappy, "get_default_gateway_ip"
-        ).return_value = ipv4_address
+        self.patch(snap, "get_default_gateway_ip").return_value = ipv4_address
         self.assertEqual(
-            "http://%s:5240/MAAS" % ipv4_address, snappy.get_default_url()
+            "http://%s:5240/MAAS" % ipv4_address, snap.get_default_url()
         )
 
     def test_get_default_url_fallsback_to_localhost(self):
-        self.patch(snappy, "get_default_gateway_ip").return_value = None
-        self.assertEqual(
-            "http://localhost:5240/MAAS", snappy.get_default_url()
-        )
+        self.patch(snap, "get_default_gateway_ip").return_value = None
+        self.assertEqual("http://localhost:5240/MAAS", snap.get_default_url())
 
     def test_get_mode_filepath(self):
         self.assertEqual(
             os.path.join(self.environ["SNAP_COMMON"], "snap_mode"),
-            snappy.get_mode_filepath(),
+            snap.get_mode_filepath(),
         )
 
     def test_get_current_mode_returns_none_when_missing(self):
-        self.assertEqual("none", snappy.get_current_mode())
+        self.assertEqual("none", snap.get_current_mode())
 
     def test_get_current_mode_returns_file_contents(self):
-        snappy.set_current_mode("all")
-        self.assertEqual("all", snappy.get_current_mode())
+        snap.set_current_mode("all")
+        self.assertEqual("all", snap.get_current_mode())
 
     def test_set_current_mode_creates_file(self):
-        snappy.set_current_mode("all")
-        self.assertTrue(os.path.exists(snappy.get_mode_filepath()))
+        snap.set_current_mode("all")
+        self.assertTrue(os.path.exists(snap.get_mode_filepath()))
 
     def test_set_current_mode_overwrites(self):
-        snappy.set_current_mode("all")
-        snappy.set_current_mode("none")
-        self.assertEqual("none", snappy.get_current_mode())
+        snap.set_current_mode("all")
+        snap.set_current_mode("none")
+        self.assertEqual("none", snap.get_current_mode())
 
 
 class TestRenderSupervisord:
@@ -162,18 +158,18 @@ class TestRenderSupervisord:
         has_regiond,
         has_rackd,
     ):
-        snap = tmp_path_factory.mktemp("snap")
-        maas_share = snap / "usr" / "share" / "maas"
+        snap_dir = tmp_path_factory.mktemp("snap")
+        maas_share = snap_dir / "usr" / "share" / "maas"
         maas_share.mkdir(parents=True)
         (maas_share / "supervisord.conf.template").write_text(
             self.TEST_TEMPLATE
         )
         snap_data = tmp_path_factory.mktemp("snap_data")
         (snap_data / "supervisord").mkdir()
-        monkeypatch.setenv("SNAP", str(snap))
+        monkeypatch.setenv("SNAP", str(snap_dir))
         monkeypatch.setenv("SNAP_DATA", str(snap_data))
 
-        snappy.render_supervisord(mode)
+        snap.render_supervisord(mode)
         output = (snap_data / "supervisord" / "supervisord.conf").read_text()
         assert ("HAS_REGIOND" in output) == has_regiond
         assert ("HAS_RACKD" in output) == has_rackd
@@ -183,7 +179,7 @@ class TestSupervisordHelpers(MAASTestCase):
     def test_get_supervisord_pid_returns_None(self):
         snap_data = self.make_dir()
         self.patch(os, "environ", {"SNAP_DATA": snap_data})
-        self.assertIsNone(snappy.get_supervisord_pid())
+        self.assertIsNone(snap.get_supervisord_pid())
 
     def test_get_supervisord_pid_returns_pid(self):
         pid = random.randint(2, 99)
@@ -195,49 +191,49 @@ class TestSupervisordHelpers(MAASTestCase):
         ) as stream:
             stream.write("%s" % pid)
         self.patch(os, "environ", {"SNAP_DATA": snap_data})
-        self.assertEqual(pid, snappy.get_supervisord_pid())
+        self.assertEqual(pid, snap.get_supervisord_pid())
 
     def test_sighup_supervisord_sends_SIGHUP(self):
         pid = random.randint(2, 99)
-        snap = self.make_dir()
-        self.patch(os, "environ", {"SNAP": snap})
-        self.patch(snappy, "get_supervisord_pid").return_value = pid
+        snap_dir = self.make_dir()
+        self.patch(os, "environ", {"SNAP": snap_dir})
+        self.patch(snap, "get_supervisord_pid").return_value = pid
         mock_kill = self.patch(os, "kill")
         self.patch(time, "sleep")  # Speed up the test.
         mock_process = MagicMock()
         mock_popen = self.patch(subprocess, "Popen")
         mock_popen.return_value = mock_process
-        snappy.sighup_supervisord()
+        snap.sighup_supervisord()
         mock_kill.assert_called_once_with(pid, signal.SIGHUP)
         mock_popen.assert_called_once_with(
-            [os.path.join(snap, "bin", "run-supervisorctl"), "status"],
+            [os.path.join(snap_dir, "bin", "run-supervisorctl"), "status"],
             stdout=subprocess.PIPE,
         )
         mock_process.wait.assert_called_once_with()
 
     def test_sighup_supervisord_nop_if_not_running(self):
         pid = random.randint(2, 99)
-        snap = self.make_dir()
-        self.patch(os, "environ", {"SNAP": snap})
-        self.patch(snappy, "get_supervisord_pid").return_value = pid
+        snap_dir = self.make_dir()
+        self.patch(os, "environ", {"SNAP": snap_dir})
+        self.patch(snap, "get_supervisord_pid").return_value = pid
         mock_kill = self.patch(os, "kill")
         mock_kill.side_effect = ProcessLookupError()
         # the command doesn't fail
-        snappy.sighup_supervisord()
+        snap.sighup_supervisord()
         mock_kill.assert_called_once_with(pid, signal.SIGHUP)
 
     def test_sighup_supervisord_waits_until_no_error(self):
         pid = random.randint(2, 99)
-        snap = self.make_dir()
-        self.patch(os, "environ", {"SNAP": snap})
-        self.patch(snappy, "get_supervisord_pid").return_value = pid
+        snap_dir = self.make_dir()
+        self.patch(os, "environ", {"SNAP": snap_dir})
+        self.patch(snap, "get_supervisord_pid").return_value = pid
         mock_kill = self.patch(os, "kill")
         self.patch(time, "sleep")  # Speed up the test.
         mock_process = MagicMock()
         mock_process.stdout.read.side_effect = [b"error:", b""]
         mock_popen = self.patch(subprocess, "Popen")
         mock_popen.return_value = mock_process
-        snappy.sighup_supervisord()
+        snap.sighup_supervisord()
         mock_kill.assert_called_once_with(pid, signal.SIGHUP)
         self.assertEqual(2, mock_popen.call_count)
 
@@ -250,43 +246,43 @@ class TestConfigHelpers(MAASTestCase):
         self.useFixture(EnvironmentVariableFixture("MAAS_DATA", maas_data))
 
     def test_print_config_value(self):
-        mock_print = self.patch(snappy, "print_msg")
+        mock_print = self.patch(snap, "print_msg")
         key = factory.make_name("key")
         value = factory.make_name("value")
         config = {key: value}
-        snappy.print_config_value(config, key)
+        snap.print_config_value(config, key)
         mock_print.assert_called_once_with("{}={}".format(key, value))
 
     def test_print_config_value_hidden(self):
-        mock_print = self.patch(snappy, "print_msg")
+        mock_print = self.patch(snap, "print_msg")
         key = factory.make_name("key")
         value = factory.make_name("value")
         config = {key: value}
-        snappy.print_config_value(config, key, hidden=True)
+        snap.print_config_value(config, key, hidden=True)
         mock_print.assert_called_once_with("{}=(hidden)".format(key))
 
     def test_get_rpc_secret_returns_secret(self):
         secret = factory.make_string()
         self.secret_file.write_text(secret)
-        self.assertEqual(snappy.get_rpc_secret(), secret)
+        self.assertEqual(snap.get_rpc_secret(), secret)
 
     def test_get_rpc_secret_returns_None_when_no_file(self):
-        self.assertIsNone(snappy.get_rpc_secret())
+        self.assertIsNone(snap.get_rpc_secret())
 
     def test_get_rpc_secret_returns_None_when_empty_file(self):
         self.secret_file.write_text("")
-        self.assertIsNone(snappy.get_rpc_secret())
+        self.assertIsNone(snap.get_rpc_secret())
 
     def test_set_rpc_secret_sets_secret(self):
         secret = factory.make_string()
-        snappy.set_rpc_secret(secret)
-        self.assertEqual(secret, snappy.get_rpc_secret())
+        snap.set_rpc_secret(secret)
+        self.assertEqual(secret, snap.get_rpc_secret())
 
     def test_set_rpc_secret_clears_secret(self):
         secret = factory.make_string()
-        snappy.set_rpc_secret(secret)
-        snappy.set_rpc_secret(None)
-        self.assertIsNone(snappy.get_rpc_secret())
+        snap.set_rpc_secret(secret)
+        snap.set_rpc_secret(None)
+        self.assertIsNone(snap.get_rpc_secret())
         self.assertFalse(self.secret_file.exists())
 
 
@@ -294,7 +290,7 @@ class TestCmdInit(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.parser = ArgumentParser()
-        self.cmd = snappy.cmd_init(self.parser)
+        self.cmd = snap.cmd_init(self.parser)
         self.patch(os, "getuid").return_value = 0
         self.snap_common = self.make_dir()
         self.patch(
@@ -306,12 +302,12 @@ class TestCmdInit(MAASTestCase):
                 "SNAP_DATA": "/snap/maas/data",
             },
         )
-        self.mock_read_input = self.patch(snappy, "read_input")
+        self.mock_read_input = self.patch(snap, "read_input")
 
     def test_init_snap_db_options_prompt(self):
-        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
-        self.patch(snappy, "set_rpc_secret")
-        self.patch(snappy.cmd_init, "_finalize_init")
+        self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
+        self.patch(snap, "set_rpc_secret")
+        self.patch(snap.cmd_init, "_finalize_init")
 
         self.mock_read_input.side_effect = [
             "postgres://maas:pwd@localhost/db",
@@ -330,10 +326,10 @@ class TestCmdInit(MAASTestCase):
         )
 
     def test_init_db_parse_error(self):
-        self.patch(snappy, "print_msg")
-        self.mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
-        self.patch(snappy, "set_rpc_secret")
-        self.patch(snappy.cmd_init, "_finalize_init")
+        self.patch(snap, "print_msg")
+        self.mock_maas_configuration = self.patch(snap, "MAASConfiguration")
+        self.patch(snap, "set_rpc_secret")
+        self.patch(snap.cmd_init, "_finalize_init")
 
         self.mock_read_input.side_effect = [
             "localhost",
@@ -361,7 +357,7 @@ class TestCmdInit(MAASTestCase):
                 "postgres://dbuser:pwd@dbhost/dbname",
             ]
         )
-        settings = snappy.get_database_settings(options)
+        settings = snap.get_database_settings(options)
         self.assertEqual(
             {
                 "database_host": "dbhost",
@@ -377,7 +373,7 @@ class TestCmdInit(MAASTestCase):
             "postgres://dbuser:pwd@dbhost/dbname"
         ]
         options = self.parser.parse_args(["region+rack"])
-        settings = snappy.get_database_settings(options)
+        settings = snap.get_database_settings(options)
         self.assertEqual(
             {
                 "database_host": "dbhost",
@@ -392,7 +388,7 @@ class TestCmdInit(MAASTestCase):
         options = self.parser.parse_args(["region+rack"])
         os.mkdir(os.path.join(self.snap_common, "test-db-socket"))
         self.mock_read_input.side_effect = [""]
-        settings = snappy.get_database_settings(options)
+        settings = snap.get_database_settings(options)
         self.assertEqual(
             {
                 "database_host": f"{self.snap_common}/test-db-socket",
@@ -406,7 +402,7 @@ class TestCmdInit(MAASTestCase):
     def test_get_database_settings_maas_test_db_prompt_no_default(self):
         options = self.parser.parse_args(["region+rack"])
         self.mock_read_input.side_effect = ["", "postgres:///?user=foo"]
-        settings = snappy.get_database_settings(options)
+        settings = snap.get_database_settings(options)
         self.assertEqual(
             {
                 "database_host": "localhost",
@@ -421,7 +417,7 @@ class TestCmdInit(MAASTestCase):
         options = self.parser.parse_args(
             ["region+rack", "--database-uri", "maas-test-db:///"]
         )
-        settings = snappy.get_database_settings(options)
+        settings = snap.get_database_settings(options)
         self.assertEqual(
             {
                 "database_host": f"{self.snap_common}/test-db-socket",
@@ -436,7 +432,7 @@ class TestCmdInit(MAASTestCase):
         options = self.parser.parse_args(
             ["region+rack", "--database-uri", "postgres:///?user=myuser"]
         )
-        settings = snappy.get_database_settings(options)
+        settings = snap.get_database_settings(options)
         self.assertEqual(
             {
                 "database_host": "localhost",
@@ -455,7 +451,7 @@ class TestCmdInit(MAASTestCase):
                 "postgres://myuser:pwd@myhost:1234/mydb",
             ]
         )
-        settings = snappy.get_database_settings(options)
+        settings = snap.get_database_settings(options)
         self.assertEqual(
             {
                 "database_host": "myhost",
@@ -476,7 +472,7 @@ class TestCmdInit(MAASTestCase):
             ]
         )
         error = self.assertRaises(
-            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+            snap.DatabaseSettingsError, snap.get_database_settings, options
         )
         self.assertEqual(
             "Error parsing database URI: "
@@ -493,7 +489,7 @@ class TestCmdInit(MAASTestCase):
             ]
         )
         error = self.assertRaises(
-            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+            snap.DatabaseSettingsError, snap.get_database_settings, options
         )
         self.assertEqual(
             "Error parsing database URI: "
@@ -506,7 +502,7 @@ class TestCmdInit(MAASTestCase):
             ["region+rack", "--database-uri", "postgres://myhost/"]
         )
         error = self.assertRaises(
-            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+            snap.DatabaseSettingsError, snap.get_database_settings, options
         )
         self.assertEqual(
             "No user found in URI: postgres://myhost/", str(error)
@@ -517,7 +513,7 @@ class TestCmdInit(MAASTestCase):
             ["region+rack", "--database-uri", "maas-test-db:///foo"]
         )
         error = self.assertRaises(
-            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+            snap.DatabaseSettingsError, snap.get_database_settings, options
         )
         self.assertEqual(
             "Database URI needs to be either 'maas-test-db:///' or start with "
@@ -532,7 +528,7 @@ class TestCmdInit(MAASTestCase):
             ["region+rack", "--database-uri", "postgres:/"]
         )
         error = self.assertRaises(
-            snappy.DatabaseSettingsError, snappy.get_database_settings, options
+            snap.DatabaseSettingsError, snap.get_database_settings, options
         )
         self.assertEqual(
             "Database URI needs to be either 'maas-test-db:///' or start with "
@@ -544,7 +540,7 @@ class TestCmdInit(MAASTestCase):
 class TestCmdStatus(MAASTestCase):
     def test_requires_root(self):
         parser = ArgumentParser()
-        cmd = snappy.cmd_status(parser)
+        cmd = snap.cmd_status(parser)
         self.patch(os, "getuid").return_value = 1000
         error = self.assertRaises(SystemExit, cmd, parser.parse_args([]))
         self.assertEqual(
@@ -556,7 +552,7 @@ class TestCmdConfig(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.parser = ArgumentParser()
-        self.cmd = snappy.cmd_config(self.parser)
+        self.cmd = snap.cmd_config(self.parser)
         self.patch(os, "getuid").return_value = 0
         snap_common = self.make_dir()
         snap_data = self.make_dir()
@@ -572,8 +568,8 @@ class TestCmdConfig(MAASTestCase):
         self.assertEqual(stdout.getvalue(), "Mode: none\n")
 
     def test_enable_debugging(self):
-        mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
-        mock_sighup_supervisord = self.patch(snappy, "sighup_supervisord")
+        mock_maas_configuration = self.patch(snap, "MAASConfiguration")
+        mock_sighup_supervisord = self.patch(snap, "sighup_supervisord")
         options = self.parser.parse_args(["--enable-debug"])
         stdout = io.StringIO()
         self.patch(sys, "stdout", stdout)
@@ -587,9 +583,9 @@ class TestCmdConfig(MAASTestCase):
         mock_sighup_supervisord.assert_called_once_with()
 
     def test_reenable_debugging(self):
-        mock_maas_configuration = self.patch(snappy, "MAASConfiguration")
+        mock_maas_configuration = self.patch(snap, "MAASConfiguration")
         config_manager = mock_maas_configuration()
-        mock_sighup_supervisord = self.patch(snappy, "sighup_supervisord")
+        mock_sighup_supervisord = self.patch(snap, "sighup_supervisord")
         options = self.parser.parse_args(["--enable-debug"])
         stdout = io.StringIO()
         self.patch(sys, "stdout", stdout)

@@ -353,7 +353,7 @@ class TestAMTPowerDriver(MAASTestCase):
 
     def test_issue_wsman_has_config_file_from_snap(self):
         self.patch(
-            amt_module.snappy, "get_snap_path"
+            amt_module.snap, "get_snap_path"
         ).return_value = "/snap/maas/current"
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")

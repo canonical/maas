@@ -245,15 +245,15 @@ def register_cli_commands(parser):
 
     # Setup the snap commands into the maascli if in a snap and command exists.
     if "SNAP" in os.environ:
-        # Only import snappy if running under the snap.
-        from maascli import snappy
+        # Only import snap if running under the snap.
+        from maascli import snap
 
         extra_commands = [
-            ("init", snappy.cmd_init),
-            ("config", snappy.cmd_config),
-            ("status", snappy.cmd_status),
-            ("migrate", snappy.cmd_migrate),
-            ("reconfigure-supervisord", snappy.cmd_reconfigure_supervisord),
+            ("init", snap.cmd_init),
+            ("config", snap.cmd_config),
+            ("status", snap.cmd_status),
+            ("migrate", snap.cmd_migrate),
+            ("reconfigure-supervisord", snap.cmd_reconfigure_supervisord),
         ]
     elif is_maasserver_available():
         extra_commands = [("init", cmd_init)]

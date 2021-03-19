@@ -25,7 +25,7 @@ from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import list_subdirs
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 from provisioningserver.utils.fs import read_text_file
 
 
@@ -146,7 +146,7 @@ class TestCreateGNUPGHome(MAASTestCase):
         self.patch_gnupg_home(new_home)
         call = self.patch_call()
         self.patch(os, "geteuid").return_value = 0
-        self.patch(snappy, "running_in_snap").return_value = True
+        self.patch(snap, "running_in_snap").return_value = True
         upgrade_cluster.create_gnupg_home()
         self.assertThat(call, MockNotCalled())
 

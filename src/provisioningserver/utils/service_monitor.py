@@ -18,7 +18,7 @@ from twisted.internet.defer import (
 )
 
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils import snappy, typed
+from provisioningserver.utils import snap, typed
 from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -502,7 +502,7 @@ class ServiceMonitor:
         :return: tuple (exit code, std-output, std-error)
         """
         env = get_env_with_bytes_locale()
-        cmd = os.path.join(snappy.get_snap_path(), "bin", "run-supervisorctl")
+        cmd = os.path.join(snap.get_snap_path(), "bin", "run-supervisorctl")
 
         # supervisord doesn't support native kill like systemd. Emulate this
         # behaviour by getting the PID of the process and then killing the PID.
@@ -541,7 +541,7 @@ class ServiceMonitor:
     def _performServiceAction(self, service, action):
         """Start or stop the service."""
         lock = self._getServiceLock(service.name)
-        if snappy.running_in_snap():
+        if snap.running_in_snap():
             exec_action = self._execSupervisorServiceAction
             service_name = service.snap_service_name
         else:
@@ -562,7 +562,7 @@ class ServiceMonitor:
 
     def _loadServiceState(self, service):
         """Return service status."""
-        if snappy.running_in_snap():
+        if snap.running_in_snap():
             return self._loadSupervisorServiceState(service)
         else:
             return self._loadSystemDServiceState(service)

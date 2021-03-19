@@ -18,7 +18,7 @@ from provisioningserver.utils import load_template, locate_config
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.isc import read_isc_file
 from provisioningserver.utils.shell import call_and_check
-from provisioningserver.utils.snappy import running_in_snap
+from provisioningserver.utils.snap import running_in_snap
 
 maaslog = get_maas_logger("dns")
 NAMED_CONF_OPTIONS = "named.conf.options"

@@ -9,7 +9,7 @@ import sys
 
 import tempita
 
-from provisioningserver.utils import locate_template, snappy
+from provisioningserver.utils import locate_template, snap
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
 
@@ -75,7 +75,7 @@ def write_config(write_local, forwarders=None, port=None):
     }
 
     # Running inside the snap rsyslog is root.
-    if snappy.running_in_snap():
+    if snap.running_in_snap():
         context["user"] = "root"
         context["group"] = "root"
         context["drop_priv"] = False

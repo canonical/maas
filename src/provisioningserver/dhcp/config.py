@@ -14,7 +14,7 @@ import tempita
 
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.path import get_maas_data_path, get_path
-from provisioningserver.utils import load_template, snappy, typed
+from provisioningserver.utils import load_template, snap, typed
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
@@ -421,7 +421,7 @@ def get_config_v4(
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
         "quoted_commalist": normalise_any_iterable_to_quoted_comma_list,
-        "running_in_snap": snappy.running_in_snap(),
+        "running_in_snap": snap.running_in_snap(),
     }
 
     for shared_network in shared_networks:
@@ -478,7 +478,7 @@ def get_config_v6(
         "oneline": normalise_whitespace,
         "commalist": normalise_any_iterable_to_comma_list,
         "quoted_commalist": normalise_any_iterable_to_quoted_comma_list,
-        "running_in_snap": snappy.running_in_snap(),
+        "running_in_snap": snap.running_in_snap(),
     }
 
     shared_networks = _process_network_parameters_v6(

@@ -15,7 +15,7 @@ from testtools.matchers import Contains, FileContains
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.proxy import config
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -109,7 +109,7 @@ class TestWriteConfig(MAASTestCase):
             self.assertIn("http_port %s" % port, lines)
 
     def test_user_in_snap(self):
-        self.patch(snappy, "running_in_snap").return_value = True
+        self.patch(snap, "running_in_snap").return_value = True
         config.write_config(allowed_cidrs=[])
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]
@@ -117,7 +117,7 @@ class TestWriteConfig(MAASTestCase):
             self.assertIn("cache_effective_group snap_daemon", lines)
 
     def test_user_not_in_snap(self):
-        self.patch(snappy, "running_in_snap").return_value = False
+        self.patch(snap, "running_in_snap").return_value = False
         config.write_config(allowed_cidrs=[])
         with self.proxy_path.open() as proxy_file:
             lines = [line.strip() for line in proxy_file.readlines()]

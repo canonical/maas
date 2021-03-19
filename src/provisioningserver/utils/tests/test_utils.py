@@ -192,8 +192,8 @@ class TestSudo(MAASTestCase):
         provisioningserver.config.is_dev_environment.return_value = value
 
     def set_is_in_snap(self, value):
-        self.patch(provisioningserver.utils.snappy, "running_in_snap")
-        provisioningserver.utils.snappy.running_in_snap.return_value = value
+        self.patch(provisioningserver.utils.snap, "running_in_snap")
+        provisioningserver.utils.snap.running_in_snap.return_value = value
 
     def test_returns_sudo_command_when_is_dev_environment(self):
         cmd = [factory.make_name("cmd") for _ in range(3)]

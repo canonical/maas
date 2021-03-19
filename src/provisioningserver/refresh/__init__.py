@@ -21,7 +21,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
-from provisioningserver.utils.snappy import get_snap_path
+from provisioningserver.utils.snap import get_snap_path
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("refresh")

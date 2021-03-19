@@ -14,7 +14,7 @@ from testtools.matchers import Contains, FileContains, MatchesAll, Not
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.syslog import config
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -71,8 +71,8 @@ class TestWriteConfig(MAASTestCase):
             FileContains(matcher=MatchesAll(*matchers)),
         )
 
-    def test_snappy_root_user_group_no_drop(self):
-        self.patch(snappy, "running_in_snap").return_value = True
+    def test_snap_root_user_group_no_drop(self):
+        self.patch(snap, "running_in_snap").return_value = True
         config.write_config(False)
         matchers = [Contains("$FileOwner root"), Contains("$FileGroup root")]
         self.assertThat(

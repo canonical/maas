@@ -29,7 +29,7 @@ from provisioningserver.path import get_tentative_data_path
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
-from provisioningserver.utils import load_template, snappy
+from provisioningserver.utils import load_template, snap
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import callOut
 
@@ -153,7 +153,7 @@ class RackHTTPService(TimerService):
         # XXX: blake_r 2018-06-12 bug=1687620. When running in a snap,
         # supervisord tracks services. It does not support reloading.
         # Instead, we need to restart the service.
-        if snappy.running_in_snap():
+        if snap.running_in_snap():
             d.addCallback(lambda _: service_monitor.restartService("http"))
         else:
             d.addCallback(lambda _: service_monitor.reloadService("http"))
@@ -176,9 +176,9 @@ class RackHTTPService(TimerService):
                     "upstream_http": list(sorted(upstream_http)),
                     "resource_root": self._resource_root,
                     "machine_resources": os.path.join(
-                        snappy.get_snap_path(), "usr/share/maas"
+                        snap.get_snap_path(), "usr/share/maas"
                     )
-                    if (snappy.running_in_snap())
+                    if (snap.running_in_snap())
                     else "/usr/share/maas",
                 }
             )

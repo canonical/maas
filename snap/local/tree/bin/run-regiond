@@ -3,7 +3,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 # override configs to work in the snap
-export DJANGO_SETTINGS_MODULE=maasserver.djangosettings.snappy
+export DJANGO_SETTINGS_MODULE=maasserver.djangosettings.snap
 export MAAS_PATH="$SNAP"
 export MAAS_ROOT="$SNAP_DATA"
 export MAAS_DATA="$SNAP_COMMON/maas"

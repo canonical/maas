@@ -12,7 +12,7 @@ from typing import Tuple
 
 import tempita
 
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 
 # Use typecheck-decorator if it's available.
 try:
@@ -171,7 +171,7 @@ def is_true(value):
 
 def sudo(command_args):
     """Wrap the command arguments in a sudo command, if not in debug mode."""
-    if snappy.running_in_snap():
+    if snap.running_in_snap():
         return command_args
     else:
         return ["sudo", "-n", *command_args]

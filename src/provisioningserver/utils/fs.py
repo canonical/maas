@@ -22,7 +22,7 @@ from twisted.python.filepath import FilePath
 from twisted.python.lockfile import FilesystemLock as TwistedFilesystemLock
 
 from provisioningserver.path import get_data_path, get_path
-from provisioningserver.utils import snappy, sudo
+from provisioningserver.utils import snap, sudo
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import retries
 
@@ -41,9 +41,9 @@ def get_maas_common_command():
         from maastesting import root
 
         return os.path.join(root, "bin/maas-common")
-    elif snappy.running_in_snap():
+    elif snap.running_in_snap():
         # there's no maas-common in the snap as maas-rack is always present
-        return os.path.join(snappy.get_snap_path(), "bin/maas-rack")
+        return os.path.join(snap.get_snap_path(), "bin/maas-rack")
     else:
         return get_path("usr/lib/maas/maas-common")
 
@@ -302,7 +302,7 @@ def sudo_write_file(filename, contents, mode=0o644):
 
     if not isinstance(contents, bytes):
         raise TypeError("Content must be bytes, got: %r" % (contents,))
-    if snappy.running_in_snap():
+    if snap.running_in_snap():
         atomic_write(contents, filename, mode=mode)
     else:
         maas_write_file = get_library_script_path("maas-write-file")
@@ -325,7 +325,7 @@ def sudo_delete_file(filename):
     """
     from provisioningserver.config import is_dev_environment
 
-    if snappy.running_in_snap():
+    if snap.running_in_snap():
         atomic_delete(filename)
     else:
         maas_delete_file = get_library_script_path("maas-delete-file")

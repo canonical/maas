@@ -10,7 +10,7 @@ import re
 import pkg_resources
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import shell, snappy
+from provisioningserver.utils import shell, snap
 
 maaslog = get_maas_logger("version")
 
@@ -19,7 +19,7 @@ DISTRIBUTION = pkg_resources.require("maas")[0]
 
 
 # Only import apt_pkg and initialize when not running in a snap.
-if not snappy.running_in_snap():
+if not snap.running_in_snap():
     import apt_pkg
 
     apt_pkg.init()
@@ -122,8 +122,8 @@ def get_running_version() -> MAASVersion:
     """Return the version for the running MAAS."""
     git_rev = None
     revno = 0
-    if snappy.running_in_snap():
-        version_str = snappy.get_snap_version()
+    if snap.running_in_snap():
+        version_str = snap.get_snap_version()
     else:
         version_str = _get_version_from_apt(
             RACK_PACKAGE_NAME, REGION_PACKAGE_NAME

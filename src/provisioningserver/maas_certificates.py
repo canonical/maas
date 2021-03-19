@@ -13,10 +13,7 @@ from OpenSSL import crypto
 
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import NamedLock
-from provisioningserver.utils.snappy import (
-    get_snap_common_path,
-    running_in_snap,
-)
+from provisioningserver.utils.snap import get_snap_common_path, running_in_snap
 
 if running_in_snap():
     MAAS_PRIVATE_KEY = os.path.join(

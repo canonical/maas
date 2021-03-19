@@ -172,7 +172,7 @@ def get_curtin_cloud_config(request, node):
         config["maas-ubuntu-sso"] = {
             "path": "/etc/cloud/cloud.cfg.d/90_maas_ubuntu_sso.cfg",
             "content": "#cloud-config\n%s"
-            % yaml.safe_dump({"snappy": {"email": node.owner.email}}),
+            % yaml.safe_dump({"snap": {"email": node.owner.email}}),
         }
     config["maas-reporting"] = {
         "path": "/etc/cloud/cloud.cfg.d/90_maas_cloud_init_reporting.cfg",

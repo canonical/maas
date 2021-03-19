@@ -34,7 +34,7 @@ from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import always_fail_with
 from provisioningserver.utils import service_monitor as service_monitor_module
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 from provisioningserver.utils.service_monitor import (
     Service,
     SERVICE_STATE,
@@ -175,8 +175,8 @@ class TestServiceMonitor(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def run_under_snappy(self):
-        self.patch(snappy, "running_in_snap").return_value = True
+    def run_under_snap(self):
+        self.patch(snap, "running_in_snap").return_value = True
 
     def make_service_monitor(self, fake_services=None):
         if fake_services is None:
@@ -618,7 +618,7 @@ class TestServiceMonitor(MAASTestCase):
     @inlineCallbacks
     def test_execSupervisorServiceAction_calls_supervisorctl(self):
         snap_path = factory.make_name("path")
-        self.patch(snappy, "get_snap_path").return_value = snap_path
+        self.patch(snap, "get_snap_path").return_value = snap_path
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         action = factory.make_name("action")
@@ -645,7 +645,7 @@ class TestServiceMonitor(MAASTestCase):
     @inlineCallbacks
     def test_execSupervisorServiceAction_emulates_kill(self):
         snap_path = factory.make_name("path")
-        self.patch(snappy, "get_snap_path").return_value = snap_path
+        self.patch(snap, "get_snap_path").return_value = snap_path
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         fake_pid = random.randint(1, 100)
@@ -688,7 +688,7 @@ class TestServiceMonitor(MAASTestCase):
         example_stdout = example_text[: len(example_text) // 2]
         example_stderr = example_text[len(example_text) // 2 :]
         snap_path = factory.make_name("path")
-        self.patch(snappy, "get_snap_path").return_value = snap_path
+        self.patch(snap, "get_snap_path").return_value = snap_path
         service_monitor = self.make_service_monitor()
         mock_getProcessOutputAndValue = self.patch(
             service_monitor_module, "getProcessOutputAndValue"
@@ -735,7 +735,7 @@ class TestServiceMonitor(MAASTestCase):
 
     @inlineCallbacks
     def test_performServiceAction_holds_lock_perform_supervisor_action(self):
-        self.run_under_snappy()
+        self.run_under_snap()
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor()
         service_locks = service_monitor._serviceLocks
@@ -811,7 +811,7 @@ class TestServiceMonitor(MAASTestCase):
         )
 
     def test_loadServiceState_uses_supervisor(self):
-        self.run_under_snappy()
+        self.run_under_snap()
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
         mock_loadSupervisorServiceState = self.patch(

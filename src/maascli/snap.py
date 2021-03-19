@@ -419,7 +419,7 @@ def required_prompt(title, help_text=None, default=None):
     return value
 
 
-class SnappyCommand(Command):
+class SnapCommand(Command):
     """
     Command that just prints the exception instead of the overridden
     'maas --help' output.
@@ -505,7 +505,7 @@ def get_database_settings(options):
     return database_settings
 
 
-class cmd_init(SnappyCommand):
+class cmd_init(SnapCommand):
     """Initialise MAAS in the specified run mode.
 
     When installing region or rack+region modes, MAAS needs a
@@ -671,7 +671,7 @@ class cmd_init(SnappyCommand):
             )
 
 
-class cmd_config(SnappyCommand):
+class cmd_config(SnapCommand):
     """View or change controller configuration."""
 
     # Required options based on mode.
@@ -865,7 +865,7 @@ class cmd_config(SnappyCommand):
                 )
 
 
-class cmd_status(SnappyCommand):
+class cmd_status(SnapCommand):
     """Status of controller services."""
 
     def handle(self, options):
@@ -901,7 +901,7 @@ class cmd_status(SnappyCommand):
                     sys.exit(ret)
 
 
-class cmd_migrate(SnappyCommand):
+class cmd_migrate(SnapCommand):
     """Perform migrations on connected database."""
 
     def __init__(self, parser):
@@ -939,7 +939,7 @@ class cmd_migrate(SnappyCommand):
             sys.exit(migrate_db())
 
 
-class cmd_reconfigure_supervisord(SnappyCommand):
+class cmd_reconfigure_supervisord(SnapCommand):
     """Rewrite supervisord configuration and signal it to reload."""
 
     hidden = True

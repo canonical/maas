@@ -20,7 +20,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerSettingError,
 )
-from provisioningserver.utils import shell, snappy, typed
+from provisioningserver.utils import shell, snap, typed
 
 AMT_ERRORS = {
     "401 Unauthorized": {
@@ -431,7 +431,7 @@ class AMTPowerDriver(PowerDriver):
             return boot_mode
 
     def _get_wsman_command(self, *args):
-        base_path = snappy.get_snap_path() or "/"
+        base_path = snap.get_snap_path() or "/"
         return (
             "wsman",
             "-C",

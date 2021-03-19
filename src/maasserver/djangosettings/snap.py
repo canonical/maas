@@ -1,7 +1,7 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Django snappy settings for maas project."""
+"""Django snap settings for maas project."""
 
 import os
 

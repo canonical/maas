@@ -13,7 +13,7 @@ from urllib.parse import urlparse
 import tempita
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import locate_template, snappy
+from provisioningserver.utils import locate_template, snap
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.twisted import synchronous
 
@@ -56,10 +56,10 @@ def write_config(
         "modified": str(datetime.date.today()),
         "fqdn": socket.getfqdn(),
         "cidrs": allowed_cidrs,
-        "running_in_snap": snappy.running_in_snap(),
-        "snap_path": snappy.get_snap_path(),
-        "snap_data_path": snappy.get_snap_data_path(),
-        "snap_common_path": snappy.get_snap_common_path(),
+        "running_in_snap": snap.running_in_snap(),
+        "snap_path": snap.get_snap_path(),
+        "snap_data_path": snap.get_snap_data_path(),
+        "snap_common_path": snap.get_snap_common_path(),
         "dns_v4_first": prefer_v4_proxy,
         "maas_proxy_port": maas_proxy_port,
     }

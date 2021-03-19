@@ -30,7 +30,7 @@ from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import drill_down, list_subdirs
 from provisioningserver.config import ClusterConfiguration
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 
 maaslog = get_maas_logger("rack_upgrade")
 
@@ -47,7 +47,7 @@ def create_gnupg_home(tftp_root=None):
     gpghome = get_maas_user_gpghome()
     if not os.path.isdir(gpghome):
         makedirs(gpghome)
-        if os.geteuid() == 0 and not snappy.running_in_snap():
+        if os.geteuid() == 0 and not snap.running_in_snap():
             # Make the maas user the owner of its GPG home.  Do this only if
             # running as root; otherwise it would probably fail.  We want to
             # be able to start a development instance without triggering that.

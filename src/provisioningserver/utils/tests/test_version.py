@@ -13,7 +13,7 @@ from pkg_resources import parse_version
 from maastesting import root
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils import shell, snappy, version
+from provisioningserver.utils import shell, snap, version
 from provisioningserver.utils.version import (
     _get_version_from_python_package,
     get_running_version,
@@ -320,10 +320,10 @@ class TestGetRunningVersion(TestVersionTestCase):
             ),
         )
 
-    def test_uses_snappy_get_snap_version(self):
-        self.patch(snappy, "running_in_snap").return_value = True
+    def test_uses_snap_get_snap_version(self):
+        self.patch(snap, "running_in_snap").return_value = True
         self.patch(
-            snappy, "get_snap_version"
+            snap, "get_snap_version"
         ).return_value = "2.10.0-456-g.deadbeef"
         maas_version = get_running_version()
         self.assertEqual(maas_version.short_version, "2.10.0")

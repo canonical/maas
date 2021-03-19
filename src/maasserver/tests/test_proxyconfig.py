@@ -22,7 +22,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from provisioningserver.proxy import config
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -188,7 +188,7 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_calls_restartService(self):
         self.patch(settings, "PROXY_CONNECT", True)
-        self.patch(snappy, "running_in_snap").return_value = True
+        self.patch(snap, "running_in_snap").return_value = True
         yield deferToDatabase(self.make_subnet)
         yield proxyconfig.proxy_update_config()
         self.assertThat(

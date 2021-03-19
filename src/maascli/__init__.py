@@ -14,7 +14,7 @@ def snap_setup():
     if "SNAP" in os.environ:
         os.environ.update(
             {
-                "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snappy",
+                "DJANGO_SETTINGS_MODULE": "maasserver.djangosettings.snap",
                 "MAAS_PATH": os.environ["SNAP"],
                 "MAAS_ROOT": os.environ["SNAP_DATA"],
                 "MAAS_DATA": os.path.join(os.environ["SNAP_COMMON"], "maas"),

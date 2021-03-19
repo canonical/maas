@@ -35,7 +35,7 @@ from provisioningserver.rpc.region import (
 )
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.syslog import config as syslog_config
-from provisioningserver.utils import snappy
+from provisioningserver.utils import snap
 from provisioningserver.utils.twisted import callOut, callOutToThread
 
 log = LegacyLogger()
@@ -288,7 +288,7 @@ class RackProxy(RackOnlyExternalService):
             d = deferToThread(self._configure, configuration)
             # Ensure that the service is on.
             service.on()
-            if snappy.running_in_snap():
+            if snap.running_in_snap():
                 # XXX: andreserl 2016-05-09 bug=1687620. When running in a
                 # snap, supervisord tracks services. It does not support
                 # reloading. Instead, we need to restart the service.
