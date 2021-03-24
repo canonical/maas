@@ -813,7 +813,7 @@ class RackClient(common.Client):
     # Currently the only calls that can be cached are the ones that take
     # no arguments. More work needs to be done to this class to handle
     # argument matching.
-    cache_calls = [cluster.DescribePowerTypes, cluster.DescribeNOSTypes]
+    cache_calls = [cluster.DescribePowerTypes]
 
     def __init__(self, connection, cache):
         super().__init__(connection)

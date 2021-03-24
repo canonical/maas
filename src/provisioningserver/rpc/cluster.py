@@ -15,7 +15,6 @@ __all__ = [
     "ConfigureDHCPv6",
     "ConfigureDHCPv6_V2",
     "DescribePowerTypes",
-    "DescribeNOSTypes",
     "GetPreseedData",
     "Identify",
     "ListBootImages",
@@ -116,17 +115,6 @@ class DescribePowerTypes(amp.Command):
 
     arguments = []
     response = [(b"power_types", StructureAsJSON())]
-    errors = []
-
-
-class DescribeNOSTypes(amp.Command):
-    """Get a JSON Schema describing this rack's NOS types.
-
-    :since: 2.3
-    """
-
-    arguments = []
-    response = [(b"nos_types", StructureAsJSON())]
     errors = []
 
 

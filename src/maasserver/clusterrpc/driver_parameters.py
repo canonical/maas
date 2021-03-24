@@ -35,15 +35,12 @@ from operator import itemgetter
 from django import forms
 from jsonschema import validate
 
-from maasserver.clusterrpc.utils import call_clusters
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from maasserver.utils.forms import compose_invalid_choice_text
 from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
-from provisioningserver.drivers.nos import JSON_NOS_DRIVERS_SCHEMA
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
-from provisioningserver.rpc import cluster
 
 FIELD_TYPE_MAPPINGS = {
     "string": forms.CharField,
@@ -323,35 +320,3 @@ def add_nos_driver_parameters(
     if deployable is not None:
         params["deployable"] = deployable
     parameters_set.append(params)
-
-
-def get_all_nos_types_from_racks(controllers=None, ignore_errors=True):
-    """Query every rack controller and obtain all known NOS driver types.
-
-    :return: a list of power types matching the schema
-        provisioningserver.drivers.nos.JSON_NOS_DRIVERS_SCHEMA.
-    """
-    merged_types = []
-    responses = call_clusters(
-        cluster.DescribeNOSTypes,
-        controllers=controllers,
-        ignore_errors=ignore_errors,
-    )
-    for response in responses:
-        nos_types = response["nos_types"]
-        for nos_type in nos_types:
-            driver_type = nos_type.get("driver_type", "nos")
-            name = nos_type["name"]
-            fields = nos_type.get("fields", [])
-            description = nos_type["description"]
-            deployable = nos_type.get("deployable")
-            add_nos_driver_parameters(
-                driver_type,
-                name,
-                description,
-                fields,
-                merged_types,
-                deployable=deployable,
-            )
-    validate(merged_types, JSON_NOS_DRIVERS_SCHEMA)
-    return sorted(merged_types, key=itemgetter("description"))

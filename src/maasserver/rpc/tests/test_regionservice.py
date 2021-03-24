@@ -515,7 +515,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
 class TestRackClient(MAASTestCase):
     def test_defined_cache_calls(self):
         self.assertEqual(
-            [cluster.DescribePowerTypes, cluster.DescribeNOSTypes],
+            [cluster.DescribePowerTypes],
             RackClient.cache_calls,
         )
 

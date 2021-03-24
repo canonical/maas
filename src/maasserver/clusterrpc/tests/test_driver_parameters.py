@@ -15,7 +15,6 @@ from maasserver.clusterrpc.driver_parameters import (
     add_power_driver_parameters,
     get_driver_parameters_from_json,
     get_driver_types,
-    JSON_NOS_DRIVERS_SCHEMA,
     JSON_POWER_DRIVERS_SCHEMA,
     make_form_field,
     SETTING_PARAMETER_FIELD_SCHEMA,
@@ -450,18 +449,6 @@ class TestAddNOSTypeParameters(MAASServerTestCase):
             fields=[],
             parameters_set=[],
         )
-
-    def test_subsequent_parameters_set_is_valid(self):
-        parameters_set = []
-        fields = [self.make_field()]
-        add_nos_driver_parameters(
-            driver_type="nos",
-            name="blah",
-            description="baz",
-            fields=fields,
-            parameters_set=parameters_set,
-        )
-        jsonschema.validate(parameters_set, JSON_NOS_DRIVERS_SCHEMA)
 
 
 class TestPowerTypes(MAASTestCase):

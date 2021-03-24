@@ -75,7 +75,6 @@ from provisioningserver.dhcp.testing.config import (
     make_shared_network,
     make_shared_network_v1,
 )
-from provisioningserver.drivers.nos.registry import NOSDriverRegistry
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
@@ -447,30 +446,6 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         self.assertItemsEqual(
             PowerDriverRegistry.get_schema(detect_missing_packages=False),
             response["power_types"],
-        )
-
-
-class TestClusterProtocol_DescribeNOSTypes(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def test_describe_nos_types_is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(
-            cluster.DescribeNOSTypes.commandName
-        )
-        self.assertIsNotNone(responder)
-
-    @inlineCallbacks
-    def test_describe_nos_types_returns_jsonized_schema(self):
-
-        response = yield call_responder(
-            Cluster(), cluster.DescribeNOSTypes, {}
-        )
-
-        self.assertThat(response, KeysEqual("nos_types"))
-        self.assertItemsEqual(
-            NOSDriverRegistry.get_schema(), response["nos_types"]
         )
 
 

@@ -46,7 +46,6 @@ from provisioningserver.drivers.hardware.seamicro import (
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.drivers.hardware.vmware import probe_vmware_and_enlist
-from provisioningserver.drivers.nos.registry import NOSDriverRegistry
 from provisioningserver.drivers.power.hmcz import probe_hmcz_and_enlist
 from provisioningserver.drivers.power.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.power.msftocs import probe_and_enlist_msftocs
@@ -348,15 +347,6 @@ class Cluster(RPCProtocol):
                 PowerDriverRegistry.get_schema(detect_missing_packages=False)
             )
         }
-
-    @cluster.DescribeNOSTypes.responder
-    def describe_nos_types(self):
-        """describe_nos_types()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.DescribeNOSTypes`.
-        """
-        return {"nos_types": list(NOSDriverRegistry.get_schema())}
 
     @cluster.ListSupportedArchitectures.responder
     def list_supported_architectures(self):
