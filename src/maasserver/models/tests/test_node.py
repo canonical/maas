@@ -47,6 +47,7 @@ from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.clusterrpc.power import (
     power_cycle,
     power_off_node,
+    power_on_node,
     power_query,
 )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
@@ -1715,7 +1716,8 @@ class TestNode(MAASServerTestCase):
     def test_get_effective_power_info_is_False_for_unset_power_type(self):
         node = factory.make_Node(power_type="")
         self.assertEqual(
-            (False, False, False, None, None), node.get_effective_power_info()
+            (False, False, False, False, None, None),
+            node.get_effective_power_info(),
         )
 
     def test_get_effective_power_info_is_True_for_set_power_type(self):
@@ -1724,7 +1726,12 @@ class TestNode(MAASServerTestCase):
         gepp.return_value = sentinel.power_parameters
         self.assertEqual(
             PowerInfo(
-                True, True, False, node.power_type, sentinel.power_parameters
+                True,
+                True,
+                False,
+                False,
+                node.power_type,
+                sentinel.power_parameters,
             ),
             node.get_effective_power_info(),
         )
@@ -1735,7 +1742,7 @@ class TestNode(MAASServerTestCase):
         # For manual the power can never be turned off or on.
         gepp.return_value = {}
         self.assertEqual(
-            (False, False, False, "manual", {}),
+            (False, False, False, False, "manual", {}),
             node.get_effective_power_info(),
         )
 
@@ -1753,6 +1760,7 @@ class TestNode(MAASServerTestCase):
                     False,
                     False,
                     True,
+                    False,
                     node.power_type,
                     sentinel.power_parameters,
                 ),
@@ -1773,6 +1781,7 @@ class TestNode(MAASServerTestCase):
                     power_type != "manual",
                     power_type != "manual",
                     False,
+                    False,
                     power_type,
                     gepp(),
                 ),
@@ -1780,17 +1789,20 @@ class TestNode(MAASServerTestCase):
             )
 
     def test_get_effective_power_info_can_be_queried(self):
-        power_type = random.choice(
-            [
-                driver.name
-                for _, driver in PowerDriverRegistry
-                if driver.queryable
-            ]
+        power_driver = random.choice(
+            [driver for _, driver in PowerDriverRegistry if driver.queryable]
         )
-        node = factory.make_Node(power_type=power_type)
+        node = factory.make_Node(power_type=power_driver.name)
         gepp = self.patch(node, "get_effective_power_parameters")
         self.assertEqual(
-            PowerInfo(True, power_type != "manual", True, power_type, gepp()),
+            PowerInfo(
+                True,
+                power_driver.name != "manual",
+                True,
+                power_driver.can_set_boot_order,
+                power_driver.name,
+                gepp(),
+            ),
             node.get_effective_power_info(),
         )
 
@@ -1804,10 +1816,197 @@ class TestNode(MAASServerTestCase):
                 can_be_started=False,
                 can_be_stopped=False,
                 can_be_queried=False,
+                can_set_boot_order=False,
                 power_type="manual",
                 power_parameters={},
             ),
         )
+
+    def test_get_boot_order_network(self):
+        node = factory.make_Node(with_boot_disk=False, power_type="hmcz")
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+        node.boot_interface = random.choice(interfaces)
+        node.boot_disk = random.choice(block_devices)
+        node.save()
+
+        expected_boot_order = [node.boot_interface.serialize()]
+        expected_boot_order += [
+            iface.serialize()
+            for iface in interfaces
+            if iface.id != node.boot_interface.id
+        ]
+        expected_boot_order += [node.boot_disk.serialize()]
+        expected_boot_order += [
+            bd.serialize()
+            for bd in block_devices
+            if bd.id != node.boot_disk.id
+        ]
+
+        self.assertEqual(expected_boot_order, node._get_boot_order(True))
+
+    def test_get_boot_order_local(self):
+        node = factory.make_Node(with_boot_disk=False, power_type="hmcz")
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+        node.boot_interface = random.choice(interfaces)
+        node.boot_disk = random.choice(block_devices)
+        node.save()
+
+        expected_boot_order = [node.boot_disk.serialize()]
+        expected_boot_order += [
+            bd.serialize()
+            for bd in block_devices
+            if bd.id != node.boot_disk.id
+        ]
+        expected_boot_order += [node.boot_interface.serialize()]
+        expected_boot_order += [
+            iface.serialize()
+            for iface in interfaces
+            if iface.id != node.boot_interface.id
+        ]
+
+        self.assertEqual(expected_boot_order, node._get_boot_order(False))
+
+    def test_get_boot_order_network_no_boot_devices_set(self):
+        node = factory.make_Node(with_boot_disk=False, power_type="hmcz")
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+
+        self.assertEqual(
+            [obj.serialize() for obj in interfaces + block_devices],
+            node._get_boot_order(True),
+        )
+
+    def test_get_boot_order_local_no_boot_devices_set(self):
+        node = factory.make_Node(with_boot_disk=False, power_type="hmcz")
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+
+        self.assertEqual(
+            [obj.serialize() for obj in block_devices + interfaces],
+            node._get_boot_order(False),
+        )
+
+    def test_get_boot_order_auto_ephemeral(self):
+        node = factory.make_Node(
+            with_boot_disk=False, ephemeral_deploy=True, power_type="hmcz"
+        )
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+
+        self.assertEqual(
+            [obj.serialize() for obj in interfaces + block_devices],
+            node._get_boot_order(),
+        )
+
+    def test_get_boot_order_auto_exiting_rescue_mode(self):
+        node = factory.make_Node(
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            power_type="hmcz",
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=factory.pick_choice(
+                NODE_STATUS_CHOICES, but_not=[NODE_STATUS.DEPLOYED]
+            ),
+        )
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+
+        self.assertEqual(
+            [obj.serialize() for obj in interfaces + block_devices],
+            node._get_boot_order(),
+        )
+
+    def test_get_boot_order_auto_exiting_rescue_mode_deployed(self):
+        node = factory.make_Node(
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            power_type="hmcz",
+            status=NODE_STATUS.EXITING_RESCUE_MODE,
+            previous_status=NODE_STATUS.DEPLOYED,
+        )
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+
+        self.assertEqual(
+            [obj.serialize() for obj in block_devices + interfaces],
+            node._get_boot_order(),
+        )
+
+    def test_get_boot_order_auto_deployed(self):
+        node = factory.make_Node(
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            power_type="hmcz",
+            status=NODE_STATUS.DEPLOYED,
+        )
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+
+        self.assertEqual(
+            [obj.serialize() for obj in block_devices + interfaces],
+            node._get_boot_order(),
+        )
+
+    def test_get_boot_order_auto_not_deployed(self):
+        node = factory.make_Node(
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            power_type="hmcz",
+            status=factory.pick_choice(
+                NODE_STATUS_CHOICES, but_not=[NODE_STATUS.DEPLOYED]
+            ),
+        )
+        interfaces = [factory.make_Interface(node=node) for _ in range(5)]
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(5)
+        ]
+
+        self.assertEqual(
+            [obj.serialize() for obj in interfaces + block_devices],
+            node._get_boot_order(),
+        )
+
+    def test_set_boot_order(self):
+        node = factory.make_Node(interface=True, power_type="hmcz")
+        mock_power_control_node = self.patch(node, "_power_control_node")
+        mock_power_control_node.return_value = defer.succeed(None)
+        network_boot = factory.pick_bool()
+
+        node.set_boot_order(network_boot)
+
+        mock_power_control_node.assert_called_with(
+            ANY,
+            None,
+            node.get_effective_power_info(),
+            node._get_boot_order(network_boot),
+        )
+        self.assertTrue(mock_power_control_node.return_value.called)
+
+    def test_set_boot_order_does_nothing_if_unsupported(self):
+        node = factory.make_Node(interface=True, power_type="manual")
+        mock_power_control_node = self.patch(node, "_power_control_node")
+
+        node.set_boot_order(factory.pick_bool())
+
+        mock_power_control_node.assert_not_called()
 
     def test_get_effective_kernel_options_with_nothing_set(self):
         node = factory.make_Node()
@@ -2550,7 +2749,7 @@ class TestNode(MAASServerTestCase):
         expected_power_info.power_parameters["power_off_mode"] = "hard"
         self.expectThat(
             node._power_control_node,
-            MockCalledOnceWith(d, power_off_node, expected_power_info),
+            MockCalledOnceWith(d, power_off_node, expected_power_info, []),
         )
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
@@ -8954,9 +9153,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertThat(mock_claim_auto_ips, MockCalledOnce())
 
         # Calls _power_control_node when power_cycle.
-        self.assertThat(
-            mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY)
-        )
+        mock_power_control.assert_called_once_with(ANY, power_cycle, ANY, [])
 
     def test_claims_auto_ips_when_script_needs_it(self):
         user = factory.make_User()
@@ -9036,6 +9233,26 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
         self.assertThat(mock_claim_auto_ips, MockNotCalled())
 
+    def test_includes_boot_order_when_supported_by_power_driver(self):
+        user = factory.make_User()
+        on = factory.pick_bool()
+        node = self.make_acquired_node_with_interface(
+            user,
+            power_type="hmcz",
+            power_state=POWER_STATE.ON if on else POWER_STATE.OFF,
+        )
+        self.patch(Node, "_claim_auto_ips")
+        mock_power_control = self.patch(Node, "_power_control_node")
+
+        node.start(user)
+
+        mock_power_control.assert_called_once_with(
+            ANY,
+            power_cycle if on else power_on_node,
+            node.get_effective_power_info(),
+            node._get_boot_order(True),
+        )
+
     def test_manual_power_type_doesnt_call__power_control_node(self):
         user = factory.make_User()
         node = self.make_acquired_node_with_interface(
@@ -9099,9 +9316,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node.start(user)
 
         # Calls _power_control_node when power_cycle.
-        self.assertThat(
-            mock_power_control, MockCalledOnceWith(ANY, power_cycle, ANY)
-        )
+        mock_power_control.assert_called_once_with(ANY, power_cycle, ANY, [])
 
     def test_aborts_all_scripts_and_logs(self):
         user = factory.make_User()
@@ -9292,7 +9507,7 @@ class TestNode_Stop(MAASServerTestCase):
         expected_power_info.power_parameters["power_off_mode"] = stop_mode
         self.assertThat(
             mock_power_control,
-            MockCalledOnceWith(d, power_off_node, expected_power_info),
+            MockCalledOnceWith(d, power_off_node, expected_power_info, []),
         )
 
     def test_stop_allows_no_user(self):
@@ -9306,7 +9521,7 @@ class TestNode_Stop(MAASServerTestCase):
         expected_power_info.power_parameters["power_off_mode"] = stop_mode
         self.assertThat(
             mock_power_control,
-            MockCalledOnceWith(d, power_off_node, expected_power_info),
+            MockCalledOnceWith(d, power_off_node, expected_power_info, []),
         )
 
 
@@ -9425,9 +9640,19 @@ class TestNode_PowerCycle(MAASServerTestCase):
         mock_power_control = self.patch_autospec(node, "_power_control_node")
         node._power_cycle()
         expected_power_info = node.get_effective_power_info()
-        self.assertThat(
-            mock_power_control,
-            MockCalledOnceWith(d, power_cycle, expected_power_info),
+        mock_power_control.assert_called_once_with(
+            d, power_cycle, expected_power_info, []
+        )
+
+    def test_calls__power_control_node_with_power_cycle_and_boot_order(self):
+        d = self.patch_post_commit()
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(admin, power_type="hmcz")
+        mock_power_control = self.patch_autospec(node, "_power_control_node")
+        node._power_cycle()
+        expected_power_info = node.get_effective_power_info()
+        mock_power_control.assert_called_once_with(
+            d, power_cycle, expected_power_info, node._get_boot_order(True)
         )
 
 
@@ -9810,6 +10035,112 @@ class TestNode_PostCommit_PowerControl(MAASTransactionServerTestCase):
             new_power_state,
             routable_racks,
             none_routable_racks,
+        )
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_sets_boot_order_if_given(self):
+        d = self.patch_post_commit()
+        rack_controller = yield deferToDatabase(self.make_rack_controller)
+        node, power_info = yield deferToDatabase(
+            self.make_node,
+            layer2_rack=rack_controller,
+        )
+        boot_order = yield deferToDatabase(node._get_boot_order)
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers"
+        )
+        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+
+        # Add the client to getAllClients in so that its considered a to be a
+        # valid connection.
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Mock the confirm power driver check, we check in the test to make
+        # sure it gets called.
+        mock_confirm_power_driver = self.patch(
+            Node, "confirm_power_driver_operable"
+        )
+        mock_confirm_power_driver.return_value = defer.succeed(None)
+
+        mock_set_boot_order = self.patch(node_module, "set_boot_order")
+        mock_set_boot_order.return_value = defer.succeed(client)
+
+        # Testing only allows one thread at a time, but the way we are testing
+        # this would actually require multiple to be started at once. To
+        # by-pass this issue we mock `is_accessible` on the BMC model to return
+        # the value we are expecting.
+        self.patch(node.bmc, "is_accessible").return_value = True
+
+        mock_power_method = Mock()
+        yield node._power_control_node(
+            d, mock_power_method, power_info, boot_order
+        )
+
+        mock_getClientFromIdentifiers.assert_called_with(
+            [rack_controller.system_id]
+        )
+        mock_confirm_power_driver.assert_called_with(
+            client, power_info.power_type, client.ident
+        )
+        mock_set_boot_order.assert_called_with(
+            client, node.system_id, node.hostname, power_info, boot_order
+        )
+        mock_power_method.assert_called_with(
+            client, node.system_id, node.hostname, power_info
+        )
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_sets_boot_order_if_given_with_no_power_method(self):
+        d = self.patch_post_commit()
+        rack_controller = yield deferToDatabase(self.make_rack_controller)
+        node, power_info = yield deferToDatabase(
+            self.make_node,
+            layer2_rack=rack_controller,
+        )
+        boot_order = yield deferToDatabase(node._get_boot_order)
+
+        client = Mock()
+        client.ident = rack_controller.system_id
+        mock_getClientFromIdentifiers = self.patch(
+            node_module, "getClientFromIdentifiers"
+        )
+        mock_getClientFromIdentifiers.return_value = defer.succeed(client)
+
+        # Add the client to getAllClients in so that its considered a to be a
+        # valid connection.
+        self.patch(node_module, "getAllClients").return_value = [client]
+
+        # Mock the confirm power driver check, we check in the test to make
+        # sure it gets called.
+        mock_confirm_power_driver = self.patch(
+            Node, "confirm_power_driver_operable"
+        )
+        mock_confirm_power_driver.return_value = defer.succeed(None)
+
+        mock_set_boot_order = self.patch(node_module, "set_boot_order")
+        mock_set_boot_order.return_value = defer.succeed(client)
+
+        # Testing only allows one thread at a time, but the way we are testing
+        # this would actually require multiple to be started at once. To
+        # by-pass this issue we mock `is_accessible` on the BMC model to return
+        # the value we are expecting.
+        self.patch(node.bmc, "is_accessible").return_value = True
+
+        yield node._power_control_node(d, None, power_info, boot_order)
+
+        mock_getClientFromIdentifiers.assert_called_with(
+            [rack_controller.system_id]
+        )
+        mock_confirm_power_driver.assert_called_with(
+            client, power_info.power_type, client.ident
+        )
+        mock_set_boot_order.assert_called_with(
+            client, node.system_id, node.hostname, power_info, boot_order
         )
 
 

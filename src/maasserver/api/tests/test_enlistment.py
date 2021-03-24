@@ -31,7 +31,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
     def setUp(self):
         super().setUp()
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
-            False, False, False, None, None
+            False, False, False, False, None, None
         )
         ubuntu = factory.make_default_ubuntu_release_bootable()
         osystem, release = ubuntu.name.split("/")
@@ -294,7 +294,7 @@ class MachineHostnameEnlistmentTest(APITestCase.ForAnonymousAndUserAndAdmin):
     def setUp(self):
         super().setUp()
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
-            False, False, False, None, None
+            False, False, False, False, None, None
         )
         ubuntu = factory.make_default_ubuntu_release_bootable()
         osystem, release = ubuntu.name.split("/")
@@ -332,7 +332,7 @@ class NonAdminEnlistmentAPITest(APITestCase.ForAnonymousAndUser):
     def setUp(self):
         super().setUp()
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
-            False, False, False, None, None
+            False, False, False, False, None, None
         )
 
     def test_POST_non_admin_creates_machine_in_declared_state(self):
@@ -362,7 +362,7 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
     def setUp(self):
         super().setUp()
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
-            False, False, False, None, None
+            False, False, False, False, None, None
         )
 
     def test_POST_accept_not_allowed(self):
@@ -604,7 +604,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
         super().setUp()
         self.assertFalse(self.user.is_superuser)
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
-            False, False, False, None, None
+            False, False, False, False, None, None
         )
 
     def test_POST_accept_not_allowed(self):
@@ -766,7 +766,7 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
     def setUp(self):
         super().setUp()
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
-            False, False, False, None, None
+            False, False, False, False, None, None
         )
         ubuntu = factory.make_default_ubuntu_release_bootable()
         osystem, release = ubuntu.name.split("/")

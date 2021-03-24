@@ -83,6 +83,7 @@ from maasserver.clusterrpc.power import (
     power_on_node,
     power_query,
     power_query_all,
+    set_boot_order,
 )
 from maasserver.enum import (
     ALLOCATED_NODE_STATUSES,
@@ -227,6 +228,7 @@ PowerInfo = namedtuple(
         "can_be_started",
         "can_be_stopped",
         "can_be_queried",
+        "can_set_boot_order",
         "power_type",
         "power_parameters",
     ),
@@ -3127,7 +3129,7 @@ class Node(CleanSave, TimestampedModel):
             power_type = self.get_effective_power_type()
         except UnknownPowerType:
             maaslog.warning("%s: Unrecognised power type.", self.hostname)
-            return PowerInfo(False, False, False, None, None)
+            return PowerInfo(False, False, False, False, None, None)
         else:
             if power_type == "manual" or self.node_type in (
                 NODE_TYPE.REGION_CONTROLLER,
@@ -3141,15 +3143,85 @@ class Node(CleanSave, TimestampedModel):
             power_driver = PowerDriverRegistry.get_item(power_type)
             if power_driver is not None:
                 can_be_queried = power_driver.queryable
+                can_set_boot_order = power_driver.can_set_boot_order
             else:
                 can_be_queried = False
+                can_set_boot_order = False
             return PowerInfo(
                 can_be_started,
                 can_be_stopped,
                 can_be_queried,
+                can_set_boot_order,
                 power_type,
                 power_params,
             )
+
+    def _get_boot_order(self, network_boot=None):
+        """Return the expected boot order of the Node."""
+        # Return the list of known physical devices. Give preference to the
+        # currently defined boot device if available. Return all devices
+        # incase the system is setup in redundency(RAID or multiple NICs
+        # can route to MAAS).
+        interfaces = sorted(
+            [iface.serialize() for iface in self.interface_set.all()],
+            key=lambda iface: (
+                iface["id"] != self.boot_interface_id,
+                iface["id"],
+            ),
+        )
+        if self.boot_disk_id:
+            boot_disk_id = self.boot_disk.actual_instance.id
+        else:
+            boot_disk_id = None
+        block_devices = sorted(
+            [
+                bd.actual_instance.serialize()
+                for bd in self.blockdevice_set.all()
+                if isinstance(bd.actual_instance, PhysicalBlockDevice)
+            ],
+            key=lambda bd: (
+                bd["id"] != boot_disk_id,
+                bd["id"],
+            ),
+        )
+
+        if network_boot is None:
+            if self.ephemeral_deployment:
+                network_boot = False
+            elif self.status == NODE_STATUS.EXITING_RESCUE_MODE:
+                network_boot = self.previous_status != NODE_STATUS.DEPLOYED
+            else:
+                network_boot = self.status != NODE_STATUS.DEPLOYED
+
+        if network_boot:
+            return interfaces + block_devices
+        else:
+            return block_devices + interfaces
+
+    def set_boot_order(self, network_boot=None):
+        """Remotely configure the Node to network or local boot.
+
+        If supported by the power driver this function will configure a
+        Node remotely to either boot from the network or boot locally.
+        This isn't done as part of self.set_netboot() as power commands
+        already use self._power_control_node() which figures out which
+        rack controller to issue power commands from.
+        """
+        power_info = self.get_effective_power_info()
+        # Only send RPC call to set boot order if power driver
+        # supports it.
+        if not power_info.can_set_boot_order:
+            return
+
+        boot_order = self._get_boot_order(network_boot)
+
+        @asynchronous
+        def configure_boot_order():
+            return self._power_control_node(
+                succeed(None), None, power_info, boot_order
+            )
+
+        configure_boot_order().wait(120)
 
     def get_effective_special_filesystems(self):
         """Return special filesystems for the node."""
@@ -3677,7 +3749,9 @@ class Node(CleanSave, TimestampedModel):
     def set_netboot(self, on=True):
         """Set netboot on or off."""
         log.info(
-            "{hostname}: Turning on netboot for node", hostname=self.hostname
+            "{hostname}: Turning {status} netboot for node",
+            hostname=self.hostname,
+            status="on" if on else "off",
         )
         self.netboot = on
         self.save()
@@ -5566,11 +5640,20 @@ class Node(CleanSave, TimestampedModel):
             # this is not an error state.
             return None
 
+        if power_info.can_set_boot_order:
+            boot_order = self._get_boot_order()
+        else:
+            boot_order = []
+
         # Request that the node be powered on post-commit.
         if self.power_state == POWER_STATE.ON and allow_power_cycle:
-            d = self._power_control_node(d, power_cycle, power_info)
+            d = self._power_control_node(
+                d, power_cycle, power_info, boot_order
+            )
         else:
-            d = self._power_control_node(d, power_on_node, power_info)
+            d = self._power_control_node(
+                d, power_on_node, power_info, boot_order
+            )
 
         # Set the deployment timeout so the node is marked failed after
         # a period of time.
@@ -5636,12 +5719,19 @@ class Node(CleanSave, TimestampedModel):
             # it's a no-op.
             return None
 
+        if power_info.can_set_boot_order:
+            boot_order = self._get_boot_order()
+        else:
+            boot_order = []
+
         # Smuggle in a hint about how to power-off the self.
         power_info.power_parameters["power_off_mode"] = stop_mode
 
         # Request that the node be powered off post-commit.
         d = post_commit()
-        return self._power_control_node(d, power_off_node, power_info)
+        return self._power_control_node(
+            d, power_off_node, power_info, boot_order
+        )
 
     @asynchronous
     def power_query(self):
@@ -5714,7 +5804,7 @@ class Node(CleanSave, TimestampedModel):
         d.addCallback(cb_update_power)
         return d
 
-    def _power_control_node(self, defer, power_method, power_info):
+    def _power_control_node(self, defer, power_method, power_info, order=None):
         # Check if the BMC is accessible. If not we need to do some work to
         # make sure we can determine which rack controller can power
         # control this node.
@@ -5790,9 +5880,18 @@ class Node(CleanSave, TimestampedModel):
             if try_fallback:
                 d.addErrback(eb_fallback_clients)
             d.addCallback(cb_check_power_driver, power_info)
-            d.addCallback(
-                power_method, self.system_id, self.hostname, power_info
-            )
+            if order:
+                d.addCallback(
+                    set_boot_order,
+                    self.system_id,
+                    self.hostname,
+                    power_info,
+                    order,
+                )
+            if power_method:
+                d.addCallback(
+                    power_method, self.system_id, self.hostname, power_info
+                )
             return d
 
         # Power control the node.
@@ -5812,11 +5911,15 @@ class Node(CleanSave, TimestampedModel):
 
     def _power_cycle(self):
         """Power cycle the node."""
+        power_info = self.get_effective_power_info()
+        if power_info.can_set_boot_order:
+            boot_order = self._get_boot_order()
+        else:
+            boot_order = []
+
         # Request that the node be power cycled post-commit.
         d = post_commit()
-        return self._power_control_node(
-            d, power_cycle, self.get_effective_power_info()
-        )
+        return self._power_control_node(d, power_cycle, power_info, boot_order)
 
     @transactional
     def start_rescue_mode(self, user):
