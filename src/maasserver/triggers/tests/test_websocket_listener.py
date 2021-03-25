@@ -34,7 +34,6 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.config import Config
 from maasserver.models.node import Node
 from maasserver.models.partition import MIN_PARTITION_SIZE
-from maasserver.models.switch import Switch
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import UserSkipCreateAuthorisationTokenFixture
@@ -4885,78 +4884,6 @@ class TestNodeTypeChange(
         finally:
             yield listener1.stopService()
             yield listener2.stopService()
-
-
-class TestSwitchListener(
-    MAASTransactionServerTestCase, TransactionalHelpersMixin
-):
-    """End-to-end test of both the listeners code and the triggers code."""
-
-    @transactional
-    def create_switch(self, node):
-        return factory.make_Switch(node)
-
-    @transactional
-    def delete_switch(self, switch):
-        switch.delete()
-
-    @transactional
-    def set_switch_nos_driver(self, switch, nos_driver):
-        Switch.objects.update_or_create(
-            defaults={"nos_driver": nos_driver}, node=switch
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_on_switch_insert(self):
-        yield deferToDatabase(register_websocket_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        node = yield deferToDatabase(self.create_node)
-        listener.register("switch", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.create_switch, node)
-            event = yield dv.get(timeout=2)
-        finally:
-            yield listener.stopService()
-        self.assertEqual(("create", node.system_id), event)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_on_switch_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        node = yield deferToDatabase(self.create_node)
-        yield deferToDatabase(self.create_switch, node)
-        listener.register("switch", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(self.delete_switch, node)
-            event = yield dv.get(timeout=2)
-        finally:
-            yield listener.stopService()
-        self.assertEqual(("delete", node.system_id), event)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_calls_handler_on_switch_update(self):
-        yield deferToDatabase(register_websocket_triggers)
-        listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        node = yield deferToDatabase(self.create_node)
-        yield deferToDatabase(self.create_switch, node)
-        listener.register("switch", lambda *args: dv.set(args))
-        yield listener.startService()
-        try:
-            yield deferToDatabase(
-                self.set_switch_nos_driver, node, "new-driver"
-            )
-            event = yield dv.get(timeout=2)
-        finally:
-            yield listener.stopService()
-        self.assertEqual(("update", node.system_id), event)
 
 
 class TestNotificationListener(

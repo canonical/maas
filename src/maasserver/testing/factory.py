@@ -111,7 +111,6 @@ from maasserver.models.interface import Interface, InterfaceRelationship
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
-from maasserver.models.switch import Switch
 from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
@@ -613,21 +612,6 @@ class Factory(maastesting.factory.Factory):
             node.last_image_sync = last_image_sync
         node.save()
         return node.as_rack_controller()
-
-    def make_Switch(self, node=None, owner=None, **kwargs):
-        if owner is None:
-            owner = get_worker_user()
-        nos_kwargs = {
-            arg: kwargs.pop(arg)
-            for arg in ("nos_driver", "nos_parameters")
-            if arg in kwargs
-        }
-        if node is None:
-            node = self.make_Node(
-                owner=owner, node_type=NODE_TYPE.MACHINE, **kwargs
-            )
-            node.save()
-        return Switch.objects.create(node=node, **nos_kwargs)
 
     def make_RegionRackController(self, *args, **kwargs):
         region_rack = self.make_RackController(*args, **kwargs)

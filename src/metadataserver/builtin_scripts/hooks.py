@@ -23,7 +23,6 @@ from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.subnet import Subnet
-from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
@@ -344,7 +343,7 @@ def update_node_network_information(node, data, numa_nodes):
 
         current_interfaces.add(interface)
         interface.update_ip_addresses(iface.get("ips"))
-        if sriov_max_vf > 0:
+        if sriov_max_vf:
             interface.add_tag("sriov")
             interface.save(update_fields=["tags"])
 
@@ -741,7 +740,7 @@ def get_tags_from_block_info(block_info):
         sata: Storage device that is connected over SATA.
     """
     tags = []
-    if block_info["rpm"] > 0:
+    if block_info["rpm"]:
         tags.append("rotary")
         tags.append("%srpm" % block_info["rpm"])
     elif not block_info.get("maas_multipath"):
@@ -940,7 +939,7 @@ def update_node_physical_block_devices(node, data, numa_nodes):
     # Delete all the previous block devices that are no longer present
     # on the commissioned node.
     delete_block_device_ids = [bd.id for bd in previous_block_devices]
-    if len(delete_block_device_ids) > 0:
+    if delete_block_device_ids:
         PhysicalBlockDevice.objects.filter(
             id__in=delete_block_device_ids
         ).delete()
@@ -1041,7 +1040,6 @@ def process_lxd_results(node, output, exit_status):
 
 def create_metadata_by_modalias(node, output: bytes, exit_status):
     """Tags the node based on discovered hardware, determined by modaliases.
-    If nodes are detected as supported switches, they also get Switch objects.
 
     :param node: The node whose tags to set.
     :param output: Output from the LIST_MODALIASES_OUTPUT_NAME script
@@ -1059,11 +1057,10 @@ def create_metadata_by_modalias(node, output: bytes, exit_status):
     switch_tags_added, _ = retag_node_for_hardware_by_modalias(
         node, modaliases, SWITCH_TAG_NAME, SWITCH_HARDWARE
     )
-    if len(switch_tags_added) > 0:
+    if switch_tags_added:
         dmi_data = get_dmi_data(modaliases)
         vendor, model = detect_switch_vendor_model(dmi_data)
         add_switch_vendor_model_tags(node, vendor, model)
-        add_switch(node, vendor, model)
 
 
 def add_switch_vendor_model_tags(node, vendor, model):
@@ -1088,21 +1085,6 @@ def add_switch_vendor_model_tags(node, vendor, model):
             "%s: Added model tag '%s' for detected switch hardware."
             % (node.hostname, model)
         )
-
-
-def add_switch(node, vendor, model):
-    """Add Switch object representing the switch hardware."""
-    switch, created = Switch.objects.get_or_create(node=node)
-    logger.info("%s: detected as a switch." % node.hostname)
-    NodeMetadata.objects.update_or_create(
-        node=node, key=NODE_METADATA.VENDOR_NAME, defaults={"value": vendor}
-    )
-    NodeMetadata.objects.update_or_create(
-        node=node,
-        key=NODE_METADATA.PHYSICAL_MODEL_NAME,
-        defaults={"value": model},
-    )
-    return switch
 
 
 def update_node_fruid_metadata(node, output: bytes, exit_status):
@@ -1200,7 +1182,7 @@ def get_dmi_data(modaliases):
     for modalias in modaliases:
         if modalias.startswith("dmi:"):
             return frozenset(
-                [data for data in modalias.split(":")[1:] if len(data) > 0]
+                [data for data in modalias.split(":")[1:] if data]
             )
     return frozenset()
 
@@ -1292,7 +1274,7 @@ def determine_hardware_matches(modaliases, hardware_descriptors):
     ruled_out_hardware = []
     for candidate in hardware_descriptors:
         matches = filter_modaliases(modaliases, candidate["modaliases"])
-        if len(matches) > 0:
+        if matches:
             candidate = candidate.copy()
             candidate["matches"] = matches
             discovered_hardware.append(candidate)
@@ -1326,7 +1308,7 @@ def retag_node_for_hardware_by_modalias(
     discovered_hardware, ruled_out_hardware = determine_hardware_matches(
         modaliases, hardware_descriptors
     )
-    if len(discovered_hardware) > 0:
+    if discovered_hardware:
         if parent_tag is None:
             # Create the tag "just in time" if we found matching hardware, and
             # we hadn't created the tag yet.

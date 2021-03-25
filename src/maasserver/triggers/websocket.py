@@ -1238,31 +1238,6 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
     )
 
 
-def render_switch_notification_procedure(
-    proc_name, event_name, node_id_relation
-):
-    return dedent(
-        """\
-        CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
-        DECLARE
-          node RECORD;
-        BEGIN
-          SELECT system_id, node_type, parent_id INTO node
-          FROM maasserver_node
-          WHERE id = {node_id_relation};
-
-          PERFORM pg_notify('{event_name}',CAST(node.system_id AS text));
-          RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-        """.format(
-            proc_name=proc_name,
-            node_id_relation=node_id_relation,
-            event_name=event_name,
-        )
-    )
-
-
 def node_type_change():
     return dedent(
         """\
@@ -1492,24 +1467,6 @@ def register_websocket_triggers():
         fields=("version",),
         events=EVENTS_LUU,
     )
-
-    # Switch notifications
-    register_procedure(
-        render_switch_notification_procedure(
-            "switch_create_notify", "switch_create", "NEW.node_id"
-        )
-    )
-    register_procedure(
-        render_switch_notification_procedure(
-            "switch_update_notify", "switch_update", "NEW.node_id"
-        )
-    )
-    register_procedure(
-        render_switch_notification_procedure(
-            "switch_delete_notify", "switch_delete", "OLD.node_id"
-        )
-    )
-    register_triggers("maasserver_switch", "switch", fields=("nos_driver",))
 
     # NodeMetadata notifications
     register_procedure(

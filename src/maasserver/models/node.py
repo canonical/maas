@@ -2092,12 +2092,6 @@ class Node(CleanSave, TimestampedModel):
             )
         return iface
 
-    def is_switch(self):
-        # Avoid circular imports.
-        from maasserver.models.switch import Switch
-
-        return Switch.objects.filter(node=self).exists()
-
     def get_metadata(self):
         """Return all Node metadata key, value pairs as a dict."""
         return {item.key: item.value for item in self.nodemetadata_set.all()}

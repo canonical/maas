@@ -79,7 +79,6 @@ __all__ = [
     "StaticIPAddress",
     "StaticRoute",
     "Subnet",
-    "Switch",
     "Tag",
     "Template",
     "UnknownInterface",
@@ -188,7 +187,6 @@ from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.staticroute import StaticRoute
 from maasserver.models.subnet import Subnet
-from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.models.template import Template
 from maasserver.models.user import create_user

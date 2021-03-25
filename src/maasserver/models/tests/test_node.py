@@ -1467,15 +1467,6 @@ class TestNode(MAASServerTestCase):
         interfaces = UnknownInterface.objects.filter(mac_address=mac).count()
         self.assertEqual(0, interfaces)
 
-    def test_is_switch_no(self):
-        node = factory.make_Node()
-        self.assertFalse(node.is_switch())
-
-    def test_is_switch_yes(self):
-        node = factory.make_Node()
-        factory.make_Switch(node=node)
-        self.assertTrue(node.is_switch())
-
     def test_get_metadata_empty(self):
         node = factory.make_Node()
         self.assertEqual({}, node.get_metadata())

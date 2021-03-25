@@ -35,7 +35,6 @@ from maasserver.models.interface import Interface
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.numa import NUMANode
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.switch import Switch
 from maasserver.models.tag import Tag
 from maasserver.models.vlan import VLAN
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
@@ -46,7 +45,6 @@ from maastesting.matchers import MockNotCalled
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
-    add_switch,
     add_switch_vendor_model_tags,
     create_metadata_by_modalias,
     detect_switch_vendor_model,
@@ -940,9 +938,6 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
                     "bcm-trident2-asic",
                     "wedge40",
                 },
-                "expected_driver": "",
-                "expected_vendor": "accton",
-                "expected_model": "wedge40",
             },
         ),
         (
@@ -959,9 +954,6 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
                     "bcm-tomahawk-asic",
                     "wedge100",
                 },
-                "expected_driver": "",
-                "expected_vendor": "accton",
-                "expected_model": "wedge100",
             },
         ),
         (
@@ -969,9 +961,6 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
             {
                 "modaliases": b"pci:xxx\n" b"pci:yyy\n",
                 "expected_tags": set(),
-                "expected_driver": None,
-                "expected_vendor": None,
-                "expected_model": None,
             },
         ),
     )
@@ -981,26 +970,6 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
         create_metadata_by_modalias(node, self.modaliases, 0)
         tags = set(node.tags.all().values_list("name", flat=True))
         self.assertThat(tags, Equals(self.expected_tags))
-        if self.expected_driver is not None:
-            switch = Switch.objects.get(node=node)
-            self.assertThat(switch.nos_driver, Equals(self.expected_driver))
-        metadata = node.get_metadata()
-        self.assertThat(
-            metadata.get("vendor-name"), Equals(self.expected_vendor)
-        )
-        self.assertThat(
-            metadata.get("physical-model-name"), Equals(self.expected_model)
-        )
-
-
-class TestAddSwitchModels(MAASServerTestCase):
-    def test_sets_switch_driver_to_empty_string(self):
-        node = factory.make_Node()
-        switch = add_switch(node, "vendor", "switch")
-        self.assertEqual("", switch.nos_driver)
-        metadata = node.get_metadata()
-        self.assertEqual("vendor", metadata["vendor-name"])
-        self.assertEqual("switch", metadata["physical-model-name"])
 
 
 class TestUpdateFruidMetadata(MAASServerTestCase):
