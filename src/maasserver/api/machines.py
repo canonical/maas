@@ -837,7 +837,7 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
 
         @param (string) "{system_id}" [required=true] The machines's system_id.
 
-        @param (string) "comment" [required=true] Optional comment for the
+        @param (string) "comment" [required=false] Optional comment for the
         event log.
 
         @param (boolean) "erase" [required=false] Erase the disk when
