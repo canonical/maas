@@ -224,25 +224,24 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
 
 
 class TestGenerateRackControllerConfiguration(MAASServerTestCase):
-    """Tests for `generate_ntp_rack_controller_configuration`."""
-
     def test_yields_nothing_when_node_is_not_netboot_disabled(self):
+        node = factory.make_Node(osystem="ubuntu", install_rackd=True)
         configuration = generate_rack_controller_configuration(
-            node=factory.make_Node(osystem="ubuntu")
+            node=node,
         )
         self.assertEqual(list(configuration), [])
 
     def test_yields_nothing_when_node_is_not_ubuntu(self):
-        tag = factory.make_Tag(name="switch")
-        node = factory.make_Node(osystem="centos", netboot=False)
-        node.tags.add(tag)
+        node = factory.make_Node(
+            osystem="centos", netboot=False, install_rackd=True
+        )
         configuration = generate_rack_controller_configuration(node)
         self.assertEqual(list(configuration), [])
 
     def test_yields_configuration_with_ubuntu(self):
-        tag = factory.make_Tag(name="wedge100")
-        node = factory.make_Node(osystem="ubuntu", netboot=False)
-        node.tags.add(tag)
+        node = factory.make_Node(
+            osystem="ubuntu", netboot=False, install_rackd=True
+        )
         configuration = generate_rack_controller_configuration(node)
         secret = "1234"
         Config.objects.set_config("rpc_shared_secret", secret)
@@ -272,14 +271,16 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         )
 
     def test_yields_nothing_when_machine_install_rackd_false(self):
-        node = factory.make_Node(osystem="ubuntu", netboot=False)
-        node.install_rackd = False
+        node = factory.make_Node(
+            osystem="ubuntu", netboot=False, install_rackd=False
+        )
         configuration = generate_rack_controller_configuration(node)
         self.assertEqual(list(configuration), [])
 
     def test_yields_configuration_when_machine_install_rackd_true(self):
-        node = factory.make_Node(osystem="ubuntu", netboot=False)
-        node.install_rackd = True
+        node = factory.make_Node(
+            osystem="ubuntu", netboot=False, install_rackd=True
+        )
         configuration = generate_rack_controller_configuration(node)
         secret = "1234"
         Config.objects.set_config("rpc_shared_secret", secret)

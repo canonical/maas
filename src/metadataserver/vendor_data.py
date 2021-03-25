@@ -90,24 +90,14 @@ def generate_ntp_configuration(node):
 
 def generate_rack_controller_configuration(node):
     """Generate cloud-init configuration to install the rack controller."""
-
-    # FIXME: For now, we are using a tag ('switch') to deploy the rack
-    # controller but once the switch model is complete we need to switch.
-    # In the meatime we will leave it as is for testing purposes.
-    node_tags = node.tag_names()
     # To determine this is a machine that's accessing the metadata after
     # initial deployment, we use 'node.netboot'. This flag is set to off after
     # curtin has installed the operating system and before the machine reboots
     # for the first time.
     if (
-        node.netboot is False
+        not node.netboot
+        and node.install_rackd
         and node.osystem in ["ubuntu", "ubuntu-core"]
-        and (
-            "switch" in node_tags
-            or "wedge40" in node_tags
-            or "wedge100" in node_tags
-            or node.install_rackd is True
-        )
     ):
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
