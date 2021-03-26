@@ -25,18 +25,28 @@ from provisioningserver.utils.version import get_maas_version_track_channel
 
 
 def get_vendor_data(node, proxy):
-    return dict(
-        chain(
-            generate_system_info(node),
-            generate_snap_configuration(node, proxy),
-            generate_ntp_configuration(node),
-            generate_rack_controller_configuration(node),
-            generate_kvm_pod_configuration(node),
-            generate_ephemeral_netplan_lock_removal(node),
-            generate_ephemeral_deployment_network_configuration(node),
-            generate_vcenter_configuration(node),
-        )
+    generators = (
+        generate_system_info(node),
+        generate_snap_configuration(node, proxy),
+        generate_ntp_configuration(node),
+        generate_rack_controller_configuration(node),
+        generate_kvm_pod_configuration(node),
+        generate_ephemeral_netplan_lock_removal(node),
+        generate_ephemeral_deployment_network_configuration(node),
+        generate_vcenter_configuration(node),
     )
+    vendor_data = {}
+    for key, value in chain(*generators):
+        # some keys can be returned by different generators. In that case,
+        # collect entries from each generator.
+        if key in ("runcmd", "write_files"):
+            vendor_data.setdefault(key, []).extend(value)
+        else:
+            assert (
+                key not in vendor_data
+            ), f"vendor-data key {key} already in configuration"
+            vendor_data[key] = value
+    return vendor_data
 
 
 def generate_system_info(node):
@@ -77,15 +87,16 @@ def generate_ntp_configuration(node):
     MAAS assumes that IP addresses are "servers" and hostnames/FQDNs "pools".
     """
     ntp_servers = ntp.get_servers_for(node)
-    if len(ntp_servers) >= 1:
-        # Separate out IP addresses from the rest.
-        addrs, other = set(), set()
-        for ntp_server in map(normalise_address, ntp_servers):
-            bucket = addrs if isinstance(ntp_server, IPAddress) else other
-            bucket.add(ntp_server)
-        servers = [addr.format() for addr in sorted(addrs)]
-        pools = sorted(other)  # Hostnames and FQDNs only.
-        yield "ntp", {"servers": servers, "pools": pools}
+    if not ntp_servers:
+        return
+    # Separate out IP addresses from the rest.
+    addrs, other = set(), set()
+    for ntp_server in map(normalise_address, ntp_servers):
+        bucket = addrs if isinstance(ntp_server, IPAddress) else other
+        bucket.add(ntp_server)
+    servers = [addr.format() for addr in sorted(addrs)]
+    pools = sorted(other)  # Hostnames and FQDNs only.
+    yield "ntp", {"servers": servers, "pools": pools}
 
 
 def generate_rack_controller_configuration(node):
@@ -97,7 +108,7 @@ def generate_rack_controller_configuration(node):
     if (
         not node.netboot
         and node.install_rackd
-        and node.osystem in ["ubuntu", "ubuntu-core"]
+        and node.osystem in ("ubuntu", "ubuntu-core")
     ):
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
@@ -105,16 +116,8 @@ def generate_rack_controller_configuration(node):
         secret = Config.objects.get_config("rpc_shared_secret")
         source = get_maas_version_track_channel()
         yield "runcmd", [
-            ["snap", "install", "maas", f"--channel={source}"],
-            [
-                "/snap/bin/maas",
-                "init",
-                "rack",
-                "--maas-url",
-                maas_url,
-                "--secret",
-                secret,
-            ],
+            f"snap install maas --channel={source}",
+            f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
         ]
 
 
@@ -134,74 +137,73 @@ def generate_ephemeral_netplan_lock_removal(node):
 
 def generate_ephemeral_deployment_network_configuration(node):
     """Generate cloud-init network configuration for ephemeral deployment."""
-    if node.ephemeral_deployment:
-        osystem = node.get_osystem()
-        release = node.get_distro_series()
-        network_yaml_settings = get_network_yaml_settings(osystem, release)
-        network_config = NodeNetworkConfiguration(
-            node,
-            version=network_yaml_settings.version,
-            source_routing=network_yaml_settings.source_routing,
-        )
-        # Render the resulting YAML.
-        network_config_yaml = yaml.safe_dump(
-            network_config.config, default_flow_style=False
-        )
-        yield "write_files", [
-            {
-                "content": network_config_yaml,
-                "path": "/etc/netplan/50-maas.yaml",
-            }
-        ]
-        yield "runcmd", ["rm -rf /run/netplan", "netplan apply --debug"]
+    if not node.ephemeral_deployment:
+        return
+    osystem = node.get_osystem()
+    release = node.get_distro_series()
+    network_yaml_settings = get_network_yaml_settings(osystem, release)
+    network_config = NodeNetworkConfiguration(
+        node,
+        version=network_yaml_settings.version,
+        source_routing=network_yaml_settings.source_routing,
+    )
+    # Render the resulting YAML.
+    network_config_yaml = yaml.safe_dump(
+        network_config.config, default_flow_style=False
+    )
+    yield "write_files", [
+        {
+            "content": network_config_yaml,
+            "path": "/etc/netplan/50-maas.yaml",
+        }
+    ]
+    yield "runcmd", ["rm -rf /run/netplan", "netplan apply --debug"]
 
 
 def generate_kvm_pod_configuration(node):
     """Generate cloud-init configuration to install the node as a KVM pod."""
-    if node.netboot is False and node.install_kvm is True:
-        architecture = None
-        if node.architecture is not None:
-            architecture = node.architecture
-            if "/" in architecture:
-                architecture = architecture.split("/")[0]
-        runcmd = [
-            # Restrict the $PATH so that rbash can be used to limit what the
-            # virsh user can do if they manage to get a shell.
-            ["mkdir", "-p", "/home/virsh/bin"],
-            ["ln", "-s", "/usr/bin/virsh", "/home/virsh/bin/virsh"],
-            ["sh", "-c", 'echo "PATH=/home/virsh/bin" >> /home/virsh/.bashrc'],
-            # Use a ForceCommand to make sure the only thing the virsh user
-            # can do with SSH is communicate with libvirt.
+    if node.netboot or not node.install_kvm:
+        return
+    runcmd = [
+        # Restrict the $PATH so that rbash can be used to limit what the
+        # virsh user can do if they manage to get a shell.
+        ["mkdir", "-p", "/home/virsh/bin"],
+        ["ln", "-s", "/usr/bin/virsh", "/home/virsh/bin/virsh"],
+        ["sh", "-c", 'echo "PATH=/home/virsh/bin" >> /home/virsh/.bashrc'],
+        # Use a ForceCommand to make sure the only thing the virsh user
+        # can do with SSH is communicate with libvirt.
+        [
+            "sh",
+            "-c",
+            'printf "Match user virsh\\n'
+            "    X11Forwarding no\\n"
+            "    AllowTcpForwarding no\\n"
+            "    PermitTTY no\\n"
+            '    ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock\\n"'
+            "  >> /etc/ssh/sshd_config",
+        ],
+        # Make sure the 'virsh' user is allowed to access libvirt.
+        [
+            "/usr/sbin/usermod",
+            "--append",
+            "--groups",
+            "libvirt,libvirt-qemu",
+            "virsh",
+        ],
+        # SSH needs to be restarted in order for the above changes to
+        # take effect.
+        ["systemctl", "restart", "sshd"],
+        # Ensure services are ready before cloud-init finishes.
+        ["/bin/sleep", "10"],
+    ]
+    arch, _ = node.split_arch()
+    if arch == "ppc64el":
+        # XXX mpontillo 2018-10-12 - we should investigate if it might be
+        # better to add a tag to the node that includes a kernel parameter
+        # such as nosmt=force. (The only problem being that we should
+        # probably also remove it after the machine is released.)
+        runcmd.extend(
             [
-                "sh",
-                "-c",
-                'printf "Match user virsh\\n'
-                "    X11Forwarding no\\n"
-                "    AllowTcpForwarding no\\n"
-                "    PermitTTY no\\n"
-                '    ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock\\n"'
-                "  >> /etc/ssh/sshd_config",
-            ],
-            # Make sure the 'virsh' user is allowed to access libvirt.
-            [
-                "/usr/sbin/usermod",
-                "--append",
-                "--groups",
-                "libvirt,libvirt-qemu",
-                "virsh",
-            ],
-            # SSH needs to be restarted in order for the above changes to
-            # take effect.
-            ["systemctl", "restart", "sshd"],
-            # Ensure services are ready before cloud-init finishes.
-            ["/bin/sleep", "10"],
-        ]
-        if architecture == "ppc64el":
-            # XXX mpontillo 2018-10-12 - we should investigate if it might be
-            # better to add a tag to the node that includes a kernel parameter
-            # such as nosmt=force. (The only problem being that we should
-            # probably also remove it after the machine is released.)
-            runcmd.append(
                 [
                     "sh",
                     "-c",
@@ -210,40 +212,41 @@ def generate_kvm_pod_configuration(node):
                     "ppc64_cpu --smt=off\\n"
                     "exit 0\\n"
                     '"  >> /etc/rc.local',
-                ]
-            )
-            runcmd.append(["chmod", "+x", "/etc/rc.local"])
-            runcmd.append(["/etc/rc.local"])
-        yield "runcmd", runcmd
-        # Generate a 32-character password by encoding 24 bytes as base64.
-        virsh_password = b64encode(urandom(24), altchars=b".!").decode("ascii")
-        # Pass crypted (salted/hashed) version of the password to cloud-init.
-        encrypted_password = crypt(virsh_password)
-        # Store a cleartext version of the password so we can add a pod later.
-        NodeMetadata.objects.update_or_create(
-            node=node,
-            key="virsh_password",
-            defaults=dict(value=virsh_password),
+                ],
+                "chmod +x /etc/rc.local",
+                "/etc/rc.local",
+            ]
         )
-        # Make sure SSH password authentication is enabled.
-        yield "ssh_pwauth", True
-        # Create a custom 'virsh' user (in addition to the default user)
-        # with the encrypted password, and a locked-down shell.
-        yield "users", [
-            "default",
-            {
-                "name": "virsh",
-                "lock_passwd": False,
-                "passwd": encrypted_password,
-                "shell": "/bin/rbash",
-            },
-        ]
-        packages = ["libvirt-daemon-system", "libvirt-clients"]
-        # libvirt emulates UEFI on ARM64 however qemu-efi-aarch64 is only
-        # a suggestion on ARM64 so cloud-init doesn't install it.
-        if node.split_arch()[0] == "arm64":
-            packages.append("qemu-efi-aarch64")
-        yield "packages", packages
+    yield "runcmd", runcmd
+    # Generate a 32-character password by encoding 24 bytes as base64.
+    virsh_password = b64encode(urandom(24), altchars=b".!").decode("ascii")
+    # Pass crypted (salted/hashed) version of the password to cloud-init.
+    encrypted_password = crypt(virsh_password)
+    # Store a cleartext version of the password so we can add a pod later.
+    NodeMetadata.objects.update_or_create(
+        node=node,
+        key="virsh_password",
+        defaults=dict(value=virsh_password),
+    )
+    # Make sure SSH password authentication is enabled.
+    yield "ssh_pwauth", True
+    # Create a custom 'virsh' user (in addition to the default user)
+    # with the encrypted password, and a locked-down shell.
+    yield "users", [
+        "default",
+        {
+            "name": "virsh",
+            "lock_passwd": False,
+            "passwd": encrypted_password,
+            "shell": "/bin/rbash",
+        },
+    ]
+    packages = ["libvirt-daemon-system", "libvirt-clients"]
+    # libvirt emulates UEFI on ARM64 however qemu-efi-aarch64 is only
+    # a suggestion on ARM64 so cloud-init doesn't install it.
+    if node.split_arch()[0] == "arm64":
+        packages.append("qemu-efi-aarch64")
+    yield "packages", packages
 
 
 def generate_vcenter_configuration(node):
@@ -274,7 +277,7 @@ def generate_vcenter_configuration(node):
         ).items()
         if value
     }
-    if len(configs) != 0:
+    if configs:
         yield "write_files", [
             {
                 "content": yaml.safe_dump(configs),

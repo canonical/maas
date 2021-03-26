@@ -30,6 +30,8 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockNotCalled
 from metadataserver.vendor_data import (
     generate_ephemeral_deployment_network_configuration,
+    generate_ephemeral_netplan_lock_removal,
+    generate_kvm_pod_configuration,
     generate_ntp_configuration,
     generate_rack_controller_configuration,
     generate_snap_configuration,
@@ -45,6 +47,23 @@ class TestGetVendorData(MAASServerTestCase):
     def test_returns_dict(self):
         node = factory.make_Node()
         self.assertThat(get_vendor_data(node, None), IsInstance(dict))
+
+    def test_combines_key_values(self):
+        secret = factory.make_string()
+        Config.objects.set_config("rpc_shared_secret", secret)
+        node = factory.make_Node(
+            netboot=False, install_rackd=True, osystem="ubuntu"
+        )
+        config = get_vendor_data(node, None)
+        channel = version.get_maas_version_track_channel()
+        self.assertEqual(
+            config["runcmd"],
+            [
+                f"snap install maas --channel={channel}",
+                f"/snap/bin/maas init rack --maas-url http://localhost:5240/MAAS --secret {secret}",
+                "rm -rf /run/netplan",
+            ],
+        )
 
     def test_includes_no_system_information_if_no_default_user(self):
         node = factory.make_Node(owner=factory.make_User())
@@ -255,16 +274,8 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                 (
                     "runcmd",
                     [
-                        ["snap", "install", "maas", f"--channel={channel}"],
-                        [
-                            "/snap/bin/maas",
-                            "init",
-                            "rack",
-                            "--maas-url",
-                            maas_url,
-                            "--secret",
-                            secret,
-                        ],
+                        f"snap install maas --channel={channel}",
+                        f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
                     ],
                 ),
             ],
@@ -294,35 +305,27 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                 (
                     "runcmd",
                     [
-                        ["snap", "install", "maas", f"--channel={channel}"],
-                        [
-                            "/snap/bin/maas",
-                            "init",
-                            "rack",
-                            "--maas-url",
-                            maas_url,
-                            "--secret",
-                            secret,
-                        ],
+                        f"snap install maas --channel={channel}",
+                        f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
                     ],
                 ),
             ],
         )
 
+
+class TestGenerateKVMPodConfiguration(MAASServerTestCase):
     def test_yields_configuration_when_machine_install_kvm_true(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, osystem="ubuntu", netboot=False
+            status=NODE_STATUS.DEPLOYING,
+            osystem="ubuntu",
+            netboot=False,
+            install_kvm=True,
         )
-        node.install_kvm = True
-        configuration = get_vendor_data(node, None)
-        config = str(dict(configuration))
-        self.assertThat(config, Contains("virsh"))
-        self.assertThat(config, Contains("ssh_pwauth"))
-        self.assertThat(config, Contains("rbash"))
-        self.assertThat(config, Contains("libvirt-daemon-system"))
-        self.assertThat(config, Contains("ForceCommand"))
-        self.assertThat(config, Contains("libvirt-clients"))
-        self.assertThat(config, Not(Contains("qemu-efi-aarch64")))
+        config = list(generate_kvm_pod_configuration(node))
+        self.assertIn(("ssh_pwauth", True), config)
+        self.assertIn(
+            ("packages", ["libvirt-daemon-system", "libvirt-clients"]), config
+        )
         # Check that a password was saved for the pod-to-be.
         virsh_password_meta = NodeMetadata.objects.filter(
             node=node, key="virsh_password"
@@ -335,29 +338,31 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
             osystem="ubuntu",
             netboot=False,
             architecture="ppc64el/generic",
+            install_kvm=True,
         )
-        node.install_kvm = True
-        configuration = get_vendor_data(node, None)
-        config = dict(configuration)
-        self.assertThat(
-            config["runcmd"],
-            Contains(
-                [
-                    "sh",
-                    "-c",
-                    'printf "'
-                    "#!/bin/sh\\n"
-                    "ppc64_cpu --smt=off\\n"
-                    "exit 0\\n"
-                    '"  >> /etc/rc.local',
-                ]
-            ),
+        configs = list(generate_kvm_pod_configuration(node))
+        self.assertEqual(
+            ["runcmd", "ssh_pwauth", "users", "packages"],
+            [key for key, config in configs],
         )
-        self.assertThat(
-            config["runcmd"], Contains(["chmod", "+x", "/etc/rc.local"])
-        )
-        self.assertThat(config["runcmd"], Contains(["/etc/rc.local"]))
-        self.assertThat(config, Not(Contains("qemu-efi-aarch64")))
+        for key, config in configs:
+            if key == "runcmd":
+                self.assertIn(
+                    [
+                        "sh",
+                        "-c",
+                        'printf "'
+                        "#!/bin/sh\\n"
+                        "ppc64_cpu --smt=off\\n"
+                        "exit 0\\n"
+                        '"  >> /etc/rc.local',
+                    ],
+                    config,
+                )
+                self.assertIn("chmod +x /etc/rc.local", config)
+                self.assertIn("/etc/rc.local", config)
+            elif key == "packages":
+                self.assertNotIn(config, "qemu-efi-aarch64")
 
     def test_yields_configuration_when_arm64_kvm(self):
         node = factory.make_Node(
@@ -384,35 +389,29 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
 
 
 class TestGenerateEphemeralNetplanLockRemoval(MAASServerTestCase):
-    """Tests for `generate_ephemeral_netplan_lock_removal`."""
-
     def test_does_nothing_if_deploying(self):
         # MAAS transitions a machine from DEPLOYING to DEPLOYED after
         # user_data has been requested. Make sure deploying nodes don't
         # get this config.
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        configuration = get_vendor_data(node, None)
-        config = dict(configuration)
-        self.assertNotIn("runcmd", config)
+        config = list(generate_ephemeral_netplan_lock_removal(node))
+        self.assertEqual(config, [])
 
     def test_removes_lock_when_ephemeral(self):
         node = factory.make_Node(
             status=random.choice(COMMISSIONING_LIKE_STATUSES)
         )
-        configuration = get_vendor_data(node, None)
-        config = dict(configuration)
-        self.assertThat(config["runcmd"], Contains("rm -rf /run/netplan"))
+        config = list(generate_ephemeral_netplan_lock_removal(node))
+        self.assertEqual(config, [("runcmd", ["rm -rf /run/netplan"])])
 
 
 class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
-    """Tests for `generate_ephemeral_deployment_network_configuration`."""
-
     def test_yields_nothing_when_node_is_not_ephemeral_deployment(self):
         node = factory.make_Node()
-        configuration = generate_ephemeral_deployment_network_configuration(
-            node
+        config = list(
+            generate_ephemeral_deployment_network_configuration(node)
         )
-        self.assertThat(dict(configuration), Equals({}))
+        self.assertEqual(config, [])
 
     def test_yields_configuration_when_node_is_ephemeral_deployment(self):
         node = factory.make_Node(
@@ -420,20 +419,29 @@ class TestGenerateEphemeralDeploymentNetworkConfiguration(MAASServerTestCase):
             ephemeral_deploy=True,
             status=NODE_STATUS.DEPLOYING,
         )
-        configuration = get_vendor_data(node, None)
-        config = dict(configuration)
-        self.assertThat(
-            config["write_files"][0]["path"],
-            Contains("/etc/netplan/50-maas.yaml"),
+        config = list(
+            generate_ephemeral_deployment_network_configuration(node)
         )
-        # Make sure netplan's lock is removed before applying the config
-        self.assertEqual(config["runcmd"][0], "rm -rf /run/netplan")
-        self.assertEqual(config["runcmd"][1], "netplan apply --debug")
+        self.assertEqual(
+            config,
+            [
+                (
+                    "write_files",
+                    [
+                        {
+                            "path": "/etc/netplan/50-maas.yaml",
+                            "content": yaml.safe_dump(
+                                {"network": {"version": 2}}
+                            ),
+                        },
+                    ],
+                ),
+                ("runcmd", ["rm -rf /run/netplan", "netplan apply --debug"]),
+            ],
+        )
 
 
 class TestGenerateVcenterConfiguration(MAASServerTestCase):
-    """Tests for `generate_vcenter_configuration`."""
-
     def test_does_nothing_if_not_vmware(self):
         mock_get_configs = self.patch(Config.objects, "get_configs")
         node = factory.make_Node(

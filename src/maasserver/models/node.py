@@ -3762,10 +3762,9 @@ class Node(CleanSave, TimestampedModel):
 
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
-        if self.architecture is None or self.architecture == "":
+        if not self.architecture:
             return ("", "")
-        arch, subarch = self.architecture.split("/")
-        return (arch, subarch)
+        return tuple(self.architecture.split("/"))
 
     def mark_failed(
         self,
