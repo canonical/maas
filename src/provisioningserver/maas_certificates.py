@@ -13,18 +13,14 @@ from OpenSSL import crypto
 
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.fs import NamedLock
-from provisioningserver.utils.snap import get_snap_common_path, running_in_snap
+from provisioningserver.utils.snap import running_in_snap, SnapPaths
 
 if running_in_snap():
-    MAAS_PRIVATE_KEY = os.path.join(
-        get_snap_common_path(), "certificates", "maas.key"
-    )
-    MAAS_PUBLIC_KEY = os.path.join(
-        get_snap_common_path(), "certificates", "maas.pub"
-    )
-    MAAS_CERTIFICATE = os.path.join(
-        get_snap_common_path(), "certificates", "maas.crt"
-    )
+    _certificates_path = SnapPaths.from_environ().common / "certificates"
+    MAAS_PRIVATE_KEY = str(_certificates_path / "maas.key")
+    MAAS_PUBLIC_KEY = str(_certificates_path / "maas.pub")
+    MAAS_CERTIFICATE = str(_certificates_path / "maas.crt")
+    del _certificates_path
 else:
     MAAS_PRIVATE_KEY = get_tentative_data_path(
         "/etc/maas/certificates/maas.key"

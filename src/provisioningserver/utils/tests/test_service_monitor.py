@@ -47,6 +47,7 @@ from provisioningserver.utils.service_monitor import (
     ToggleableService,
 )
 from provisioningserver.utils.shell import get_env_with_bytes_locale
+from provisioningserver.utils.snap import SnapPaths
 from provisioningserver.utils.twisted import pause
 
 EMPTY_SET = frozenset()
@@ -618,7 +619,9 @@ class TestServiceMonitor(MAASTestCase):
     @inlineCallbacks
     def test_execSupervisorServiceAction_calls_supervisorctl(self):
         snap_path = factory.make_name("path")
-        self.patch(snap, "get_snap_path").return_value = snap_path
+        self.patch(snap.SnapPaths, "from_environ").return_value = SnapPaths(
+            snap=snap_path
+        )
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         action = factory.make_name("action")
@@ -645,7 +648,9 @@ class TestServiceMonitor(MAASTestCase):
     @inlineCallbacks
     def test_execSupervisorServiceAction_emulates_kill(self):
         snap_path = factory.make_name("path")
-        self.patch(snap, "get_snap_path").return_value = snap_path
+        self.patch(snap.SnapPaths, "from_environ").return_value = SnapPaths(
+            snap=snap_path
+        )
         service_monitor = self.make_service_monitor()
         service_name = factory.make_name("service")
         fake_pid = random.randint(1, 100)
@@ -688,7 +693,9 @@ class TestServiceMonitor(MAASTestCase):
         example_stdout = example_text[: len(example_text) // 2]
         example_stderr = example_text[len(example_text) // 2 :]
         snap_path = factory.make_name("path")
-        self.patch(snap, "get_snap_path").return_value = snap_path
+        self.patch(snap.SnapPaths, "from_environ").return_value = SnapPaths(
+            snap=snap_path
+        )
         service_monitor = self.make_service_monitor()
         mock_getProcessOutputAndValue = self.patch(
             service_monitor_module, "getProcessOutputAndValue"

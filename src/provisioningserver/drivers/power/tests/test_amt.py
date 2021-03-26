@@ -1,10 +1,9 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.drivers.power.amt`."""
-
 
 from os.path import dirname, join
+from pathlib import Path
 from random import choice
 from textwrap import dedent
 from unittest.mock import call, sentinel
@@ -23,6 +22,7 @@ from provisioningserver.drivers.power import (
 from provisioningserver.drivers.power import amt as amt_module
 from provisioningserver.drivers.power.amt import AMT_ERRORS, AMTPowerDriver
 from provisioningserver.utils.shell import has_command_available, ProcessResult
+from provisioningserver.utils.snap import SnapPaths
 
 AMTTOOL_OUTPUT = dedent(
     """\
@@ -353,8 +353,8 @@ class TestAMTPowerDriver(MAASTestCase):
 
     def test_issue_wsman_has_config_file_from_snap(self):
         self.patch(
-            amt_module.snap, "get_snap_path"
-        ).return_value = "/snap/maas/current"
+            amt_module.snap.SnapPaths, "from_environ"
+        ).return_value = SnapPaths(snap=Path("/snap/maas/current"))
         ip_address = factory.make_ipv4_address()
         power_pass = factory.make_name("power_pass")
         amt_power_driver = AMTPowerDriver()

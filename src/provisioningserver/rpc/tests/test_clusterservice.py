@@ -1,9 +1,6 @@
 # Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the cluster's RPC implementation."""
-
-
 from hashlib import sha256
 from hmac import HMAC
 from itertools import product
@@ -4347,7 +4344,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
 
     def test_issues_restart_snap(self):
         self.patch(clusterservice, "running_in_snap").return_value = True
-        self.patch(clusterservice, "get_snap_path").return_value = "/"
         mock_call_and_check = self.patch(clusterservice, "call_and_check")
         response = call_responder(
             Cluster(), cluster.DisableAndShutoffRackd, {}
@@ -4377,7 +4373,6 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
 
     def test_snap_ignores_signal_error_code_on_restart(self):
         self.patch(clusterservice, "running_in_snap").return_value = True
-        self.patch(clusterservice, "get_snap_path").return_value = "/"
         mock_call_and_check = self.patch(clusterservice, "call_and_check")
         mock_call_and_check.side_effect = ExternalProcessError(
             -15, "maas-wrapper", "failure"

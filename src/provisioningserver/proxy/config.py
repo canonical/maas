@@ -52,14 +52,15 @@ def write_config(
     if peer_proxies is None:
         peer_proxies = []
 
+    snap_paths = snap.SnapPaths.from_environ()
     context = {
         "modified": str(datetime.date.today()),
         "fqdn": socket.getfqdn(),
         "cidrs": allowed_cidrs,
         "running_in_snap": snap.running_in_snap(),
-        "snap_path": snap.get_snap_path(),
-        "snap_data_path": snap.get_snap_data_path(),
-        "snap_common_path": snap.get_snap_common_path(),
+        "snap_path": snap_paths.snap,
+        "snap_data_path": snap_paths.data,
+        "snap_common_path": snap_paths.common,
         "dns_v4_first": prefer_v4_proxy,
         "maas_proxy_port": maas_proxy_port,
     }

@@ -431,7 +431,7 @@ class AMTPowerDriver(PowerDriver):
             return boot_mode
 
     def _get_wsman_command(self, *args):
-        base_path = snap.get_snap_path() or "/"
+        base_path = snap.SnapPaths.from_environ().snap or "/"
         return (
             "wsman",
             "-C",

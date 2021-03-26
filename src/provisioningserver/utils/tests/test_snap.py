@@ -15,46 +15,37 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils import snap
 
 
-class TestSnapUtils(MAASTestCase):
-    def test_running_in_snap_returns_True(self):
+class TestSnapPaths(MAASTestCase):
+    def test_from_environ_no_env(self):
+        paths = snap.SnapPaths.from_environ(environ={})
+        self.assertIsNone(paths.snap)
+        self.assertIsNone(paths.common)
+        self.assertIsNone(paths.data)
+
+    def test_from_environ(self):
+        paths = snap.SnapPaths.from_environ(
+            environ={
+                "SNAP": "/snap/base",
+                "SNAP_COMMON": "/snap/common",
+                "SNAP_DATA": "/snap/data",
+            }
+        )
+        self.assertEqual(paths.snap, Path("/snap/base"))
+        self.assertEqual(paths.common, Path("/snap/common"))
+        self.assertEqual(paths.data, Path("/snap/data"))
+
+
+class TestRunningInSna(MAASTestCase):
+    def test_in_snap(self):
         self.patch(os, "environ", {"SNAP": factory.make_name()})
         self.assertTrue(snap.running_in_snap())
 
-    def test_running_in_snap_returns_False(self):
+    def test_not_in_snap(self):
         self.patch(os, "environ", {})
         self.assertFalse(snap.running_in_snap())
 
-    def test_get_snap_path_returns_path(self):
-        path = factory.make_name()
-        self.patch(os, "environ", {"SNAP": path})
-        self.assertEqual(path, snap.get_snap_path())
 
-    def test_get_snap_path_returns_None(self):
-        self.patch(os, "environ", {})
-        self.assertIsNone(snap.get_snap_path())
-
-    def test_get_snap_data_path_returns_path(self):
-        path = factory.make_name()
-        self.patch(os, "environ", {"SNAP_DATA": path})
-        self.assertEqual(path, snap.get_snap_data_path())
-
-    def test_get_snap_data_path_returns_None(self):
-        self.patch(os, "environ", {})
-        self.assertIsNone(snap.get_snap_data_path())
-
-    def test_get_snap_common_path_returns_path(self):
-        path = factory.make_name()
-        self.patch(os, "environ", {"SNAP_COMMON": path})
-        self.assertEqual(path, snap.get_snap_common_path())
-
-    def test_get_snap_common_path_returns_None(self):
-        self.patch(os, "environ", {})
-        self.assertIsNone(snap.get_snap_common_path())
-
-    def test_get_snap_version_returns_None_when_no_snap(self):
-        self.patch(snap, "get_snap_path").return_value = None
-        self.assertIsNone(snap.get_snap_version())
-
+class TestGetSnapVersion(MAASTestCase):
     def _get_snap_version(self, snap_yaml):
         """Arrange for `snap_yaml` to be loaded by `get_snap_version`.
 
@@ -68,6 +59,10 @@ class TestSnapUtils(MAASTestCase):
         with EnvironmentVariable("SNAP", str(snap_path)):
             return snap.get_snap_version()
 
+    def test_get_snap_version_returns_None_when_no_snap(self):
+        self.patch(os, "environ", {})
+        self.assertIsNone(snap.get_snap_version())
+
     def test_get_snap_version_returns_version_from_meta(self):
         version = factory.make_name("version")
         snap_yaml = yaml.safe_dump({"version": version})
@@ -77,6 +72,8 @@ class TestSnapUtils(MAASTestCase):
         snap_yaml = "version: !!python/object/apply:os.getcwd []"
         self.assertRaises(yaml.YAMLError, self._get_snap_version, snap_yaml)
 
+
+class TestGetSnapMode(MAASTestCase):
     def _write_snap_mode(self, mode):
         snap_common_path = Path(self.make_dir())
         snap_mode_path = snap_common_path.joinpath("snap_mode")

@@ -502,7 +502,10 @@ class ServiceMonitor:
         :return: tuple (exit code, std-output, std-error)
         """
         env = get_env_with_bytes_locale()
-        cmd = os.path.join(snap.get_snap_path(), "bin", "run-supervisorctl")
+
+        cmd = os.path.join(
+            snap.SnapPaths.from_environ().snap, "bin", "run-supervisorctl"
+        )
 
         # supervisord doesn't support native kill like systemd. Emulate this
         # behaviour by getting the PID of the process and then killing the PID.

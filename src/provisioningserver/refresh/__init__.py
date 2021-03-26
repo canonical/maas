@@ -21,7 +21,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
-from provisioningserver.utils.snap import get_snap_path
+from provisioningserver.utils.snap import SnapPaths
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("refresh")
@@ -46,7 +46,7 @@ def get_resources_bin_path():
     if is_dev_environment():
         path = "src/machine-resources/bin"
     else:
-        prefix = get_snap_path() or ""
+        prefix = SnapPaths.from_environ().snap or ""
         path = f"{prefix}/usr/share/maas/machine-resources"
     return os.path.join(path, get_architecture())
 

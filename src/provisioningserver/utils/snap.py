@@ -5,6 +5,7 @@
 
 import os
 from pathlib import Path
+from typing import NamedTuple, Optional
 
 import yaml
 
@@ -14,35 +15,47 @@ def running_in_snap():
     return "SNAP" in os.environ
 
 
-def get_snap_path():
-    """Return the path into the snap."""
-    return os.environ.get("SNAP", None)
+class SnapPaths(NamedTuple):
+    """Paths inside a snap."""
 
+    snap: Optional[Path] = None
+    common: Optional[Path] = None
+    data: Optional[Path] = None
 
-def get_snap_data_path():
-    """Return the path to snap data."""
-    return os.environ.get("SNAP_DATA", None)
-
-
-def get_snap_common_path():
-    """Return the path to snap common."""
-    return os.environ.get("SNAP_COMMON", None)
+    @classmethod
+    def from_environ(cls, environ=None):
+        """Return snap paths from the environment."""
+        if environ is None:
+            environ = os.environ
+        var_map = {
+            "snap": "SNAP",
+            "common": "SNAP_COMMON",
+            "data": "SNAP_DATA",
+        }
+        args = {}
+        for key, var in var_map.items():
+            value = environ.get(var, None)
+            if value:
+                value = Path(value)
+            args[key] = value
+        return cls(**args)
 
 
 def get_snap_version():
     """Return the version string in the snap metadata."""
-    snap_path = get_snap_path()
-    if snap_path is None:
+    snap_paths = SnapPaths.from_environ()
+    if not snap_paths.snap:
         return None
-    meta_path = os.path.join(snap_path, "meta", "snap.yaml")
-    with open(meta_path, "r") as fp:
+
+    with (snap_paths.snap / "meta/snap.yaml").open() as fp:
         snap_meta = yaml.safe_load(fp)
     return snap_meta["version"]
 
 
 def get_snap_mode():
     """Return the snap mode."""
-    path = Path(get_snap_common_path()) / "snap_mode"
+    snap_paths = SnapPaths.from_environ()
+    path = snap_paths.common / "snap_mode"
     if not path.exists():
         return None
     mode = path.read_text().strip()

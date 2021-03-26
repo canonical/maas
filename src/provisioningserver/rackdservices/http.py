@@ -175,11 +175,8 @@ class RackHTTPService(TimerService):
                 {
                     "upstream_http": list(sorted(upstream_http)),
                     "resource_root": self._resource_root,
-                    "machine_resources": os.path.join(
-                        snap.get_snap_path(), "usr/share/maas"
-                    )
-                    if (snap.running_in_snap())
-                    else "/usr/share/maas",
+                    "machine_resources": snap.SnapPaths.from_environ().snap
+                    or "/usr/share/maas",
                 }
             )
         except NameError as error:
