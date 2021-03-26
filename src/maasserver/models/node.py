@@ -3764,7 +3764,7 @@ class Node(CleanSave, TimestampedModel):
         """Return architecture and subarchitecture, as a tuple."""
         if not self.architecture:
             return ("", "")
-        return tuple(self.architecture.split("/"))
+        return tuple(self.architecture.split("/", 1))
 
     def mark_failed(
         self,

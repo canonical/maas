@@ -424,7 +424,7 @@ def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
     osystem = node.get_osystem()
     series = node.get_distro_series()
-    arch, subarch = node.architecture.split("/")
+    arch, subarch = node.split_arch()
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
     # Per etc/services cluster is opening port 5248 to serve images via HTTP
@@ -666,8 +666,7 @@ def get_preseed_filenames(
     elements.append(osystem)
     # Add architecture/sub-architecture.
     if node is not None:
-        arch = split_subarch(node.architecture)
-        elements.extend(arch)
+        elements.extend(node.split_arch())
     # Add release.
     elements.append(release)
     # Add hostname.
@@ -689,11 +688,6 @@ def get_preseed_filenames(
         elements.pop()
     if default:
         yield GENERIC_FILENAME
-
-
-def split_subarch(architecture):
-    """Split the architecture and the subarchitecture."""
-    return architecture.split("/")
 
 
 def compose_filename(elements):

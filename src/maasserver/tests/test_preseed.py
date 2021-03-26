@@ -69,7 +69,6 @@ from maasserver.preseed import (
     PreseedTemplate,
     render_enlistment_preseed,
     render_preseed,
-    split_subarch,
     TemplateNotFoundError,
 )
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
@@ -112,16 +111,6 @@ class BootImageHelperMixin:
         ]
 
 
-class TestSplitSubArch(MAASServerTestCase):
-    """Tests for `split_subarch`."""
-
-    def test_split_subarch_returns_list(self):
-        self.assertEqual(["amd64"], split_subarch("amd64"))
-
-    def test_split_subarch_splits_sub_architecture(self):
-        self.assertEqual(["amd64", "test"], split_subarch("amd64/test"))
-
-
 class TestGetNetlocAndPath(MAASServerTestCase):
     """Tests for `get_netloc_and_path`."""
 
@@ -149,7 +138,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         osystem = factory.make_string()
         release = factory.make_string()
         node = factory.make_Node(hostname=hostname)
-        arch, subarch = node.architecture.split("/")
+        arch, subarch = node.split_arch()
         self.assertSequenceEqual(
             [
                 "%s_%s_%s_%s_%s_%s"
@@ -186,7 +175,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         osystem = factory.make_string()
         release = factory.make_string()
         node = factory.make_Node(hostname=hostname)
-        arch, subarch = node.architecture.split("/")
+        arch, subarch = node.split_arch()
         self.assertSequenceEqual(
             [
                 "%s_%s_%s_%s_%s" % (osystem, arch, subarch, release, hostname),
@@ -235,7 +224,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         osystem = UbuntuOS().name
         release = factory.make_string()
         node = factory.make_Node(hostname=hostname)
-        arch, subarch = node.architecture.split("/")
+        arch, subarch = node.split_arch()
         self.assertSequenceEqual(
             [
                 "%s_%s_%s_%s_%s" % (osystem, arch, subarch, release, hostname),
@@ -258,7 +247,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         osystem = UbuntuOS().name
         release = factory.make_string()
         node = factory.make_Node(hostname=hostname)
-        arch, subarch = node.architecture.split("/")
+        arch, subarch = node.split_arch()
         prefix = factory.make_string()
         self.assertSequenceEqual(
             [
@@ -1180,7 +1169,7 @@ class TestGetCurtinUserDataOS(
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller, osystem=self.os_name
         )
-        arch, subarch = node.architecture.split("/")
+        arch, subarch = node.split_arch()
         self.configure_get_boot_images_for_node(node, "xinstall")
         user_data = get_curtin_userdata(make_HttpRequest(), node)
 

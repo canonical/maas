@@ -507,11 +507,7 @@ def validate_hwe_kernel(
     def validate_kernel_str(kstr):
         return kstr.startswith("hwe-") or kstr.startswith("ga-")
 
-    if (
-        not osystem
-        or (not architecture or architecture == "")
-        or (not distro_series or distro_series == "")
-    ):
+    if not all((osystem, architecture, distro_series)):
         return hwe_kernel
 
     # If we are dealing with an ephemeral image, just return the hwe_kernel

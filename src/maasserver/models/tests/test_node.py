@@ -4352,6 +4352,10 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(architecture=full_arch)
         self.assertEqual((main_arch, sub_arch), node.split_arch())
 
+    def test_split_arch_always_2_tuple(self):
+        node = factory.make_Node(architecture="foo/bar/baz")
+        self.assertEqual(node.split_arch(), ("foo", "bar/baz"))
+
     def test_mark_failed_updates_status(self):
         self.disable_node_query()
         nodes_mapping = {
