@@ -224,7 +224,7 @@ parts:
     plugin: make
     source: src/machine-resources
     build-snaps:
-      - go
+      - go/1.10/stable
     build-packages:
       - go-dep
     artifacts:
