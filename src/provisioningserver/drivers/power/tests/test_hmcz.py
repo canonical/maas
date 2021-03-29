@@ -9,7 +9,9 @@ import random
 import typing
 from unittest.mock import Mock
 
+import pytest
 from twisted.internet.defer import inlineCallbacks, returnValue, succeed
+from zhmcclient import StatusTimeout
 from zhmcclient_mock import FakedSession
 
 from maastesting.factory import factory
@@ -20,7 +22,7 @@ from maastesting.matchers import (
 )
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.power import hmcz as hmcz_module
-from provisioningserver.drivers.power import PowerActionError
+from provisioningserver.drivers.power import PowerActionError, PowerError
 from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
@@ -160,6 +162,28 @@ class TestHMCZPowerDriver(MAASTestCase):
         )
 
     @inlineCallbacks
+    def test_power_on_waits_for_stopping_state(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = "stopping"
+        yield self.hmcz.power_on(None, self.make_context())
+        mock_get_partition.return_value.wait_for_status.assert_called_once_with(
+            "stopped", 120
+        )
+        mock_get_partition.return_value.start.assert_called_once_with(
+            wait_for_completion=False
+        )
+
+    @inlineCallbacks
+    def test_power_on_times_out_waiting_for_stopping_state(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = "stopping"
+        mock_get_partition.return_value.wait_for_status.side_effect = (
+            StatusTimeout(None, None, None, None)
+        )
+        with pytest.raises(PowerError):
+            yield self.hmcz.power_on(None, self.make_context())
+
+    @inlineCallbacks
     def test_power_off(self):
         mock_get_partition = self.patch(self.hmcz, "_get_partition")
         yield self.hmcz.power_off(None, self.make_context())
@@ -167,6 +191,28 @@ class TestHMCZPowerDriver(MAASTestCase):
             mock_get_partition.return_value.stop,
             MockCalledOnceWith(wait_for_completion=False),
         )
+
+    @inlineCallbacks
+    def test_power_off_waits_for_starting_state(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = "starting"
+        yield self.hmcz.power_off(None, self.make_context())
+        mock_get_partition.return_value.wait_for_status.assert_called_once_with(
+            "active", 120
+        )
+        mock_get_partition.return_value.stop.assert_called_once_with(
+            wait_for_completion=False
+        )
+
+    @inlineCallbacks
+    def test_power_off_timesout_waiting_for_stopping_state(self):
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = "starting"
+        mock_get_partition.return_value.wait_for_status.side_effect = (
+            StatusTimeout(None, None, None, None)
+        )
+        with pytest.raises(PowerError):
+            yield self.hmcz.power_off(None, self.make_context())
 
     @inlineCallbacks
     def test_power_query_starting(self):
@@ -428,6 +474,40 @@ class TestHMCZPowerDriver(MAASTestCase):
                 "boot-device": "storage-volume",
                 "boot-storage-volume": serial,
             }
+        )
+
+    @inlineCallbacks
+    def test_set_boot_order_waits_for_starting_state(self):
+        # Mock must be used as partition.wait_for_status() hangs when not
+        # connected to a real HMC
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = "starting"
+
+        yield self.hmcz.set_boot_order(
+            None,
+            self.make_context(),
+            [{"mac_address": factory.make_mac_address()}],
+        )
+
+        mock_get_partition.return_value.wait_for_status.assert_called_once_with(
+            ["stopped", "active"], 120
+        )
+
+    @inlineCallbacks
+    def test_set_boot_order_waits_for_stopping_state(self):
+        # Mock must be used as partition.wait_for_status() hangs when not
+        # connected to a real HMC
+        mock_get_partition = self.patch(self.hmcz, "_get_partition")
+        mock_get_partition.return_value.get_property.return_value = "stopping"
+
+        yield self.hmcz.set_boot_order(
+            None,
+            self.make_context(),
+            [{"mac_address": factory.make_mac_address()}],
+        )
+
+        mock_get_partition.return_value.wait_for_status.assert_called_once_with(
+            ["stopped", "active"], 120
         )
 
 

@@ -18,14 +18,18 @@ from provisioningserver.drivers import (
     make_setting_field,
     SETTING_SCOPE,
 )
-from provisioningserver.drivers.power import PowerActionError, PowerDriver
+from provisioningserver.drivers.power import (
+    PowerActionError,
+    PowerDriver,
+    PowerError,
+)
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import asynchronous, threadDeferred
 
 try:
-    from zhmcclient import Client, NotFound, Session
+    from zhmcclient import Client, NotFound, Session, StatusTimeout
 except ImportError:
     no_zhmcclient = True
 else:
@@ -101,6 +105,21 @@ class HMCZPowerDriver(PowerDriver):
             # IBM is aware this isn't optimal for us so they are looking into
             # modifying IBM Z to go into a stopped state.
             partition.stop(wait_for_completion=True)
+        elif status == "stopping":
+            # The HMC does not allow a machine to be powered on if its
+            # currently stopping. Wait 120s for it which should be more
+            # than enough time.
+            try:
+                partition.wait_for_status("stopped", 120)
+            except StatusTimeout:
+                # If 120s isn't enough time raise a PowerError() which will
+                # trigger the builtin retry code in the base PowerDriver()
+                # class.
+                raise PowerError(
+                    "Partition is stuck in a "
+                    f"{partition.get_property('status')} state!"
+                )
+
         partition.start(wait_for_completion=False)
 
     @typed
@@ -109,6 +128,21 @@ class HMCZPowerDriver(PowerDriver):
     def power_off(self, system_id: str, context: dict):
         """Power off IBM Z DPM."""
         partition = self._get_partition(context)
+        status = partition.get_property("status")
+        if status == "starting":
+            # The HMC does not allow a machine to be powered off if its
+            # currently starting. Wait 120s for it which should be more
+            # than enough time.
+            try:
+                partition.wait_for_status("active", 120)
+            except StatusTimeout:
+                # If 120s isn't enough time raise a PowerError() which will
+                # trigger the builtin retry code in the base PowerDriver()
+                # class.
+                raise PowerError(
+                    "Partition is stuck in a "
+                    f"{partition.get_property('status')} state!"
+                )
         partition.stop(wait_for_completion=False)
 
     @typed
@@ -147,6 +181,14 @@ class HMCZPowerDriver(PowerDriver):
         :param order: An ordered list of network or storage devices.
         """
         partition = self._get_partition(context)
+        status = partition.get_property("status")
+
+        if status in {"starting", "stopping"}:
+            # The HMC does not allow a machine's boot order to be reconfigured
+            # while in a transitional state. Wait for it to complete. If this
+            # times out allow it to be raised so the region can log it.
+            partition.wait_for_status(["stopped", "active"], 120)
+
         # You can only specify one boot device on IBM Z
         boot_device = order[0]
         if boot_device.get("mac_address"):
