@@ -3181,7 +3181,7 @@ class Node(CleanSave, TimestampedModel):
 
         if network_boot is None:
             if self.ephemeral_deployment:
-                network_boot = False
+                network_boot = True
             elif self.status == NODE_STATUS.EXITING_RESCUE_MODE:
                 network_boot = self.previous_status != NODE_STATUS.DEPLOYED
             else:

@@ -1904,12 +1904,9 @@ class TestNode(MAASServerTestCase):
     def test_get_boot_order_auto_exiting_rescue_mode(self):
         node = factory.make_Node(
             with_boot_disk=False,
-            ephemeral_deploy=True,
             power_type="hmcz",
             status=NODE_STATUS.EXITING_RESCUE_MODE,
-            previous_status=factory.pick_choice(
-                NODE_STATUS_CHOICES, but_not=[NODE_STATUS.DEPLOYED]
-            ),
+            previous_status=NODE_STATUS.FAILED_COMMISSIONING,
         )
         interfaces = [factory.make_Interface(node=node) for _ in range(5)]
         block_devices = [
@@ -1924,7 +1921,6 @@ class TestNode(MAASServerTestCase):
     def test_get_boot_order_auto_exiting_rescue_mode_deployed(self):
         node = factory.make_Node(
             with_boot_disk=False,
-            ephemeral_deploy=True,
             power_type="hmcz",
             status=NODE_STATUS.EXITING_RESCUE_MODE,
             previous_status=NODE_STATUS.DEPLOYED,
@@ -1942,7 +1938,6 @@ class TestNode(MAASServerTestCase):
     def test_get_boot_order_auto_deployed(self):
         node = factory.make_Node(
             with_boot_disk=False,
-            ephemeral_deploy=True,
             power_type="hmcz",
             status=NODE_STATUS.DEPLOYED,
         )
@@ -1959,7 +1954,6 @@ class TestNode(MAASServerTestCase):
     def test_get_boot_order_auto_not_deployed(self):
         node = factory.make_Node(
             with_boot_disk=False,
-            ephemeral_deploy=True,
             power_type="hmcz",
             status=factory.pick_choice(
                 NODE_STATUS_CHOICES, but_not=[NODE_STATUS.DEPLOYED]
