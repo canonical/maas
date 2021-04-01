@@ -3,11 +3,10 @@
 
 """Snap utilities."""
 
+import dataclasses
 import os
 from pathlib import Path
 from typing import NamedTuple, Optional
-
-import yaml
 
 
 def running_in_snap():
@@ -41,15 +40,44 @@ class SnapPaths(NamedTuple):
         return cls(**args)
 
 
-def get_snap_version():
-    """Return the version string in the snap metadata."""
-    snap_paths = SnapPaths.from_environ()
-    if not snap_paths.snap:
-        return None
+@dataclasses.dataclass
+class SnapChannel:
+    """A snap channel."""
 
-    with (snap_paths.snap / "meta/snap.yaml").open() as fp:
-        snap_meta = yaml.safe_load(fp)
-    return snap_meta["version"]
+    track: str
+    risk: str = "stable"
+    branch: str = ""
+
+    def __str__(self):
+        tokens = []
+        for field in dataclasses.fields(self):
+            value = getattr(self, field.name)
+            if value:
+                tokens.append(value)
+        return "/".join(tokens)
+
+    @classmethod
+    def from_string(cls, string):
+        return cls(*string.split("/"))
+
+
+@dataclasses.dataclass
+class SnapVersion:
+    """Information about a snap version."""
+
+    revision: str  # can contain letters (e.g. "x1")
+    version: str
+
+
+def get_snap_version(environ=None) -> Optional[SnapVersion]:
+    """Return the running snap version."""
+    if environ is None:
+        environ = os.environ
+
+    version = environ.get("SNAP_VERSION")
+    if not version:
+        return None
+    return SnapVersion(version=version, revision=environ["SNAP_REVISION"])
 
 
 def get_snap_mode():

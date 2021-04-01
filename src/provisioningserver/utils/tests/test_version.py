@@ -322,9 +322,10 @@ class TestGetRunningVersion(TestVersionTestCase):
 
     def test_uses_snap_get_snap_version(self):
         self.patch(snap, "running_in_snap").return_value = True
-        self.patch(
-            snap, "get_snap_version"
-        ).return_value = "2.10.0-456-g.deadbeef"
+        self.patch(snap, "get_snap_version").return_value = snap.SnapVersion(
+            version="2.10.0-456-g.deadbeef",
+            revision="1234",
+        )
         maas_version = get_running_version()
         self.assertEqual(maas_version.short_version, "2.10.0")
         self.assertEqual(maas_version.extended_info, "456-g.deadbeef")

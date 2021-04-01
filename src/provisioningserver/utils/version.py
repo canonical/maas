@@ -122,8 +122,9 @@ def get_running_version() -> MAASVersion:
     """Return the version for the running MAAS."""
     git_rev = None
     revno = 0
+
     if snap.running_in_snap():
-        version_str = snap.get_snap_version()
+        version_str = snap.get_snap_version().version
     else:
         version_str = _get_version_from_apt(
             RACK_PACKAGE_NAME, REGION_PACKAGE_NAME
