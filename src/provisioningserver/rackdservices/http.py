@@ -7,6 +7,7 @@
 from collections import defaultdict
 from datetime import timedelta
 import os
+from pathlib import Path
 import sys
 
 import attr
@@ -170,13 +171,17 @@ class RackHTTPService(TimerService):
     def _configure(self, upstream_http):
         """Update the HTTP configuration for the rack."""
         template = load_template("http", "rackd.nginx.conf.template")
+        machine_resources_prefix = snap.SnapPaths.from_environ().snap or Path(
+            "/"
+        )
         try:
             rendered = template.substitute(
                 {
                     "upstream_http": list(sorted(upstream_http)),
                     "resource_root": self._resource_root,
-                    "machine_resources": snap.SnapPaths.from_environ().snap
-                    or "/usr/share/maas",
+                    "machine_resources": str(
+                        machine_resources_prefix / "usr/share/maas"
+                    ),
                 }
             )
         except NameError as error:

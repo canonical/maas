@@ -1,9 +1,9 @@
 # Copyright 2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.rackdservices.http`."""
 
-
+import os
+from pathlib import Path
 import random
 from unittest.mock import ANY, Mock
 
@@ -101,6 +101,29 @@ class TestRackHTTPService(MAASTestCase):
         )
         service.call = (service._tryUpdate, tuple(), {})
         return service
+
+    def test_configure_not_snap(self):
+        tempdir = self.make_dir()
+        nginx_conf = Path(tempdir) / "rackd.nginx.conf"
+        service = self.make_startable_RackHTTPService(tempdir, None, reactor)
+        self.patch(http, "compose_http_config_path").return_value = str(
+            nginx_conf
+        )
+        service._configure(["region1.maas", "region2.maas"])
+        self.assertIn("root /usr/share/maas;", nginx_conf.read_text())
+
+    def test_configure_in_snap(self):
+        self.patch(os, "environ", {"SNAP": "/snap/maas/123"})
+        tempdir = self.make_dir()
+        nginx_conf = Path(tempdir) / "rackd.nginx.conf"
+        service = self.make_startable_RackHTTPService(tempdir, None, reactor)
+        self.patch(http, "compose_http_config_path").return_value = str(
+            nginx_conf
+        )
+        service._configure(["region1.maas", "region2.maas"])
+        self.assertIn(
+            "root /snap/maas/123/usr/share/maas;", nginx_conf.read_text()
+        )
 
     @inlineCallbacks
     def test_getConfiguration_returns_configuration_object(self):
