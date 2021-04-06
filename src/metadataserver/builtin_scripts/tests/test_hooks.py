@@ -1749,8 +1749,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
         node_device = node.node_devices.get(pci_address=pci_address)
 
-        self.assertEquals(16, node_device.numa_node.index)
-        self.assertEquals(16, node_device.physical_interface.numa_node.index)
+        self.assertEqual(16, node_device.numa_node.index)
+        self.assertEqual(16, node_device.physical_interface.numa_node.index)
 
     def test_replace_existing_device_pcie(self):
         node = factory.make_Node()

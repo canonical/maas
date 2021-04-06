@@ -136,7 +136,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         yield update_interfaces_deferred
         yield service.stopService()
 
-        self.assertEquals(1, self.mock_refresh.call_count)
+        self.assertEqual(1, self.mock_refresh.call_count)
 
     @inlineCallbacks
     def test_reports_interfaces_with_hints_if_beaconing_enabled(self):
