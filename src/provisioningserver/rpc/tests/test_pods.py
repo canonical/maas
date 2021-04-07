@@ -41,6 +41,15 @@ class TestDiscoverPodProjects(MAASTestCase):
             yield pods.discover_pod_projects(unknown_type, {})
 
     @inlineCallbacks
+    def test_converts_exceptions(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        fake_driver.discover_projects.return_value = fail(Exception("fail!"))
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        with ExpectedException(exceptions.PodActionFail):
+            yield pods.discover_pod_projects(fake_driver.name, {})
+
+    @inlineCallbacks
     def test_return_projects(self):
         fake_driver = MagicMock()
         fake_driver.name = factory.make_name("pod")

@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 import uuid
 
 from pylxd import Client
-from pylxd.exceptions import ClientConnectionFailed, NotFound
+from pylxd.exceptions import ClientConnectionFailed, LXDAPIException, NotFound
 import urllib3
 
 from provisioningserver.drivers import (
@@ -757,7 +757,10 @@ class LXDPodDriver(PodDriver):
             if not client.trusted:
                 password = context.get("password")
                 if password:
-                    client.authenticate(password)
+                    try:
+                        client.authenticate(password)
+                    except LXDAPIException as e:
+                        raise LXDPodError(f"Authentication failed: {e}")
                 else:
                     raise LXDPodError(
                         f"Pod {pod_id}: Certificate is not trusted and no password was given."

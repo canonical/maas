@@ -52,6 +52,9 @@ def discover_pod_projects(pod_type, context):
         }
 
     d.addCallback(convert)
+    d.addErrback(
+        convert_errors, log_message="Failed to discover VM host projects."
+    )
     return d
 
 
@@ -86,18 +89,8 @@ def discover_pod(pod_type, context, pod_id=None, name=None):
         else:
             return {"pod": result}
 
-    def catch_all(failure):
-        """Convert all failures into `PodActionFail` unless already a
-        `PodActionFail` or `NotImplementedError`."""
-        # Log locally to help debugging.
-        log.err(failure, "Failed to discover pod.")
-        if failure.check(NotImplementedError, PodActionFail):
-            return failure
-        else:
-            raise PodActionFail(get_error_message(failure.value))
-
     d.addCallback(convert)
-    d.addErrback(catch_all)
+    d.addErrback(convert_errors, log_message="Failed to discover VM host.")
     return d
 
 
@@ -141,23 +134,12 @@ def compose_machine(pod_type, context, request, pod_id, name):
                     "invalid result." % pod_type
                 )
 
-    def catch_all(failure):
-        """Convert all failures into `PodActionFail` unless already a
-        `PodActionFail`, `PodInvalidResources` or `NotImplementedError`."""
-        if failure.check(PodInvalidResources):
-            # Driver returned its own invalid resource exception instead of
-            # None. Just pass this onto the region.
-            return failure
-
-        # Log locally to help debugging.
-        log.err(failure, "%s: Failed to compose machine: %s" % (name, request))
-        if failure.check(NotImplementedError, PodActionFail):
-            return failure
-        else:
-            raise PodActionFail(get_error_message(failure.value))
-
     d.addCallback(convert)
-    d.addErrback(catch_all)
+    d.addErrback(
+        convert_errors,
+        log_message=f"{name}: Failed to compose machine: {request}",
+        keep_failures=[PodInvalidResources],
+    )
     return d
 
 
@@ -217,23 +199,15 @@ def send_pod_commissioning_results(
                     f"Unable to send Pod commissioning information for {name}({system_id}): {e.error}"
                 )
 
-    def catch_all(failure):
-        """Convert all failures into `PodActionFail` unless already a
-        `PodActionFail` or `NotImplementedError`."""
-        # Log locally to help debugging.
-        log.err(failure, "Failed to send_pod_commissioning_results.")
-        if failure.check(NotImplementedError, PodActionFail):
-            return failure
-        else:
-            raise PodActionFail(get_error_message(failure.value))
-
     d.addCallback(
         lambda commissioning_results: deferToThread(
             send_items, commissioning_results
         )
     )
     d.addCallback(lambda _: {})
-    d.addErrback(catch_all)
+    d.addErrback(
+        convert_errors, log_message="Failed to send_pod_commissioning_results."
+    )
     return d
 
 
@@ -261,16 +235,23 @@ def decompose_machine(pod_type, context, pod_id, name):
         else:
             return {"hints": result}
 
-    def catch_all(failure):
-        """Convert all failures into `PodActionFail` unless already a
-        `PodActionFail` or `NotImplementedError`."""
-        # Log locally to help debugging.
-        log.err(failure, "Failed to decompose machine.")
-        if failure.check(NotImplementedError, PodActionFail):
-            return failure
-        else:
-            raise PodActionFail(get_error_message(failure.value))
-
     d.addCallback(convert)
-    d.addErrback(catch_all)
+    d.addErrback(convert_errors, log_message="Failed to decompose machine.")
     return d
+
+
+def convert_errors(failure, log_message=None, keep_failures=None):
+    """Convert all failures into PodActionFail unless already a
+    PodActionFail or NotImplementedError.
+
+    Optionally, also log a failure message.
+    """
+    valid_failures = [NotImplementedError, PodActionFail]
+    if keep_failures:
+        valid_failures.extend(keep_failures)
+    if log_message:
+        log.err(failure, log_message)
+    if failure.check(*valid_failures):
+        return failure
+    else:
+        raise PodActionFail(get_error_message(failure.value))

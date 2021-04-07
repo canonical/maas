@@ -5,6 +5,7 @@ from os.path import join
 import random
 from unittest.mock import ANY, Mock, PropertyMock, sentinel
 
+from pylxd.exceptions import LXDAPIException
 from testtools.matchers import Equals, IsInstance, MatchesAll, MatchesStructure
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
@@ -234,6 +235,20 @@ class TestLXDPodDriver(MAASTestCase):
         Client.side_effect = lxd_module.ClientConnectionFailed()
         driver = lxd_module.LXDPodDriver()
         error_msg = f"Pod {pod_id}: Failed to connect to the LXD REST API."
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            driver._get_client(pod_id, context)
+
+    def test_get_client_raises_error_when_authenticate_fails(self):
+        context = self.make_parameters_context()
+        pod_id = factory.make_name("pod_id")
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.trusted = False
+        mock_response = Mock(status_code=403)
+        mock_response.json.return_value = {"error": "auth failed"}
+        client.authenticate.side_effect = LXDAPIException(mock_response)
+        driver = lxd_module.LXDPodDriver()
+        error_msg = "Authentication failed: auth failed"
         with ExpectedException(lxd_module.LXDPodError, error_msg):
             driver._get_client(pod_id, context)
 
