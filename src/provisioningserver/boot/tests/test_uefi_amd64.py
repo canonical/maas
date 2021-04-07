@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.boot.uefi_amd64`."""
@@ -101,7 +101,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
                     re.MULTILINE | re.DOTALL,
                 ),
                 MatchesRegex(
-                    r".*^\s+linuxefi  %s/%s/%s .+?$"
+                    r".*^\s+linux  %s/%s/%s .+?$"
                     % (
                         re.escape(fs_host),
                         re.escape(image_dir),
@@ -110,7 +110,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
                     re.MULTILINE | re.DOTALL,
                 ),
                 MatchesRegex(
-                    r".*^\s+initrdefi %s/%s/%s$"
+                    r".*^\s+initrd %s/%s/%s$"
                     % (
                         re.escape(fs_host),
                         re.escape(image_dir),
@@ -126,7 +126,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         method = UEFIAMD64BootMethod()
         options = {
             "backend": None,
-            "kernel_params": make_kernel_parameters(purpose="install"),
+            "kernel_params": make_kernel_parameters(purpose="xinstall"),
         }
         # Capture the output before sprinking in some random options.
         output_before = method.get_reader(**options).read(10000)
@@ -167,7 +167,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             output,
             ContainsAll(
                 [
-                    "menuentry 'Enlist'",
+                    "menuentry 'Commission'",
                     "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
                     params.kernel,
                 ]
