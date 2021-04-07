@@ -4,11 +4,14 @@
 #
 # - update python project version
 # - add d/changelog entry for the release
-# - commit changes and tag commit with release tag
+# - commit changes
 #
 # The script must be called with a single argument for the MAAS python version
 # to update to.
 #
+
+export DEBFULLNAME="${DEBFULLNAME:-$(git config user.name)}"
+export DEBEMAIL="${DEBEMAIL:-$(git config user.email)}"
 
 SCRIPT="$(basename "$0")"
 MAAS_PATH="$(realpath "$(dirname "$0")/../")"
@@ -20,6 +23,10 @@ exit_error() {
 
 git_tree_clean() {
     git diff-index --quiet HEAD
+}
+
+git_show_commit() {
+    git show HEAD
 }
 
 deb_version() {
@@ -43,7 +50,7 @@ tag_version() {
 
 replace_setup_version() {
     local version="$1"
-    sed -i 's/\bversion=".*$/version="'"$version"'",/' setup.py
+    sed -i 's/\bversion = .*$/version = '"$version"'/' setup.cfg
 }
 
 add_debian_changelog() {
@@ -53,13 +60,12 @@ add_debian_changelog() {
     dch -r ""
 }
 
-commit_and_tag() {
+commit() {
     local version="$1"
     local message
-    message="Release $(verbose_version "$version")"
+    message="Prepare for $(verbose_version "$version") release"
 
     git commit -a -m "$message"
-    git tag -a "$(tag_version "$version")" -m "$message"
 }
 
 version="$1"
@@ -86,4 +92,5 @@ fi
 
 replace_setup_version "$version"
 add_debian_changelog "$version"
-commit_and_tag "$version"
+commit "$version"
+git_show_commit
