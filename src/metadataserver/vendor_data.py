@@ -8,6 +8,7 @@ from base64 import b64encode
 from crypt import crypt
 from itertools import chain
 from os import urandom
+from textwrap import dedent
 
 from netaddr import IPAddress
 import yaml
@@ -22,6 +23,9 @@ from maasserver.server_address import get_maas_facing_server_host
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 from provisioningserver.utils.version import get_maas_version_track_channel
+
+LXD_PASSWORD_METADATA_KEY = "lxd_password"
+VIRSH_PASSWORD_METADATA_KEY = "virsh_password"
 
 
 def get_vendor_data(node, proxy):
@@ -162,91 +166,108 @@ def generate_ephemeral_deployment_network_configuration(node):
 
 def generate_kvm_pod_configuration(node):
     """Generate cloud-init configuration to install the node as a KVM pod."""
-    if node.netboot or not node.install_kvm:
+    if node.netboot or not (node.install_kvm or node.register_vmhost):
         return
-    runcmd = [
-        # Restrict the $PATH so that rbash can be used to limit what the
-        # virsh user can do if they manage to get a shell.
-        ["mkdir", "-p", "/home/virsh/bin"],
-        ["ln", "-s", "/usr/bin/virsh", "/home/virsh/bin/virsh"],
-        ["sh", "-c", 'echo "PATH=/home/virsh/bin" >> /home/virsh/.bashrc'],
-        # Use a ForceCommand to make sure the only thing the virsh user
-        # can do with SSH is communicate with libvirt.
-        [
-            "sh",
-            "-c",
-            'printf "Match user virsh\\n'
-            "    X11Forwarding no\\n"
-            "    AllowTcpForwarding no\\n"
-            "    PermitTTY no\\n"
-            '    ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock\\n"'
-            "  >> /etc/ssh/sshd_config",
-        ],
-        # Make sure the 'virsh' user is allowed to access libvirt.
-        [
-            "/usr/sbin/usermod",
-            "--append",
-            "--groups",
-            "libvirt,libvirt-qemu",
-            "virsh",
-        ],
-        # SSH needs to be restarted in order for the above changes to
-        # take effect.
-        ["systemctl", "restart", "sshd"],
-        # Ensure services are ready before cloud-init finishes.
-        ["/bin/sleep", "10"],
-    ]
+
     arch, _ = node.split_arch()
-    if arch == "ppc64el":
-        # XXX mpontillo 2018-10-12 - we should investigate if it might be
-        # better to add a tag to the node that includes a kernel parameter
-        # such as nosmt=force. (The only problem being that we should
-        # probably also remove it after the machine is released.)
-        runcmd.extend(
-            [
-                [
-                    "sh",
-                    "-c",
-                    'printf "'
-                    "#!/bin/sh\\n"
-                    "ppc64_cpu --smt=off\\n"
-                    "exit 0\\n"
-                    '"  >> /etc/rc.local',
-                ],
-                "chmod +x /etc/rc.local",
-                "/etc/rc.local",
-            ]
+
+    if node.register_vmhost:
+        password = _generate_password()
+        NodeMetadata.objects.update_or_create(
+            node=node,
+            key=LXD_PASSWORD_METADATA_KEY,
+            defaults={"value": password},
         )
-    yield "runcmd", runcmd
-    # Generate a 32-character password by encoding 24 bytes as base64.
-    virsh_password = b64encode(urandom(24), altchars=b".!").decode("ascii")
-    # Pass crypted (salted/hashed) version of the password to cloud-init.
-    encrypted_password = crypt(virsh_password)
-    # Store a cleartext version of the password so we can add a pod later.
-    NodeMetadata.objects.update_or_create(
-        node=node,
-        key="virsh_password",
-        defaults=dict(value=virsh_password),
-    )
-    # Make sure SSH password authentication is enabled.
-    yield "ssh_pwauth", True
-    # Create a custom 'virsh' user (in addition to the default user)
-    # with the encrypted password, and a locked-down shell.
-    yield "users", [
-        "default",
-        {
-            "name": "virsh",
-            "lock_passwd": False,
-            "passwd": encrypted_password,
-            "shell": "/bin/rbash",
-        },
-    ]
-    packages = ["libvirt-daemon-system", "libvirt-clients"]
-    # libvirt emulates UEFI on ARM64 however qemu-efi-aarch64 is only
-    # a suggestion on ARM64 so cloud-init doesn't install it.
-    if node.split_arch()[0] == "arm64":
-        packages.append("qemu-efi-aarch64")
-    yield "packages", packages
+        # when installing LXD, make sure no deb packages conflict with the snap
+        # installation. If the snap is not already installed (as in bionic, install
+        # 4.0 which is enough for features required by MAAS). If it's already
+        # installed (as in focal), just keep the existing version.
+        yield "runcmd", [
+            "apt autoremove --purge --yes lxd lxd-client lxcfs",
+            "snap install lxd --channel=4.0",
+            f'lxd init --auto --network-address=[::] --trust-password="{password}"',
+        ]
+
+    if node.install_kvm:
+        password = _generate_password()
+        NodeMetadata.objects.update_or_create(
+            node=node,
+            key=VIRSH_PASSWORD_METADATA_KEY,
+            defaults={"value": password},
+        )
+        # Make sure SSH password authentication is enabled.
+        yield "ssh_pwauth", True
+        # Create a custom 'virsh' user (in addition to the default user)
+        # with the encrypted password, and a locked-down shell.
+        yield "users", [
+            "default",
+            {
+                "name": "virsh",
+                "lock_passwd": False,
+                "passwd": crypt(password),
+                "shell": "/bin/rbash",
+            },
+        ]
+
+        packages = ["libvirt-daemon-system", "libvirt-clients"]
+        # libvirt emulates UEFI on ARM64 however qemu-efi-aarch64 is only a
+        # suggestion on ARM64 so cloud-init doesn't install it.
+        if arch == "arm64":
+            packages.append("qemu-efi-aarch64")
+        yield "packages", packages
+
+        # set up virsh user and ssh authentication
+        yield "runcmd", [
+            # Restrict the $PATH so that rbash can be used to limit what the
+            # virsh user can do if they manage to get a shell.
+            "mkdir -p /home/virsh/bin",
+            "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
+            # Make sure the 'virsh' user is allowed to access libvirt.
+            "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
+            # SSH needs to be restarted in order for the above changes to take
+            # effect.
+            "systemctl restart sshd",
+        ]
+
+        yield "write_files", [
+            {
+                "path": "/home/virsh/.bash_profile",
+                "content": "PATH=/home/virsh/bin",
+            },
+            # Use a ForceCommand to make sure the only thing the virsh user can
+            # do with SSH is communicate with libvirt.
+            {
+                "path": "/etc/ssh/sshd_config",
+                "content": dedent(
+                    """\
+                    Match user virsh
+                      X11Forwarding no
+                      AllowTcpForwarding no
+                      PermitTTY no
+                      ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock
+                    """
+                ),
+                "append": True,
+            },
+        ]
+
+    # disable SMT on ppc64el since VMs are not supported otherwise
+    if arch == "ppc64el":
+        rc_local = "/etc/rc.local"
+        yield "write_files", [
+            {
+                "path": rc_local,
+                "content": dedent(
+                    """\
+                    #!/bin/sh
+                    ppc64_cpu --smt=off
+                    exit 0
+                    """
+                ),
+                "permissions": "0755",
+            },
+        ]
+        yield "runcmd", [rc_local]
 
 
 def generate_vcenter_configuration(node):
@@ -284,3 +305,8 @@ def generate_vcenter_configuration(node):
                 "path": "/altbootbank/maas/vcenter.yaml",
             }
         ]
+
+
+def _generate_password():
+    """Generate a 32-character password by encoding 24 bytes as base64."""
+    return b64encode(urandom(24), altchars=b".!").decode("ascii")

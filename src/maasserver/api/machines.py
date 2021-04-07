@@ -220,6 +220,7 @@ AllocationOptions = namedtuple(
         "comment",
         "install_rackd",
         "install_kvm",
+        "register_vmhost",
         "ephemeral_deploy",
     ),
 )
@@ -260,10 +261,13 @@ def get_allocation_options(request) -> AllocationOptions:
     install_kvm = get_optional_param(
         request.POST, "install_kvm", default=False, validator=StringBool
     )
+    register_vmhost = get_optional_param(
+        request.POST, "register_vmhost", default=False, validator=StringBool
+    )
     ephemeral_deploy = get_optional_param(
         request.POST, "ephemeral_deploy", default=False, validator=StringBool
     )
-    if install_kvm and not ephemeral_deploy:
+    if (install_kvm or register_vmhost) and not ephemeral_deploy:
         default_bridge_all = True
     bridge_all = get_optional_param(
         request.POST,
@@ -298,6 +302,7 @@ def get_allocation_options(request) -> AllocationOptions:
         comment,
         install_rackd,
         install_kvm,
+        register_vmhost,
         ephemeral_deploy,
     )
 
@@ -689,6 +694,9 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         @param (boolean) "install_kvm" [required=false] If true, KVM will be
         installed on this machine and added to MAAS.
 
+        @param (boolean) "register_vmhost" [required=false] If true, the
+        machine will be registered as a LXD VM host in MAAS.
+
         @param (boolean) "ephemeral_deploy" [required=false] If true, machine
         will be deployed ephemerally even if it has disks.
 
@@ -725,19 +733,19 @@ class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
         # Deploying a node requires re-checking for EDIT permissions.
         if not request.user.has_perm(NodePermission.edit, machine):
             raise PermissionDenied()
-        # Deploying with 'install_rackd' requires ADMIN permissions.
         if options.install_rackd and not request.user.has_perm(
             NodePermission.admin, machine
         ):
-            raise PermissionDenied()
-        # Deploying with 'install_kvm' requires ADMIN permissions.
-        if options.install_kvm and not request.user.has_perm(
-            NodePermission.admin, machine
-        ):
-            raise PermissionDenied()
-        if options.install_kvm and machine.ephemeral_deployment:
+            raise PermissionDenied("Only administrators can deploy MAAS racks")
+        if (
+            options.install_kvm or options.register_vmhost
+        ) and not request.user.has_perm(NodePermission.admin, machine):
+            raise PermissionDenied("Only administratros can deploy VM hosts")
+        if (
+            options.install_kvm or options.register_vmhost
+        ) and machine.ephemeral_deployment:
             raise MAASAPIBadRequest(
-                "Cannot install KVM host for ephemeral deployments."
+                "Cannot deploy as a VM host for ephemeral deployments."
             )
         if machine.status == NODE_STATUS.READY:
             with locks.node_acquire:

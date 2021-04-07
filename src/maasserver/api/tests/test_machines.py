@@ -3782,6 +3782,7 @@ class TestGetAllocationOptions(MAASTestCase):
             comment=None,
             install_rackd=False,
             install_kvm=False,
+            register_vmhost=False,
             ephemeral_deploy=False,
         )
         self.assertThat(options, Equals(expected_options))
@@ -3800,9 +3801,32 @@ class TestGetAllocationOptions(MAASTestCase):
             comment=None,
             install_rackd=False,
             install_kvm=True,
+            register_vmhost=False,
             ephemeral_deploy=False,
         )
         self.assertThat(options, Equals(expected_options))
+
+    def test_sets_bridge_all_if_register_vmhost(self):
+        request = factory.make_fake_request(
+            method="POST",
+            data={"register_vmhost": True},
+        )
+        options = get_allocation_options(request)
+        self.assertEqual(
+            options,
+            AllocationOptions(
+                agent_name="",
+                bridge_all=True,
+                bridge_type=BRIDGE_TYPE.STANDARD,
+                bridge_fd=0,
+                bridge_stp=False,
+                comment=None,
+                install_rackd=False,
+                install_kvm=False,
+                register_vmhost=True,
+                ephemeral_deploy=False,
+            ),
+        )
 
     def test_non_defaults(self):
         request = factory.make_fake_request(
@@ -3810,6 +3834,7 @@ class TestGetAllocationOptions(MAASTestCase):
             data=dict(
                 install_rackd="true",
                 install_kvm="true",
+                register_vmhost="true",
                 bridge_all="true",
                 bridge_type=BRIDGE_TYPE.OVS,
                 bridge_stp="true",
@@ -3829,6 +3854,7 @@ class TestGetAllocationOptions(MAASTestCase):
             comment="don't panic",
             install_rackd=True,
             install_kvm=True,
+            register_vmhost=True,
             ephemeral_deploy=True,
         )
         self.assertThat(options, Equals(expected_options))

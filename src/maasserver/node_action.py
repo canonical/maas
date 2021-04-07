@@ -478,14 +478,15 @@ class Deploy(NodeAction):
         distro_series=None,
         hwe_kernel=None,
         install_kvm=False,
+        register_vmhost=False,
         user_data=None,
     ):
         """See `NodeAction.execute`."""
-        if install_kvm:
+        if install_kvm or register_vmhost:
             if not self.user.is_superuser:
                 raise NodeActionError(
                     "You must be a MAAS administrator to deploy a machine "
-                    "as a MAAS-managed KVM Pod."
+                    "as a MAAS-managed VM host."
                 )
         if self.node.owner is None:
             with locks.node_acquire:
@@ -541,7 +542,10 @@ class Deploy(NodeAction):
 
         try:
             self.node.start(
-                self.user, user_data=user_data, install_kvm=install_kvm
+                self.user,
+                user_data=user_data,
+                install_kvm=install_kvm,
+                register_vmhost=register_vmhost,
             )
         except StaticIPAddressExhaustion:
             raise NodeActionError(

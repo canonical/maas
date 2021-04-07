@@ -222,6 +222,7 @@ class MachineHandler(NodeHandler):
             "last_image_sync",
             "install_rackd",
             "install_kvm",
+            "register_vmhost",
         ]
         list_fields = [
             "id",

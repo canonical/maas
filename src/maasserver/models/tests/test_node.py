@@ -8376,6 +8376,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         network=None,
         with_boot_disk=True,
         install_kvm=False,
+        register_vmhost=False,
         ephemeral_deploy=False,
     ):
         if network is None:
@@ -8406,6 +8407,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             osystem=osystem,
             distro_series=distro_series,
             install_kvm=install_kvm,
+            register_vmhost=register_vmhost,
             ephemeral_deploy=ephemeral_deploy,
         )
         node.acquire(user)
@@ -8444,6 +8446,20 @@ class TestNode_Start(MAASTransactionServerTestCase):
             with_boot_disk=False,
             ephemeral_deploy=True,
             install_kvm=True,
+        )
+        with ExpectedException(ValidationError):
+            node.start(admin)
+
+    def test_raises_ValidationError_if_ephemeral_deploy_and_register_vmhost(
+        self,
+    ):
+        admin = factory.make_admin()
+        node = self.make_acquired_node_with_interface(
+            admin,
+            power_type="manual",
+            with_boot_disk=False,
+            ephemeral_deploy=True,
+            register_vmhost=True,
         )
         with ExpectedException(ValidationError):
             node.start(admin)
@@ -8652,6 +8668,31 @@ class TestNode_Start(MAASTransactionServerTestCase):
         self.assertEqual(bridge.params["bridge_stp"], bridge_stp)
         self.assertEqual(bridge.params["bridge_fd"], bridge_fd)
         self.assertTrue(node.install_kvm)
+
+    def test_creates_acquired_bridges_for_register_vmhost(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_interface(
+            user, power_type="manual"
+        )
+        bridge_type = factory.pick_choice(BRIDGE_TYPE_CHOICES)
+        bridge_stp = factory.pick_bool()
+        bridge_fd = random.randint(0, 500)
+        node.start(
+            user,
+            register_vmhost=True,
+            bridge_type=bridge_type,
+            bridge_stp=bridge_stp,
+            bridge_fd=bridge_fd,
+        )
+        node = reload_object(node)
+        bridge = BridgeInterface.objects.get(node=node)
+        interface = node.interface_set.first()
+        self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
+        self.assertEqual(bridge.mac_address, interface.mac_address)
+        self.assertEqual(bridge.params["bridge_type"], bridge_type)
+        self.assertEqual(bridge.params["bridge_stp"], bridge_stp)
+        self.assertEqual(bridge.params["bridge_fd"], bridge_fd)
+        self.assertTrue(node.register_vmhost)
 
     def test_doesnt_change_broken(self):
         user = factory.make_User()

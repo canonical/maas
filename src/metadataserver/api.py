@@ -1045,9 +1045,9 @@ class UserDataHandler(MetadataViewHandler):
             # for user-data is when MAAS hands the node
             # off to a user.
             if node.status == NODE_STATUS.DEPLOYING:
-                if node.install_kvm:
+                if node.install_kvm or node.register_vmhost:
                     # Rather than ending deployment here, note that we're
-                    # installing a KVM pod.
+                    # deploying a VM host.
                     node.agent_name = "maas-kvm-pod"
                     node.save()
                 else:

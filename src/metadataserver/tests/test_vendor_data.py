@@ -1,17 +1,14 @@
 # Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `metadataserver.vendor_data`."""
-
-
 import random
+from textwrap import dedent
 
 from netaddr import IPAddress
 from testtools.matchers import (
     Contains,
     ContainsDict,
     Equals,
-    HasLength,
     Is,
     IsInstance,
     KeysEqual,
@@ -28,6 +25,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockNotCalled
+from metadataserver import vendor_data
 from metadataserver.vendor_data import (
     generate_ephemeral_deployment_network_configuration,
     generate_ephemeral_netplan_lock_removal,
@@ -315,6 +313,9 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
 
 class TestGenerateKVMPodConfiguration(MAASServerTestCase):
     def test_yields_configuration_when_machine_install_kvm_true(self):
+        password = "123secure"
+        self.patch(vendor_data, "_generate_password").return_value = password
+        self.patch(vendor_data, "crypt").return_value = "123crypted"
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             osystem="ubuntu",
@@ -322,70 +323,114 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
             install_kvm=True,
         )
         config = list(generate_kvm_pod_configuration(node))
-        self.assertIn(("ssh_pwauth", True), config)
-        self.assertIn(
-            ("packages", ["libvirt-daemon-system", "libvirt-clients"]), config
+        self.assertEqual(
+            config,
+            [
+                ("ssh_pwauth", True),
+                (
+                    "users",
+                    [
+                        "default",
+                        {
+                            "name": "virsh",
+                            "lock_passwd": False,
+                            "passwd": "123crypted",
+                            "shell": "/bin/rbash",
+                        },
+                    ],
+                ),
+                ("packages", ["libvirt-daemon-system", "libvirt-clients"]),
+                (
+                    "runcmd",
+                    [
+                        "mkdir -p /home/virsh/bin",
+                        "ln -s /usr/bin/virsh /home/virsh/bin/virsh",
+                        "/usr/sbin/usermod --append --groups libvirt,libvirt-qemu virsh",
+                        "systemctl restart sshd",
+                    ],
+                ),
+                (
+                    "write_files",
+                    [
+                        {
+                            "content": "PATH=/home/virsh/bin",
+                            "path": "/home/virsh/.bash_profile",
+                        },
+                        {
+                            "content": dedent(
+                                """\
+                                Match user virsh
+                                  X11Forwarding no
+                                  AllowTcpForwarding no
+                                  PermitTTY no
+                                  ForceCommand nc -q 0 -U /var/run/libvirt/libvirt-sock
+                                """
+                            ),
+                            "path": "/etc/ssh/sshd_config",
+                            "append": True,
+                        },
+                    ],
+                ),
+            ],
         )
-        # Check that a password was saved for the pod-to-be.
-        virsh_password_meta = NodeMetadata.objects.filter(
-            node=node, key="virsh_password"
-        ).first()
-        self.assertThat(virsh_password_meta.value, HasLength(32))
+        password_meta = NodeMetadata.objects.first()
+        self.assertEqual(password_meta.key, "virsh_password")
+        self.assertEqual(password_meta.value, password)
+
+    def test_yields_configuration_when_machine_register_vmhost_true(self):
+        password = "123secure"
+        self.patch(vendor_data, "_generate_password").return_value = password
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING,
+            osystem="ubuntu",
+            netboot=False,
+            register_vmhost=True,
+        )
+        config = list(generate_kvm_pod_configuration(node))
+        self.assertEqual(
+            config,
+            [
+                (
+                    "runcmd",
+                    [
+                        "apt autoremove --purge --yes lxd lxd-client lxcfs",
+                        "snap install lxd --channel=4.0",
+                        f'lxd init --auto --network-address=[::] --trust-password="{password}"',
+                    ],
+                ),
+            ],
+        )
+        password_meta = NodeMetadata.objects.first()
+        self.assertEqual(password_meta.key, "lxd_password")
+        self.assertEqual(password_meta.value, password)
 
     def test_includes_smt_off_for_install_kvm_on_ppc64(self):
+        password = "123secure"
+        self.patch(vendor_data, "_generate_password").return_value = password
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             osystem="ubuntu",
             netboot=False,
             architecture="ppc64el/generic",
-            install_kvm=True,
+            register_vmhost=True,
         )
-        configs = list(generate_kvm_pod_configuration(node))
-        self.assertEqual(
-            ["runcmd", "ssh_pwauth", "users", "packages"],
-            [key for key, config in configs],
+        config = list(generate_kvm_pod_configuration(node))
+        self.assertIn(
+            (
+                "write_files",
+                [
+                    {
+                        "path": "/etc/rc.local",
+                        "content": (
+                            "#!/bin/sh\n" "ppc64_cpu --smt=off\n" "exit 0\n"
+                        ),
+                        "permissions": "0755",
+                    },
+                ],
+            ),
+            config,
         )
-        for key, config in configs:
-            if key == "runcmd":
-                self.assertIn(
-                    [
-                        "sh",
-                        "-c",
-                        'printf "'
-                        "#!/bin/sh\\n"
-                        "ppc64_cpu --smt=off\\n"
-                        "exit 0\\n"
-                        '"  >> /etc/rc.local',
-                    ],
-                    config,
-                )
-                self.assertIn("chmod +x /etc/rc.local", config)
-                self.assertIn("/etc/rc.local", config)
-            elif key == "packages":
-                self.assertNotIn(config, "qemu-efi-aarch64")
-
-    def test_yields_configuration_when_arm64_kvm(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING,
-            osystem="ubuntu",
-            netboot=False,
-            architecture="arm64/generic",
-        )
-        node.install_kvm = True
-        configuration = get_vendor_data(node, None)
-        config = str(dict(configuration))
-        self.assertThat(config, Contains("virsh"))
-        self.assertThat(config, Contains("ssh_pwauth"))
-        self.assertThat(config, Contains("rbash"))
-        self.assertThat(config, Contains("libvirt-daemon-system"))
-        self.assertThat(config, Contains("ForceCommand"))
-        self.assertThat(config, Contains("libvirt-clients"))
-        self.assertThat(config, Contains("qemu-efi-aarch64"))
-        # Check that a password was saved for the pod-to-be.
-        virsh_password_meta = NodeMetadata.objects.filter(
-            node=node, key="virsh_password"
-        ).first()
-        self.assertThat(virsh_password_meta.value, HasLength(32))
+        self.assertIn(("runcmd", ["/etc/rc.local"]), config)
 
 
 class TestGenerateEphemeralNetplanLockRemoval(MAASServerTestCase):

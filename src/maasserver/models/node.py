@@ -914,6 +914,8 @@ class Node(CleanSave, TimestampedModel):
         deployed with the rack controller.
     :ivar install_kvm: An optional flag to indicate if this node should be
         deployed with KVM and added to MAAS.
+    :ivar register_vmhost: An optional flag to indicate if this node should be
+        deployed with LXD and registered to MAAS as a VM host.
     :ivar enable_ssh: An optional flag to indicate if this node can have
         ssh enabled during commissioning, allowing the user to ssh into the
         machine's commissioning environment using the user's SSH key.
@@ -1172,8 +1174,11 @@ class Node(CleanSave, TimestampedModel):
     # Used to deploy the rack controller on a installation machine.
     install_rackd = BooleanField(default=False)
 
-    # Used to deploy the rack controller on a installation machine.
+    # Used to deploy KVM (via libvirt) on a machine and register it as a VM
+    # host.
     install_kvm = BooleanField(default=False)
+    # Used to deploy LXD on a machine and register it as a VM host.
+    register_vmhost = BooleanField(default=False)
 
     # Used to determine whether to:
     #  1. Import the SSH Key during commissioning and keep power on.
@@ -3649,6 +3654,7 @@ class Node(CleanSave, TimestampedModel):
         self.current_installation_script_set = None
         self.install_rackd = False
         self.install_kvm = False
+        self.register_vmhost = False
         self.save()
 
         # Create a status message for RELEASING.
@@ -5335,6 +5341,7 @@ class Node(CleanSave, TimestampedModel):
         user_data=None,
         comment=None,
         install_kvm=None,
+        register_vmhost=None,
         bridge_type=None,
         bridge_stp=None,
         bridge_fd=None,
@@ -5345,9 +5352,15 @@ class Node(CleanSave, TimestampedModel):
         if not user.has_perm(NodePermission.edit, self):
             # You can't start a node you don't own unless you're an admin.
             raise PermissionDenied()
-        # Set install_kvm if not already set.
+
+        updates = {}
         if not self.install_kvm and install_kvm:
-            self.install_kvm = True
+            updates["install_kvm"] = True
+        if not self.register_vmhost and register_vmhost:
+            updates["register_vmhost"] = True
+        if updates:
+            for key, value in updates.items():
+                setattr(self, key, value)
             self.save()
         event = EVENT_TYPES.REQUEST_NODE_START
         allow_power_cycle = False
@@ -5358,7 +5371,7 @@ class Node(CleanSave, TimestampedModel):
         if self.status == NODE_STATUS.ALLOCATED:
             event = EVENT_TYPES.REQUEST_NODE_START_DEPLOYMENT
             allow_power_cycle = True
-            if self.install_kvm:
+            if self.install_kvm or self.register_vmhost:
                 self._create_acquired_bridges(
                     bridge_type=bridge_type,
                     bridge_stp=bridge_stp,
@@ -5405,9 +5418,11 @@ class Node(CleanSave, TimestampedModel):
                             ]
                         }
                     )
-        if self.ephemeral_deployment and self.install_kvm:
+        if self.ephemeral_deployment and (
+            self.install_kvm or self.register_vmhost
+        ):
             raise ValidationError(
-                "Cannot install KVM host for ephemeral deployments."
+                "Cannot deploy as a VM host for ephemeral deployments."
             )
         if self.ephemeral_deployment and not release_a_newer_than_b(
             self.distro_series, "bionic"

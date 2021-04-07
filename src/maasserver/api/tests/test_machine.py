@@ -571,7 +571,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"Cannot install KVM host for ephemeral deployments.",
+            b"Cannot deploy as a VM host for ephemeral deployments.",
             response.content,
         )
 
@@ -598,7 +598,63 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            b"Cannot install KVM host for ephemeral deployments.",
+            b"Cannot deploy as a VM host for ephemeral deployments.",
+            response.content,
+        )
+
+    def test_POST_deploy_fails_when_register_vmhost_set_for_diskless(self):
+        self.become_admin()
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            ephemeral_deploy=True,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "register_vmhost": True},
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            b"Cannot deploy as a VM host for ephemeral deployments.",
+            response.content,
+        )
+
+    def test_POST_deploy_fails_when_register_vmhost_set_for_ephemeral_deploy(
+        self,
+    ):
+        self.become_admin()
+        osystem = Config.objects.get_config("default_osystem")
+        distro_series = Config.objects.get_config("default_distro_series")
+        make_usable_osystem(
+            self, osystem_name=osystem, releases=[distro_series]
+        )
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            distro_series=distro_series,
+            osystem=osystem,
+            architecture=make_usable_architecture(self),
+            ephemeral_deploy=True,
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "register_vmhost": True},
+        )
+        self.assertEqual(http.client.BAD_REQUEST, response.status_code)
+        self.assertEqual(
+            b"Cannot deploy as a VM host for ephemeral deployments.",
             response.content,
         )
 
@@ -842,6 +898,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 user_data=ANY,
                 comment=comment,
                 install_kvm=ANY,
+                register_vmhost=ANY,
                 bridge_type=ANY,
                 bridge_stp=ANY,
                 bridge_fd=ANY,
@@ -872,6 +929,7 @@ class TestMachineAPI(APITestCase.ForUser):
                 user_data=ANY,
                 comment=None,
                 install_kvm=ANY,
+                register_vmhost=ANY,
                 bridge_type=ANY,
                 bridge_stp=ANY,
                 bridge_fd=ANY,

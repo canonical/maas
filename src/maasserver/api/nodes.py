@@ -1045,6 +1045,12 @@ class PowerMixin:
                 default=False,
                 validator=StringBool,
             )
+            register_vmhost = get_optional_param(
+                request.POST,
+                "register_vmhost",
+                default=False,
+                validator=StringBool,
+            )
             bridge_type = get_optional_param(
                 request.POST, "bridge_type", default=None
             )
@@ -1070,6 +1076,7 @@ class PowerMixin:
                 user_data=user_data,
                 comment=comment,
                 install_kvm=install_kvm,
+                register_vmhost=register_vmhost,
                 bridge_type=bridge_type,
                 bridge_stp=bridge_stp,
                 bridge_fd=bridge_fd,

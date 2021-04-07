@@ -665,7 +665,9 @@ class TestDeployAction(MAASServerTestCase):
         Deploy(node, user, request).execute()
         self.expectThat(
             mock_node_start,
-            MockCalledOnceWith(user, user_data=None, install_kvm=False),
+            MockCalledOnceWith(
+                user, user_data=None, install_kvm=False, register_vmhost=False
+            ),
         )
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
@@ -694,7 +696,12 @@ class TestDeployAction(MAASServerTestCase):
         Deploy(node, user, request).execute(**extra)
         self.expectThat(
             mock_node_start,
-            MockCalledOnceWith(user, user_data=expected, install_kvm=False),
+            MockCalledOnceWith(
+                user,
+                user_data=expected,
+                install_kvm=False,
+                register_vmhost=False,
+            ),
         )
 
     def test_Deploy_raises_NodeActionError_for_no_curtin_config(self):
@@ -810,7 +817,9 @@ class TestDeployAction(MAASServerTestCase):
         self.expectThat(node.distro_series, Equals(release_name))
         self.assertThat(
             mock_node_start,
-            MockCalledOnceWith(user, user_data=None, install_kvm=True),
+            MockCalledOnceWith(
+                user, user_data=None, install_kvm=True, register_vmhost=False
+            ),
         )
 
     def test_Deploy_raises_NodeActionError_on_install_kvm_if_os_missing(self):
@@ -841,6 +850,40 @@ class TestDeployAction(MAASServerTestCase):
         )
         self.patch(node, "start")
         extra = {"install_kvm": True}
+        self.assertRaises(
+            NodeActionError, Deploy(node, user, request).execute, **extra
+        )
+
+    def test_Deploy_raises_NodeActionError_on_register_vmhost_if_os_missing(
+        self,
+    ):
+        user = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            owner=user,
+        )
+        self.patch(node, "start")
+        extra = {"register_vmhost": True}
+        self.assertRaises(
+            NodeActionError, Deploy(node, user, request).execute, **extra
+        )
+
+    def test_Deploy_raises_NodeActionError_if_non_admin_register_vmhost(self):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node(
+            interface=True,
+            status=NODE_STATUS.ALLOCATED,
+            power_type="manual",
+            owner=user,
+        )
+        self.patch(node, "start")
+        extra = {"register_vmhost": True}
         self.assertRaises(
             NodeActionError, Deploy(node, user, request).execute, **extra
         )

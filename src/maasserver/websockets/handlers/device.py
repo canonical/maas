@@ -120,6 +120,7 @@ class DeviceHandler(NodeHandler):
             "default_user",
             "install_rackd",
             "install_kvm",
+            "register_vmhost",
             "hardware_uuid",
         ]
         list_fields = [
