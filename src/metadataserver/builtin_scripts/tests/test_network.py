@@ -1,5 +1,7 @@
+import dataclasses
 import json
 import random
+from typing import List, Optional
 from unittest.mock import call
 
 from testtools.matchers import (
@@ -36,6 +38,358 @@ from metadataserver.builtin_scripts.tests import test_hooks
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 
 
+@dataclasses.dataclass
+class LXDVlan:
+    lower_device: str
+    vid: int
+
+
+@dataclasses.dataclass
+class LXDBridge:
+    upper_devices: List[str] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+class LXDBond:
+    lower_devices: List[str] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+class LXDAddress:
+
+    address: str
+    netmask: str
+    family: str = "inet"
+    scope: str = "global"
+
+
+@dataclasses.dataclass
+class LXDNetwork:
+    name: str
+    hwaddr: str
+    type: str = "broadcast"
+    state: str = "up"
+    addresses: List[LXDAddress] = dataclasses.field(default_factory=list)
+    vlan: Optional[LXDVlan] = None
+    bridge: Optional[LXDBridge] = None
+    bond: Optional[LXDBond] = None
+
+
+@dataclasses.dataclass
+class LXDNetworkPort:
+
+    id: str
+    port: int
+    mac_address: str = dataclasses.field(
+        default_factory=factory.make_mac_address
+    )
+    protocol: str = "ethernet"
+    supported_modes: List[str] = dataclasses.field(
+        default_factory=lambda: ["10000baseT/Full"]
+    )
+    supported_ports: List[str] = dataclasses.field(
+        default_factory=lambda: ["fibre"]
+    )
+    port_type: str = "fibre"
+    transceiver_type: str = "internal"
+    auto_negotiation: bool = True
+    link_detected: bool = True
+    link_speed: int = 10000
+    link_duplex: str = "full"
+
+
+@dataclasses.dataclass
+class LXDNetworkCard:
+
+    pci_address: str
+    vendor: str = "My Corporation"
+    vendor_id: str = "1234"
+    product: str = "My Gigabit Network Connection"
+    product_id: str = "5678"
+    firmware_version: str = "1.63, 0x800009fa"
+    numa_node: int = 0
+    driver: str = "mydriver"
+    driver_version: str = "1.2.3"
+    ports: List[LXDNetworkPort] = dataclasses.field(default_factory=list)
+
+
+class FakeCommissioningData:
+    """Helper to generate commissioning output programtically.
+
+    Instead of hardcoding the commissioning data, taking care of
+    including all the possible keys and values, this class allows you to
+    tell which interface you want the machine to have, and you only have
+    to specify what's important for the tests. The helper will ensure
+    that all the other keys are there with a sane value and in the right
+    format.
+    """
+
+    def __init__(
+        self,
+        cores=1,
+        memory=2048,
+        api_extensions=None,
+        api_version="1.0",
+    ):
+        self.cores = cores
+        self.memory = memory
+        if api_extensions is None:
+            api_extensions = [
+                "resources",
+                "resources_v2",
+                "api_os",
+                "resources_system",
+                "resources_usb_pci",
+            ]
+        self.api_extensions = api_extensions
+        self.api_version = api_version
+        self.environment = {
+            "kernel": "Linux",
+            "kernel_architecture": "x86_64",
+            "kernel_version": "5.4.0-67-generic",
+            "os_name": "ubuntu",
+            "os_version": "20.04",
+            "server": "maas-machine-resources",
+            "server_name": "azuera",
+            "server_version": "4.11",
+        }
+        self.address_annotations = {}
+        self._allocated_pci_addresses = []
+        self._networks = {}
+        self._network_cards = []
+
+    def allocate_pci_address(self):
+        prev_address = (
+            self._allocated_pci_addresses[-1]
+            if self._allocated_pci_addresses
+            else "0000:00:00.0"
+        )
+        bus, device, func = prev_address.split(":")
+        next_device = int(device, 16) + 1
+        self._allocated_pci_addresses.append(
+            f"{bus}:{next_device:0>4x}:{func}"
+        )
+        return self._allocated_pci_addresses[-1]
+
+    def get_available_vid(self):
+        available_vids = set(range(2, 4095))
+        used_vids = set(
+            [
+                network.vlan.vid
+                for network in self._networks
+                if network.vlan is not None
+            ]
+        )
+        available_vids = available_vids.difference(used_vids)
+        return random.choice(available_vids)
+
+    def create_physical_network(
+        self,
+        name=None,
+        mac_address=None,
+        card=None,
+        port=None,
+    ):
+        if card is None:
+            card = LXDNetworkCard(self.allocate_pci_address())
+        if name is None:
+            name = factory.make_string("eth")
+        if mac_address is None:
+            mac_address = factory.make_mac_address()
+        network = LXDNetwork(name, mac_address)
+        self._networks[name] = network
+        if port is None:
+            port = LXDNetworkPort(
+                name, len(card.ports), mac_address=mac_address
+            )
+        card.ports.append(port)
+        self._network_cards.append(card)
+        return network
+
+    def create_vlan_network(
+        self,
+        name=None,
+        vid=None,
+        mac_address=None,
+        parent=None,
+    ):
+        if name is None:
+            name = factory.make_string("vlan")
+        if parent is None:
+            parent = self.create_physical_network()
+        if mac_address is None:
+            mac_address = factory.make_mac_address()
+        if vid is None:
+            vid = self.get_available_vid()
+        network = LXDNetwork(
+            name, mac_address, vlan=LXDVlan(lower_device=parent.name, vid=vid)
+        )
+        self._networks[name] = network
+        return network
+
+    def create_bridge_network(
+        self,
+        name=None,
+        mac_address=None,
+        parents=None,
+    ):
+        if name is None:
+            name = factory.make_string("bridge")
+        if parents is None:
+            parents = [self.create_physical_network()]
+        if mac_address is None:
+            mac_address = factory.make_mac_address()
+        network = LXDNetwork(
+            name,
+            mac_address,
+            bridge=LXDBridge(
+                upper_devices=[parent.name for parent in parents]
+            ),
+        )
+        self._networks[name] = network
+        return network
+
+    def create_bond_network(
+        self,
+        name=None,
+        mac_address=None,
+        parents=None,
+    ):
+        if name is None:
+            name = factory.make_string("bond")
+        if parents is None:
+            parents = [self.create_physical_network()]
+        if mac_address is None:
+            mac_address = factory.make_mac_address()
+        network = LXDNetwork(
+            name,
+            mac_address,
+            bond=LXDBond(lower_devices=[parent.name for parent in parents]),
+        )
+        self._networks[name] = network
+        return network
+
+    def render(self):
+        network = (
+            {
+                "cards": [
+                    dataclasses.asdict(card) for card in self._network_cards
+                ],
+                "total": len(self._network_cards),
+            },
+        )
+        data = {
+            "api_extensions": self.api_extensions,
+            "api_version": self.api_version,
+            "environment": self.environment,
+            "resources": {
+                "cpu": {
+                    "architecture": self.environment["kernel_architecture"],
+                    "sockets": [
+                        {
+                            "socket": 0,
+                            "cores": [],
+                        }
+                    ],
+                },
+                "memory": {
+                    "hugepages_total": 0,
+                    "hugepages_used": 0,
+                    "hugepages_size": 0,
+                    "used": int(0.3 * self.memory * 1024 * 1024),
+                    "total": int(self.memory * 1024 * 1024),
+                },
+                "gpu": {"cards": [], "total": 0},
+                "network": network,
+                "storage": {
+                    "disks": [],
+                    "total": 0,
+                },
+            },
+            "network-extra": {
+                "interfaces": self._generate_interfaces(),
+                "hints": None,
+            },
+        }
+        for core_index in range(self.cores):
+            data["resources"]["cpu"]["sockets"][0]["cores"].append(
+                {
+                    "core": core_index,
+                    "threads": [
+                        {
+                            "id": core_index,
+                            "thread": 0,
+                            "online": True,
+                            "numa_node": 0,
+                        },
+                    ],
+                    "frequency": 1500,
+                }
+            )
+        return data
+
+    def _generate_interfaces(self):
+        # XXX: It would be good if this method could basically call
+        # get_all_interfaces_definition(), passing in information it
+        # needs. But considering the goal is to minimize information and
+        # instead make use of the LXD data directly, it's probably worth
+        # holding off until there's less information to render.
+        interfaces = {}
+        for name, network in self._networks.items():
+            interface = {
+                "mac_address": self._get_network_port_mac(
+                    name, network.hwaddr
+                ),
+                "links": [],
+                "enabled": network.state == "up",
+                "source": "machine-resources",
+            }
+            if network.vlan is not None:
+                interface.update(
+                    {
+                        "type": "vlan",
+                        "parents": [network.vlan.lower_device],
+                        "vid": network.vlan.vid,
+                    }
+                )
+            elif network.bridge is not None:
+                interface.update(
+                    {
+                        "type": "bridge",
+                        "parents": list(network.bridge.upper_devices),
+                    }
+                )
+            elif network.bond is not None:
+                interface.update(
+                    {
+                        "type": "bond",
+                        "parents": list(network.bond.lower_devices),
+                    }
+                )
+            else:
+                interface.update({"type": "physical", "parents": []})
+            for address in network.addresses:
+                link = {
+                    "address": f"{address.address}/{address.netmask}",
+                    "mode": "static",
+                }
+                address_annotation = self.address_annotations.get(
+                    address.address, {}
+                )
+                link.update(address_annotation)
+                interface["links"].append(link)
+            interfaces[name] = interface
+        return interfaces
+
+    def _get_network_port_mac(self, port_name, default):
+        for card in self._network_cards:
+            for port in card.ports:
+                if port.id == port_name:
+                    return port.mac_address
+
+        return default
+
+
 class UpdateInterfacesMixin:
     def create_empty_controller(self, **kwargs):
         node_type = random.choice(
@@ -55,6 +409,10 @@ class UpdateInterfacesMixin:
         with_beaconing=False,
         passes=None,
     ):
+        # XXX: This is should be removed when all the tests use
+        # of FakeCommissioningData.
+        if isinstance(interfaces, FakeCommissioningData):
+            interfaces = interfaces.render()["network-extra"]["interfaces"]
         # update_node_interfaces() is idempotent, so it doesn't matter
         # if it's called once or twice.
         if passes is None:
@@ -296,30 +654,25 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
     def test_all_new_physical_interfaces_no_links(self):
         controller = self.create_empty_controller()
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            },
-            "eth1": {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [],
-                "enabled": False,
-            },
-        }
-        self.update_interfaces(controller, interfaces)
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        eth0.state = "up"
+        eth1 = data.create_physical_network(
+            "eth1",
+            mac_address="22:22:22:22:22:22",
+        )
+        eth1.state = "down"
+        self.update_interfaces(controller, data)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertThat(
             eth0,
             MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
                 name="eth0",
-                mac_address=interfaces["eth0"]["mac_address"],
+                mac_address="11:11:11:11:11:11",
                 enabled=True,
             ),
         )
@@ -330,7 +683,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
                 name="eth1",
-                mac_address=interfaces["eth1"]["mac_address"],
+                mac_address="22:22:22:22:22:22",
                 enabled=False,
             ),
         )
@@ -622,22 +975,14 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         network = factory.make_ip4_or_6_network()
         ip = factory.pick_ip_in_network(network)
         gateway_ip = factory.pick_ip_in_network(network, but_not=[ip])
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [
-                    {
-                        "mode": "static",
-                        "address": "%s/%d" % (str(ip), network.prefixlen),
-                        "gateway": str(gateway_ip),
-                    }
-                ],
-                "enabled": True,
-            }
-        }
-        self.update_interfaces(controller, interfaces)
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        eth0.addresses = [LXDAddress(str(ip), network.prefixlen)]
+        data.address_annotations[str(ip)] = {"gateway": str(gateway_ip)}
+        self.update_interfaces(controller, data)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
         self.assertThat(
@@ -645,7 +990,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             MatchesStructure.byEquality(
                 type=INTERFACE_TYPE.PHYSICAL,
                 name="eth0",
-                mac_address=interfaces["eth0"]["mac_address"],
+                mac_address="11:11:11:11:11:11",
                 enabled=True,
                 vlan=default_vlan,
             ),
@@ -1403,53 +1748,39 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
     def test_existing_physical_with_no_links_new_vlan_no_links(self):
         controller = self.create_empty_controller()
+        data = FakeCommissioningData()
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan
         )
         vid_on_fabric = random.randint(1, 4094)
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": interface.mac_address,
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            }
-        }
-        interfaces["eth0.%d" % vid_on_fabric] = {
-            "type": "vlan",
-            "parents": ["eth0"],
-            "links": [],
-            "enabled": True,
-            "vid": vid_on_fabric,
-        }
-        self.update_interfaces(controller, interfaces)
-        self.assertThat(controller.interface_set.count(), Equals(2))
-        self.assertThat(
-            reload_object(interface),
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.PHYSICAL,
-                name="eth0",
-                mac_address=interface.mac_address,
-                enabled=True,
-                vlan=vlan,
-            ),
+        eth0_network = data.create_physical_network(
+            "eth0", mac_address=str(interface.mac_address)
         )
+        vlan_network = data.create_vlan_network(
+            f"eth0.{vid_on_fabric}", vid=vid_on_fabric, parent=eth0_network
+        )
+        self.update_interfaces(controller, data)
+        self.assertEqual(2, controller.interface_set.count())
+        [physical] = controller.interface_set.filter(
+            type=INTERFACE_TYPE.PHYSICAL
+        )
+        self.assertEqual("eth0", physical.name)
+        self.assertEqual(eth0_network.hwaddr, physical.mac_address)
+        self.assertEqual(vlan, physical.vlan)
+        self.assertTrue(physical.enabled)
+
         created_vlan = VLAN.objects.get(fabric=fabric, vid=vid_on_fabric)
         vlan_interface = VLANInterface.objects.get(
             node=controller, vlan=created_vlan
         )
-        self.assertThat(
-            vlan_interface,
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.VLAN,
-                name="eth0.%d" % vid_on_fabric,
-                enabled=True,
-                vlan=created_vlan,
-            ),
+        [vlan_interface] = controller.interface_set.filter(
+            type=INTERFACE_TYPE.VLAN
         )
+        self.assertEqual(vlan_network.name, vlan_interface.name)
+        self.assertEqual(created_vlan, vlan_interface.vlan)
+        self.assertTrue(vlan_interface.enabled)
 
     def test_existing_physical_with_no_links_new_vlan_with_links(self):
         controller = self.create_empty_controller()
@@ -1767,47 +2098,30 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         eth1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan
         )
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": eth0.mac_address,
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            },
-            "eth1": {
-                "type": "physical",
-                "mac_address": eth1.mac_address,
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            },
-            "br0": {
-                "type": "bridge",
-                "mac_address": factory.make_mac_address(),
-                "parents": ["eth0", "eth1"],
-                "links": [],
-                "enabled": True,
-            },
-        }
-        self.update_interfaces(controller, interfaces)
-        self.assertThat(controller.interface_set.count(), Equals(3))
-        bond_interface = BridgeInterface.objects.get(
-            node=controller, mac_address=interfaces["br0"]["mac_address"]
+        data = FakeCommissioningData()
+        eth0_network = data.create_physical_network(
+            "eth0", mac_address=str(eth0.mac_address)
         )
-        self.assertThat(
-            bond_interface,
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.BRIDGE,
-                name="br0",
-                mac_address=interfaces["br0"]["mac_address"],
-                enabled=True,
-                vlan=vlan,
-            ),
+        eth1_network = data.create_physical_network(
+            "eth1", mac_address=str(eth1.mac_address)
         )
-        self.assertThat(
-            [parent.name for parent in bond_interface.parents.all()],
-            MatchesSetwise(Equals("eth0"), Equals("eth1")),
+        bridge_network = data.create_bridge_network(
+            "br0",
+            mac_address=eth1.mac_address,
+            parents=[eth0_network, eth1_network],
+        )
+
+        self.update_interfaces(controller, data)
+
+        self.assertEqual(3, controller.interface_set.count())
+        bridge_interface = BridgeInterface.objects.get(
+            node=controller, mac_address=bridge_network.hwaddr
+        )
+        self.assertEqual("br0", bridge_interface.name)
+        self.assertEqual(vlan, bridge_interface.vlan)
+        self.assertEqual(
+            sorted(parent.name for parent in bridge_interface.parents.all()),
+            ["eth0", "eth1"],
         )
 
     def test_bond_updates_existing_bond(self):
@@ -1828,43 +2142,25 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             name="bond0",
             mac_address=factory.make_mac_address(),
         )
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": eth0.mac_address,
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            },
-            "eth1": {
-                "type": "physical",
-                "mac_address": eth1.mac_address,
-                "parents": [],
-                "links": [],
-                "enabled": True,
-            },
-            "bond0": {
-                "type": "bond",
-                "mac_address": factory.make_mac_address(),
-                "parents": ["eth0"],
-                "links": [],
-                "enabled": True,
-            },
-        }
-        self.update_interfaces(controller, interfaces)
-        self.assertThat(controller.interface_set.count(), Equals(3))
-        self.assertThat(
-            reload_object(bond0),
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.BOND,
-                name="bond0",
-                mac_address=interfaces["bond0"]["mac_address"],
-                enabled=True,
-                vlan=vlan,
-            ),
+        data = FakeCommissioningData()
+        eth0_network = data.create_physical_network(
+            "eth0", mac_address=str(eth0.mac_address)
         )
-        self.assertThat(
-            [parent.name for parent in bond0.parents.all()], Equals(["eth0"])
+        data.create_physical_network("eth1", mac_address=str(eth1.mac_address))
+        bond_network = data.create_bond_network(
+            "bond0", parents=[eth0_network]
+        )
+
+        self.update_interfaces(controller, data)
+
+        self.assertEqual(3, controller.interface_set.count())
+        bond_interface = BondInterface.objects.get(
+            node=controller, mac_address=bond_network.hwaddr
+        )
+        self.assertEqual("bond0", bond_interface.name)
+        self.assertEqual(vlan, bond_interface.vlan)
+        self.assertEqual(
+            sorted(parent.name for parent in bond0.parents.all()), ["eth0"]
         )
 
     def test_bridge_updates_existing_bridge(self):
