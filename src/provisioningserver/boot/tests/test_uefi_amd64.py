@@ -167,7 +167,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             output,
             ContainsAll(
                 [
-                    "menuentry 'Commission'",
+                    "menuentry 'Ephemeral'",
                     "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
                     params.kernel,
                 ]
@@ -185,7 +185,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             output,
             ContainsAll(
                 [
-                    "menuentry 'Commission'",
+                    "menuentry 'Ephemeral'",
                     "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
                     params.kernel,
                 ]
