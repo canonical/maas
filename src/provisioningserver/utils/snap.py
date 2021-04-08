@@ -4,6 +4,7 @@
 """Snap utilities."""
 
 import dataclasses
+import json
 import os
 from pathlib import Path
 from typing import NamedTuple, Optional
@@ -90,3 +91,54 @@ def get_snap_mode():
     if mode == "none":
         return None
     return mode
+
+
+@dataclasses.dataclass
+class SnapVersionsInfo:
+    """Information about snap versions."""
+
+    current: SnapVersion
+    channel: Optional[SnapChannel] = None
+    update: Optional[SnapVersion] = None
+    cohort: str = ""
+
+    def __post_init__(self):
+        # deserialize nested dataclasses, if needed
+        if isinstance(self.current, dict):
+            self.current = SnapVersion(**self.current)
+        if isinstance(self.channel, dict):
+            self.channel = SnapChannel(**self.channel)
+        if isinstance(self.update, dict):
+            self.update = SnapVersion(**self.update)
+
+
+def get_snap_versions_info(info_file=None) -> Optional[SnapVersionsInfo]:
+    """Return versions information for current snap and update."""
+    # XXX until snapd provides a way from within the snap the tracking channel,
+    # cohort and whether there are available updates (and their details), mock
+    # this functionality by reading JSON content from
+    # /var/snap/maas/common/snapd-info, with contents similar to
+    #
+    # {
+    #   "channel": "3.0/edge",
+    #   "cohort": "abcd1234",
+    #   "update": {
+    #     "revision": "7890",
+    #     "version": "3.0.1-alpha1-1234-g.deadbeef"
+    #   }
+    # }
+    #
+
+    versions = SnapVersionsInfo(current=get_snap_version())
+
+    if info_file is None:
+        info_file = SnapPaths.from_environ().common / "snapd-info"
+    if info_file.exists():
+        data = json.loads(info_file.read_text())
+        versions.cohort = data.get("cohort", "")
+        if "channel" in data:
+            versions.channel = SnapChannel.from_string(data["channel"])
+        if "update" in data:
+            versions.update = SnapVersion(**data["update"])
+
+    return versions

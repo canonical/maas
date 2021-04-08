@@ -31,6 +31,7 @@ __all__ = [
     "RequestNodeInfoByMACAddress",
     "SendEvent",
     "SendEventMACAddress",
+    "UpdateControllerState",
     "UpdateLastImageSync",
     "UpdateNodePowerState",
 ]
@@ -53,6 +54,7 @@ from provisioningserver.rpc.exceptions import (
     NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
+    NoSuchScope,
 )
 
 
@@ -643,3 +645,19 @@ class GetSyslogConfiguration(amp.Command):
     arguments = [(b"system_id", amp.Unicode())]
     response = [(b"port", amp.Integer())]
     errors = {NoSuchNode: b"NoSuchNode"}
+
+
+class UpdateControllerState(amp.Command):
+    """Called by a rack controller to update its state in the region.
+
+    :since: 3.0
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+        # type of state information to update
+        (b"scope", amp.Unicode()),
+        (b"state", StructureAsJSON()),
+    ]
+    response = []
+    errors = {NoSuchNode: b"NoSuchNode", NoSuchScope: b"NoSuchScope"}

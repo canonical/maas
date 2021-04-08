@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+import json
 import os
 from pathlib import Path
 
@@ -12,10 +13,12 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.snap import (
     get_snap_mode,
     get_snap_version,
+    get_snap_versions_info,
     running_in_snap,
     SnapChannel,
     SnapPaths,
     SnapVersion,
+    SnapVersionsInfo,
 )
 
 
@@ -116,3 +119,105 @@ class TestGetSnapMode(MAASTestCase):
     def test_get_snap_mode_mode_other(self):
         self._write_snap_mode("rack+region")
         self.assertEqual(get_snap_mode(), "rack+region")
+
+
+class TestSnapVersionsInfo(MAASTestCase):
+    def test_deserialize(self):
+        info = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+            update={
+                "revision": "5678",
+                "version": "3.0.0-alpha2-222-g.cafecafe",
+            },
+        )
+        self.assertEqual(
+            info.current,
+            SnapVersion(
+                revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+            ),
+        )
+        self.assertEqual(info.channel, SnapChannel(track="3.0"))
+        self.assertEqual(
+            info.update,
+            SnapVersion(
+                revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
+            ),
+        )
+
+
+class TestGetSnapVersionsInfo(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.patch(
+            os,
+            "environ",
+            {
+                "SNAP_REVISION": "1234",
+                "SNAP_VERSION": "3.0.0-alpha1-111-g.deadbeef",
+            },
+        )
+
+    def test_get_snap_versions_info_no_file(self):
+        versions = get_snap_versions_info(Path("/not/here"))
+        self.assertEqual(
+            versions,
+            SnapVersionsInfo(
+                current=SnapVersion(
+                    revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                ),
+                channel=None,
+                update=None,
+                cohort="",
+            ),
+        )
+
+    def test_get_snap_versions_info(self):
+        data = {
+            "channel": "3.0/edge/fix-9991",
+            "update": {
+                "revision": "5678",
+                "version": "3.0.0-alpha2-222-g.cafecafe",
+            },
+            "cohort": "abcd1234",
+        }
+        path = self.make_file(contents=json.dumps(data))
+        versions = get_snap_versions_info(info_file=Path(path))
+        self.assertEqual(
+            versions,
+            SnapVersionsInfo(
+                current=SnapVersion(
+                    revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                ),
+                channel=SnapChannel(
+                    track="3.0", risk="edge", branch="fix-9991"
+                ),
+                update=SnapVersion(
+                    revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
+                ),
+                cohort="abcd1234",
+            ),
+        )
+
+    def test_get_snap_version_info_no_update(self):
+        data = {
+            "channel": "3.0/edge/fix-9991",
+        }
+        path = self.make_file(contents=json.dumps(data))
+        versions = get_snap_versions_info(info_file=Path(path))
+        self.assertEqual(
+            versions,
+            SnapVersionsInfo(
+                current=SnapVersion(
+                    revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                ),
+                channel=SnapChannel(
+                    track="3.0", risk="edge", branch="fix-9991"
+                ),
+                update=None,
+                cohort="",
+            ),
+        )

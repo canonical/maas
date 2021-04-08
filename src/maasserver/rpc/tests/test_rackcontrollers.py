@@ -26,6 +26,7 @@ from maasserver.rpc.rackcontrollers import (
     report_neighbours,
     update_foreign_dhcp,
     update_last_image_sync,
+    update_state,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -33,6 +34,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.network import update_node_interfaces
+from provisioningserver.rpc.exceptions import NoSuchScope
 
 
 class TestHandleUpgrade(MAASServerTestCase):
@@ -460,3 +462,37 @@ class TestUpdateLastImageSync(MAASServerTestCase):
         update_last_image_sync(rack.system_id)
 
         self.assertNotEqual(previous_sync, reload_object(rack).last_image_sync)
+
+
+class TestUpdateState(MAASServerTestCase):
+    def test_scope_versions_snap(self):
+        logger = self.useFixture(FakeLogger())
+        rack = factory.make_RackController()
+        versions = {
+            "snap": {
+                "current": {
+                    "revision": "1234",
+                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                },
+            },
+        }
+        update_state(rack.system_id, "versions", versions)
+        self.assertEqual(
+            logger.output.strip(),
+            f"Controller {rack.hostname} reported versions information "
+            "SnapVersionsInfo("
+            "current=SnapVersion(revision='1234', version='3.0.0-alpha1-111-g.deadbeef'), "
+            "channel=None, update=None, cohort='')",
+        )
+
+    def test_scope_versions_no_snap(self):
+        logger = self.useFixture(FakeLogger())
+        rack = factory.make_RackController()
+        update_state(rack.system_id, "versions", {"something": "else"})
+        self.assertEqual(logger.output, "")
+
+    def test_scope_unhandled(self):
+        rack = factory.make_RackController()
+        self.assertRaises(
+            NoSuchScope, update_state, rack.system_id, "other", {}
+        )

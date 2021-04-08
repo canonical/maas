@@ -16,6 +16,7 @@ from django.db.models import Q
 from maasserver import locks, worker_user
 from maasserver.enum import NODE_TYPE
 from maasserver.models import (
+    Controller,
     ControllerInfo,
     Domain,
     Node,
@@ -29,8 +30,9 @@ from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from metadataserver.models import ScriptSet
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.rpc.exceptions import NoSuchNode, NoSuchScope
 from provisioningserver.utils import typed
+from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("rpc.rackcontrollers")
@@ -277,4 +279,34 @@ def update_last_image_sync(system_id):
     """
     RackController.objects.filter(system_id=system_id).update(
         last_image_sync=now()
+    )
+
+
+@synchronous
+@transactional
+def update_state(system_id, scope, state):
+    """Update the state of a controller for a scope."""
+    try:
+        controller = Controller.objects.get(system_id=system_id)
+    except Controller.DoesNotExist:
+        raise NoSuchNode.from_system_id(system_id)
+
+    scope_handlers = {
+        "versions": _update_controller_versions,
+    }
+    handler = scope_handlers.get(scope)
+    if handler is None:
+        raise NoSuchScope()
+    handler(controller, state)
+
+
+def _update_controller_versions(node, state):
+    """Update reported version for a controller."""
+    snap_versions = state.get("snap")
+    if not snap_versions:
+        return
+    # XXX for now, just log the reported version
+    versions_info = SnapVersionsInfo(**snap_versions)
+    maaslog.info(
+        f"Controller {node.hostname} reported versions information {versions_info}"
     )

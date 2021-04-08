@@ -575,6 +575,17 @@ class Region(RPCProtocol):
 
         return deferToDatabase(get_from_db)
 
+    @region.UpdateControllerState.responder
+    def update_controller_state(self, system_id, scope, state):
+        """Update state of the controller.
+
+        The scope specificies which part of the state needs to be updated.
+        """
+        d = deferToDatabase(
+            rackcontrollers.update_state, system_id, scope, state
+        )
+        return d.addCallback(lambda _: {})
+
 
 @inlineCallbacks
 def isLoopbackURL(url):

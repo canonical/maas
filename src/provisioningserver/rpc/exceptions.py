@@ -140,3 +140,7 @@ class CannotDisableAndShutoffRackd(Exception):
 
 class ScanNetworksAlreadyInProgress(Exception):
     """Already scanning all networks; request ignored."""
+
+
+class NoSuchScope(Exception):
+    """The scope for controller state update is unknown."""
