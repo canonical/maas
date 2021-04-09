@@ -31,6 +31,8 @@ __all__ = [
 
 from collections import OrderedDict
 
+from provisioningserver.enum import enum_choices
+
 
 class COMPONENT:
     """Major moving parts of the application that may have failure states."""
@@ -339,12 +341,7 @@ class POWER_STATE:
     ERROR = "error"
 
 
-POWER_STATE_CHOICES = (
-    (POWER_STATE.ON, "On"),
-    (POWER_STATE.OFF, "Off"),
-    (POWER_STATE.UNKNOWN, "Unknown"),
-    (POWER_STATE.ERROR, "Error"),
-)
+POWER_STATE_CHOICES = enum_choices(POWER_STATE, transform=str.capitalize)
 
 
 class BOOT_RESOURCE_TYPE:
@@ -645,11 +642,7 @@ class CACHE_MODE_TYPE:
 
 # Django choices for CACHE_MODE_TYPE: sequence of tuples (key, UI
 # representation).
-CACHE_MODE_TYPE_CHOICES = (
-    (CACHE_MODE_TYPE.WRITEBACK, "Writeback"),
-    (CACHE_MODE_TYPE.WRITETHROUGH, "Writethrough"),
-    (CACHE_MODE_TYPE.WRITEAROUND, "Writearound"),
-)
+CACHE_MODE_TYPE_CHOICES = enum_choices(CACHE_MODE_TYPE)
 
 
 class INTERFACE_TYPE:
@@ -774,17 +767,9 @@ class SERVICE_STATUS:
     DEAD = "dead"
     # Service is off. (Should be off and is off).
     OFF = "off"
-    # Service is on.
-    ON = "on"
 
 
-SERVICE_STATUS_CHOICES = (
-    (SERVICE_STATUS.UNKNOWN, "Unknown"),
-    (SERVICE_STATUS.RUNNING, "Running"),
-    (SERVICE_STATUS.DEGRADED, "Degraded"),
-    (SERVICE_STATUS.DEAD, "Dead"),
-    (SERVICE_STATUS.OFF, "Off"),
-)
+SERVICE_STATUS_CHOICES = enum_choices(SERVICE_STATUS, transform=str.capitalize)
 
 
 class KEYS_PROTOCOL_TYPE:

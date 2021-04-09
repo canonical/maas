@@ -8,6 +8,7 @@ from django.db.models import Manager, Model
 from django.db.models.fields import CharField, DateTimeField, IntegerField
 
 from maasserver import DefaultMeta
+from provisioningserver.enum import enum_choices
 
 
 class RBAC_ACTION:
@@ -21,12 +22,7 @@ class RBAC_ACTION:
     REMOVE = "remove"
 
 
-RBAC_ACTION_CHOICES = [
-    (RBAC_ACTION.FULL, "full"),
-    (RBAC_ACTION.ADD, "add"),
-    (RBAC_ACTION.UPDATE, "update"),
-    (RBAC_ACTION.REMOVE, "remove"),
-]
+RBAC_ACTION_CHOICES = enum_choices(RBAC_ACTION)
 
 
 class RBACSyncManager(Manager):
