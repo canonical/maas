@@ -4,12 +4,6 @@
 """Enumerations meaningful to the rack contoller (and possibly the region)."""
 
 
-# *** IMPORTANT ***
-# Note to all ye who enter here: comments beginning with #: are special
-# to Sphinx. They are extracted and form part of the documentation of
-# the field they directly precede.
-
-
 class MACVLAN_MODE:
 
     BRIDGE = "bridge"

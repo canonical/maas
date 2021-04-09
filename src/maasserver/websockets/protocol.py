@@ -36,25 +36,25 @@ log = LegacyLogger()
 
 
 class MSG_TYPE:
-    #: Request made from client.
+    # Request made from client.
     REQUEST = 0
 
-    #: Response from server.
+    # Response from server.
     RESPONSE = 1
 
-    #: Notify message from server.
+    # Notify message from server.
     NOTIFY = 2
 
-    #: Connectivity checks
+    # Connectivity checks
     PING = 3
     PING_REPLY = 4
 
 
 class RESPONSE_TYPE:
-    #:
+    #
     SUCCESS = 0
 
-    #:
+    #
     ERROR = 1
 
 

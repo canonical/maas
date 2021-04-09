@@ -310,7 +310,7 @@ class TestMakeSettingField(MAASTestCase):
         setting = make_setting_field(
             factory.make_name("name"), factory.make_name("label")
         )
-        #: doesn't raise ValidationError
+        # doesn't raise ValidationError
         validate(setting, SETTING_PARAMETER_FIELD_SCHEMA)
 
     def test_returns_dict_with_required_fields(self):

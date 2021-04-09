@@ -1317,7 +1317,7 @@ class InterfaceTest(MAASServerTestCase):
     def test_remove_tag_doesnt_error_on_missing_tag(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[])
         tag = factory.make_name("tag")
-        #: Test is this doesn't raise an exception
+        # Test is this doesn't raise an exception
         interface.remove_tag(tag)
 
     def test_save_link_speed_may_exceed_interface_speed(self):

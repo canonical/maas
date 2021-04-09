@@ -34,20 +34,20 @@ maaslog = get_maas_logger("service_monitor")
 class SERVICE_STATE(enum.Enum):
     """The vocabulary of a service state."""
 
-    #: Service is on
+    # Service is on
     ON = "on"
 
-    #: Service is off
+    # Service is off
     OFF = "off"
 
-    #: Service is dead
+    # Service is dead
     DEAD = "dead"
 
-    #: Service is unknown. This is only relevant as an observed state, not as
+    # Service is unknown. This is only relevant as an observed state, not as
     # an expected state.
     UNKNOWN = "unknown"
 
-    #: Don't care about the service state. This is only relevant as an
+    # Don't care about the service state. This is only relevant as an
     # expected state, not as an observed state.
     ANY = "any"
 

@@ -11,13 +11,13 @@ from maasserver import DefaultMeta
 
 
 class RBAC_ACTION:
-    #: Perform a full sync.
+    # Perform a full sync.
     FULL = "full"
-    #: Add a new resource.
+    # Add a new resource.
     ADD = "add"
-    #: Update a resource.
+    # Update a resource.
     UPDATE = "update"
-    #: Remove a resource.
+    # Remove a resource.
     REMOVE = "remove"
 
 

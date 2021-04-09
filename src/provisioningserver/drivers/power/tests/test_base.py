@@ -204,7 +204,7 @@ class TestPowerDriverBase(MAASTestCase):
 
     def test_get_schema_returns_valid_schema(self):
         fake_driver = make_power_driver_base()
-        #: doesn't raise ValidationError
+        # doesn't raise ValidationError
         validate(fake_driver.get_schema(), JSON_POWER_DRIVER_SCHEMA)
 
 

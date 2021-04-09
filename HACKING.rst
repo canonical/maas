@@ -608,29 +608,3 @@ Sometimes you need to see where in the code that query was performed.::
 
     from maasserver.testing.fixtures import LogSQL
     self.useFixture(LogSQL(include_stacktrace=True))
-
-
-Documentation
-=============
-
-Use `reST`_ with the `convention for headings as used in the Python
-documentation`_.
-
-.. _reST: http://sphinx.pocoo.org/rest.html
-
-.. _convention for headings as used in the Python documentation:
-  http://sphinx.pocoo.org/rest.html#sections
-
-
-Updating copyright notices
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Use the `Bazaar Copyright Updater`_::
-
-  bzr branch lp:bzr-update-copyright ~/.bazaar/plugins/update_copyright
-  make copyright
-
-Then commit any changes.
-
-.. _Bazaar Copyright Updater:
-  https://launchpad.net/bzr-update-copyright

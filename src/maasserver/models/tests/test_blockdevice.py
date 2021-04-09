@@ -409,7 +409,7 @@ class TestBlockDevice(MAASServerTestCase):
     def test_remove_tag_doesnt_error_on_missing_tag(self):
         block_device = BlockDevice()
         tag = factory.make_name("tag")
-        #: Test is this doesn't raise an exception
+        # Test is this doesn't raise an exception
         block_device.remove_tag(tag)
 
     def test_serialize(self):

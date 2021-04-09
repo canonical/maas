@@ -15,17 +15,17 @@ from provisioningserver.utils.registry import Registry
 class BOOT_IMAGE_PURPOSE:
     """The vocabulary of a `BootImage`'s purpose."""
 
-    #: Usable for commissioning
+    # Usable for commissioning
     COMMISSIONING = "commissioning"
-    #: Usable for install
+    # Usable for install
     INSTALL = "install"
-    #: Usable for fast-path install
+    # Usable for fast-path install
     XINSTALL = "xinstall"
-    #: Usable for diskless boot
+    # Usable for diskless boot
     DISKLESS = "diskless"
-    #: Bootloader for enlistment, commissioning, and deployment
+    # Bootloader for enlistment, commissioning, and deployment
     BOOTLOADER = "bootloader"
-    #: Usable for ephemeral boots
+    # Usable for ephemeral boots
     EPHEMERAL = "ephemeral"
 
 
