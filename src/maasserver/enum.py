@@ -642,7 +642,9 @@ class CACHE_MODE_TYPE:
 
 # Django choices for CACHE_MODE_TYPE: sequence of tuples (key, UI
 # representation).
-CACHE_MODE_TYPE_CHOICES = enum_choices(CACHE_MODE_TYPE)
+CACHE_MODE_TYPE_CHOICES = enum_choices(
+    CACHE_MODE_TYPE, transform=str.capitalize
+)
 
 
 class INTERFACE_TYPE:
