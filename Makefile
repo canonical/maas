@@ -140,8 +140,12 @@ machine-resources: machine-resources-vendor
 	$(MAKE) -C src/machine-resources build
 .PHONY: machine-resources
 
-test: test-py
+test: test-missing-migrations test-py
 .PHONY: test
+
+test-missing-migrations: bin/database bin/maas-region
+	$(dbrun) bin/maas-region makemigrations --check --dry-run
+.PHONY: test-missing-migrations
 
 test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit bin/pytest
 	@utilities/run-py-tests-ci
