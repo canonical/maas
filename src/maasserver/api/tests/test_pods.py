@@ -198,6 +198,22 @@ class TestPodsAPIAdmin(PodAPITestForAdmin, PodMixin):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(parsed_result["type"], pod_info["type"])
 
+    def test_create_lxd_default_project(self):
+        self.patch(pods, "post_commit_do")
+        discovered_pod, _, _ = self.fake_pod_discovery()
+        ip = factory.make_ipv4_address()
+        info = {
+            "type": "lxd",
+            "power_address": ip,
+            "power_pass": "sekret",
+            "ip_address": ip,
+        }
+        response = self.client.post(reverse("pods_handler"), info)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        pod = Pod.objects.get(id=parsed_result["id"])
+        self.assertEqual(pod.power_parameters["project"], "default")
+
     def test_create_creates_pod_with_default_resource_pool(self):
         self.patch(pods, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()

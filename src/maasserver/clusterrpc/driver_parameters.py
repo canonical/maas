@@ -75,13 +75,14 @@ def make_form_field(json_field):
         extra_parameters = {}
 
     default = json_field.get("default")
+    required = json_field.get("required")
     if default is not None:
         extra_parameters["initial"] = default
+        if required and field_class is forms.CharField:
+            extra_parameters["empty_value"] = default
 
     form_field = field_class(
-        label=json_field["label"],
-        required=json_field["required"],
-        **extra_parameters
+        label=json_field["label"], required=required, **extra_parameters
     )
     return form_field
 

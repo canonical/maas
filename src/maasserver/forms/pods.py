@@ -222,7 +222,7 @@ class PodForm(MAASModelForm):
             for driver in self.drivers_orig
             if driver["driver_type"] == "pod"
         }
-        if len(self.drivers) == 0:
+        if not self.drivers:
             type_value = ""
         elif type_value not in self.drivers:
             type_value = (
@@ -256,7 +256,7 @@ class PodForm(MAASModelForm):
         super()._clean_fields()
         # If no errors then we re-process with the fields required by the
         # selected type for the pod.
-        if len(self.errors) == 0:
+        if not self.errors:
             driver_fields = get_driver_parameters_from_json(
                 self.drivers_orig, scope=SETTING_SCOPE.BMC
             )
@@ -272,7 +272,7 @@ class PodForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        if len(self.drivers) == 0:
+        if not self.drivers:
             set_form_error(
                 self,
                 "type",

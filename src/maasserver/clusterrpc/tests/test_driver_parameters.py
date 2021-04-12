@@ -204,7 +204,7 @@ class TestMakeFormField(MAASServerTestCase):
             (django_field.label, django_field.required),
         )
 
-    def test_sets_initial_to_default(self):
+    def test_sets_default_not_required(self):
         json_field = {
             "name": "some_field",
             "label": "Some Field",
@@ -213,7 +213,20 @@ class TestMakeFormField(MAASServerTestCase):
             "default": "some default",
         }
         django_field = make_form_field(json_field)
-        self.assertEqual(json_field["default"], django_field.initial)
+        self.assertEqual("some default", django_field.initial)
+        self.assertEqual("", django_field.empty_value)
+
+    def test_sets_default_and_empty_value_required(self):
+        json_field = {
+            "name": "some_field",
+            "label": "Some Field",
+            "field_type": "string",
+            "required": True,
+            "default": "some default",
+        }
+        django_field = make_form_field(json_field)
+        self.assertEqual("some default", django_field.initial)
+        self.assertEqual("some default", django_field.empty_value)
 
 
 class TestMakeSettingField(MAASServerTestCase):
