@@ -19,6 +19,7 @@ class DebVersion:
     """Information about a .deb version."""
 
     version: str
+    origin: str = ""
 
 
 @dataclasses.dataclass
@@ -46,7 +47,6 @@ def get_deb_versions_info(apt_pkg=None) -> Optional[DebVersionsInfo]:
 
     try:
         cache = apt_pkg.Cache(None)
-        depcache = apt_pkg.DepCache(cache)
     except SystemError:
         maaslog.error(
             "Installed version could not be determined. Ensure "
@@ -54,30 +54,67 @@ def get_deb_versions_info(apt_pkg=None) -> Optional[DebVersionsInfo]:
         )
         return None
 
-    current, update = None, None
+    depcache = apt_pkg.DepCache(cache)
+    sources = apt_pkg.SourceList()
+    sources.read_main_list()
+    policy = apt_pkg.Policy(cache)
+    policy.init_defaults()
+
+    current, update, = (
+        None,
+        None,
+    )
     for package in MAAS_PACKAGES:
-        current, update = _get_deb_current_and_update(cache, depcache, package)
+        current, update = _get_deb_current_and_update(
+            cache, depcache, sources, policy, package
+        )
         if current:
             break
     else:
         return None
-    return DebVersionsInfo(
-        current=DebVersion(version=current),
-        update=DebVersion(version=update) if update else None,
-    )
+    return DebVersionsInfo(current=current, update=update)
 
 
-def _get_deb_current_and_update(cache, depcache, package_name):
+def _get_deb_current_and_update(
+    cache, depcache, sources, policy, package_name
+):
     try:
         package = cache[package_name]
     except KeyError:
         return None, None
 
-    if package.current_ver is None:
+    current_ver = package.current_ver
+    if current_ver is None:
         return None, None
 
-    candidate = depcache.get_candidate_ver(package)
-    return (
-        package.current_ver.ver_str,
-        candidate.ver_str if candidate else None,
+    current = DebVersion(
+        version=current_ver.ver_str,
+        origin=_get_deb_origin(sources, policy, current_ver),
     )
+
+    update = None
+    candidate_ver = depcache.get_candidate_ver(package)
+    if candidate_ver:
+        update = DebVersion(
+            version=candidate_ver.ver_str,
+            origin=_get_deb_origin(sources, policy, candidate_ver),
+        )
+    return current, update
+
+
+def _get_deb_origin(sources, policy, version):
+    origins = []
+    for package_file, _ in version.file_list:
+        index = sources.find_index(package_file)
+        if not index:
+            continue
+        origin = (
+            f"{index.archive_uri('')} "
+            f"{package_file.codename}/{package_file.component}"
+        )
+        origins.append((policy.get_priority(package_file), origin))
+
+    if not origins:
+        return ""
+    # return the origin with the highest priority
+    return sorted(origins, reverse=True)[0][1]

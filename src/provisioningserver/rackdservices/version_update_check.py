@@ -12,7 +12,11 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateControllerState
-from provisioningserver.utils.snap import get_snap_versions_info
+from provisioningserver.utils.deb import get_deb_versions_info
+from provisioningserver.utils.snap import (
+    get_snap_versions_info,
+    running_in_snap,
+)
 from provisioningserver.utils.twisted import pause
 
 
@@ -39,9 +43,14 @@ class VersionUpdateCheckService(TimerService):
     def _get_versions_state(self):
         state = {}
 
-        snap_version = get_snap_versions_info()
-        if snap_version:
-            state["snap"] = dataclasses.asdict(snap_version)
+        if running_in_snap():
+            snap_versions = get_snap_versions_info()
+            if snap_versions:
+                state["snap"] = dataclasses.asdict(snap_versions)
+        else:
+            deb_versions = get_deb_versions_info()
+            if deb_versions:
+                state["deb"] = dataclasses.asdict(deb_versions)
         return state
 
     @inlineCallbacks
