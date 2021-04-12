@@ -3191,6 +3191,38 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             ),
         )
 
+    def test_get_racks_by_subnet_relayed(self):
+        rack1 = factory.make_RackController()
+        factory.make_RackController()
+        vlan1_primary = factory.make_VLAN(dhcp_on=True, primary_rack=rack1)
+        vlan2_secondary = factory.make_VLAN(
+            dhcp_on=False, primary_rack=rack1, relay_vlan=vlan1_primary
+        )
+
+        factory.make_Subnet(vlan=vlan1_primary, cidr="10.20.30.0/24")
+        subnet2 = factory.make_Subnet(
+            vlan=vlan2_secondary, cidr="10.20.31.0/24"
+        )
+        self.assertItemsEqual([rack1], dhcp.get_racks_by_subnet(subnet2))
+
+    def test_get_racks_by_subnet_rack_primary(self):
+        rack1 = factory.make_RackController()
+        factory.make_RackController()
+        vlan1_primary = factory.make_VLAN(dhcp_on=True, primary_rack=rack1)
+        subnet1 = factory.make_Subnet(vlan=vlan1_primary, cidr="10.20.30.0/24")
+
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=rack1, vlan=vlan1_primary
+        )
+
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            subnet=subnet1,
+            interface=interface,
+        )
+
+        self.assertItemsEqual([rack1], dhcp.get_racks_by_subnet(subnet1))
+
     def test_returns_no_errors_when_valid(self):
         rack_controller, config = self.create_rack_controller()
         self.prepare_rpc(rack_controller)

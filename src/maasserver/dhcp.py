@@ -36,6 +36,7 @@ from maasserver.models import (
     Service,
     StaticIPAddress,
     Subnet,
+    VLAN,
 )
 from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.utils.orm import transactional
@@ -961,6 +962,27 @@ def configure_dhcp(rack_controller):
         raise ipv6_exc
 
 
+def get_racks_by_subnet(subnet):
+    """Return the set of racks with at least one interface configured on the
+    specified subnet.
+    """
+    racks = RackController.objects.filter(
+        interface__ip_addresses__subnet__in=[subnet]
+    )
+
+    if subnet.vlan.relay_vlan_id:
+        relay_vlan = VLAN.objects.get(id=subnet.vlan.relay_vlan_id)
+        racks = racks.union(
+            RackController.objects.filter(
+                id__in=[
+                    relay_vlan.primary_rack_id,
+                    relay_vlan.secondary_rack_id,
+                ]
+            )
+        )
+    return racks
+
+
 def validate_dhcp_config(test_dhcp_snippet=None):
     """Validate a DHCPD config with uncommitted values.
 
@@ -995,9 +1017,7 @@ def validate_dhcp_config(test_dhcp_snippet=None):
     if test_dhcp_snippet is not None:
         if test_dhcp_snippet.subnet is not None:
             rack_controller = find_connected_rack(
-                RackController.objects.filter_by_subnets(
-                    [test_dhcp_snippet.subnet]
-                )
+                get_racks_by_subnet(test_dhcp_snippet.subnet)
             )
         elif test_dhcp_snippet.node is not None:
             rack_controller = find_connected_rack(
@@ -1006,6 +1026,10 @@ def validate_dhcp_config(test_dhcp_snippet=None):
     # If no rack controller is linked to the DHCPSnippet its a global DHCP
     # snippet which we can test anywhere.
     if rack_controller is None:
+        log.msg(
+            "Could not find a rack controller for the snippet. Trying "
+            "random client"
+        )
         try:
             client = getRandomClient()
         except NoConnectionsAvailable:
