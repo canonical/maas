@@ -56,7 +56,6 @@ from provisioningserver.utils.twisted import (
     pause,
     terminateProcess,
 )
-from provisioningserver.utils.version import get_running_version
 
 maaslog = get_maas_logger("networks.monitor")
 log = LegacyLogger()
@@ -1003,7 +1002,6 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self.interface_monitor.clock = self.clock
         self.interface_monitor.setServiceParent(self)
         self.beaconing_protocol = None
-        self.maas_version = None
         self._update_interfaces_deferred = update_interfaces_deferred
 
     @inlineCallbacks
@@ -1017,8 +1015,6 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
             return
         responsible = self._assumeSoleResponsibility()
         if responsible:
-            if self.maas_version is None:
-                self.maas_version = yield deferToThread(get_running_version)
             interfaces = None
             try:
                 interfaces = yield maybeDeferred(self.getInterfaces)

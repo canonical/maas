@@ -66,7 +66,6 @@ from provisioningserver.utils.services import (
     ProtocolForObserveARP,
     ProtocolForObserveBeacons,
 )
-from provisioningserver.utils.version import get_running_version
 
 
 class FakeScriptRun:
@@ -218,7 +217,6 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
     def _interfacesRecorded(self, interfaces):
         super()._interfacesRecorded(interfaces)
         self.interfaces.append(interfaces)
-        self.record_maas_version = self.maas_version
 
     def reportNeighbours(self, neighbours):
         pass
@@ -264,7 +262,6 @@ class TestNetworksMonitoringService(MAASTestCase):
             (service.updateInterfaces, (), {}),
             service.interface_monitor.call,
         )
-        self.assertIsNone(service.maas_version)
 
     @inlineCallbacks
     def test_get_all_interfaces_definition_is_called_in_thread(self):
@@ -408,13 +405,6 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.assertEqual(
             expected_commisioning_data, commissioning_data_combined
         )
-
-    @inlineCallbacks
-    def test_recordInterfaces_has_maas_version(self):
-        service = self.makeService()
-        service.running = 1
-        yield service.updateInterfaces()
-        self.assertEqual(get_running_version(), service.record_maas_version)
 
     @inlineCallbacks
     def test_recordInterfaces_called_when_interfaces_changed(self):
