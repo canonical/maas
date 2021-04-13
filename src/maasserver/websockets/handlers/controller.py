@@ -128,6 +128,7 @@ class ControllerHandler(MachineHandler):
     def dehydrate(self, obj, data, for_list=False):
         obj = obj.as_self()
         data = super().dehydrate(obj, data, for_list=for_list)
+        data["versions"] = self.dehydrate_versions(obj.info)
         data["version"] = obj.version
         if obj.version:
             version = MAASVersion.from_string(obj.version)
@@ -142,6 +143,30 @@ class ControllerHandler(MachineHandler):
                 interface.vlan_id for interface in obj.interface_set.all()
             ]
         return data
+
+    def dehydrate_versions(self, info):
+        if not info:
+            return {}
+
+        versions = {
+            "install_type": info.install_type,
+            "current": {
+                "version": info.version,
+            },
+        }
+        if info.update_version:
+            versions["update"] = {
+                "version": info.update_version,
+                "origin": info.update_origin,
+            }
+
+        if info.snap_revision:
+            versions["current"]["revision"] = info.snap_revision
+        if info.snap_cohort:
+            versions["snap_cohort"] = info.snap_cohort
+        if info.snap_update_revision:
+            versions["update"]["revision"] = info.snap_update_revision
+        return versions
 
     def check_images(self, params):
         """Get the image sync statuses of requested controllers."""

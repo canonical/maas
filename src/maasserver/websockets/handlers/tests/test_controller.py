@@ -21,6 +21,8 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.controller import ControllerHandler
 from maastesting.djangotestcase import count_queries
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
+from provisioningserver.utils.deb import DebVersionsInfo
+from provisioningserver.utils.snap import SnapVersionsInfo
 
 
 class TestControllerHandler(MAASServerTestCase):
@@ -189,6 +191,101 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(
             "2.3.0~alpha1 (6000-g.abc123)",
             result[0].get("version__long"),
+        )
+
+    def test_dehydrate_empty_versions(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        factory.make_RackController()
+        result = handler.list({})
+        self.assertEqual(result[0]["versions"], {})
+
+    def test_dehydrate_with_versions_snap(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        rack = factory.make_RackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+            update={
+                "revision": "5678",
+                "version": "3.0.0-alpha2-222-g.cafecafe",
+            },
+            cohort="abc123",
+        )
+        ControllerInfo.objects.set_versions_info(rack, versions)
+        result = handler.list({})
+        self.assertEqual(
+            result[0]["versions"],
+            {
+                "install_type": "snap",
+                "current": {
+                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                    "revision": "1234",
+                },
+                "update": {
+                    "version": "3.0.0-alpha2-222-g.cafecafe",
+                    "origin": "3.0/stable",
+                    "revision": "5678",
+                },
+                "snap_cohort": "abc123",
+            },
+        )
+
+    def test_dehydrate_with_versions_deb(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        rack = factory.make_RackController()
+        versions = DebVersionsInfo(
+            current={
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "origin": "http://archive.ubuntu.com main/focal",
+            },
+            update={
+                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "origin": "http://archive.ubuntu.com main/focal",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(rack, versions)
+        result = handler.list({})
+        self.assertEqual(
+            result[0]["versions"],
+            {
+                "install_type": "deb",
+                "current": {
+                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                },
+                "update": {
+                    "version": "3.0.0-alpha2-222-g.cafecafe",
+                    "origin": "http://archive.ubuntu.com main/focal",
+                },
+            },
+        )
+
+    def test_dehydrate_with_versions_only_current(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        rack = factory.make_RackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(rack, versions)
+        result = handler.list({})
+        self.assertEqual(
+            result[0]["versions"],
+            {
+                "install_type": "snap",
+                "current": {
+                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                    "revision": "1234",
+                },
+            },
         )
 
     def test_dehydrate_includes_tags(self):

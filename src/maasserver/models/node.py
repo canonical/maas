@@ -6327,6 +6327,13 @@ class Controller(Node):
         )
 
     @property
+    def info(self):
+        try:
+            return self.controllerinfo
+        except ObjectDoesNotExist:
+            return None
+
+    @property
     def version(self):
         try:
             return self.controllerinfo.version
