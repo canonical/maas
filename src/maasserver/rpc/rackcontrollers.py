@@ -29,9 +29,11 @@ from maasserver.models.timestampedmodel import now
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from metadataserver.models import ScriptSet
+from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode, NoSuchScope
 from provisioningserver.utils import typed
+from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.twisted import synchronous
 
@@ -302,11 +304,16 @@ def update_state(system_id, scope, state):
 
 def _update_controller_versions(node, state):
     """Update reported version for a controller."""
-    snap_versions = state.get("snap")
-    if not snap_versions:
-        return
-    # XXX for now, just log the reported version
-    versions_info = SnapVersionsInfo(**snap_versions)
-    maaslog.info(
-        f"Controller {node.hostname} reported versions information {versions_info}"
+    versions_info = None
+    info_classes = (
+        (CONTROLLER_INSTALL_TYPE.SNAP, SnapVersionsInfo),
+        (CONTROLLER_INSTALL_TYPE.DEB, DebVersionsInfo),
     )
+    for install_type, info_class in info_classes:
+        info = state.get(install_type)
+        if info:
+            versions_info = info_class(**info)
+            break
+    if not versions_info:
+        return
+    ControllerInfo.objects.set_versions_info(node, versions_info)

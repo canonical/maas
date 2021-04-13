@@ -17,6 +17,10 @@ from maasserver.models.controllerinfo import (
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
+from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
+from provisioningserver.utils.deb import DebVersionsInfo
+from provisioningserver.utils.snap import SnapVersionsInfo
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -27,10 +31,136 @@ class TestControllerInfo(MAASServerTestCase):
         info, _ = ControllerInfo.objects.update_or_create(node=controller)
         self.assertEqual("ControllerInfo (foobar)", str(info))
 
-    def test_controllerinfo_set_version(self):
+    def test_set_version(self):
         controller = factory.make_RackController()
         ControllerInfo.objects.set_version(controller, "2.3.0")
         self.assertThat(controller.version, Equals("2.3.0"))
+
+    def test_set_versions_info_snap(self):
+        controller = factory.make_RackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+            update={
+                "revision": "5678",
+                "version": "3.0.0-alpha2-222-g.cafecafe",
+            },
+            cohort="abc123",
+        )
+        ControllerInfo.objects.set_versions_info(controller, versions)
+        controller_info = controller.controllerinfo
+        self.assertEqual(
+            controller_info.install_type, CONTROLLER_INSTALL_TYPE.SNAP
+        )
+        self.assertEqual(
+            controller_info.version, "3.0.0-alpha1-111-g.deadbeef"
+        )
+        self.assertEqual(
+            controller_info.update_version, "3.0.0-alpha2-222-g.cafecafe"
+        )
+        self.assertEqual(controller_info.update_origin, "3.0/stable")
+        self.assertEqual(controller_info.snap_revision, "1234")
+        self.assertEqual(controller_info.snap_update_revision, "5678")
+        self.assertEqual(controller_info.snap_cohort, "abc123")
+
+    def test_set_versions_info_snap_no_update(self):
+        controller = factory.make_RackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(controller, versions)
+        controller_info = controller.controllerinfo
+        self.assertEqual(controller_info.update_origin, "")
+        self.assertEqual(controller_info.snap_update_revision, "")
+        self.assertEqual(controller_info.snap_cohort, "")
+
+    def test_set_versions_info_deb(self):
+        controller = factory.make_RackController()
+        versions = DebVersionsInfo(
+            current={
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "origin": "http://archive.ubuntu.com/ focal/main",
+            },
+            update={
+                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "origin": "http://mymirror.example.com/ focal/main",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(controller, versions)
+        controller_info = controller.controllerinfo
+        self.assertEqual(
+            controller_info.install_type, CONTROLLER_INSTALL_TYPE.DEB
+        )
+        self.assertEqual(
+            controller_info.version, "3.0.0-alpha1-111-g.deadbeef"
+        )
+        self.assertEqual(
+            controller_info.update_version, "3.0.0-alpha2-222-g.cafecafe"
+        )
+        self.assertEqual(
+            controller_info.update_origin,
+            "http://mymirror.example.com/ focal/main",
+        )
+        self.assertEqual(controller_info.snap_revision, "")
+        self.assertEqual(controller_info.snap_update_revision, "")
+        self.assertEqual(controller_info.snap_cohort, "")
+
+    def test_set_versions_info_deb_no_update(self):
+        controller = factory.make_RackController()
+        versions = DebVersionsInfo(
+            current={
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "origin": "http://archive.ubuntu.com/ focal/main",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(controller, versions)
+        controller_info = controller.controllerinfo
+        self.assertEqual(controller_info.update_version, "")
+        self.assertEqual(controller_info.update_origin, "")
+
+    def test_set_versions_info_change_type(self):
+        controller = factory.make_RackController()
+        deb_versions = DebVersionsInfo(
+            current={
+                "version": "3.0.0",
+                "origin": "http://archive.ubuntu.com/ focal/main",
+            },
+            update={
+                "version": "3.0.1",
+                "origin": "http://mymirror.example.com/ focal/main",
+            },
+        )
+        snap_versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.1.0",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+            update={
+                "revision": "5678",
+                "version": "3.1.1",
+            },
+            cohort="abc123",
+        )
+        ControllerInfo.objects.set_versions_info(controller, deb_versions)
+        ControllerInfo.objects.set_versions_info(controller, snap_versions)
+        controller_info = reload_object(controller).controllerinfo
+        # all fields are updated
+        self.assertEqual(
+            controller_info.install_type, CONTROLLER_INSTALL_TYPE.SNAP
+        )
+        self.assertEqual(controller_info.version, "3.1.0")
+        self.assertEqual(controller_info.update_version, "3.1.1")
+        self.assertEqual(controller_info.update_origin, "3.0/stable")
+        self.assertEqual(controller_info.snap_revision, "1234")
+        self.assertEqual(controller_info.snap_update_revision, "5678")
+        self.assertEqual(controller_info.snap_cohort, "abc123")
 
 
 class TestGetControllerVersionInfo(MAASServerTestCase):

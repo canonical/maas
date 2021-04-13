@@ -4,7 +4,7 @@
 """ControllerInfo objects."""
 
 
-from collections import namedtuple
+from typing import NamedTuple
 
 from django.db.models import CASCADE, CharField, Manager, OneToOneField
 
@@ -13,19 +13,21 @@ from maasserver.enum import NODE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
-from provisioningserver.logger import get_maas_logger
+from provisioningserver.enum import (
+    CONTROLLER_INSTALL_TYPE,
+    CONTROLLER_INSTALL_TYPE_CHOICES,
+)
+from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
-maaslog = get_maas_logger("controllerinfo")
 
+class ControllerVersionInfo(NamedTuple):
 
-_ControllerVersionInfo = namedtuple(
-    "ControllerVersionInfo",
-    ("hostname", "system_id", "version", "maasversion"),
-)
+    hostname: str
+    system_id: str
+    version: str
+    maasversion: str
 
-
-class ControllerVersionInfo(_ControllerVersionInfo):
     def difference(self, other):
         v1 = self.maasversion
         v2 = other.maasversion
@@ -56,6 +58,44 @@ class ControllerInfoManager(Manager):
     def set_version(self, controller, version):
         self.update_or_create(defaults={"version": version}, node=controller)
 
+    def set_versions_info(self, controller, versions):
+        install_type = (
+            CONTROLLER_INSTALL_TYPE.SNAP
+            if isinstance(versions, SnapVersionsInfo)
+            else CONTROLLER_INSTALL_TYPE.DEB
+        )
+        details = {
+            "install_type": install_type,
+            "version": versions.current.version,
+            # initialize other fields as null in case the controller is
+            # upgraded from one install type to another
+            "update_version": "",
+            "update_origin": "",
+            "snap_cohort": "",
+            "snap_revision": "",
+            "snap_update_revision": "",
+        }
+        if versions.update:
+            details["update_version"] = versions.update.version
+
+        if install_type == CONTROLLER_INSTALL_TYPE.DEB:
+            if versions.update:
+                details["update_origin"] = versions.update.origin
+        elif install_type == CONTROLLER_INSTALL_TYPE.SNAP:
+            details.update(
+                {
+                    "snap_revision": versions.current.revision,
+                    "snap_cohort": versions.cohort,
+                    "update_origin": str(versions.channel)
+                    if versions.channel
+                    else "",
+                }
+            )
+            if versions.update:
+                details["snap_update_revision"] = versions.update.revision
+
+        self.update_or_create(defaults=details, node=controller)
+
     def get_controller_version_info(self):
         versions = list(
             self.select_related("node")
@@ -65,8 +105,8 @@ class ControllerInfoManager(Manager):
                     NODE_TYPE.REGION_CONTROLLER,
                     NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                 ),
-                version__isnull=False,
             )
+            .exclude(version="")
             .values_list("node__hostname", "node__system_id", "version")
         )
         for i in range(len(versions)):
@@ -199,7 +239,19 @@ class ControllerInfo(CleanSave, TimestampedModel):
         Node, null=False, blank=False, on_delete=CASCADE, primary_key=True
     )
 
-    version = CharField(max_length=255, null=True, blank=True)
+    version = CharField(max_length=255, blank=True, default="")
+    update_version = CharField(max_length=255, blank=True, default="")
+    # the snap channel or deb repo for the update
+    update_origin = CharField(max_length=255, blank=True, default="")
+    install_type = CharField(
+        max_length=255,
+        blank=True,
+        choices=CONTROLLER_INSTALL_TYPE_CHOICES,
+        default=CONTROLLER_INSTALL_TYPE.UNKNOWN,
+    )
+    snap_cohort = CharField(max_length=255, blank=True, default="")
+    snap_revision = CharField(max_length=255, blank=True, default="")
+    snap_update_revision = CharField(max_length=255, blank=True, default="")
 
     def __str__(self):
         return "%s (%s)" % (self.__class__.__name__, self.node.hostname)

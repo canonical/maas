@@ -34,6 +34,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.network import update_node_interfaces
+from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
 
 
@@ -466,7 +467,6 @@ class TestUpdateLastImageSync(MAASServerTestCase):
 
 class TestUpdateState(MAASServerTestCase):
     def test_scope_versions_snap(self):
-        logger = self.useFixture(FakeLogger())
         rack = factory.make_RackController()
         versions = {
             "snap": {
@@ -474,22 +474,68 @@ class TestUpdateState(MAASServerTestCase):
                     "revision": "1234",
                     "version": "3.0.0-alpha1-111-g.deadbeef",
                 },
+                "channel": "3.0/stable",
+                "update": {
+                    "revision": "5678",
+                    "version": "3.0.0-alpha2-222-g.cafecafe",
+                },
+                "cohort": "abc123",
             },
         }
         update_state(rack.system_id, "versions", versions)
+        controller_info = rack.controllerinfo
         self.assertEqual(
-            logger.output.strip(),
-            f"Controller {rack.hostname} reported versions information "
-            "SnapVersionsInfo("
-            "current=SnapVersion(revision='1234', version='3.0.0-alpha1-111-g.deadbeef'), "
-            "channel=None, update=None, cohort='')",
+            controller_info.install_type, CONTROLLER_INSTALL_TYPE.SNAP
         )
+        self.assertEqual(
+            controller_info.version, "3.0.0-alpha1-111-g.deadbeef"
+        )
+        self.assertEqual(
+            controller_info.update_version, "3.0.0-alpha2-222-g.cafecafe"
+        )
+        self.assertEqual(controller_info.update_origin, "3.0/stable")
+        self.assertEqual(controller_info.snap_revision, "1234")
+        self.assertEqual(controller_info.snap_update_revision, "5678")
+        self.assertEqual(controller_info.snap_cohort, "abc123")
 
-    def test_scope_versions_no_snap(self):
-        logger = self.useFixture(FakeLogger())
+    def test_scope_versions_deb(self):
+        rack = factory.make_RackController()
+        versions = {
+            "deb": {
+                "current": {
+                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                    "origin": "http://archive.ubuntu.com/ focal/main",
+                },
+                "update": {
+                    "version": "3.0.0-alpha2-222-g.cafecafe",
+                    "origin": "http://archive.ubuntu.com/ focal/main",
+                },
+            },
+        }
+        update_state(rack.system_id, "versions", versions)
+        controller_info = rack.controllerinfo
+        self.assertEqual(
+            controller_info.install_type, CONTROLLER_INSTALL_TYPE.DEB
+        )
+        self.assertEqual(
+            controller_info.version, "3.0.0-alpha1-111-g.deadbeef"
+        )
+        self.assertEqual(
+            controller_info.update_version, "3.0.0-alpha2-222-g.cafecafe"
+        )
+        self.assertEqual(
+            controller_info.update_origin,
+            "http://archive.ubuntu.com/ focal/main",
+        )
+        self.assertEqual(controller_info.snap_revision, "")
+        self.assertEqual(controller_info.snap_update_revision, "")
+        self.assertEqual(controller_info.snap_cohort, "")
+
+    def test_scope_versions_other(self):
         rack = factory.make_RackController()
         update_state(rack.system_id, "versions", {"something": "else"})
-        self.assertEqual(logger.output, "")
+        # no ControllerInfo is created as the state is not updated
+        self.assertFalse(hasattr(rack, "controllerinfo"))
 
     def test_scope_unhandled(self):
         rack = factory.make_RackController()

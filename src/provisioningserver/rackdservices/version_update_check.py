@@ -10,6 +10,7 @@ from datetime import timedelta
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks, returnValue
 
+from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateControllerState
 from provisioningserver.utils.deb import get_deb_versions_info
@@ -32,7 +33,6 @@ class VersionUpdateCheckService(TimerService):
     @inlineCallbacks
     def _run_check(self):
         client = yield self._getRPCClient()
-        # XXX eventually we'll also report versions for deb-based install
         yield client(
             UpdateControllerState,
             system_id=client.localIdent,
@@ -43,14 +43,16 @@ class VersionUpdateCheckService(TimerService):
     def _get_versions_state(self):
         state = {}
 
+        versions_info = None
+        install_type = None
         if running_in_snap():
-            snap_versions = get_snap_versions_info()
-            if snap_versions:
-                state["snap"] = dataclasses.asdict(snap_versions)
+            versions_info = get_snap_versions_info()
+            install_type = CONTROLLER_INSTALL_TYPE.SNAP
         else:
-            deb_versions = get_deb_versions_info()
-            if deb_versions:
-                state["deb"] = dataclasses.asdict(deb_versions)
+            install_type = CONTROLLER_INSTALL_TYPE.DEB
+            versions_info = get_deb_versions_info()
+        if versions_info:
+            state[install_type] = dataclasses.asdict(versions_info)
         return state
 
     @inlineCallbacks
