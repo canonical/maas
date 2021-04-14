@@ -133,10 +133,11 @@ parts:
       - python3-prometheus-client
       - python3-protobuf # for macaroonbakery
       - python3-psycopg2
-      - python3-pypureomapi
       - python3-pylxd
       - python3-pymacaroons # for macaroonbakery
       - python3-pyparsing
+      - python3-pypureomapi
+      - python3-pyrsistent # for jsonschema
       - python3-requests
       - python3-requests-toolbelt  # for pylxd
       - python3-requests-unixsocket  # for pylxd
