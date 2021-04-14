@@ -230,8 +230,8 @@ parts:
   machine-resources:
     plugin: make
     source: src/machine-resources
-    build-snaps:
-      - go
+    build-packages:
+      - golang-go
 
   tree:
     plugin: dump
