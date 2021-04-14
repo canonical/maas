@@ -1,13 +1,10 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for networks monitor."""
-
 
 from unittest.mock import call, Mock
 
 from twisted.internet.defer import (
-    Deferred,
     inlineCallbacks,
     maybeDeferred,
     returnValue,
@@ -117,14 +114,13 @@ class TestRackNetworksMonitoringService(MAASTestCase):
             }
         }
 
-        update_interfaces_deferred = Deferred()
         rpc_service = services.getServiceNamed("rpc")
+        clock = Clock()
         service = RackNetworksMonitoringService(
             rpc_service,
-            Clock(),
+            clock,
             enable_monitoring=False,
             enable_beaconing=False,
-            update_interfaces_deferred=update_interfaces_deferred,
         )
         service.getInterfaces = lambda: succeed(interfaces)
         # Put something in the cache. This tells recordInterfaces that refresh
@@ -133,7 +129,7 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         service._recorded = {}
 
         service.startService()
-        yield update_interfaces_deferred
+        clock.advance(0)
         yield service.stopService()
 
         self.assertEqual(1, self.mock_refresh.call_count)
@@ -167,9 +163,9 @@ class TestRackNetworksMonitoringService(MAASTestCase):
         service.getInterfaces = lambda: succeed(interfaces)
 
         service.startService()
-        # By stopping the interface_monitor first, we assure that the loop
+        # By stopping the TimerService first, we assure that the loop
         # happens at least once before the service stops completely.
-        yield maybeDeferred(service.interface_monitor.stopService)
+        yield maybeDeferred(service._timer_service.stopService)
         yield service.stopService()
 
         # The service should have sent out beacons, waited three seconds,

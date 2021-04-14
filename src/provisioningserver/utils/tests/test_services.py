@@ -5,6 +5,7 @@
 
 
 from collections import defaultdict
+from datetime import timedelta
 from functools import partial
 import json
 from pathlib import Path
@@ -65,6 +66,7 @@ from provisioningserver.utils.services import (
     ProcessProtocolService,
     ProtocolForObserveARP,
     ProtocolForObserveBeacons,
+    SingleInstanceService,
 )
 
 
@@ -167,6 +169,90 @@ class FakeRefresher:
                 script_runs[script_name].combined = files[script_name]
 
 
+class SampleSingleInstanceService(SingleInstanceService):
+
+    SERVICE_NAME = "sample"
+    LOCK_NAME = "sample-lock"
+    INTERVAL = timedelta(minutes=1)
+
+    def __init__(self, clock=None):
+        super().__init__(clock=clock)
+        self.action_times = []
+
+    @inlineCallbacks
+    def do_action(self):
+        self.action_times.append(self.clock.seconds())
+        yield
+
+
+class TestSingleInstanceService(MAASTestCase):
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_init(self):
+        clock = Clock()
+        service = SampleSingleInstanceService(clock=clock)
+        self.assertTrue(service._lock.path.endswith("maas:sample-lock"))
+        self.assertEqual(service._timer_service.step, 60)
+        self.assertIs(service._timer_service.parent, service)
+        self.assertIs(service._timer_service.clock, clock)
+
+    @inlineCallbacks
+    def test_is_responsible(self):
+        clock = Clock()
+        service = SampleSingleInstanceService(clock=clock)
+        yield service.startService()
+        self.assertTrue(service.is_responsible)
+
+    @inlineCallbacks
+    def test_is_responsible_false_after_stop(self):
+        clock = Clock()
+        service = SampleSingleInstanceService(clock=clock)
+        yield service.startService()
+        yield service.stopService()
+        self.assertFalse(service.is_responsible)
+
+    @inlineCallbacks
+    def test_call_action(self):
+        clock = Clock()
+        service = SampleSingleInstanceService(clock=clock)
+        yield service.startService()
+        # simulate time elapsed for a single run
+        clock.advance(40)
+        self.assertEqual(service.action_times, [0.0])
+        yield service.stopService()
+
+    @inlineCallbacks
+    def test_call_action_multiple_times(self):
+        clock = Clock()
+        service = SampleSingleInstanceService(clock=clock)
+        yield service.startService()
+        clock.advance(60)
+        self.assertEqual(service.action_times, [0.0, 60.0])
+        yield service.stopService()
+
+    @inlineCallbacks
+    def test_no_action_if_not_running(self):
+        clock = Clock()
+        service = SampleSingleInstanceService(clock=clock)
+        yield service._do_action()
+        clock.advance(0)
+        self.assertEqual(service.action_times, [])
+
+    @inlineCallbacks
+    def test_no_run_if_not_responsible(self):
+        clock = Clock()
+        service1 = SampleSingleInstanceService(clock=clock)
+        service2 = SampleSingleInstanceService(clock=clock)
+        yield service1.startService()
+        clock.advance(10)
+        self.assertTrue(service1.is_responsible)
+        yield service2.startService()
+        clock.advance(10)
+        self.assertFalse(service2.is_responsible)
+        self.assertEqual(service1.action_times, [0.0])
+        self.assertEqual(service2.action_times, [])
+
+
 class StubNetworksMonitoringService(NetworksMonitoringService):
     """Concrete subclass for testing."""
 
@@ -208,9 +294,9 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
         """Record the interfaces information."""
         return succeed((self.maas_url, self.system_id, self.credentials))
 
-    def updateInterfaces(self):
+    def _do_action(self):
         self.update_interface__calls += 1
-        d = super().updateInterfaces()
+        d = super()._do_action()
         d.addBoth(self.iterations.put)
         return d
 
@@ -226,8 +312,6 @@ class StubNetworksMonitoringService(NetworksMonitoringService):
 
 
 class TestNetworksMonitoringService(MAASTestCase):
-    """Tests of `NetworksMonitoringService`."""
-
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
@@ -244,23 +328,20 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.fake_refresher = FakeRefresher(self, self.metadata_credentials)
 
     def makeService(self, *args, **kwargs):
-        self.update_interfaces_deferred = Deferred()
-        service = StubNetworksMonitoringService(
-            update_interfaces_deferred=self.update_interfaces_deferred,
-            *args,
-            **kwargs,
-        )
+        service = StubNetworksMonitoringService(*args, clock=Clock(), **kwargs)
         service.credentials = self.metadata_credentials.copy()
-        self.addCleanup(service._releaseSoleResponsibility)
+        self.addCleanup(service._release_sole_responsibility)
         return service
 
     def test_init(self):
         service = self.makeService()
         self.assertIsInstance(service, MultiService)
-        self.assertEqual(service.interface_monitor.step, service.interval)
         self.assertEqual(
-            (service.updateInterfaces, (), {}),
-            service.interface_monitor.call,
+            service._timer_service.step, service.INTERVAL.total_seconds()
+        )
+        self.assertEqual(
+            (service._do_action, (), {}),
+            service._timer_service.call,
         )
 
     @inlineCallbacks
@@ -273,7 +354,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         service = self.makeService()
         service.running = 1
         self.all_interfaces_mock.side_effect = record_thread
-        yield service.updateInterfaces()
+        yield service._do_action()
         self.assertEqual(1, len(service.interfaces))
         [thread] = threads
         self.assertThat(thread, IsInstance(threading.Thread))
@@ -286,7 +367,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         getInterfaces = self.patch(service, "getInterfaces")
         my_interfaces = {"foo": "bar"}
         getInterfaces.return_value = succeed(my_interfaces)
-        yield service.updateInterfaces()
+        yield service._do_action()
         self.assertThat(service.interfaces, Equals([my_interfaces]))
 
     @inlineCallbacks
@@ -299,7 +380,7 @@ class TestNetworksMonitoringService(MAASTestCase):
                 services, "get_all_interfaces_definition"
             )
             get_interfaces.side_effect = Exception(error_message)
-            yield service.updateInterfaces()
+            yield service._do_action()
         self.assertThat(
             logger.output,
             DocTestMatches(
@@ -312,7 +393,7 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_starting_service_triggers_interface_update(self):
         service = self.makeService()
         yield service.startService()
-        yield self.update_interfaces_deferred
+        service.clock.advance(0)
         self.assertEqual(1, service.update_interface__calls)
         yield service.stopService()
 
@@ -345,7 +426,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         )
 
         yield service.startService()
-        yield self.update_interfaces_deferred
+        service.clock.advance(0)
         yield service.stopService()
 
         metadata_url = service.maas_url + "/metadata/2012-03-01/"
@@ -387,7 +468,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.all_interfaces_mock.return_value = network_extra["interfaces"]
 
         yield service.startService()
-        yield self.update_interfaces_deferred
+        service.clock.advance(0)
         yield service.stopService()
 
         metadata_url = service.maas_url + "/metadata/2012-03-01/"
@@ -417,10 +498,10 @@ class TestNetworksMonitoringService(MAASTestCase):
         service = self.makeService()
         service.running = 1
         self.assertThat(service.interfaces, HasLength(0))
-        yield service.updateInterfaces()
+        yield service._do_action()
         self.assertThat(service.interfaces, Equals([my_interfaces1]))
         self.fake_refresher.reset()
-        yield service.updateInterfaces()
+        yield service._do_action()
         self.assertThat(
             service.interfaces, Equals([my_interfaces1, my_interfaces2])
         )
@@ -436,9 +517,9 @@ class TestNetworksMonitoringService(MAASTestCase):
         service = self.makeService()
         service.running = 1
         self.assertThat(service.interfaces, HasLength(0))
-        yield service.updateInterfaces()
+        yield service._do_action()
         self.assertThat(service.interfaces, Equals([{}]))
-        yield service.updateInterfaces()
+        yield service._do_action()
         self.assertThat(service.interfaces, Equals([{}]))
 
         self.assertThat(get_interfaces, MockCallsMatch(call(), call()))
@@ -462,20 +543,20 @@ class TestNetworksMonitoringService(MAASTestCase):
         with TwistedLoggerFixture():
             # _run_refresh is called the first time, as expected.
             run_refresh.reset_mock()
-            yield service.updateInterfaces()
+            yield service._do_action()
             self.assertEqual(1, run_refresh.call_count)
 
             # _run_refresh is called the second time too; the service noted
             # that it crashed last time and knew to run it again.
             run_refresh.reset_mock()
-            yield service.updateInterfaces()
+            yield service._do_action()
             self.assertEqual(1, run_refresh.call_count)
 
             # _run_refresh is NOT called the third time; the service noted
             # that the configuration had not changed.
             run_refresh.reset_mock()
             self.assertEqual(0, run_refresh.call_count)
-            yield service.updateInterfaces()
+            yield service._do_action()
             self.assertEqual(0, run_refresh.call_count)
 
     @inlineCallbacks
@@ -496,7 +577,7 @@ class TestNetworksMonitoringService(MAASTestCase):
             self.assertTrue(lock.is_locked())
 
             # It remains locked as the service iterates.
-            yield service.updateInterfaces()
+            yield service._do_action()
             self.assertTrue(lock.is_locked())
 
         finally:
@@ -518,9 +599,9 @@ class TestNetworksMonitoringService(MAASTestCase):
             service = self.makeService()
             service.running = 1
             # Iterate a few times.
-            yield service.updateInterfaces()
-            yield service.updateInterfaces()
-            yield service.updateInterfaces()
+            yield service._do_action()
+            yield service._do_action()
+            yield service._do_action()
 
         # Interfaces were NOT recorded.
         self.assertThat(service.interfaces, Equals([]))
@@ -535,12 +616,12 @@ class TestNetworksMonitoringService(MAASTestCase):
             service = self.makeService()
             service.running = 1
             # Iterate one time.
-            yield service.updateInterfaces()
+            yield service._do_action()
 
         # Interfaces have not been recorded yet.
         self.assertThat(service.interfaces, Equals([]))
         # Iterate once more and ...
-        yield service.updateInterfaces()
+        yield service._do_action()
         # ... interfaces ARE recorded.
         self.assertThat(service.interfaces, Not(Equals([])))
 

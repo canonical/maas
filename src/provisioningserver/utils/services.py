@@ -953,24 +953,24 @@ class NetworksMonitoringLock(NamedLock):
         super().__init__("networks-monitoring")
 
 
-class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
-    """Service to monitor network interfaces for configuration changes.
+class SingleInstanceService(MultiService, metaclass=ABCMeta):
+    """A service which can have only a single instance per machine.
 
-    Parse ``/etc/network/interfaces`` and the output from ``ip addr show`` to
-    update MAAS's records of network interfaces on this host.
+    It uses a named filesystem lock to prevent more than one instance running
+    on each host machine. This service attempts to acquire this lock on each
+    loop, and then it holds the lock until the service stops.
 
-    :param clock: An `IReactor` instance.
     """
 
-    interval = timedelta(seconds=30).total_seconds()
+    # The service name. Subclasses must define this.
+    SERVICE_NAME = None
+    # The lock name. Subclasses must define this.
+    LOCK_NAME = None
+    # The interval at which the service action is run. Subclasses
+    # must define it as a timedelta
+    INTERVAL = None
 
-    def __init__(
-        self,
-        clock=None,
-        enable_monitoring=True,
-        enable_beaconing=True,
-        update_interfaces_deferred=None,
-    ):
+    def __init__(self, clock=None):
         # Order is very important here. First we set the clock to the passed-in
         # reactor, so that unit tests can fake out the clock if necessary.
         # Then we call super(). The superclass will set up the structures
@@ -980,6 +980,91 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         # reactor.)
         self.clock = clock
         super().__init__()
+        self._lock = NamedLock(self.LOCK_NAME)
+        self._locked = False
+        # setup the periodic service
+        self._timer_service = TimerService(
+            self.INTERVAL.total_seconds(), self._do_action
+        )
+        self._timer_service.setName(self.SERVICE_NAME)
+        self._timer_service.clock = self.clock
+        self._timer_service.setServiceParent(self)
+
+    @abstractmethod
+    def do_action(self):
+        """The action to execute each interval. Subclasses must define this."""
+
+    @property
+    def is_responsible(self):
+        """Return whether the service is responsible for running the action."""
+        return self._locked
+
+    def stopService(self):
+        """Stop the service.
+
+        Ensures that sole responsibility is released.
+        """
+        d = super().stopService()
+        d.addBoth(callOut, self._release_sole_responsibility)
+        return d
+
+    @inlineCallbacks
+    def _do_action(self):
+        if not self.running:
+            return
+
+        if self._assume_sole_responsibility():
+            yield self.do_action()
+
+    def _assume_sole_responsibility(self):
+        """Assuming sole responsibility for the service action.
+
+        It does this by attempting to acquire a lock. If this service already
+        holds the lock this is a no-op.
+
+        Return True if it has responsibility, False otherwise.
+        """
+        if self._locked:
+            return True
+
+        try:
+            self._lock.acquire()
+        except self._lock.NotAvailable:
+            return False
+        else:
+            maaslog.info(
+                f"{self.LOCK_NAME}: "
+                f"Process ID {os.getpid()} assumed responsibility."
+            )
+            self._locked = True
+            return True
+
+    def _release_sole_responsibility(self):
+        """Releases sole responsibility for performing the service action.
+
+        If this service is not currently responsible this is a no-op.
+        """
+        if not self._locked:
+            return
+
+        self._lock.release()
+        self._locked = False
+
+
+class NetworksMonitoringService(SingleInstanceService):
+    """Service to monitor network interfaces for configuration changes."""
+
+    SERVICE_NAME = "updateInterfaces"
+    LOCK_NAME = "networks-monitoring"
+    INTERVAL = timedelta(seconds=30)
+
+    def __init__(
+        self,
+        clock=None,
+        enable_monitoring=True,
+        enable_beaconing=True,
+    ):
+        super().__init__(clock=clock)
         self.enable_monitoring = enable_monitoring
         self.enable_beaconing = enable_beaconing
         # The last successfully recorded interfaces.
@@ -988,48 +1073,25 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
         self._beaconing = frozenset()
         self._monitoring_state = {}
         self._monitoring_mdns = False
-        self._locked = False
-        # Use a named filesystem lock to prevent more than one monitoring
-        # service running on each host machine. This service attempts to
-        # acquire this lock on each loop, and then it holds the lock until the
-        # service stops.
-        self._lock = NetworksMonitoringLock()
-        # Set up child service to update interface.
-        self.interface_monitor = TimerService(
-            self.interval, self.updateInterfaces
-        )
-        self.interface_monitor.setName("updateInterfaces")
-        self.interface_monitor.clock = self.clock
-        self.interface_monitor.setServiceParent(self)
         self.beaconing_protocol = None
-        self._update_interfaces_deferred = update_interfaces_deferred
 
     @inlineCallbacks
-    def updateInterfaces(self):
+    def do_action(self):
         """Update interfaces, catching and logging errors.
 
         This can be overridden by subclasses to conditionally update based on
         some external configuration.
         """
-        if not self.running:
-            return
-        responsible = self._assumeSoleResponsibility()
-        if responsible:
-            interfaces = None
-            try:
-                interfaces = yield maybeDeferred(self.getInterfaces)
-                yield self._updateInterfaces(interfaces)
-            except BaseException as e:
-                msg = (
-                    "Failed to update and/or record network interface "
-                    "configuration: %s; interfaces: %r" % (e, interfaces)
-                )
-                log.err(None, msg)
-        if (
-            self._update_interfaces_deferred is not None
-            and not self._update_interfaces_deferred.called
-        ):
-            self._update_interfaces_deferred.callback(interfaces)
+        interfaces = None
+        try:
+            interfaces = yield maybeDeferred(self.getInterfaces)
+            yield self._updateInterfaces(interfaces)
+        except BaseException as e:
+            msg = (
+                "Failed to update and/or record network interface "
+                "configuration: %s; interfaces: %r" % (e, interfaces)
+            )
+            log.err(None, msg)
 
     def getInterfaces(self):
         """Get the current network interfaces configuration.
@@ -1078,50 +1140,16 @@ class NetworksMonitoringService(MultiService, metaclass=ABCMeta):
 
         Ensures that sole responsibility for monitoring networks is released.
         """
-        d = super().stopService()
-        if self.beaconing_protocol is not None:
-            self.beaconing_protocol.stopProtocol()
-        d.addBoth(callOut, self._releaseSoleResponsibility)
-        return d
-
-    def _assumeSoleResponsibility(self):
-        """Assuming sole responsibility for monitoring networks.
-
-        It does this by attempting to acquire a host-wide lock. If this
-        service already holds the lock this is a no-op.
-
-        :return: True if we have responsibility, False otherwise.
-        """
-        if self._locked:
-            return True
-        else:
-            try:
-                self._lock.acquire()
-            except self._lock.NotAvailable:
-                return False
-            else:
-                maaslog.info(
-                    "Networks monitoring service: Process ID %d assumed "
-                    "responsibility." % os.getpid()
-                )
-                self._locked = True
-                return True
-
-    def _releaseSoleResponsibility(self):
-        """Releases sole responsibility for monitoring networks.
-
-        Another network monitoring service on this host may then take up
-        responsibility. If this service is not currently responsible this is a
-        no-op.
-        """
-        if self._locked:
-            self._lock.release()
-            self._locked = False
+        if self.is_responsible:
             # If we were monitoring neighbours on any interfaces, we need to
             # stop the monitoring services.
             self._configureNetworkDiscovery({})
             if self.beaconing_protocol is not None:
                 self._configureBeaconing({})
+
+        if self.beaconing_protocol is not None:
+            self.beaconing_protocol.stopProtocol()
+        return super().stopService()
 
     @inlineCallbacks
     def _updateInterfaces(self, interfaces):

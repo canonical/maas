@@ -6,7 +6,7 @@
 
 from crochet import wait_for
 from twisted.internet import reactor
-from twisted.internet.defer import Deferred, inlineCallbacks
+from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 
 from maasserver.regiondservices.networks_monitoring import (
     RegionNetworksMonitoringService,
@@ -25,6 +25,21 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         self.mock_refresh = self.patch(services, "refresh")
+
+    def wrap_deferred(self, obj, call_name):
+        deferred = Deferred()
+
+        orig_call = getattr(obj, call_name)
+
+        @inlineCallbacks
+        def wrapped_call():
+            result = yield orig_call()
+            if not deferred.called:
+                deferred.callback(None)
+            returnValue(result)
+
+        setattr(obj, call_name, wrapped_call)
+        return deferred
 
     @wait_for(30)
     @inlineCallbacks
@@ -53,14 +68,14 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
         # Declare this region controller as the one running here.
         self.useFixture(MAASIDFixture(region.system_id))
 
-        update_deferred = Deferred()
         service = RegionNetworksMonitoringService(
             reactor,
             enable_beaconing=False,
-            update_interfaces_deferred=update_deferred,
         )
+
+        deferred = self.wrap_deferred(service, "do_action")
         yield service.startService()
-        yield update_deferred
+        yield deferred
         details = yield service.getRefreshDetails()
         region_token = yield deferToDatabase(region._get_token_for_controller)
         region_credentials = {
