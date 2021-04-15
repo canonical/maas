@@ -7,6 +7,7 @@
 import dataclasses
 from typing import Optional
 
+from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.logger import get_maas_logger
 
 maaslog = get_maas_logger("deb")
@@ -25,6 +26,8 @@ class DebVersion:
 @dataclasses.dataclass
 class DebVersionsInfo:
     """Information about .deb versions."""
+
+    install_type = CONTROLLER_INSTALL_TYPE.DEB
 
     current: DebVersion
     update: Optional[DebVersion] = None

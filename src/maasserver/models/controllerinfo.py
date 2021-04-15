@@ -17,7 +17,6 @@ from provisioningserver.enum import (
     CONTROLLER_INSTALL_TYPE,
     CONTROLLER_INSTALL_TYPE_CHOICES,
 )
-from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
 
@@ -59,13 +58,8 @@ class ControllerInfoManager(Manager):
         self.update_or_create(defaults={"version": version}, node=controller)
 
     def set_versions_info(self, controller, versions):
-        install_type = (
-            CONTROLLER_INSTALL_TYPE.SNAP
-            if isinstance(versions, SnapVersionsInfo)
-            else CONTROLLER_INSTALL_TYPE.DEB
-        )
         details = {
-            "install_type": install_type,
+            "install_type": versions.install_type,
             "version": versions.current.version,
             # initialize other fields as null in case the controller is
             # upgraded from one install type to another
@@ -78,10 +72,10 @@ class ControllerInfoManager(Manager):
         if versions.update:
             details["update_version"] = versions.update.version
 
-        if install_type == CONTROLLER_INSTALL_TYPE.DEB:
+        if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
             if versions.update:
                 details["update_origin"] = versions.update.origin
-        elif install_type == CONTROLLER_INSTALL_TYPE.SNAP:
+        elif versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
             details.update(
                 {
                     "snap_revision": versions.current.revision,

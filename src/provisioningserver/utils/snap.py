@@ -9,6 +9,8 @@ import os
 from pathlib import Path
 from typing import NamedTuple, Optional
 
+from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
+
 
 def running_in_snap():
     """Return True if running in a snap."""
@@ -96,6 +98,8 @@ def get_snap_mode():
 @dataclasses.dataclass
 class SnapVersionsInfo:
     """Information about snap versions."""
+
+    install_type = CONTROLLER_INSTALL_TYPE.SNAP
 
     current: SnapVersion
     channel: Optional[SnapChannel] = None

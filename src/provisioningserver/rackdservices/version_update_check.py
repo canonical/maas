@@ -10,7 +10,6 @@ from datetime import timedelta
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks, returnValue
 
-from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateControllerState
 from provisioningserver.utils.deb import get_deb_versions_info
@@ -44,15 +43,14 @@ class VersionUpdateCheckService(TimerService):
         state = {}
 
         versions_info = None
-        install_type = None
         if running_in_snap():
             versions_info = get_snap_versions_info()
-            install_type = CONTROLLER_INSTALL_TYPE.SNAP
         else:
-            install_type = CONTROLLER_INSTALL_TYPE.DEB
             versions_info = get_deb_versions_info()
         if versions_info:
-            state[install_type] = dataclasses.asdict(versions_info)
+            state[versions_info.install_type] = dataclasses.asdict(
+                versions_info
+            )
         return state
 
     @inlineCallbacks
