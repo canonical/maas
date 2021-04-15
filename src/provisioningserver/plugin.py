@@ -198,10 +198,10 @@ class ProvisioningServiceMaker:
 
     def _makeSnapUpdateCheckService(self, rpc_service):
         from provisioningserver.rackdservices.version_update_check import (
-            VersionUpdateCheckService,
+            RackVersionUpdateCheckService,
         )
 
-        update_check_service = VersionUpdateCheckService(rpc_service)
+        update_check_service = RackVersionUpdateCheckService(rpc_service)
         update_check_service.setName("version_update_check")
         return update_check_service
 

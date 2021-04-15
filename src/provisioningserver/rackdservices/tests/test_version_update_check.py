@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE)
 
 import dataclasses
+from unittest.mock import sentinel
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
@@ -9,9 +10,11 @@ from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import services
 from provisioningserver.rackdservices import version_update_check
 from provisioningserver.rackdservices.version_update_check import (
+    RackVersionUpdateCheckService,
     VersionUpdateCheckService,
 )
-from provisioningserver.rpc import clusterservice, region
+from provisioningserver.rpc import clusterservice
+from provisioningserver.rpc.region import UpdateControllerState
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.deb import DebVersion, DebVersionsInfo
 from provisioningserver.utils.snap import (
@@ -21,7 +24,69 @@ from provisioningserver.utils.snap import (
 )
 
 
+class SampleVersionUpdateCheckService(VersionUpdateCheckService):
+    def __init__(self, clock=None):
+        super().__init__(clock=clock)
+        self.calls = []
+
+    @inlineCallbacks
+    def process_versions_info(self, versions_info):
+        self.calls.append(versions_info)
+        yield
+
+
 class TestVersionUpdateCheckService(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
+
+    def test_get_version_info_empty(self):
+        service = SampleVersionUpdateCheckService()
+        self.patch(
+            version_update_check, "get_snap_versions_info"
+        ).return_value = None
+        self.patch(
+            version_update_check, "get_deb_versions_info"
+        ).return_value = None
+        self.assertIsNone(service._get_versions_info())
+
+    def test_get_versions_state_snap_over_deb(self):
+        service = SampleVersionUpdateCheckService()
+        versions_info = SnapVersionsInfo(
+            current=SnapVersion(
+                revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+            ),
+        )
+        mock_get_snap_versions = self.patch(
+            version_update_check, "get_snap_versions_info"
+        )
+        mock_get_snap_versions.return_value = versions_info
+        mock_get_deb_versions = self.patch(
+            version_update_check, "get_deb_versions_info"
+        )
+        mock_get_deb_versions.return_value = None
+        self.assertEqual(service._get_versions_info(), versions_info)
+        # if running in the snap, deb info is not collected
+        mock_get_snap_versions.assert_called_once()
+        mock_get_deb_versions.assert_not_called()
+
+    @inlineCallbacks
+    def test_process_version_info_not_called_without_versions(self):
+        service = SampleVersionUpdateCheckService()
+        self.patch(service, "_get_versions_info").return_value = None
+        yield service.do_action()
+        self.assertEqual(service.calls, [])
+
+    @inlineCallbacks
+    def test_process_version_called_with_versions(self):
+        service = SampleVersionUpdateCheckService()
+        self.patch(
+            service, "_get_versions_info"
+        ).return_value = sentinel.versions_info
+        yield service.do_action()
+        self.assertEqual(service.calls, [sentinel.versions_info])
+
+
+class TestRackVersionUpdateCheckService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
 
@@ -30,19 +95,13 @@ class TestVersionUpdateCheckService(MAASTestCase):
         self.patch(
             clusterservice, "get_all_interfaces_definition"
         ).return_value = {}
-
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
-        protocol, connecting = fixture.makeEventLoop(
-            region.UpdateControllerState
-        )
+        protocol, connecting = fixture.makeEventLoop(UpdateControllerState)
         self.addCleanup((yield connecting))
         returnValue(protocol)
 
-    def test_get_versions_state_in_deb(self):
-        self.patch(
-            version_update_check, "running_in_snap"
-        ).return_value = False
-        service = VersionUpdateCheckService(None)
+    def test_get_state_in_deb(self):
+        service = RackVersionUpdateCheckService(None)
         versions_info = DebVersionsInfo(
             current=DebVersion(
                 version="3.0.0-alpha1-111-g.deadbeef",
@@ -53,19 +112,15 @@ class TestVersionUpdateCheckService(MAASTestCase):
                 origin="http://archive.ubuntu.com/ubuntu focal/main",
             ),
         )
-        self.patch(
-            version_update_check, "get_deb_versions_info"
-        ).return_value = versions_info
         self.assertEqual(
-            service._get_versions_state(),
+            service._get_state(versions_info),
             {
                 "deb": dataclasses.asdict(versions_info),
             },
         )
 
     def test_get_versions_state_in_snap(self):
-        self.patch(version_update_check, "running_in_snap").return_value = True
-        service = VersionUpdateCheckService(None)
+        service = RackVersionUpdateCheckService(None)
         versions_info = SnapVersionsInfo(
             current=SnapVersion(
                 revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
@@ -75,45 +130,18 @@ class TestVersionUpdateCheckService(MAASTestCase):
                 revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
             ),
         )
-        self.patch(
-            version_update_check, "get_snap_versions_info"
-        ).return_value = versions_info
         self.assertEqual(
-            service._get_versions_state(),
+            service._get_state(versions_info),
             {
                 "snap": dataclasses.asdict(versions_info),
             },
         )
 
-    def test_get_versions_state_empty(self):
-        service = VersionUpdateCheckService(None)
-        self.patch(
-            version_update_check, "get_snap_versions_info"
-        ).return_value = None
-        self.assertEqual(service._get_versions_state(), {})
-
-    def test_get_versions_state_snap_over_deb(self):
-        self.patch(version_update_check, "running_in_snap").return_value = True
-        service = VersionUpdateCheckService(None)
-        mock_get_snap_versions = self.patch(
-            version_update_check, "get_snap_versions_info"
-        )
-        mock_get_snap_versions.return_value = None
-        mock_get_deb_versions = self.patch(
-            version_update_check, "get_deb_versions_info"
-        )
-        mock_get_deb_versions.return_value = None
-        service._get_versions_state()
-        # if running in the snap, deb info is not collected
-        mock_get_snap_versions.assert_called_once()
-        mock_get_deb_versions.assert_not_called()
-
     @inlineCallbacks
     def test_sends_version_state_update(self):
-        self.patch(version_update_check, "running_in_snap").return_value = True
         protocol = yield self.create_fake_rpc_service()
         rpc_service = services.getServiceNamed("rpc")
-        service = VersionUpdateCheckService(rpc_service)
+        service = RackVersionUpdateCheckService(rpc_service)
         versions_info = SnapVersionsInfo(
             current=SnapVersion(
                 revision="1234", version="3.0.0-alpha1-111-g.deadbeef"

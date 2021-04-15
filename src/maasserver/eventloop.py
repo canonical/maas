@@ -187,6 +187,14 @@ def make_WebApplicationService(postgresListener, statusWorker):
     return site_service
 
 
+def make_VersionUpdateCheckService():
+    from maasserver.regiondservices.version_update_check import (
+        RegionVersionUpdateCheckService,
+    )
+
+    return RegionVersionUpdateCheckService(reactor)
+
+
 def make_WorkersService():
     from maasserver.workers import WorkersService
 
@@ -369,6 +377,11 @@ class RegionEventLoop:
         "syslog": {
             "only_on_master": True,
             "factory": make_SyslogService,
+            "requires": [],
+        },
+        "version-check": {
+            "only_on_master": True,
+            "factory": make_VersionUpdateCheckService,
             "requires": [],
         },
         "workers": {

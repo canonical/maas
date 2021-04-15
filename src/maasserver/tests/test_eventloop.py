@@ -29,6 +29,9 @@ from maasserver import (
 from maasserver.eventloop import DEFAULT_PORT, MAASServices
 from maasserver.prometheus.stats import PrometheusService
 from maasserver.regiondservices import ntp, service_monitor_service, syslog
+from maasserver.regiondservices.version_update_check import (
+    RegionVersionUpdateCheckService,
+)
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.listener import FakePostgresListenerService
@@ -463,6 +466,14 @@ class TestFactories(MAASServerTestCase):
             eventloop.loop.factories["web"]["requires"],
         )
         self.assertFalse(eventloop.loop.factories["web"]["only_on_master"])
+
+    def test_make_VersionUpdateCheckService(self):
+        service = eventloop.make_VersionUpdateCheckService()
+        self.assertIsInstance(service, RegionVersionUpdateCheckService)
+        self.assertIs(
+            eventloop.loop.factories["version-check"]["factory"],
+            eventloop.make_VersionUpdateCheckService,
+        )
 
     def test_make_RackControllerService(self):
         service = eventloop.make_RackControllerService(
