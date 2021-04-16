@@ -4,8 +4,6 @@ import random
 from typing import List, Optional
 from unittest.mock import call
 
-from testtools.matchers import Equals, HasLength, MatchesStructure, Not
-
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import (
@@ -26,6 +24,9 @@ from maasserver.utils.orm import get_one, reload_object
 from metadataserver.builtin_scripts import network as network_module
 from metadataserver.builtin_scripts.network import update_node_interfaces
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.utils.network import (
+    annotate_with_default_monitored_interfaces,
+)
 
 GB = 1000 * 1000 * 1000
 
@@ -164,11 +165,12 @@ class FakeCommissioningData:
         }
         self.address_annotations = {}
         self._allocated_pci_addresses = []
-        self._networks = {}
+        self.networks = {}
         self._network_cards = []
         if disks is None:
             disks = [LXDDisk("sda")]
         self._disks = list(disks)
+        self.hints = None
 
     def allocate_pci_address(self):
         prev_address = (
@@ -188,7 +190,7 @@ class FakeCommissioningData:
         used_vids = set(
             [
                 network.vlan.vid
-                for network in self._networks.values()
+                for network in self.networks.values()
                 if network.vlan is not None
             ]
         )
@@ -209,7 +211,7 @@ class FakeCommissioningData:
         if mac_address is None:
             mac_address = factory.make_mac_address()
         network = LXDNetwork(name, mac_address)
-        self._networks[name] = network
+        self.networks[name] = network
         if port is None:
             port = LXDNetworkPort(name, len(card.ports), address=mac_address)
         card.ports.append(port)
@@ -234,7 +236,7 @@ class FakeCommissioningData:
         network = LXDNetwork(
             name, mac_address, vlan=LXDVlan(lower_device=parent.name, vid=vid)
         )
-        self._networks[name] = network
+        self.networks[name] = network
         return network
 
     def create_bridge_network(
@@ -256,7 +258,7 @@ class FakeCommissioningData:
                 upper_devices=[parent.name for parent in parents]
             ),
         )
-        self._networks[name] = network
+        self.networks[name] = network
         return network
 
     def create_bond_network(
@@ -276,7 +278,7 @@ class FakeCommissioningData:
             mac_address,
             bond=LXDBond(lower_devices=[parent.name for parent in parents]),
         )
-        self._networks[name] = network
+        self.networks[name] = network
         return network
 
     def render(self):
@@ -292,7 +294,7 @@ class FakeCommissioningData:
         }
         networks = dict(
             (name, dataclasses.asdict(network))
-            for name, network in self._networks.items()
+            for name, network in self.networks.items()
         )
         data = {
             "api_extensions": self.api_extensions,
@@ -322,7 +324,7 @@ class FakeCommissioningData:
             "networks": networks,
             "network-extra": {
                 "interfaces": self._generate_interfaces(),
-                "hints": None,
+                "hints": self.hints,
             },
         }
         for core_index in range(self.cores):
@@ -349,7 +351,7 @@ class FakeCommissioningData:
         # instead make use of the LXD data directly, it's probably worth
         # holding off until there's less information to render.
         interfaces = {}
-        for name, network in self._networks.items():
+        for name, network in self.networks.items():
             interface = {
                 "mac_address": self._get_network_port_mac(
                     name, network.hwaddr
@@ -393,6 +395,7 @@ class FakeCommissioningData:
                 link.update(address_annotation)
                 interface["links"].append(link)
             interfaces[name] = interface
+        annotate_with_default_monitored_interfaces(interfaces)
         return interfaces
 
     def _get_network_port_mac(self, port_name, default):
@@ -426,7 +429,9 @@ class UpdateInterfacesMixin:
         # XXX: This is should be removed when all the tests use
         # of FakeCommissioningData.
         if isinstance(interfaces, FakeCommissioningData):
-            interfaces = interfaces.render()["network-extra"]["interfaces"]
+            interface_data = interfaces.render()
+            interfaces = interface_data["network-extra"]["interfaces"]
+            topology_hints = interface_data["network-extra"]["hints"]
         # update_node_interfaces() is idempotent, so it doesn't matter
         # if it's called once or twice.
         if passes is None:
@@ -522,131 +527,53 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
     def test_sets_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
-        bond_mac = factory.make_mac_address()
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": eth0_mac,
-                "parents": [],
-                "links": [],
-                "enabled": True,
-                "monitored": True,
-            },
-            "eth0.100": {
-                "type": "vlan",
-                "mac_address": eth0_mac,
-                "parents": ["eth0"],
-                "vid": 100,
-                "links": [],
-                "enabled": True,
-                "monitored": False,
-            },
-            "bond0": {
-                "type": "bond",
-                "mac_address": bond_mac,
-                "parents": [],
-                "links": [],
-                "enabled": False,
-                "monitored": False,
-            },
-        }
-        self.update_interfaces(controller, interfaces)
+        data = FakeCommissioningData()
+        eth0_network = data.create_physical_network(
+            "eth0", mac_address=eth0_mac
+        )
+        data.create_vlan_network(
+            "eth0.100", vid=100, parent=eth0_network, mac_address=eth0_mac
+        )
+        eth1_network = data.create_physical_network("eth1")
+        eth1_network.state = "down"
+
+        self.update_interfaces(controller, data)
+
         eth0 = Interface.objects.get(name="eth0", node=controller)
-        self.assertThat(
-            eth0,
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.PHYSICAL,
-                name="eth0",
-                mac_address=interfaces["eth0"]["mac_address"],
-                enabled=True,
-                neighbour_discovery_state=True,
-                mdns_discovery_state=True,
-            ),
-        )
-        self.assertThat(list(eth0.parents.all()), Equals([]))
+        self.assertTrue(eth0.neighbour_discovery_state)
+        self.assertTrue(eth0.mdns_discovery_state)
         eth0_vlan = Interface.objects.get(name="eth0.100", node=controller)
-        self.assertThat(
-            eth0_vlan,
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.VLAN,
-                name="eth0.100",
-                mac_address=interfaces["eth0.100"]["mac_address"],
-                enabled=True,
-                neighbour_discovery_state=False,
-                mdns_discovery_state=True,
-            ),
-        )
+        self.assertFalse(eth0_vlan.neighbour_discovery_state)
+        self.assertTrue(eth0_vlan.mdns_discovery_state)
+        eth1 = Interface.objects.get(name="eth1", node=controller)
+        self.assertFalse(eth1.neighbour_discovery_state)
+        self.assertTrue(eth1.mdns_discovery_state)
 
     def test_clears_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": eth0_mac,
-                "parents": [],
-                "links": [],
-                "enabled": True,
-                "monitored": True,
-            },
-            "eth0.100": {
-                "type": "vlan",
-                "mac_address": eth0_mac,
-                "parents": ["eth0"],
-                "vid": 100,
-                "links": [],
-                "enabled": True,
-                "monitored": False,
-            },
-        }
-        self.update_interfaces(controller, interfaces)
+        data = FakeCommissioningData()
+        eth0_network = data.create_physical_network(
+            "eth0", mac_address=eth0_mac
+        )
+        vlan_network = data.create_vlan_network(
+            "eth0.100", vid=100, parent=eth0_network, mac_address=eth0_mac
+        )
+        self.update_interfaces(controller, data)
+
         # Disable the interfaces so that we can make sure neighbour discovery
         # is properly disabled on update.
-        interfaces = {
-            "eth0": {
-                "type": "physical",
-                "mac_address": eth0_mac,
-                "parents": [],
-                "links": [],
-                "enabled": False,
-                "monitored": False,
-            },
-            "eth0.100": {
-                "type": "vlan",
-                "mac_address": eth0_mac,
-                "parents": ["eth0"],
-                "vid": 100,
-                "links": [],
-                "enabled": False,
-                "monitored": False,
-            },
-        }
-        self.update_interfaces(controller, interfaces)
+        eth0_network.state = "down"
+        vlan_network.state = "down"
+
+        self.update_interfaces(controller, data)
+
         eth0 = Interface.objects.get(name="eth0", node=controller)
-        self.assertThat(
-            eth0,
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.PHYSICAL,
-                name="eth0",
-                mac_address=interfaces["eth0"]["mac_address"],
-                enabled=False,
-                neighbour_discovery_state=False,
-                mdns_discovery_state=True,
-            ),
-        )
-        self.assertThat(list(eth0.parents.all()), Equals([]))
+        self.assertFalse(eth0.neighbour_discovery_state)
+        self.assertTrue(eth0.mdns_discovery_state)
         eth0_vlan = Interface.objects.get(name="eth0.100", node=controller)
-        self.assertThat(
-            eth0_vlan,
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.VLAN,
-                name="eth0.100",
-                mac_address=interfaces["eth0.100"]["mac_address"],
-                enabled=False,
-                neighbour_discovery_state=False,
-                mdns_discovery_state=True,
-            ),
-        )
+        self.assertFalse(eth0_vlan.neighbour_discovery_state)
+        self.assertTrue(eth0_vlan.mdns_discovery_state)
 
     def test_new_physical_with_new_subnet_link(self):
         controller = self.create_empty_controller()
@@ -663,33 +590,21 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.update_interfaces(controller, data)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
-        self.assertThat(
-            eth0,
-            MatchesStructure.byEquality(
-                type=INTERFACE_TYPE.PHYSICAL,
-                name="eth0",
-                mac_address="11:11:11:11:11:11",
-                enabled=True,
-                vlan=default_vlan,
-            ),
-        )
+        self.assertEqual(INTERFACE_TYPE.PHYSICAL, eth0.type)
+        self.assertEqual("11:11:11:11:11:11", eth0.mac_address)
+        self.assertEqual(default_vlan, eth0.vlan)
+        self.assertTrue(eth0.enabled)
         subnet = Subnet.objects.get(cidr=str(network.cidr))
-        self.assertThat(
-            subnet,
-            MatchesStructure.byEquality(
-                name=str(network.cidr),
-                cidr=str(network.cidr),
-                vlan=default_vlan,
-                gateway_ip=gateway_ip,
-            ),
-        )
+        self.assertEqual(str(network.cidr), subnet.name)
+        self.assertEqual(default_vlan, subnet.vlan)
+        self.assertEqual(gateway_ip, subnet.gateway_ip)
         eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertThat(eth0_addresses, HasLength(1))
-        self.assertThat(
-            eth0_addresses[0],
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.STICKY, ip=ip, subnet=subnet
-            ),
+        self.assertEqual(
+            [(IPADDRESS_TYPE.STICKY, ip, subnet)],
+            [
+                (address.alloc_type, address.ip, address.subnet)
+                for address in eth0_addresses
+            ],
         )
 
     def test_new_physical_with_dhcp_link(self):
@@ -842,9 +757,6 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         subnet = reload_object(subnet)
         # Check that the gateway IP did get set.
         self.assertEqual(gateway_ip, subnet.gateway_ip)
-
-        eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertThat(eth0_addresses, HasLength(1))
 
         [eth0_address] = list(eth0.ip_addresses.all())
         self.assertEqual(ip, eth0_address.ip)
@@ -1123,15 +1035,6 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(str(vlan_ipnetwork.cidr), vlan_subnet.name)
 
         vlan_addresses = list(vlan_interface.ip_addresses.all())
-        self.assertThat(vlan_addresses, HasLength(1))
-        self.assertThat(
-            vlan_addresses[0],
-            MatchesStructure.byEquality(
-                alloc_type=IPADDRESS_TYPE.STICKY,
-                ip=vlan_ip,
-                subnet=vlan_subnet,
-            ),
-        )
         vlan_addresses = list(vlan_interface.ip_addresses.all())
         self.assertEqual(
             [(IPADDRESS_TYPE.STICKY, vlan_ip, vlan_subnet)],
@@ -2296,43 +2199,18 @@ class TestUpdateInterfacesWithHints(
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
-        alice_interfaces = {
-            "eth0": {
-                "enabled": True,
-                "links": [{"address": "192.168.0.1/24", "mode": "dhcp"}],
-                "mac_address": "52:54:00:77:15:e3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-            "eth1": {
-                "enabled": False,
-                "links": [],
-                "mac_address": "52:54:00:77:15:e4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_interfaces = {
-            "eth0": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-            "eth1": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_hints = [
+        alice_data = FakeCommissioningData()
+        alice_data.create_physical_network("eth0")
+        alice_data.networks["eth0"].addresses = [LXDAddress("192.168.0.1", 24)]
+        alice_data.address_annotations["192.168.0.1"] = {"mode": "dhcp"}
+        alice_data.create_physical_network("eth1")
+        alice_data.networks["eth1"].state = "down"
+
+        bob_data = FakeCommissioningData()
+        bob_data.create_physical_network("eth0")
+        bob_data.create_physical_network("eth1")
+
+        bob_data.hints = [
             {
                 "hint": "same_local_fabric_as",
                 "ifname": "eth0",
@@ -2342,13 +2220,13 @@ class TestUpdateInterfacesWithHints(
                 "hint": "on_remote_network",
                 "ifname": "eth0",
                 "related_ifname": "eth0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["eth0"].hwaddr,
             },
             {
                 "hint": "routable_to",
                 "ifname": "eth0",
                 "related_ifname": "eth0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["eth0"].hwaddr,
             },
             {
                 "hint": "rx_own_beacon_on_other_interface",
@@ -2356,10 +2234,8 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_interfaces, with_beaconing=False)
-        self.update_interfaces(
-            bob, bob_interfaces, bob_hints, with_beaconing=False
-        )
+        self.update_interfaces(alice, alice_data, with_beaconing=False)
+        self.update_interfaces(bob, bob_data, with_beaconing=False)
         alice_eth0 = get_one(
             PhysicalInterface.objects.filter(node=alice, name="eth0")
         )
@@ -2371,50 +2247,24 @@ class TestUpdateInterfacesWithHints(
         )
         # Legacy mode; we'll see lots of VLANs and fabrics if an older
         # rack registers with this configuration.
-        self.assertThat(alice_eth0.vlan, Not(Equals(bob_eth0.vlan)))
-        self.assertThat(bob_eth1.vlan, Not(Equals(bob_eth0.vlan)))
+        self.assertNotEqual(alice_eth0.vlan, bob_eth0.vlan)
+        self.assertNotEqual(bob_eth1.vlan, bob_eth0.vlan)
 
     def test_seen_on_second_controller_with_hints_with_beaconing(self):
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
-        alice_interfaces = {
-            "eth0": {
-                "enabled": True,
-                "links": [{"address": "192.168.0.1/24", "mode": "dhcp"}],
-                "mac_address": "52:54:00:77:15:e3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-            "eth1": {
-                "enabled": False,
-                "links": [],
-                "mac_address": "52:54:00:77:15:e4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_interfaces = {
-            "eth0": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-            "eth1": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_hints = [
+        alice_data = FakeCommissioningData()
+        alice_data.create_physical_network("eth0")
+        alice_data.networks["eth0"].addresses = [LXDAddress("192.168.0.1", 24)]
+        alice_data.address_annotations["192.168.0.1"] = {"mode": "dhcp"}
+        alice_data.create_physical_network("eth1")
+        alice_data.networks["eth1"].state = "down"
+
+        bob_data = FakeCommissioningData()
+        bob_data.create_physical_network("eth0")
+        bob_data.create_physical_network("eth1")
+        bob_data.hints = [
             {
                 "hint": "same_local_fabric_as",
                 "ifname": "eth0",
@@ -2424,13 +2274,13 @@ class TestUpdateInterfacesWithHints(
                 "hint": "on_remote_network",
                 "ifname": "eth0",
                 "related_ifname": "eth0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["eth0"].hwaddr,
             },
             {
                 "hint": "routable_to",
                 "ifname": "eth0",
                 "related_ifname": "eth0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["eth0"].hwaddr,
             },
             {
                 "hint": "rx_own_beacon_on_other_interface",
@@ -2438,10 +2288,8 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_interfaces, with_beaconing=True)
-        self.update_interfaces(
-            bob, bob_interfaces, bob_hints, with_beaconing=True
-        )
+        self.update_interfaces(alice, alice_data, with_beaconing=True)
+        self.update_interfaces(bob, bob_data, with_beaconing=True)
         alice_eth0 = get_one(
             PhysicalInterface.objects.filter(node=alice, name="eth0")
         )
@@ -2453,50 +2301,24 @@ class TestUpdateInterfacesWithHints(
         )
         # Registration with beaconing; we should see all these interfaces
         # appear on the same VLAN.
-        self.assertThat(alice_eth0.vlan, Equals(bob_eth0.vlan))
-        self.assertThat(bob_eth1.vlan, Equals(bob_eth0.vlan))
+        self.assertEqual(alice_eth0.vlan, bob_eth0.vlan)
+        self.assertEqual(bob_eth1.vlan, bob_eth0.vlan)
 
     def test_bridge_seen_on_second_controller_with_hints_and_beaconing(self):
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
-        alice_interfaces = {
-            "br0": {
-                "enabled": True,
-                "links": [{"address": "192.168.0.1/24", "mode": "dhcp"}],
-                "mac_address": "52:54:00:77:15:e3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "bridge",
-            },
-            "eth1": {
-                "enabled": False,
-                "links": [],
-                "mac_address": "52:54:00:77:15:e4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_interfaces = {
-            "eth0": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-            "eth1": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_hints = [
+        alice_data = FakeCommissioningData()
+        alice_data.create_bridge_network("br0", parents=[])
+        alice_data.networks["br0"].addresses = [LXDAddress("192.168.0.1", 24)]
+        alice_data.address_annotations["192.168.0.1"] = {"mode": "dhcp"}
+        alice_data.create_physical_network("eth1")
+        alice_data.networks["eth1"].state = "down"
+
+        bob_data = FakeCommissioningData()
+        bob_data.create_physical_network("eth0")
+        bob_data.create_physical_network("eth1")
+        bob_data.hints = [
             {
                 "hint": "same_local_fabric_as",
                 "ifname": "eth0",
@@ -2506,13 +2328,13 @@ class TestUpdateInterfacesWithHints(
                 "hint": "on_remote_network",
                 "ifname": "eth0",
                 "related_ifname": "br0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["br0"].hwaddr,
             },
             {
                 "hint": "routable_to",
                 "ifname": "eth0",
                 "related_ifname": "br0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["br0"].hwaddr,
             },
             {
                 "hint": "rx_own_beacon_on_other_interface",
@@ -2520,10 +2342,8 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_interfaces, with_beaconing=True)
-        self.update_interfaces(
-            bob, bob_interfaces, bob_hints, with_beaconing=True
-        )
+        self.update_interfaces(alice, alice_data, with_beaconing=True)
+        self.update_interfaces(bob, bob_data, with_beaconing=True)
         alice_br0 = get_one(
             BridgeInterface.objects.filter(node=alice, name="br0")
         )
@@ -2535,8 +2355,8 @@ class TestUpdateInterfacesWithHints(
         )
         # Registration with beaconing; we should see all these interfaces
         # appear on the same VLAN.
-        self.assertThat(alice_br0.vlan, Equals(bob_eth0.vlan))
-        self.assertThat(bob_eth1.vlan, Equals(bob_eth0.vlan))
+        self.assertEqual(alice_br0.vlan, bob_eth0.vlan)
+        self.assertEqual(bob_eth1.vlan, bob_eth0.vlan)
 
     def test_bridge_seen_on_second_controller_with_hints_and_no_beaconing(
         self,
@@ -2544,43 +2364,17 @@ class TestUpdateInterfacesWithHints(
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
-        alice_interfaces = {
-            "br0": {
-                "enabled": True,
-                "links": [{"address": "192.168.0.1/24", "mode": "dhcp"}],
-                "mac_address": "52:54:00:77:15:e3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "bridge",
-            },
-            "eth1": {
-                "enabled": False,
-                "links": [],
-                "mac_address": "52:54:00:77:15:e4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_interfaces = {
-            "eth0": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f3",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-            "eth1": {
-                "enabled": True,
-                "links": [],
-                "mac_address": "52:54:00:87:25:f4",
-                "parents": [],
-                "source": "ipaddr",
-                "type": "physical",
-            },
-        }
-        bob_hints = [
+        alice_data = FakeCommissioningData()
+        alice_data.create_bridge_network("br0", parents=[])
+        alice_data.networks["br0"].addresses = [LXDAddress("192.168.0.1", 24)]
+        alice_data.address_annotations["192.168.0.1"] = {"mode": "dhcp"}
+        alice_data.create_physical_network("eth1")
+        alice_data.networks["eth1"].state = "down"
+
+        bob_data = FakeCommissioningData()
+        bob_data.create_physical_network("eth0")
+        bob_data.create_physical_network("eth1")
+        bob_data.hints = [
             {
                 "hint": "same_local_fabric_as",
                 "ifname": "eth0",
@@ -2590,13 +2384,13 @@ class TestUpdateInterfacesWithHints(
                 "hint": "on_remote_network",
                 "ifname": "eth0",
                 "related_ifname": "br0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["br0"].hwaddr,
             },
             {
                 "hint": "routable_to",
                 "ifname": "eth0",
                 "related_ifname": "br0",
-                "related_mac": "52:54:00:77:15:e3",
+                "related_mac": alice_data.networks["br0"].hwaddr,
             },
             {
                 "hint": "rx_own_beacon_on_other_interface",
@@ -2604,10 +2398,8 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_interfaces, with_beaconing=False)
-        self.update_interfaces(
-            bob, bob_interfaces, bob_hints, with_beaconing=False
-        )
+        self.update_interfaces(alice, alice_data, with_beaconing=False)
+        self.update_interfaces(bob, bob_data, with_beaconing=False)
         alice_br0 = get_one(
             BridgeInterface.objects.filter(node=alice, name="br0")
         )
@@ -2619,5 +2411,5 @@ class TestUpdateInterfacesWithHints(
         )
         # Legacy mode; we'll see lots of VLANs and fabrics if an older
         # rack registers with this configuration.
-        self.assertThat(alice_br0.vlan, Not(Equals(bob_eth0.vlan)))
-        self.assertThat(bob_eth1.vlan, Not(Equals(bob_eth0.vlan)))
+        self.assertNotEqual(alice_br0.vlan, bob_eth0.vlan)
+        self.assertNotEqual(bob_eth1.vlan, bob_eth0.vlan)
