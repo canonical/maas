@@ -53,7 +53,7 @@ class TestVersionUpdateCheckService(MAASTestCase):
         service = SampleVersionUpdateCheckService()
         versions_info = SnapVersionsInfo(
             current=SnapVersion(
-                revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
             ),
         )
         mock_get_snap_versions = self.patch(
@@ -104,11 +104,11 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
         service = RackVersionUpdateCheckService(None)
         versions_info = DebVersionsInfo(
             current=DebVersion(
-                version="3.0.0-alpha1-111-g.deadbeef",
+                version="3.0.0~alpha1-111-g.deadbeef",
                 origin="http://archive.ubuntu.com/ubuntu focal/main",
             ),
             update=DebVersion(
-                version="3.0.0-alpha2-222-g.cafecafe",
+                version="3.0.0~alpha2-222-g.cafecafe",
                 origin="http://archive.ubuntu.com/ubuntu focal/main",
             ),
         )
@@ -123,11 +123,11 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
         service = RackVersionUpdateCheckService(None)
         versions_info = SnapVersionsInfo(
             current=SnapVersion(
-                revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
             ),
             channel=SnapChannel(track="3.0"),
             update=SnapVersion(
-                revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
+                revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
             ),
         )
         self.assertEqual(
@@ -144,11 +144,11 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
         service = RackVersionUpdateCheckService(rpc_service)
         versions_info = SnapVersionsInfo(
             current=SnapVersion(
-                revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
             ),
             channel=SnapChannel(track="3.0"),
             update=SnapVersion(
-                revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
+                revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
             ),
         )
         self.patch(

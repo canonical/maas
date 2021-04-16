@@ -126,25 +126,25 @@ class TestSnapVersionsInfo(MAASTestCase):
         info = SnapVersionsInfo(
             current={
                 "revision": "1234",
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
             },
             channel={"track": "3.0", "risk": "stable"},
             update={
                 "revision": "5678",
-                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
             },
         )
         self.assertEqual(
             info.current,
             SnapVersion(
-                revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
             ),
         )
         self.assertEqual(info.channel, SnapChannel(track="3.0"))
         self.assertEqual(
             info.update,
             SnapVersion(
-                revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
+                revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
             ),
         )
 
@@ -157,7 +157,7 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             "environ",
             {
                 "SNAP_REVISION": "1234",
-                "SNAP_VERSION": "3.0.0-alpha1-111-g.deadbeef",
+                "SNAP_VERSION": "3.0.0~alpha1-111-g.deadbeef",
             },
         )
 
@@ -167,7 +167,7 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             versions,
             SnapVersionsInfo(
                 current=SnapVersion(
-                    revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                    revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
                 ),
                 channel=None,
                 update=None,
@@ -180,7 +180,7 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             "channel": "3.0/edge/fix-9991",
             "update": {
                 "revision": "5678",
-                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
             },
             "cohort": "abcd1234",
         }
@@ -190,13 +190,13 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             versions,
             SnapVersionsInfo(
                 current=SnapVersion(
-                    revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                    revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
                 ),
                 channel=SnapChannel(
                     track="3.0", risk="edge", branch="fix-9991"
                 ),
                 update=SnapVersion(
-                    revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
+                    revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
                 ),
                 cohort="abcd1234",
             ),
@@ -212,7 +212,7 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             versions,
             SnapVersionsInfo(
                 current=SnapVersion(
-                    revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                    revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
                 ),
                 channel=SnapChannel(
                     track="3.0", risk="edge", branch="fix-9991"

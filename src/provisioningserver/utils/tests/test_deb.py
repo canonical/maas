@@ -17,19 +17,19 @@ class TestDebVersionsInfo(MAASTestCase):
     def test_deserialize(self):
         info = DebVersionsInfo(
             current={
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
             },
             update={
-                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
             },
         )
         self.assertEqual(
             info.current,
-            DebVersion(version="3.0.0-alpha1-111-g.deadbeef"),
+            DebVersion(version="3.0.0~alpha1-111-g.deadbeef"),
         )
         self.assertEqual(
             info.update,
-            DebVersion(version="3.0.0-alpha2-222-g.cafecafe"),
+            DebVersion(version="3.0.0~alpha2-222-g.cafecafe"),
         )
 
 
@@ -95,13 +95,13 @@ class TestGetDebVersionsInfo(MAASTestCase):
 
     def test_region_installed(self):
         apt_pkg = MockAptPkg()
-        current = apt_pkg._make_package_version("3.0.0-alpha1-111-g.deadbeef")
+        current = apt_pkg._make_package_version("3.0.0~alpha1-111-g.deadbeef")
         apt_pkg._add_package("maas-region-api", current=current)
         self.assertEqual(
             get_deb_versions_info(apt_pkg=apt_pkg),
             DebVersionsInfo(
                 current=DebVersion(
-                    version="3.0.0-alpha1-111-g.deadbeef", origin=""
+                    version="3.0.0~alpha1-111-g.deadbeef", origin=""
                 ),
                 update=None,
             ),
@@ -109,13 +109,13 @@ class TestGetDebVersionsInfo(MAASTestCase):
 
     def test_rack_installed(self):
         apt_pkg = MockAptPkg()
-        current = apt_pkg._make_package_version("3.0.0-alpha1-111-g.deadbeef")
+        current = apt_pkg._make_package_version("3.0.0~alpha1-111-g.deadbeef")
         apt_pkg._add_package("maas-rack-controller", current=current)
         self.assertEqual(
             get_deb_versions_info(apt_pkg=apt_pkg),
             DebVersionsInfo(
                 current=DebVersion(
-                    version="3.0.0-alpha1-111-g.deadbeef", origin=""
+                    version="3.0.0~alpha1-111-g.deadbeef", origin=""
                 ),
                 update=None,
             ),
@@ -124,7 +124,7 @@ class TestGetDebVersionsInfo(MAASTestCase):
     def test_origin(self):
         apt_pkg = MockAptPkg()
         current = apt_pkg._make_package_version(
-            "3.0.0-alpha1-111-g.deadbeef",
+            "3.0.0~alpha1-111-g.deadbeef",
             origins=(
                 (500, "http://archive.ubuntu.com", "focal", "main"),
                 (900, "http://mirror.example.com", "focal", "other"),
@@ -135,7 +135,7 @@ class TestGetDebVersionsInfo(MAASTestCase):
             get_deb_versions_info(apt_pkg=apt_pkg),
             DebVersionsInfo(
                 current=DebVersion(
-                    version="3.0.0-alpha1-111-g.deadbeef",
+                    version="3.0.0~alpha1-111-g.deadbeef",
                     origin="http://mirror.example.com focal/other",
                 ),
                 update=None,
@@ -144,9 +144,9 @@ class TestGetDebVersionsInfo(MAASTestCase):
 
     def test_update(self):
         apt_pkg = MockAptPkg()
-        current = apt_pkg._make_package_version("3.0.0-alpha1-111-g.deadbeef")
+        current = apt_pkg._make_package_version("3.0.0~alpha1-111-g.deadbeef")
         update = apt_pkg._make_package_version(
-            "3.0.0-alpha2-222-g.cafecafe",
+            "3.0.0~alpha2-222-g.cafecafe",
             origins=(
                 (500, "http://archive.ubuntu.com", "focal", "main"),
                 (900, "http://mirror.example.com", "focal", "other"),
@@ -157,10 +157,10 @@ class TestGetDebVersionsInfo(MAASTestCase):
             get_deb_versions_info(apt_pkg=apt_pkg),
             DebVersionsInfo(
                 current=DebVersion(
-                    version="3.0.0-alpha1-111-g.deadbeef",
+                    version="3.0.0~alpha1-111-g.deadbeef",
                 ),
                 update=DebVersion(
-                    version="3.0.0-alpha2-222-g.cafecafe",
+                    version="3.0.0~alpha2-222-g.cafecafe",
                     origin="http://mirror.example.com focal/other",
                 ),
             ),

@@ -25,7 +25,7 @@ class ControllerVersionInfo(NamedTuple):
     hostname: str
     system_id: str
     version: str
-    maasversion: str
+    maasversion: MAASVersion
 
     def difference(self, other):
         v1 = self.maasversion

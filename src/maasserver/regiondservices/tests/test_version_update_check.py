@@ -30,11 +30,11 @@ class TestRegionVersionUpdateCheckService(MAASTransactionServerTestCase):
 
         versions_info = SnapVersionsInfo(
             current=SnapVersion(
-                revision="1234", version="3.0.0-alpha1-111-g.deadbeef"
+                revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
             ),
             channel=SnapChannel(track="3.0"),
             update=SnapVersion(
-                revision="5678", version="3.0.0-alpha2-222-g.cafecafe"
+                revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
             ),
         )
         self.patch(
@@ -46,8 +46,8 @@ class TestRegionVersionUpdateCheckService(MAASTransactionServerTestCase):
         yield service.stopService()
 
         info = yield deferToDatabase(getattr, region, "info")
-        self.assertEqual(info.version, "3.0.0-alpha1-111-g.deadbeef")
+        self.assertEqual(info.version, "3.0.0~alpha1-111-g.deadbeef")
         self.assertEqual(info.snap_revision, "1234")
-        self.assertEqual(info.update_version, "3.0.0-alpha2-222-g.cafecafe")
+        self.assertEqual(info.update_version, "3.0.0~alpha2-222-g.cafecafe")
         self.assertEqual(info.snap_update_revision, "5678")
         self.assertEqual(info.update_origin, "3.0/stable")

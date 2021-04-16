@@ -1,10 +1,7 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver ControllerInfo model."""
 
-
-from crochet import wait_for
 from testtools.matchers import Equals, Is
 
 from maasserver.models import ControllerInfo, Notification
@@ -21,8 +18,6 @@ from maasserver.utils.orm import reload_object
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.snap import SnapVersionsInfo
-
-wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
 class TestControllerInfo(MAASServerTestCase):
@@ -41,12 +36,12 @@ class TestControllerInfo(MAASServerTestCase):
         versions = SnapVersionsInfo(
             current={
                 "revision": "1234",
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
             },
             channel={"track": "3.0", "risk": "stable"},
             update={
                 "revision": "5678",
-                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
             },
             cohort="abc123",
         )
@@ -56,10 +51,10 @@ class TestControllerInfo(MAASServerTestCase):
             controller_info.install_type, CONTROLLER_INSTALL_TYPE.SNAP
         )
         self.assertEqual(
-            controller_info.version, "3.0.0-alpha1-111-g.deadbeef"
+            controller_info.version, "3.0.0~alpha1-111-g.deadbeef"
         )
         self.assertEqual(
-            controller_info.update_version, "3.0.0-alpha2-222-g.cafecafe"
+            controller_info.update_version, "3.0.0~alpha2-222-g.cafecafe"
         )
         self.assertEqual(controller_info.update_origin, "3.0/stable")
         self.assertEqual(controller_info.snap_revision, "1234")
@@ -71,7 +66,7 @@ class TestControllerInfo(MAASServerTestCase):
         versions = SnapVersionsInfo(
             current={
                 "revision": "1234",
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
             },
         )
         ControllerInfo.objects.set_versions_info(controller, versions)
@@ -84,11 +79,11 @@ class TestControllerInfo(MAASServerTestCase):
         controller = factory.make_RackController()
         versions = DebVersionsInfo(
             current={
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
                 "origin": "http://archive.ubuntu.com/ focal/main",
             },
             update={
-                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
                 "origin": "http://mymirror.example.com/ focal/main",
             },
         )
@@ -98,10 +93,10 @@ class TestControllerInfo(MAASServerTestCase):
             controller_info.install_type, CONTROLLER_INSTALL_TYPE.DEB
         )
         self.assertEqual(
-            controller_info.version, "3.0.0-alpha1-111-g.deadbeef"
+            controller_info.version, "3.0.0~alpha1-111-g.deadbeef"
         )
         self.assertEqual(
-            controller_info.update_version, "3.0.0-alpha2-222-g.cafecafe"
+            controller_info.update_version, "3.0.0~alpha2-222-g.cafecafe"
         )
         self.assertEqual(
             controller_info.update_origin,
@@ -115,7 +110,7 @@ class TestControllerInfo(MAASServerTestCase):
         controller = factory.make_RackController()
         versions = DebVersionsInfo(
             current={
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
                 "origin": "http://archive.ubuntu.com/ focal/main",
             },
         )
