@@ -4,9 +4,16 @@
 """ControllerInfo objects."""
 
 
-from typing import NamedTuple
+from datetime import datetime
+from typing import NamedTuple, Optional
 
-from django.db.models import CASCADE, CharField, Manager, OneToOneField
+from django.db.models import (
+    CASCADE,
+    CharField,
+    DateTimeField,
+    Manager,
+    OneToOneField,
+)
 
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
@@ -18,6 +25,13 @@ from provisioningserver.enum import (
     CONTROLLER_INSTALL_TYPE_CHOICES,
 )
 from provisioningserver.utils.version import MAASVersion
+
+
+class TargetVersion(NamedTuple):
+    """The target version for the MAAS deployment."""
+
+    version: MAASVersion
+    first_reported: Optional[datetime] = None
 
 
 class ControllerVersionInfo(NamedTuple):
@@ -68,27 +82,88 @@ class ControllerInfoManager(Manager):
             "snap_cohort": "",
             "snap_revision": "",
             "snap_update_revision": "",
+            "update_first_reported": None,
         }
-        if versions.update:
-            details["update_version"] = versions.update.version
-
-        if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
-            if versions.update:
-                details["update_origin"] = versions.update.origin
-        elif versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
+        if versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
             details.update(
                 {
                     "snap_revision": versions.current.revision,
                     "snap_cohort": versions.cohort,
-                    "update_origin": str(versions.channel)
-                    if versions.channel
-                    else "",
                 }
             )
-            if versions.update:
-                details["snap_update_revision"] = versions.update.revision
 
-        self.update_or_create(defaults=details, node=controller)
+        if versions.update:
+            details.update(
+                {
+                    "update_version": versions.update.version,
+                    "update_first_reported": datetime.now(),
+                }
+            )
+            if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
+                details["update_origin"] = versions.update.origin
+            elif versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
+                details.update(
+                    {
+                        "snap_update_revision": versions.update.revision,
+                        "update_origin": str(versions.channel)
+                        if versions.channel
+                        else "",
+                    }
+                )
+
+        info, created = self.get_or_create(defaults=details, node=controller)
+        if created:
+            return
+
+        if versions.update:
+            if (
+                versions.update.version == info.update_version
+                and versions.install_type == info.install_type
+            ):
+                # if the version is the same but the install type has changed,
+                # still update the first reported time
+                del details["update_first_reported"]
+
+        for key, value in details.items():
+            setattr(info, key, value)
+        info.save()
+
+    def get_target_version(self) -> TargetVersion:
+        """Get the target version for the deployment."""
+        highest_version, highest_update, update_first_reported = (
+            None,
+            None,
+            None,
+        )
+        versions = self.exclude(version="").values_list(
+            "version", "update_version", "update_first_reported"
+        )
+        for version, update, first_reported in versions:
+            version = MAASVersion.from_string(version)
+            highest_version = (
+                max((highest_version, version)) if highest_version else version
+            )
+
+            if not update:
+                continue
+
+            update = MAASVersion.from_string(update)
+            if not highest_update:
+                highest_update = update
+                update_first_reported = first_reported
+            elif update < highest_update:
+                continue
+            elif update > highest_update:
+                highest_update = update
+                update_first_reported = first_reported
+            else:  # same version
+                update_first_reported = min(
+                    (update_first_reported, first_reported)
+                )
+
+        if highest_update and highest_update > highest_version:
+            return TargetVersion(highest_update, update_first_reported)
+        return TargetVersion(highest_version)
 
     def get_controller_version_info(self):
         versions = list(
@@ -218,11 +293,7 @@ def update_version_notifications():
 
 
 class ControllerInfo(CleanSave, TimestampedModel):
-    """A `ControllerInfo` represents metadata about nodes that are Controllers.
-
-    :ivar node: `Node` this `ControllerInfo` represents metadata for.
-    :ivar version: The last known version of the controller.
-    """
+    """Metadata about a node that is a controller."""
 
     class Meta(DefaultMeta):
         verbose_name = "ControllerInfo"
@@ -237,6 +308,7 @@ class ControllerInfo(CleanSave, TimestampedModel):
     update_version = CharField(max_length=255, blank=True, default="")
     # the snap channel or deb repo for the update
     update_origin = CharField(max_length=255, blank=True, default="")
+    update_first_reported = DateTimeField(blank=True, null=True)
     install_type = CharField(
         max_length=255,
         blank=True,
