@@ -18,13 +18,6 @@ from django.db import connection
 
 from maasserver.utils.orm import transactional
 
-
-def register_procedure(procedure):
-    """Register the `procedure` SQL."""
-    with closing(connection.cursor()) as cursor:
-        cursor.execute(procedure)
-
-
 # Mappings for  (postgres_event_type, maas_notification_type, pg_obj) for
 # trigger notification events. Three conventions are currently in-use in MAAS.
 
@@ -54,8 +47,19 @@ EVENTS_LUU = (
 EVENTS_LU = (("insert", "link", "NEW"), ("delete", "unlink", "OLD"))
 
 
+def register_procedure(procedure):
+    """Register the `procedure` SQL."""
+    with closing(connection.cursor()) as cursor:
+        cursor.execute(procedure)
+
+
 def register_triggers(
-    table, event_prefix, params=None, fields=None, events=None, when="after"
+    table,
+    event_prefix,
+    params=None,
+    fields=None,
+    events=EVENTS_CUD,
+    when="after",
 ):
     """Registers a set of triggers for insert, update, and delete.
 
@@ -77,17 +81,16 @@ def register_triggers(
     :param when: When the trigger should fire relative to the row update. The
         default is AFTER, but postgresql also supports BEFORE and INSTEAD OF.
     """
-    if events is None:
-        events = EVENTS_CUD
     for pg_event, maas_event_type, pg_obj in events:
         event_params = None
         if params is not None:
-            event_params = {}
-            for key, value in params.items():
-                event_params["%s.%s" % (pg_obj, key)] = value
+            event_params = {
+                f"{pg_obj}.{key}": value for key, value in params.items()
+            }
+
         register_trigger(
             table,
-            "%s_%s_notify" % (event_prefix, maas_event_type),
+            f"{event_prefix}_{maas_event_type}_notify",
             pg_event,
             event_params,
             fields,
@@ -106,62 +109,50 @@ def _make_when_clause(is_update, params, fields):
         will be checked.
     :return: the WHEN clause to use in the trigger.
     """
-    when_clause = ""
-    if params is not None or (fields is not None and is_update):
-        if params is None:
-            params = {}
-        if fields is None:
-            fields = []
-        when_clause = "WHEN ("
-        when_clause += " AND ".join(
-            ["%s = '%s'" % (key, value) for key, value in params.items()]
-        )
-        if is_update and len(fields) > 0:
-            if len(params) > 0:
-                when_clause += " AND ("
-            when_clause += " OR ".join(
-                [
-                    "NEW.%s IS DISTINCT FROM OLD.%s" % (field, field)
-                    for field in fields
-                ]
+    if params is None:
+        params = {}
+    if fields is None:
+        fields = []
+
+    clauses = []
+    if params:
+        clauses.extend(f"{key} = '{value}'" for key, value in params.items())
+    if is_update and fields:
+        clauses.append(
+            "("
+            + " OR ".join(
+                f"NEW.{field} IS DISTINCT FROM OLD.{field}" for field in fields
             )
-            if len(params) > 0:
-                when_clause += ")"
-        when_clause += ")"
-    return when_clause
+            + ")"
+        )
+    if not clauses:
+        return ""
+    and_clauses = " AND ".join(clauses)
+    return f"WHEN ({and_clauses})"
 
 
 def register_trigger(
     table, procedure, event, params=None, fields=None, when="after"
 ):
-    """Register `trigger` on `table` if it doesn't exist."""
-    # Strip the "maasserver_" off the front of the table name.
+    """(Re-)create `trigger` on `table`."""
     table_name = table
     if table.startswith("maasserver_"):
         table_name = table_name[11:]
-    trigger_name = "%s_%s" % (table_name, procedure)
+    trigger_name = f"{table_name}_{procedure}"
     is_update = event == "update"
     when_clause = _make_when_clause(is_update, params, fields)
     trigger_sql = dedent(
-        """\
+        f"""\
         DROP TRIGGER IF EXISTS {trigger_name} ON {table};
+
         CREATE TRIGGER {trigger_name}
-        {when} {event} ON {table}
+        {when.upper()} {event.upper()} ON {table}
         FOR EACH ROW
         {when_clause}
         EXECUTE PROCEDURE {procedure}();
         """
     )
-    trigger_sql = trigger_sql.format(
-        trigger_name=trigger_name,
-        table=table,
-        when=when.upper(),
-        event=event.upper(),
-        when_clause=when_clause,
-        procedure=procedure,
-    )
-    with closing(connection.cursor()) as cursor:
-        cursor.execute(trigger_sql)
+    register_procedure(trigger_sql)
 
 
 @transactional
