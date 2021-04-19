@@ -17,7 +17,6 @@ from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerError, HandlerPermissionError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
-from provisioningserver.utils.version import MAASVersion
 
 
 class ControllerHandler(MachineHandler):
@@ -128,16 +127,14 @@ class ControllerHandler(MachineHandler):
     def dehydrate(self, obj, data, for_list=False):
         obj = obj.as_self()
         data = super().dehydrate(obj, data, for_list=for_list)
-        data["versions"] = self.dehydrate_versions(obj.info)
-        data["version"] = obj.version
-        if obj.version:
-            version = MAASVersion.from_string(obj.version)
-            data["version__short"] = version.short_version
-            long_version = version.short_version
-            if version.extended_info:
-                long_version += f" ({version.extended_info})"
-            data["version__long"] = long_version
-        data["service_ids"] = [service.id for service in obj.service_set.all()]
+        data.update(
+            {
+                "versions": self.dehydrate_versions(obj.info),
+                "service_ids": [
+                    service.id for service in obj.service_set.all()
+                ],
+            }
+        )
         if not for_list:
             data["vlan_ids"] = [
                 interface.vlan_id for interface in obj.interface_set.all()

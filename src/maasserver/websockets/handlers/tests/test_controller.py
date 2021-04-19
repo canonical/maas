@@ -1,8 +1,6 @@
 # Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.controller`"""
-
 
 from testscenarios import multiply_scenarios
 from testtools.matchers import ContainsDict, Equals
@@ -178,20 +176,6 @@ class TestControllerHandler(MAASServerTestCase):
         rack = factory.make_RackController()
         handler = ControllerHandler(owner, {}, None)
         self.assertTrue(handler.dehydrate_show_os_info(rack))
-
-    def test_dehydrate_includes_version(self):
-        owner = factory.make_admin()
-        handler = ControllerHandler(owner, {}, None)
-        rack = factory.make_RackController()
-        version = "2.3.0~alpha1-6000-g.abc123"
-        ControllerInfo.objects.set_version(rack, version)
-        result = handler.list({})
-        self.assertEqual(version, result[0].get("version"))
-        self.assertEqual("2.3.0~alpha1", result[0].get("version__short"))
-        self.assertEqual(
-            "2.3.0~alpha1 (6000-g.abc123)",
-            result[0].get("version__long"),
-        )
 
     def test_dehydrate_empty_versions(self):
         owner = factory.make_admin()
