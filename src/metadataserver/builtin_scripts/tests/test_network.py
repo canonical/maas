@@ -421,37 +421,16 @@ class UpdateInterfacesMixin:
     def update_interfaces(
         self,
         controller,
-        interfaces,
-        topology_hints=None,
-        with_beaconing=False,
+        data,
         passes=None,
     ):
-        # XXX: This is should be removed when all the tests use
-        # of FakeCommissioningData.
-        if isinstance(interfaces, FakeCommissioningData):
-            interface_data = interfaces.render()
-            interfaces = interface_data["network-extra"]["interfaces"]
-            topology_hints = interface_data["network-extra"]["hints"]
+        data = data.render()
         # update_node_interfaces() is idempotent, so it doesn't matter
         # if it's called once or twice.
         if passes is None:
             passes = random.randint(1, 2)
         for _ in range(passes):
-            if not with_beaconing:
-                update_node_interfaces(controller, interfaces)
-            else:
-                update_node_interfaces(
-                    controller,
-                    interfaces,
-                    topology_hints=None,
-                    create_fabrics=False,
-                )
-                update_node_interfaces(
-                    controller,
-                    interfaces,
-                    topology_hints=topology_hints,
-                    create_fabrics=True,
-                )
+            update_node_interfaces(controller, data)
         return passes
 
 
@@ -685,18 +664,6 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         data.create_physical_network("eth0", card=card)
 
-        lxd_script = (
-            controller.current_commissioning_script_set.find_script_result(
-                script_name=LXD_OUTPUT_NAME
-            )
-        )
-        # XXX: This setup should be removed when update_node_interfaces
-        # acceepts the commissioning data and can get the info from
-        # there directly.
-        lxd_script_output = data.render()
-        lxd_script.store_result(
-            0, stdout=json.dumps(lxd_script_output).encode("utf-8")
-        )
         self.update_interfaces(controller, data)
         eth0 = Interface.objects.get(name="eth0", node=controller)
         self.assertEqual(card.vendor, eth0.vendor)
@@ -2195,62 +2162,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 class TestUpdateInterfacesWithHints(
     MAASTransactionServerTestCase, UpdateInterfacesMixin
 ):
-    def test_seen_on_second_controller_with_hints_no_beaconing(self):
-        alice = self.create_empty_controller()
-        bob = self.create_empty_controller()
-        factory.make_Node()
-        alice_data = FakeCommissioningData()
-        alice_data.create_physical_network("eth0")
-        alice_data.networks["eth0"].addresses = [LXDAddress("192.168.0.1", 24)]
-        alice_data.address_annotations["192.168.0.1"] = {"mode": "dhcp"}
-        alice_data.create_physical_network("eth1")
-        alice_data.networks["eth1"].state = "down"
-
-        bob_data = FakeCommissioningData()
-        bob_data.create_physical_network("eth0")
-        bob_data.create_physical_network("eth1")
-
-        bob_data.hints = [
-            {
-                "hint": "same_local_fabric_as",
-                "ifname": "eth0",
-                "related_ifname": "eth1",
-            },
-            {
-                "hint": "on_remote_network",
-                "ifname": "eth0",
-                "related_ifname": "eth0",
-                "related_mac": alice_data.networks["eth0"].hwaddr,
-            },
-            {
-                "hint": "routable_to",
-                "ifname": "eth0",
-                "related_ifname": "eth0",
-                "related_mac": alice_data.networks["eth0"].hwaddr,
-            },
-            {
-                "hint": "rx_own_beacon_on_other_interface",
-                "ifname": "eth1",
-                "related_ifname": "eth0",
-            },
-        ]
-        self.update_interfaces(alice, alice_data, with_beaconing=False)
-        self.update_interfaces(bob, bob_data, with_beaconing=False)
-        alice_eth0 = get_one(
-            PhysicalInterface.objects.filter(node=alice, name="eth0")
-        )
-        bob_eth0 = get_one(
-            PhysicalInterface.objects.filter(node=bob, name="eth0")
-        )
-        bob_eth1 = get_one(
-            PhysicalInterface.objects.filter(node=bob, name="eth1")
-        )
-        # Legacy mode; we'll see lots of VLANs and fabrics if an older
-        # rack registers with this configuration.
-        self.assertNotEqual(alice_eth0.vlan, bob_eth0.vlan)
-        self.assertNotEqual(bob_eth1.vlan, bob_eth0.vlan)
-
-    def test_seen_on_second_controller_with_hints_with_beaconing(self):
+    def test_seen_on_second_controller(self):
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
@@ -2288,8 +2200,8 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_data, with_beaconing=True)
-        self.update_interfaces(bob, bob_data, with_beaconing=True)
+        self.update_interfaces(alice, alice_data)
+        self.update_interfaces(bob, bob_data)
         alice_eth0 = get_one(
             PhysicalInterface.objects.filter(node=alice, name="eth0")
         )
@@ -2304,7 +2216,7 @@ class TestUpdateInterfacesWithHints(
         self.assertEqual(alice_eth0.vlan, bob_eth0.vlan)
         self.assertEqual(bob_eth1.vlan, bob_eth0.vlan)
 
-    def test_bridge_seen_on_second_controller_with_hints_and_beaconing(self):
+    def test_bridge_seen_on_second_controller(self):
         alice = self.create_empty_controller()
         bob = self.create_empty_controller()
         factory.make_Node()
@@ -2342,8 +2254,8 @@ class TestUpdateInterfacesWithHints(
                 "related_ifname": "eth0",
             },
         ]
-        self.update_interfaces(alice, alice_data, with_beaconing=True)
-        self.update_interfaces(bob, bob_data, with_beaconing=True)
+        self.update_interfaces(alice, alice_data)
+        self.update_interfaces(bob, bob_data)
         alice_br0 = get_one(
             BridgeInterface.objects.filter(node=alice, name="br0")
         )
@@ -2357,59 +2269,3 @@ class TestUpdateInterfacesWithHints(
         # appear on the same VLAN.
         self.assertEqual(alice_br0.vlan, bob_eth0.vlan)
         self.assertEqual(bob_eth1.vlan, bob_eth0.vlan)
-
-    def test_bridge_seen_on_second_controller_with_hints_and_no_beaconing(
-        self,
-    ):
-        alice = self.create_empty_controller()
-        bob = self.create_empty_controller()
-        factory.make_Node()
-        alice_data = FakeCommissioningData()
-        alice_data.create_bridge_network("br0", parents=[])
-        alice_data.networks["br0"].addresses = [LXDAddress("192.168.0.1", 24)]
-        alice_data.address_annotations["192.168.0.1"] = {"mode": "dhcp"}
-        alice_data.create_physical_network("eth1")
-        alice_data.networks["eth1"].state = "down"
-
-        bob_data = FakeCommissioningData()
-        bob_data.create_physical_network("eth0")
-        bob_data.create_physical_network("eth1")
-        bob_data.hints = [
-            {
-                "hint": "same_local_fabric_as",
-                "ifname": "eth0",
-                "related_ifname": "eth1",
-            },
-            {
-                "hint": "on_remote_network",
-                "ifname": "eth0",
-                "related_ifname": "br0",
-                "related_mac": alice_data.networks["br0"].hwaddr,
-            },
-            {
-                "hint": "routable_to",
-                "ifname": "eth0",
-                "related_ifname": "br0",
-                "related_mac": alice_data.networks["br0"].hwaddr,
-            },
-            {
-                "hint": "rx_own_beacon_on_other_interface",
-                "ifname": "eth1",
-                "related_ifname": "eth0",
-            },
-        ]
-        self.update_interfaces(alice, alice_data, with_beaconing=False)
-        self.update_interfaces(bob, bob_data, with_beaconing=False)
-        alice_br0 = get_one(
-            BridgeInterface.objects.filter(node=alice, name="br0")
-        )
-        bob_eth0 = get_one(
-            PhysicalInterface.objects.filter(node=bob, name="eth0")
-        )
-        bob_eth1 = get_one(
-            PhysicalInterface.objects.filter(node=bob, name="eth1")
-        )
-        # Legacy mode; we'll see lots of VLANs and fabrics if an older
-        # rack registers with this configuration.
-        self.assertNotEqual(alice_br0.vlan, bob_eth0.vlan)
-        self.assertNotEqual(bob_eth1.vlan, bob_eth0.vlan)

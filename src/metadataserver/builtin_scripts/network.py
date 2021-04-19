@@ -23,23 +23,19 @@ maaslog = get_maas_logger("metadataserver.network")
 
 @synchronous
 @transactional
-def update_node_interfaces(
-    node, interfaces, topology_hints=None, create_fabrics=True
-):
+def update_node_interfaces(node, data):
     """Update the interfaces attached to the node
 
-    :param interfaces: a dict with interface details.
-    :param topology_hints: List of dictionaries representing hints
-        about fabric/VLAN connectivity.
-    :param create_fabrics: If True, creates fabrics associated with each
-        VLAN. Otherwise, creates the interfaces but does not create any
-        links or VLANs.
+    :param data: a dict containing commissioning data
     """
     # Avoid circular imports
     from metadataserver.builtin_scripts.hooks import (
-        parse_interfaces_details,
+        parse_interfaces,
         update_interface_details,
     )
+
+    interfaces = data["network-extra"]["interfaces"]
+    topology_hints = data["network-extra"]["hints"]
 
     # Get all of the current interfaces on this node.
     current_interfaces = {
@@ -62,7 +58,7 @@ def update_node_interfaces(
     # Cache the neighbour discovery settings, since they will be used for
     # every interface on this Controller.
     discovery_mode = Config.objects.get_network_discovery_config()
-    interfaces_details = parse_interfaces_details(node)
+    interfaces_details = parse_interfaces(node, data)
     for name in flatten(process_order):
         settings = interfaces[name]
         # Note: the interface that comes back from this call may be None,
@@ -72,7 +68,6 @@ def update_node_interfaces(
             node,
             name,
             settings,
-            create_fabrics=create_fabrics,
             hints=topology_hints,
         )
         if interface is not None:
@@ -81,11 +76,6 @@ def update_node_interfaces(
                 update_interface_details(interface, interfaces_details)
             if interface.id in current_interfaces:
                 del current_interfaces[interface.id]
-
-    if not create_fabrics:
-        # This could be an existing rack controller re-registering,
-        # so don't delete interfaces during this phase.
-        return
 
     # Remove all the interfaces that no longer exist. We do this in reverse
     # order so the child is deleted before the parent.
@@ -106,7 +96,7 @@ def update_node_interfaces(
     node.save()
 
 
-def update_interface(node, name, config, create_fabrics=True, hints=None):
+def update_interface(node, name, config, hints=None):
     """Update a interface.
 
     :param name: Name of the interface.
@@ -114,12 +104,7 @@ def update_interface(node, name, config, create_fabrics=True, hints=None):
         /etc/network/interfaces on the rack controller.
     """
     if config["type"] == "physical":
-        return update_physical_interface(
-            node, name, config, create_fabrics=create_fabrics, hints=hints
-        )
-    elif not create_fabrics:
-        # Defer child interface creation until fabrics are known.
-        return None
+        return update_physical_interface(node, name, config, hints=hints)
     elif config["type"] == "vlan":
         return update_vlan_interface(node, name, config)
     elif config["type"] == "bond":
@@ -132,9 +117,7 @@ def update_interface(node, name, config, create_fabrics=True, hints=None):
         )
 
 
-def update_physical_interface(
-    node, name, config, create_fabrics=True, hints=None
-):
+def update_physical_interface(node, name, config, hints=None):
     """Update a physical interface.
 
     :param name: Name of the interface.
@@ -162,11 +145,9 @@ def update_physical_interface(
         },
     )
     # Don't update the VLAN unless:
-    # (1) We're at the phase where we're creating fabrics.
-    #     (that is, beaconing has already completed)
-    # (2) The interface's VLAN wasn't previously known.
-    # (3) The interface is administratively enabled.
-    if create_fabrics and interface.vlan is None and is_enabled:
+    # (1) The interface's VLAN wasn't previously known.
+    # (2) The interface is administratively enabled.
+    if interface.vlan is None and is_enabled:
         if hints is not None:
             new_vlan = guess_vlan_from_hints(node, name, hints)
         if new_vlan is None:
@@ -190,8 +171,7 @@ def update_physical_interface(
 
     # Update all the IP address on this interface. Fix the VLAN the
     # interface belongs to so its the same as the links.
-    if create_fabrics:
-        update_physical_links(node, interface, config, new_vlan, update_fields)
+    update_physical_links(node, interface, config, new_vlan, update_fields)
     if len(update_fields) > 0:
         interface.save(update_fields=list(update_fields))
     return interface

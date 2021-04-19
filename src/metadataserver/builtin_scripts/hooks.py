@@ -105,7 +105,7 @@ def _parse_interface_speed(port):
     )
 
 
-def _parse_interfaces(node, data):
+def parse_interfaces(node, data):
     """Return a dict of interfaces keyed by MAC address."""
     interfaces = {}
 
@@ -178,13 +178,13 @@ def parse_interfaces_details(node):
         return interfaces
 
     data = json.loads(script_result.stdout)
-    return _parse_interfaces(node, data)
+    return parse_interfaces(node, data)
 
 
 def update_interface_details(interface, details):
     """Update details for an existing interface from commissioning data.
 
-    This should be passed details from the _parse_interfaces call.
+    This should be passed details from the parse_interfaces call.
 
     """
     iface_details = details.get(interface.mac_address)
@@ -264,7 +264,7 @@ def update_node_network_information(node, data, numa_nodes):
         return network_devices
 
     try:
-        interfaces_info = _parse_interfaces(node, data)
+        interfaces_info = parse_interfaces(node, data)
     except DuplicateMACs:
         if node.is_controller or node.is_pod:
             # Controllers and Pods send commissioning information from a
@@ -1024,11 +1024,7 @@ def process_lxd_results(node, output, exit_status):
     ), f"Missing required LXD API extensions {sorted(missing_extensions)}"
 
     if "network-extra" in data:
-        update_node_interfaces(
-            node,
-            data["network-extra"]["interfaces"],
-            data["network-extra"]["hints"],
-        )
+        update_node_interfaces(node, data)
     _process_lxd_environment(node, data["environment"])
     _process_lxd_resources(node, data)
 

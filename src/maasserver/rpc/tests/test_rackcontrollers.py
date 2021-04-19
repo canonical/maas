@@ -34,6 +34,10 @@ from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.network import update_node_interfaces
+from metadataserver.builtin_scripts.tests.test_network import (
+    FakeCommissioningData,
+    LXDAddress,
+)
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
 
@@ -44,22 +48,12 @@ class TestHandleUpgrade(MAASServerTestCase):
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
-        interfaces = {
-            factory.make_name("eth0"): {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [
-                    {
-                        "mode": "static",
-                        "address": "%s/%d"
-                        % (str(ip), subnet.get_ipnetwork().prefixlen),
-                    }
-                ],
-                "enabled": True,
-            }
-        }
-        update_node_interfaces(rack, interfaces)
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.networks["eth0"].addresses = [
+            LXDAddress(str(ip), subnet.get_ipnetwork().prefixlen)
+        ]
+        update_node_interfaces(rack, data.render())
         ng_uuid = factory.make_UUID()
         NodeGroupToRackController.objects.create(uuid=ng_uuid, subnet=subnet)
         handle_upgrade(rack, ng_uuid)
@@ -74,22 +68,12 @@ class TestHandleUpgrade(MAASServerTestCase):
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         ip = factory.pick_ip_in_Subnet(subnet)
-        interfaces = {
-            factory.make_name("eth0"): {
-                "type": "physical",
-                "mac_address": factory.make_mac_address(),
-                "parents": [],
-                "links": [
-                    {
-                        "mode": "static",
-                        "address": "%s/%d"
-                        % (str(ip), subnet.get_ipnetwork().prefixlen),
-                    }
-                ],
-                "enabled": True,
-            }
-        }
-        update_node_interfaces(rack, interfaces)
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.networks["eth0"].addresses = [
+            LXDAddress(str(ip), subnet.get_ipnetwork().prefixlen)
+        ]
+        update_node_interfaces(rack, data.render())
         ng_uuid = factory.make_UUID()
         NodeGroupToRackController.objects.create(uuid=ng_uuid, subnet=subnet)
         handle_upgrade(rack, ng_uuid)
