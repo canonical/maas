@@ -89,8 +89,13 @@ class ControllerInfoManager(Manager):
                 {
                     "snap_revision": versions.current.revision,
                     "snap_cohort": versions.cohort,
+                    "update_origin": str(versions.channel)
+                    if versions.channel
+                    else "",
                 }
             )
+        elif versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
+            details["update_origin"] = versions.current.origin
 
         if versions.update:
             details.update(
@@ -100,16 +105,11 @@ class ControllerInfoManager(Manager):
                 }
             )
             if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
+                # override the update origin as it might be different from the
+                # installed one
                 details["update_origin"] = versions.update.origin
             elif versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
-                details.update(
-                    {
-                        "snap_update_revision": versions.update.revision,
-                        "update_origin": str(versions.channel)
-                        if versions.channel
-                        else "",
-                    }
-                )
+                details["snap_update_revision"] = versions.update.revision
 
         info, created = self.get_or_create(defaults=details, node=controller)
         if created:

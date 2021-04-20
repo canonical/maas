@@ -71,10 +71,11 @@ class TestControllerInfo(MAASServerTestCase):
                 "revision": "1234",
                 "version": "3.0.0~alpha1-111-g.deadbeef",
             },
+            channel={"track": "3.0", "risk": "stable"},
         )
         ControllerInfo.objects.set_versions_info(controller, versions)
         controller_info = controller.controllerinfo
-        self.assertEqual(controller_info.update_origin, "")
+        self.assertEqual(controller_info.update_origin, "3.0/stable")
         self.assertEqual(controller_info.snap_update_revision, "")
         self.assertEqual(controller_info.snap_cohort, "")
         self.assertIsNone(controller_info.update_first_reported)
@@ -102,6 +103,7 @@ class TestControllerInfo(MAASServerTestCase):
         self.assertEqual(
             controller_info.update_version, "3.0.0~alpha2-222-g.cafecafe"
         )
+        # the origin for the update is used
         self.assertEqual(
             controller_info.update_origin,
             "http://mymirror.example.com/ focal/main",
@@ -122,7 +124,10 @@ class TestControllerInfo(MAASServerTestCase):
         ControllerInfo.objects.set_versions_info(controller, versions)
         controller_info = controller.controllerinfo
         self.assertEqual(controller_info.update_version, "")
-        self.assertEqual(controller_info.update_origin, "")
+        self.assertEqual(
+            controller_info.update_origin,
+            "http://archive.ubuntu.com/ focal/main",
+        )
         self.assertIsNone(controller_info.update_first_reported)
 
     def test_set_versions_info_change_type(self):
