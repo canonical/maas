@@ -64,13 +64,25 @@ class ArgumentParser(argparse.ArgumentParser):
         sys.exit(2)
 
 
+def get_deepest_subparser(parser, argv):
+    """Recursive function to find the best matching subparser."""
+    if not argv:
+        return parser
+    maybe_parser, *rest = argv
+    sub_parser = parser.subparsers._name_parser_map.get(maybe_parser)
+    if sub_parser is None:
+        return parser
+    else:
+        return get_deepest_subparser(sub_parser, rest)
+
+
 def prepare_parser(argv):
     """Create and populate an arguments parser for the maascli command."""
     help_title, help_body = parse_docstring(api)
     parser = ArgumentParser(
         description=help_body,
         prog=os.path.basename(argv[0]),
-        epilog="http://maas.io/",
+        epilog="https://maas.io/",
     )
     register_cli_commands(parser)
     api.register_api_commands(parser)

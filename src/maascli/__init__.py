@@ -7,7 +7,7 @@
 import os
 import sys
 
-from maascli.parser import prepare_parser
+from maascli.parser import get_deepest_subparser, prepare_parser
 
 
 def snap_setup():
@@ -29,13 +29,6 @@ def main(argv=sys.argv):
     # If no arguments have been passed be helpful and point out --help.
     snap_setup()
 
-    if len(argv) == 1:
-        sys.stderr.write(
-            "Error: no arguments given.\n"
-            "Run %s --help for usage details.\n" % argv[0]
-        )
-        raise SystemExit(2)
-
     parser = prepare_parser(argv)
 
     try:
@@ -43,13 +36,12 @@ def main(argv=sys.argv):
         if hasattr(options, "execute"):
             options.execute(options)
         else:
+            sub_parser = get_deepest_subparser(parser, argv[1:])
             # This mimics the error behaviour provided by argparse 1.1 from
             # PyPI (which differs from argparse 1.1 in the standard library).
-            parser.error("too few arguments")
+            sub_parser.error("too few arguments")
     except KeyboardInterrupt:
         raise SystemExit(1)
-    except SystemExit:
-        raise  # Pass-through.
     except Exception as error:
         show = getattr(error, "always_show", False)
         if options.debug or show:

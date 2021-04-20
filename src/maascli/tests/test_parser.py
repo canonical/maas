@@ -3,7 +3,11 @@
 
 import sys
 
-from maascli.parser import ArgumentParser, prepare_parser
+from maascli.parser import (
+    ArgumentParser,
+    get_deepest_subparser,
+    prepare_parser,
+)
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 
@@ -67,3 +71,32 @@ class TestArgumentParser(MAASTestCase):
         except TypeError:
             pass
         mock_exit.assert_called_once_with(2)
+
+
+class TestGetDeepestSubparser(MAASTestCase):
+    def test_no_argv(self):
+        parser = ArgumentParser()
+        assert get_deepest_subparser(parser, []) is parser
+
+    def test_single_subparser(self):
+        top_parser = ArgumentParser()
+        foo = top_parser.subparsers.add_parser("foo", help="foo help")
+
+        assert get_deepest_subparser(top_parser, ["foo"]) is foo
+
+    def test_nested_subparser(self):
+        top_parser = ArgumentParser()
+        foo = top_parser.subparsers.add_parser("foo", help="foo help")
+        bar = foo.subparsers.add_parser("bar", help="bar help")
+
+        assert get_deepest_subparser(top_parser, ["foo", "bar"]) is bar
+
+    def test_not_a_subparser(self):
+        top_parser = ArgumentParser()
+        foo = top_parser.subparsers.add_parser("foo", help="foo help")
+        bar = foo.subparsers.add_parser("bar", help="bar help")
+
+        assert (
+            get_deepest_subparser(top_parser, ["foo", "bar", "--help"]) is bar
+        )
+        assert get_deepest_subparser(top_parser, ["--random"]) is top_parser

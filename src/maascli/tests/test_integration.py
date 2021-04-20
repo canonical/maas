@@ -29,13 +29,13 @@ class TestMAASCli(MAASTestCase):
         self.assertRaises(CalledProcessError, self.run_command)
 
     def test_run_without_args_shows_help_reminder(self):
-        self.output_file = self.make_file("output")
         try:
             self.run_command()
         except CalledProcessError as error:
-            self.assertIn(
-                "Run %s --help for usage details." % locate_maascli(),
-                error.output.decode("ascii"),
+            self.assertTrue(
+                error.output.decode("utf-8").startswith(
+                    "usage: maas [-h] COMMAND"
+                )
             )
 
     def test_help_option_succeeds(self):
@@ -71,12 +71,16 @@ class TestMain(MAASTestCase):
         [profile_name] = configs
         resources = configs[profile_name]["description"]["resources"]
         resource_name = random.choice(resources)["name"]
-        command = "maas", profile_name, handler_command_name(resource_name)
+        handler_name = handler_command_name(resource_name)
+        command = "maas", profile_name, handler_name
 
         with CaptureStandardIO() as stdio:
             error = self.assertRaises(SystemExit, main, command)
 
         self.assertEqual(error.code, 2)
         error = stdio.getError()
-        self.assertIn("usage: maas [-h] COMMAND ...", error)
+        self.assertIn(
+            f"usage: maas {profile_name} {handler_name} [-h] COMMAND ...",
+            error,
+        )
         self.assertIn("too few arguments", error)
