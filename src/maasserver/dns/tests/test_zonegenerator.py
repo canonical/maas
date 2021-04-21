@@ -366,6 +366,57 @@ class TestZoneGenerator(MAASServerTestCase):
             ),
         )
 
+    def test_yields_forward_and_reverse_zone_no_overlap(self):
+        domain = factory.make_Domain(name="overlap")
+        vlan1 = factory.make_VLAN(vid=1, dhcp_on=True)
+        vlan2 = factory.make_VLAN(vid=2, dhcp_on=True)
+        subnet1 = factory.make_Subnet(cidr="10.232.36.0/24", vlan=vlan1)
+        subnet2 = factory.make_Subnet(cidr="10.232.32.0/21", vlan=vlan2)
+        subnet3 = factory.make_Subnet(cidr="10.232.6.0/24", vlan=vlan1)
+        subnet4 = factory.make_Subnet(cidr="10.2.36.0/24", vlan=vlan1)
+        subnet5 = factory.make_Subnet(cidr="10.231.36.0/24", vlan=vlan1)
+        subnet6 = factory.make_Subnet(cidr="10.232.40.0/24", vlan=vlan1)
+        zones = ZoneGenerator(
+            domain,
+            [
+                subnet2,
+                subnet1,
+                subnet3,
+                subnet4,
+                subnet5,
+                subnet6,
+            ],  # purposely out of order to assert subnets are being sorted
+            serial=random.randint(0, 65535),
+        ).as_list()
+        self.assertEqual(len(zones), 7)
+        expected_domains = set(
+            [
+                "overlap",
+                "36.232.10.in-addr.arpa",
+                "32.232.10.in-addr.arpa",
+                "6.232.10.in-addr.arpa",
+                "36.2.10.in-addr.arpa",
+                "36.231.10.in-addr.arpa",
+                "40.232.10.in-addr.arpa",
+                "38.232.10.in-addr.arpa",
+                "34.232.10.in-addr.arpa",
+                "35.232.10.in-addr.arpa",
+                "39.232.10.in-addr.arpa",
+                "37.232.10.in-addr.arpa",
+                "33.232.10.in-addr.arpa",
+            ]
+        )
+        zone_names = set(
+            info.zone_name for zone in zones for info in zone.zone_info
+        )
+        self.assertEqual(zone_names, expected_domains)
+        for expected_domain in expected_domains:
+            self.assertIn(
+                expected_domain,
+                zone_names,
+                f"{expected_domain} is not in domains",
+            )
+
     def test_with_node_yields_fwd_and_rev_zone(self):
         default_domain = Domain.objects.get_default_domain().name
         domain = factory.make_Domain(name="henry")

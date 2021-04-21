@@ -494,6 +494,82 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                     results[net][1][zi].zone_name,
                 )
 
+    def test_no_overlap(self):
+        expected = [
+            (
+                [
+                    (
+                        IPNetwork("10.232.32.0/21"),
+                        [IPNetwork("10.232.36.0/24")],
+                    )
+                ],
+                [
+                    {
+                        "excludes": [
+                            "36.232.10.in-addr.arpa",
+                        ],
+                        "includes": [
+                            "32.232.10.in-addr.arpa",
+                        ],
+                    },
+                ],
+            ),
+            (
+                [
+                    (
+                        IPNetwork("10.232.36.0/24"),
+                        [IPNetwork("10.232.32.0/21")],
+                    )
+                ],
+                [
+                    {
+                        "includes": [
+                            "36.232.10.in-addr.arpa",
+                        ],
+                    },
+                ],
+            ),
+            (
+                [
+                    (
+                        IPNetwork("10.232.32.0/21"),
+                        [
+                            IPNetwork("10.232.35.0/24"),
+                            IPNetwork("10.232.36.0/24"),
+                        ],
+                    )
+                ],
+                [
+                    {
+                        "excludes": [
+                            "35.232.10.in-addr.arpa",
+                            "36.232.10.in-addr.arpa",
+                        ],
+                        "includes": [
+                            "32.232.10.in-addr.arpa",
+                        ],
+                    },
+                ],
+            ),
+        ]
+        for t_case in expected:
+            nets = t_case[0]
+            expected = t_case[1]
+            domain = factory.make_name("zone")
+            for (idx, net) in enumerate(nets):
+                network = net[0]
+                other_subnets = net[1]
+                dns_zone_config = DNSReverseZoneConfig(
+                    domain, network=network, exclude=other_subnets
+                )
+                zone_names = set(
+                    [z.zone_name for z in dns_zone_config.zone_info]
+                )
+                for exclude in expected[idx].get("excludes", []):
+                    self.assertFalse(exclude in zone_names)
+                for include in expected[idx].get("includes", []):
+                    self.assertTrue(include in zone_names)
+
     def test_get_ptr_mapping(self):
         name = factory.make_string()
         network = IPNetwork("192.12.0.1/30")

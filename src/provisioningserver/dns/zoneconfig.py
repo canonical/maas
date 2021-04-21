@@ -332,16 +332,21 @@ class DNSReverseZoneConfig(DomainConfigBase):
         :type network: :class:`netaddr.IPNetwork`
         :param rfc2317_ranges: List of ranges to generate RFC2317 CNAMEs for
         :type rfc2317_ranges: [:class:`netaddr.IPNetwork`]
+        :param exclude: Set of IPNetworks to exclude from reverse zone generation
+        :type exclude: {:class: `netaddr.IPNetwork`}
         """
         self._mapping = kwargs.pop("mapping", {})
         self._network = kwargs.pop("network", None)
         self._dynamic_ranges = kwargs.pop("dynamic_ranges", [])
         self._rfc2317_ranges = kwargs.pop("rfc2317_ranges", [])
-        zone_info = self.compose_zone_info(self._network)
+        self._exclude = kwargs.pop("exclude", set())
+        zone_info = self.compose_zone_info(
+            self._network, exclude=self._exclude
+        )
         super().__init__(domain, zone_info=zone_info, **kwargs)
 
     @classmethod
-    def compose_zone_info(cls, network):
+    def compose_zone_info(cls, network, exclude=()):
         """Return the names of the reverse zones."""
         # Generate the name of the reverse zone file:
         # Use netaddr's reverse_dns() to get the reverse IP name
@@ -394,6 +399,20 @@ class DNSReverseZoneConfig(DomainConfigBase):
             zone_rest = ".".join(split_zone[rest_limit:-1])
             base = int(split_zone[rest_limit - 1])
         while first <= last:
+
+            for other_network in exclude:
+                if (
+                    first in other_network
+                    and network.prefixlen < other_network.prefixlen
+                ):  # allow the more specific overlapping subnet to create the zone config
+                    try:
+                        base += 1
+                        first += step
+                        continue
+                    except IndexError:
+                        # IndexError occurs when we go from 255.255.255.255 to
+                        # 0.0.0.0.  If we hit that, we're all fine and done.
+                        break
             # Rest_limit has bounds of 1..labelcount+1 (5 or 33).
             # If we're stripping any elements, then we just want base.name.
             if rest_limit > 1:
