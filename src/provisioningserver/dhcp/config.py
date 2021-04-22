@@ -31,9 +31,7 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
     """
 {{if ipv6}}
 {{if user_class}}
-{{behaviour}} exists dhcp6.client-arch-type and
-  option dhcp6.client-arch-type = {{arch_octet}} and
-  exists dhcp6.user-class and
+{{behaviour}} exists dhcp6.user-class and
   option dhcp6.user-class = \"{{user_class}}\" {
     # {{name}}
     option dhcp6.bootfile-url \"{{url}}\";
@@ -65,8 +63,7 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
 {{endif}}
 {{else}}
 {{if user_class}}
-{{behaviour}} option arch = {{arch_octet}} and
- option user-class = \"{{user_class}}\" {
+{{behaviour}} option user-class = \"{{user_class}}\" {
     # {{name}}
     filename \"{{bootloader}}\";
     {{if path_prefix}}
