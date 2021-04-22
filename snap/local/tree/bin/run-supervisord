@@ -2,6 +2,9 @@
 # Copyright 2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+# for pci.ids database, used by the resources binary
+export PCIDB_CHROOT="$SNAP"
+
 # set up prometheus for multiprocess configuration
 export prometheus_multiproc_dir=/tmp/prometheus
 # ensure the dir exists and it's empty
