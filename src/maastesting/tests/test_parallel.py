@@ -8,10 +8,10 @@ from unittest.mock import ANY
 
 import junitxml
 import subunit
+import testtools
 from testtools import (
     ExtendedToOriginalDecorator,
     MultiTestResult,
-    TestByTestResult,
     TextTestResult,
 )
 from testtools.matchers import (
@@ -209,7 +209,8 @@ class TestEmissionArguments(MAASTestCase):
         self.assertThat(
             result,
             IsMultiResultOf(
-                IsInstance(TextTestResult), IsInstance(TestByTestResult)
+                IsInstance(TextTestResult),
+                IsInstance(testtools.TestByTestResult),
             ),
         )
 
@@ -223,7 +224,8 @@ class TestEmissionArguments(MAASTestCase):
         self.assertThat(
             result,
             IsMultiResultOf(
-                IsInstance(TextTestResult), IsInstance(TestByTestResult)
+                IsInstance(TextTestResult),
+                IsInstance(testtools.TestByTestResult),
             ),
         )
 
