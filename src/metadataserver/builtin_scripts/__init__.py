@@ -13,6 +13,7 @@ from zope.interface import Attribute, implementer, Interface
 from zope.interface.verify import verifyObject
 
 from maasserver.forms.script import ScriptForm
+from maasserver.models.controllerinfo import get_maas_version
 from metadataserver.models import Script
 from provisioningserver.refresh.node_info_scripts import (
     BMC_DETECTION,
@@ -27,7 +28,6 @@ from provisioningserver.refresh.node_info_scripts import (
     SERIAL_PORTS_OUTPUT_NAME,
     SUPPORT_INFO_OUTPUT_NAME,
 )
-from provisioningserver.utils.version import get_running_version
 
 
 class IBuiltinScript(Interface):
@@ -211,7 +211,7 @@ def load_builtin_scripts():
             form = ScriptForm(
                 data={
                     "script": script_content,
-                    "comment": "Created by maas-%s" % get_running_version(),
+                    "comment": f"Created by maas-{get_maas_version()}",
                 }
             )
             # Form validation should never fail as these are the scripts which
@@ -239,8 +239,7 @@ def load_builtin_scripts():
                     instance=script_in_db,
                     data={
                         "script": script_content,
-                        "comment": "Updated by maas-%s"
-                        % get_running_version(),
+                        "comment": f"Updated by maas-{get_maas_version()}",
                     },
                     edit_default=True,
                 )

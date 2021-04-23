@@ -4,6 +4,7 @@
 
 from maasserver.models import ControllerInfo, Notification
 from maasserver.models.controllerinfo import (
+    get_maas_version,
     TargetVersion,
     UPGRADE_ISSUE_NOTIFICATION_IDENT,
 )
@@ -387,6 +388,42 @@ class TestControllerInfo(MAASServerTestCase):
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-111-g.aaa"),
             ),
+        )
+
+
+class TestGetMAASVersion(MAASServerTestCase):
+    def test_no_versions(self):
+        factory.make_RegionRackController()
+        factory.make_RegionRackController()
+        self.assertIsNone(get_maas_version())
+
+    def test_version_with_highest_count(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c1, "3.0.0")
+        c2 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c2, "3.0.0")
+        c3 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c3, "3.1.0")
+        self.assertEqual(get_maas_version(), MAASVersion.from_string("3.0.0"))
+
+    def test_highest_version_same_count(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c1, "3.0.0")
+        c2 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c2, "3.1.0")
+        self.assertEqual(get_maas_version(), MAASVersion.from_string("3.1.0"))
+
+    def test_combine_versions_up_to_qualifier(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c1, "3.0.0~beta1-123-g.asdf")
+        c2 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c2, "3.0.0~beta2-456-g.cafe")
+        c2 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c2, "3.0.0~beta2-789-g.abcd")
+        c3 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(c3, "3.1.0")
+        self.assertEqual(
+            get_maas_version(), MAASVersion.from_string("3.0.0~beta2")
         )
 
 

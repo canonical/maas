@@ -17,6 +17,7 @@ from maasserver.enum import (
 )
 from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
+from maasserver.models.controllerinfo import get_maas_version
 from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
@@ -30,7 +31,6 @@ from maasserver.utils.osystems import (
     list_release_choices,
 )
 from maasserver.websockets.base import Handler
-from provisioningserver.utils.version import get_running_version
 
 
 class GeneralHandler(Handler):
@@ -184,10 +184,7 @@ class GeneralHandler(Handler):
 
     def version(self, params):
         """Return the MAAS version."""
-        version = get_running_version()
-        if version.extended_info:
-            return f"{version.short_version} ({version.extended_info})"
-        return version.short_version
+        return str(get_maas_version())
 
     def power_types(self, params):
         """Return all power types."""

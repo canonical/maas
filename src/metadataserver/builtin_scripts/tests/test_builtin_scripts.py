@@ -8,7 +8,7 @@ import random
 
 from testtools.matchers import ContainsAll, Equals, Not
 
-from maasserver.models import VersionedTextFile
+from maasserver.models import ControllerInfo, VersionedTextFile
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -18,11 +18,15 @@ from metadataserver.builtin_scripts import (
 )
 from metadataserver.enum import SCRIPT_TYPE_CHOICES
 from metadataserver.models import Script
-from provisioningserver.utils.version import get_running_version
 
 
 class TestBuiltinScripts(MAASServerTestCase):
     """Test that builtin scripts get properly added and updated."""
+
+    def setUp(self):
+        super().setUp()
+        self.controller = factory.make_RegionRackController()
+        ControllerInfo.objects.set_version(self.controller, "3.0.0")
 
     def test_creates_scripts(self):
         load_builtin_scripts()
@@ -39,7 +43,7 @@ class TestBuiltinScripts(MAASServerTestCase):
 
             # These values should always be set by the script loader.
             self.assertEqual(
-                "Created by maas-%s" % get_running_version(),
+                "Created by maas-3.0.0",
                 script_in_db.script.comment,
                 script.name,
             )
@@ -71,6 +75,8 @@ class TestBuiltinScripts(MAASServerTestCase):
         )
         script.script = old_script
 
+        # Change maas version
+        ControllerInfo.objects.set_version(self.controller, "3.0.1")
         # User changeable fields.
         user_tags = [factory.make_name("tag") for _ in range(3)]
         script.tags = copy.deepcopy(user_tags)
@@ -91,9 +97,7 @@ class TestBuiltinScripts(MAASServerTestCase):
         self.assertEqual(user_timeout, script.timeout)
 
         self.assertEqual(old_script, script.script.previous_version)
-        self.assertEqual(
-            "Updated by maas-%s" % get_running_version(), script.script.comment
-        )
+        self.assertEqual("Updated by maas-3.0.1", script.script.comment)
         self.assertTrue(script.default)
 
     def test_update_doesnt_revert_script(self):
@@ -106,6 +110,8 @@ class TestBuiltinScripts(MAASServerTestCase):
         new_script = factory.make_string()
         script.script = script.script.update(new_script)
 
+        # Change maas version
+        ControllerInfo.objects.set_version(self.controller, "3.0.1")
         # Fake user updates
         user_tags = [factory.make_name("tag") for _ in range(3)]
         script.tags = user_tags
@@ -157,8 +163,5 @@ class TestBuiltinScripts(MAASServerTestCase):
         self.assertDictEqual(orig_results, second_script.results)
         self.assertDictEqual(orig_parameters, second_script.parameters)
         self.assertEqual(old_script, second_script.script.previous_version)
-        self.assertEqual(
-            "Updated by maas-%s" % get_running_version(),
-            second_script.script.comment,
-        )
+        self.assertEqual("Updated by maas-3.0.1", second_script.script.comment)
         self.assertTrue(second_script.default)

@@ -6,6 +6,7 @@
 import dataclasses
 from functools import lru_cache, total_ordering
 import re
+from typing import Optional
 
 import pkg_resources
 
@@ -37,10 +38,10 @@ class MAASVersion:
     major: int
     minor: int
     point: int
-    qualifier_type: str
-    qualifier_version: int
-    revno: int
-    git_rev: str
+    qualifier_type: Optional[str] = None
+    qualifier_version: int = 0
+    revno: int = 0
+    git_rev: str = ""
 
     def __str__(self):
         version = self.short_version
@@ -67,7 +68,19 @@ class MAASVersion:
         )
 
     @property
+    def main_version(self) -> "MAASVersion":
+        """Return a MAASVersion up to the qualifier."""
+        return MAASVersion(
+            self.major,
+            self.minor,
+            self.point,
+            self.qualifier_type,
+            self.qualifier_version,
+        )
+
+    @property
     def short_version(self) -> str:
+        """Version string which includes up to the qualifier."""
         version = f"{self.major}.{self.minor}.{self.point}"
         if self.qualifier_type:
             version += f"~{self.qualifier_type}{self.qualifier_version or ''}"

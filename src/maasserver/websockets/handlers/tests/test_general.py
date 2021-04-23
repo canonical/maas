@@ -275,16 +275,9 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_version(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
         self.patch_autospec(
-            general, "get_running_version"
+            general, "get_maas_version"
         ).return_value = MAASVersion.from_string("1.2.3~rc1")
         self.assertEqual(handler.version({}), "1.2.3~rc1")
-
-    def test_version_extended_info(self):
-        handler = GeneralHandler(factory.make_User(), {}, None)
-        self.patch_autospec(
-            general, "get_running_version"
-        ).return_value = MAASVersion.from_string("1.2.3-456-g.deadbeef")
-        self.assertEqual(handler.version({}), "1.2.3 (456-g.deadbeef)")
 
     def test_power_types(self):
         handler = GeneralHandler(factory.make_User(), {}, None)

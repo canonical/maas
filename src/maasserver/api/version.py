@@ -10,7 +10,7 @@ import json
 from django.http import HttpResponse
 
 from maasserver.api.support import AnonymousOperationsHandler
-from provisioningserver.utils.version import get_running_version
+from maasserver.models.controllerinfo import get_maas_version
 
 # MAAS capabilities. See docs/version.rst for documentation.
 CAP_NETWORKS_MANAGEMENT = "networks-management"
@@ -51,11 +51,10 @@ class VersionHandler(AnonymousOperationsHandler):
         and capabilities information.
         @success-example "success-json" [exkey=version] placeholder text
         """
-        version = get_running_version()
         version_info = {
             "capabilities": API_CAPABILITIES_LIST,
-            "version": version.short_version,
-            "subversion": version.extended_info,
+            "version": str(get_maas_version()),
+            "subversion": "",  # unused, kept for API compatibility
         }
         return HttpResponse(
             json.dumps(version_info),

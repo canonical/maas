@@ -2,12 +2,14 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from collections import Counter
 from datetime import datetime
 from typing import NamedTuple, Optional
 
 from django.db.models import (
     CASCADE,
     CharField,
+    Count,
     DateTimeField,
     Manager,
     OneToOneField,
@@ -212,3 +214,28 @@ class ControllerInfo(CleanSave, TimestampedModel):
 
     def __str__(self):
         return "%s (%s)" % (self.__class__.__name__, self.node.hostname)
+
+
+def get_maas_version() -> Optional[MAASVersion]:
+    """Return the version for the deployment.
+
+    The returned version is the short version (up to the qualifier, if any)
+    used by the most controllers.
+
+    """
+    version_data = (
+        ControllerInfo.objects.exclude(version="")
+        .values_list("version")
+        .annotate(count=Count("node_id"))
+    )
+    versions = Counter()
+    for version, count in version_data:
+        versions[MAASVersion.from_string(version).main_version] += count
+    # sort versions by the highest count first, and highest version in case of
+    # equal count
+    versions = sorted(
+        ((count, version) for version, count in versions.items()), reverse=True
+    )
+    if not versions:
+        return None
+    return versions[0][1]
