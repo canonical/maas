@@ -357,11 +357,6 @@ class BootMethod(metaclass=ABCMeta):
                 convert_host_to_uri_str(params.fs_host)
             )
 
-        def fs_efihost(params):
-            return "(http,%s:5248)/images/" % (
-                convert_host_to_uri_str(params.fs_host)
-            )
-
         def image_dir(params):
             return compose_image_path(
                 params.osystem,
@@ -412,7 +407,6 @@ class BootMethod(metaclass=ABCMeta):
 
         namespace = {
             "fs_host": fs_host,
-            "fs_efihost": fs_efihost,
             "initrd_path": initrd_path,
             "kernel_command": kernel_command,
             "kernel_params": kernel_params,
@@ -431,7 +425,11 @@ class BootMethodRegistry(Registry):
 
 # Import the supported boot methods after defining BootMethod.
 from provisioningserver.boot.ipxe import IPXEBootMethod  # noqa:E402 isort:skip
-from provisioningserver.boot.open_firmware_ppc64el import (  # noqa:E402 isort:skip
+from provisioningserver.boot.grub import (  # noqa:E402 isort:skip
+    UEFIAMD64BootMethod,
+    UEFIAMD64HTTPBootMethod,
+    UEFIARM64BootMethod,
+    UEFIARM64HTTPBootMethod,
     OpenFirmwarePPC64ELBootMethod,
 )
 from provisioningserver.boot.powernv import (  # noqa:E402 isort:skip
@@ -444,12 +442,6 @@ from provisioningserver.boot.s390x import (  # noqa:E402 isort:skip
 from provisioningserver.boot.s390x_partition import (  # noqa:E402 isort:skip
     S390XPartitionBootMethod,
 )
-from provisioningserver.boot.uefi_amd64 import (  # noqa:E402 isort:skip
-    UEFIAMD64BootMethod,
-)
-from provisioningserver.boot.uefi_arm64 import (  # noqa:E402 isort:skip
-    UEFIARM64BootMethod,
-)
 from provisioningserver.boot.windows import (  # noqa:E402 isort:skip
     WindowsPXEBootMethod,
 )
@@ -458,9 +450,9 @@ builtin_boot_methods = [
     IPXEBootMethod(),
     PXEBootMethod(),
     UEFIAMD64BootMethod(),
-    # XXX LP:#1899581 - HTTP boot (UEFIAMD64HTTPBootMethod) is disabled for now
-    # since it needs fixing
+    UEFIAMD64HTTPBootMethod(),
     UEFIARM64BootMethod(),
+    UEFIARM64HTTPBootMethod(),
     OpenFirmwarePPC64ELBootMethod(),
     PowerNVBootMethod(),
     WindowsPXEBootMethod(),

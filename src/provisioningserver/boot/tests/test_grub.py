@@ -5,8 +5,8 @@
 
 
 import os
+import random
 import re
-from unittest.mock import sentinel
 
 from testtools.matchers import (
     ContainsAll,
@@ -20,15 +20,14 @@ from maastesting.factory import factory
 from maastesting.matchers import FileContains, MockAnyCall, MockCalledOnce
 from maastesting.testcase import MAASTestCase
 from provisioningserver.boot import BytesReader
-from provisioningserver.boot import uefi_amd64 as uefi_amd64_module
-from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
-from provisioningserver.boot.tftppath import compose_image_path
-from provisioningserver.boot.uefi_amd64 import (
+from provisioningserver.boot import grub as grub_module
+from provisioningserver.boot.grub import (
     CONFIG_FILE,
     re_config_file,
     UEFIAMD64BootMethod,
-    UEFIAMD64HTTPBootMethod,
 )
+from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
+from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
@@ -68,7 +67,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
     """Tests for
     `provisioningserver.boot_amd64.uefi.UEFIAMD64BootMethod.render`."""
 
-    def test_get_reader(self):
+    def test_get_reader_tftp(self):
         # Given the right configuration options, the UEFI configuration is
         # correctly rendered.
         method = UEFIAMD64BootMethod()
@@ -76,7 +75,9 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         fs_host = "(http,%s:5248)/images" % (
             convert_host_to_uri_str(params.fs_host)
         )
-        output = method.get_reader(backend=None, kernel_params=params)
+        output = method.get_reader(
+            backend=None, kernel_params=params, protocol="tftp"
+        )
         # The output is a BytesReader.
         self.assertThat(output, IsInstance(BytesReader))
         output = output.read(10000).decode("utf-8")
@@ -121,12 +122,63 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             ),
         )
 
+    def test_get_reader_http(self):
+        # Given the right configuration options, the UEFI configuration is
+        # correctly rendered.
+        method = UEFIAMD64BootMethod()
+        params = make_kernel_parameters(arch="amd64", purpose="xinstall")
+        output = method.get_reader(
+            backend=None, kernel_params=params, protocol="http"
+        )
+        # The output is a BytesReader.
+        self.assertThat(output, IsInstance(BytesReader))
+        output = output.read(10000).decode("utf-8")
+        # The template has rendered without error. UEFI configurations
+        # typically start with a DEFAULT line.
+        self.assertThat(output, StartsWith('set default="0"'))
+        # The UEFI parameters are all set according to the options.
+        image_dir = compose_image_path(
+            osystem=params.osystem,
+            arch=params.arch,
+            subarch=params.subarch,
+            release=params.release,
+            label=params.label,
+        )
+
+        self.assertThat(
+            output,
+            MatchesAll(
+                MatchesRegex(
+                    r".*\s+lin.*cc:\\{\'datasource_list\':"
+                    r" \[\'MAAS\'\]\\}end_cc.*",
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(
+                    r".*^\s+linux  /images/%s/%s .+?$"
+                    % (
+                        re.escape(image_dir),
+                        params.kernel,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
+                MatchesRegex(
+                    r".*^\s+initrd /images/%s/%s$"
+                    % (
+                        re.escape(image_dir),
+                        params.initrd,
+                    ),
+                    re.MULTILINE | re.DOTALL,
+                ),
+            ),
+        )
+
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
         # get_reader() allows any keyword arguments as a safety valve.
         method = UEFIAMD64BootMethod()
         options = {
             "backend": None,
             "kernel_params": make_kernel_parameters(purpose="xinstall"),
+            "protocol": random.choice(["tftp", "http"]),
         }
         # Capture the output before sprinking in some random options.
         output_before = method.get_reader(**options).read(10000)
@@ -149,6 +201,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             "kernel_params": make_kernel_parameters(
                 purpose="local", arch="amd64"
             ),
+            "protocol": random.choice(["tftp", "http"]),
         }
         output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertIn("chainloader /efi/", output)
@@ -161,7 +214,11 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # used.
         method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(purpose="enlist", arch="amd64")
-        options = {"backend": None, "kernel_params": params}
+        options = {
+            "backend": None,
+            "kernel_params": params,
+            "protocol": random.choice(["tftp", "http"]),
+        }
         output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertThat(
             output,
@@ -179,7 +236,11 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
         # should be used.
         method = UEFIAMD64BootMethod()
         params = make_kernel_parameters(purpose="commissioning", arch="amd64")
-        options = {"backend": None, "kernel_params": params}
+        options = {
+            "backend": None,
+            "kernel_params": params,
+            "protocol": random.choice(["tftp", "http"]),
+        }
         output = method.get_reader(**options).read(10000).decode("utf-8")
         self.assertThat(
             output,
@@ -349,10 +410,8 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
             else:
                 return False
 
-        self.patch(
-            uefi_amd64_module.os.path, "exists"
-        ).side_effect = fake_exists
-        mock_atomic_symlink = self.patch(uefi_amd64_module, "atomic_symlink")
+        self.patch(grub_module.os.path, "exists").side_effect = fake_exists
+        mock_atomic_symlink = self.patch(grub_module, "atomic_symlink")
 
         method._find_and_copy_bootloaders(bootloader_dir)
 
@@ -373,39 +432,10 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
 
     def test_link_bootloader_logs_missing_bootloader_files(self):
         method = UEFIAMD64BootMethod()
-        self.patch(uefi_amd64_module.os.path, "exists").return_value = False
-        mock_maaslog = self.patch(uefi_amd64_module.maaslog, "error")
+        self.patch(grub_module.os.path, "exists").return_value = False
+        mock_maaslog = self.patch(grub_module.maaslog, "error")
         bootloader_dir = "/var/lib/maas/boot-resources/%s" % factory.make_name(
             "snapshot"
         )
         method._find_and_copy_bootloaders(bootloader_dir)
         self.assertThat(mock_maaslog, MockCalledOnce())
-
-
-class TestUEFIAMD64HTTPBootMethod(MAASTestCase):
-    """Tests `provisioningserver.boot.uefi_amd64.UEFIAMD64HTTPBootMethod`."""
-
-    def test_attributes(self):
-        method = UEFIAMD64HTTPBootMethod()
-        self.assertEqual("uefi_amd64_http", method.name)
-        self.assertEqual("uefi", method.bios_boot_method)
-        self.assertEqual("uefi", method.template_subdir)
-        self.assertEqual("bootx64.efi", method.bootloader_path)
-        self.assertEqual([], method.bootloader_arches)
-        self.assertEqual([], method.bootloader_files)
-        self.assertEqual(["00:0f", "00:10"], method.arch_octet)
-        self.assertIsNone(method.user_class)
-        self.assertTrue(method.absolute_url_as_filename)
-        self.assertTrue(method.http_url)
-
-    def test_match_path_returns_None(self):
-        method = UEFIAMD64HTTPBootMethod()
-        self.assertIsNone(method.match_path(sentinel.backend, sentinel.path))
-
-    def test_get_reader_returns_None(self):
-        method = UEFIAMD64HTTPBootMethod()
-        self.assertIsNone(method.get_reader(sentinel.backend, sentinel.params))
-
-    def test_link_bootloader_returns_None(self):
-        method = UEFIAMD64HTTPBootMethod()
-        self.assertIsNone(method.link_bootloader(sentinel.destination))

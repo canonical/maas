@@ -261,6 +261,10 @@ class TestGetConfig(MAASTestCase):
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
         self.assertThat(rendered, Contains(bootloader))
+        # Verify that "/images/" is automatically added to bootloaders
+        # loaded over HTTP. This ensures nginx handles the result without
+        # bothering rackd.
+        self.assertIn("/images/bootx64.efi", rendered)
 
     def test_renders_dns_servers_as_comma_separated_list(self):
         params = make_sample_params(self, ipv6=self.ipv6)

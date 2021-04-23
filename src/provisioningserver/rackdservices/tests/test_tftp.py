@@ -1,4 +1,4 @@
-# Copyright 2012-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the maastftp Twisted plugin."""
@@ -320,6 +320,7 @@ class TestTFTPBackend(MAASTestCase):
             "local_ip": call_context["local"][0],  # address only.
             "remote_ip": call_context["remote"][0],  # address only.
             "bios_boot_method": "pxe",
+            "protocol": "tftp",
         }
         observed_params = json.loads(output)
         self.assertEqual(expected_params, observed_params)

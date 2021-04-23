@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """UEFI AMD64 Boot Method"""
@@ -15,20 +15,25 @@ from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink
+from provisioningserver.utils.network import convert_host_to_uri_str
 
 maaslog = get_maas_logger("uefi_amd64")
 
 
+# Ideally this would be embedded in the default GRUB image(LP:1923268)
+# Protocol MUST be left out so GRUB continues to use whatever protocol
+# was used during boot. e.g if the config file is prepended with (pxe)
+# GRUB will always use TFTP.
 CONFIG_FILE = dedent(
     """
     # MAAS GRUB2 pre-loader configuration file
 
     # Load based on MAC address first.
-    configfile (pxe)/grub/grub.cfg-${net_default_mac}
+    configfile /grub/grub.cfg-${net_default_mac}
 
     # Failed to load based on MAC address.
     # Load amd64 by default, UEFI only supported by 64-bit
-    configfile (pxe)/grub/grub.cfg-default-amd64
+    configfile /grub/grub.cfg-default-amd64
     """
 )
 
@@ -92,11 +97,12 @@ class UEFIAMD64BootMethod(BootMethod):
 
         return params
 
-    def get_reader(self, backend, kernel_params, **extra):
+    def get_reader(self, backend, kernel_params, protocol, **extra):
         """Render a configuration file as a unicode string.
 
         :param backend: requesting backend
         :param kernel_params: An instance of `KernelParameters`.
+        :param protocol: The protocol the transfer is happening over.
         :param extra: Allow for other arguments. This is a safety valve;
             parameters generated in another component (for example, see
             `TFTPBackend.get_boot_method_reader`) won't cause this to break.
@@ -120,6 +126,18 @@ class UEFIAMD64BootMethod(BootMethod):
             kernel_params.purpose, kernel_params.arch, kernel_params.subarch
         )
         namespace = self.compose_template_namespace(kernel_params)
+
+        # TFTP is much slower than HTTP. If GRUB was transfered over TFTP use
+        # GRUBs internal HTTP implementation to download the kernel and initrd.
+        # If HTTP or HTTPS was used don't specify host to continue to use the
+        # UEFI firmware's internal HTTP implementation.
+        if protocol == "tftp":
+            namespace["fs_efihost"] = "(http,%s:5248)/images/" % (
+                convert_host_to_uri_str(kernel_params.fs_host)
+            )
+        else:
+            namespace["fs_efihost"] = "/images/"
+
         # Bug#1651452 - kernel command needs some extra escapes, but ONLY for
         # UEFI.  And so we fix it here, instead of in the common code.  See
         # also src/provisioningserver/kernel_opts.py.
@@ -173,32 +191,41 @@ class UEFIAMD64BootMethod(BootMethod):
         config_dst = os.path.join(config_path, "grub.cfg")
         if not os.path.exists(config_path):
             os.makedirs(config_path)
-        with open(config_dst, "wb") as stream:
-            stream.write(CONFIG_FILE.encode("utf-8"))
+        if not os.path.exists(config_dst):
+            with open(config_dst, "wb") as stream:
+                stream.write(CONFIG_FILE.encode("utf-8"))
 
 
 class UEFIAMD64HTTPBootMethod(UEFIAMD64BootMethod):
 
     name = "uefi_amd64_http"
-    bios_boot_method = "uefi"
-    template_subdir = "uefi"
-    bootloader_path = "bootx64.efi"
-    bootloader_arches = []  # `UEFIAMD64BootMethod` provides this.
-    bootloader_files = []  # `UEFIAMD64BootMethod` provides this.
-    arch_octet = ["00:0f", "00:10"]
-    user_class = None
+    arch_octet = "00:10"
     absolute_url_as_filename = True
     http_url = True
 
-    def match_path(self, backend, path):
-        # Does nothing as `UEFIAMD64BootMethod` provides this.
-        return None
 
-    def get_reader(self, backend, kernel_params, **extra):
-        # Does nothing as `UEFIAMD64BootMethod` provides this.
-        return None
+class UEFIARM64BootMethod(UEFIAMD64BootMethod):
 
-    @typed
-    def link_bootloader(self, destination: str):
-        # Does nothing as `UEFIAMD64BootMethod` provides this.
-        return None
+    name = "uefi_arm64"
+    bootloader_arches = ["arm64"]
+    bootloader_path = "bootaa64.efi"
+    bootloader_files = ["bootaa64.efi", "grubaa64.efi"]
+    arch_octet = "00:0B"
+
+
+class UEFIARM64HTTPBootMethod(UEFIARM64BootMethod):
+
+    name = "uefi_arm64_http"
+    arch_octet = "00:13"
+    absolute_url_as_filename = True
+    http_url = True
+
+
+class OpenFirmwarePPC64ELBootMethod(UEFIAMD64BootMethod):
+
+    name = "open-firmware_ppc64el"
+    bios_boot_method = "open-firmware"
+    bootloader_arches = ["ppc64el", "ppc64"]
+    bootloader_path = "bootppc64.bin"
+    bootloader_files = ["bootppc64.bin"]
+    arch_octet = "00:0C"

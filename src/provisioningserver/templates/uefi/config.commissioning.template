@@ -4,6 +4,6 @@ set timeout=0
 
 menuentry 'Ephemeral' {
     echo   'Booting under MAAS direction...'
-    linux  {{kernel_params | fs_efihost}}{{kernel_params | kernel_path }} {{kernel_params | kernel_command}} BOOTIF=01-${net_default_mac}
-    initrd {{kernel_params | fs_efihost}}{{kernel_params | initrd_path }}
+    linux  {{fs_efihost}}{{kernel_params | kernel_path }} {{kernel_params | kernel_command}} BOOTIF=01-${net_default_mac}
+    initrd {{fs_efihost}}{{kernel_params | initrd_path }}
 }

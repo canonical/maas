@@ -1,4 +1,4 @@
-# Copyright 2018-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """HTTP service for the rack controller."""
@@ -310,6 +310,7 @@ class HTTPBootResource(resource.Resource):
             tftp.backend.get_reader,
             path,
             skip_logging=True,
+            protocol="http",
         )
         d.addCallback(writeResponse)
         d.addErrback(handleFailure)

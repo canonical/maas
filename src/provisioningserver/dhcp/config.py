@@ -1,4 +1,4 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Write config output for ISC DHCPD."""
@@ -154,6 +154,11 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
                 rack_ip,
                 port,
             )
+            # Set the URL to pull from '/images/' so nginx handles the request.
+            # Requests to '/' are forwarded to the rack's http service to
+            # handle which should only be done for configuration files.
+            if method.http_url:
+                url = f"{url}images/"
             path_prefix = method.path_prefix
             if path_prefix:
                 url += path_prefix
@@ -201,6 +206,8 @@ def compose_conditional_bootloader(ipv6, rack_ip=None):
             rack_ip,
             port,
         )
+        if method.http_url:
+            url = f"{url}images/"
         path_prefix = method.path_prefix
         if path_prefix:
             url += path_prefix
@@ -446,7 +453,7 @@ def get_config_v4(
             omapi_key=omapi_key,
             dhcp_helper=(get_path("/usr/sbin/maas-dhcp-helper")),
             dhcp_socket=dhcp_socket,
-            **helpers
+            **helpers,
         )
     except (KeyError, NameError) as error:
         raise DHCPConfigError(
@@ -489,7 +496,7 @@ def get_config_v6(
             failover_peers=failover_peers,
             shared_networks=shared_networks,
             omapi_key=omapi_key,
-            **helpers
+            **helpers,
         )
     except (KeyError, NameError) as error:
         raise DHCPConfigError(
