@@ -156,10 +156,15 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             os,
             "environ",
             {
+                "SNAP": "/snap/maas/1234",
                 "SNAP_REVISION": "1234",
                 "SNAP_VERSION": "3.0.0~alpha1-111-g.deadbeef",
             },
         )
+
+    def test_get_snap_versions_info_not_snap(self):
+        self.patch(os, "environ", {})
+        self.assertIsNone(get_snap_versions_info())
 
     def test_get_snap_versions_info_no_file(self):
         versions = get_snap_versions_info(Path("/not/here"))

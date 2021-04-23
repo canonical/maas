@@ -132,6 +132,8 @@ def get_snap_versions_info(info_file=None) -> Optional[SnapVersionsInfo]:
     #   }
     # }
     #
+    if not running_in_snap():
+        return None
 
     versions = SnapVersionsInfo(current=get_snap_version())
 
