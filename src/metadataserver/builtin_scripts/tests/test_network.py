@@ -21,8 +21,12 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import get_one, reload_object
+from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import network as network_module
-from metadataserver.builtin_scripts.network import update_node_interfaces
+from metadataserver.builtin_scripts.network import (
+    get_interface_dependencies,
+    update_node_interfaces,
+)
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
@@ -206,16 +210,26 @@ class FakeCommissioningData:
     ):
         if card is None:
             card = LXDNetworkCard(self.allocate_pci_address())
+        network = self.create_physical_network_without_nic(name, mac_address)
+        if port is None:
+            port = LXDNetworkPort(
+                network.name, len(card.ports), address=network.hwaddr
+            )
+        card.ports.append(port)
+        self._network_cards.append(card)
+        return network
+
+    def create_physical_network_without_nic(
+        self,
+        name=None,
+        mac_address=None,
+    ):
         if name is None:
             name = factory.make_string("eth")
         if mac_address is None:
             mac_address = factory.make_mac_address()
         network = LXDNetwork(name, mac_address)
         self.networks[name] = network
-        if port is None:
-            port = LXDNetworkPort(name, len(card.ports), address=mac_address)
-        card.ports.append(port)
-        self._network_cards.append(card)
         return network
 
     def create_vlan_network(
@@ -580,6 +594,38 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         eth0_addresses = list(eth0.ip_addresses.all())
         self.assertEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
+            [
+                (address.alloc_type, address.ip, address.subnet)
+                for address in eth0_addresses
+            ],
+        )
+
+    def test_new_physical_with_local_link(self):
+        controller = self.create_empty_controller()
+        network = factory.make_ip4_or_6_network()
+        ip = factory.pick_ip_in_network(network)
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        eth0.addresses = [
+            LXDAddress(str(ip), network.prefixlen, scope="local"),
+        ]
+
+        self.update_interfaces(controller, data)
+
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+
+        default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
+        self.assertEqual(INTERFACE_TYPE.PHYSICAL, eth0.type)
+        self.assertEqual("11:11:11:11:11:11", eth0.mac_address)
+        self.assertEqual(default_vlan, eth0.vlan)
+        self.assertTrue(eth0.enabled)
+
+        eth0_addresses = list(eth0.ip_addresses.all())
+        self.assertEqual(
+            [],
             [
                 (address.alloc_type, address.ip, address.subnet)
                 for address in eth0_addresses
@@ -2158,6 +2204,29 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         self.assertEqual(alice_eth0.vlan, bob_eth0.vlan)
 
+    def test_physical_network_no_card(self):
+        controller = self.create_empty_controller()
+        data = FakeCommissioningData()
+        data.create_physical_network_without_nic("eth0")
+        data.networks["eth0"].addresses = [LXDAddress("10.0.0.2", 24)]
+
+        self.update_interfaces(controller, data)
+
+        eth0 = PhysicalInterface.objects.get(
+            node=controller,
+            name="eth0",
+        )
+        self.assertTrue(eth0.enabled)
+        self.assertEqual(data.networks["eth0"].hwaddr, eth0.mac_address)
+        eth0_addresses = [
+            (address.alloc_type, address.ip)
+            for address in eth0.ip_addresses.all()
+        ]
+        self.assertItemsEqual(
+            [(IPADDRESS_TYPE.STICKY, "10.0.0.2")],
+            eth0_addresses,
+        )
+
 
 class TestUpdateInterfacesWithHints(
     MAASTransactionServerTestCase, UpdateInterfacesMixin
@@ -2269,3 +2338,100 @@ class TestUpdateInterfacesWithHints(
         # appear on the same VLAN.
         self.assertEqual(alice_br0.vlan, bob_eth0.vlan)
         self.assertEqual(bob_eth1.vlan, bob_eth0.vlan)
+
+
+class TestGetInterfaceDependencies(MAASTestCase):
+    def test_all_physical(self):
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eno0")
+        dependencies = get_interface_dependencies(data.render())
+        self.assertEqual(
+            {
+                "eth0": [],
+                "eno0": [],
+            },
+            dependencies,
+        )
+
+    def test_bridge(self):
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eth1")
+        data.create_bridge_network("br0", parents=[data.networks["eth1"]])
+        dependencies = get_interface_dependencies(data.render())
+        self.assertEqual(
+            {
+                "eth0": [],
+                "eth1": [],
+                "br0": ["eth1"],
+            },
+            dependencies,
+        )
+
+    def test_bond(self):
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eth1")
+        data.create_physical_network("eth2")
+        data.create_bond_network(
+            "bond0", parents=[data.networks["eth0"], data.networks["eth1"]]
+        )
+        dependencies = get_interface_dependencies(data.render())
+        self.assertEqual(
+            {
+                "eth0": [],
+                "eth1": [],
+                "eth2": [],
+                "bond0": ["eth0", "eth1"],
+            },
+            dependencies,
+        )
+
+    def test_vlan(self):
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eth1")
+        data.create_vlan_network(
+            "eth0.10", vid=10, parent=data.networks["eth0"]
+        )
+        dependencies = get_interface_dependencies(data.render())
+        self.assertEqual(
+            {
+                "eth0": [],
+                "eth1": [],
+                "eth0.10": ["eth0"],
+            },
+            dependencies,
+        )
+
+    def test_complex(self):
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eth1")
+        data.create_physical_network("eth2")
+        data.create_physical_network("eth3")
+        data.create_bridge_network("br0", parents=[data.networks["eth0"]])
+        data.create_bond_network(
+            "bond0", parents=[data.networks["eth1"], data.networks["eth2"]]
+        )
+        data.create_vlan_network(
+            "bond0.10", vid=10, parent=data.networks["bond0"]
+        )
+        data.create_bridge_network(
+            "br1", parents=[data.networks["bond0.10"], data.networks["eth3"]]
+        )
+        dependencies = get_interface_dependencies(data.render())
+        self.assertEqual(
+            {
+                "eth0": [],
+                "eth1": [],
+                "eth2": [],
+                "eth3": [],
+                "br0": ["eth0"],
+                "bond0": ["eth1", "eth2"],
+                "bond0.10": ["bond0"],
+                "br1": ["bond0.10", "eth3"],
+            },
+            dependencies,
+        )

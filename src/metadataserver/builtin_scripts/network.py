@@ -21,6 +21,32 @@ from provisioningserver.utils.twisted import synchronous
 maaslog = get_maas_logger("metadataserver.network")
 
 
+def get_interface_dependencies(data):
+    dependencies = {name: [] for name in data["networks"]}
+    for name, network in data["networks"].items():
+        if network["bridge"]:
+            parents = network["bridge"]["upper_devices"]
+        elif network["bond"]:
+            parents = network["bond"]["lower_devices"]
+        elif network["vlan"]:
+            parents = [network["vlan"]["lower_device"]]
+        else:
+            parents = []
+        dependencies[name].extend(parents)
+    return dependencies
+
+
+def get_address_extra(config):
+    extra = {}
+    for info in config.values():
+        for link in info["links"]:
+            extra[str(IPNetwork(link["address"]).ip)] = {
+                "mode": link.get("mode", "static"),
+                "gateway": link.get("gateway"),
+            }
+    return extra
+
+
 @synchronous
 @transactional
 def update_node_interfaces(node, data):
@@ -37,6 +63,8 @@ def update_node_interfaces(node, data):
     interfaces = data["network-extra"]["interfaces"]
     topology_hints = data["network-extra"]["hints"]
 
+    address_extra = get_address_extra(interfaces)
+
     # Get all of the current interfaces on this node.
     current_interfaces = {
         interface.id: interface
@@ -51,9 +79,7 @@ def update_node_interfaces(node, data):
     # exact same time. Without this ordering it will deadlock because
     # multiple are trying to update the same items in the database in
     # a different order.
-    process_order = sorttop(
-        {name: config["parents"] for name, config in interfaces.items()}
-    )
+    process_order = sorttop(get_interface_dependencies(data))
     process_order = [sorted(list(items)) for items in process_order]
     # Cache the neighbour discovery settings, since they will be used for
     # every interface on this Controller.
@@ -68,6 +94,8 @@ def update_node_interfaces(node, data):
             node,
             name,
             settings,
+            data,
+            address_extra,
             hints=topology_hints,
         )
         if interface is not None:
@@ -96,28 +124,55 @@ def update_node_interfaces(node, data):
     node.save()
 
 
-def update_interface(node, name, config, hints=None):
+def update_interface(node, name, config, data, address_extra, hints=None):
     """Update a interface.
 
     :param name: Name of the interface.
     :param config: Interface dictionary that was parsed from
         /etc/network/interfaces on the rack controller.
+    :param data: Commissioning data as a dict.
+    :param address_extra: Extra data about IP addresses that controller
+        collects.
+    :param hints: Beaconing hints that the controller collects.
     """
+    network = data["networks"][name]
+
+    links = [
+        address.copy()
+        for address in network["addresses"]
+        if address["scope"] == "global"
+    ]
+    for link in links:
+        link.update(address_extra.get(link["address"], {}))
     if config["type"] == "physical":
-        return update_physical_interface(node, name, config, hints=hints)
+        card, port = get_card_port(name, data)
+        return update_physical_interface(
+            node, name, network, links, card=card, port=port, hints=hints
+        )
     elif config["type"] == "vlan":
-        return update_vlan_interface(node, name, config)
+        return update_vlan_interface(node, name, config, links)
     elif config["type"] == "bond":
-        return update_bond_interface(node, name, config)
+        return update_bond_interface(node, name, config, links)
     elif config["type"] == "bridge":
-        return update_bridge_interface(node, name, config)
+        return update_bridge_interface(node, name, config, links)
     else:
         raise ValueError(
             "Unkwown interface type '%s' for '%s'." % (config["type"], name)
         )
 
 
-def update_physical_interface(node, name, config, hints=None):
+def get_card_port(name, data):
+    for card in data["resources"]["network"]["cards"]:
+        for port in card["ports"]:
+            if port["id"] == name:
+                return card, port
+    else:
+        return None, None
+
+
+def update_physical_interface(
+    node, name, network, links, card=None, port=None, hints=None
+):
     """Update a physical interface.
 
     :param name: Name of the interface.
@@ -125,9 +180,12 @@ def update_physical_interface(node, name, config, hints=None):
         /etc/network/interfaces on the rack controller.
     """
     new_vlan = None
-    mac_address = config["mac_address"]
+    # In containers, for example, there will be interfaces that are
+    # like physical NICs, but they don't have an actual NIC
+    # associated with them. We still model them as physical NICs.
+    mac_address = port["address"] if port else network["hwaddr"]
     update_fields = set()
-    is_enabled = config["enabled"]
+    is_enabled = network["state"] == "up"
     # If an interface with same name and different MAC exists in the
     # machine, delete it. Interface names are unique on a machine, so this
     # might be an old interface which was removed and recreated with a
@@ -151,7 +209,7 @@ def update_physical_interface(node, name, config, hints=None):
         if hints is not None:
             new_vlan = guess_vlan_from_hints(node, name, hints)
         if new_vlan is None:
-            new_vlan = guess_vlan_for_interface(node, config)
+            new_vlan = guess_vlan_for_interface(node, links)
         if new_vlan is not None:
             interface.vlan = new_vlan
             update_fields.add("vlan")
@@ -171,14 +229,14 @@ def update_physical_interface(node, name, config, hints=None):
 
     # Update all the IP address on this interface. Fix the VLAN the
     # interface belongs to so its the same as the links.
-    update_physical_links(node, interface, config, new_vlan, update_fields)
+    update_physical_links(node, interface, links, new_vlan, update_fields)
     if len(update_fields) > 0:
         interface.save(update_fields=list(update_fields))
     return interface
 
 
-def update_physical_links(node, interface, config, new_vlan, update_fields):
-    update_ip_addresses = update_links(node, interface, config["links"])
+def update_physical_links(node, interface, links, new_vlan, update_fields):
+    update_ip_addresses = update_links(node, interface, links)
     linked_vlan = guess_best_vlan_from_ip_addresses(node, update_ip_addresses)
     if linked_vlan is not None:
         interface.vlan = linked_vlan
@@ -233,7 +291,7 @@ def guess_vlan_from_hints(node, ifname, hints):
     return existing_vlan
 
 
-def update_vlan_interface(node, name, config):
+def update_vlan_interface(node, name, config, links):
     """Update a VLAN interface.
 
     :param name: Name of the interface.
@@ -245,7 +303,7 @@ def update_vlan_interface(node, name, config):
     # exists because of the order the links are processed.
     parent_name = config["parents"][0]
     parent_nic = Interface.objects.get(node=node, name=parent_name)
-    links_vlan = get_interface_vlan_from_links(node, config["links"])
+    links_vlan = get_interface_vlan_from_links(node, links)
     if links_vlan:
         vlan = links_vlan
         if parent_nic.vlan.fabric_id != vlan.fabric_id:
@@ -280,11 +338,11 @@ def update_vlan_interface(node, name, config):
         interface.vlan = vlan
         interface.save()
 
-    update_links(node, interface, config["links"], force_vlan=True)
+    update_links(node, interface, links, force_vlan=True)
     return interface
 
 
-def update_child_interface(node, name, config, child_type):
+def update_child_interface(node, name, config, links, child_type):
     """Update a child interface.
 
     :param name: Name of the interface.
@@ -314,7 +372,6 @@ def update_child_interface(node, name, config, child_type):
         acquired=True,
     )
 
-    links = config["links"]
     found_vlan = configure_vlan_from_links(node, interface, parent_nics, links)
 
     # Update all the IP address on this interface. Fix the VLAN the
@@ -327,24 +384,24 @@ def update_child_interface(node, name, config, child_type):
     return interface
 
 
-def update_bond_interface(node, name, config):
+def update_bond_interface(node, name, config, links):
     """Update a bond interface.
 
     :param name: Name of the interface.
     :param config: Interface dictionary that was parsed from
         /etc/network/interfaces on the rack controller.
     """
-    return update_child_interface(node, name, config, BondInterface)
+    return update_child_interface(node, name, config, links, BondInterface)
 
 
-def update_bridge_interface(node, name, config):
+def update_bridge_interface(node, name, config, links):
     """Update a bridge interface.
 
     :param name: Name of the interface.
     :param config: Interface dictionary that was parsed from
         /etc/network/interfaces on the rack controller.
     """
-    return update_child_interface(node, name, config, BridgeInterface)
+    return update_child_interface(node, name, config, links, BridgeInterface)
 
 
 def update_parent_vlans(node, interface, parent_nics, update_ip_addresses):
@@ -366,12 +423,12 @@ def update_parent_vlans(node, interface, parent_nics, update_ip_addresses):
                 parent_nic.save()
 
 
-def guess_vlan_for_interface(node, config):
+def guess_vlan_for_interface(node, links):
     # Make sure that the VLAN on the interface is correct. When
     # links exists on this interface we place it into the correct
     # VLAN. If it cannot be determined and its a new interface it
     # gets placed on its own fabric.
-    new_vlan = get_interface_vlan_from_links(node, config["links"])
+    new_vlan = get_interface_vlan_from_links(node, links)
     if new_vlan is None:
         # If the default VLAN on the default fabric has no interfaces
         # associated with it, the first interface will be placed there
@@ -445,10 +502,8 @@ def get_interface_vlan_from_links(node, links):
     This returns None if no VLAN is found.
     """
     cidrs = {
-        str(IPNetwork(link.get("address")).cidr)
+        str(IPNetwork(f"{link['address']}/{link['netmask']}").cidr)
         for link in links
-        if link["mode"] in ("static", "dhcp")
-        and link.get("address") is not None
     }
     return VLAN.objects.filter(subnet__cidr__in=cidrs).first()
 
@@ -498,7 +553,7 @@ def update_links(
         interface.vlan = vlan
         interface.save()
     for link in links:
-        if link["mode"] == "dhcp":
+        if link.get("mode") == "dhcp":
             dhcp_address = get_alloc_type_from_ip_addresses(
                 node, IPADDRESS_TYPE.DHCP, current_ip_addresses
             )
@@ -513,7 +568,7 @@ def update_links(
             if "address" in link:
                 # DHCP IP address was discovered. Add it as a discovered
                 # IP address.
-                ip_network = IPNetwork(link["address"])
+                ip_network = IPNetwork(f"{link['address']}/{link['netmask']}")
                 ip_addr = str(ip_network.ip)
 
                 # Get or create the subnet for this link. If created if
@@ -552,8 +607,8 @@ def update_links(
                 )
                 interface.ip_addresses.add(ip_address)
             updated_ip_addresses.add(dhcp_address)
-        elif link["mode"] == "static":
-            ip_network = IPNetwork(link["address"])
+        else:
+            ip_network = IPNetwork(f"{link['address']}/{link['netmask']}")
             ip_addr = str(ip_network.ip)
 
             # Get or create the subnet for this link. If created if will
@@ -584,7 +639,7 @@ def update_links(
             # Update the gateway on the subnet if one is not set.
             if (
                 subnet.gateway_ip is None
-                and "gateway" in link
+                and link.get("gateway")
                 and IPAddress(link["gateway"]) in subnet.get_ipnetwork()
             ):
                 subnet.gateway_ip = link["gateway"]
