@@ -5,6 +5,7 @@
 from maasserver.models import ControllerInfo, Notification
 from maasserver.models.controllerinfo import (
     get_maas_version,
+    get_target_version,
     TargetVersion,
     UPGRADE_ISSUE_NOTIFICATION_IDENT,
 )
@@ -277,7 +278,9 @@ class TestControllerInfo(MAASServerTestCase):
         controller_info = reload_object(controller).controllerinfo
         self.assertIsNone(controller_info.update_first_reported)
 
-    def test_get_target_version_return_highest_version(self):
+
+class TestGetTargetVersion(MAASServerTestCase):
+    def test_return_highest_version(self):
         c1 = factory.make_RackController()
         c2 = factory.make_RackController()
         c3 = factory.make_RackController()
@@ -294,14 +297,14 @@ class TestControllerInfo(MAASServerTestCase):
             DebVersionsInfo(current={"version": "3.0.0-333-g.ccc"}),
         )
         self.assertEqual(
-            ControllerInfo.objects.get_target_version(),
+            get_target_version(),
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-333-g.ccc"),
                 first_reported=None,
             ),
         )
 
-    def test_get_target_version_return_highest_update(self):
+    def test_return_highest_update(self):
         c1 = factory.make_RackController()
         c2 = factory.make_RackController()
         c3 = factory.make_RackController()
@@ -327,14 +330,14 @@ class TestControllerInfo(MAASServerTestCase):
             ),
         )
         self.assertEqual(
-            ControllerInfo.objects.get_target_version(),
+            get_target_version(),
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-333-g.ccc"),
                 first_reported=c3.info.update_first_reported,
             ),
         )
 
-    def test_get_target_version_update_return_earliest_reported(self):
+    def test_update_return_earliest_reported(self):
         c1 = factory.make_RackController()
         c2 = factory.make_RackController()
         c3 = factory.make_RackController()
@@ -360,14 +363,14 @@ class TestControllerInfo(MAASServerTestCase):
             ),
         )
         self.assertEqual(
-            ControllerInfo.objects.get_target_version(),
+            get_target_version(),
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-333-g.ccc"),
                 first_reported=c2.info.update_first_reported,
             ),
         )
 
-    def test_get_target_version_update_older_than_installed(self):
+    def test_update_older_than_installed(self):
         c1 = factory.make_RackController()
         c2 = factory.make_RackController()
         ControllerInfo.objects.set_versions_info(
@@ -384,7 +387,7 @@ class TestControllerInfo(MAASServerTestCase):
             ),
         )
         self.assertEqual(
-            ControllerInfo.objects.get_target_version(),
+            get_target_version(),
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-111-g.aaa"),
             ),

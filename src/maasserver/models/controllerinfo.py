@@ -27,13 +27,6 @@ from provisioningserver.enum import (
 from provisioningserver.utils.version import MAASVersion
 
 
-class TargetVersion(NamedTuple):
-    """The target version for the MAAS deployment."""
-
-    version: MAASVersion
-    first_reported: Optional[datetime] = None
-
-
 class ControllerInfoManager(Manager):
     def set_version(self, controller, version):
         self.update_or_create(defaults={"version": version}, node=controller)
@@ -95,95 +88,6 @@ class ControllerInfoManager(Manager):
             setattr(info, key, value)
         info.save()
 
-    def get_target_version(self) -> TargetVersion:
-        """Get the target version for the deployment."""
-        highest_version, highest_update, update_first_reported = (
-            None,
-            None,
-            None,
-        )
-        versions = self.exclude(version="").values_list(
-            "version", "update_version", "update_first_reported"
-        )
-        for version, update, first_reported in versions:
-            version = MAASVersion.from_string(version)
-            highest_version = (
-                max((highest_version, version)) if highest_version else version
-            )
-
-            if not update:
-                continue
-
-            update = MAASVersion.from_string(update)
-            if not highest_update:
-                highest_update = update
-                update_first_reported = first_reported
-            elif update < highest_update:
-                continue
-            elif update > highest_update:
-                highest_update = update
-                update_first_reported = first_reported
-            else:  # same version
-                update_first_reported = min(
-                    (update_first_reported, first_reported)
-                )
-
-        if highest_update and highest_update > highest_version:
-            return TargetVersion(highest_update, update_first_reported)
-        return TargetVersion(highest_version)
-
-
-UPGRADE_ISSUE_NOTIFICATION_IDENT = "upgrade_version_issue"
-
-
-def update_version_notifications():
-    info = ControllerInfo.objects
-    multiple_install_types = info.values("install_type").distinct().count() > 1
-    multiple_origins = info.values("update_origin").distinct().count() > 1
-    multiple_cohorts = info.values("snap_cohort").distinct().count() > 1
-    multiple_versions = info.values("version").distinct().count() > 1
-    multiple_upgrade_versions = (
-        info.exclude(update_version="")
-        .values("update_version")
-        .distinct()
-        .count()
-        > 1
-    )
-
-    def set_warning(reason, message):
-        defaults = {
-            "category": "warning",
-            "admins": True,
-            "message": f"{message}. <a href='l/controllers'>Review controllers.</a>",
-            "context": {"reason": reason},
-        }
-        notification, created = Notification.objects.get_or_create(
-            ident=UPGRADE_ISSUE_NOTIFICATION_IDENT,
-            defaults=defaults,
-        )
-        if not created and notification.context["reason"] != reason:
-            # create a new notification so that it shows even if users have
-            # dismissed the previous one
-            notification.delete()
-            Notification.objects.create(
-                ident=UPGRADE_ISSUE_NOTIFICATION_IDENT, **defaults
-            )
-
-    if any((multiple_install_types, multiple_origins, multiple_cohorts)):
-        set_warning(
-            "install_source", "Controllers have different installation sources"
-        )
-    elif multiple_upgrade_versions:
-        set_warning(
-            "upgrade_versions", "Controllers report different upgrade versions"
-        )
-    elif multiple_versions:
-        set_warning("versions", "Controllers have different versions")
-    else:
-        Notification.objects.filter(
-            ident=UPGRADE_ISSUE_NOTIFICATION_IDENT
-        ).delete()
-
 
 class ControllerInfo(CleanSave, TimestampedModel):
     """Metadata about a node that is a controller."""
@@ -239,3 +143,99 @@ def get_maas_version() -> Optional[MAASVersion]:
     if not versions:
         return None
     return versions[0][1]
+
+
+class TargetVersion(NamedTuple):
+    """The target version for the MAAS deployment."""
+
+    version: MAASVersion
+    first_reported: Optional[datetime] = None
+
+
+def get_target_version() -> TargetVersion:
+    """Get the target version for the deployment."""
+    highest_version = None
+    highest_update = None
+    update_first_reported = None
+
+    versions = ControllerInfo.objects.exclude(version="").values_list(
+        "version", "update_version", "update_first_reported"
+    )
+    for version, update, first_reported in versions:
+        version = MAASVersion.from_string(version)
+        highest_version = (
+            max((highest_version, version)) if highest_version else version
+        )
+
+        if not update:
+            continue
+
+        update = MAASVersion.from_string(update)
+        if not highest_update:
+            highest_update = update
+            update_first_reported = first_reported
+        elif update < highest_update:
+            continue
+        elif update > highest_update:
+            highest_update = update
+            update_first_reported = first_reported
+        else:  # same version
+            update_first_reported = min(
+                (update_first_reported, first_reported)
+            )
+
+    if highest_update and highest_update > highest_version:
+        return TargetVersion(highest_update, update_first_reported)
+    return TargetVersion(highest_version)
+
+
+UPGRADE_ISSUE_NOTIFICATION_IDENT = "upgrade_version_issue"
+
+
+def update_version_notifications():
+    info = ControllerInfo.objects
+    multiple_install_types = info.values("install_type").distinct().count() > 1
+    multiple_origins = info.values("update_origin").distinct().count() > 1
+    multiple_cohorts = info.values("snap_cohort").distinct().count() > 1
+    multiple_versions = info.values("version").distinct().count() > 1
+    multiple_upgrade_versions = (
+        info.exclude(update_version="")
+        .values("update_version")
+        .distinct()
+        .count()
+        > 1
+    )
+
+    def set_warning(reason, message):
+        defaults = {
+            "category": "warning",
+            "admins": True,
+            "message": f"{message}. <a href='l/controllers'>Review controllers.</a>",
+            "context": {"reason": reason},
+        }
+        notification, created = Notification.objects.get_or_create(
+            ident=UPGRADE_ISSUE_NOTIFICATION_IDENT,
+            defaults=defaults,
+        )
+        if not created and notification.context["reason"] != reason:
+            # create a new notification so that it shows even if users have
+            # dismissed the previous one
+            notification.delete()
+            Notification.objects.create(
+                ident=UPGRADE_ISSUE_NOTIFICATION_IDENT, **defaults
+            )
+
+    if any((multiple_install_types, multiple_origins, multiple_cohorts)):
+        set_warning(
+            "install_source", "Controllers have different installation sources"
+        )
+    elif multiple_upgrade_versions:
+        set_warning(
+            "upgrade_versions", "Controllers report different upgrade versions"
+        )
+    elif multiple_versions:
+        set_warning("versions", "Controllers have different versions")
+    else:
+        Notification.objects.filter(
+            ident=UPGRADE_ISSUE_NOTIFICATION_IDENT
+        ).delete()
