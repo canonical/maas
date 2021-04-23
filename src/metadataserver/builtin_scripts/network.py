@@ -86,19 +86,18 @@ def update_node_interfaces(node, data):
     discovery_mode = Config.objects.get_network_discovery_config()
     interfaces_details = parse_interfaces(node, data)
     for name in flatten(process_order):
-        settings = interfaces[name]
         # Note: the interface that comes back from this call may be None,
         # if we decided not to model an interface based on what the rack
         # sent.
         interface = update_interface(
             node,
             name,
-            settings,
             data,
             address_extra,
             hints=topology_hints,
         )
         if interface is not None:
+            settings = interfaces[name]
             interface.update_discovery_state(discovery_mode, settings)
             if interface.type == INTERFACE_TYPE.PHYSICAL:
                 update_interface_details(interface, interfaces_details)
@@ -124,12 +123,10 @@ def update_node_interfaces(node, data):
     node.save()
 
 
-def update_interface(node, name, config, data, address_extra, hints=None):
+def update_interface(node, name, data, address_extra, hints=None):
     """Update a interface.
 
     :param name: Name of the interface.
-    :param config: Interface dictionary that was parsed from
-        /etc/network/interfaces on the rack controller.
     :param data: Commissioning data as a dict.
     :param address_extra: Extra data about IP addresses that controller
         collects.
@@ -144,20 +141,14 @@ def update_interface(node, name, config, data, address_extra, hints=None):
     ]
     for link in links:
         link.update(address_extra.get(link["address"], {}))
-    if config["type"] == "physical":
+    if network["vlan"]:
+        return update_vlan_interface(node, name, network, links)
+    elif network["bond"] or network["bridge"]:
+        return update_child_interface(node, name, network, links)
+    else:
         card, port = get_card_port(name, data)
         return update_physical_interface(
             node, name, network, links, card=card, port=port, hints=hints
-        )
-    elif config["type"] == "vlan":
-        return update_vlan_interface(node, name, config, links)
-    elif config["type"] == "bond":
-        return update_bond_interface(node, name, config, links)
-    elif config["type"] == "bridge":
-        return update_bridge_interface(node, name, config, links)
-    else:
-        raise ValueError(
-            "Unkwown interface type '%s' for '%s'." % (config["type"], name)
         )
 
 
@@ -291,17 +282,14 @@ def guess_vlan_from_hints(node, ifname, hints):
     return existing_vlan
 
 
-def update_vlan_interface(node, name, config, links):
+def update_vlan_interface(node, name, network, links):
     """Update a VLAN interface.
 
     :param name: Name of the interface.
-    :param config: Interface dictionary that was parsed from
-        /etc/network/interfaces on the rack controller.
+    :param network: Network settings from commissioning data.
     """
-    vid = config["vid"]
-    # VLAN only ever has one parent, and the parent should always
-    # exists because of the order the links are processed.
-    parent_name = config["parents"][0]
+    vid = network["vlan"]["vid"]
+    parent_name = network["vlan"]["lower_device"]
     parent_nic = Interface.objects.get(node=node, name=parent_name)
     links_vlan = get_interface_vlan_from_links(node, links)
     if links_vlan:
@@ -342,28 +330,34 @@ def update_vlan_interface(node, name, config, links):
     return interface
 
 
-def update_child_interface(node, name, config, links, child_type):
+def update_child_interface(node, name, network, links):
     """Update a child interface.
 
     :param name: Name of the interface.
-    :param config: Interface dictionary that was parsed from
-        /etc/network/interfaces on the rack controller.
+    :param network: Network settings from commissioning data.
     """
+    if network["bridge"]:
+        parents = network["bridge"]["upper_devices"]
+        child_type = BridgeInterface
+    elif network["bond"]:
+        parents = network["bond"]["lower_devices"]
+        child_type = BondInterface
+    else:
+        raise RuntimeError(f"Unknown child interface: {network}")
     # Get all the parent interfaces for this interface. All the parents
     # should exists because of the order the links are processed.
-    ifnames = config["parents"]
     parent_nics = Interface.objects.get_interfaces_on_node_by_name(
-        node, ifnames
+        node, parents
     )
 
     # Ignore most child interfaces that don't have parents. MAAS won't know
     # what to do with them since they can't be connected to a fabric.
     # Bridges are an exception since some MAAS demo/test environments
     # contain virtual bridges.
-    if len(parent_nics) == 0 and child_type is not BridgeInterface:
+    if len(parent_nics) == 0 and not network["bridge"]:
         return None
 
-    mac_address = config["mac_address"]
+    mac_address = network["hwaddr"]
     interface = child_type.objects.get_or_create_on_node(
         node,
         name,
@@ -382,26 +376,6 @@ def update_child_interface(node, name, config, links, child_type):
     )
     update_parent_vlans(node, interface, parent_nics, update_ip_addresses)
     return interface
-
-
-def update_bond_interface(node, name, config, links):
-    """Update a bond interface.
-
-    :param name: Name of the interface.
-    :param config: Interface dictionary that was parsed from
-        /etc/network/interfaces on the rack controller.
-    """
-    return update_child_interface(node, name, config, links, BondInterface)
-
-
-def update_bridge_interface(node, name, config, links):
-    """Update a bridge interface.
-
-    :param name: Name of the interface.
-    :param config: Interface dictionary that was parsed from
-        /etc/network/interfaces on the rack controller.
-    """
-    return update_child_interface(node, name, config, links, BridgeInterface)
 
 
 def update_parent_vlans(node, interface, parent_nics, update_ip_addresses):
