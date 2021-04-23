@@ -96,8 +96,8 @@ def update_node_interfaces(node, data):
             address_extra,
             hints=topology_hints,
         )
-        if interface is not None:
-            settings = interfaces[name]
+        settings = interfaces.get(name)
+        if settings is not None:
             interface.update_discovery_state(discovery_mode, settings)
             if interface.type == INTERFACE_TYPE.PHYSICAL:
                 update_interface_details(interface, interfaces_details)
@@ -133,6 +133,8 @@ def update_interface(node, name, data, address_extra, hints=None):
     :param hints: Beaconing hints that the controller collects.
     """
     network = data["networks"][name]
+    if network["type"] != "broadcast":
+        return None
 
     links = [
         address.copy()

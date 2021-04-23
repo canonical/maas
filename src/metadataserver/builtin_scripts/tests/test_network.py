@@ -366,6 +366,8 @@ class FakeCommissioningData:
         # holding off until there's less information to render.
         interfaces = {}
         for name, network in self.networks.items():
+            if network.type != "broadcast":
+                continue
             interface = {
                 "mac_address": self._get_network_port_mac(
                     name, network.hwaddr
@@ -2226,6 +2228,52 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             [(IPADDRESS_TYPE.STICKY, "10.0.0.2")],
             eth0_addresses,
         )
+
+    def test_loopback_not_processes(self):
+        controller = self.create_empty_controller()
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network_without_nic("lo")
+        data.networks["lo"].type = "loopback"
+
+        self.update_interfaces(controller, data)
+
+        self.assertEqual(
+            ["eth0"],
+            [
+                iface.name
+                for iface in Interface.objects.filter(node=controller).all()
+            ],
+        )
+        eth0 = PhysicalInterface.objects.get(
+            node=controller,
+            name="eth0",
+        )
+        self.assertTrue(eth0.enabled)
+        self.assertEqual(data.networks["eth0"].hwaddr, eth0.mac_address)
+
+    def test_physical_not_in_extra_data(self):
+        controller = self.create_empty_controller()
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+
+        commissioning_data = data.render()
+        del commissioning_data["network-extra"]["interfaces"]["eth0"]
+        update_node_interfaces(controller, commissioning_data)
+
+        self.assertEqual(
+            ["eth0"],
+            [
+                iface.name
+                for iface in Interface.objects.filter(node=controller).all()
+            ],
+        )
+        eth0 = PhysicalInterface.objects.get(
+            node=controller,
+            name="eth0",
+        )
+        self.assertTrue(eth0.enabled)
+        self.assertEqual(data.networks["eth0"].hwaddr, eth0.mac_address)
 
 
 class TestUpdateInterfacesWithHints(
