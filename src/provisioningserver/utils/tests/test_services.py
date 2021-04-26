@@ -365,7 +365,9 @@ class TestNetworksMonitoringService(MAASTestCase):
         service = self.makeService()
         service.running = 1
         getInterfaces = self.patch(service, "getInterfaces")
-        my_interfaces = {"foo": "bar"}
+        my_interfaces = {
+            "eth0": {"type": "physical", "parents": [], "enabled": True},
+        }
         getInterfaces.return_value = succeed(my_interfaces)
         yield service._do_action()
         self.assertThat(service.interfaces, Equals([my_interfaces]))
@@ -416,7 +418,11 @@ class TestNetworksMonitoringService(MAASTestCase):
             LXD_OUTPUT_NAME
         ] = base_lxd_output.encode("utf-8")
         network_extra = {
-            "interfaces": {"my-interface": "foo"},
+            "interfaces": {
+                "eth0": {"type": "physical", "parents": [], "enabled": True},
+                "eth1": {"type": "physical", "parents": [], "enabled": False},
+            },
+            "monitored-interfaces": ["eth0"],
             "hints": {"my-hint": "foo"},
         }
         self.all_interfaces_mock.return_value = network_extra["interfaces"]
@@ -462,7 +468,11 @@ class TestNetworksMonitoringService(MAASTestCase):
             LXD_OUTPUT_NAME
         ] = base_lxd_output.encode("utf-8")
         network_extra = {
-            "interfaces": {"my-interface": "foo"},
+            "interfaces": {
+                "eth0": {"type": "physical", "parents": [], "enabled": True},
+                "eth1": {"type": "physical", "parents": [], "enabled": False},
+            },
+            "monitored-interfaces": ["eth0"],
             "hints": None,
         }
         self.all_interfaces_mock.return_value = network_extra["interfaces"]
@@ -491,8 +501,8 @@ class TestNetworksMonitoringService(MAASTestCase):
     def test_recordInterfaces_called_when_interfaces_changed(self):
         get_interfaces = self.patch(services, "get_all_interfaces_definition")
         # Configuration changes between the first and second call.
-        my_interfaces1 = {"foo": "bar"}
-        my_interfaces2 = {"bar": "baz"}
+        my_interfaces1 = {"foo": {"parents": [], "enabled": True}}
+        my_interfaces2 = {"bar": {"parents": [], "enabled": True}}
         get_interfaces.side_effect = [my_interfaces1, my_interfaces2]
 
         service = self.makeService()

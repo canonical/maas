@@ -3910,40 +3910,37 @@ class TestInterfaceUpdateDiscovery(MAASServerTestCase):
     """
 
     def test_monitored_flag_vetoes_discovery_state(self):
-        settings = {"monitored": False}
         iface = factory.make_Interface()
         iface.update_discovery_state(
             NetworkDiscoveryConfig(passive=True, active=False),
-            settings=settings,
+            monitored=False,
         )
         iface = reload_object(iface)
-        self.expectThat(iface.neighbour_discovery_state, Is(False))
+        self.assertFalse(iface.neighbour_discovery_state)
 
     def test_sets_neighbour_state_true_when_monitored_flag_is_true(self):
-        settings = {"monitored": True}
         iface = factory.make_Interface()
         iface.update_discovery_state(
             NetworkDiscoveryConfig(passive=True, active=False),
-            settings=settings,
+            monitored=True,
         )
         iface = reload_object(iface)
-        self.expectThat(iface.neighbour_discovery_state, Is(True))
+        self.assertTrue(iface.neighbour_discovery_state)
 
     def test_sets_mdns_state_based_on_passive_setting(self):
-        settings = {"monitored": False}
         iface = factory.make_Interface()
         iface.update_discovery_state(
             NetworkDiscoveryConfig(passive=False, active=False),
-            settings=settings,
+            monitored=False,
         )
         iface = reload_object(iface)
-        self.expectThat(iface.mdns_discovery_state, Is(False))
+        self.assertFalse(iface.mdns_discovery_state)
         iface.update_discovery_state(
             NetworkDiscoveryConfig(passive=True, active=False),
-            settings=settings,
+            monitored=False,
         )
         iface = reload_object(iface)
-        self.expectThat(iface.mdns_discovery_state, Is(True))
+        self.assertTrue(iface.mdns_discovery_state)
 
 
 class TestInterfaceGetDiscoveryStateTest(MAASServerTestCase):

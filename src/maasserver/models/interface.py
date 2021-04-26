@@ -1596,19 +1596,16 @@ class Interface(CleanSave, TimestampedModel):
             binding.save(update_fields=["count", "updated"])
         return binding
 
-    def update_discovery_state(self, discovery_mode, settings: dict):
+    def update_discovery_state(self, discovery_mode, monitored: bool):
         """Updates the state of interface monitoring. Uses
 
         The `discovery_mode` parameter must be a NetworkDiscoveryConfig tuple.
 
-        The `settings` dict must be in the format defined by the region/rack
-        contract. This function checks its 'monitored' key to determine whether
-        or not to monitor the interface.
+        The `monitored` parameter indicates whether discover should be enabled.
 
         Upon completion, .save() will be called to update the discovery state
         fields.
         """
-        monitored = settings.get("monitored", False)
         if monitored:
             self.neighbour_discovery_state = discovery_mode.passive
         else:

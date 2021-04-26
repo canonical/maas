@@ -10231,28 +10231,28 @@ class TestController(MAASServerTestCase):
 class TestControllerUpdateDiscoveryState(MAASServerTestCase):
     def test_calls_update_discovery_state_per_interface(self):
         controller = factory.make_RegionRackController()
-        eth1 = factory.make_Interface(node=controller)
-        factory.make_Interface(
-            iftype=INTERFACE_TYPE.VLAN, node=controller, parents=[eth1]
+        eth1 = factory.make_Interface(
+            node=controller,
+            neighbour_discovery_state=False,
+            mdns_discovery_state=False,
         )
-        enable_passive = random.choice([True, False])
-        enable_active = random.choice([True, False])
+        eth1_vlan = factory.make_Interface(
+            iftype=INTERFACE_TYPE.VLAN,
+            node=controller,
+            parents=[eth1],
+            neighbour_discovery_state=False,
+            mdns_discovery_state=False,
+        )
         discovery_config = NetworkDiscoveryConfig(
-            passive=enable_passive, active=enable_active
+            passive=True, active=random.choice([True, False])
         )
-        mock_update_discovery_state = self.patch(
-            interface_module.Interface, "update_discovery_state"
-        )
-        interfaces = controller.update_discovery_state(discovery_config)
-        self.expectThat(
-            mock_update_discovery_state,
-            MockCallsMatch(
-                *[
-                    call(discovery_config, interfaces[ifname])
-                    for ifname in interfaces.keys()
-                ]
-            ),
-        )
+        controller.update_discovery_state(discovery_config)
+        eth1 = reload_object(eth1)
+        eth1_vlan = reload_object(eth1_vlan)
+        self.assertTrue(eth1.neighbour_discovery_state)
+        self.assertFalse(eth1_vlan.neighbour_discovery_state)
+        self.assertTrue(eth1.mdns_discovery_state)
+        self.assertTrue(eth1_vlan.mdns_discovery_state)
 
 
 class TestReportNeighbours(MAASServerTestCase):

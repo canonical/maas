@@ -1646,6 +1646,8 @@ class Factory(maastesting.factory.Factory):
         sriov_max_vf=0,
         params="",
         numa_node=None,
+        neighbour_discovery_state=False,
+        mdns_discovery_state=False,
     ):
         if subnet is None and cluster_interface is not None:
             subnet = cluster_interface.subnet
@@ -1749,6 +1751,8 @@ class Factory(maastesting.factory.Factory):
             sriov_max_vf=sriov_max_vf,
             params=params,
             numa_node=numa_node,
+            neighbour_discovery_state=neighbour_discovery_state,
+            mdns_discovery_state=mdns_discovery_state,
         )
         interface.save()
         if subnet is None and ip is not None:

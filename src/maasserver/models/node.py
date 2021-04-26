@@ -203,9 +203,7 @@ from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.env import get_maas_id, set_maas_id
 from provisioningserver.utils.ipaddr import get_mac_addresses
-from provisioningserver.utils.network import (
-    annotate_with_default_monitored_interfaces,
-)
+from provisioningserver.utils.network import get_default_monitored_interfaces
 from provisioningserver.utils.twisted import asynchronous, callOut, undefined
 
 log = LegacyLogger()
@@ -6353,10 +6351,12 @@ class Controller(Node):
         )
         # Use the data to calculate which interfaces should be monitored by
         # default on this controller, then update each interface.
-        annotate_with_default_monitored_interfaces(interfaces)
-        for settings in interfaces.values():
+        monitored_interfaces = get_default_monitored_interfaces(interfaces)
+        for name, settings in interfaces.items():
             interface = settings["obj"]
-            interface.update_discovery_state(discovery_mode, settings)
+            interface.update_discovery_state(
+                discovery_mode, name in monitored_interfaces
+            )
         return interfaces
 
     @inlineCallbacks

@@ -30,6 +30,7 @@ from metadataserver.builtin_scripts.network import (
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
+    get_default_monitored_interfaces,
 )
 
 GB = 1000 * 1000 * 1000
@@ -310,6 +311,7 @@ class FakeCommissioningData:
             (name, dataclasses.asdict(network))
             for name, network in self.networks.items()
         )
+        old_interfaces_data = self._generate_interfaces()
         data = {
             "api_extensions": self.api_extensions,
             "api_version": self.api_version,
@@ -337,7 +339,10 @@ class FakeCommissioningData:
             },
             "networks": networks,
             "network-extra": {
-                "interfaces": self._generate_interfaces(),
+                "interfaces": old_interfaces_data,
+                "monitored-interfaces": get_default_monitored_interfaces(
+                    old_interfaces_data
+                ),
                 "hints": self.hints,
             },
         }

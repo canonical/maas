@@ -48,6 +48,7 @@ from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.network import (
     enumerate_ipv4_addresses,
     get_all_interfaces_definition,
+    get_default_monitored_interfaces,
 )
 from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.twisted import (
@@ -1221,6 +1222,9 @@ class NetworksMonitoringService(SingleInstanceService):
         lxd_data = json.loads(Path(stdout_path).read_bytes())
         lxd_data["network-extra"] = {
             "interfaces": interfaces,
+            "monitored-interfaces": get_default_monitored_interfaces(
+                interfaces
+            ),
             "hints": hints,
         }
         Path(stdout_path).write_text(json.dumps(lxd_data, indent=4))
