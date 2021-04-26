@@ -4,7 +4,13 @@ import random
 from typing import List, Optional
 from unittest.mock import call
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
+from maasserver.enum import (
+    INTERFACE_TYPE,
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
+    NODE_TYPE,
+)
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import (
     BondInterface,
@@ -302,7 +308,7 @@ class FakeCommissioningData:
         self.networks[name] = network
         return network
 
-    def render(self):
+    def render(self, include_extra=False):
         storage_resources = {
             "disks": [dataclasses.asdict(disk) for disk in self._disks],
             "total": len(self._disks),
@@ -347,13 +353,6 @@ class FakeCommissioningData:
                 "storage": storage_resources,
             },
             "networks": networks,
-            "network-extra": {
-                "interfaces": old_interfaces_data,
-                "monitored-interfaces": get_default_monitored_interfaces(
-                    old_interfaces_data
-                ),
-                "hints": self.hints,
-            },
         }
         for core_index in range(self.cores):
             data["resources"]["cpu"]["sockets"][0]["cores"].append(
@@ -370,6 +369,14 @@ class FakeCommissioningData:
                     "frequency": 1500,
                 }
             )
+        if include_extra:
+            data["network-extra"] = {
+                "interfaces": old_interfaces_data,
+                "monitored-interfaces": get_default_monitored_interfaces(
+                    old_interfaces_data
+                ),
+                "hints": self.hints,
+            }
         return data
 
     def _generate_interfaces(self):
@@ -452,17 +459,17 @@ class UpdateInterfacesMixin:
 
     def update_interfaces(
         self,
-        controller,
+        node,
         data,
         passes=None,
     ):
-        data = data.render()
+        data = data.render(include_extra=node.is_controller)
         # update_node_interfaces() is idempotent, so it doesn't matter
         # if it's called once or twice.
         if passes is None:
             passes = random.randint(1, 2)
         for _ in range(passes):
-            update_node_interfaces(controller, data)
+            update_node_interfaces(node, data)
         return passes
 
 
@@ -1668,7 +1675,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 script_name=LXD_OUTPUT_NAME
             )
         )
-        lxd_script_output = data.render()
+        lxd_script_output = data.render(include_extra=True)
         lxd_script.store_result(
             0, stdout=json.dumps(lxd_script_output).encode("utf-8")
         )
@@ -2271,7 +2278,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         data = FakeCommissioningData()
         data.create_physical_network("eth0")
 
-        commissioning_data = data.render()
+        commissioning_data = data.render(include_extra=True)
         del commissioning_data["network-extra"]["interfaces"]["eth0"]
         update_node_interfaces(controller, commissioning_data)
 
@@ -2424,6 +2431,202 @@ class TestUpdateInterfacesWithHints(
         # appear on the same VLAN.
         self.assertEqual(alice_br0.vlan, bob_eth0.vlan)
         self.assertEqual(bob_eth1.vlan, bob_eth0.vlan)
+
+
+class BaseUpdateInterfacesAcquire(UpdateInterfacesMixin):
+    def test_node_physical_interfaces(self):
+        node = self.create_empty_node()
+
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eth1")
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            name="eth0",
+            mac_address=data.networks["eth0"].hwaddr,
+        )
+
+        self.update_interfaces(node, data)
+
+        eth0 = PhysicalInterface.objects.get(node=node, name="eth0")
+        eth1 = PhysicalInterface.objects.get(node=node, name="eth1")
+
+        self.assert_physical_interfaces(eth0, eth1)
+
+    def test_node_vlan_interfaces(self):
+        node = self.create_empty_node()
+
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_vlan_network(
+            "eth0.10", vid=10, parent=data.networks["eth0"]
+        )
+        data.create_physical_network("eth1")
+        data.create_vlan_network(
+            "eth1.11", vid=11, parent=data.networks["eth1"]
+        )
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            name="eth0",
+            mac_address=data.networks["eth0"].hwaddr,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.VLAN,
+            node=node,
+            name="eth0.10",
+            parents=[eth0],
+            mac_address=data.networks["eth0.10"].hwaddr,
+            vlan=factory.make_VLAN(vid=10, fabric=eth0.vlan.fabric),
+        )
+
+        self.update_interfaces(node, data)
+
+        eth0 = PhysicalInterface.objects.get(node=node, name="eth0")
+        eth0_10 = VLANInterface.objects.get(node=node, name="eth0.10")
+        eth1 = PhysicalInterface.objects.get(node=node, name="eth1")
+        eth1_11 = VLANInterface.objects.get(node=node, name="eth1.11")
+
+        self.assert_physical_interfaces(eth0, eth1)
+        self.assert_vlan_interfaces(eth0_10, eth1_11)
+
+    def test_node_bridge_interfaces(self):
+        node = self.create_empty_node()
+
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_bridge_network("br0", parents=[data.networks["eth0"]])
+        data.create_physical_network("eth1")
+        data.create_bridge_network("br1", parents=[data.networks["eth1"]])
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            name="eth0",
+            mac_address=data.networks["eth0"].hwaddr,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.BRIDGE,
+            node=node,
+            name="br0",
+            parents=[eth0],
+            mac_address=data.networks["br0"].hwaddr,
+        )
+
+        self.update_interfaces(node, data)
+
+        eth0 = PhysicalInterface.objects.get(node=node, name="eth0")
+        br0 = BridgeInterface.objects.get(node=node, name="br0")
+        eth1 = PhysicalInterface.objects.get(node=node, name="eth1")
+        br1 = BridgeInterface.objects.get(node=node, name="br1")
+
+        self.assert_physical_interfaces(eth0, eth1)
+        self.assert_bridge_interfaces(br0, br1)
+
+    def test_node_bond_interfaces(self):
+        node = self.create_empty_node()
+
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eth1")
+        data.create_bond_network(
+            "bond0", parents=[data.networks["eth0"], data.networks["eth1"]]
+        )
+        data.create_physical_network("eth2")
+        data.create_physical_network("eth3")
+        data.create_bond_network(
+            "bond1", parents=[data.networks["eth2"], data.networks["eth3"]]
+        )
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            name="eth0",
+            mac_address=data.networks["eth0"].hwaddr,
+        )
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=node,
+            name="eth1",
+            mac_address=data.networks["eth1"].hwaddr,
+        )
+        factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            node=node,
+            name="bond0",
+            parents=[eth0, eth1],
+            mac_address=data.networks["bond0"].hwaddr,
+        )
+
+        self.update_interfaces(node, data)
+
+        eth0 = PhysicalInterface.objects.get(node=node, name="eth0")
+        eth1 = PhysicalInterface.objects.get(node=node, name="eth1")
+        bond0 = BondInterface.objects.get(node=node, name="bond0")
+        eth2 = PhysicalInterface.objects.get(node=node, name="eth2")
+        eth3 = PhysicalInterface.objects.get(node=node, name="eth3")
+        bond1 = BondInterface.objects.get(node=node, name="bond1")
+
+        self.assert_physical_interfaces(eth0, eth2)
+        self.assert_physical_interfaces(eth1, eth3)
+        self.assert_bond_interfaces(bond0, bond1)
+
+
+class TestUpdateInterfacesAcquiredNonDeployedNode(
+    MAASServerTestCase, BaseUpdateInterfacesAcquire
+):
+    def create_empty_node(self):
+        non_deployed_status = [
+            status
+            for status in NODE_STATUS_CHOICES_DICT.keys()
+            if status != NODE_STATUS.DEPLOYED
+        ]
+        return factory.make_Machine(status=random.choice(non_deployed_status))
+
+    def assert_physical_interfaces(self, existing_eth0, new_eth1):
+        self.assertFalse(existing_eth0.acquired)
+        self.assertFalse(new_eth1.acquired)
+
+    def assert_vlan_interfaces(self, existing_eth0_10, new_eth1_11):
+        self.assertFalse(existing_eth0_10.acquired)
+        self.assertTrue(new_eth1_11.acquired)
+
+    def assert_bridge_interfaces(self, existing_br0, new_br1):
+        self.assertFalse(existing_br0.acquired)
+        self.assertTrue(new_br1.acquired)
+
+    def assert_bond_interfaces(self, existing_bond0, new_bond1):
+        self.assertFalse(existing_bond0.acquired)
+        self.assertTrue(new_bond1.acquired)
+
+
+class TestUpdateInterfacesAcquiredDeployedNode(
+    MAASServerTestCase, BaseUpdateInterfacesAcquire
+):
+    def create_empty_node(self):
+        return factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+
+    def assert_physical_interfaces(self, existing_eth0, new_eth1):
+        self.assertFalse(existing_eth0.acquired)
+        self.assertTrue(new_eth1.acquired)
+
+    def assert_vlan_interfaces(self, existing_eth0_10, new_eth1_11):
+        self.assertFalse(existing_eth0_10.acquired)
+        self.assertTrue(new_eth1_11.acquired)
+
+    def assert_bridge_interfaces(self, existing_br0, new_br1):
+        self.assertFalse(existing_br0.acquired)
+        self.assertTrue(new_br1.acquired)
+
+    def assert_bond_interfaces(self, existing_bond0, new_bond1):
+        self.assertFalse(existing_bond0.acquired)
+        self.assertTrue(new_bond1.acquired)
+
+
+class TestUpdateInterfacesAcquiredController(
+    TestUpdateInterfacesAcquiredDeployedNode
+):
+    def create_empty_node(self):
+        return self.create_empty_controller()
 
 
 class TestGetInterfaceDependencies(MAASTestCase):

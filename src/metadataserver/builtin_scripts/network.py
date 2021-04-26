@@ -1,6 +1,6 @@
 from netaddr import IPAddress, IPNetwork
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
 from maasserver.models.config import Config
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import (
@@ -60,9 +60,14 @@ def update_node_interfaces(node, data):
         update_interface_details,
     )
 
-    topology_hints = data["network-extra"]["hints"]
-    monitored_interfaces = data["network-extra"]["monitored-interfaces"]
-    address_extra = get_address_extra(data["network-extra"]["interfaces"])
+    if "network-extra" in data:
+        topology_hints = data["network-extra"]["hints"]
+        monitored_interfaces = data["network-extra"]["monitored-interfaces"]
+        address_extra = get_address_extra(data["network-extra"]["interfaces"])
+    else:
+        topology_hints = None
+        monitored_interfaces = []
+        address_extra = {}
 
     # Get all of the current interfaces on this node.
     current_interfaces = {
@@ -193,7 +198,9 @@ def update_physical_interface(
             "node": node,
             "name": name,
             "enabled": is_enabled,
-            "acquired": True,
+            "acquired": (
+                node.is_controller or node.status == NODE_STATUS.DEPLOYED
+            ),
         },
     )
     # Don't update the VLAN unless:
