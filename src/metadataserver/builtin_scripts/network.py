@@ -157,7 +157,7 @@ def update_interface(node, name, data, address_extra, hints=None):
 
 def get_card_port(name, data):
     for card in data["resources"]["network"]["cards"]:
-        for port in card["ports"]:
+        for port in card.get("ports", []):
             if port["id"] == name:
                 return card, port
     else:

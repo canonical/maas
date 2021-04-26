@@ -124,7 +124,7 @@ class LXDNetworkCard:
     numa_node: int = 0
     driver: str = "mydriver"
     driver_version: str = "1.2.3"
-    ports: List[LXDNetworkPort] = dataclasses.field(default_factory=list)
+    ports: Optional[List[LXDNetworkPort]] = None
 
 
 class FakeCommissioningData:
@@ -202,6 +202,11 @@ class FakeCommissioningData:
         available_vids = list(available_vids.difference(used_vids))
         return random.choice(available_vids)
 
+    def create_network_card(self):
+        card = LXDNetworkCard(self.allocate_pci_address())
+        self._network_cards.append(card)
+        return card
+
     def create_physical_network(
         self,
         name=None,
@@ -210,14 +215,15 @@ class FakeCommissioningData:
         port=None,
     ):
         if card is None:
-            card = LXDNetworkCard(self.allocate_pci_address())
+            card = self.create_network_card()
+        if card.ports is None:
+            card.ports = []
         network = self.create_physical_network_without_nic(name, mac_address)
         if port is None:
             port = LXDNetworkPort(
                 network.name, len(card.ports), address=network.hwaddr
             )
         card.ports.append(port)
-        self._network_cards.append(card)
         return network
 
     def create_physical_network_without_nic(
@@ -307,6 +313,9 @@ class FakeCommissioningData:
             ],
             "total": len(self._network_cards),
         }
+        for card in network_resources["cards"]:
+            if card["ports"] is None:
+                del card["ports"]
         networks = dict(
             (name, dataclasses.asdict(network))
             for name, network in self.networks.items()
@@ -421,6 +430,8 @@ class FakeCommissioningData:
 
     def _get_network_port_mac(self, port_name, default):
         for card in self._network_cards:
+            if not card.ports:
+                continue
             for port in card.ports:
                 if port.id == port_name:
                     return port.address
@@ -709,12 +720,10 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
     def test_new_physical_with_resource_info(self):
         controller = self.create_empty_controller(with_empty_script_sets=True)
         data = FakeCommissioningData()
-        card = LXDNetworkCard(
-            data.allocate_pci_address(),
-            vendor=factory.make_name("vendor"),
-            product=factory.make_name("product"),
-            firmware_version=factory.make_name("firmware_version"),
-        )
+        card = data.create_network_card()
+        card.vendor = factory.make_name("vendor")
+        card.product = factory.make_name("product")
+        card.firmware_version = factory.make_name("firmware_version")
         data.create_physical_network("eth0", card=card)
 
         self.update_interfaces(controller, data)
@@ -2265,6 +2274,30 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         commissioning_data = data.render()
         del commissioning_data["network-extra"]["interfaces"]["eth0"]
         update_node_interfaces(controller, commissioning_data)
+
+        self.assertEqual(
+            ["eth0"],
+            [
+                iface.name
+                for iface in Interface.objects.filter(node=controller).all()
+            ],
+        )
+        eth0 = PhysicalInterface.objects.get(
+            node=controller,
+            name="eth0",
+        )
+        self.assertTrue(eth0.enabled)
+        self.assertEqual(data.networks["eth0"].hwaddr, eth0.mac_address)
+
+    def test_physical_container(self):
+        controller = self.create_empty_controller()
+        data = FakeCommissioningData()
+        # In containers, the NICs show up as cards, but they don't have
+        # any ports.
+        data.create_network_card()
+        data.create_physical_network_without_nic("eth0")
+
+        self.update_interfaces(controller, data)
 
         self.assertEqual(
             ["eth0"],
