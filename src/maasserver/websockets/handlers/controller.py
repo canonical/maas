@@ -158,11 +158,11 @@ class ControllerHandler(MachineHandler):
             }
 
         if info.snap_revision:
-            versions["current"]["revision"] = info.snap_revision
+            versions["current"]["snap_revision"] = info.snap_revision
         if info.snap_cohort:
             versions["snap_cohort"] = info.snap_cohort
         if info.snap_update_revision:
-            versions["update"]["revision"] = info.snap_update_revision
+            versions["update"]["snap_revision"] = info.snap_update_revision
         return versions
 
     def check_images(self, params):

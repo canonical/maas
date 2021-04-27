@@ -208,12 +208,12 @@ class TestControllerHandler(MAASServerTestCase):
                 "install_type": "snap",
                 "current": {
                     "version": "3.0.0-alpha1-111-g.deadbeef",
-                    "revision": "1234",
+                    "snap_revision": "1234",
                 },
                 "update": {
                     "version": "3.0.0-alpha2-222-g.cafecafe",
                     "origin": "3.0/stable",
-                    "revision": "5678",
+                    "snap_revision": "5678",
                 },
                 "snap_cohort": "abc123",
             },
@@ -267,7 +267,7 @@ class TestControllerHandler(MAASServerTestCase):
                 "install_type": "snap",
                 "current": {
                     "version": "3.0.0-alpha1-111-g.deadbeef",
-                    "revision": "1234",
+                    "snap_revision": "1234",
                 },
             },
         )
