@@ -1,19 +1,11 @@
 # Copyright 2015-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test version utilities."""
-
-
-import os.path
-from unittest import skipUnless
-from unittest.mock import MagicMock
 
 from pkg_resources import parse_version
 
-from maastesting import root
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils import shell, snap, version
+from provisioningserver.utils import deb, shell, snap, version
 from provisioningserver.utils.version import (
     _get_version_from_python_package,
     get_running_version,
@@ -61,78 +53,6 @@ class TestGetVersionFromPythonPackage(MAASTestCase):
         self.assertEqual(_get_version_from_python_package(), self.output)
 
 
-class TestGetVersionFromAPT(MAASTestCase):
-    def test_creates_cache_with_None_progress(self):
-        mock_Cache = self.patch(version.apt_pkg, "Cache")
-        version._get_version_from_apt(version.REGION_PACKAGE_NAME)
-        self.assertThat(mock_Cache, MockCalledOnceWith(None))
-
-    def test_returns_empty_string_if_package_not_in_cache(self):
-        self.patch(version.apt_pkg, "Cache").return_value = {}
-
-        self.assertEqual(
-            "", version._get_version_from_apt(version.REGION_PACKAGE_NAME)
-        )
-
-    def test_returns_empty_string_if_not_current_ver_from_package(self):
-        package = MagicMock()
-        package.current_ver = None
-        mock_cache = {version.REGION_PACKAGE_NAME: package}
-        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertEqual(
-            "", version._get_version_from_apt(version.REGION_PACKAGE_NAME)
-        )
-
-    def test_returns_ver_str_from_package(self):
-        package = MagicMock()
-        package.current_ver.ver_str = "1.2.3~rc4-567-ubuntu0"
-        mock_cache = {version.RACK_PACKAGE_NAME: package}
-        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertEqual(
-            version._get_version_from_apt(version.RACK_PACKAGE_NAME),
-            "1.2.3~rc4-567-ubuntu0",
-        )
-
-    def test_returns_ver_str_from_package_with_epoch(self):
-        package = MagicMock()
-        package.current_ver.ver_str = "99:1.2.3~rc4-567-ubuntu0"
-        mock_cache = {version.RACK_PACKAGE_NAME: package}
-        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertEqual(
-            version._get_version_from_apt(version.RACK_PACKAGE_NAME),
-            "99:1.2.3~rc4-567-ubuntu0",
-        )
-
-    def test_returns_ver_str_from_second_package_if_first_not_found(self):
-        package = MagicMock()
-        package.current_ver.ver_str = "1.2.3~rc4-567-ubuntu0"
-        mock_cache = {version.REGION_PACKAGE_NAME: package}
-        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertEqual(
-            version._get_version_from_apt(
-                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME
-            ),
-            "1.2.3~rc4-567-ubuntu0",
-        )
-
-    def test_returns_ver_str_from_second_package_if_first_is_empty(self):
-        rack = MagicMock()
-        rack.current_ver = ""
-        region = MagicMock()
-        region.current_ver.ver_str = "1.2.3~rc4-567-ubuntu0"
-        mock_cache = {
-            version.RACK_PACKAGE_NAME: rack,
-            version.REGION_PACKAGE_NAME: region,
-        }
-        self.patch(version.apt_pkg, "Cache").return_value = mock_cache
-        self.assertEqual(
-            version._get_version_from_apt(
-                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME
-            ),
-            "1.2.3~rc4-567-ubuntu0",
-        )
-
-
 class TestGetMAASRepoHash(MAASTestCase):
     def test_returns_None_if_this_is_not_a_git_repo(self):
         call_and_check = self.patch(shell, "call_and_check")
@@ -149,7 +69,6 @@ class TestGetMAASRepoHash(MAASTestCase):
         call_and_check.side_effect = FileNotFoundError()
         self.assertIsNone(version._get_maas_repo_hash())
 
-    @skipUnless(os.path.isdir(os.path.join(root, ".git")), "Not a branch")
     def test_returns_hash_for_this_branch(self):
         commit_hash = version._get_maas_repo_hash()
         self.assertIsInstance(commit_hash, str)
@@ -353,18 +272,17 @@ class TestVersionTestCase(MAASTestCase):
 
 
 class TestGetRunningVersion(TestVersionTestCase):
-    def test_calls__get_version_from_apt(self):
-        mock_apt = self.patch(version, "_get_version_from_apt")
-        mock_apt.return_value = "2.10.0-456-g.deadbeef-0ubuntu1"
+    def test_uses_get_deb_versions_info(self):
+        self.patch(
+            version.deb, "get_deb_versions_info"
+        ).return_value = deb.DebVersionsInfo(
+            current=deb.DebVersion(
+                version="2.10.0-456-g.deadbeef-0ubuntu1",
+            )
+        )
         maas_version = get_running_version()
         self.assertEqual(maas_version.short_version, "2.10.0")
         self.assertEqual(maas_version.extended_info, "456-g.deadbeef")
-        self.expectThat(
-            mock_apt,
-            MockCalledOnceWith(
-                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME
-            ),
-        )
 
     def test_uses_snap_get_snap_version(self):
         self.patch(snap, "running_in_snap").return_value = True
@@ -398,8 +316,12 @@ class TestGetRunningVersion(TestVersionTestCase):
         self.assertEqual(maas_version.extended_info, "1234-g.deadbeef")
 
     def test_method_is_cached(self):
-        mock_apt = self.patch(version, "_get_version_from_apt")
-        mock_apt.return_value = "1.8.0~alpha4+bzr356-0ubuntu1"
+        self.patch(snap, "running_in_snap").return_value = True
+        mock_get_snap_versions = self.patch(snap, "get_snap_version")
+        mock_get_snap_versions.return_value = snap.SnapVersion(
+            version="2.10.0-456-g.deadbeef",
+            revision="1234",
+        )
         version.get_running_version.cache_clear()
 
         first_return_value = version.get_running_version()
@@ -408,13 +330,7 @@ class TestGetRunningVersion(TestVersionTestCase):
         # earlier).
         self.assertNotIn(first_return_value, [b"", "", None])
         self.assertEqual(first_return_value, second_return_value)
-        # Apt has only been called once.
-        self.expectThat(
-            mock_apt,
-            MockCalledOnceWith(
-                version.RACK_PACKAGE_NAME, version.REGION_PACKAGE_NAME
-            ),
-        )
+        mock_get_snap_versions.assert_called_once()
 
 
 class TestGetMAASVersionTrackChannel(TestVersionTestCase):

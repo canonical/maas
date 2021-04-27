@@ -10,24 +10,10 @@ from typing import Optional
 
 import pkg_resources
 
-from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import shell, snap
-
-maaslog = get_maas_logger("version")
+from provisioningserver.utils import deb, shell, snap
 
 # the first requirement is always the required package itself
 DISTRIBUTION = pkg_resources.require("maas")[0]
-
-
-# Only import apt_pkg and initialize when not running in a snap.
-if not snap.running_in_snap():
-    import apt_pkg
-
-    apt_pkg.init()
-
-# Name of maas package to get version from.
-REGION_PACKAGE_NAME = "maas-region-api"
-RACK_PACKAGE_NAME = "maas-rack-controller"
 
 
 @total_ordering
@@ -136,12 +122,13 @@ def get_running_version() -> MAASVersion:
     git_rev = None
     revno = 0
 
+    version_str = ""
     if snap.running_in_snap():
         version_str = snap.get_snap_version().version
     else:
-        version_str = _get_version_from_apt(
-            RACK_PACKAGE_NAME, REGION_PACKAGE_NAME
-        )
+        deb_versions = deb.get_deb_versions_info()
+        if deb_versions:
+            version_str = deb_versions.current.version
     if not version_str:
         version_str = _get_version_from_python_package()
         git_rev = _get_maas_repo_hash()
@@ -178,33 +165,6 @@ def _get_version_from_python_package():
             qualifier = qualifiers[qualifier]
         str_version += f"~{qualifier}{qual_version}"
     return str_version
-
-
-def _get_version_from_apt(*packages):
-    """Return the version output from `apt_pkg.Cache` for the given package(s),
-    or log an error message if the package data is not valid."""
-    try:
-        cache = apt_pkg.Cache(None)
-    except SystemError:
-        maaslog.error(
-            "Installed version could not be determined. Ensure "
-            "/var/lib/dpkg/status is valid."
-        )
-        return ""
-
-    version = None
-    for package in packages:
-        try:
-            apt_package = cache[package]
-        except KeyError:
-            continue
-        version = apt_package.current_ver
-        # If the version is None or an empty string, try the next package.
-        if not version:
-            continue
-        break
-
-    return version.ver_str if version else ""
 
 
 def _get_maas_repo_hash():
