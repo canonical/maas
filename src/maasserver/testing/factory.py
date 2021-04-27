@@ -2534,6 +2534,7 @@ class Factory(maastesting.factory.Factory):
         formatted_root=False,
         firmware_version=None,
         numa_node=None,
+        pcie=False,
     ):
         if node is None and numa_node is None:
             node = self.make_Node()
@@ -2578,7 +2579,7 @@ class Factory(maastesting.factory.Factory):
         )
         # Only NVMe drives have a NodeDevice assoicated with them since
         # they are PCIE devices. Don't always create them.
-        if self.pick_bool():
+        if pcie or self.pick_bool():
             self.make_NodeDevice(
                 bus=NODE_DEVICE_BUS.PCIE,
                 hardware_type=HARDWARE_TYPE.STORAGE,

@@ -12,6 +12,7 @@ import logging
 import re
 
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 
 from maasserver.enum import NODE_DEVICE_BUS, NODE_METADATA, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
@@ -536,12 +537,28 @@ def _add_or_update_node_device(
             # the new one.
             qs = NodeDevice.objects.filter(node=node)
             if pci_address is not None:
-                qs = qs.filter(pci_address=pci_address)
+                identifier = {"pci_address": pci_address}
             else:
+                identifier = {
+                    "bus_number": device.get("bus_address"),
+                    "device_number": device.get("device_address"),
+                }
+            if storage_device and network_device:
                 qs = qs.filter(
-                    bus_number=device.get("bus_address"),
-                    device_number=device.get("device_address"),
+                    Q(**identifier)
+                    | Q(physical_blockdevice=storage_device)
+                    | Q(physical_interface=network_device)
                 )
+            elif storage_device:
+                qs = qs.filter(
+                    Q(**identifier) | Q(physical_blockdevice=storage_device)
+                )
+            elif network_device:
+                qs = qs.filter(
+                    Q(**identifier) | Q(physical_interface=network_device)
+                )
+            else:
+                qs = qs.filter(**identifier)
             qs.delete()
             NodeDevice.objects.create(**create_args)
 
@@ -610,7 +627,7 @@ def update_node_devices(
     if not storage_devices:
         storage_devices = {}
         name_to_dev_ids = {}
-        for disk in data.get("storage", {}).get("disks", []):
+        for disk in _condense_luns(data.get("storage", {}).get("disks", [])):
             if "pci_address" in disk:
                 name_to_dev_ids[disk["id"]] = disk["pci_address"]
             elif "usb_address" in disk:
@@ -790,6 +807,17 @@ def _condense_luns(disks):
             else:
                 device_path[key] = i
                 key = None
+        # LXD does not currently give a pci_address, its included in the
+        # device_path. Add it if it isn't there. A USB disk include the
+        # USB device and PCI device the USB controller is connected to.
+        # Ignore USB devices as they are removable which MAAS doesn't
+        # model.
+        if (
+            "pci" in device_path
+            and "usb" not in device_path
+            and "pci_address" not in disk
+        ):
+            disk["pci_address"] = device_path["pci"]
         if "lun" in device_path:
             condensed_luns[device_path["lun"]].append(disk)
         else:

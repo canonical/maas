@@ -1795,6 +1795,142 @@ class TestProcessLXDResults(MAASServerTestCase):
             )
         )
 
+    def test_replace_existing_storage_device(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node, pcie=True)
+        node_device = block_device.node_device
+        lxd_output = make_lxd_output()
+        lxd_output["resources"]["storage"]["disks"] = [
+            {
+                "id": block_device.name,
+                "model": block_device.model,
+                "type": "nvme",
+                "read_only": False,
+                "serial": block_device.serial,
+                "size": block_device.size,
+                "removable": False,
+                "device_path": "pci-0000:01:00.0-nvme-1",
+                "block_size": block_device.block_size,
+                "firmware_version": block_device.firmware_version,
+                "rpm": 0,
+                "numa_node": block_device.numa_node.index,
+            },
+            {
+                "id": factory.make_name("id"),
+                "model": factory.make_name("model"),
+                "type": "nvme",
+                "read_only": False,
+                "serial": factory.make_name("serial"),
+                "size": block_device.size,
+                "removable": False,
+                "device_path": "pci-0000:02:00.0-nvme-1",
+                "block_size": block_device.block_size,
+                "firmware_version": factory.make_name("firmware_version"),
+                "rpm": 0,
+                "numa_node": block_device.numa_node.index,
+            },
+        ]
+        lxd_output["resources"]["pci"] = {
+            "devices": [
+                {
+                    "driver": node_device.commissioning_driver,
+                    "numa_node": block_device.numa_node.index,
+                    "pci_address": "0000:01:00.0",
+                    "vendor": node_device.vendor_name,
+                    "vendor_id": node_device.vendor_id,
+                    "product": node_device.product_name,
+                    "product_id": node_device.product_id,
+                },
+                {
+                    "driver": factory.make_name("driver"),
+                    "numa_node": block_device.numa_node.index,
+                    "pci_address": "0000:02:00.0",
+                    "vendor": factory.make_name("vendor_name"),
+                    "vendor_id": factory.make_hex_string(size=4),
+                    "product": factory.make_name("product_name"),
+                    "product_id": factory.make_hex_string(size=4),
+                },
+            ],
+            "total": 2,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        self.assertIsNone(reload_object(node_device))
+        new_node_device = reload_object(block_device).node_device
+        self.assertIsNotNone(new_node_device)
+        self.assertEqual("0000:01:00.0", new_node_device.pci_address)
+
+    def test_replace_existing_interface(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        iface = reload_object(node.boot_interface)
+        node_device = iface.node_device
+        lxd_output = make_lxd_output()
+        lxd_output["resources"]["network"]["cards"] = [
+            {
+                "ports": [
+                    {
+                        "id": iface.name,
+                        "address": str(iface.mac_address),
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "link_detected": False,
+                    }
+                ],
+                "numa_node": iface.numa_node.index,
+                "pci_address": "0000:01:00.0",
+                "vendor": iface.vendor,
+                "product": iface.product,
+                "firmware_version": iface.firmware_version,
+            },
+            {
+                "ports": [
+                    {
+                        "id": factory.make_name("eth"),
+                        "address": factory.make_mac_address(),
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "link_detected": False,
+                    }
+                ],
+                "numa_node": iface.numa_node.index,
+                "pci_address": "0000:02:00.0",
+                "vendor": factory.make_name("vendor"),
+                "product": factory.make_name("product"),
+                "firmware_version": factory.make_name("firmware_version"),
+            },
+        ]
+        lxd_output["resources"]["pci"] = {
+            "devices": [
+                {
+                    "driver": node_device.commissioning_driver,
+                    "numa_node": iface.numa_node.index,
+                    "pci_address": "0000:01:00.0",
+                    "vendor": node_device.vendor_name,
+                    "vendor_id": node_device.vendor_id,
+                    "product": node_device.product_name,
+                    "product_id": node_device.product_id,
+                },
+                {
+                    "driver": factory.make_name("driver"),
+                    "numa_node": iface.numa_node.index,
+                    "pci_address": "0000:02:00.0",
+                    "vendor": factory.make_name("vendor_name"),
+                    "vendor_id": factory.make_hex_string(size=4),
+                    "product": factory.make_name("product_name"),
+                    "product_id": factory.make_hex_string(size=4),
+                },
+            ],
+            "total": 2,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+
+        self.assertIsNone(reload_object(node_device))
+        new_node_device = reload_object(iface).node_device
+        self.assertIsNotNone(new_node_device)
+        self.assertEqual("0000:01:00.0", new_node_device.pci_address)
+
     def test_updates_interfaces_speed(self):
         node = factory.make_Node()
         iface = factory.make_Interface(
