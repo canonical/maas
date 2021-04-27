@@ -1,48 +1,35 @@
 import datetime
 
 from maasserver import release_notifications
-from maasserver.models import Notification
+from maasserver.models import ControllerInfo, Notification
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from provisioningserver.utils.version import MAASVersion
 
 
 class TestVersionCheck(MAASServerTestCase):
     def test_new_release_available(self):
-        self.patch(
-            release_notifications.version, "get_running_version"
-        ).return_value = MAASVersion.from_string("2.8.1")
-        notification_maas_version = "2.9.0"
-        self.assertTrue(
-            release_notifications.notification_available(
-                notification_maas_version
-            )
+        ControllerInfo.objects.set_version(
+            factory.make_RackController(),
+            "2.8.1",
         )
+        self.assertTrue(release_notifications.notification_available("2.9.0"))
 
     def test_already_on_latest_version(self):
-        self.patch(
-            release_notifications.version, "get_running_version"
-        ).return_value = MAASVersion.from_string("2.9.0")
-        notification_maas_version = "2.9.0"
-        self.assertFalse(
-            release_notifications.notification_available(
-                notification_maas_version
-            )
+        ControllerInfo.objects.set_version(
+            factory.make_RackController(),
+            "2.9.0",
         )
+        self.assertFalse(release_notifications.notification_available("2.9.0"))
 
     def test_notification_is_old(self):
-        self.patch(
-            release_notifications.version, "get_running_version"
-        ).return_value = MAASVersion.from_string("2.9.0")
-        notification_maas_version = "2.8.0"
-        self.assertFalse(
-            release_notifications.notification_available(
-                notification_maas_version
-            )
+        ControllerInfo.objects.set_version(
+            factory.make_RackController(),
+            "2.9.0",
         )
+        self.assertFalse(release_notifications.notification_available("2.8.0"))
 
 
 class TestReleaseNotification(MAASTransactionServerTestCase):

@@ -13,11 +13,12 @@ from datetime import datetime, timedelta
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.models import Config, Notification
+from maasserver.models.controllerinfo import get_maas_version
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils import version
 from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.version import MAASVersion
 
 maaslog = get_maas_logger("release-notifications")
 log = LegacyLogger()
@@ -40,10 +41,8 @@ class NoReleasenotification(LookupError):
 
 
 def notification_available(notification_version):
-    current_version = version.get_running_version()
-    notification_version = version.MAASVersion.from_string(
-        notification_version
-    )
+    current_version = get_maas_version()
+    notification_version = MAASVersion.from_string(notification_version)
     log.debug(f"Current MAAS version: {current_version}")
     log.debug(f"Notification version: {notification_version}")
     return notification_version > current_version
