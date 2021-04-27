@@ -12,6 +12,7 @@ from django.db.models import (
     Count,
     DateTimeField,
     Manager,
+    Min,
     OneToOneField,
 )
 
@@ -152,47 +153,38 @@ class TargetVersion(NamedTuple):
     first_reported: Optional[datetime] = None
 
 
-def get_target_version() -> TargetVersion:
-    """Get the target version for the deployment."""
-    highest_version = None
-    highest_update = None
-    update_first_reported = None
+def get_target_version() -> Optional[TargetVersion]:
+    """Get the target version for the deployment.
 
-    versions = ControllerInfo.objects.exclude(version="").values_list(
-        "version", "update_version", "update_first_reported"
+    If no updates are available, None is returned.
+    """
+    versions = (
+        ControllerInfo.objects.exclude(update_version="")
+        .values_list("update_version")
+        .annotate(update_reported=Min("update_first_reported"))
     )
-    for version, update, first_reported in versions:
-        version = MAASVersion.from_string(version)
-        highest_version = (
-            max((highest_version, version)) if highest_version else version
-        )
-
-        if not update:
-            continue
-
-        update = MAASVersion.from_string(update)
-        if not highest_update:
-            highest_update = update
-            update_first_reported = first_reported
-        elif update < highest_update:
-            continue
-        elif update > highest_update:
-            highest_update = update
-            update_first_reported = first_reported
-        else:  # same version
-            update_first_reported = min(
-                (update_first_reported, first_reported)
-            )
-
-    if highest_update and highest_update > highest_version:
-        return TargetVersion(highest_update, update_first_reported)
-    return TargetVersion(highest_version)
+    versions = sorted(
+        (
+            (MAASVersion.from_string(version), first_reported)
+            for version, first_reported in versions
+        ),
+        reverse=True,
+    )
+    if not versions:
+        return None
+    return TargetVersion(*versions[0])
 
 
 UPGRADE_ISSUE_NOTIFICATION_IDENT = "upgrade_version_issue"
+UPGRADE_STATUS_NOTIFICATION_IDENT = "upgrade_status"
 
 
 def update_version_notifications():
+    _process_udpate_issues_notification()
+    _process_update_status_notification()
+
+
+def _process_udpate_issues_notification():
     info = ControllerInfo.objects
     multiple_install_types = info.values("install_type").distinct().count() > 1
     multiple_origins = info.values("update_origin").distinct().count() > 1
@@ -210,7 +202,7 @@ def update_version_notifications():
         defaults = {
             "category": "warning",
             "admins": True,
-            "message": f"{message}. <a href='l/controllers'>Review controllers.</a>",
+            "message": f"{message}. <a href='/MAAS/l/controllers'>Review controllers.</a>",
             "context": {"reason": reason},
         }
         notification, created = Notification.objects.get_or_create(
@@ -239,3 +231,56 @@ def update_version_notifications():
         Notification.objects.filter(
             ident=UPGRADE_ISSUE_NOTIFICATION_IDENT
         ).delete()
+
+
+def _process_update_status_notification():
+    def set_update_notification(version, completed):
+        context = {"version": str(version)}
+        if completed:
+            message = "MAAS has been updated to version {version}."
+            context["status"] = "completed"
+        else:
+            message = (
+                "MAAS {version} is available, controllers will upgrade soon."
+            )
+            context["status"] = "inprogress"
+
+        defaults = {
+            "category": "success" if completed else "info",
+            "admins": True,
+            "message": message,
+            "context": context,
+        }
+        return Notification.objects.get_or_create(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+            defaults=defaults,
+        )
+
+    target_version = get_target_version()
+    state_notification = Notification.objects.filter(
+        ident=UPGRADE_STATUS_NOTIFICATION_IDENT
+    ).first()
+    if target_version:
+        # an update is available
+        update_version = target_version.version.main_version
+        if state_notification:
+            notification_version = MAASVersion.from_string(
+                state_notification.context["version"]
+            )
+            if notification_version < update_version:
+                # replace old notification with the new one
+                state_notification.delete()
+        set_update_notification(update_version, completed=False)
+    elif state_notification:
+        # no update but there's a previous notification
+        current_version = get_maas_version().main_version
+        notification_version = MAASVersion.from_string(
+            state_notification.context["version"]
+        )
+        if (
+            state_notification.context["status"] == "completed"
+            and notification_version == current_version
+        ):
+            return
+        state_notification.delete()
+        set_update_notification(current_version, completed=True)

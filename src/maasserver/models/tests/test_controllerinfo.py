@@ -8,6 +8,7 @@ from maasserver.models.controllerinfo import (
     get_target_version,
     TargetVersion,
     UPGRADE_ISSUE_NOTIFICATION_IDENT,
+    UPGRADE_STATUS_NOTIFICATION_IDENT,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -280,29 +281,10 @@ class TestControllerInfo(MAASServerTestCase):
 
 
 class TestGetTargetVersion(MAASServerTestCase):
-    def test_return_highest_version(self):
-        c1 = factory.make_RackController()
-        c2 = factory.make_RackController()
-        c3 = factory.make_RackController()
-        ControllerInfo.objects.set_versions_info(
-            c1,
-            DebVersionsInfo(current={"version": "3.0.0~alpha1-111-g.aaa"}),
-        )
-        ControllerInfo.objects.set_versions_info(
-            c2,
-            DebVersionsInfo(current={"version": "3.0.0~beta1-222-g.bbb"}),
-        )
-        ControllerInfo.objects.set_versions_info(
-            c3,
-            DebVersionsInfo(current={"version": "3.0.0-333-g.ccc"}),
-        )
-        self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-333-g.ccc"),
-                first_reported=None,
-            ),
-        )
+    def test_no_update(self):
+        factory.make_RackController()
+        factory.make_RackController()
+        self.assertIsNone(get_target_version())
 
     def test_return_highest_update(self):
         c1 = factory.make_RackController()
@@ -367,29 +349,6 @@ class TestGetTargetVersion(MAASServerTestCase):
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-333-g.ccc"),
                 first_reported=c2.info.update_first_reported,
-            ),
-        )
-
-    def test_update_older_than_installed(self):
-        c1 = factory.make_RackController()
-        c2 = factory.make_RackController()
-        ControllerInfo.objects.set_versions_info(
-            c1,
-            DebVersionsInfo(
-                current={"version": "3.0.0-111-g.aaa"},
-            ),
-        )
-        ControllerInfo.objects.set_versions_info(
-            c2,
-            DebVersionsInfo(
-                current={"version": "2.9.0-001-g.zzz"},
-                update={"version": "2.9.1-010-g.bbb"},
-            ),
-        )
-        self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
             ),
         )
 
@@ -646,5 +605,210 @@ class TestUpdateVersionNotifications(MAASServerTestCase):
         self.assertIn(
             "Controllers have different versions.",
             notification2.message,
+        )
+        self.assertNotEqual(notification1.id, notification2.id)
+
+    def test_update_status_update_available(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(notification.category, "info")
+        self.assertEqual(
+            notification.render(),
+            "MAAS 3.0.1 is available, controllers will upgrade soon.",
+        )
+        self.assertEqual(
+            notification.context,
+            {"status": "inprogress", "version": "3.0.1"},
+        )
+
+    def test_update_status_update_same_version(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification1 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(
+            notification1.render(),
+            "MAAS 3.0.1 is available, controllers will upgrade soon.",
+        )
+        # report again, same version
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification2 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(
+            notification2.render(),
+            "MAAS 3.0.1 is available, controllers will upgrade soon.",
+        )
+        self.assertEqual(
+            notification2.context,
+            {"status": "inprogress", "version": "3.0.1"},
+        )
+        self.assertEqual(notification1.id, notification2.id)
+
+    def test_update_status_update_new_version(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification1 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(
+            notification1.render(),
+            "MAAS 3.0.1 is available, controllers will upgrade soon.",
+        )
+        # report again, but new upgrade version
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.2-333-g.ccc"},
+            ),
+        )
+        notification2 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(
+            notification2.render(),
+            "MAAS 3.0.2 is available, controllers will upgrade soon.",
+        )
+        self.assertEqual(
+            notification2.context,
+            {"status": "inprogress", "version": "3.0.2"},
+        )
+        self.assertNotEqual(notification1.id, notification2.id)
+
+    def test_update_status_update_completed(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification1 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification2 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(notification2.category, "success")
+        self.assertEqual(
+            notification2.render(),
+            "MAAS has been updated to version 3.0.1.",
+        )
+        self.assertEqual(
+            notification2.context,
+            {"status": "completed", "version": "3.0.1"},
+        )
+        self.assertNotEqual(notification1.id, notification2.id)
+
+    def test_update_status_update_already_completed(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification1 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        # report again, but with no change
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification2 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(
+            notification2.render(),
+            "MAAS has been updated to version 3.0.1.",
+        )
+        self.assertEqual(
+            notification2.context,
+            {"status": "completed", "version": "3.0.1"},
+        )
+        self.assertEqual(notification1.id, notification2.id)
+
+    def test_update_status_new_update_already_completed(self):
+        c1 = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111.aaa"},
+                update={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.1-222-g.bbb"},
+            ),
+        )
+        notification1 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        # a new update is available
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.1-222-g.bbb"},
+                update={"version": "3.0.2-333-g.ccc"},
+            ),
+        )
+        notification2 = Notification.objects.filter(
+            ident=UPGRADE_STATUS_NOTIFICATION_IDENT,
+        ).first()
+        self.assertEqual(
+            notification2.render(),
+            "MAAS 3.0.2 is available, controllers will upgrade soon.",
+        )
+        self.assertEqual(
+            notification2.context,
+            {"status": "inprogress", "version": "3.0.2"},
         )
         self.assertNotEqual(notification1.id, notification2.id)
