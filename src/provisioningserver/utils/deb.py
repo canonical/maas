@@ -97,7 +97,7 @@ def _get_deb_current_and_update(
 
     update = None
     candidate_ver = depcache.get_candidate_ver(package)
-    if candidate_ver:
+    if candidate_ver and candidate_ver != current_ver:
         update = DebVersion(
             version=candidate_ver.ver_str,
             origin=_get_deb_origin(sources, policy, candidate_ver),

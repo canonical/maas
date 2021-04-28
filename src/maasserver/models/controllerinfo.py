@@ -189,6 +189,11 @@ def _process_udpate_issues_notification():
     multiple_install_types = info.values("install_type").distinct().count() > 1
     multiple_origins = info.values("update_origin").distinct().count() > 1
     multiple_cohorts = info.values("snap_cohort").distinct().count() > 1
+    # note that `version` and `update_version` are compared here as strings
+    # from the database. It's possible the same effective version is reported
+    # as different strings because of deb epoch, but it doesn't really matter
+    # in this case as other discrepancies would trigger the "different
+    # installation sources" notification before
     multiple_versions = info.values("version").distinct().count() > 1
     multiple_upgrade_versions = (
         info.exclude(update_version="")
