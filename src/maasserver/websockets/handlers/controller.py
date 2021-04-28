@@ -4,19 +4,32 @@
 """The controller handler for the WebSocket connection."""
 
 
+from collections import Counter
 import logging
 
-from django.db.models import OuterRef, Subquery
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import (
+    BooleanField,
+    ExpressionWrapper,
+    OuterRef,
+    Q,
+    Subquery,
+)
 
 from maasserver.config import RegionConfiguration
 from maasserver.forms import ControllerForm
-from maasserver.models.config import Config
-from maasserver.models.event import Event
-from maasserver.models.node import Controller, RackController
+from maasserver.models import Config, Controller, Event, RackController, VLAN
 from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerError, HandlerPermissionError
 from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.node import node_prefetch
+
+# return the list of VLAN ids connected to a controller
+_vlan_ids_aggr = ArrayAgg(
+    "interface__ip_addresses__subnet__vlan__id",
+    distinct=True,
+    filter=Q(interface__ip_addresses__subnet__vlan__isnull=False),
+)
 
 
 class ControllerHandler(MachineHandler):
@@ -25,13 +38,14 @@ class ControllerHandler(MachineHandler):
         queryset = node_prefetch(
             Controller.controllers.all().prefetch_related("service_set"),
             "controllerinfo",
-        )
+        ).annotate(vlan_ids=_vlan_ids_aggr)
         list_queryset = (
             Controller.controllers.all()
             .select_related("controllerinfo", "domain", "bmc")
             .prefetch_related("service_set")
             .prefetch_related("tags")
             .prefetch_related("ownerdata_set")
+            .prefetch_related("interface_set__ip_addresses__subnet__vlan")
             .annotate(
                 status_event_type_description=Subquery(
                     Event.objects.filter(
@@ -47,6 +61,7 @@ class ControllerHandler(MachineHandler):
                     .order_by("-created", "-id")
                     .values("description")[:1]
                 ),
+                vlan_ids=_vlan_ids_aggr,
             )
         )
         allowed_methods = [
@@ -107,6 +122,10 @@ class ControllerHandler(MachineHandler):
         ]
         listen_channels = ["controller"]
 
+    def _cache_pks(self, objs):
+        super()._cache_pks(objs)
+        self.cache["vlans_ha"] = self._get_vlans_ha()
+
     def get_form_class(self, action):
         """Return the form class used for `action`."""
         if action in ("create", "update"):
@@ -127,8 +146,24 @@ class ControllerHandler(MachineHandler):
     def dehydrate(self, obj, data, for_list=False):
         obj = obj.as_self()
         data = super().dehydrate(obj, data, for_list=for_list)
+
+        # get counts of how many VLANs on the controller are HA/non-HA The info
+        # might not be in the cache because dehydrate_full (which calls this
+        # method) is also called by methods that don't call _cache_pks
+        vlans_ha = self.cache.get("vlans_ha")
+        if vlans_ha is None:
+            vlans_ha = self._get_vlans_ha()
+
+        vlan_counts = Counter()
+        for vlan_id in obj.vlan_ids:
+            vlan_counts[vlans_ha[vlan_id]] += 1
+
         data.update(
             {
+                "vlans_ha": {
+                    "true": vlan_counts[True],
+                    "false": vlan_counts[False],
+                },
                 "versions": self.dehydrate_versions(obj.info),
                 "service_ids": [
                     service.id for service in obj.service_set.all()
@@ -194,3 +229,15 @@ class ControllerHandler(MachineHandler):
             maas_url = config.maas_url
 
         return {"url": maas_url, "secret": rpc_shared_secret}
+
+    def _get_vlans_ha(self):
+        """Return a dict mapping VLAN IDs to their HA status."""
+        return dict(
+            VLAN.objects.values_list("id").annotate(
+                is_ha=ExpressionWrapper(
+                    Q(primary_rack__isnull=False)
+                    & Q(secondary_rack__isnull=False),
+                    output_field=BooleanField(),
+                )
+            )
+        )

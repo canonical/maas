@@ -2,13 +2,10 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-from testscenarios import multiply_scenarios
-from testtools.matchers import ContainsDict, Equals
-
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
-from maasserver.models import Config, ControllerInfo
+from maasserver.models import Config, ControllerInfo, VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
@@ -28,6 +25,31 @@ class TestControllerHandler(MAASServerTestCase):
         """Create `number` of new nodes."""
         for counter in range(number):
             factory.make_RackController()
+
+    def test_vlan_counts_list(self):
+        owner = factory.make_admin()
+        rack1 = factory.make_RackController(owner=owner)
+        rack2 = factory.make_RackController(owner=owner)
+        vlan1, vlan2 = VLAN.objects.order_by("id")
+        # attach the first rack to both VLANs
+        iface = factory.make_Interface(node=rack1, vlan=vlan2)
+        factory.make_StaticIPAddress(interface=iface)
+        vlan1.primary_rack = rack1
+        vlan1.save()
+        # make the second VLAN HA
+        vlan2.primary_rack = rack2
+        vlan2.secondary_rack = rack1
+        vlan2.save()
+
+        handler = ControllerHandler(owner, {}, None)
+        result = {entry["id"]: entry["vlans_ha"] for entry in handler.list({})}
+        self.assertEqual(
+            result,
+            {
+                rack1.id: {"true": 1, "false": 1},
+                rack2.id: {"true": 1, "false": 0},
+            },
+        )
 
     def test_last_image_sync(self):
         owner = factory.make_admin()
@@ -98,7 +120,7 @@ class TestControllerHandler(MAASServerTestCase):
 
         handler = ControllerHandler(owner, {}, None)
         queries_one, _ = count_queries(handler.list, {"limit": 1})
-        queries_total, _ = count_queries(handler.list, {})
+        queries_all, _ = count_queries(handler.list, {})
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node listing.
         # It is important to keep this number as low as possible. A larger
@@ -106,12 +128,7 @@ class TestControllerHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries_one,
-            5,
-            "Number of queries has changed; make sure this is expected.",
-        )
-        self.assertEqual(
-            queries_total,
-            5,
+            queries_all,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -145,7 +162,7 @@ class TestControllerHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            35,
+            36,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -299,44 +316,4 @@ class TestControllerHandler(MAASServerTestCase):
             maas_url = config.maas_url
         self.assertEqual(
             {"url": maas_url, "secret": rpc_shared_secret}, observed
-        )
-
-
-class TestControllerHandlerScenarios(MAASServerTestCase):
-
-    scenarios_controllers = (
-        ("rack", dict(make_controller=factory.make_RackController)),
-        ("region", dict(make_controller=factory.make_RegionController)),
-        (
-            "region+rack",
-            dict(make_controller=factory.make_RegionRackController),
-        ),
-    )
-
-    scenarios_fetch_types = (
-        ("in-full", dict(for_list=False)),
-        ("for-list", dict(for_list=True)),
-    )
-
-    scenarios = multiply_scenarios(
-        scenarios_controllers, scenarios_fetch_types
-    )
-
-    def test_fully_dehydrated_controller_contains_essential_fields(self):
-        user = factory.make_User()
-        controller = self.make_controller()
-        handler = ControllerHandler(user, {}, None)
-        data = handler.full_dehydrate(controller, for_list=False)
-        self.assertThat(
-            data,
-            ContainsDict(
-                {
-                    handler._meta.pk: Equals(
-                        getattr(controller, handler._meta.pk)
-                    ),
-                    handler._meta.batch_key: Equals(
-                        getattr(controller, handler._meta.batch_key)
-                    ),
-                }
-            ),
         )
