@@ -229,9 +229,9 @@ class TestControllerHandler(MAASServerTestCase):
                 },
                 "update": {
                     "version": "3.0.0-alpha2-222-g.cafecafe",
-                    "origin": "3.0/stable",
                     "snap_revision": "5678",
                 },
+                "origin": "3.0/stable",
                 "snap_cohort": "abc123",
             },
         )
@@ -261,8 +261,8 @@ class TestControllerHandler(MAASServerTestCase):
                 },
                 "update": {
                     "version": "3.0.0-alpha2-222-g.cafecafe",
-                    "origin": "http://archive.ubuntu.com main/focal",
                 },
+                "origin": "http://archive.ubuntu.com main/focal",
             },
         )
 
@@ -275,6 +275,7 @@ class TestControllerHandler(MAASServerTestCase):
                 "revision": "1234",
                 "version": "3.0.0-alpha1-111-g.deadbeef",
             },
+            channel={"track": "3.0", "risk": "stable"},
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
         result = handler.list({})
@@ -286,8 +287,23 @@ class TestControllerHandler(MAASServerTestCase):
                     "version": "3.0.0-alpha1-111-g.deadbeef",
                     "snap_revision": "1234",
                 },
+                "origin": "3.0/stable",
             },
         )
+
+    def test_dehydrate_with_versions_empty_origin(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        rack = factory.make_RackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0-alpha1-111-g.deadbeef",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(rack, versions)
+        result = handler.list({})
+        self.assertEqual(result[0]["versions"]["origin"], "")
 
     def test_dehydrate_includes_tags(self):
         owner = factory.make_admin()

@@ -185,11 +185,11 @@ class ControllerHandler(MachineHandler):
             "current": {
                 "version": info.version,
             },
+            "origin": info.update_origin,
         }
         if info.update_version:
             versions["update"] = {
                 "version": info.update_version,
-                "origin": info.update_origin,
             }
 
         if info.snap_revision:
