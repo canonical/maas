@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """PowerNV Boot Method"""
@@ -73,6 +73,7 @@ class PowerNVBootMethod(BootMethod):
     name = "powernv"
     bios_boot_method = "powernv"
     template_subdir = "pxe"
+    bootloader_arches = ["ppc64el"]
     bootloader_path = "pxelinux.0"
     arch_octet = "00:0E"
     user_class = None

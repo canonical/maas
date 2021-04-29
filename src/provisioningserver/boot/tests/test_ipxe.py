@@ -1,4 +1,4 @@
-# Copyright 2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2019-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the ipxe boot method."""
@@ -87,7 +87,7 @@ class TestIPXEBootMethod(MAASTestCase):
 
     def test_arch_octet(self):
         method = IPXEBootMethod()
-        self.assertEqual("00:00", method.arch_octet)
+        self.assertIsNone(method.arch_octet)
 
     def test_user_class(self):
         method = IPXEBootMethod()

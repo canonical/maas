@@ -144,9 +144,6 @@ class BootMethod(metaclass=ABCMeta):
     # Includes "HTTPClient" as the vendor-class-identifier.
     http_url = False
 
-    # Arches for which this boot method needs to install boot loaders.
-    bootloader_arches = []
-
     # Bootloader files to symlink into the root tftp directory.
     bootloader_files = []
 
@@ -161,6 +158,10 @@ class BootMethod(metaclass=ABCMeta):
     @abstractproperty
     def template_subdir(self):
         """Name of template sub-directory."""
+
+    @abstractproperty
+    def bootloader_arches(self):
+        """Arches for which this boot method is for."""
 
     @abstractproperty
     def bootloader_path(self):
@@ -428,6 +429,7 @@ from provisioningserver.boot.ipxe import IPXEBootMethod  # noqa:E402 isort:skip
 from provisioningserver.boot.grub import (  # noqa:E402 isort:skip
     UEFIAMD64BootMethod,
     UEFIAMD64HTTPBootMethod,
+    UEFIEBCBootMethod,
     UEFIARM64BootMethod,
     UEFIARM64HTTPBootMethod,
     OpenFirmwarePPC64ELBootMethod,
@@ -451,6 +453,7 @@ builtin_boot_methods = [
     PXEBootMethod(),
     UEFIAMD64BootMethod(),
     UEFIAMD64HTTPBootMethod(),
+    UEFIEBCBootMethod(),
     UEFIARM64BootMethod(),
     UEFIARM64HTTPBootMethod(),
     OpenFirmwarePPC64ELBootMethod(),

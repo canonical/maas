@@ -19,6 +19,7 @@ from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import boot
 from provisioningserver.boot import (
     BootMethod,
+    BootMethodRegistry,
     BytesReader,
     gen_template_filenames,
     get_main_archive_url,
@@ -334,6 +335,8 @@ class TestBootMethod(MAASTestCase):
 
     def test_compose_template_namespace_include_debug(self):
         debug = factory.pick_bool()
+        boot.debug_enabled.cache_clear()
+        self.addClassCleanup(boot.debug_enabled.cache_clear)
         self.useFixture(ClusterConfigurationFixture(debug=debug))
         kernel_params = make_kernel_parameters()
         method = FakeBootMethod()
@@ -341,6 +344,30 @@ class TestBootMethod(MAASTestCase):
         template_namespace = method.compose_template_namespace(kernel_params)
 
         self.assertEqual(debug, template_namespace["debug"])
+
+    def test_consistent_names(self):
+        # MAAS stores the boot method name on the Subnet model to indicate it
+        # is disabled. This test ensures the name doesn't change.
+        self.assertEqual(
+            [
+                ("ipxe", None),
+                ("pxe", "00:00"),
+                ("uefi_amd64_tftp", "00:07"),
+                ("uefi_amd64_http", "00:10"),
+                ("uefi_ebc_tftp", "00:09"),
+                ("uefi_arm64_tftp", "00:0B"),
+                ("uefi_arm64_http", "00:13"),
+                ("open-firmware_ppc64el", "00:0C"),
+                ("powernv", "00:0E"),
+                ("windows", None),
+                ("s390x", "00:1F"),
+                ("s390x_partition", "00:20"),
+            ],
+            [
+                (boot_method.name, boot_method.arch_octet)
+                for _, boot_method in BootMethodRegistry
+            ],
+        )
 
 
 class TestGetArchiveUrl(MAASTestCase):

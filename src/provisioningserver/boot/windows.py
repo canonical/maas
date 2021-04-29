@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.
+# Copyright 2014-2021 Canonical Ltd.
 # Copyright 2014 Cloudbase Solutions SRL.
 # This software is licensed under the GNU Affero General Public License
 # version 3 (see the file LICENSE).
@@ -186,6 +186,7 @@ class WindowsPXEBootMethod(BootMethod):
     name = "windows"
     bios_boot_method = "pxe"
     template_subdir = "windows"
+    bootloader_arches = []
     bootloader_path = "pxeboot.0"
     arch_octet = None
     user_class = None

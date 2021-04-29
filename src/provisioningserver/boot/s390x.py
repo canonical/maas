@@ -72,6 +72,7 @@ class S390XBootMethod(BootMethod):
     name = "s390x"
     bios_boot_method = "s390x"
     template_subdir = "pxe"
+    bootloader_arches = ["s390x"]
     # boots390x.bin is a place holder to allow the path_prefix to be set.
     # s390x KVM uses a bootloader shipped with KVM.
     bootloader_path = "boots390x.bin"

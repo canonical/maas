@@ -15,6 +15,7 @@ class S390XPartitionBootMethod(BootMethod):
     name = "s390x_partition"
     bios_boot_method = "s390x_partition"
     template_subdir = "s390x_partition"
+    bootloader_arches = ["s390x"]
     # S390X partitions has its bootloader built into the firmware. The
     # "bootloader" provided must be the bootloader configuration file. The
     # file format is similar to pxelinux.cfg but supports limited options

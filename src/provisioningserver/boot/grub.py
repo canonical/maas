@@ -68,13 +68,13 @@ re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 class UEFIAMD64BootMethod(BootMethod):
 
-    name = "uefi_amd64"
+    name = "uefi_amd64_tftp"
     bios_boot_method = "uefi"
     template_subdir = "uefi"
     bootloader_arches = ["amd64"]
     bootloader_path = "bootx64.efi"
     bootloader_files = ["bootx64.efi", "grubx64.efi"]
-    arch_octet = ["00:07", "00:09"]
+    arch_octet = "00:07"
     user_class = None
 
     def match_path(self, backend, path):
@@ -204,9 +204,20 @@ class UEFIAMD64HTTPBootMethod(UEFIAMD64BootMethod):
     http_url = True
 
 
+# UEFI supports a byte code format called EBC which has its own boot octet.
+# This allows developers to write UEFI binaries which are platform independent.
+# To fix LP:1768034 MAAS was modified to respond to 00:09 with AMD64 GRUB. This
+# is incorrect but did fix the bug.
+class UEFIEBCBootMethod(UEFIAMD64BootMethod):
+
+    name = "uefi_ebc_tftp"
+    bootloader_arches = ["ebc"]
+    arch_octet = "00:09"
+
+
 class UEFIARM64BootMethod(UEFIAMD64BootMethod):
 
-    name = "uefi_arm64"
+    name = "uefi_arm64_tftp"
     bootloader_arches = ["arm64"]
     bootloader_path = "bootaa64.efi"
     bootloader_files = ["bootaa64.efi", "grubaa64.efi"]
@@ -223,6 +234,8 @@ class UEFIARM64HTTPBootMethod(UEFIARM64BootMethod):
 
 class OpenFirmwarePPC64ELBootMethod(UEFIAMD64BootMethod):
 
+    # Architecture is included in the name as open firmware can be used on
+    # multiple architectures.
     name = "open-firmware_ppc64el"
     bios_boot_method = "open-firmware"
     bootloader_arches = ["ppc64el", "ppc64"]

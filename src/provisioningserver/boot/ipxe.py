@@ -1,4 +1,4 @@
-# Copyright 2017-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """IPXE Boot Method"""
@@ -58,10 +58,11 @@ class IPXEBootMethod(BootMethod):
     """Boot method for iPXE boot loader."""
 
     name = "ipxe"
-    bios_boot_method = "pxe"
+    bios_boot_method = "ipxe"
     template_subdir = "ipxe"
+    bootloader_arches = []
     bootloader_path = "ipxe.cfg"
-    arch_octet = "00:00"
+    arch_octet = None
     user_class = "iPXE"
     path_prefix_http = True
     absolute_url_as_filename = True
