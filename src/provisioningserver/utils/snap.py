@@ -4,9 +4,11 @@
 """Snap utilities."""
 
 import dataclasses
+from functools import total_ordering
 import json
 import os
 from pathlib import Path
+import re
 from typing import NamedTuple, Optional
 
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
@@ -43,6 +45,7 @@ class SnapPaths(NamedTuple):
         return cls(**args)
 
 
+@total_ordering
 @dataclasses.dataclass
 class SnapChannel:
     """A snap channel."""
@@ -50,6 +53,19 @@ class SnapChannel:
     track: str
     risk: str = "stable"
     branch: str = ""
+
+    RISK_ORDER = ("stable", "beta", "candidate", "edge")
+
+    _release_branch = re.compile("ubuntu-[0-9]{2}.[0-9]{2}$")
+
+    @classmethod
+    def from_string(cls, string) -> "SnapChannel":
+        """Return a SnapChannel from a Channel string."""
+        return cls(*string.split("/"))
+
+    def is_release_branch(self) -> bool:
+        """Whether the channel points to an Ubuntu release branch."""
+        return bool(self._release_branch.match(self.branch))
 
     def __str__(self):
         tokens = []
@@ -59,9 +75,29 @@ class SnapChannel:
                 tokens.append(value)
         return "/".join(tokens)
 
-    @classmethod
-    def from_string(cls, string):
-        return cls(*string.split("/"))
+    def __lt__(self, other):
+        return self._comparable < other._comparable
+
+    @property
+    def _comparable(self):
+        """Return a tuple that can be used in comparison operators."""
+        if self.track == "latest":
+            track = (10000, 10000)  # make this the highest version
+        else:
+            track = tuple(int(token) for token in self.track.split("."))
+
+        risk = self.RISK_ORDER.index(self.risk)
+        # consider the following ascending order for branches:
+        #  - no branch
+        #  - generic branch
+        #  - release branch (ubuntu-XX.YY), in release order
+        if self.branch and not self.is_release_branch():
+            # make it higher than empty but lower than a release branch
+            branch = "branch"
+        else:
+            branch = self.branch
+
+        return track, risk, branch
 
 
 @dataclasses.dataclass

@@ -15,7 +15,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.utils.deb import DebVersionsInfo
-from provisioningserver.utils.snap import SnapVersionsInfo
+from provisioningserver.utils.snap import SnapChannel, SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
 
@@ -281,10 +281,34 @@ class TestControllerInfo(MAASServerTestCase):
 
 
 class TestGetTargetVersion(MAASServerTestCase):
-    def test_no_update(self):
-        factory.make_RackController()
+    def test_empty(self):
         factory.make_RackController()
         self.assertIsNone(get_target_version())
+
+    def test_return_highest_version(self):
+        c1 = factory.make_RackController()
+        c2 = factory.make_RackController()
+        c3 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(current={"version": "3.0.0~alpha1-111-g.aaa"}),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c2,
+            DebVersionsInfo(current={"version": "3.0.0~beta1-222-g.bbb"}),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c3,
+            DebVersionsInfo(current={"version": "3.0.0-333-g.ccc"}),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0-333-g.ccc"),
+                snap_channel=SnapChannel.from_string("3.0/stable"),
+                first_reported=None,
+            ),
+        )
 
     def test_return_highest_update(self):
         c1 = factory.make_RackController()
@@ -315,6 +339,7 @@ class TestGetTargetVersion(MAASServerTestCase):
             get_target_version(),
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-333-g.ccc"),
+                snap_channel=SnapChannel.from_string("3.0/stable"),
                 first_reported=c3.info.update_first_reported,
             ),
         )
@@ -348,7 +373,148 @@ class TestGetTargetVersion(MAASServerTestCase):
             get_target_version(),
             TargetVersion(
                 version=MAASVersion.from_string("3.0.0-333-g.ccc"),
+                snap_channel=SnapChannel.from_string("3.0/stable"),
                 first_reported=c2.info.update_first_reported,
+            ),
+        )
+
+    def test_update_older_than_installed(self):
+        c1 = factory.make_RackController()
+        c2 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa"},
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c2,
+            DebVersionsInfo(
+                current={"version": "2.9.0-001-g.zzz"},
+                update={"version": "2.9.1-010-g.bbb"},
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
+                snap_channel=SnapChannel.from_string("3.0/stable"),
+                first_reported=None,
+            ),
+        )
+
+    def test_snap_channel(self):
+        c1 = factory.make_RackController()
+        c2 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                channel={"track": "3.0", "risk": "stable"},
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c2,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                channel={"track": "3.0", "risk": "beta"},
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
+                snap_channel=SnapChannel("3.0", "beta"),
+                first_reported=None,
+            ),
+        )
+
+    def test_snap_channel_no_branch(self):
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                channel={"track": "3.0", "risk": "beta", "branch": "mybranch"},
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
+                snap_channel=SnapChannel.from_string("3.0/beta"),
+                first_reported=None,
+            ),
+        )
+
+    def test_snap_channel_keep_release_branch(self):
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                channel={
+                    "track": "3.0",
+                    "risk": "beta",
+                    "branch": "ubuntu-20.04",
+                },
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
+                snap_channel=SnapChannel.from_string("3.0/beta/ubuntu-20.04"),
+                first_reported=None,
+            ),
+        )
+
+    def test_snap_channel_from_version(self):
+        c1 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            DebVersionsInfo(
+                current={"version": "3.0.0~rc1-111-g.aaa"},
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0~rc1-111-g.aaa"),
+                snap_channel=SnapChannel("3.0", "candidate"),
+                first_reported=None,
+            ),
+        )
+
+    def test_snap_channel_ignores_deb(self):
+        c1 = factory.make_RackController()
+        c2 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                channel={"track": "3.0", "risk": "stable"},
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c2,
+            DebVersionsInfo(
+                current={
+                    "version": "3.0.0~beta1-001-g.bbb",
+                    "origin": "http://archive.ubuntu.com/ focal/main",
+                },
+                update={
+                    "version": "3.0.0-111-g.aaa",
+                    "origin": "http://archive.ubuntu.com/ focal/main",
+                },
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
+                snap_channel=SnapChannel("3.0", "stable"),
+                first_reported=None,
             ),
         )
 

@@ -79,6 +79,95 @@ class TestSnapChannel(MAASTestCase):
             SnapChannel(track="2.0", risk="beta", branch="test"),
         )
 
+    def test_is_release_branch(self):
+        self.assertFalse(
+            SnapChannel.from_string("2.0/beta").is_release_branch()
+        )
+        self.assertFalse(
+            SnapChannel.from_string("2.0/beta/branch").is_release_branch()
+        )
+        self.assertFalse(
+            SnapChannel.from_string(
+                "2.0/beta/ubuntu-20.04.4"
+            ).is_release_branch()
+        )
+        self.assertFalse(
+            SnapChannel.from_string(
+                "2.0/beta/myubuntu-20.04"
+            ).is_release_branch()
+        )
+        self.assertTrue(
+            SnapChannel.from_string(
+                "2.0/beta/ubuntu-20.04"
+            ).is_release_branch()
+        )
+
+    def test_equal(self):
+        self.assertEqual(
+            SnapChannel.from_string("2.0/beta"),
+            SnapChannel.from_string("2.0/beta"),
+        )
+        self.assertEqual(
+            SnapChannel.from_string("2.0/beta/ubuntu-20.04"),
+            SnapChannel.from_string("2.0/beta/ubuntu-20.04"),
+        )
+
+    def test_not_equal(self):
+        self.assertNotEqual(
+            SnapChannel.from_string("3.0/stable"),
+            SnapChannel.from_string("3.1/stable"),
+        )
+        self.assertNotEqual(
+            SnapChannel.from_string("2.0/stable"),
+            SnapChannel.from_string("2.0/beta"),
+        )
+        self.assertNotEqual(
+            SnapChannel.from_string("2.0/stable"),
+            SnapChannel.from_string("2.0/stable/branch"),
+        )
+        self.assertNotEqual(
+            SnapChannel.from_string("2.0/beta/ubuntu-18.04"),
+            SnapChannel.from_string("2.0/beta/ubuntu-20.04"),
+        )
+        self.assertNotEqual(
+            SnapChannel.from_string("2.0/beta/ubuntu-20.04"),
+            SnapChannel.from_string("2.0/beta/mybranch"),
+        )
+
+    def test_less(self):
+        self.assertLess(
+            SnapChannel.from_string("3.0/stable"),
+            SnapChannel.from_string("latest/stable"),
+        )
+        self.assertLess(
+            SnapChannel.from_string("3.0/stable"),
+            SnapChannel.from_string("3.1/stable"),
+        )
+        self.assertLess(
+            SnapChannel.from_string("3.0/stable"),
+            SnapChannel.from_string("3.0/beta"),
+        )
+        self.assertLess(
+            SnapChannel.from_string("3.0/stable"),
+            SnapChannel.from_string("3.1/stable"),
+        )
+        self.assertLess(
+            SnapChannel.from_string("3.0/stable"),
+            SnapChannel.from_string("3.0/stable/branch"),
+        )
+        self.assertLess(
+            SnapChannel.from_string("3.0/stable"),
+            SnapChannel.from_string("3.1/stable/ubuntu-20.04"),
+        )
+        self.assertLess(
+            SnapChannel.from_string("2.0/beta/ubuntu-18.04"),
+            SnapChannel.from_string("2.0/beta/ubuntu-20.04"),
+        )
+        self.assertLess(
+            SnapChannel.from_string("2.0/beta/mybranch"),
+            SnapChannel.from_string("2.0/beta/ubuntu-20.04"),
+        )
+
 
 class TestGetSnapVersion(MAASTestCase):
     def test_get_snap_version_None_when_no_snap(self):

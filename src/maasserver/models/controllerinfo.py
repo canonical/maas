@@ -12,7 +12,6 @@ from django.db.models import (
     Count,
     DateTimeField,
     Manager,
-    Min,
     OneToOneField,
 )
 
@@ -25,6 +24,7 @@ from provisioningserver.enum import (
     CONTROLLER_INSTALL_TYPE,
     CONTROLLER_INSTALL_TYPE_CHOICES,
 )
+from provisioningserver.utils.snap import SnapChannel
 from provisioningserver.utils.version import MAASVersion
 
 
@@ -150,29 +150,76 @@ class TargetVersion(NamedTuple):
     """The target version for the MAAS deployment."""
 
     version: MAASVersion
+    snap_channel: SnapChannel
     first_reported: Optional[datetime] = None
 
 
 def get_target_version() -> Optional[TargetVersion]:
-    """Get the target version for the deployment.
+    """Get the target version for the deployment."""
+    highest_version = None
+    highest_update = None
+    update_first_reported = None
+    snap_channel = None
 
-    If no updates are available, None is returned.
-    """
-    versions = (
-        ControllerInfo.objects.exclude(update_version="")
-        .values_list("update_version")
-        .annotate(update_reported=Min("update_first_reported"))
-    )
-    versions = sorted(
-        (
-            (MAASVersion.from_string(version), first_reported)
-            for version, first_reported in versions
-        ),
-        reverse=True,
-    )
-    if not versions:
+    for info in ControllerInfo.objects.exclude(version=""):
+        version = MAASVersion.from_string(info.version)
+        highest_version = (
+            max((highest_version, version)) if highest_version else version
+        )
+
+        if (
+            info.install_type == CONTROLLER_INSTALL_TYPE.SNAP
+            and info.update_origin
+        ):
+            channel = SnapChannel.from_string(info.update_origin)
+            snap_channel = (
+                max(snap_channel, channel) if snap_channel else channel
+            )
+
+        if not info.update_version:
+            continue
+
+        update = MAASVersion.from_string(info.update_version)
+        if not highest_update:
+            highest_update = update
+            update_first_reported = info.update_first_reported
+        elif update < highest_update:
+            continue
+        elif update > highest_update:
+            highest_update = update
+            update_first_reported = info.update_first_reported
+        else:  # same version
+            update_first_reported = min(
+                (update_first_reported, info.update_first_reported)
+            )
+
+    if highest_update and highest_update > highest_version:
+        version = highest_update
+    else:
+        # don't report any update
+        version = highest_version
+        update_first_reported = None
+
+    if version is None:
         return None
-    return TargetVersion(*versions[0])
+
+    if snap_channel:
+        if not snap_channel.is_release_branch():
+            # only point to a branch if it's a release one, as other branches
+            # are in general intended as a temporary change for testing
+            snap_channel.branch = ""
+    else:
+        # compose the channel from the target version
+        risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
+        risk = risk_map.get(version.qualifier_type, "stable")
+        snap_channel = SnapChannel(
+            track=f"{version.major}.{version.minor}",
+            risk=risk,
+        )
+
+    return TargetVersion(
+        version, snap_channel, first_reported=update_first_reported
+    )
 
 
 UPGRADE_ISSUE_NOTIFICATION_IDENT = "upgrade_version_issue"
@@ -265,7 +312,7 @@ def _process_update_status_notification():
     state_notification = Notification.objects.filter(
         ident=UPGRADE_STATUS_NOTIFICATION_IDENT
     ).first()
-    if target_version:
+    if target_version and target_version.first_reported:
         # an update is available
         update_version = target_version.version.main_version
         if state_notification:
