@@ -5,6 +5,7 @@
 
 
 from collections import Counter
+from functools import cached_property
 import logging
 
 from django.contrib.postgres.aggregates import ArrayAgg
@@ -122,10 +123,6 @@ class ControllerHandler(MachineHandler):
         ]
         listen_channels = ["controller"]
 
-    def _cache_pks(self, objs):
-        super()._cache_pks(objs)
-        self.cache["vlans_ha"] = self._get_vlans_ha()
-
     def get_form_class(self, action):
         """Return the form class used for `action`."""
         if action in ("create", "update"):
@@ -147,16 +144,9 @@ class ControllerHandler(MachineHandler):
         obj = obj.as_self()
         data = super().dehydrate(obj, data, for_list=for_list)
 
-        # get counts of how many VLANs on the controller are HA/non-HA The info
-        # might not be in the cache because dehydrate_full (which calls this
-        # method) is also called by methods that don't call _cache_pks
-        vlans_ha = self.cache.get("vlans_ha")
-        if vlans_ha is None:
-            vlans_ha = self._get_vlans_ha()
-
         vlan_counts = Counter()
         for vlan_id in obj.vlan_ids:
-            vlan_counts[vlans_ha[vlan_id]] += 1
+            vlan_counts[self._vlans_ha[vlan_id]] += 1
 
         data.update(
             {
@@ -230,7 +220,8 @@ class ControllerHandler(MachineHandler):
 
         return {"url": maas_url, "secret": rpc_shared_secret}
 
-    def _get_vlans_ha(self):
+    @cached_property
+    def _vlans_ha(self):
         """Return a dict mapping VLAN IDs to their HA status."""
         return dict(
             VLAN.objects.values_list("id").annotate(

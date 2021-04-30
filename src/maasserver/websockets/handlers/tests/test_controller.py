@@ -118,14 +118,17 @@ class TestControllerHandler(MAASServerTestCase):
                     status=SCRIPT_STATUS.PASSED, script_set=testing_script_set
                 )
 
-        handler = ControllerHandler(owner, {}, None)
-        queries_one, _ = count_queries(handler.list, {"limit": 1})
-        queries_all, _ = count_queries(handler.list, {})
+        handler1 = ControllerHandler(owner, {}, None)
+        queries_one, _ = count_queries(handler1.list, {"limit": 1})
+        handler2 = ControllerHandler(owner, {}, None)
+        queries_all, _ = count_queries(handler2.list, {})
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node listing.
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
+        # The test uses different handler instances as some query results are
+        # cached between calls.
         self.assertEqual(
             queries_one,
             queries_all,
