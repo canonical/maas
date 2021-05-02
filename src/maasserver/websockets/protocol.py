@@ -13,7 +13,6 @@ from urllib.parse import parse_qs, urlparse
 
 from django.conf import settings
 from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, SESSION_KEY
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from twisted.internet import defer
@@ -107,14 +106,6 @@ class WebSocketProtocol(Protocol):
                 # that have already been received.
                 self.user = user
 
-                # Create the request for the handlers for this connection.
-                self.request = HttpRequest()
-                self.request.user = self.user
-                self.request.META[
-                    "HTTP_USER_AGENT"
-                ] = self.transport.user_agent
-                self.request.META["REMOTE_ADDR"] = self.transport.ip_address
-
                 # XXX newell 2018-10-17 bug=1798479:
                 # Check that 'SERVER_NAME' and 'SERVER_PORT' are set.
                 # 'SERVER_NAME' and 'SERVER_PORT' are required so
@@ -125,14 +116,18 @@ class WebSocketProtocol(Protocol):
                 # `splithost` will split the host and port from either an
                 # ipv4 or an ipv6 address.
                 host, port = splithost(str(self.transport.host))
-                if host:
-                    self.request.META["SERVER_NAME"] = host
-                else:
-                    self.request.META["SERVER_NAME"] = "localhost"
-                if port:
-                    self.request.META["SERVER_PORT"] = port
-                else:
-                    self.request.META["SERVER_PORT"] = 5248
+
+                # Create the request for the handlers for this connection.
+                self.request = HttpRequest()
+                self.request.user = self.user
+                self.request.META.update(
+                    {
+                        "HTTP_USER_AGENT": self.transport.user_agent,
+                        "REMOTE_ADDR": self.transport.ip_address,
+                        "SERVER_NAME": host or "localhost",
+                        "SERVER_PORT": port or 5248,
+                    }
+                )
 
                 # Be sure to process messages after the metadata is populated,
                 # in order to avoid bug #1802390.
@@ -165,7 +160,7 @@ class WebSocketProtocol(Protocol):
         if field not in message:
             self.loseConnection(
                 STATUSES.PROTOCOL_ERROR,
-                "Missing %s field in the received message." % field,
+                f"Missing {field} field in the received message.",
             )
             return None
         return message[field]
@@ -182,17 +177,9 @@ class WebSocketProtocol(Protocol):
             return None
         auth_backend = load_backend(backend)
         if user_id is not None and auth_backend is not None:
-            user = auth_backend.get_user(user_id)
-            # Get the user again prefetching the SSHKey for the user. This is
-            # done so a query is not made for each action that is possible on
-            # a node in the node listing.
-            return (
-                User.objects.filter(id=user.id)
-                .prefetch_related("sshkey_set")
-                .first()
-            )
-        else:
-            return None
+            return auth_backend.get_user(user_id)
+
+        return None
 
     @deferred
     def authenticate(self, session_id, csrftoken):
@@ -262,7 +249,7 @@ class WebSocketProtocol(Protocol):
 
         # Process all the messages in the queue.
         handledMessages = []
-        while len(self.messages) > 0:
+        while self.messages:
             message = self.messages.popleft()
             handledMessages.append(message)
             msg_type = self.getMessageField(message, "type")
@@ -505,17 +492,17 @@ class WebSocketFactory(Factory):
         d = self.sendOnNotifyToController(ident)
         d.addErrback(
             log.err,
-            "Failed to send 'update' notification for rack controller(%s) "
-            "when RPC event fired." % ident,
+            f"Failed to send 'update' notification for rack controller({ident}) "
+            "when RPC event fired.",
         )
         return d
 
     def sendOnNotifyToController(self, system_id):
         """Send onNotify to the `ControllerHandler` for `system_id`."""
         rack_handler = self.getHandler("controller")
-        if rack_handler is None:
-            return fail("Unable to get the 'controller' handler.")
-        else:
+        if rack_handler:
             return self.onNotify(
                 rack_handler, "controller", "update", system_id
             )
+        else:
+            return fail("Unable to get the 'controller' handler.")
