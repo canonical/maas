@@ -16,8 +16,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_TYPE,
 )
-from maasserver.models.config import Config
-from maasserver.models.packagerepository import PackageRepository
+from maasserver.models import Config, ControllerInfo, PackageRepository
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
@@ -25,6 +24,7 @@ from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
+from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
 
@@ -278,6 +278,28 @@ class TestGeneralHandler(MAASServerTestCase):
             general, "get_maas_version"
         ).return_value = MAASVersion.from_string("1.2.3~rc1")
         self.assertEqual(handler.version({}), "1.2.3~rc1")
+
+    def test_target_version(self):
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={
+                    "version": "3.0.0~beta2-123-g.asdf",
+                    "revision": "1234",
+                },
+                update={
+                    "version": "3.0.0~beta3-456-g.cafe",
+                    "revision": "5678",
+                },
+                channel="3.0/beta",
+            ),
+        )
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.target_version({})
+        self.assertEqual(result["version"], "3.0.0~beta3-456-g.cafe")
+        self.assertEqual(result["snap_channel"], "3.0/beta")
+        self.assertIsNotNone(result["first_reported"])
 
     def test_power_types(self):
         handler = GeneralHandler(factory.make_User(), {}, None)

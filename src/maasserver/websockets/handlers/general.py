@@ -17,7 +17,10 @@ from maasserver.enum import (
 )
 from maasserver.models.bootresource import BootResource
 from maasserver.models.config import Config
-from maasserver.models.controllerinfo import get_maas_version
+from maasserver.models.controllerinfo import (
+    get_maas_version,
+    get_target_version,
+)
 from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
@@ -39,24 +42,25 @@ class GeneralHandler(Handler):
     class Meta:
         allowed_methods = [
             "architectures",
-            "known_architectures",
-            "pockets_to_disable",
-            "components_to_disable",
-            "hwe_kernels",
-            "min_hwe_kernels",
-            "default_min_hwe_kernel",
-            "osinfo",
-            "machine_actions",
-            "device_actions",
-            "rack_controller_actions",
-            "region_controller_actions",
-            "region_and_rack_controller_actions",
-            "random_hostname",
             "bond_options",
-            "version",
-            "power_types",
-            "release_options",
+            "components_to_disable",
+            "default_min_hwe_kernel",
+            "device_actions",
+            "hwe_kernels",
+            "known_architectures",
+            "machine_actions",
+            "min_hwe_kernels",
             "navigation_options",
+            "osinfo",
+            "pockets_to_disable",
+            "power_types",
+            "rack_controller_actions",
+            "random_hostname",
+            "region_and_rack_controller_actions",
+            "region_controller_actions",
+            "release_options",
+            "target_version",
+            "version",
         ]
 
     def architectures(self, params):
@@ -185,6 +189,15 @@ class GeneralHandler(Handler):
     def version(self, params):
         """Return the MAAS version."""
         return str(get_maas_version())
+
+    def target_version(self, params):
+        """Return the deployment target version."""
+        target_version = get_target_version()
+        return {
+            "version": str(target_version.version),
+            "snap_channel": str(target_version.snap_channel),
+            "first_reported": target_version.first_reported,
+        }
 
     def power_types(self, params):
         """Return all power types."""
