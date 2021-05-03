@@ -18,7 +18,7 @@ from testtools.matchers import (
 import yaml
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Config, NodeMetadata
+from maasserver.models import Config, ControllerInfo, NodeMetadata
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
@@ -36,7 +36,6 @@ from metadataserver.vendor_data import (
     generate_system_info,
     get_vendor_data,
 )
-from provisioningserver.utils import version
 
 
 class TestGetVendorData(MAASServerTestCase):
@@ -47,17 +46,18 @@ class TestGetVendorData(MAASServerTestCase):
         self.assertThat(get_vendor_data(node, None), IsInstance(dict))
 
     def test_combines_key_values(self):
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
         secret = factory.make_string()
         Config.objects.set_config("rpc_shared_secret", secret)
         node = factory.make_Node(
             netboot=False, install_rackd=True, osystem="ubuntu"
         )
         config = get_vendor_data(node, None)
-        channel = version.get_maas_version_track_channel()
         self.assertEqual(
             config["runcmd"],
             [
-                f"snap install maas --channel={channel}",
+                "snap install maas --channel=3.0/stable",
                 f"/snap/bin/maas init rack --maas-url http://localhost:5240/MAAS --secret {secret}",
                 "rm -rf /run/netplan",
             ],
@@ -256,13 +256,14 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         self.assertEqual(list(configuration), [])
 
     def test_yields_configuration_with_ubuntu(self):
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
         node = factory.make_Node(
             osystem="ubuntu", netboot=False, install_rackd=True
         )
         configuration = generate_rack_controller_configuration(node)
         secret = "1234"
         Config.objects.set_config("rpc_shared_secret", secret)
-        channel = version.get_maas_version_track_channel()
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
         )
@@ -272,7 +273,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                 (
                     "runcmd",
                     [
-                        f"snap install maas --channel={channel}",
+                        "snap install maas --channel=3.0/stable",
                         f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
                     ],
                 ),
@@ -287,13 +288,14 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         self.assertEqual(list(configuration), [])
 
     def test_yields_configuration_when_machine_install_rackd_true(self):
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
         node = factory.make_Node(
             osystem="ubuntu", netboot=False, install_rackd=True
         )
         configuration = generate_rack_controller_configuration(node)
         secret = "1234"
         Config.objects.set_config("rpc_shared_secret", secret)
-        channel = version.get_maas_version_track_channel()
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
         )
@@ -303,7 +305,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
                 (
                     "runcmd",
                     [
-                        f"snap install maas --channel={channel}",
+                        "snap install maas --channel=3.0/stable",
                         f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
                     ],
                 ),

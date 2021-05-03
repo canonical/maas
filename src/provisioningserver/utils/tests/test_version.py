@@ -331,38 +331,3 @@ class TestGetRunningVersion(TestVersionTestCase):
         self.assertNotIn(first_return_value, [b"", "", None])
         self.assertEqual(first_return_value, second_return_value)
         mock_get_snap_versions.assert_called_once()
-
-
-class TestGetMAASVersionTrackChannel(TestVersionTestCase):
-
-    scenarios = [
-        (
-            "alpha",
-            {
-                "version": "2.7.0~alpha1-6192-g.10a4565-0ubuntu1",
-                "output": "2.7/edge",
-            },
-        ),
-        (
-            "beta",
-            {"version": "2.7.0~beta1-6192-g.10a4565", "output": "2.7/beta"},
-        ),
-        (
-            "rc",
-            {"version": "2.7.0~rc1-6192-g10a4565", "output": "2.7/candidate"},
-        ),
-        (
-            "final",
-            {
-                "version": "2.7.0-6192-g10a4565-0ubuntu1",
-                "output": "2.7/stable",
-            },
-        ),
-    ]
-
-    def test_get_maas_version_track_channel(self):
-        self.patch(
-            version, "get_running_version"
-        ).return_value = MAASVersion.from_string(self.version)
-        result = version.get_maas_version_track_channel()
-        self.assertEqual(result, self.output)

@@ -143,15 +143,6 @@ def get_running_version() -> MAASVersion:
     return maas_version
 
 
-def get_maas_version_track_channel():
-    """Return the track/channel where a snap of this version can be found."""
-    # if running from source, default to current version
-    version = get_running_version()
-    risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
-    risk = risk_map.get(version.qualifier_type, "stable")
-    return f"{version.major}.{version.minor}/{risk}"
-
-
 def _get_version_from_python_package():
     """Return a string with the version from the python package."""
     parsed_version = DISTRIBUTION.parsed_version

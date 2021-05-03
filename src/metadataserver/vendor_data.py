@@ -15,6 +15,7 @@ import yaml
 
 from maasserver import ntp
 from maasserver.models import Config, NodeMetadata
+from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
@@ -22,7 +23,6 @@ from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.server_address import get_maas_facing_server_host
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
-from provisioningserver.utils.version import get_maas_version_track_channel
 
 LXD_PASSWORD_METADATA_KEY = "lxd_password"
 VIRSH_PASSWORD_METADATA_KEY = "virsh_password"
@@ -114,13 +114,12 @@ def generate_rack_controller_configuration(node):
         and node.install_rackd
         and node.osystem in ("ubuntu", "ubuntu-core")
     ):
-        maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
-            node.get_boot_rack_controller()
-        )
+        hostname = get_maas_facing_server_host(node.get_boot_rack_controller())
+        maas_url = f"http://{hostname}:5240/MAAS"
         secret = Config.objects.get_config("rpc_shared_secret")
-        source = get_maas_version_track_channel()
+        channel = str(get_target_version().snap_channel)
         yield "runcmd", [
-            f"snap install maas --channel={source}",
+            f"snap install maas --channel={channel}",
             f"/snap/bin/maas init rack --maas-url {maas_url} --secret {secret}",
         ]
 
