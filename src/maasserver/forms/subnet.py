@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Subnet form."""
@@ -16,6 +16,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.vlan import VLAN
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import get_one
+from provisioningserver.boot import BootMethodRegistry
 
 
 class SubnetForm(MAASModelForm):
@@ -53,6 +54,7 @@ class SubnetForm(MAASModelForm):
             "allow_dns",
             "allow_proxy",
             "managed",
+            "disabled_boot_architectures",
         )
 
     def __init__(self, *args, **kwargs):
@@ -82,6 +84,7 @@ class SubnetForm(MAASModelForm):
             cleaned_data["dns_servers"] = self.data.getlist("dns_servers")
         cleaned_data = self._clean_name(cleaned_data)
         cleaned_data = self._clean_dns_servers(cleaned_data)
+        cleaned_data = self._clean_disabled_boot_architectures(cleaned_data)
         if self.instance.id is None:
             # We only allow the helpers when creating. When updating we require
             # the VLAN specifically. This is because we cannot make a correct
@@ -171,4 +174,37 @@ class SubnetForm(MAASModelForm):
             if ip_list_cleaned is not None:
                 clean_dns_servers += ip_list_cleaned.split(" ")
         cleaned_data["dns_servers"] = clean_dns_servers
+        return cleaned_data
+
+    def _clean_disabled_boot_architectures(self, cleaned_data):
+        disabled_boot_architectures = cleaned_data.get(
+            "disabled_boot_architectures"
+        )
+        if disabled_boot_architectures is None:
+            return cleaned_data
+        disabled_arches = []
+        for disabled_arch in disabled_boot_architectures:
+            disabled_arches += disabled_arch.split(" ")
+        cleaned_arches = set()
+        octet_to_boot_method = {
+            boot_method.arch_octet: boot_method
+            for _, boot_method in BootMethodRegistry
+            if boot_method.arch_octet
+        }
+        for disabled_arch in disabled_arches:
+            boot_method = BootMethodRegistry.get_item(
+                disabled_arch,
+                octet_to_boot_method.get(disabled_arch.replace("0x", "00:")),
+            )
+            if boot_method is None or (
+                not boot_method.arch_octet and not boot_method.path_prefix_http
+            ):
+                set_form_error(
+                    self,
+                    "disabled_boot_architectures",
+                    f"Unknown boot architecture {disabled_arch}",
+                )
+            else:
+                cleaned_arches.add(boot_method.name)
+        cleaned_data["disabled_boot_architectures"] = list(cleaned_arches)
         return cleaned_data
