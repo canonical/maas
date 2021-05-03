@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test object factories."""
@@ -137,6 +137,7 @@ from metadataserver.enum import (
 )
 from metadataserver.fields import Bin
 from metadataserver.models import Script, ScriptResult, ScriptSet
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import inet_ntop
 
@@ -1339,6 +1340,7 @@ class Factory(maastesting.factory.Factory):
         managed=True,
         space=RANDOM_OR_NONE,
         description="",
+        disabled_boot_architectures=None,
         **kwargs,
     ):
         if name is None:
@@ -1367,6 +1369,18 @@ class Factory(maastesting.factory.Factory):
             dns_servers = [
                 self.make_ip_address() for _ in range(random.randint(1, 3))
             ]
+        if disabled_boot_architectures is None and factory.pick_bool():
+            disabled_boot_architectures = random.sample(
+                [
+                    boot_method.name
+                    for _, boot_method in BootMethodRegistry
+                    if boot_method.arch_octet or boot_method.path_prefix_http
+                ],
+                3,
+            )
+        elif disabled_boot_architectures is None:
+            disabled_boot_architectures = []
+
         subnet = Subnet(
             name=name,
             vlan=vlan,
@@ -1378,6 +1392,7 @@ class Factory(maastesting.factory.Factory):
             allow_proxy=allow_proxy,
             managed=managed,
             description=description,
+            disabled_boot_architectures=disabled_boot_architectures,
             **kwargs,
         )
         subnet.save()

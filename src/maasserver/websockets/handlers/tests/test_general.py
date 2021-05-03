@@ -1,4 +1,4 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.general`"""
@@ -24,6 +24,7 @@ from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
@@ -328,3 +329,26 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_navigation_options(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual({}, handler.navigation_options({}))
+
+    def test_known_boot_architectures(self):
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        self.assertEqual(
+            [
+                {
+                    "name": boot_method.name,
+                    "bios_boot_method": boot_method.bios_boot_method,
+                    "bootloader_arches": "/".join(
+                        boot_method.bootloader_arches
+                    ),
+                    "arch_octet": boot_method.arch_octet,
+                    "protocol": (
+                        "http"
+                        if boot_method.http_url or boot_method.user_class
+                        else "tftp"
+                    ),
+                }
+                for _, boot_method in BootMethodRegistry
+                if boot_method.arch_octet or boot_method.user_class
+            ],
+            handler.known_boot_architectures({}),
+        )

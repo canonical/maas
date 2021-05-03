@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for subnets."""
@@ -380,6 +380,23 @@ class Subnet(CleanSave, TimestampedModel):
 
     managed = BooleanField(
         editable=True, blank=False, null=False, default=True
+    )
+
+    # MAAS models VLANs by VID, all physical networks which use the same VID
+    # share the same VLAN model. Many systems only support network booting on
+    # VID 0 making it very likely a user with separate physical networks will
+    # use VID 0 across all of them.
+    #
+    # MAAS currently configures bootloaders in the subnet stanza in dhcpd.conf.
+    # To allow disabling boot architectures on seperate physical networks which
+    # use the same VID configuration of which boot architectures are disabled
+    # is stored on the subnet model.
+    disabled_boot_architectures = ArrayField(
+        CharField(max_length=64),
+        blank=True,
+        editable=True,
+        null=False,
+        default=list,
     )
 
     @property

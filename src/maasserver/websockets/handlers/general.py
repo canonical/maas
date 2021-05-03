@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The general handler for the WebSocket connection."""
@@ -34,6 +34,7 @@ from maasserver.utils.osystems import (
     list_release_choices,
 )
 from maasserver.websockets.base import Handler
+from provisioningserver.boot import BootMethodRegistry
 
 
 class GeneralHandler(Handler):
@@ -48,6 +49,7 @@ class GeneralHandler(Handler):
             "device_actions",
             "hwe_kernels",
             "known_architectures",
+            "known_boot_architectures",
             "machine_actions",
             "min_hwe_kernels",
             "navigation_options",
@@ -220,3 +222,21 @@ class GeneralHandler(Handler):
     def navigation_options(self, params):
         """Return the options for navigation."""
         return {}
+
+    def known_boot_architectures(self, params):
+        """Return all known boot architectures."""
+        return [
+            {
+                "name": boot_method.name,
+                "bios_boot_method": boot_method.bios_boot_method,
+                "bootloader_arches": "/".join(boot_method.bootloader_arches),
+                "arch_octet": boot_method.arch_octet,
+                "protocol": (
+                    "http"
+                    if boot_method.http_url or boot_method.user_class
+                    else "tftp"
+                ),
+            }
+            for _, boot_method in BootMethodRegistry
+            if boot_method.arch_octet or boot_method.user_class
+        ]

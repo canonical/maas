@@ -1,4 +1,4 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.websockets.handlers.subnet`"""
@@ -47,6 +47,7 @@ class TestSubnetHandler(MAASServerTestCase):
             "gateway_ip": subnet.gateway_ip,
             "active_discovery": subnet.active_discovery,
             "managed": subnet.managed,
+            "disabled_boot_architectures": subnet.disabled_boot_architectures,
         }
         full_range = subnet.get_iprange_usage()
         metadata = IPRangeStatistics(full_range)
