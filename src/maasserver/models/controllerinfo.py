@@ -4,6 +4,7 @@
 
 from collections import Counter
 from datetime import datetime
+import re
 from typing import NamedTuple, Optional
 
 from django.db.models import (
@@ -26,6 +27,10 @@ from provisioningserver.enum import (
 )
 from provisioningserver.utils.snap import SnapChannel
 from provisioningserver.utils.version import MAASVersion
+
+PPA_URL_RE = re.compile(
+    r"http://ppa.launchpad.net/(?P<ppa>\w+/[\w\.]+)/ubuntu/ (?P<release>\w+)/main$"
+)
 
 
 class ControllerInfoManager(Manager):
@@ -56,7 +61,9 @@ class ControllerInfoManager(Manager):
                 }
             )
         elif versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
-            details["update_origin"] = versions.current.origin
+            details["update_origin"] = self._parse_deb_origin(
+                versions.current.origin
+            )
 
         if versions.update:
             details.update(
@@ -68,7 +75,9 @@ class ControllerInfoManager(Manager):
             if versions.install_type == CONTROLLER_INSTALL_TYPE.DEB:
                 # override the update origin as it might be different from the
                 # installed one
-                details["update_origin"] = versions.update.origin
+                details["update_origin"] = self._parse_deb_origin(
+                    versions.update.origin
+                )
             elif versions.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
                 details["snap_update_revision"] = versions.update.revision
 
@@ -88,6 +97,12 @@ class ControllerInfoManager(Manager):
         for key, value in details.items():
             setattr(info, key, value)
         info.save()
+
+    def _parse_deb_origin(self, origin):
+        match = PPA_URL_RE.match(origin)
+        if match:
+            return f"ppa:{match['ppa']}"
+        return origin
 
 
 class ControllerInfo(CleanSave, TimestampedModel):

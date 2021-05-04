@@ -127,6 +127,37 @@ class TestControllerInfo(MAASServerTestCase):
         )
         self.assertIsNone(controller_info.update_first_reported)
 
+    def test_set_versions_info_deb_ppa(self):
+        controller = factory.make_RackController()
+        versions = DebVersionsInfo(
+            current={
+                "version": "3.0.0~alpha1-111-g.deadbeef",
+                "origin": "http://ppa.launchpad.net/maas/3.0/ubuntu/ focal/main",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(controller, versions)
+        self.assertEqual(
+            controller.controllerinfo.update_origin,
+            "ppa:maas/3.0",
+        )
+
+    def test_set_versions_info_deb_ppa_update(self):
+        controller = factory.make_RackController()
+        versions = DebVersionsInfo(
+            current={
+                "version": "3.0.0~alpha1-111-g.deadbeef",
+            },
+            update={
+                "version": "3.0.1-222-g.cafecafe",
+                "origin": "http://ppa.launchpad.net/maas/3.0/ubuntu/ focal/main",
+            },
+        )
+        ControllerInfo.objects.set_versions_info(controller, versions)
+        self.assertEqual(
+            controller.controllerinfo.update_origin,
+            "ppa:maas/3.0",
+        )
+
     def test_set_versions_info_change_type(self):
         controller = factory.make_RackController()
         deb_versions = DebVersionsInfo(
