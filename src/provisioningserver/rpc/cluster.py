@@ -513,7 +513,11 @@ class _ConfigureDHCP_V2(amp.Command):
                                         optional=True,
                                     ),
                                 ),
-                            ]
+                                (
+                                    b"disabled_boot_architectures",
+                                    amp.ListOf(amp.Unicode(optional=True)),
+                                ),
+                            ],
                         ),
                     ),
                     (b"mtu", amp.Integer(optional=True)),

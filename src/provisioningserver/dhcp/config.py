@@ -141,63 +141,68 @@ class DHCPConfigError(Exception):
     """Exception raised for errors processing the DHCP config."""
 
 
-def compose_conditional_bootloader(ipv6, rack_ip=None):
+def compose_conditional_bootloader(
+    ipv6, rack_ip=None, disabled_boot_architectures=None
+):
+    if disabled_boot_architectures is None:
+        disabled_boot_architectures = []
     output = ""
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
-        if method.arch_octet is not None:
-            use_http = method.path_prefix_http or method.http_url
-            schema = "http" if use_http else "tftp"
-            port = ":5248" if use_http else ""
-            url = ("%s://[%s]%s/" if ipv6 else "%s://%s%s/") % (
-                schema,
-                rack_ip,
-                port,
-            )
-            # Set the URL to pull from '/images/' so nginx handles the request.
-            # Requests to '/' are forwarded to the rack's http service to
-            # handle which should only be done for configuration files.
-            if method.http_url:
-                url = f"{url}images/"
-            path_prefix = method.path_prefix
-            if path_prefix:
-                url += path_prefix
-            if method.path_prefix_http:
-                # Force an absolute URL as the path prefix.
-                path_prefix = url
-            url += method.bootloader_path
-            if isinstance(method.arch_octet, str):
-                method.arch_octet = [method.arch_octet]
-            bootloader = method.bootloader_path
-            if method.absolute_url_as_filename:
-                bootloader = url
-                # path_prefix gets removed with this setting, because a
-                # absolute url is provided as the bootloader.
-                path_prefix = None
-            for arch_octet in method.arch_octet:
-                output += (
-                    CONDITIONAL_BOOTLOADER.substitute(
-                        ipv6=ipv6,
-                        rack_ip=rack_ip,
-                        url=url,
-                        behaviour=next(behaviour),
-                        arch_octet=arch_octet,
-                        user_class=method.user_class,
-                        bootloader=bootloader,
-                        path_prefix=path_prefix,
-                        path_prefix_force=method.path_prefix_force,
-                        http_client=method.http_url,
-                        name=method.name,
-                    ).strip()
-                    + " "
-                )
+        if method.arch_octet is None and method.user_class is None:
+            continue
+        elif name in disabled_boot_architectures:
+            continue
+
+        use_http = method.path_prefix_http or method.http_url
+        schema = "http" if use_http else "tftp"
+        port = ":5248" if use_http else ""
+        url = ("%s://[%s]%s/" if ipv6 else "%s://%s%s/") % (
+            schema,
+            rack_ip,
+            port,
+        )
+        # Set the URL to pull from '/images/' so nginx handles the request.
+        # Requests to '/' are forwarded to the rack's http service to
+        # handle which should only be done for configuration files.
+        if method.http_url:
+            url = f"{url}images/"
+        path_prefix = method.path_prefix
+        if path_prefix:
+            url += path_prefix
+        if method.path_prefix_http:
+            # Force an absolute URL as the path prefix.
+            path_prefix = url
+        url += method.bootloader_path
+        bootloader = method.bootloader_path
+        if method.absolute_url_as_filename:
+            bootloader = url
+            # path_prefix gets removed with this setting, because a
+            # absolute url is provided as the bootloader.
+            path_prefix = None
+        output += (
+            CONDITIONAL_BOOTLOADER.substitute(
+                ipv6=ipv6,
+                rack_ip=rack_ip,
+                url=url,
+                behaviour=next(behaviour),
+                arch_octet=method.arch_octet,
+                user_class=method.user_class,
+                bootloader=bootloader,
+                path_prefix=path_prefix,
+                path_prefix_force=method.path_prefix_force,
+                http_client=method.http_url,
+                name=method.name,
+            ).strip()
+            + " "
+        )
 
     # The PXEBootMethod is used in an else statement for the generated
     # dhcpd config. This ensures that a booting node that does not
     # provide an architecture octet, or architectures that emulate
     # uefi_amd64 or pxelinux can still boot.
     method = BootMethodRegistry.get_item("uefi_amd64" if ipv6 else "pxe")
-    if method is not None:
+    if method is not None and method.name not in disabled_boot_architectures:
         use_http = method.path_prefix_http or method.http_url
         schema = "http" if use_http else "tftp"
         port = ":5248" if use_http else ""
@@ -437,7 +442,7 @@ def get_config_v4(
             if rack_ip is not None:
                 subnet["next_server"] = rack_ip
                 subnet["bootloader"] = compose_conditional_bootloader(
-                    False, rack_ip
+                    False, rack_ip, subnet.get("disabled_boot_architectures")
                 )
             ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)
@@ -524,7 +529,7 @@ def _process_network_parameters_v6(failover_peers, shared_networks):
             )
             if rack_ip is not None:
                 subnet["bootloader"] = compose_conditional_bootloader(
-                    True, rack_ip
+                    True, rack_ip, subnet.get("disabled_boot_architectures")
                 )
             ntp_servers = subnet["ntp_servers"]  # Is a list.
             ntp_servers_ipv4, ntp_servers_ipv6 = _get_addresses(*ntp_servers)

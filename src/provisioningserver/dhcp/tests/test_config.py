@@ -54,7 +54,9 @@ def is_ip_address(string):
         return True
 
 
-def make_sample_params_only(ipv6=False, with_interface=False):
+def make_sample_params_only(
+    ipv6=False, with_interface=False, disabled_boot_architectures=None
+):
     """Return a dict of arbitrary DHCP configuration parameters.
 
     :param ipv6: When true, prepare configuration for a DHCPv6 server,
@@ -63,7 +65,11 @@ def make_sample_params_only(ipv6=False, with_interface=False):
     """
     failover_peers = [make_failover_peer_config() for _ in range(3)]
     shared_networks = [
-        make_shared_network(ipv6=ipv6, with_interface=with_interface)
+        make_shared_network(
+            ipv6=ipv6,
+            with_interface=with_interface,
+            disabled_boot_architectures=disabled_boot_architectures,
+        )
         for _ in range(3)
     ]
 
@@ -670,6 +676,30 @@ class TestComposeConditionalBootloader(MAASTestCase):
                     output,
                     Contains('option dhcp6.vendor-class 0 10 "HTTPClient";'),
                 )
+
+    def test_disabled_boot_architecture(self):
+        if factory.pick_bool():
+            ipv6 = True
+            ip = factory.make_ipv6_address()
+        else:
+            ipv6 = False
+            ip = factory.make_ipv4_address()
+        disabled_arches = random.sample(
+            [
+                boot_method
+                for _, boot_method in BootMethodRegistry
+                if boot_method.arch_octet or boot_method.user_class
+            ],
+            3,
+        )
+        output = config.compose_conditional_bootloader(
+            ipv6, ip, [bm.name for bm in disabled_arches]
+        )
+        for disabled_arch in disabled_arches:
+            if disabled_arch.arch_octet:
+                self.assertNotIn(disabled_arch.arch_octet, output)
+            else:
+                self.assertNotIn(disabled_arch.user_class, output)
 
 
 class TestGetAddresses(MAASTestCase):

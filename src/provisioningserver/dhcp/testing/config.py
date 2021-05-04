@@ -94,7 +94,11 @@ def make_host(
 
 
 def make_subnet_config(
-    network=None, pools=None, ipv6=False, dhcp_snippets=None
+    network=None,
+    pools=None,
+    ipv6=False,
+    dhcp_snippets=None,
+    disabled_boot_architectures=None,
 ):
     """Return complete DHCP configuration dict for a subnet."""
     if network is None:
@@ -129,17 +133,30 @@ def make_subnet_config(
         "router_ip": factory.pick_ip_in_network(network),
         "pools": pools,
         "dhcp_snippets": dhcp_snippets,
+        "disabled_boot_architectures": disabled_boot_architectures
+        if disabled_boot_architectures
+        else [],
     }
 
 
 def make_shared_network(
-    name=None, subnets=None, ipv6=False, with_interface=False
+    name=None,
+    subnets=None,
+    ipv6=False,
+    with_interface=False,
+    disabled_boot_architectures=None,
 ):
     """Return complete DHCP configuration dict for a shared network."""
     if name is None:
         name = factory.make_name("vlan")
     if subnets is None:
-        subnets = [make_subnet_config(ipv6=ipv6) for _ in range(3)]
+        subnets = [
+            make_subnet_config(
+                ipv6=ipv6,
+                disabled_boot_architectures=disabled_boot_architectures,
+            )
+            for _ in range(3)
+        ]
     data = {"name": name, "mtu": 1500, "subnets": subnets}
     if with_interface:
         data["interface"] = factory.make_name("eth")
@@ -160,6 +177,7 @@ def make_shared_network_v1(name=None, subnets=None, ipv6=False):
         subnet["ntp_server"] = " ".join(
             str(server) for server in subnet.pop("ntp_servers")
         )
+        del subnet["disabled_boot_architectures"]
     return shared_network
 
 

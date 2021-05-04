@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC helpers relating to DHCP."""
@@ -552,3 +552,5 @@ def downgrade_shared_networks(shared_networks):
                 subnet["dns_servers"] = ", ".join(map(str, dns_servers))
             if "ntp_servers" in subnet:
                 subnet["ntp_server"] = ", ".join(subnet.pop("ntp_servers"))
+            if "disabled_boot_architectures" in subnet:
+                del subnet["disabled_boot_architectures"]

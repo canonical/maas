@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """DHCP management module."""
@@ -468,6 +468,7 @@ def make_subnet_config(
             for dhcp_snippet in subnets_dhcp_snippets
             if dhcp_snippet.subnet == subnet
         ],
+        "disabled_boot_architectures": subnet.disabled_boot_architectures,
     }
     if search_list is not None:
         subnet_config["search_list"] = search_list

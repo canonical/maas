@@ -1,4 +1,4 @@
-# Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for DHCP management."""
@@ -1178,6 +1178,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                     "search_list",
                     "pools",
                     "dhcp_snippets",
+                    "disabled_boot_architectures",
                 ]
             ),
         )
@@ -1680,6 +1681,26 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             config["dhcp_snippets"],
         )
 
+    def test_returns_disabled_boot_architectures(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        default_domain = Domain.objects.get_default_domain()
+        config = dhcp.make_subnet_config(
+            rack_controller,
+            subnet,
+            [factory.make_ipv4_address()],
+            [factory.make_name("ntp")],
+            default_domain,
+        )
+        self.assertEqual(
+            subnet.disabled_boot_architectures,
+            config["disabled_boot_architectures"],
+        )
+
     def test_subnet_without_gateway_restricts_nameservers(self):
         network1 = IPNetwork("10.9.8.0/24")
         network2 = IPNetwork("10.9.9.0/24")
@@ -2169,6 +2190,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                             }
                             for dhcp_snippet in ha_dhcp_snippets
                         ],
+                        "disabled_boot_architectures": ha_subnet.disabled_boot_architectures,
                         "pools": [
                             {
                                 "ip_range_low": str(ip_range.start_ip),
@@ -2202,6 +2224,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                             }
                             for dhcp_snippet in other_dhcp_snippets
                         ],
+                        "disabled_boot_architectures": other_subnet.disabled_boot_architectures,
                         "pools": [
                             {
                                 "ip_range_low": str(ip_range.start_ip),
@@ -2325,6 +2348,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                             }
                             for dhcp_snippet in ha_dhcp_snippets
                         ],
+                        "disabled_boot_architectures": ha_subnet.disabled_boot_architectures,
                         "pools": [
                             {
                                 "ip_range_low": str(ip_range.start_ip),
@@ -2353,6 +2377,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                             }
                             for dhcp_snippet in other_dhcp_snippets
                         ],
+                        "disabled_boot_architectures": other_subnet.disabled_boot_architectures,
                         "pools": [
                             {
                                 "ip_range_low": str(ip_range.start_ip),
