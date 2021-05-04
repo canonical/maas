@@ -27,7 +27,10 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
-from metadataserver.builtin_scripts.network import update_node_interfaces
+from metadataserver.builtin_scripts.network import (
+    is_commissioning,
+    update_node_interfaces,
+)
 from metadataserver.enum import HARDWARE_TYPE, SCRIPT_STATUS
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
@@ -40,10 +43,6 @@ from provisioningserver.utils import kernel_to_debian_architecture
 from provisioningserver.utils.lxd import parse_lxd_cpuinfo, parse_lxd_networks
 
 logger = logging.getLogger(__name__)
-
-
-class DuplicateMACs(Exception):
-    """Exception for when duplicate MAC addresses are in commissioning data."""
 
 
 SWITCH_TAG_NAME = "switch"
@@ -67,7 +66,6 @@ SWITCH_HARDWARE = [
         "Ethernet Switch ASIC",
     },
 ]
-SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
 
 
 def _create_default_physical_interface(
@@ -115,10 +113,6 @@ def parse_interfaces(node, data):
 
     def process_port(card, port):
         mac = port.get("address")
-        if mac in (None, SWITCH_OPENBMC_MAC):
-            # Ignore loopback (with no MAC) and OpenBMC interfaces on switches
-            # which all share the same, hard-coded OpenBMC MAC address.
-            return
 
         interface = {
             "name": port.get("id"),
@@ -136,12 +130,6 @@ def parse_interfaces(node, data):
         # Assign the IP addresses to this interface
         link = ifaces_info.get(interface["name"])
         interface["ips"] = link["addresses"] if link else []
-
-        if mac in interfaces:
-            raise DuplicateMACs(
-                f"Duplicated MAC address({mac}) on "
-                f"{interfaces[mac]['name']} and {interface['name']}"
-            )
 
         interfaces[mac] = interface
 
@@ -264,78 +252,19 @@ def update_node_network_information(node, data, numa_nodes):
         node.save(update_fields=["skip_networking"])
         return network_devices
 
-    try:
-        interfaces_info = parse_interfaces(node, data)
-    except DuplicateMACs:
-        if node.is_controller or node.is_pod:
-            # Controllers and Pods send commissioning information from a
-            # deployed machine. If the machine is using a bond multiple
-            # interfaces will use the same MAC address. Since MAAS identifies
-            # interfaces by MAC skip updating interface information.
-            # When MAAS gains the ability to model LXD's commissioning
-            # information this can be removed.
-            return
-        else:
-            # Duplicate MACs are not expected on machines, raise the
-            # exception so this can be handled.
-            raise
+    update_node_interfaces(node, data)
+    interfaces_info = parse_interfaces(node, data)
     current_interfaces = set()
 
     for mac, iface in interfaces_info.items():
-        ifname = iface.get("name")
         link_connected = iface.get("link_connected")
-        interface_speed = iface.get("interface_speed")
-        link_speed = iface.get("link_speed")
-        numa_index = iface.get("numa_node")
-        vendor = iface.get("vendor")
-        product = iface.get("product")
-        firmware_version = iface.get("firmware_version")
         sriov_max_vf = iface.get("sriov_max_vf")
 
         try:
             interface = PhysicalInterface.objects.get(mac_address=mac)
-            if interface.node == node:
-                # Interface already exists on this node, so just update the NIC
-                # info
-                update_interface_details(interface, interfaces_info)
-            else:
-                logger.warning(
-                    "Interface with MAC %s moved from node %s to %s. "
-                    "(The existing interface will be deleted.)"
-                    % (interface.mac_address, interface.node.fqdn, node.fqdn)
-                )
-                interface.delete()
-                interface = _create_default_physical_interface(
-                    node,
-                    ifname,
-                    mac,
-                    link_connected,
-                    interface_speed=interface_speed,
-                    link_speed=link_speed,
-                    numa_node=numa_nodes[numa_index],
-                    vendor=vendor,
-                    product=product,
-                    firmware_version=firmware_version,
-                    sriov_max_vf=sriov_max_vf,
-                )
         except PhysicalInterface.DoesNotExist:
-            # Since MAC addresses didn't match, delete any interface that
-            # has a matching (name, node) pair and create a new interface
-            # with the supplied information.
-            PhysicalInterface.objects.filter(name=ifname, node=node).delete()
-            interface = _create_default_physical_interface(
-                node,
-                ifname,
-                mac,
-                link_connected,
-                interface_speed=interface_speed,
-                link_speed=link_speed,
-                numa_node=numa_nodes[numa_index],
-                vendor=vendor,
-                product=product,
-                firmware_version=firmware_version,
-                sriov_max_vf=sriov_max_vf,
-            )
+            continue
+        interface.numa_node = numa_nodes[iface["numa_node"]]
 
         if iface.get("pci_address"):
             network_devices[iface.get("pci_address")] = interface
@@ -343,7 +272,6 @@ def update_node_network_information(node, data, numa_nodes):
             network_devices[iface.get("usb_address")] = interface
 
         current_interfaces.add(interface)
-        interface.update_ip_addresses(iface.get("ips"))
         if sriov_max_vf:
             interface.add_tag("sriov")
             interface.save(update_fields=["tags"])
@@ -353,6 +281,7 @@ def update_node_network_information(node, data, numa_nodes):
             if interface.vlan is not None:
                 interface.vlan = None
                 interface.save(update_fields=["vlan", "updated"])
+        interface.save()
 
     # If a machine boots by UUID before commissioning(s390x) no boot_interface
     # will be set as interfaces existed during boot. Set it using the
@@ -361,14 +290,13 @@ def update_node_network_information(node, data, numa_nodes):
         subnet = Subnet.objects.get_best_subnet_for_ip(node.boot_cluster_ip)
         if subnet:
             node.boot_interface = node.interface_set.filter(
-                id__in=[interface.id for interface in current_interfaces],
                 vlan=subnet.vlan,
             ).first()
             node.save(update_fields=["boot_interface"])
 
     # Pods are already deployed. MAAS captures the network state, it does
     # not change it.
-    if not (node.status == NODE_STATUS.DEPLOYED and node.is_pod):
+    if is_commissioning(node):
         # Only configured Interfaces are tested so configuration must be done
         # before regeneration.
         node.set_initial_networking_configuration()
@@ -389,12 +317,6 @@ def update_node_network_information(node, data, numa_nodes):
             node.current_testing_script_set.regenerate(
                 storage=False, network=True
             )
-
-        # Don't delete interfaces on Pods. These may be things like
-        # bonds or bridges.
-        Interface.objects.filter(node=node).exclude(
-            id__in=[iface.id for iface in current_interfaces]
-        ).delete()
 
     return network_devices
 
@@ -704,17 +626,7 @@ def _process_lxd_resources(node, data):
             )
         numa_nodes[numa_index] = numa_node
 
-    # Network interfaces
-    # LP: #1849355 -- Don't update the node network information
-    # for controllers during commissioning as this conflicts with
-    # maasserver.models.node:Controller.update_interfaces().
-    if node.is_controller:
-        network_devices = {}
-    else:
-        network_devices = update_node_network_information(
-            node, data, numa_nodes
-        )
-    # Storage.
+    network_devices = update_node_network_information(node, data, numa_nodes)
     storage_devices = update_node_physical_block_devices(
         node, resources, numa_nodes
     )
@@ -1051,8 +963,6 @@ def process_lxd_results(node, output, exit_status):
         not missing_extensions
     ), f"Missing required LXD API extensions {sorted(missing_extensions)}"
 
-    if "network-extra" in data:
-        update_node_interfaces(node, data)
     _process_lxd_environment(node, data["environment"])
     _process_lxd_resources(node, data)
 

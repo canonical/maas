@@ -19,6 +19,7 @@ from maasserver.models.interface import (
     PhysicalInterface,
     VLANInterface,
 )
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.vlan import VLAN
 from maasserver.testing.factory import factory
@@ -171,7 +172,7 @@ class FakeCommissioningData:
             "os_name": "ubuntu",
             "os_version": "20.04",
             "server": "maas-machine-resources",
-            "server_name": "azuera",
+            "server_name": factory.make_name("host"),
             "server_version": "4.11",
         }
         self.address_annotations = {}
@@ -463,13 +464,15 @@ class UpdateInterfacesMixin:
         data,
         passes=None,
     ):
+        from metadataserver.builtin_scripts.hooks import process_lxd_results
+
         data = data.render(include_extra=node.is_controller)
         # update_node_interfaces() is idempotent, so it doesn't matter
         # if it's called once or twice.
         if passes is None:
             passes = random.randint(1, 2)
         for _ in range(passes):
-            update_node_interfaces(node, data)
+            process_lxd_results(node, json.dumps(data).encode(), 0)
         return passes
 
 
@@ -945,7 +948,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(interface.mac_address, eth0.mac_address)
         self.assertEqual(vlan, eth0.vlan)
         eth0_addresses = list(interface.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -955,6 +958,40 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
         for extra_ip in extra_ips:
             self.assertIsNone(reload_object(extra_ip))
+
+    def test_existing_physical_removes_ip_links(self):
+        controller = self.create_empty_controller()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(vlan=vlan)
+        ip = factory.pick_ip_in_Subnet(subnet)
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan
+        )
+        static_ip = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.AUTO,
+            ip=ip,
+            subnet=subnet,
+            interface=interface,
+        )
+        other_node_interface = factory.make_Interface()
+        no_node_interface = factory.make_Interface(
+            iftype=INTERFACE_TYPE.UNKNOWN
+        )
+        static_ip.interface_set.add(other_node_interface)
+        static_ip.interface_set.add(no_node_interface)
+        data = FakeCommissioningData()
+        eth0_network = data.create_physical_network(
+            "eth0", mac_address=str(interface.mac_address)
+        )
+        eth0_network.addresses = [
+            LXDAddress(ip, subnet.get_ipnetwork().prefixlen),
+        ]
+
+        self.update_interfaces(controller, data)
+
+        [eth0] = controller.interface_set.all()
+        static_ip = StaticIPAddress.objects.get(ip=str(ip))
+        self.assertEqual([eth0], list(static_ip.interface_set.all()))
 
     def test_existing_physical_with_links_new_vlan_no_links(self):
         controller = self.create_empty_controller()
@@ -1269,7 +1306,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         ip = str(factory.pick_ip_in_Subnet(new_subnet))
         links_to_remove = [
             factory.make_StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.STICKY, interface=vlan_interface
+                alloc_type=IPADDRESS_TYPE.AUTO, interface=vlan_interface
             )
             for _ in range(3)
         ]
@@ -1770,6 +1807,32 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertIsNone(reload_object(eth1))
         self.assertIsNotNone(reload_object(br0))
 
+    def test_physical_not_connected_marked_up(self):
+        # Even if a NIC is not physically connected, LXD might still
+        # mark the network as "up". In that case, the VLAN should be set
+        # to None.
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        controller = self.create_empty_controller(with_empty_script_sets=True)
+        eth0 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=controller, vlan=vlan
+        )
+        data = FakeCommissioningData()
+        card = data.create_network_card()
+        data.create_physical_network("eth0", mac_address=str(eth0.mac_address))
+        data.create_physical_network("eth1", card=card)
+        [port] = card.ports
+        port.link_detected = False
+
+        self.update_interfaces(controller, data)
+
+        eth1 = Interface.objects.get(node=controller, name="eth1")
+        self.assertIsNone(eth1.vlan)
+        # Check that no extra fabrics were created, since we previously
+        # had a bug where the fabric/vlan was created for the interface,
+        # and later the interface's vlan was set to None.
+        self.assertEqual([fabric], list(Fabric.objects.all()))
+
     def test_removes_one_bond_and_one_parent(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
@@ -1882,7 +1945,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             for address in bond0.ip_addresses.all()
         ]
         self.assertItemsEqual(
-            [(IPADDRESS_TYPE.STICKY, bond0_ip, bond0_subnet)], bond0_addresses
+            [(IPADDRESS_TYPE.STICKY, bond0_ip, bond0_subnet)],
+            bond0_addresses,
         )
         bond0_vlan_nic = VLANInterface.objects.get(
             node=controller, vlan=bond0_vlan

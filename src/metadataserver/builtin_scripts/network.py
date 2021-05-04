@@ -19,6 +19,15 @@ from provisioningserver.utils import flatten, sorttop
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("metadataserver.network")
+SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
+
+
+def is_commissioning(node):
+    return (
+        node.status not in [NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING]
+        and not node.is_pod
+        and not node.is_controller
+    )
 
 
 def get_interface_dependencies(data):
@@ -141,6 +150,10 @@ def update_interface(node, name, data, address_extra, hints=None):
     network = data["networks"][name]
     if network["type"] != "broadcast":
         return None
+    if network["hwaddr"] == SWITCH_OPENBMC_MAC:
+        # Ignore OpenBMC interfaces on switches which all share the
+        # same, hard-coded OpenBMC MAC address.
+        return None
 
     links = [
         address.copy()
@@ -185,6 +198,8 @@ def update_physical_interface(
     mac_address = port["address"] if port else network["hwaddr"]
     update_fields = set()
     is_enabled = network["state"] == "up"
+    if port is not None:
+        is_enabled = is_enabled and port["link_detected"]
     # If an interface with same name and different MAC exists in the
     # machine, delete it. Interface names are unique on a machine, so this
     # might be an old interface which was removed and recreated with a
@@ -203,6 +218,14 @@ def update_physical_interface(
             ),
         },
     )
+    if not created and interface.node != node:
+        # MAC address was on a different node. We need to move
+        # it to its new owner. In the process we delete all of its
+        # current links because they are completely wrong.
+        PhysicalInterface.objects.filter(id=interface.id).delete()
+        return update_physical_interface(
+            node, name, network, links, card=card, port=port, hints=hints
+        )
     # Don't update the VLAN unless:
     # (1) The interface's VLAN wasn't previously known.
     # (2) The interface is administratively enabled.
@@ -633,18 +656,23 @@ def update_links(
             ip_address = get_ip_address_from_ip_addresses(
                 node, ip_addr, current_ip_addresses
             )
+            address_type = (
+                IPADDRESS_TYPE.DISCOVERED
+                if is_commissioning(node)
+                else IPADDRESS_TYPE.STICKY
+            )
             if ip_address is None:
                 # IP address is not assigned to this interface. Get or
                 # create that IP address.
                 (ip_address, created,) = StaticIPAddress.objects.get_or_create(
                     ip=ip_addr,
                     defaults={
-                        "alloc_type": IPADDRESS_TYPE.STICKY,
+                        "alloc_type": address_type,
                         "subnet": subnet,
                     },
                 )
                 if not created:
-                    ip_address.alloc_type = IPADDRESS_TYPE.STICKY
+                    ip_address.alloc_type = address_type
                     ip_address.subnet = subnet
                     ip_address.save()
             else:
@@ -653,9 +681,9 @@ def update_links(
             # Update the properties and make sure all interfaces
             # assigned to the address belong to this node.
             for attached_nic in ip_address.interface_set.all():
-                if attached_nic.node.id != node.id:
+                if attached_nic.node != node:
                     attached_nic.ip_addresses.remove(ip_address)
-            ip_address.alloc_type = IPADDRESS_TYPE.STICKY
+            ip_address.alloc_type = address_type
             ip_address.subnet = subnet
             ip_address.save()
 

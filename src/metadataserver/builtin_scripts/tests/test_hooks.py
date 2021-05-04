@@ -31,7 +31,7 @@ from maasserver.fields import MAC
 from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.config import Config
-from maasserver.models.interface import Interface
+from maasserver.models.interface import Interface, PhysicalInterface
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.numa import NUMANode
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
@@ -55,7 +55,6 @@ from metadataserver.builtin_scripts.hooks import (
     parse_bootif_cmdline,
     process_lxd_results,
     retag_node_for_hardware_by_modalias,
-    SWITCH_OPENBMC_MAC,
     update_node_fruid_metadata,
     update_node_network_information,
     update_node_physical_block_devices,
@@ -1224,22 +1223,6 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual("8", node.distro_series)
         self.assertEqual(hostname, node.hostname)
 
-    def test_does_not_update_node_network_information_if_rack(self):
-        rack = factory.make_RackController()
-        mock_update_node_network_information = self.patch(
-            hooks_module, "update_node_network_information"
-        )
-        process_lxd_results(rack, make_lxd_output_json(), 0)
-        self.assertThat(mock_update_node_network_information, MockNotCalled())
-
-    def test_does_not_update_node_network_information_if_region(self):
-        region = factory.make_RegionController()
-        mock_update_node_network_information = self.patch(
-            hooks_module, "update_node_network_information"
-        )
-        process_lxd_results(region, make_lxd_output_json(), 0)
-        self.assertThat(mock_update_node_network_information, MockNotCalled())
-
     def test_does_not_initialize_node_network_information_if_pod(self):
         pod = factory.make_Pod()
         node = factory.make_Node(
@@ -1900,6 +1883,15 @@ class TestProcessLXDResults(MAASServerTestCase):
                 "firmware_version": factory.make_name("firmware_version"),
             },
         ]
+        lxd_output["networks"][iface.name] = {
+            "hwaddr": str(iface.mac_address),
+            "type": "broadcast",
+            "addresses": [],
+            "vlan": None,
+            "bridge": None,
+            "bond": None,
+            "state": "up",
+        }
         lxd_output["resources"]["pci"] = {
             "devices": [
                 {
@@ -1927,7 +1919,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertIsNone(reload_object(node_device))
-        new_node_device = reload_object(iface).node_device
+        iface = Interface.objects.get(node=node, name=iface.name)
+        new_node_device = iface.node_device
         self.assertIsNotNone(new_node_device)
         self.assertEqual("0000:01:00.0", new_node_device.pci_address)
 
@@ -2690,51 +2683,6 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assertIsNotNone(reload_object(boot_interface))
         self.assertFalse(reload_object(node).skip_networking)
 
-    def test_does_nothing_if_duplicate_mac_on_controller(self):
-        mock_iface_get = self.patch(
-            hooks_module.PhysicalInterface.objects, "get"
-        )
-        rack = factory.make_RackController()
-        mac = factory.make_mac_address()
-        data = make_lxd_output()
-        for card in data["resources"]["network"]["cards"]:
-            for port in card["ports"]:
-                port["address"] = mac
-        update_node_network_information(rack, data, create_numa_nodes(rack))
-        self.assertThat(mock_iface_get, MockNotCalled())
-
-    def test_does_nothing_if_duplicate_mac_on_pod(self):
-        mock_iface_get = self.patch(
-            hooks_module.PhysicalInterface.objects, "get"
-        )
-        pod = factory.make_Pod()
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
-        )
-        pod.hints.nodes.add(node)
-        mac = factory.make_mac_address()
-        data = make_lxd_output()
-        for card in data["resources"]["network"]["cards"]:
-            for port in card["ports"]:
-                port["address"] = mac
-        update_node_network_information(node, data, create_numa_nodes(node))
-        self.assertThat(mock_iface_get, MockNotCalled())
-
-    def test_raises_exception_if_duplicate_mac_on_machine(self):
-        node = factory.make_Node()
-        mac = factory.make_mac_address()
-        data = make_lxd_output()
-        for card in data["resources"]["network"]["cards"]:
-            for port in card["ports"]:
-                port["address"] = mac
-        self.assertRaises(
-            hooks_module.DuplicateMACs,
-            update_node_network_information,
-            node,
-            data,
-            create_numa_nodes(node),
-        )
-
     def test_add_all_interfaces(self):
         """Test a node that has no previously known interfaces on which we
         need to add a series of interfaces.
@@ -2871,43 +2819,50 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         Interface.objects.filter(node_id=node.id).delete()
 
         data = make_lxd_output()
-        data["resources"]["network"]["cards"].append(
-            {
-                "driver": "thunder-nic",
-                "driver_version": "1.0",
-                "sriov": {
-                    "current_vfs": 30,
-                    "maximum_vfs": 128,
-                    "vfs": [
-                        {
-                            "driver": "thunder-nicvf",
-                            "driver_version": "1.0",
-                            "ports": [
-                                {
-                                    "id": "enP2p1s0f1",
-                                    "address": "01:01:01:01:01:01",
-                                    "port": 0,
-                                    "protocol": "ethernet",
-                                    "auto_negotiation": False,
-                                    "link_detected": False,
-                                }
-                            ],
-                            "numa_node": 0,
-                            "vendor": "Cavium, Inc.",
-                            "vendor_id": "177d",
-                            "product": "THUNDERX Network Interface Controller virtual function",
-                            "product_id": "a034",
-                        }
-                    ],
-                },
-                "numa_node": 0,
-                "pci_address": "0002:01:00.0",
-                "vendor": "Cavium, Inc.",
-                "vendor_id": "177d",
-                "product": "THUNDERX Network Interface Controller",
-                "product_id": "a01e",
-            }
-        )
+        port = {
+            "id": "enP2p1s0f1",
+            "address": "01:01:01:01:01:01",
+            "port": 0,
+            "protocol": "ethernet",
+            "auto_negotiation": False,
+            "link_detected": False,
+        }
+        card = {
+            "driver": "thunder-nic",
+            "driver_version": "1.0",
+            "sriov": {
+                "current_vfs": 30,
+                "maximum_vfs": 128,
+                "vfs": [
+                    {
+                        "driver": "thunder-nicvf",
+                        "driver_version": "1.0",
+                        "ports": [port],
+                        "numa_node": 0,
+                        "vendor": "Cavium, Inc.",
+                        "vendor_id": "177d",
+                        "product": "THUNDERX Network Interface Controller virtual function",
+                        "product_id": "a034",
+                    }
+                ],
+            },
+            "numa_node": 0,
+            "pci_address": "0002:01:00.0",
+            "vendor": "Cavium, Inc.",
+            "vendor_id": "177d",
+            "product": "THUNDERX Network Interface Controller",
+            "product_id": "a01e",
+        }
+        data["resources"]["network"]["cards"].append(card)
+        data["networks"][port["id"]] = {
+            "hwaddr": port["address"],
+            "type": "broadcast",
+            "addresses": [],
+            "vlan": None,
+            "bridge": None,
+            "bond": None,
+            "state": "up",
+        }
         update_node_network_information(node, data, create_numa_nodes(node))
         nic = Interface.objects.get(mac_address="01:01:01:01:01:01")
         self.assertEqual(nic.vendor, "Cavium, Inc.")
@@ -2986,7 +2941,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node1)
 
         # Grab the id from one of the created interfaces.
-        interface_id = Interface.objects.filter(node=node1).first().id
+        interface_id = PhysicalInterface.objects.filter(node=node1).first().id
 
         # Now make sure the second node has them all.
         node2 = factory.make_Node()
@@ -3196,14 +3151,15 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
     def test_ignores_openbmc_interface(self):
         """Ensure that OpenBMC interface is ignored."""
+        SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
         Interface.objects.filter(node_id=node.id).delete()
 
         data = make_lxd_output()
-        data["resources"]["network"]["cards"][0]["ports"][0][
-            "address"
-        ] = SWITCH_OPENBMC_MAC
+        open_bmc_port = data["resources"]["network"]["cards"][0]["ports"][0]
+        open_bmc_port["address"] = SWITCH_OPENBMC_MAC
+        data["networks"][open_bmc_port["id"]]["hwaddr"] = SWITCH_OPENBMC_MAC
 
         update_node_network_information(node, data, create_numa_nodes(node))
 
