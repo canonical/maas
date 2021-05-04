@@ -1,4 +1,4 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Subnet`."""
@@ -28,6 +28,7 @@ DISPLAYED_SUBNET_FIELDS = (
     "allow_dns",
     "allow_proxy",
     "managed",
+    "disabled_boot_architectures",
 )
 
 
@@ -107,6 +108,11 @@ class SubnetsHandler(OperationsHandler):
 
         @param (int) "managed" [required=false,formatting=true] In MAAS 2.0+,
         all subnets are assumed to be managed by default.
+
+        @param (string) "disabled_boot_architectures" [required=false] A comma
+        or space seperated list of boot architectures which will not be
+        responded to by isc-dhcpd. Values may be the MAAS name for the boot
+        architecture, the IANA hex value, or the isc-dhcpd octet.
 
         Only managed subnets allow DHCP to be enabled on their related dynamic
         ranges. (Thus, dynamic ranges become "informational only"; an
@@ -229,6 +235,11 @@ class SubnetHandler(OperationsHandler):
 
         @param (int) "managed" [required=false,formatting=true] In MAAS 2.0+,
         all subnets are assumed to be managed by default.
+
+        @param (string) "disabled_boot_architectures" [required=false] A comma
+        or space seperated list of boot architectures which will not be
+        responded to by isc-dhcpd. Values may be the MAAS name for the boot
+        architecture, the IANA hex value, or the isc-dhcpd octet.
 
         Only managed subnets allow DHCP to be enabled on their related dynamic
         ranges. (Thus, dynamic ranges become "informational only"; an

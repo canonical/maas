@@ -377,7 +377,7 @@ class TestSubnetForm(MAASServerTestCase):
             [
                 boot_method.name
                 for _, boot_method in BootMethodRegistry
-                if boot_method.arch_octet or boot_method.path_prefix_http
+                if boot_method.arch_octet or boot_method.user_class
             ],
             3,
         )
@@ -399,7 +399,7 @@ class TestSubnetForm(MAASServerTestCase):
             [
                 boot_method.name
                 for _, boot_method in BootMethodRegistry
-                if boot_method.arch_octet or boot_method.path_prefix_http
+                if boot_method.arch_octet or boot_method.user_class
             ],
             3,
         )
@@ -421,7 +421,7 @@ class TestSubnetForm(MAASServerTestCase):
             [
                 boot_method
                 for _, boot_method in BootMethodRegistry
-                if boot_method.arch_octet or boot_method.path_prefix_http
+                if boot_method.arch_octet
             ],
             3,
         )
@@ -447,7 +447,7 @@ class TestSubnetForm(MAASServerTestCase):
             [
                 boot_method
                 for _, boot_method in BootMethodRegistry
-                if boot_method.arch_octet or boot_method.path_prefix_http
+                if boot_method.arch_octet
             ],
             3,
         )
@@ -478,7 +478,7 @@ class TestSubnetForm(MAASServerTestCase):
         choices = [
             boot_method.name
             for _, boot_method in BootMethodRegistry
-            if not boot_method.arch_octet and not boot_method.path_prefix_http
+            if not boot_method.arch_octet and not boot_method.user_class
         ]
 
         form = SubnetForm(
