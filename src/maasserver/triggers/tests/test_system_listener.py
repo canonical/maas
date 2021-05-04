@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Use the `PostgresListenerService` to test all of the triggers from for
@@ -47,6 +47,7 @@ from maasserver.triggers.testing import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils.twisted import DeferredValue
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
@@ -1844,6 +1845,151 @@ class TestDHCPSubnetListener(
                 self.update_subnet,
                 subnet.id,
                 {"allow_dns": not subnet.allow_dns},
+            )
+            yield primary_dv.get(timeout=2)
+            yield secondary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_vlan_when_disabled_boot_arches_changes(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
+
+        primary_dv = DeferredValue()
+        secondary_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            f"sys_dhcp_{primary_rack.id}", lambda *args: primary_dv.set(args)
+        )
+        listener.register(
+            f"sys_dhcp_{secondary_rack.id}",
+            lambda *args: secondary_dv.set(args),
+        )
+        yield listener.startService()
+        disabled_arches = random.sample(
+            [
+                boot_method.name
+                for _, boot_method in BootMethodRegistry
+                if boot_method.arch_octet or boot_method.path_prefix_http
+            ],
+            3,
+        )
+        try:
+            yield deferToDatabase(
+                self.update_subnet,
+                subnet.id,
+                {"disabled_boot_architectures": disabled_arches},
+            )
+            yield primary_dv.get(timeout=2)
+            yield secondary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_vlan_when_disabled_boot_arches_is_set(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
+        # Make sure its empty. This test that it handles being set.
+        yield deferToDatabase(
+            self.update_subnet, subnet.id, {"disabled_boot_architectures": []}
+        )
+
+        primary_dv = DeferredValue()
+        secondary_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            f"sys_dhcp_{primary_rack.id}", lambda *args: primary_dv.set(args)
+        )
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_dv.set(args),
+        )
+        yield listener.startService()
+        disabled_arches = random.sample(
+            [
+                boot_method.name
+                for _, boot_method in BootMethodRegistry
+                if boot_method.arch_octet or boot_method.path_prefix_http
+            ],
+            3,
+        )
+        try:
+            yield deferToDatabase(
+                self.update_subnet,
+                subnet.id,
+                {"disabled_boot_architectures": disabled_arches},
+            )
+            yield primary_dv.get(timeout=2)
+            yield secondary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sends_message_for_vlan_when_disabled_boot_arches_is_cleared(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        disabled_arches = random.sample(
+            [
+                boot_method.name
+                for _, boot_method in BootMethodRegistry
+                if boot_method.arch_octet or boot_method.path_prefix_http
+            ],
+            3,
+        )
+        subnet = yield deferToDatabase(
+            self.create_subnet,
+            {"vlan": vlan, "disabled_boot_architectures": disabled_arches},
+        )
+
+        primary_dv = DeferredValue()
+        secondary_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            f"sys_dhcp_{primary_rack.id}", lambda *args: primary_dv.set(args)
+        )
+        listener.register(
+            f"sys_dhcp_{secondary_rack.id}",
+            lambda *args: secondary_dv.set(args),
+        )
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_subnet,
+                subnet.id,
+                {"disabled_boot_architectures": []},
             )
             yield primary_dv.get(timeout=2)
             yield secondary_dv.get(timeout=2)

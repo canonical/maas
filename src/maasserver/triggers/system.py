@@ -1,4 +1,4 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -456,7 +456,8 @@ DHCP_SUBNET_UPDATE = dedent(
         (OLD.gateway_ip IS NOT NULL AND NEW.gateway_ip IS NULL) OR
         host(OLD.gateway_ip) != host(NEW.gateway_ip) OR
         OLD.dns_servers != NEW.dns_servers OR
-        OLD.allow_dns != NEW.allow_dns THEN
+        OLD.allow_dns != NEW.allow_dns OR
+        OLD.disabled_boot_architectures != NEW.disabled_boot_architectures THEN
         -- Network has changed update alert DHCP if enabled.
         SELECT * INTO vlan
         FROM maasserver_vlan WHERE id = NEW.vlan_id;
