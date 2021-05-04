@@ -1454,6 +1454,23 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ["eth0", "eth1"],
         )
 
+    def test_bridge_with_missing_parents(self):
+        controller = self.create_empty_controller()
+        data = FakeCommissioningData()
+        data.create_bridge_network("br0", parents=[])
+        data.networks["br0"].bridge.upper_devices = ["tap0", "veth1"]
+        self.update_interfaces(controller, data)
+
+        self.assertEqual(1, controller.interface_set.count())
+        bridge_interface = BridgeInterface.objects.get(
+            node=controller,
+            name="br0",
+        )
+        self.assertEqual(
+            sorted(parent.name for parent in bridge_interface.parents.all()),
+            [],
+        )
+
     def test_bridge_with_existing_parents(self):
         controller = self.create_empty_controller()
         fabric = factory.make_Fabric()
@@ -2784,6 +2801,40 @@ class TestGetInterfaceDependencies(MAASTestCase):
                 "br0": ["eth0"],
                 "bond0": ["eth1", "eth2"],
                 "bond0.10": ["bond0"],
+                "br1": ["bond0.10", "eth3"],
+            },
+            dependencies,
+        )
+
+    def test_ignores_missing_parents(self):
+        data = FakeCommissioningData()
+        data.create_physical_network("eth0")
+        data.create_physical_network("eth1")
+        data.create_physical_network("eth2")
+        data.create_physical_network("eth3")
+        data.create_bridge_network("br0", parents=[data.networks["eth0"]])
+        data.create_bond_network(
+            "bond0", parents=[data.networks["eth1"], data.networks["eth2"]]
+        )
+        data.networks["bond0"].bond.lower_devices.append("missing1")
+        data.create_vlan_network(
+            "bond0.10", vid=10, parent=data.networks["bond0"]
+        )
+        data.networks["bond0.10"].vlan.lower_device = "missing2"
+        data.create_bridge_network(
+            "br1", parents=[data.networks["bond0.10"], data.networks["eth3"]]
+        )
+        data.networks["br1"].bridge.upper_devices.append("missing3")
+        dependencies = get_interface_dependencies(data.render())
+        self.assertEqual(
+            {
+                "eth0": [],
+                "eth1": [],
+                "eth2": [],
+                "eth3": [],
+                "br0": ["eth0"],
+                "bond0": ["eth1", "eth2"],
+                "bond0.10": [],
                 "br1": ["bond0.10", "eth3"],
             },
             dependencies,

@@ -41,7 +41,12 @@ def get_interface_dependencies(data):
             parents = [network["vlan"]["lower_device"]]
         else:
             parents = []
-        dependencies[name].extend(parents)
+        # Only add devices that are defined in the data. Some virtual
+        # interfaces might be defined as a parent, but they are not a
+        # network, so we don't have any information about them.
+        dependencies[name].extend(
+            iface for iface in parents if iface in data["networks"]
+        )
     return dependencies
 
 
