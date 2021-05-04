@@ -2585,46 +2585,6 @@ class TestPod(MAASServerTestCase):
         )
         self.assertEqual(pod.hints.memory, memory)
 
-    def test_get_used_cores(self):
-        pod = factory.make_Pod()
-        total_cores = 0
-        for _ in range(3):
-            cores = random.randint(1, 4)
-            total_cores += cores
-            factory.make_Node(bmc=pod, cpu_count=cores)
-        self.assertEqual(total_cores, pod.get_used_cores())
-
-    def test_get_used_memory(self):
-        pod = factory.make_Pod()
-        total_memory = 0
-        for _ in range(3):
-            memory = random.randint(1, 4)
-            total_memory += memory
-            factory.make_Node(bmc=pod, memory=memory)
-        self.assertEqual(total_memory, pod.get_used_memory())
-
-    def test_get_used_local_storage(self):
-        project = factory.make_string()
-        pod = factory.make_Pod(parameters={"project": project})
-        vm1 = factory.make_VirtualMachine(bmc=pod, project=project)
-        disk1 = factory.make_VirtualMachineDisk(vm=vm1)
-        disk2 = factory.make_VirtualMachineDisk(vm=vm1)
-        vm2 = factory.make_VirtualMachine(bmc=pod, project=project)
-        disk3 = factory.make_VirtualMachineDisk(vm=vm2)
-        disk4 = factory.make_VirtualMachineDisk(vm=vm2)
-        # a VM on the same host, but different project
-        vm3 = factory.make_VirtualMachine(
-            bmc=pod, project=factory.make_string()
-        )
-        factory.make_VirtualMachineDisk(vm=vm3)
-        factory.make_VirtualMachineDisk(vm=vm3)
-        # a VM on another host, disks are not counted
-        vm4 = factory.make_VirtualMachine(bmc=factory.make_Pod())
-        factory.make_VirtualMachineDisk(vm=vm4)
-        factory.make_VirtualMachineDisk(vm=vm4)
-        total_storage = disk1.size + disk2.size + disk3.size + disk4.size
-        self.assertEqual(total_storage, pod.get_used_local_storage())
-
     def test_sync_machine_memory(self):
         pod = factory.make_Pod(
             pod_type="lxd", parameters={"project": factory.make_string()}

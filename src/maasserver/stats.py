@@ -38,6 +38,7 @@ from maasserver.models import (
     Subnet,
     VLAN,
 )
+from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -116,9 +117,10 @@ def get_kvm_pods_stats():
     machines = cores = memory = storage = 0
     for pod in pod_machines:
         machines += Node.objects.filter(bmc__id=pod.id).count()
-        cores += pod.get_used_cores()
-        memory += pod.get_used_memory()
-        storage += pod.get_used_local_storage()
+        used_resources = get_vm_host_used_resources(pod)
+        cores += used_resources.cores
+        memory += used_resources.total_memory
+        storage += used_resources.storage
 
     return {
         "kvm_pods": len(pods),

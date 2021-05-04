@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.virtualmachine import (
     get_vm_host_resources,
+    get_vm_host_used_resources,
     MB,
     VirtualMachine,
     VirtualMachineInterface,
@@ -676,3 +677,68 @@ class TestGetVMHostResources(MAASServerTestCase):
                 },
             ],
         )
+
+
+class TestGetVMHostUsedResources(MAASServerTestCase):
+    def test_get_used_resources(self):
+        project = factory.make_string()
+        vmhost = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+        )
+        pool1 = factory.make_PodStoragePool(pod=vmhost)
+        pool2 = factory.make_PodStoragePool(pod=vmhost)
+
+        vm1 = factory.make_VirtualMachine(
+            bmc=vmhost,
+            project=project,
+            memory=1024,
+            pinned_cores=[0, 1, 2],
+            hugepages_backed=False,
+        )
+        factory.make_VirtualMachineDisk(vm=vm1, backing_pool=pool1, size=1000)
+        vm2 = factory.make_VirtualMachine(
+            bmc=vmhost,
+            project=project,
+            memory=2048,
+            unpinned_cores=2,
+            hugepages_backed=False,
+        )
+        factory.make_VirtualMachineDisk(vm=vm2, backing_pool=pool2, size=2000)
+        vm3 = factory.make_VirtualMachine(
+            bmc=vmhost,
+            project=project,
+            memory=4096,
+            unpinned_cores=4,
+            hugepages_backed=True,
+        )
+        factory.make_VirtualMachineDisk(vm=vm3, backing_pool=pool1, size=500)
+
+        used_resources = get_vm_host_used_resources(vmhost)
+        self.assertEqual(used_resources.cores, 9)
+        self.assertEqual(used_resources.memory, 3072)
+        self.assertEqual(used_resources.hugepages_memory, 4096)
+        self.assertEqual(used_resources.total_memory, 7168)
+        self.assertEqual(used_resources.storage, 3500)
+
+    def test_get_used_resources_only_tracked_project(self):
+        project = factory.make_string()
+        vmhost = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+        )
+        pool = factory.make_PodStoragePool(pod=vmhost)
+
+        vm = factory.make_VirtualMachine(
+            bmc=vmhost,
+            project=factory.make_string(),
+            memory=1024,
+            pinned_cores=[0, 1, 2],
+            hugepages_backed=False,
+        )
+        factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool, size=1000)
+        used_resources = get_vm_host_used_resources(vmhost)
+        self.assertEqual(used_resources.cores, 0)
+        self.assertEqual(used_resources.memory, 0)
+        self.assertEqual(used_resources.hugepages_memory, 0)
+        self.assertEqual(used_resources.storage, 0)

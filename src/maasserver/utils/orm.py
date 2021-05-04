@@ -46,7 +46,8 @@ from typing import Container
 from django.conf import settings
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
 from django.db import connection, connections, reset_queries, transaction
-from django.db.models import Q
+from django.db.models import F, Func, IntegerField, Q, Value
+from django.db.models.functions import Coalesce
 from django.db.transaction import TransactionManagementError
 from django.db.utils import DatabaseError, IntegrityError, OperationalError
 from django.http import Http404
@@ -65,6 +66,19 @@ from provisioningserver.utils import flatten
 from provisioningserver.utils.backoff import exponential_growth, full_jitter
 from provisioningserver.utils.network import parse_integer
 from provisioningserver.utils.twisted import callOut
+
+
+def ArrayLength(field):
+    """Expression to return the length of a PostgreSQL array."""
+    return Coalesce(
+        Func(
+            F(field),
+            Value(1),
+            function="array_length",
+            output_field=IntegerField(),
+        ),
+        Value(0),
+    )
 
 
 def get_exception_class(items):

@@ -26,11 +26,8 @@ from django.db.models import (
     PROTECT,
     SET_DEFAULT,
     SET_NULL,
-    Sum,
     TextField,
-    Value,
 )
-from django.db.models.functions import Coalesce
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from netaddr import AddrFormatError, IPAddress
@@ -688,20 +685,21 @@ class Pod(BMC):
     def check_over_commit_ratios(self, requested_cores, requested_memory):
         """Checks that requested cpu cores and memory are within the
         currently available resources capped by the overcommit ratios."""
+        from maasserver.models.virtualmachine import get_vm_host_used_resources
+
         message = ""
-        used_cores = self.get_used_cores()
-        used_memory = self.get_used_memory()
+        used_resources = get_vm_host_used_resources(self)
         over_commit_cores = self.cores * self.cpu_over_commit_ratio
-        potential_cores = used_cores + requested_cores
+        potential_cores = used_resources.cores + requested_cores
         over_commit_memory = self.memory * self.memory_over_commit_ratio
-        potential_memory = used_memory + requested_memory
+        potential_memory = used_resources.total_memory + requested_memory
         if (over_commit_cores - potential_cores) < 0:
             message = (
                 "CPU overcommit ratio is %s and there are %s "
                 "available resources; %s requested."
                 % (
                     self.cpu_over_commit_ratio,
-                    (self.cores - used_cores),
+                    (self.cores - used_resources.cores),
                     requested_cores,
                 )
             )
@@ -711,7 +709,7 @@ class Pod(BMC):
                 "available resources; %s requested."
                 % (
                     self.memory_over_commit_ratio,
-                    (self.memory - used_memory),
+                    (self.memory - used_resources.total_memory),
                     requested_memory,
                 )
             )
@@ -1564,40 +1562,6 @@ class Pod(BMC):
         )
         hints.save()
         self.save()
-
-    def get_used_cores(self, machines=None):
-        """Get the number of used cores in the pod.
-
-        :param machines: Deployed machines on this pod. Only used when
-            the deployed machines have already been pulled from the database
-            and no extra query needs to be performed.
-        """
-        if machines is None:
-            machines = Machine.objects.filter(bmc__id=self.id)
-        return sum(machine.cpu_count for machine in machines)
-
-    def get_used_memory(self, machines=None):
-        """Get the amount of used memory in the pod.
-
-        :param machines: Deployed machines on this pod. Only used when
-            the deployed machines have already been pulled from the database
-            and no extra query needs to be performed.
-        """
-        if machines is None:
-            machines = Machine.objects.filter(bmc__id=self.id)
-        return sum(machine.memory for machine in machines)
-
-    def get_used_local_storage(self):
-        """Get the amount of used local storage in the pod.
-
-        Only storage used by VMs in project tracked by the POD is returned.
-        """
-        from maasserver.models.virtualmachine import VirtualMachineDisk
-
-        count = VirtualMachineDisk.objects.filter(
-            vm__bmc=self, vm__project=self.tracked_project
-        ).aggregate(used=Coalesce(Sum("size"), Value(0)))
-        return count["used"]
 
     def delete(self, *args, **kwargs):
         raise AttributeError(

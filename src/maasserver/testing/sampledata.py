@@ -25,6 +25,7 @@ from maasserver.models import (
     User,
     VersionedTextFile,
 )
+from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.storage_layouts import STORAGE_LAYOUTS
 from maasserver.testing.factory import factory
 from maasserver.tests.test_storage_layouts import LARGE_BLOCK_DEVICE
@@ -800,8 +801,9 @@ def populate_main():
 
     # Update the pod attributes so that it has more available then used.
     for pod in pods[1:]:
-        pod.cores = pod.get_used_cores() + random.randint(4, 8)
-        pod.memory = pod.get_used_memory() + random.choice(
+        used_resources = get_vm_host_used_resources(pod)
+        pod.cores = used_resources.cores + random.randint(4, 8)
+        pod.memory = used_resources.total_memory + random.choice(
             [1024, 2048, 4096, 4096 * 4, 4096 * 8]
         )
         pod.local_storage = sum(

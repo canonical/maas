@@ -20,7 +20,10 @@ from maasserver.exceptions import PodProblem
 from maasserver.forms.pods import ComposeMachineForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.models.resourcepool import ResourcePool
-from maasserver.models.virtualmachine import get_vm_host_resources
+from maasserver.models.virtualmachine import (
+    get_vm_host_resources,
+    get_vm_host_used_resources,
+)
 from maasserver.models.zone import Zone
 from maasserver.permissions import PodPermission
 from maasserver.rbac import rbac
@@ -167,27 +170,27 @@ class PodHandler(TimestampedModelHandler):
 
     def dehydrate_used(self, obj):
         """Dehydrate used Pod resources."""
-        used_memory = obj.get_used_memory()
-        used_local_storage = obj.get_used_local_storage()
+        used_resources = get_vm_host_used_resources(obj)
         return {
-            "cores": obj.get_used_cores(),
-            "memory": used_memory,
-            "memory_gb": "%.1f" % (used_memory / 1024.0),
-            "local_storage": used_local_storage,
-            "local_storage_gb": "%.1f" % (used_local_storage / (1024 ** 3)),
+            "cores": used_resources.cores,
+            "memory": used_resources.total_memory,
+            "memory_gb": "%.1f" % (used_resources.total_memory / 1024.0),
+            "local_storage": used_resources.storage,
+            "local_storage_gb": "%.1f"
+            % (used_resources.storage / (1024 ** 3)),
         }
 
     def dehydrate_available(self, obj):
         """Dehydrate available Pod resources."""
-        used_memory = obj.get_used_memory()
-        used_local_storage = obj.get_used_local_storage()
+        used_resources = get_vm_host_used_resources(obj)
         return {
-            "cores": obj.cores - obj.get_used_cores(),
-            "memory": obj.memory - used_memory,
-            "memory_gb": "%.1f" % ((obj.memory - used_memory) / 1024.0),
-            "local_storage": obj.local_storage - used_local_storage,
+            "cores": obj.cores - used_resources.cores,
+            "memory": obj.memory - used_resources.total_memory,
+            "memory_gb": "%.1f"
+            % ((obj.memory - used_resources.total_memory) / 1024.0),
+            "local_storage": obj.local_storage - used_resources.storage,
             "local_storage_gb": "%.1f"
-            % ((obj.local_storage - used_local_storage) / (1024 ** 3)),
+            % ((obj.local_storage - used_resources.storage) / (1024 ** 3)),
         }
 
     def dehydrate_hints(self, hints):

@@ -18,7 +18,6 @@ from django.db.models import (
     ExpressionWrapper,
     F,
     ForeignKey,
-    Func,
     IntegerField,
     OneToOneField,
     Q,
@@ -39,6 +38,7 @@ from maasserver.models.node import Machine
 from maasserver.models.numa import NUMANode
 from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import ArrayLength
 from provisioningserver.drivers.pod import (
     InterfaceAttachType,
     InterfaceAttachTypeChoices,
@@ -253,7 +253,38 @@ class VMHostResources:
     numa: List[NUMAPinningNodeResources] = field(default_factory=list)
 
 
-def get_vm_host_resources(pod, detailed=True):
+@dataclass
+class VMHostUsedResources:
+
+    cores: int
+    memory: int
+    hugepages_memory: int
+    storage: int
+
+    @property
+    def total_memory(self):
+        """Total used memory"""
+        return self.memory + self.hugepages_memory
+
+
+def get_vm_host_used_resources(vmhost) -> VMHostUsedResources:
+    """Return used resources for a VM host."""
+
+    def C(field):
+        return Coalesce(field, Value(0))
+
+    counts = VirtualMachine.objects.filter(
+        bmc=vmhost, project=vmhost.tracked_project
+    ).aggregate(
+        cores=C(Sum("unpinned_cores") + Sum(ArrayLength("pinned_cores"))),
+        memory=C(Sum("memory", filter=Q(hugepages_backed=False))),
+        hugepages_memory=C(Sum("memory", filter=Q(hugepages_backed=True))),
+        storage=C(Sum("disks_set__size")),
+    )
+    return VMHostUsedResources(**counts)
+
+
+def get_vm_host_resources(pod, detailed=True) -> VMHostResources:
     """Return used resources for a VM host by its ID.
 
     If `detailed` is true, also include info about NUMA nodes resource usage.
@@ -351,17 +382,6 @@ def _update_detailed_resource_counters(pod, resources):
 
 
 def _update_global_resource_counters(pod, resources):
-    def ArrayLength(field):
-        return Coalesce(
-            Func(
-                F(field),
-                Value(1),
-                function="array_length",
-                output_field=IntegerField(),
-            ),
-            Value(0),
-        )
-
     totals = NUMANode.objects.filter(node=pod.host).aggregate(
         cores=Sum(ArrayLength("cores")),
         memory=Sum("memory") * MB,

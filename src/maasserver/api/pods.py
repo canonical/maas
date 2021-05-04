@@ -14,6 +14,7 @@ from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms.pods import ComposeMachineForm, DeletePodForm, PodForm
 from maasserver.models.bmc import Pod
+from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.permissions import PodPermission
 from provisioningserver.drivers.pod import Capabilities
 
@@ -66,10 +67,11 @@ class VMHostHandler(OperationsHandler):
 
     @classmethod
     def used(cls, pod):
+        used_resources = get_vm_host_used_resources(pod)
         return {
-            "cores": pod.get_used_cores(),
-            "memory": pod.get_used_memory(),
-            "local_storage": pod.get_used_local_storage(),
+            "cores": used_resources.cores,
+            "memory": used_resources.total_memory,
+            "local_storage": used_resources.storage,
         }
 
     @classmethod
