@@ -201,14 +201,16 @@ class InterfaceForm(MAASModelForm):
         self.clean_link_connected_speed(cleaned_data)
         return cleaned_data
 
-    def _set_param(self, interface, key):
+    def _set_param(self, interface, key, netplan_key=None):
         """Helper to set parameters on an interface."""
+        if netplan_key is None:
+            netplan_key = key
         value = self.cleaned_data.get(key, None)
         params = interface.params.copy()
         if value is not None:
-            params[key] = value
+            params[netplan_key] = value
         elif self.data.get(key) == "":
-            params.pop(key, None)
+            params.pop(netplan_key, None)
         interface.params = params
 
     def set_extra_parameters(self, interface, created):
@@ -216,7 +218,7 @@ class InterfaceForm(MAASModelForm):
         if not interface.params:
             interface.params = {}
         self._set_param(interface, "mtu")
-        self._set_param(interface, "accept_ra")
+        self._set_param(interface, "accept_ra", netplan_key="accept-ra")
         self._set_param(interface, "autoconf")
 
 

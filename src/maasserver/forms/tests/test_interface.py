@@ -555,7 +555,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual(
-            {"mtu": mtu, "accept_ra": accept_ra, "autoconf": autoconf},
+            {"mtu": mtu, "accept-ra": accept_ra, "autoconf": autoconf},
             interface.params,
         )
 
@@ -568,7 +568,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         autoconf = factory.pick_bool()
         interface.params = {
             "mtu": mtu,
-            "accept_ra": accept_ra,
+            "accept-ra": accept_ra,
             "autoconf": autoconf,
         }
         new_name = "eth1"
@@ -585,7 +585,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
         self.assertEqual(
-            {"mtu": mtu, "accept_ra": accept_ra, "autoconf": autoconf},
+            {"mtu": mtu, "accept-ra": accept_ra, "autoconf": autoconf},
             interface.params,
         )
 
@@ -598,7 +598,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         autoconf = factory.pick_bool()
         interface.params = {
             "mtu": mtu,
-            "accept_ra": accept_ra,
+            "accept-ra": accept_ra,
             "autoconf": autoconf,
         }
         new_mtu = random.randint(1000, 2000)
@@ -617,7 +617,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "mtu": new_mtu,
-                "accept_ra": new_accept_ra,
+                "accept-ra": new_accept_ra,
                 "autoconf": new_autoconf,
             },
             interface.params,
@@ -632,7 +632,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         autoconf = factory.pick_bool()
         interface.params = {
             "mtu": mtu,
-            "accept_ra": accept_ra,
+            "accept-ra": accept_ra,
             "autoconf": autoconf,
         }
         form = PhysicalInterfaceForm(
