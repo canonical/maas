@@ -31,9 +31,9 @@ CONFIG_FILE = dedent(
     # Load based on MAC address first.
     configfile /grub/grub.cfg-${net_default_mac}
 
-    # Failed to load based on MAC address.
-    # Load amd64 by default, UEFI only supported by 64-bit
-    configfile /grub/grub.cfg-default-amd64
+    # Failed to load based on MAC address. Load based on the CPU
+    # architecture.
+    configfile /grub/grub.cfg-default-${grub_cpu}
     """
 )
 
@@ -41,7 +41,7 @@ CONFIG_FILE = dedent(
 # format. Required for UEFI as GRUB2 only presents the MAC address
 # in colon-seperated format.
 re_mac_address_octet = r"[0-9a-f]{2}"
-re_mac_address = re.compile(":".join(repeat(re_mac_address_octet, 6)))
+re_mac_address = re.compile("[:-]".join(repeat(re_mac_address_octet, 6)))
 
 # Match the grub/grub.cfg-* request for UEFI (aka. GRUB2)
 re_config_file = r"""
@@ -53,10 +53,10 @@ re_config_file = r"""
         (?P<mac>{re_mac_address.pattern}) # Capture UEFI MAC.
     | # or "default"
         default
-          (?: # perhaps with specified arch, with a separator of '-'
+            (?: # perhaps with specified arch, with a separator of '-'
             [-](?P<arch>\w+) # arch
             (?:-(?P<subarch>\w+))? # optional subarch
-          )?
+            )?
     )
     $
 """
@@ -94,6 +94,12 @@ class UEFIAMD64BootMethod(BootMethod):
         mac = params.get("mac")
         if mac is not None:
             params["mac"] = mac.replace(":", "-")
+        arch = params.get("arch")
+        if arch == "x86_64":
+            # MAAS uses Debian architectures while GRUB uses standard Linux
+            # architectures. Convert x86_64 to amd64 as they mean the same
+            # thing.
+            params["arch"] = "amd64"
 
         return params
 

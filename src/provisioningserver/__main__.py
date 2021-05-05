@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Command-line interface for the MAAS provisioning component."""
@@ -7,7 +7,6 @@
 import sys
 
 from provisioningserver import security
-import provisioningserver.boot.install_grub
 import provisioningserver.cluster_config_command
 import provisioningserver.dns.commands.edit_named_options
 import provisioningserver.dns.commands.get_named_conf
@@ -39,7 +38,6 @@ RACK_ONLY_COMMANDS = {
     "check-for-shared-secret": security.CheckForSharedSecretScript,
     "config": provisioningserver.cluster_config_command,
     "install-shared-secret": security.InstallSharedSecretScript,
-    "install-uefi-config": provisioningserver.boot.install_grub,
     "register": provisioningserver.register_command,
     "support-dump": provisioningserver.support_dump,
     "upgrade-cluster": provisioningserver.upgrade_cluster,
