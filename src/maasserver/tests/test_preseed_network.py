@@ -1614,6 +1614,131 @@ class TestNetplan(MAASServerTestCase):
         }
         self.expectThat(v1, Equals(expected_v1))
 
+    def test_multiple_ethernet_with_default_gateway_with_dns(self):
+        node = factory.make_Node()
+        vlan = factory.make_VLAN()
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/24",
+            gateway_ip="10.0.0.1",
+            dns_servers=["10.0.0.2"],
+            vlan=vlan,
+        )
+        subnet2 = factory.make_Subnet(
+            cidr="10.0.1.0/24",
+            gateway_ip="10.0.1.1",
+            dns_servers=["10.0.1.2"],
+            vlan=vlan,
+        )
+        eth0 = factory.make_Interface(
+            node=node, name="eth0", mac_address="00:01:02:03:04:05", vlan=vlan
+        )
+        eth1 = factory.make_Interface(
+            node=node, name="eth1", mac_address="02:01:02:03:04:05", vlan=vlan
+        )
+        node.boot_interface = eth0
+        node.save()
+        factory.make_StaticIPAddress(
+            interface=eth0,
+            subnet=subnet,
+            ip="10.0.0.4",
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        default_link = factory.make_StaticIPAddress(
+            interface=eth1,
+            subnet=subnet2,
+            ip="10.0.1.4",
+            alloc_type=IPADDRESS_TYPE.STICKY,
+        )
+        node.gateway_link_ipv4 = default_link
+        node.save()
+        domain = Domain.objects.first()
+        domain.name = "ubuntu.com"
+        domain.save()
+        domain2 = factory.make_Domain()
+        expected_search_list = [domain.name, domain2.name]
+        netplan = self._render_netplan_dict(node)
+        expected_netplan = {
+            "network": OrderedDict(
+                [
+                    ("version", 2),
+                    (
+                        "ethernets",
+                        {
+                            "eth0": {
+                                "nameservers": {
+                                    "addresses": ["10.0.0.2"],
+                                    "search": expected_search_list,
+                                },
+                                "match": {"macaddress": "00:01:02:03:04:05"},
+                                "mtu": 1500,
+                                "set-name": "eth0",
+                                "addresses": ["10.0.0.4/24"],
+                            },
+                            "eth1": {
+                                "gateway4": "10.0.1.1",
+                                "match": {"macaddress": "02:01:02:03:04:05"},
+                                "nameservers": {
+                                    "addresses": ["10.0.1.2"],
+                                    "search": expected_search_list,
+                                },
+                                "mtu": 1500,
+                                "set-name": "eth1",
+                                "addresses": ["10.0.1.4/24"],
+                            },
+                        },
+                    ),
+                ]
+            )
+        }
+        self.assertEqual(netplan, expected_netplan)
+        v1 = self._render_v1_dict(node)
+        expected_v1 = {
+            "network": {
+                "version": 1,
+                "config": [
+                    {
+                        "id": "eth0",
+                        "mac_address": "00:01:02:03:04:05",
+                        "mtu": 1500,
+                        "name": "eth0",
+                        "subnets": [
+                            {
+                                "address": "10.0.0.4/24",
+                                "dns_nameservers": ["10.0.0.2"],
+                                "dns_search": expected_search_list,
+                                "type": "static",
+                            }
+                        ],
+                        "type": "physical",
+                    },
+                    {
+                        "id": "eth1",
+                        "mac_address": "02:01:02:03:04:05",
+                        "mtu": 1500,
+                        "name": "eth1",
+                        "subnets": [
+                            {
+                                "address": "10.0.1.4/24",
+                                "dns_nameservers": ["10.0.1.2"],
+                                "dns_search": expected_search_list,
+                                "gateway": "10.0.1.1",
+                                "type": "static",
+                            }
+                        ],
+                        "type": "physical",
+                    },
+                    {
+                        "address": [
+                            "10.0.1.2"
+                        ],  # assert default gateway assigns dns server
+                        "search": expected_search_list,
+                        "type": "nameserver",
+                    },
+                ],
+            }
+        }
+        self.assertEqual(v1, expected_v1)
+
     def test_multiple_ethernet_interfaces_without_dns(self):
         node = factory.make_Node()
         vlan = factory.make_VLAN()
