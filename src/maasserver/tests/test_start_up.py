@@ -15,6 +15,7 @@ from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.models.notification import Notification
 from maasserver.models.signals import bootsources
+from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
@@ -150,6 +151,31 @@ class TestInnerStartUp(MAASServerTestCase):
             Notification.objects.filter(
                 ident="commissioning_release_deprecated"
             ).exists()
+        )
+
+    def test_sets_maas_url_master(self):
+        Config.objects.set_config("maas_url", "http://default.example.com/")
+        self.useFixture(
+            RegionConfigurationFixture(maas_url="http://custom.example.com/")
+        )
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+
+        self.assertEqual(
+            "http://custom.example.com/", Config.objects.get_config("maas_url")
+        )
+
+    def test_sets_maas_url_not_master(self):
+        Config.objects.set_config("maas_url", "http://default.example.com/")
+        self.useFixture(
+            RegionConfigurationFixture(maas_url="http://my.example.com/")
+        )
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+
+        self.assertEqual(
+            "http://default.example.com/",
+            Config.objects.get_config("maas_url"),
         )
 
     def test_generates_certificate_if_master(self):

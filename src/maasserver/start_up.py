@@ -12,6 +12,7 @@ from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import locks, security
+from maasserver.config import RegionConfiguration
 from maasserver.deprecations import sync_deprecation_notifications
 from maasserver.fields import register_mac_type
 from maasserver.models import (
@@ -150,6 +151,9 @@ def inner_start_up(master=False):
                 ),
                 ident="commissioning_release_deprecated",
             )
+
+        with RegionConfiguration.open() as config:
+            Config.objects.set_config("maas_url", config.maas_url)
 
         # Update deprecation notifications if needed
         sync_deprecation_notifications()
