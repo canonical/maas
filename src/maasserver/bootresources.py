@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Boot Resources."""
@@ -32,7 +32,6 @@ from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, DeferredList, inlineCallbacks
-from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
 from maasserver import locks
@@ -94,7 +93,7 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.rpc.cluster import ListBootImages, ListBootImagesV2
+from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.upgrade_cluster import create_gnupg_home
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
@@ -1612,12 +1611,7 @@ class ImportResourcesProgressService(TimerService):
         clients = getAllClients()
 
         def get_images(client):
-            def fallback_v1(failure):
-                failure.trap(UnhandledCommand)
-                return client(ListBootImages)
-
-            d = client(ListBootImagesV2)
-            d.addErrback(fallback_v1)
+            d = client(ListBootImages)
             d.addCallback(itemgetter("images"))
             return d
 

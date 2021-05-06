@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Obtain list of boot images from rack controllers."""
@@ -18,7 +18,6 @@ from urllib.parse import ParseResult, urlparse
 
 from twisted.internet import reactor
 from twisted.internet.defer import DeferredList, DeferredSemaphore
-from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
 from maasserver.models import BootResource, RackController
@@ -31,7 +30,6 @@ from provisioningserver.rpc.cluster import (
     ImportBootImages,
     IsImportBootImagesRunning,
     ListBootImages,
-    ListBootImagesV2,
 )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import flatten
@@ -79,44 +77,25 @@ def get_boot_images(rack_controller):
         30 seconds.
     """
     client = getClientFor(rack_controller.system_id, timeout=1)
-    try:
-        call = client(ListBootImagesV2)
-        return call.wait(30).get("images")
-    except UnhandledCommand:
-        call = client(ListBootImages)
-        return call.wait(30).get("images")
+    call = client(ListBootImages)
+    return call.wait(30).get("images")
 
 
 @synchronous
 def _get_available_boot_images():
     """Obtain boot images available on connected rack controllers."""
 
-    def listimages_v1(client):
+    def listimages(client):
         return partial(client, ListBootImages)
 
-    def listimages_v2(client):
-        return partial(client, ListBootImagesV2)
-
-    clients_v2 = getAllClients()
-    responses_v2 = gather(map(listimages_v2, clients_v2))
-    clients_v1 = []
-    for i, response in enumerate(responses_v2):
-        if (
-            isinstance(response, Failure)
-            and response.check(UnhandledCommand) is not None
-        ):
-            clients_v1.append(clients_v2[i])
-        elif not isinstance(response, Failure):
+    clients = getAllClients()
+    responses = gather(map(listimages, clients))
+    for i, response in enumerate(responses):
+        if not isinstance(response, Failure):
             # Convert each image to a frozenset of its items.
             yield frozenset(
                 frozenset(image.items()) for image in response["images"]
             )
-    responses_v1 = gather(map(listimages_v1, clients_v1))
-    for response in suppress_failures(responses_v1):
-        # Convert each image to a frozenset of its items.
-        yield frozenset(
-            frozenset(image.items()) for image in response["images"]
-        )
 
 
 @synchronous

@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver.bootresources."""
@@ -28,7 +28,6 @@ from fixtures import FakeLogger, Fixture
 from testtools.matchers import Contains, ContainsAll, Equals, HasLength, Not
 from twisted.application.internet import TimerService
 from twisted.internet.defer import Deferred, fail, inlineCallbacks, succeed
-from twisted.protocols.amp import UnhandledCommand
 
 from maasserver import __version__, bootresources
 from maasserver.bootresources import (
@@ -93,7 +92,7 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result, TwistedLoggerFixture
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
-from provisioningserver.rpc.cluster import ListBootImages, ListBootImagesV2
+from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous, DeferredValue
 
@@ -2255,7 +2254,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         factory.make_BootResource()
         self.assertTrue(service.are_boot_images_available_in_the_region())
 
-    def test_are_boot_images_available_in_any_rack_v2(self):
+    def test_are_boot_images_available_in_any_rack(self):
         # Import the websocket handlers now: merely defining DeviceHandler,
         # e.g., causes a database access, which will crash if it happens
         # inside the reactor thread where database access is forbidden and
@@ -2276,46 +2275,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         self.assertFalse(service.are_boot_images_available_in_any_rack())
 
         # Connect a rack controller to the region via RPC.
-        cluster_rpc = region_rpc.makeCluster(rack_controller, ListBootImagesV2)
-
-        # are_boot_images_available_in_the_region() returns False when none of
-        # the clusters have any images.
-        cluster_rpc.ListBootImagesV2.return_value = succeed({"images": []})
-        self.assertFalse(service.are_boot_images_available_in_any_rack())
-
-        # are_boot_images_available_in_the_region() returns True when a
-        # cluster has an imported boot image.
-        response = {"images": [make_rpc_boot_image()]}
-        cluster_rpc.ListBootImagesV2.return_value = succeed(response)
-        self.assertTrue(service.are_boot_images_available_in_any_rack())
-
-    def test_are_boot_images_available_in_any_rack_v1(self):
-        # Import the websocket handlers now: merely defining DeviceHandler,
-        # e.g., causes a database access, which will crash if it happens
-        # inside the reactor thread where database access is forbidden and
-        # prevented. My own opinion is that a class definition should not
-        # cause a database access and we ought to fix that.
-        import maasserver.websockets.handlers  # noqa
-
-        rack_controller = factory.make_RackController()
-        service = bootresources.ImportResourcesProgressService()
-
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        region_rpc = MockLiveRegionToClusterRPCFixture()
-        self.useFixture(region_rpc)
-
-        # are_boot_images_available_in_the_region() returns False when there
-        # are no clusters connected.
-        self.assertFalse(service.are_boot_images_available_in_any_rack())
-
-        # Connect a rack controller to the region via RPC.
-        cluster_rpc = region_rpc.makeCluster(
-            rack_controller, ListBootImagesV2, ListBootImages
-        )
-
-        # All calls to ListBootImagesV2 raises a UnhandledCommand.
-        cluster_rpc.ListBootImagesV2.side_effect = UnhandledCommand
+        cluster_rpc = region_rpc.makeCluster(rack_controller, ListBootImages)
 
         # are_boot_images_available_in_the_region() returns False when none of
         # the clusters have any images.

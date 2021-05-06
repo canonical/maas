@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `boot_images` module."""
@@ -6,7 +6,7 @@
 
 import os
 import random
-from unittest.mock import ANY, call, MagicMock, sentinel
+from unittest.mock import ANY, MagicMock, sentinel
 from urllib.parse import urlparse
 
 from testtools.matchers import (
@@ -19,7 +19,6 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import DeferredLock, fail, maybeDeferred, succeed
 from twisted.internet.task import Clock
-from twisted.protocols.amp import UnhandledCommand
 from twisted.python.failure import Failure
 
 from maasserver.bootresources import get_simplestream_endpoint
@@ -50,20 +49,12 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
+from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.boot.tests import test_tftppath
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.rpc import boot_images
-from provisioningserver.rpc.cluster import (
-    ImportBootImages,
-    ListBootImages,
-    ListBootImagesV2,
-)
+from provisioningserver.rpc.cluster import ImportBootImages, ListBootImages
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
@@ -158,30 +149,14 @@ class TestGetBootImages(MAASServerTestCase):
         super().setUp()
         prepare_tftp_root(self)  # Sets self.tftp_root.
 
-    def test_calls_ListBootImagesV2_before_ListBootImages(self):
+    def test_calls_ListBootImages(self):
         rack_controller = factory.make_RackController()
         mock_client = MagicMock()
         self.patch_autospec(
             boot_images_module, "getClientFor"
         ).return_value = mock_client
         get_boot_images(rack_controller)
-        self.assertThat(mock_client, MockCalledOnceWith(ListBootImagesV2))
-
-    def test_calls_ListBootImages_if_raised_UnhandledCommand(self):
-        rack_controller = factory.make_RackController()
-        mock_client = MagicMock()
-        self.patch_autospec(
-            boot_images_module, "getClientFor"
-        ).return_value = mock_client
-        mock_client.return_value.wait.side_effect = [
-            UnhandledCommand(),
-            {"images": []},
-        ]
-        get_boot_images(rack_controller)
-        self.assertThat(
-            mock_client,
-            MockCallsMatch(call(ListBootImagesV2), call(ListBootImages)),
-        )
+        self.assertThat(mock_client, MockCalledOnceWith(ListBootImages))
 
 
 class TestGetBootImagesTxn(MAASTransactionServerTestCase):
@@ -287,34 +262,6 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
             else:
                 # All clients but the first raise an exception.
                 callRemote.side_effect = ZeroDivisionError()
-
-        self.assertItemsEqual(images, self.get())
-
-    def test_fallback_to_ListBootImages_on_old_clusters(self):
-        rack_1 = factory.make_RackController()
-        rack_2 = factory.make_RackController()
-        rack_3 = factory.make_RackController()
-
-        images = [make_rpc_boot_image() for _ in range(3)]
-
-        # Limit the region's event loop to only the "rpc" service.
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        # Now start the region's event loop.
-        self.useFixture(RunningEventLoopFixture())
-        # This fixture allows us to simulate mock clusters.
-        rpc = self.useFixture(MockLiveRegionToClusterRPCFixture())
-
-        # This simulates an older cluster, one without ListBootImagesV2.
-        rack_1 = rpc.makeCluster(rack_1, ListBootImages)
-        rack_1.ListBootImages.return_value = succeed({"images": images})
-
-        # This simulates a newer cluster, one with ListBootImagesV2.
-        rack_2 = rpc.makeCluster(rack_2, ListBootImagesV2)
-        rack_2.ListBootImagesV2.return_value = succeed({"images": images})
-
-        # This simulates a broken cluster.
-        rack_3 = rpc.makeCluster(rack_3, ListBootImagesV2)
-        rack_3.ListBootImagesV2.side_effect = ZeroDivisionError
 
         self.assertItemsEqual(images, self.get())
 

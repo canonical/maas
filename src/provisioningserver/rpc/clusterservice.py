@@ -295,15 +295,6 @@ class Cluster(RPCProtocol):
         """
         return {"images": list_boot_images()}
 
-    @cluster.ListBootImagesV2.responder
-    def list_boot_images_v2(self):
-        """list_boot_images_v2()
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.cluster.ListBootImagesV2`.
-        """
-        return {"images": list_boot_images()}
-
     @cluster.ImportBootImages.responder
     def import_boot_images(self, sources, http_proxy=None, https_proxy=None):
         """import_boot_images()
