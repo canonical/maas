@@ -10,10 +10,8 @@ __all__ = [
     "Authenticate",
     "ConfigureDHCPv4",
     "ConfigureDHCPv4",
-    "ConfigureDHCPv4_V2",
     "ConfigureDHCPv6",
     "ConfigureDHCPv6",
-    "ConfigureDHCPv6_V2",
     "DescribePowerTypes",
     "GetPreseedData",
     "Identify",
@@ -28,9 +26,7 @@ __all__ = [
     "SetBootOrder",
     "ScanNetworks",
     "ValidateDHCPv4Config",
-    "ValidateDHCPv4Config_V2",
     "ValidateDHCPv6Config",
-    "ValidateDHCPv6Config_V2",
     "ValidateLicenseKey",
 ]
 
@@ -304,124 +300,6 @@ class SetBootOrder(_Power):
 class _ConfigureDHCP(amp.Command):
     """Configure a DHCP server.
 
-    :since: 2.0
-    """
-
-    arguments = [
-        (b"omapi_key", amp.Unicode()),
-        (
-            b"failover_peers",
-            AmpList(
-                [
-                    (b"name", amp.Unicode()),
-                    (b"mode", amp.Unicode()),
-                    (b"address", amp.Unicode()),
-                    (b"peer_address", amp.Unicode()),
-                ]
-            ),
-        ),
-        (
-            b"shared_networks",
-            CompressedAmpList(
-                [
-                    (b"name", amp.Unicode()),
-                    (
-                        b"subnets",
-                        AmpList(
-                            [
-                                (b"subnet", amp.Unicode()),
-                                (b"subnet_mask", amp.Unicode()),
-                                (b"subnet_cidr", amp.Unicode()),
-                                (b"broadcast_ip", amp.Unicode()),
-                                (b"router_ip", amp.Unicode()),
-                                # dns_servers is a space- or comma-separated list (it's not
-                                # clear which) of IP addresses. In _ConfigureDHCP_V2 is it a
-                                # list proper.
-                                (b"dns_servers", amp.Unicode()),
-                                # ntp_server (note: singular) is a space- or comma-separated
-                                # list (it's not clear which) of IP addresses and/or
-                                # hostnames. In _ConfigureDHCP_V2 is it a list proper.
-                                (b"ntp_server", amp.Unicode()),
-                                (b"domain_name", amp.Unicode()),
-                                (
-                                    b"search_list",
-                                    amp.ListOf(amp.Unicode(), optional=True),
-                                ),
-                                (
-                                    b"pools",
-                                    AmpList(
-                                        [
-                                            (b"ip_range_low", amp.Unicode()),
-                                            (b"ip_range_high", amp.Unicode()),
-                                            (
-                                                b"failover_peer",
-                                                amp.Unicode(optional=True),
-                                            ),
-                                        ]
-                                    ),
-                                ),
-                                (
-                                    b"dhcp_snippets",
-                                    AmpList(
-                                        [
-                                            (b"name", amp.Unicode()),
-                                            (
-                                                b"description",
-                                                amp.Unicode(optional=True),
-                                            ),
-                                            (b"value", amp.Unicode()),
-                                        ],
-                                        optional=True,
-                                    ),
-                                ),
-                            ]
-                        ),
-                    ),
-                    (b"mtu", amp.Integer(optional=True)),
-                ]
-            ),
-        ),
-        (
-            b"hosts",
-            CompressedAmpList(
-                [
-                    (b"host", amp.Unicode()),
-                    (b"mac", amp.Unicode()),
-                    (b"ip", amp.Unicode()),
-                    (
-                        b"dhcp_snippets",
-                        AmpList(
-                            [
-                                (b"name", amp.Unicode()),
-                                (b"description", amp.Unicode(optional=True)),
-                                (b"value", amp.Unicode()),
-                            ],
-                            optional=True,
-                        ),
-                    ),
-                ]
-            ),
-        ),
-        (b"interfaces", AmpList([(b"name", amp.Unicode())])),
-        (
-            b"global_dhcp_snippets",
-            CompressedAmpList(
-                [
-                    (b"name", amp.Unicode()),
-                    (b"description", amp.Unicode(optional=True)),
-                    (b"value", amp.Unicode()),
-                ],
-                optional=True,
-            ),
-        ),
-    ]
-    response = []
-    errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}
-
-
-class _ConfigureDHCP_V2(amp.Command):
-    """Configure a DHCP server.
-
     :since: 2.1
     """
 
@@ -539,28 +417,6 @@ class _ConfigureDHCP_V2(amp.Command):
 class _ValidateDHCPConfig(_ConfigureDHCP):
     """Validate the configure the DHCPv4 server.
 
-    :since: 2.0
-    """
-
-    response = [
-        (
-            b"errors",
-            CompressedAmpList(
-                [
-                    (b"error", amp.Unicode()),
-                    (b"line_num", amp.Integer()),
-                    (b"line", amp.Unicode()),
-                    (b"position", amp.Unicode()),
-                ],
-                optional=True,
-            ),
-        )
-    ]
-
-
-class _ValidateDHCPConfig_V2(_ConfigureDHCP_V2):
-    """Validate the configure the DHCPv4 server.
-
     :since: 2.1
     """
 
@@ -583,25 +439,11 @@ class _ValidateDHCPConfig_V2(_ConfigureDHCP_V2):
 class ConfigureDHCPv4(_ConfigureDHCP):
     """Configure the DHCPv4 server.
 
-    :since: 2.0
-    """
-
-
-class ConfigureDHCPv4_V2(_ConfigureDHCP_V2):
-    """Configure the DHCPv4 server.
-
     :since: 2.1
     """
 
 
 class ValidateDHCPv4Config(_ValidateDHCPConfig):
-    """Validate the configure the DHCPv4 server.
-
-    :since: 2.0
-    """
-
-
-class ValidateDHCPv4Config_V2(_ValidateDHCPConfig_V2):
     """Validate the configure the DHCPv4 server.
 
     :since: 2.1
@@ -611,25 +453,11 @@ class ValidateDHCPv4Config_V2(_ValidateDHCPConfig_V2):
 class ConfigureDHCPv6(_ConfigureDHCP):
     """Configure the DHCPv6 server.
 
-    :since: 2.0
-    """
-
-
-class ConfigureDHCPv6_V2(_ConfigureDHCP_V2):
-    """Configure the DHCPv6 server.
-
     :since: 2.1
     """
 
 
 class ValidateDHCPv6Config(_ValidateDHCPConfig):
-    """Configure the DHCPv6 server.
-
-    :since: 2.0
-    """
-
-
-class ValidateDHCPv6Config_V2(_ValidateDHCPConfig_V2):
     """Configure the DHCPv6 server.
 
     :since: 2.1

@@ -70,7 +70,6 @@ from provisioningserver.dhcp.testing.config import (
     make_host,
     make_interface,
     make_shared_network,
-    make_shared_network_v1,
 )
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
@@ -2648,17 +2647,6 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
                 "dhcp_server": (dhcp, "DHCPv4Server"),
                 "command": cluster.ConfigureDHCPv4,
                 "make_network": factory.make_ipv4_network,
-                "make_shared_network": make_shared_network_v1,
-                "make_shared_network_kwargs": {},
-                "concurrency_lock": concurrency.dhcpv4,
-            },
-        ),
-        (
-            "DHCPv4,V2",
-            {
-                "dhcp_server": (dhcp, "DHCPv4Server"),
-                "command": cluster.ConfigureDHCPv4_V2,
-                "make_network": factory.make_ipv4_network,
                 "make_shared_network": make_shared_network,
                 "make_shared_network_kwargs": {"with_interface": True},
                 "concurrency_lock": concurrency.dhcpv4,
@@ -2669,17 +2657,6 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             {
                 "dhcp_server": (dhcp, "DHCPv6Server"),
                 "command": cluster.ConfigureDHCPv6,
-                "make_network": factory.make_ipv6_network,
-                "make_shared_network": make_shared_network_v1,
-                "make_shared_network_kwargs": {},
-                "concurrency_lock": concurrency.dhcpv6,
-            },
-        ),
-        (
-            "DHCPv6,V2",
-            {
-                "dhcp_server": (dhcp, "DHCPv6Server"),
-                "command": cluster.ConfigureDHCPv6_V2,
                 "make_network": factory.make_ipv6_network,
                 "make_shared_network": make_shared_network,
                 "make_shared_network_kwargs": {"with_interface": True},
@@ -2722,9 +2699,6 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
                 "interfaces": interfaces,
             },
         )
-
-        # The `shared_networks` structure is always the V2 style.
-        dhcp.upgrade_shared_networks(shared_networks)
 
         self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
         self.assertThat(
@@ -2840,15 +2814,6 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
                 "dhcp_server": (dhcp, "DHCPv4Server"),
                 "command": cluster.ValidateDHCPv4Config,
                 "make_network": factory.make_ipv4_network,
-                "make_shared_network": make_shared_network_v1,
-            },
-        ),
-        (
-            "DHCPv4,V2",
-            {
-                "dhcp_server": (dhcp, "DHCPv4Server"),
-                "command": cluster.ValidateDHCPv4Config_V2,
-                "make_network": factory.make_ipv4_network,
                 "make_shared_network": make_shared_network,
             },
         ),
@@ -2857,15 +2822,6 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
             {
                 "dhcp_server": (dhcp, "DHCPv6Server"),
                 "command": cluster.ValidateDHCPv6Config,
-                "make_network": factory.make_ipv6_network,
-                "make_shared_network": make_shared_network_v1,
-            },
-        ),
-        (
-            "DHCPv6,V2",
-            {
-                "dhcp_server": (dhcp, "DHCPv6Server"),
-                "command": cluster.ValidateDHCPv6Config_V2,
                 "make_network": factory.make_ipv6_network,
                 "make_shared_network": make_shared_network,
             },

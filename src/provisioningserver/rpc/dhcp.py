@@ -7,8 +7,6 @@ __all__ = [
     "configure",
     "DHCPv4Server",
     "DHCPv6Server",
-    "downgrade_shared_networks",
-    "upgrade_shared_networks",
 ]
 
 from collections import namedtuple
@@ -17,7 +15,6 @@ import os
 import re
 from tempfile import NamedTemporaryFile
 
-from netaddr import IPAddress
 from twisted.internet.defer import inlineCallbacks, maybeDeferred
 from twisted.internet.threads import deferToThread
 
@@ -38,7 +35,6 @@ from provisioningserver.utils.service_monitor import (
     ServiceActionError,
 )
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
-from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import asynchronous, synchronous
 
 maaslog = get_maas_logger("dhcp")
@@ -521,36 +517,3 @@ def validate(
         except ExternalProcessError as e:
             return _parse_dhcpd_errors(e.output_as_unicode)
     return None
-
-
-def upgrade_shared_networks(shared_networks):
-    """Update the `shared_networks` structure to match the V2 calls.
-
-    Mutates `shared_networks` in place.
-    """
-    for shared_network in shared_networks:
-        for subnet in shared_network["subnets"]:
-            dns_servers = subnet["dns_servers"]
-            if isinstance(dns_servers, str):
-                dns_servers = map(IPAddress, split_string_list(dns_servers))
-                subnet["dns_servers"] = list(dns_servers)
-            if "ntp_server" in subnet:  # Note singular.
-                ntp_servers = split_string_list(subnet.pop("ntp_server"))
-                subnet["ntp_servers"] = list(ntp_servers)
-
-
-def downgrade_shared_networks(shared_networks):
-    """Downgrade the `shared_networks` structure to match the V1 calls.
-
-    Mutates `shared_networks` in place.
-    """
-    for shared_network in shared_networks:
-        shared_network.pop("interface", None)
-        for subnet in shared_network["subnets"]:
-            dns_servers = subnet["dns_servers"]
-            if not isinstance(dns_servers, str):
-                subnet["dns_servers"] = ", ".join(map(str, dns_servers))
-            if "ntp_servers" in subnet:
-                subnet["ntp_server"] = ", ".join(subnet.pop("ntp_servers"))
-            if "disabled_boot_architectures" in subnet:
-                del subnet["disabled_boot_architectures"]

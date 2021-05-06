@@ -56,15 +56,10 @@ from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import always_fail_with, always_succeed_with
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
-    ConfigureDHCPv4_V2,
     ConfigureDHCPv6,
-    ConfigureDHCPv6_V2,
     ValidateDHCPv4Config,
-    ValidateDHCPv4Config_V2,
     ValidateDHCPv6Config,
-    ValidateDHCPv6Config_V2,
 )
-from provisioningserver.rpc.dhcp import downgrade_shared_networks
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.utils.twisted import synchronous
 
@@ -2491,27 +2486,6 @@ class TestGetDHCPConfiguration(MAASServerTestCase):
 class TestConfigureDHCP(MAASTransactionServerTestCase):
     """Tests for `configure_dhcp`."""
 
-    scenarios = (
-        (
-            "v1",
-            dict(
-                rpc_version=1,
-                command_v4=ConfigureDHCPv4,
-                command_v6=ConfigureDHCPv6,
-                process_expected_shared_networks=downgrade_shared_networks,
-            ),
-        ),
-        (
-            "v2",
-            dict(
-                rpc_verson=2,
-                command_v4=ConfigureDHCPv4_V2,
-                command_v6=ConfigureDHCPv6_V2,
-                process_expected_shared_networks=None,
-            ),
-        ),
-    )
-
     @synchronous
     def prepare_rpc(self, rack_controller):
         """"Set up test case for speaking RPC to `rack_controller`."""
@@ -2519,12 +2493,12 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         cluster = fixture.makeCluster(
-            rack_controller, self.command_v4, self.command_v6
+            rack_controller, ConfigureDHCPv4, ConfigureDHCPv6
         )
         return (
             cluster,
-            getattr(cluster, self.command_v4.commandName.decode("ascii")),
-            getattr(cluster, self.command_v6.commandName.decode("ascii")),
+            getattr(cluster, ConfigureDHCPv4.commandName.decode("ascii")),
+            getattr(cluster, ConfigureDHCPv6.commandName.decode("ascii")),
         )
 
     @transactional
@@ -2611,10 +2585,6 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
         interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
         yield dhcp.configure_dhcp(rack_controller)
-
-        if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(config.shared_networks_v4)
-            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub,
@@ -2825,41 +2795,20 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 class TestValidateDHCPConfig(MAASTransactionServerTestCase):
     """Tests for `validate_dhcp_config`."""
 
-    scenarios = (
-        (
-            "v1",
-            dict(
-                rpc_version=1,
-                command_v4=ValidateDHCPv4Config,
-                command_v6=ValidateDHCPv6Config,
-                process_expected_shared_networks=downgrade_shared_networks,
-            ),
-        ),
-        (
-            "v2",
-            dict(
-                rpc_version=2,
-                command_v4=ValidateDHCPv4Config_V2,
-                command_v6=ValidateDHCPv6Config_V2,
-                process_expected_shared_networks=None,
-            ),
-        ),
-    )
-
     def prepare_rpc(self, rack_controller, return_value=None):
         """"Set up test case for speaking RPC to `rack_controller`."""
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
         cluster = fixture.makeCluster(
-            rack_controller, self.command_v4, self.command_v6
+            rack_controller, ValidateDHCPv4Config, ValidateDHCPv6Config
         )
         ipv4_stub = getattr(
-            cluster, self.command_v4.commandName.decode("ascii")
+            cluster, ValidateDHCPv4Config.commandName.decode("ascii")
         )
         ipv4_stub.return_value = defer.succeed({"errors": return_value})
         ipv6_stub = getattr(
-            cluster, self.command_v6.commandName.decode("ascii")
+            cluster, ValidateDHCPv6Config.commandName.decode("ascii")
         )
         ipv6_stub.return_value = defer.succeed({"errors": return_value})
         return ipv4_stub, ipv6_stub
@@ -2925,10 +2874,6 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
 
         dhcp.validate_dhcp_config()
 
-        if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(config.shared_networks_v4)
-            self.process_expected_shared_networks(config.shared_networks_v6)
-
         self.assertThat(
             ipv4_stub,
             MockCalledOnceWith(
@@ -2971,10 +2916,6 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         )
         dhcp_snippet = factory.make_DHCPSnippet(subnet=subnet)
         dhcp.validate_dhcp_config(dhcp_snippet)
-
-        if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(config.shared_networks_v4)
-            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub,
@@ -3036,10 +2977,6 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
         interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
-        if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(config.shared_networks_v4)
-            self.process_expected_shared_networks(config.shared_networks_v6)
-
         self.assertThat(
             ipv4_stub,
             MockCalledOnceWith(
@@ -3086,10 +3023,6 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             }
         )
 
-        if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(config.shared_networks_v4)
-            self.process_expected_shared_networks(config.shared_networks_v6)
-
         self.assertThat(
             ipv4_stub,
             MockCalledOnceWith(
@@ -3130,10 +3063,6 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
                 "value": new_dhcp_snippet.value.data,
             }
         )
-
-        if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(config.shared_networks_v4)
-            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub,
@@ -3186,10 +3115,6 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
                     "value": updated_dhcp_snippet.value.data,
                 }
                 break
-
-        if self.process_expected_shared_networks is not None:
-            self.process_expected_shared_networks(config.shared_networks_v4)
-            self.process_expected_shared_networks(config.shared_networks_v6)
 
         self.assertThat(
             ipv4_stub,

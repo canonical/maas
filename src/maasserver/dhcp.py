@@ -14,7 +14,6 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from netaddr import IPAddress, IPNetwork
 from twisted.internet.defer import inlineCallbacks
-from twisted.protocols import amp
 
 from maasserver.dns.zonegenerator import (
     get_dns_search_paths,
@@ -45,16 +44,11 @@ from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
-    ConfigureDHCPv4_V2,
     ConfigureDHCPv6,
-    ConfigureDHCPv6_V2,
     ValidateDHCPv4Config,
-    ValidateDHCPv4Config_V2,
     ValidateDHCPv6Config,
-    ValidateDHCPv6Config_V2,
 )
 from provisioningserver.rpc.clusterservice import DHCP_TIMEOUT
-from provisioningserver.rpc.dhcp import downgrade_shared_networks
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import typed
 from provisioningserver.utils.network import get_source_address
@@ -874,10 +868,9 @@ def configure_dhcp(rack_controller):
     ipv4_status, ipv6_status = SERVICE_STATUS.UNKNOWN, SERVICE_STATUS.UNKNOWN
 
     try:
-        yield _perform_dhcp_config(
-            client,
-            ConfigureDHCPv4_V2,
+        yield client(
             ConfigureDHCPv4,
+            _timeout=DHCP_TIMEOUT + 5,
             failover_peers=config.failover_peers_v4,
             interfaces=interfaces_v4,
             shared_networks=config.shared_networks_v4,
@@ -904,10 +897,9 @@ def configure_dhcp(rack_controller):
         )
 
     try:
-        yield _perform_dhcp_config(
-            client,
-            ConfigureDHCPv6_V2,
+        yield client(
             ConfigureDHCPv6,
+            _timeout=DHCP_TIMEOUT + 5,
             failover_peers=config.failover_peers_v6,
             interfaces=interfaces_v6,
             shared_networks=config.shared_networks_v6,
@@ -1057,27 +1049,28 @@ def validate_dhcp_config(test_dhcp_snippet=None):
     interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
 
     # Validate both IPv4 and IPv6.
-    v4_args = dict(
+    # XXX: These remote calls can hold transactions open for a prolonged
+    # period. This is bad for concurrency and scaling.
+    v4_response = client(
+        ValidateDHCPv4Config,
+        _timeout=DHCP_TIMEOUT + 5,
         omapi_key=config.omapi_key,
         failover_peers=config.failover_peers_v4,
         hosts=config.hosts_v4,
         interfaces=interfaces_v4,
         global_dhcp_snippets=config.global_dhcp_snippets,
         shared_networks=config.shared_networks_v4,
-    )
-    v6_args = dict(
+    ).wait(30)
+    v6_response = client(
+        ValidateDHCPv6Config,
+        _timeout=DHCP_TIMEOUT + 5,
         omapi_key=config.omapi_key,
         failover_peers=config.failover_peers_v6,
         hosts=config.hosts_v6,
         interfaces=interfaces_v6,
         global_dhcp_snippets=config.global_dhcp_snippets,
         shared_networks=config.shared_networks_v6,
-    )
-
-    # XXX: These remote calls can hold transactions open for a prolonged
-    # period. This is bad for concurrency and scaling.
-    v4_response = _validate_dhcp_config_v4(client, **v4_args).wait(30)
-    v6_response = _validate_dhcp_config_v6(client, **v6_args).wait(30)
+    ).wait(30)
 
     # Deduplicate errors between IPv4 and IPv6
     known_errors = []
@@ -1091,56 +1084,3 @@ def validate_dhcp_config(test_dhcp_snippet=None):
                 known_errors.append(hash)
                 unique_errors.append(error)
     return unique_errors
-
-
-def _validate_dhcp_config_v4(client, **args):
-    """See `_validate_dhcp_config_vx`."""
-    return _perform_dhcp_config(
-        client, ValidateDHCPv4Config_V2, ValidateDHCPv4Config, **args
-    )
-
-
-def _validate_dhcp_config_v6(client, **args):
-    """See `_validate_dhcp_config_vx`."""
-    return _perform_dhcp_config(
-        client, ValidateDHCPv6Config_V2, ValidateDHCPv6Config, **args
-    )
-
-
-@asynchronous
-def _perform_dhcp_config(
-    client, v2_command, v1_command, *, shared_networks, **args
-):
-    """Call `v2_command` then `v1_command`...
-
-    ... if the former is not recognised. This allows interoperability between
-    a region that's newer than the rack controller.
-
-    :param client: An RPC client.
-    :param v2_command: The RPC command to attempt first.
-    :param v1_command: The RPC command to attempt second.
-    :param shared_networks: The shared networks argument for `v2_command` and
-        `v1_command`. If `v2_command` is not handled by the remote side, this
-        structure will be downgraded in place.
-    :param args: Remaining arguments for `v2_command` and `v1_command`.
-    """
-
-    def call(command):
-        # DHCP command should not take more than `DHCP_TIMEOUT` plus 5 seconds
-        # to complete. This gives the region controller a 5 second buffer to
-        # recieve the timeout error from the rack controller.
-        return client(
-            command,
-            _timeout=DHCP_TIMEOUT + 5,
-            shared_networks=shared_networks,
-            **args
-        )
-
-    def maybeDowngrade(failure):
-        if failure.check(amp.UnhandledCommand):
-            downgrade_shared_networks(shared_networks)
-            return call(v1_command)
-        else:
-            return failure
-
-    return call(v2_command).addErrback(maybeDowngrade)

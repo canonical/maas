@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test helpers related to DHCP configuration."""
@@ -161,24 +161,6 @@ def make_shared_network(
     if with_interface:
         data["interface"] = factory.make_name("eth")
     return data
-
-
-def make_shared_network_v1(name=None, subnets=None, ipv6=False):
-    """Return complete DHCP configuration dict for a shared network.
-
-    This produces the configuration dict suitable for original configure and
-    validate DHCP calls, not the V2 calls.
-    """
-    shared_network = make_shared_network(name, subnets, ipv6)
-    for subnet in shared_network["subnets"]:
-        subnet["dns_servers"] = " ".join(
-            str(server) for server in subnet["dns_servers"]
-        )
-        subnet["ntp_server"] = " ".join(
-            str(server) for server in subnet.pop("ntp_servers")
-        )
-        del subnet["disabled_boot_architectures"]
-    return shared_network
 
 
 def make_failover_peer_config(
