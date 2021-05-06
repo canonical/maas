@@ -1,4 +1,4 @@
-# Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC implementation for regions."""
@@ -207,19 +207,6 @@ class Region(RPCProtocol):
 
     @region.GetBootSources.responder
     def get_boot_sources(self, uuid):
-        """get_boot_sources()
-
-        Deprecated: get_boot_sources_v2() should be used instead.
-
-        Implementation of
-        :py:class:`~provisioningserver.rpc.region.GetBootSources`.
-        """
-        d = deferToDatabase(get_simplestream_endpoint)
-        d.addCallback(lambda source: {"sources": [source]})
-        return d
-
-    @region.GetBootSourcesV2.responder
-    def get_boot_sources_v2(self, uuid):
         """get_boot_sources_v2()
 
         Implementation of

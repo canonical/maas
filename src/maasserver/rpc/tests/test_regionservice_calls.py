@@ -56,7 +56,6 @@ from provisioningserver.rpc.region import (
     GetArchiveMirrors,
     GetBootConfig,
     GetBootSources,
-    GetBootSourcesV2,
     GetControllerType,
     GetDNSConfiguration,
     GetProxies,
@@ -332,26 +331,6 @@ class TestRegionProtocol_GetBootSources(MAASTransactionServerTestCase):
         uuid = factory.make_name("uuid")
 
         d = call_responder(Region(), GetBootSources, {"uuid": uuid})
-
-        def check(response):
-            self.assertEqual(
-                {"sources": [get_simplestream_endpoint()]}, response
-            )
-
-        return d.addCallback(check)
-
-
-class TestRegionProtocol_GetBootSourcesV2(MAASTransactionServerTestCase):
-    def test_get_boot_sources_v2_is_registered(self):
-        protocol = Region()
-        responder = protocol.locateResponder(GetBootSourcesV2.commandName)
-        self.assertIsNotNone(responder)
-
-    @wait_for_reactor
-    def test_get_boot_sources_v2_returns_simplestreams_endpoint(self):
-        uuid = factory.make_name("uuid")
-
-        d = call_responder(Region(), GetBootSourcesV2, {"uuid": uuid})
 
         def check(response):
             self.assertEqual(

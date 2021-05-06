@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """RPC declarations for the region.
@@ -13,7 +13,6 @@ __all__ = [
     "GetArchiveMirrors",
     "GetBootConfig",
     "GetBootSources",
-    "GetBootSourcesV2",
     "GetControllerType",
     "GetDiscoveryState",
     "GetDNSConfiguration",
@@ -160,42 +159,6 @@ class GetBootConfig(amp.Command):
 
 
 class GetBootSources(amp.Command):
-    """Report boot sources and selections for the given cluster.
-
-    :since: 1.6
-    :deprecated: 1.7
-    """
-
-    arguments = [
-        # The cluster UUID.
-        (b"uuid", amp.Unicode())
-    ]
-    response = [
-        (
-            b"sources",
-            AmpList(
-                [
-                    (b"url", amp.Unicode()),
-                    (b"keyring_data", Bytes()),
-                    (
-                        b"selections",
-                        AmpList(
-                            [
-                                (b"release", amp.Unicode()),
-                                (b"arches", amp.ListOf(amp.Unicode())),
-                                (b"subarches", amp.ListOf(amp.Unicode())),
-                                (b"labels", amp.ListOf(amp.Unicode())),
-                            ]
-                        ),
-                    ),
-                ]
-            ),
-        )
-    ]
-    errors = []
-
-
-class GetBootSourcesV2(amp.Command):
     """Report boot sources and selections for the given cluster.
 
     Includes the new os field for the selections.

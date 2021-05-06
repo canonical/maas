@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Service to periodically refresh the boot images."""
@@ -7,18 +7,13 @@
 from datetime import timedelta
 
 from twisted.application.internet import TimerService
-from twisted.internet.defer import inlineCallbacks, returnValue
-from twisted.protocols.amp import UnhandledCommand
+from twisted.internet.defer import inlineCallbacks
 
 from provisioningserver.boot import tftppath
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.boot_images import import_boot_images
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.region import (
-    GetBootSources,
-    GetBootSourcesV2,
-    GetProxies,
-)
+from provisioningserver.rpc.region import GetBootSources, GetProxies
 from provisioningserver.utils.twisted import pause, retries
 
 maaslog = get_maas_logger("boot_image_download_service")
@@ -58,22 +53,6 @@ class ImageDownloadService(TimerService):
         return self.maybe_start_download().addErrback(download_failure)
 
     @inlineCallbacks
-    def _get_boot_sources(self, client):
-        """Gets the boot sources from the region."""
-        try:
-            sources = yield client(GetBootSourcesV2, uuid=client.localIdent)
-        except UnhandledCommand:
-            # Region has not been upgraded to support the new call, use the
-            # old call. The old call did not provide the new os selection
-            # parameter. Region does not support boot source selection by os,
-            # so its set too allow all operating systems.
-            sources = yield client(GetBootSources, uuid=client.localIdent)
-            for source in sources["sources"]:
-                for selection in source["selections"]:
-                    selection["os"] = "*"
-        returnValue(sources)
-
-    @inlineCallbacks
     def _start_download(self):
         client = None
         # Retry a few times, since this service usually comes up before
@@ -91,7 +70,7 @@ class ImageDownloadService(TimerService):
             return
 
         # Get sources from region
-        sources = yield self._get_boot_sources(client)
+        sources = yield client(GetBootSources, uuid=client.localIdent)
         # Get http proxy from region
         proxies = yield client(GetProxies)
 

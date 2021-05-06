@@ -1,24 +1,22 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for provisioningserver.rackdservices.image_download_service"""
 
 
 from datetime import timedelta
-from unittest.mock import call, Mock, sentinel
+from unittest.mock import Mock, sentinel
 from urllib.parse import urlparse
 
 from fixtures import FakeLogger
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
-from twisted.protocols.amp import UnhandledCommand
 
 from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
     MockCalledOnceWith,
-    MockCallsMatch,
     MockNotCalled,
 )
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -30,7 +28,6 @@ from provisioningserver.rackdservices.image_download_service import (
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import _run_import
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.rpc.region import GetBootSources, GetBootSourcesV2
 
 
 class TestPeriodicImageDownloadService(MAASTestCase):
@@ -196,83 +193,3 @@ class TestPeriodicImageDownloadService(MAASTestCase):
             """,
             logger.output,
         )
-
-
-class TestGetBootSources(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    @defer.inlineCallbacks
-    def test_get_boot_sources_calls_get_boot_sources_v2_before_v1(self):
-        clock = Clock()
-        client_call = Mock()
-        client_call.side_effect = [
-            defer.succeed(dict(sources=sentinel.sources))
-        ]
-        client_call.localIdent = factory.make_UUID()
-
-        service = ImageDownloadService(sentinel.rpc, sentinel.tftp_root, clock)
-        sources = yield service._get_boot_sources(client_call)
-        self.assertEqual(sources.get("sources"), sentinel.sources)
-        self.assertThat(
-            client_call,
-            MockCalledOnceWith(GetBootSourcesV2, uuid=client_call.localIdent),
-        )
-
-    @defer.inlineCallbacks
-    def test_get_boot_sources_calls_get_boot_sources_v1_on_v2_missing(self):
-        clock = Clock()
-        client_call = Mock()
-        client_call.side_effect = [
-            defer.fail(UnhandledCommand()),
-            defer.succeed(dict(sources=[])),
-        ]
-        client_call.localIdent = factory.make_UUID()
-
-        service = ImageDownloadService(sentinel.rpc, sentinel.tftp_root, clock)
-        yield service._get_boot_sources(client_call)
-        self.assertThat(
-            client_call,
-            MockCallsMatch(
-                call(GetBootSourcesV2, uuid=client_call.localIdent),
-                call(GetBootSources, uuid=client_call.localIdent),
-            ),
-        )
-
-    @defer.inlineCallbacks
-    def test_get_boot_sources_v1_sets_os_to_wildcard(self):
-        sources = [
-            {
-                "path": factory.make_url(),
-                "selections": [
-                    {
-                        "release": "trusty",
-                        "arches": ["amd64"],
-                        "subarches": ["generic"],
-                        "labels": ["release"],
-                    },
-                    {
-                        "release": "precise",
-                        "arches": ["amd64"],
-                        "subarches": ["generic"],
-                        "labels": ["release"],
-                    },
-                ],
-            }
-        ]
-
-        clock = Clock()
-        client_call = Mock()
-        client_call.side_effect = [
-            defer.fail(UnhandledCommand()),
-            defer.succeed(dict(sources=sources)),
-        ]
-
-        service = ImageDownloadService(sentinel.rpc, sentinel.tftp_root, clock)
-        sources = yield service._get_boot_sources(client_call)
-        os_selections = [
-            selection.get("os")
-            for source in sources["sources"]
-            for selection in source["selections"]
-        ]
-        self.assertEqual(["*", "*"], os_selections)
