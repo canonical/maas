@@ -579,11 +579,6 @@ If you need to get an interactive ``psql`` prompt, you can use `dbshell`_::
 
 .. _dbshell: https://docs.djangoproject.com/en/dev/ref/django-admin/#dbshell
 
-If you need to do the same thing with a version of MAAS you have installed
-from the package, you can use::
-
-    $ sudo maas-region dbshell --installed
-
 You can use the ``\dt`` command to list the tables in the MAAS database. You
 can also execute arbitrary SQL. For example:::
 
