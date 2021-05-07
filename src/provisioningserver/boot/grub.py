@@ -94,12 +94,14 @@ class UEFIAMD64BootMethod(BootMethod):
         mac = params.get("mac")
         if mac is not None:
             params["mac"] = mac.replace(":", "-")
+
+        # MAAS uses Debian architectures while GRUB uses standard Linux
+        # architectures.
         arch = params.get("arch")
         if arch == "x86_64":
-            # MAAS uses Debian architectures while GRUB uses standard Linux
-            # architectures. Convert x86_64 to amd64 as they mean the same
-            # thing.
             params["arch"] = "amd64"
+        elif arch in {"powerpc", "ppc64", "ppc64le"}:
+            params["arch"] = "ppc64el"
 
         return params
 

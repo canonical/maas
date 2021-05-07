@@ -408,6 +408,30 @@ class TestUEFIAMD64BootMethod(MAASTestCase):
             method.match_path(backend, b"/grub/grub.cfg-default-x86_64"),
         )
 
+    def test_match_path_arch_powerpc(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertEqual(
+            {"arch": "ppc64el"},
+            method.match_path(backend, b"/grub/grub.cfg-default-powerpc"),
+        )
+
+    def test_match_path_arch_ppc64(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertEqual(
+            {"arch": "ppc64el"},
+            method.match_path(backend, b"/grub/grub.cfg-default-ppc64"),
+        )
+
+    def test_match_path_arch_ppc64le(self):
+        method = UEFIAMD64BootMethod()
+        backend = random.choice(["http", "tftp"])
+        self.assertEqual(
+            {"arch": "ppc64el"},
+            method.match_path(backend, b"/grub/grub.cfg-default-ppc64le"),
+        )
+
     def test_match_path_arch_subarch(self):
         method = UEFIAMD64BootMethod()
         backend = random.choice(["http", "tftp"])
