@@ -179,6 +179,15 @@ class TestControllerHandler(MAASServerTestCase):
         handler = ControllerHandler(user, {}, None)
         self.assertEqual(ControllerForm, handler.get_form_class("update"))
 
+    def test_update_uses_handler_queryset(self):
+        # test for lp:1927292
+        user = factory.make_admin()
+        handler = ControllerHandler(user, {}, None)
+        controller = factory.make_RackController(power_type="manual")
+        data = handler.get({"system_id": controller.system_id})
+        updated = handler.update(data)
+        self.assertIn("vlans_ha", updated)
+
     def test_check_images(self):
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {}, None)

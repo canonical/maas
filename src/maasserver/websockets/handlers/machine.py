@@ -450,7 +450,7 @@ class MachineHandler(NodeHandler):
             self.update_tags(node_obj, params["tags"])
         node_obj.save()
 
-        return self.full_dehydrate(node_obj)
+        return self.full_dehydrate(self.refetch(node_obj))
 
     def mount_special(self, params):
         """Mount a special-purpose filesystem, like tmpfs.
