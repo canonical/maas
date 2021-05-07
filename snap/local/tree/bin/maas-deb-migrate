@@ -7,9 +7,40 @@
 # Perform migration from a deb setup to the snap.
 #
 
-# shellcheck source=snap/local/tree/helpers/_lib
-. /snap/maas/current/helpers/_lib
+MAAS_SNAP_COMMON="/var/snap/maas/common"
+MAAS_SNAP_DATA="/var/snap/maas/current"
+MAAS_SNAP="/snap/maas/current"
+MAAS_SNAP_MODE_FILE="$MAAS_SNAP_COMMON/snap_mode"
 
+
+is_deb_installed() {
+    dpkg-query -W -f'${Status}\n' "$1" 2>/dev/null | grep -q ^install
+}
+
+snap_run() {
+    snap run --shell maas -c "$1"
+}
+
+pg_do() {
+    sudo -iu postgres "$@"
+}
+
+maas_snap_mode() {
+    cat "$MAAS_SNAP_MODE_FILE" 2>/dev/null || echo "none"
+}
+
+maas_snap_mode_set() {
+    local mode=""
+    if is_deb_installed maas-region-api; then
+        mode="region"
+    fi
+    if is_deb_installed maas-rack-controller; then
+        [ -z "$mode" ] && mode="rack" || mode="region+rack"
+    fi
+    if  [ -n "$mode" ]; then
+        echo "$mode" > "$MAAS_SNAP_MODE_FILE"
+    fi
+}
 
 clear_services() {
     local services="dhcpd dhcpd6 http proxy rackd regiond syslog"
@@ -21,16 +52,9 @@ clear_services() {
 
 clean_service() {
     local service="$1"
-    if [ -z "$DPKG_MAINTSCRIPT_PACKAGE" ]; then
-        systemctl stop "$service" || true
-        systemctl unmask "$service" || true
-        find /etc/systemd /var/lib/systemd -type f -name "$service" -delete || true
-    else
-        deb-systemd-invoke stop "$service" || true
-        deb-systemd-helper purge "$service" || true
-        deb-systemd-helper unmask "$service" || true
-    fi
-
+    systemctl stop "$service" || true
+    systemctl unmask "$service" || true
+    find /etc/systemd /var/lib/systemd -type f -name "$service" -delete || true
 }
 
 migrate_data() {
@@ -78,7 +102,7 @@ keyring = "/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
 (
  BootSource.objects
  .filter(keyring_filename=keyring)
- .update(keyring_filename=f"/snap/maas/current{keyring}")
+ .update(keyring_filename=f"${MAAS_SNAP}{keyring}")
 )
 EOF
 }
