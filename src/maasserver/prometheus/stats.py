@@ -12,10 +12,10 @@ from twisted.application.internet import TimerService
 
 from maasserver.models import Config
 from maasserver.stats import (
-    get_kvm_pods_stats,
     get_maas_stats,
     get_machines_by_architecture,
     get_subnets_utilisation_stats,
+    get_vm_hosts_stats,
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -136,7 +136,7 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
     """Update metrics in a PrometheusMetrics based on database values."""
     stats = json.loads(get_maas_stats())
     architectures = get_machines_by_architecture()
-    pods = get_kvm_pods_stats()
+    vm_hosts = get_vm_hosts_stats()
 
     # Gather counter for machines per status
     for status, machines in stats["machine_status"].items():
@@ -162,31 +162,31 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
     for resource, value in stats["machine_stats"].items():
         metrics.update("maas_machines_{}".format(resource), "set", value=value)
 
-    # Gather all stats for pods
-    metrics.update("maas_kvm_pods", "set", value=pods["kvm_pods"])
-    metrics.update("maas_kvm_machines", "set", value=pods["kvm_machines"])
+    # Gather all stats for vm_hosts
+    metrics.update("maas_kvm_pods", "set", value=vm_hosts["vm_hosts"])
+    metrics.update("maas_kvm_machines", "set", value=vm_hosts["vms"])
     for metric in ("cores", "memory", "storage"):
         metrics.update(
             "maas_kvm_{}".format(metric),
             "set",
-            value=pods["kvm_available_resources"][metric],
+            value=vm_hosts["available_resources"][metric],
             labels={"status": "available"},
         )
         metrics.update(
             "maas_kvm_{}".format(metric),
             "set",
-            value=pods["kvm_utilized_resources"][metric],
+            value=vm_hosts["utilized_resources"][metric],
             labels={"status": "used"},
         )
     metrics.update(
         "maas_kvm_overcommit_cores",
         "set",
-        value=pods["kvm_available_resources"]["over_cores"],
+        value=vm_hosts["available_resources"]["over_cores"],
     )
     metrics.update(
         "maas_kvm_overcommit_memory",
         "set",
-        value=pods["kvm_available_resources"]["over_memory"],
+        value=vm_hosts["available_resources"]["over_memory"],
     )
 
     # Gather statistics for architectures

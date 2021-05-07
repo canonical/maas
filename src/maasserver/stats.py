@@ -20,14 +20,12 @@ import requests
 from twisted.application.internet import TimerService
 
 from maasserver.enum import (
-    BMC_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
     NODE_STATUS,
     NODE_TYPE,
 )
 from maasserver.models import (
-    BMC,
     Config,
     Fabric,
     Machine,
@@ -93,12 +91,12 @@ def get_machines_by_architecture():
     return Counter(node_arches)
 
 
-def get_kvm_pods_stats():
-    pods = BMC.objects.filter(bmc_type=BMC_TYPE.POD, power_type="virsh")
+def get_vm_hosts_stats(**filter_params):
+    vm_hosts = Pod.objects.filter(**filter_params)
     # Calculate available physical resources
     # total_mem is in MB
     # local_storage is in bytes
-    available_resources = pods.aggregate(
+    available_resources = vm_hosts.aggregate(
         cores=NotNullSum("cores"),
         memory=NotNullSum("memory"),
         storage=NotNullSum("local_storage"),
@@ -106,27 +104,26 @@ def get_kvm_pods_stats():
 
     # available resources with overcommit
     over_cores = over_memory = 0
-    for pod in pods:
-        over_cores += pod.cores * pod.cpu_over_commit_ratio
-        over_memory += pod.memory * pod.memory_over_commit_ratio
+    for vm_host in vm_hosts:
+        over_cores += vm_host.cores * vm_host.cpu_over_commit_ratio
+        over_memory += vm_host.memory * vm_host.memory_over_commit_ratio
     available_resources["over_cores"] = over_cores
     available_resources["over_memory"] = over_memory
 
     # Calculate utilization
-    pod_machines = Pod.objects.all()
-    machines = cores = memory = storage = 0
-    for pod in pod_machines:
-        machines += Node.objects.filter(bmc__id=pod.id).count()
-        used_resources = get_vm_host_used_resources(pod)
+    vms = cores = memory = storage = 0
+    for vm_host in vm_hosts:
+        vms += Node.objects.filter(bmc__id=vm_host.id).count()
+        used_resources = get_vm_host_used_resources(vm_host)
         cores += used_resources.cores
         memory += used_resources.total_memory
         storage += used_resources.storage
 
     return {
-        "kvm_pods": len(pods),
-        "kvm_machines": machines,
-        "kvm_available_resources": available_resources,
-        "kvm_utilized_resources": {
+        "vm_hosts": len(vm_hosts),
+        "vms": vms,
+        "available_resources": available_resources,
+        "utilized_resources": {
             "cores": cores,
             "memory": memory,
             "storage": storage,
@@ -231,6 +228,10 @@ def get_maas_stats():
             "machine_stats": stats,  # count of cpus, mem, storage
             "machine_status": machine_status,  # machines by status
             "network_stats": netstats,  # network status
+            "vm_hosts": {
+                "lxd": get_vm_hosts_stats(power_type="lxd"),
+                "virsh": get_vm_hosts_stats(power_type="virsh"),
+            },
         }
     )
 

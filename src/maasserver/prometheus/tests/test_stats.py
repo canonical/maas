@@ -140,25 +140,24 @@ class TestPrometheus(MAASServerTestCase):
         arches = {"amd64": 0, "i386": 0}
         mock_arches = self.patch(stats, "get_machines_by_architecture")
         mock_arches.return_value = arches
-        # pods
-        pods = {
-            "kvm_pods": 0,
-            "kvm_machines": 0,
-            "kvm_available_resources": {
+        vm_hosts = {
+            "vm_hosts": 0,
+            "vms": 0,
+            "available_resources": {
                 "cores": 10,
                 "memory": 20,
                 "storage": 30,
                 "over_cores": 100,
                 "over_memory": 200,
             },
-            "kvm_utilized_resources": {
+            "utilized_resources": {
                 "cores": 5,
                 "memory": 10,
                 "storage": 15,
             },
         }
-        mock_pods = self.patch(stats, "get_kvm_pods_stats")
-        mock_pods.return_value = pods
+        mock_vm_hosts = self.patch(stats, "get_vm_hosts_stats")
+        mock_vm_hosts.return_value = vm_hosts
         subnet_stats = {
             "1.2.0.0/16": {
                 "available": 2 ** 16 - 3,
@@ -185,10 +184,10 @@ class TestPrometheus(MAASServerTestCase):
             STATS_DEFINITIONS, registry=prometheus_client.CollectorRegistry()
         )
         update_prometheus_stats(metrics)
-        self.assertThat(mock, MockCalledOnce())
-        self.assertThat(mock_arches, MockCalledOnce())
-        self.assertThat(mock_pods, MockCalledOnce())
-        self.assertThat(mock_subnet_stats, MockCalledOnce())
+        self.assertEqual(1, len(mock.mock_calls))
+        self.assertEqual(1, len(mock_arches.mock_calls))
+        self.assertEqual(1, len(mock_vm_hosts.mock_calls))
+        self.assertEqual(1, len(mock_subnet_stats.mock_calls))
 
     def test_push_stats_to_prometheus(self):
         factory.make_RegionRackController()

@@ -3152,6 +3152,8 @@ class Factory(maastesting.factory.Factory):
             )
         if pinned_cores is None:
             pinned_cores = []
+            if unpinned_cores == 0 and machine is not None:
+                unpinned_cores = machine.cpu_count
         if memory is None:
             if machine is None:
                 memory = 0

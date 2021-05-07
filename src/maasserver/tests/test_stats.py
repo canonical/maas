@@ -16,11 +16,11 @@ from maasserver import stats
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE, NODE_STATUS
 from maasserver.models import Config, Fabric, Space, Subnet, VLAN
 from maasserver.stats import (
-    get_kvm_pods_stats,
     get_maas_stats,
     get_machine_stats,
     get_machines_by_architecture,
     get_request_params,
+    get_vm_hosts_stats,
     make_maas_user_agent_request,
 )
 from maasserver.testing.factory import factory
@@ -35,7 +35,14 @@ from provisioningserver.utils.twisted import asynchronous
 
 
 class TestMAASStats(MAASServerTestCase):
-    def make_pod(self, cpu=0, mem=0, cpu_over_commit=1, mem_over_commit=1):
+    def make_pod(
+        self,
+        cpu=0,
+        mem=0,
+        cpu_over_commit=1,
+        mem_over_commit=1,
+        pod_type="virsh",
+    ):
         # Make one pod
         zone = factory.make_Zone()
         pool = factory.make_ResourcePool()
@@ -45,7 +52,7 @@ class TestMAASStats(MAASServerTestCase):
             "power_pass": "pass",
         }
         return factory.make_Pod(
-            pod_type="virsh",
+            pod_type=pod_type,
             zone=zone,
             pool=pool,
             cores=cpu,
@@ -69,7 +76,7 @@ class TestMAASStats(MAASServerTestCase):
         compare = {"amd64": 1, "i386": 1, "arm64": 1, "ppc64el": 1, "s390x": 1}
         self.assertEqual(stats, compare)
 
-    def test_get_kvm_pods_stats(self):
+    def test_get_vm_hosts_stats(self):
         pod1 = self.make_pod(
             cpu=10, mem=100, cpu_over_commit=2, mem_over_commit=3
         )
@@ -88,35 +95,81 @@ class TestMAASStats(MAASServerTestCase):
             + pod2.memory * pod2.memory_over_commit_ratio
         )
 
-        stats = get_kvm_pods_stats()
+        stats = get_vm_hosts_stats()
         compare = {
-            "kvm_pods": 2,
-            "kvm_machines": 0,
-            "kvm_available_resources": {
+            "vm_hosts": 2,
+            "vms": 0,
+            "available_resources": {
                 "cores": total_cores,
                 "memory": total_memory,
                 "over_cores": over_cores,
                 "over_memory": over_memory,
                 "storage": 0,
             },
-            "kvm_utilized_resources": {"cores": 0, "memory": 0, "storage": 0},
+            "utilized_resources": {"cores": 0, "memory": 0, "storage": 0},
         }
         self.assertEqual(compare, stats)
 
-    def test_get_kvm_pods_stats_no_pod(self):
+    def test_get_vm_hosts_stats_filtered(self):
+        self.make_pod(cpu=10, mem=100, pod_type="lxd")
+        self.make_pod(cpu=20, mem=200, pod_type="virsh")
+
+        stats = get_vm_hosts_stats(power_type="lxd")
+        compare = {
+            "vm_hosts": 1,
+            "vms": 0,
+            "available_resources": {
+                "cores": 10,
+                "memory": 100,
+                "over_cores": 10.0,
+                "over_memory": 100.0,
+                "storage": 0,
+            },
+            "utilized_resources": {"cores": 0, "memory": 0, "storage": 0},
+        }
+        self.assertEqual(compare, stats)
+
+    def test_get_vm_hosts_stats_machine_usage(self):
+        lxd_vm_host = self.make_pod(cpu=10, mem=100, pod_type="lxd")
+        lxd_machine = factory.make_Machine(
+            bmc=lxd_vm_host, cpu_count=1, memory=10
+        )
+        factory.make_VirtualMachine(bmc=lxd_vm_host, machine=lxd_machine)
+        virsh_vm_host = self.make_pod(cpu=20, mem=200, pod_type="virsh")
+        virsh_machine = factory.make_Machine(
+            bmc=virsh_vm_host, cpu_count=2, memory=20
+        )
+        factory.make_VirtualMachine(bmc=virsh_vm_host, machine=virsh_machine)
+
+        stats = get_vm_hosts_stats(power_type="lxd")
+        compare = {
+            "vm_hosts": 1,
+            "vms": 1,
+            "available_resources": {
+                "cores": 10,
+                "memory": 100,
+                "over_cores": 10.0,
+                "over_memory": 100.0,
+                "storage": 0,
+            },
+            "utilized_resources": {"cores": 1, "memory": 10, "storage": 0},
+        }
+        self.assertEqual(compare, stats)
+
+    def test_get_vm_hosts_stats_no_pod(self):
         self.assertEqual(
-            get_kvm_pods_stats(),
+            get_vm_hosts_stats(),
             {
-                "kvm_pods": 0,
-                "kvm_machines": 0,
-                "kvm_available_resources": {
+                "vm_hosts": 0,
+                "vms": 0,
+                "available_resources": {
                     "cores": 0,
                     "memory": 0,
                     "storage": 0,
                     "over_cores": 0,
                     "over_memory": 0,
                 },
-                "kvm_utilized_resources": {
+                "utilized_resources": {
                     "cores": 0,
                     "memory": 0,
                     "storage": 0,
@@ -141,6 +194,8 @@ class TestMAASStats(MAASServerTestCase):
             factory.make_Machine(status=NODE_STATUS.DEPLOYED)
         factory.make_Device()
         factory.make_Device()
+        self.make_pod(cpu=10, mem=100, pod_type="lxd")
+        self.make_pod(cpu=20, mem=200, pod_type="virsh")
 
         subnets = Subnet.objects.all()
         v4 = [net for net in subnets if net.get_ip_version() == 4]
@@ -182,6 +237,40 @@ class TestMAASStats(MAASServerTestCase):
                 "subnets_v4": len(v4),
                 "subnets_v6": len(v6),
             },
+            "vm_hosts": {
+                "lxd": {
+                    "vm_hosts": 1,
+                    "vms": 0,
+                    "available_resources": {
+                        "cores": 10,
+                        "memory": 100,
+                        "over_cores": 10.0,
+                        "over_memory": 100.0,
+                        "storage": 0,
+                    },
+                    "utilized_resources": {
+                        "cores": 0,
+                        "memory": 0,
+                        "storage": 0,
+                    },
+                },
+                "virsh": {
+                    "vm_hosts": 1,
+                    "vms": 0,
+                    "available_resources": {
+                        "cores": 20,
+                        "memory": 200,
+                        "over_cores": 20.0,
+                        "over_memory": 200.0,
+                        "storage": 0,
+                    },
+                    "utilized_resources": {
+                        "cores": 0,
+                        "memory": 0,
+                        "storage": 0,
+                    },
+                },
+            },
         }
         self.assertEqual(json.loads(stats), expected)
 
@@ -209,10 +298,44 @@ class TestMAASStats(MAASServerTestCase):
             },
             "network_stats": {
                 "spaces": 0,
-                "fabrics": 0,
-                "vlans": 0,
+                "fabrics": Fabric.objects.count(),
+                "vlans": VLAN.objects.count(),
                 "subnets_v4": 0,
                 "subnets_v6": 0,
+            },
+            "vm_hosts": {
+                "lxd": {
+                    "vm_hosts": 0,
+                    "vms": 0,
+                    "available_resources": {
+                        "cores": 0,
+                        "memory": 0,
+                        "over_cores": 0.0,
+                        "over_memory": 0.0,
+                        "storage": 0,
+                    },
+                    "utilized_resources": {
+                        "cores": 0,
+                        "memory": 0,
+                        "storage": 0,
+                    },
+                },
+                "virsh": {
+                    "vm_hosts": 0,
+                    "vms": 0,
+                    "available_resources": {
+                        "cores": 0,
+                        "memory": 0,
+                        "over_cores": 0.0,
+                        "over_memory": 0.0,
+                        "storage": 0,
+                    },
+                    "utilized_resources": {
+                        "cores": 0,
+                        "memory": 0,
+                        "storage": 0,
+                    },
+                },
             },
         }
         self.assertEqual(json.loads(get_maas_stats()), expected)
