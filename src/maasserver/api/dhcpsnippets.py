@@ -262,6 +262,9 @@ class DHCPSnippetsHandler(OperationsHandler):
         @param (string) "subnet" [required=false] The subnet this snippet
         applies to. Cannot be used with node or global_snippet.
 
+        @param (string) "iprange" [required=false] The iprange within a subnet
+        this snippet applies to. Must also provide a subnet value.
+
         @param (boolean) "global_snippet" [required=false] Whether or not this
         snippet is to be applied globally. Cannot be used with node or subnet.
 

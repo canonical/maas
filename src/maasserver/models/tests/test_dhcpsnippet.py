@@ -55,6 +55,24 @@ class TestDHCPSnippet(MAASServerTestCase):
         self.assertEqual(enabled, dhcp_snippet.enabled)
         self.assertEqual(subnet, dhcp_snippet.subnet)
 
+    def test_factory_make_DHCPSnippet_sets_iprange(self):
+        name = factory.make_name("dhcp_snippet")
+        value = VersionedTextFile.objects.create(data=factory.make_string())
+        description = factory.make_string()
+        enabled = factory.pick_bool()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        iprange = subnet.get_dynamic_ranges().first()
+        iprange.save()
+        dhcp_snippet = factory.make_DHCPSnippet(
+            name, value, description, enabled, subnet=subnet, iprange=iprange
+        )
+        self.assertEqual(name, dhcp_snippet.name)
+        self.assertEqual(value.data, dhcp_snippet.value.data)
+        self.assertEqual(description, dhcp_snippet.description)
+        self.assertEqual(enabled, dhcp_snippet.enabled)
+        self.assertEqual(subnet, dhcp_snippet.subnet)
+        self.assertEqual(iprange, dhcp_snippet.iprange)
+
     def test_can_only_set_snippet_for_node_or_subnet(self):
         node = factory.make_Node()
         subnet = factory.make_Subnet()

@@ -347,6 +347,28 @@ class _ConfigureDHCP(amp.Command):
                                                 b"failover_peer",
                                                 amp.Unicode(optional=True),
                                             ),
+                                            (
+                                                b"dhcp_snippets",
+                                                AmpList(
+                                                    [
+                                                        (
+                                                            b"name",
+                                                            amp.Unicode(),
+                                                        ),
+                                                        (
+                                                            b"description",
+                                                            amp.Unicode(
+                                                                optional=True
+                                                            ),
+                                                        ),
+                                                        (
+                                                            b"value",
+                                                            amp.Unicode(),
+                                                        ),
+                                                    ],
+                                                    optional=True,
+                                                ),
+                                            ),
                                         ]
                                     ),
                                 ),

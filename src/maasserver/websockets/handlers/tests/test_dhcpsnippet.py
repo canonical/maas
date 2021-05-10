@@ -31,8 +31,11 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
     def dehydrate_dhcp_snippet(self, dhcp_snippet):
         node_system_id = None
         subnet_id = None
+        iprange_id = None
         if dhcp_snippet.subnet is not None:
             subnet_id = dhcp_snippet.subnet.id
+            if dhcp_snippet.iprange is not None:
+                iprange_id = dhcp_snippet.iprange.id
         elif dhcp_snippet.node is not None:
             node_system_id = dhcp_snippet.node.system_id
         return {
@@ -51,6 +54,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
             "enabled": dhcp_snippet.enabled,
             "node": node_system_id,
             "subnet": subnet_id,
+            "iprange": iprange_id,
             "updated": dehydrate_datetime(dhcp_snippet.updated),
             "created": dehydrate_datetime(dhcp_snippet.created),
         }

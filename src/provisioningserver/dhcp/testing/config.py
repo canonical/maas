@@ -26,17 +26,23 @@ def fix_shared_networks_failover(shared_networks, failover_peers):
     return shared_networks
 
 
-def make_subnet_pool(network, start_ip=None, end_ip=None, failover_peer=None):
+def make_subnet_pool(
+    network, start_ip=None, end_ip=None, failover_peer=None, dhcp_snippets=None
+):
     """Return a pool entry for a subnet from network."""
     if start_ip is None and end_ip is None:
         start_ip, end_ip = factory.make_ip_range(network)
     if failover_peer is None:
         failover_peer = factory.make_name("failover")
-    return {
+    if dhcp_snippets is None:
+        dhcp_snippets = make_pool_dhcp_snippets()
+    pool = {
         "ip_range_low": str(start_ip),
         "ip_range_high": str(end_ip),
         "failover_peer": failover_peer,
+        "dhcp_snippets": dhcp_snippets,
     }
+    return pool
 
 
 def _make_snippets(count, template):
@@ -64,6 +70,11 @@ def make_subnet_dhcp_snippets(allow_empty=True):
 def make_host_dhcp_snippets(allow_empty=True):
     count = random.randrange((0 if allow_empty else 1), 3)
     return _make_snippets(count, "option smtp-server %s;")
+
+
+def make_pool_dhcp_snippets(allow_empty=True):
+    count = random.randrange((0 if allow_empty else 1), 3)
+    return _make_snippets(count, "option nntp-server %s;")
 
 
 def make_host(

@@ -2955,6 +2955,7 @@ class Factory(maastesting.factory.Factory):
         enabled=True,
         node=None,
         subnet=None,
+        iprange=None,
     ):
         if name is None:
             name = self.make_name("dhcp_snippet")
@@ -2969,6 +2970,7 @@ class Factory(maastesting.factory.Factory):
             enabled=enabled,
             node=node,
             subnet=subnet,
+            iprange=iprange,
         )
 
     def make_default_PackageRepositories(self):

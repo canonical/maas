@@ -14,6 +14,7 @@ from django.db.models import (
 )
 
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.iprange import IPRange
 from maasserver.models.node import Node
 from maasserver.models.subnet import Subnet
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -85,6 +86,8 @@ class DHCPSnippet(CleanSave, TimestampedModel):
 
     subnet = ForeignKey(Subnet, null=True, blank=True, on_delete=CASCADE)
 
+    iprange = ForeignKey(IPRange, null=True, blank=True, on_delete=CASCADE)
+
     objects = DHCPSnippetManager()
 
     def __str__(self):
@@ -96,4 +99,16 @@ class DHCPSnippet(CleanSave, TimestampedModel):
             raise ValidationError(
                 "A DHCP snippet cannot be enabled on a node and subnet at the "
                 "same time."
+            )
+        if self.iprange is not None and self.subnet is None:
+            raise ValidationError(
+                "A DHCP snippet cannot be enabled on an iprange without"
+                "a parent subnet"
+            )
+        elif (
+            self.iprange is not None
+            and self.iprange.subnet_id != self.subnet.id
+        ):
+            raise ValidationError(
+                "A DHCP snippet's IP Range must be within the" "parent subnet"
             )

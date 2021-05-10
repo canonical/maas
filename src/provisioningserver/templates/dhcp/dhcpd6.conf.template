@@ -81,6 +81,18 @@ shared-network {{shared_network["name"]}} {
 
            {{for pool in dhcp_subnet['pools']}}
            pool6 {
+              {{if len(pool['dhcp_snippets']) == 0}}
+              # No DHCP snippets for pool
+              {{endif}}
+              {{for dhcp_snippet in pool['dhcp_snippets']}}
+              {{if dhcp_snippet['description'] != ''}}
+              # Description: {{dhcp_snippet['description'] | oneline}}
+              {{endif}}
+              {{for line in dhcp_snippet['value'].splitlines()}}
+              {{line}}
+              {{endfor}}
+              {{endfor}}
+
               range6 {{pool['ip_range_low']}} {{pool['ip_range_high']}};
            }
            {{endfor}}

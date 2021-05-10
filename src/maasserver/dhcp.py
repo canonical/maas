@@ -396,13 +396,14 @@ def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list = None):
     return hosts
 
 
-def make_pools_for_subnet(subnet, failover_peer=None):
+def make_pools_for_subnet(subnet, dhcp_snippets, failover_peer=None):
     """Return list of pools to create in the DHCP config for `subnet`."""
     pools = []
     for ip_range in subnet.get_dynamic_ranges().order_by("id"):
         pool = {
             "ip_range_low": ip_range.start_ip,
             "ip_range_high": ip_range.end_ip,
+            "dhcp_snippets": dhcp_snippets.get(ip_range.id, []),
         }
         if failover_peer is not None:
             pool["failover_peer"] = failover_peer
@@ -430,6 +431,7 @@ def make_subnet_config(
     """
     ip_network = subnet.get_ipnetwork()
     dns_servers = []
+    ipranges_dhcp_snippets = dict()
     if subnet.allow_dns and default_dns_servers:
         # If the MAAS DNS server is enabled make sure that is used first.
         if subnet.gateway_ip:
@@ -446,6 +448,20 @@ def make_subnet_config(
         dns_servers += [IPAddress(server) for server in subnet.dns_servers]
     if subnets_dhcp_snippets is None:
         subnets_dhcp_snippets = []
+    else:
+        subnet_only_dhcp_snippets = []
+        for snippet in subnets_dhcp_snippets:
+            if snippet.iprange is not None:
+                iprange_dhcp_snippets = ipranges_dhcp_snippets.get(
+                    snippet.iprange.id, []
+                )
+                iprange_dhcp_snippets.append(make_dhcp_snippet(snippet))
+                ipranges_dhcp_snippets[
+                    snippet.iprange.id
+                ] = iprange_dhcp_snippets
+            else:
+                subnet_only_dhcp_snippets.append(snippet)
+        subnets_dhcp_snippets = subnet_only_dhcp_snippets
 
     subnet_config = {
         "subnet": str(ip_network.network),
@@ -456,7 +472,11 @@ def make_subnet_config(
         "dns_servers": dns_servers,
         "ntp_servers": get_ntp_servers(ntp_servers, subnet, peer_rack),
         "domain_name": default_domain.name,
-        "pools": make_pools_for_subnet(subnet, failover_peer),
+        "pools": make_pools_for_subnet(
+            subnet,
+            ipranges_dhcp_snippets,
+            failover_peer,
+        ),
         "dhcp_snippets": [
             make_dhcp_snippet(dhcp_snippet)
             for dhcp_snippet in subnets_dhcp_snippets

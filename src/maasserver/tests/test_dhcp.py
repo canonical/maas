@@ -1582,8 +1582,16 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         )
         self.assertEqual(
             [
-                {"ip_range_low": "10.9.8.11", "ip_range_high": "10.9.8.20"},
-                {"ip_range_low": "10.9.8.21", "ip_range_high": "10.9.8.30"},
+                {
+                    "ip_range_low": "10.9.8.11",
+                    "ip_range_high": "10.9.8.20",
+                    "dhcp_snippets": [],
+                },
+                {
+                    "ip_range_low": "10.9.8.21",
+                    "ip_range_high": "10.9.8.30",
+                    "dhcp_snippets": [],
+                },
             ],
             config["pools"],
         )
@@ -1615,11 +1623,13 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                     "ip_range_low": "10.9.8.11",
                     "ip_range_high": "10.9.8.20",
                     "failover_peer": failover_peer,
+                    "dhcp_snippets": [],
                 },
                 {
                     "ip_range_low": "10.9.8.21",
                     "ip_range_high": "10.9.8.30",
                     "failover_peer": failover_peer,
+                    "dhcp_snippets": [],
                 },
             ],
             config["pools"],
@@ -1694,6 +1704,58 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         self.assertEqual(
             subnet.disabled_boot_architectures,
             config["disabled_boot_architectures"],
+        )
+
+    def test_returns_iprange_dhcp_snippets(self):
+        rack_controller = factory.make_RackController(interface=False)
+        vlan = factory.make_VLAN()
+        subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
+        iprange = subnet.get_dynamic_ranges().first()
+        iprange.save()
+        factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=rack_controller
+        )
+        default_domain = Domain.objects.get_default_domain()
+        subnet_snippets = [
+            factory.make_DHCPSnippet(subnet=subnet, enabled=True)
+            for _ in range(3)
+        ]
+        iprange_snippets = [
+            factory.make_DHCPSnippet(
+                subnet=subnet, iprange=iprange, enabled=True
+            )
+            for _ in range(3)
+        ]
+        dhcp_snippets = subnet_snippets + iprange_snippets
+        config = dhcp.make_subnet_config(
+            rack_controller,
+            subnet,
+            [factory.make_ipv4_address()],
+            [factory.make_name("ntp")],
+            default_domain,
+            subnets_dhcp_snippets=dhcp_snippets,
+        )
+        self.assertItemsEqual(
+            [
+                {
+                    "name": dhcp_snippet.name,
+                    "description": dhcp_snippet.description,
+                    "value": dhcp_snippet.value.data,
+                }
+                for dhcp_snippet in subnet_snippets
+            ],
+            config["dhcp_snippets"],
+        )
+        self.assertItemsEqual(
+            [
+                {
+                    "name": dhcp_snippet.name,
+                    "description": dhcp_snippet.description,
+                    "value": dhcp_snippet.value.data,
+                }
+                for dhcp_snippet in iprange_snippets
+            ],
+            config["pools"][0]["dhcp_snippets"],
         )
 
     def test_subnet_without_gateway_restricts_nameservers(self):
@@ -2192,6 +2254,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
+                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 ha_subnet.get_dynamic_ranges().order_by("id")
@@ -2226,6 +2289,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
+                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 other_subnet.get_dynamic_ranges().order_by(
@@ -2350,6 +2414,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
+                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 ha_subnet.get_dynamic_ranges().order_by("id")
@@ -2379,6 +2444,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
                                 "ip_range_high": str(ip_range.end_ip),
                                 "failover_peer": "failover-vlan-%d"
                                 % ha_vlan.id,
+                                "dhcp_snippets": [],
                             }
                             for ip_range in (
                                 other_subnet.get_dynamic_ranges().order_by(
@@ -2531,7 +2597,9 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             gateway_ip="fd38:c341:27da:c831::1",
             dns_servers=[],
         )
-        factory.make_IPRange(
+        iprange_v4 = subnet_v4.get_dynamic_ranges().first()
+        iprange_v4.save()
+        iprange_v6 = factory.make_IPRange(
             subnet_v6,
             "fd38:c341:27da:c831:0:1::",
             "fd38:c341:27da:c831:0:1:ffff:0",
@@ -2561,6 +2629,12 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
             )
 
         for _ in range(3):
+            factory.make_DHCPSnippet(
+                subnet=subnet_v4, iprange=iprange_v4, enabled=True
+            )
+            factory.make_DHCPSnippet(
+                subnet=subnet_v6, iprange=iprange_v6, enabled=True
+            )
             factory.make_DHCPSnippet(subnet=subnet_v4, enabled=True)
             factory.make_DHCPSnippet(subnet=subnet_v6, enabled=True)
             factory.make_DHCPSnippet(enabled=True)
@@ -2831,7 +2905,9 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         subnet_v6 = factory.make_Subnet(
             vlan=vlan, cidr="fd38:c341:27da:c831::/64"
         )
-        factory.make_IPRange(
+        iprange_v4 = subnet_v4.get_dynamic_ranges().first()
+        iprange_v4.save()
+        iprange_v6 = factory.make_IPRange(
             subnet_v6,
             "fd38:c341:27da:c831:0:1::",
             "fd38:c341:27da:c831:0:1:ffff:0",
@@ -2859,6 +2935,12 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         )
 
         for _ in range(3):
+            factory.make_DHCPSnippet(
+                subnet=subnet_v4, iprange=iprange_v4, enabled=True
+            )
+            factory.make_DHCPSnippet(
+                subnet=subnet_v6, iprange=iprange_v6, enabled=True
+            )
             factory.make_DHCPSnippet(subnet=subnet_v4, enabled=True)
             factory.make_DHCPSnippet(subnet=subnet_v6, enabled=True)
             factory.make_DHCPSnippet(enabled=True)

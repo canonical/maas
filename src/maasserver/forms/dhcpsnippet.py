@@ -14,7 +14,7 @@ from maasserver.fields import (
     VersionedTextFileField,
 )
 from maasserver.forms import MAASModelForm
-from maasserver.models import DHCPSnippet, Node, Subnet
+from maasserver.models import DHCPSnippet, IPRange, Node, Subnet
 from maasserver.utils.forms import set_form_error
 from provisioningserver.events import EVENT_TYPES
 
@@ -57,6 +57,14 @@ class DHCPSnippetForm(MAASModelForm):
         help_text="The subnet which the DHCP snippet is for.",
     )
 
+    iprange = SpecifierOrModelChoiceField(
+        label="IP Range",
+        queryset=IPRange.objects.all(),
+        required=False,
+        initial=None,
+        help_text="The iprange which the DHCP snippet is for.",
+    )
+
     global_snippet = forms.BooleanField(
         label="Global DHCP Snippet",
         required=False,
@@ -75,6 +83,7 @@ class DHCPSnippetForm(MAASModelForm):
             "enabled",
             "node",
             "subnet",
+            "iprange",
             "global_snippet",
         )
 
@@ -88,6 +97,10 @@ class DHCPSnippetForm(MAASModelForm):
             self.fields["value"].initial = self.instance.value
         if instance is not None and instance.node is not None:
             self.initial["node"] = self.instance.node.system_id
+        if instance is not None and instance.subnet is not None:
+            self.fields["iprange"].queryset = IPRange.objects.filter(
+                subnet=instance.subnet
+            )
 
     def clean(self):
         cleaned_data = super().clean()

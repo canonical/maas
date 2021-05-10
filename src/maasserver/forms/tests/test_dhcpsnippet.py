@@ -129,6 +129,76 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         self.assertEqual(enabled, dhcp_snippet.enabled)
         self.assertEqual(subnet, dhcp_snippet.subnet)
 
+    def test_create_dhcp_snippet_with_iprange(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        iprange = subnet.get_dynamic_ranges().first()
+        iprange.save()
+        name = factory.make_name("name")
+        value = factory.make_string()
+        description = factory.make_string()
+        enabled = factory.pick_bool()
+        form = DHCPSnippetForm(
+            data={
+                "name": name,
+                "value": value,
+                "description": description,
+                "enabled": enabled,
+                "subnet": subnet.id,
+                "iprange": iprange.id,
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        request = HttpRequest()
+        request.user = factory.make_User()
+        dhcp_snippet = form.save(endpoint, request)
+        self.assertEqual(name, dhcp_snippet.name)
+        self.assertEqual(value, dhcp_snippet.value.data)
+        self.assertEqual(description, dhcp_snippet.description)
+        self.assertEqual(enabled, dhcp_snippet.enabled)
+        self.assertEqual(subnet, dhcp_snippet.subnet)
+        self.assertEqual(iprange, dhcp_snippet.iprange)
+
+    def test_create_dhcp_snippet_with_iprange_requires_subnet(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        iprange = subnet.get_dynamic_ranges().first()
+        iprange.save()
+        name = factory.make_name("name")
+        value = factory.make_string()
+        description = factory.make_string()
+        enabled = factory.pick_bool()
+        form = DHCPSnippetForm(
+            data={
+                "name": name,
+                "value": value,
+                "dscription": description,
+                "enabled": enabled,
+                "iprange": iprange.id,
+            }
+        )
+        self.assertFalse(form.is_valid(), form.errors)
+
+    def test_create_dhcp_snippet_with_iprange_requires_parent_subnet(self):
+        subnet = factory.make_ipv4_Subnet_with_IPRanges()
+        subnet2 = factory.make_Subnet()
+        iprange = subnet.get_dynamic_ranges().first()
+        iprange.save()
+        name = factory.make_name("name")
+        value = factory.make_string()
+        description = factory.make_string()
+        enabled = factory.pick_bool()
+        form = DHCPSnippetForm(
+            data={
+                "name": name,
+                "value": value,
+                "dscription": description,
+                "enabled": enabled,
+                "subnet": subnet2.id,
+                "iprange": iprange.id,
+            }
+        )
+        self.assertFalse(form.is_valid(), form.errors)
+
     def test_cannt_create_dhcp_snippet_with_node_and_subnet(self):
         node = factory.make_Node()
         subnet = factory.make_Subnet()
