@@ -310,6 +310,63 @@ class TestControllerInfo(MAASServerTestCase):
         controller_info = reload_object(controller).controllerinfo
         self.assertIsNone(controller_info.update_first_reported)
 
+    def test_is_up_to_date(self):
+        version = "3.0.0~alpha1-111-g.deadbeef"
+        target_version = TargetVersion(
+            version=MAASVersion.from_string(version),
+            snap_channel="3.0/stable",
+        )
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={
+                    "revision": "1234",
+                    "version": version,
+                },
+            ),
+        )
+        self.assertTrue(controller.info.is_up_to_date(target_version))
+
+    def test_is_up_to_date_with_update(self):
+        version = "3.0.0~alpha1-111-g.deadbeef"
+        target_version = TargetVersion(
+            version=MAASVersion.from_string(version),
+            snap_channel="3.0/stable",
+        )
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={
+                    "revision": "1234",
+                    "version": version,
+                },
+                update={
+                    "revision": "5678",
+                    "version": "3.0.0-222-g.cafecafe",
+                },
+            ),
+        )
+        self.assertFalse(controller.info.is_up_to_date(target_version))
+
+    def test_is_up_to_date_with_different_version(self):
+        target_version = TargetVersion(
+            version=MAASVersion.from_string("3.0.0-222-g.cafecafe"),
+            snap_channel="3.0/stable",
+        )
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={
+                    "revision": "1234",
+                    "version": "3.0.0~alpha1-111-g.deadbeef",
+                },
+            ),
+        )
+        self.assertFalse(controller.info.is_up_to_date(target_version))
+
 
 class TestGetTargetVersion(MAASServerTestCase):
     def test_empty(self):

@@ -220,12 +220,12 @@ class TestControllerHandler(MAASServerTestCase):
         versions = SnapVersionsInfo(
             current={
                 "revision": "1234",
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
             },
             channel={"track": "3.0", "risk": "stable"},
             update={
                 "revision": "5678",
-                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
             },
             cohort="abc123",
         )
@@ -236,15 +236,16 @@ class TestControllerHandler(MAASServerTestCase):
             {
                 "install_type": "snap",
                 "current": {
-                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                    "version": "3.0.0~alpha1-111-g.deadbeef",
                     "snap_revision": "1234",
                 },
                 "update": {
-                    "version": "3.0.0-alpha2-222-g.cafecafe",
+                    "version": "3.0.0~alpha2-222-g.cafecafe",
                     "snap_revision": "5678",
                 },
                 "origin": "3.0/stable",
                 "snap_cohort": "abc123",
+                "up_to_date": False,
             },
         )
 
@@ -254,11 +255,11 @@ class TestControllerHandler(MAASServerTestCase):
         rack = factory.make_RackController()
         versions = DebVersionsInfo(
             current={
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
                 "origin": "http://archive.ubuntu.com main/focal",
             },
             update={
-                "version": "3.0.0-alpha2-222-g.cafecafe",
+                "version": "3.0.0~alpha2-222-g.cafecafe",
                 "origin": "http://archive.ubuntu.com main/focal",
             },
         )
@@ -269,12 +270,13 @@ class TestControllerHandler(MAASServerTestCase):
             {
                 "install_type": "deb",
                 "current": {
-                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                    "version": "3.0.0~alpha1-111-g.deadbeef",
                 },
                 "update": {
-                    "version": "3.0.0-alpha2-222-g.cafecafe",
+                    "version": "3.0.0~alpha2-222-g.cafecafe",
                 },
                 "origin": "http://archive.ubuntu.com main/focal",
+                "up_to_date": False,
             },
         )
 
@@ -285,7 +287,7 @@ class TestControllerHandler(MAASServerTestCase):
         versions = SnapVersionsInfo(
             current={
                 "revision": "1234",
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
             },
             channel={"track": "3.0", "risk": "stable"},
         )
@@ -296,10 +298,48 @@ class TestControllerHandler(MAASServerTestCase):
             {
                 "install_type": "snap",
                 "current": {
-                    "version": "3.0.0-alpha1-111-g.deadbeef",
+                    "version": "3.0.0~alpha1-111-g.deadbeef",
                     "snap_revision": "1234",
                 },
                 "origin": "3.0/stable",
+                "up_to_date": True,
+            },
+        )
+
+    def test_dehydrate_not_up_to_date_no_update(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        rack = factory.make_RackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+        )
+        ControllerInfo.objects.set_versions_info(rack, versions)
+        # another rack as a higher version
+        ControllerInfo.objects.set_versions_info(
+            factory.make_RackController(),
+            SnapVersionsInfo(
+                current={
+                    "revision": "1234",
+                    "version": "3.0.0-222-g.cafecafe",
+                },
+                channel={"track": "3.0", "risk": "stable"},
+            ),
+        )
+        result = handler.list({})
+        self.assertEqual(
+            result[0]["versions"],
+            {
+                "install_type": "snap",
+                "current": {
+                    "version": "3.0.0~alpha1-111-g.deadbeef",
+                    "snap_revision": "1234",
+                },
+                "origin": "3.0/stable",
+                "up_to_date": False,
             },
         )
 
@@ -310,7 +350,7 @@ class TestControllerHandler(MAASServerTestCase):
         versions = SnapVersionsInfo(
             current={
                 "revision": "1234",
-                "version": "3.0.0-alpha1-111-g.deadbeef",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
             },
         )
         ControllerInfo.objects.set_versions_info(rack, versions)

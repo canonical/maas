@@ -33,6 +33,14 @@ PPA_URL_RE = re.compile(
 )
 
 
+class TargetVersion(NamedTuple):
+    """The target version for the MAAS deployment."""
+
+    version: MAASVersion
+    snap_channel: SnapChannel
+    first_reported: Optional[datetime] = None
+
+
 class ControllerInfoManager(Manager):
     def set_version(self, controller, version):
         self.update_or_create(defaults={"version": version}, node=controller)
@@ -135,6 +143,13 @@ class ControllerInfo(CleanSave, TimestampedModel):
     def __str__(self):
         return "%s (%s)" % (self.__class__.__name__, self.node.hostname)
 
+    def is_up_to_date(self, target_version: TargetVersion) -> bool:
+        """Return whether the controller is up-to-date with the target version."""
+        return (
+            not self.update_version
+            and MAASVersion.from_string(self.version) == target_version.version
+        )
+
 
 def get_maas_version() -> Optional[MAASVersion]:
     """Return the version for the deployment.
@@ -159,14 +174,6 @@ def get_maas_version() -> Optional[MAASVersion]:
     if not versions:
         return None
     return versions[0][1]
-
-
-class TargetVersion(NamedTuple):
-    """The target version for the MAAS deployment."""
-
-    version: MAASVersion
-    snap_channel: SnapChannel
-    first_reported: Optional[datetime] = None
 
 
 def get_target_version() -> Optional[TargetVersion]:

@@ -20,6 +20,7 @@ from django.db.models import (
 from maasserver.config import RegionConfiguration
 from maasserver.forms import ControllerForm
 from maasserver.models import Config, Controller, Event, RackController, VLAN
+from maasserver.models.controllerinfo import get_target_version
 from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerError, HandlerPermissionError
 from maasserver.websockets.handlers.machine import MachineHandler
@@ -176,6 +177,7 @@ class ControllerHandler(MachineHandler):
                 "version": info.version,
             },
             "origin": info.update_origin,
+            "up_to_date": info.is_up_to_date(self._target_version),
         }
         if info.update_version:
             versions["update"] = {
@@ -232,3 +234,8 @@ class ControllerHandler(MachineHandler):
                 )
             )
         )
+
+    @cached_property
+    def _target_version(self):
+        """Cache the deployment target version"""
+        return get_target_version()

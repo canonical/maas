@@ -164,7 +164,7 @@ def get_snap_versions_info(info_file=None) -> Optional[SnapVersionsInfo]:
     #   "cohort": "abcd1234",
     #   "update": {
     #     "revision": "7890",
-    #     "version": "3.0.1-alpha1-1234-g.deadbeef"
+    #     "version": "3.0.1~alpha1-1234-g.deadbeef"
     #   }
     # }
     #
