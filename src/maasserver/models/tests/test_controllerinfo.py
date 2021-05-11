@@ -606,6 +606,79 @@ class TestGetTargetVersion(MAASServerTestCase):
             ),
         )
 
+    def test_snap_cohort_from_target_version(self):
+        c1 = factory.make_RackController()
+        c2 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                cohort="abc",
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c2,
+            SnapVersionsInfo(
+                current={"version": "3.0.1-222-g.bbb", "revision": "5678"},
+                cohort="xyz",
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.1-222-g.bbb"),
+                snap_channel=SnapChannel("3.0", "stable"),
+                snap_cohort="xyz",
+            ),
+        )
+
+    def test_snap_cohort_from_update(self):
+        c1 = factory.make_RackController()
+        c2 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                cohort="abc",
+                update={"version": "3.0.2-333-g.ccc", "revision": "7890"},
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c2,
+            SnapVersionsInfo(
+                current={"version": "3.0.1-222-g.bbb", "revision": "5678"},
+                cohort="xyz",
+            ),
+        )
+        target_version = get_target_version()
+        self.assertEqual(target_version.snap_cohort, "abc")
+
+    def test_snap_cohort_multiple_cohorts_target_version(self):
+        c1 = factory.make_RackController()
+        c2 = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            c1,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                cohort="abc",
+            ),
+        )
+        ControllerInfo.objects.set_versions_info(
+            c2,
+            SnapVersionsInfo(
+                current={"version": "3.0.0-111-g.aaa", "revision": "1234"},
+                cohort="xyz",
+            ),
+        )
+        self.assertEqual(
+            get_target_version(),
+            TargetVersion(
+                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
+                snap_channel=SnapChannel("3.0", "stable"),
+                snap_cohort="",
+            ),
+        )
+
 
 class TestGetMAASVersion(MAASServerTestCase):
     def test_no_versions(self):

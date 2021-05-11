@@ -198,6 +198,7 @@ class GeneralHandler(Handler):
         return {
             "version": str(target_version.version),
             "snap_channel": str(target_version.snap_channel),
+            "snap_cohort": target_version.snap_cohort,
             "first_reported": target_version.first_reported,
         }
 

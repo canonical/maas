@@ -302,6 +302,23 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertEqual(result["snap_channel"], "3.0/beta")
         self.assertIsNotNone(result["first_reported"])
 
+    def test_target_version_snap_cohort(self):
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={
+                    "version": "3.0.0~beta2-123-g.asdf",
+                    "revision": "1234",
+                },
+                channel="3.0/beta",
+                cohort="abc",
+            ),
+        )
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.target_version({})
+        self.assertEqual(result["snap_cohort"], "abc")
+
     def test_power_types(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
         self.patch_autospec(

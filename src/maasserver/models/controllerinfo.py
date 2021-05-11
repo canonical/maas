@@ -14,6 +14,7 @@ from django.db.models import (
     DateTimeField,
     Manager,
     OneToOneField,
+    Q,
 )
 
 from maasserver import DefaultMeta
@@ -38,6 +39,7 @@ class TargetVersion(NamedTuple):
 
     version: MAASVersion
     snap_channel: SnapChannel
+    snap_cohort: str = ""
     first_reported: Optional[datetime] = None
 
 
@@ -239,8 +241,24 @@ def get_target_version() -> Optional[TargetVersion]:
             risk=risk,
         )
 
+    # report a cohort only if all controllers with the target version are on
+    # the same cohort (or have no cohort)
+    cohorts = list(
+        ControllerInfo.objects.filter(
+            Q(version=str(version)) | Q(update_version=str(version)),
+            install_type=CONTROLLER_INSTALL_TYPE.SNAP,
+        )
+        .exclude(snap_cohort="")
+        .values_list("snap_cohort", flat=True)
+        .distinct()
+    )
+    snap_cohort = cohorts[0] if len(cohorts) == 1 else ""
+
     return TargetVersion(
-        version, snap_channel, first_reported=update_first_reported
+        version,
+        snap_channel,
+        snap_cohort=snap_cohort,
+        first_reported=update_first_reported,
     )
 
 
