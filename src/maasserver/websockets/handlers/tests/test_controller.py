@@ -246,6 +246,7 @@ class TestControllerHandler(MAASServerTestCase):
                 "origin": "3.0/stable",
                 "snap_cohort": "abc123",
                 "up_to_date": False,
+                "issues": [],
             },
         )
 
@@ -277,6 +278,7 @@ class TestControllerHandler(MAASServerTestCase):
                 },
                 "origin": "http://archive.ubuntu.com main/focal",
                 "up_to_date": False,
+                "issues": [],
             },
         )
 
@@ -303,6 +305,7 @@ class TestControllerHandler(MAASServerTestCase):
                 },
                 "origin": "3.0/stable",
                 "up_to_date": True,
+                "issues": [],
             },
         )
 
@@ -340,8 +343,36 @@ class TestControllerHandler(MAASServerTestCase):
                 },
                 "origin": "3.0/stable",
                 "up_to_date": False,
+                "issues": [],
             },
         )
+
+    def test_dehydrate_with_versions_issues(self):
+        owner = factory.make_admin()
+        handler = ControllerHandler(owner, {}, None)
+        rack = factory.make_RackController()
+        versions = SnapVersionsInfo(
+            current={
+                "revision": "1234",
+                "version": "3.0.0~alpha1-111-g.deadbeef",
+            },
+            channel={"track": "3.0", "risk": "stable"},
+            cohort="abc",
+        )
+        ControllerInfo.objects.set_versions_info(rack, versions)
+        # another rack with a higher version has no cohort
+        ControllerInfo.objects.set_versions_info(
+            factory.make_RackController(),
+            SnapVersionsInfo(
+                current={
+                    "revision": "5678",
+                    "version": "3.0.0-222-g.cafecafe",
+                },
+                channel={"track": "3.0", "risk": "stable"},
+            ),
+        )
+        versions = handler.list({})[0]["versions"]
+        self.assertEqual(versions["issues"], ["different-cohort"])
 
     def test_dehydrate_with_versions_empty_origin(self):
         owner = factory.make_admin()

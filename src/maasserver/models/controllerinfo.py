@@ -4,8 +4,9 @@
 
 from collections import Counter
 from datetime import datetime
+from enum import Enum
 import re
-from typing import NamedTuple, Optional
+from typing import List, NamedTuple, Optional
 
 from django.db.models import (
     CASCADE,
@@ -41,6 +42,13 @@ class TargetVersion(NamedTuple):
     snap_channel: SnapChannel
     snap_cohort: str = ""
     first_reported: Optional[datetime] = None
+
+
+class VERSION_ISSUES(Enum):
+    """Possible issues with a controller version with regards to target version."""
+
+    DIFFERENT_CHANNEL = "different-channel"
+    DIFFERENT_COHORT = "different-cohort"
 
 
 class ControllerInfoManager(Manager):
@@ -151,6 +159,19 @@ class ControllerInfo(CleanSave, TimestampedModel):
             not self.update_version
             and MAASVersion.from_string(self.version) == target_version.version
         )
+
+    def get_version_issues(self, target: TargetVersion) -> List[str]:
+        """Return a list of version-related issues compared to the target version."""
+        issues = []
+        if self.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
+            if (
+                SnapChannel.from_string(self.update_origin)
+                != target.snap_channel
+            ):
+                issues.append(VERSION_ISSUES.DIFFERENT_CHANNEL.value)
+            if self.snap_cohort != target.snap_cohort:
+                issues.append(VERSION_ISSUES.DIFFERENT_COHORT.value)
+        return issues
 
 
 def get_maas_version() -> Optional[MAASVersion]:

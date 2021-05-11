@@ -178,6 +178,7 @@ class ControllerHandler(MachineHandler):
             },
             "origin": info.update_origin,
             "up_to_date": info.is_up_to_date(self._target_version),
+            "issues": info.get_version_issues(self._target_version),
         }
         if info.update_version:
             versions["update"] = {

@@ -9,6 +9,7 @@ from maasserver.models.controllerinfo import (
     TargetVersion,
     UPGRADE_ISSUE_NOTIFICATION_IDENT,
     UPGRADE_STATUS_NOTIFICATION_IDENT,
+    VERSION_ISSUES,
 )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -366,6 +367,31 @@ class TestControllerInfo(MAASServerTestCase):
             ),
         )
         self.assertFalse(controller.info.is_up_to_date(target_version))
+
+    def test_get_version_issues(self):
+        target_version = TargetVersion(
+            version=MAASVersion.from_string("3.0.0-222-g.cafecafe"),
+            snap_channel="3.0/stable",
+        )
+        controller = factory.make_RackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={
+                    "revision": "1234",
+                    "version": "3.0.0~alpha1-111-g.deadbeef",
+                },
+                channel="3.0/beta",
+                cohort="abc",
+            ),
+        )
+        self.assertEqual(
+            controller.info.get_version_issues(target_version),
+            [
+                VERSION_ISSUES.DIFFERENT_CHANNEL.value,
+                VERSION_ISSUES.DIFFERENT_COHORT.value,
+            ],
+        )
 
 
 class TestGetTargetVersion(MAASServerTestCase):
