@@ -1,8 +1,6 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for devices API."""
-
 
 import http.client
 import random
@@ -169,6 +167,7 @@ class TestDevicesAPI(APITestCase.ForUser):
                 "ip_addresses",
                 "interface_set",
                 "resource_uri",
+                "workload_annotations",
                 "zone",
             ],
             list(parsed_result),
@@ -256,6 +255,7 @@ class TestDevicesAPI(APITestCase.ForUser):
                 "ip_addresses",
                 "interface_set",
                 "resource_uri",
+                "workload_annotations",
                 "zone",
             ],
             list(parsed_result[0]),

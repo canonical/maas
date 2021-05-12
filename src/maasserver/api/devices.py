@@ -7,7 +7,11 @@ from piston3.utils import rc
 
 from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
-from maasserver.api.nodes import NodeHandler, NodesHandler, OwnerDataMixin
+from maasserver.api.nodes import (
+    NodeHandler,
+    NodesHandler,
+    WorkloadAnnotationsMixin,
+)
 from maasserver.api.support import operation
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import DeviceForm, DeviceWithMACsForm
@@ -32,10 +36,11 @@ DISPLAYED_DEVICE_FIELDS = (
     "zone",
     "node_type",
     "node_type_name",
+    "workload_annotations",
 )
 
 
-class DeviceHandler(NodeHandler, OwnerDataMixin):
+class DeviceHandler(NodeHandler, WorkloadAnnotationsMixin):
     """
     Manage an individual device.
 

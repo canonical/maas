@@ -1,8 +1,6 @@
 # Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for enlistment-related portions of the API."""
-
 
 import http.client
 import json
@@ -755,6 +753,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 "interface_test_status",
                 "interface_test_status_name",
                 "virtualmachine_id",
+                "workload_annotations",
             ],
             list(parsed_result),
         )
@@ -975,6 +974,7 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 "interface_test_status",
                 "interface_test_status_name",
                 "virtualmachine_id",
+                "workload_annotations",
             ],
             list(parsed_result),
         )

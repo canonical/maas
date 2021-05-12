@@ -1,8 +1,6 @@
 # Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the machines API."""
-
 
 import http.client
 import json
@@ -93,8 +91,8 @@ class MachineHostnameTest(APITestCase.ForUserAndAdmin):
         )
 
 
-class MachineOwnerDataTest(APITestCase.ForUser):
-    def test_GET_returns_owner_data(self):
+class TestMachineWorkloadAnnotations(APITestCase.ForUser):
+    def test_GET_returns_workload_annotations(self):
         owner_data = {factory.make_name("key"): factory.make_name("value")}
         factory.make_Node(owner_data=owner_data)
         response = self.client.get(reverse("machines_handler"))
@@ -104,9 +102,13 @@ class MachineOwnerDataTest(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
-            [owner_data],
+        self.assertEqual(
             [machine.get("owner_data") for machine in parsed_result],
+            [owner_data],
+        )
+        self.assertEqual(
+            [machine.get("workload_annotations") for machine in parsed_result],
+            [owner_data],
         )
 
 

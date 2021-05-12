@@ -591,8 +591,7 @@ class TestPowerParameters(APITestCase.ForUser):
         self.assertEqual(node.power_parameters, parsed_params)
 
 
-class TestSetOwnerData(APITestCase.ForUser):
-    """Tests for op=set_owner_data for both machines and devices."""
+class TestSetWorkloadAnnotations(APITestCase.ForUser):
 
     scenarios = (
         (
@@ -611,66 +610,91 @@ class TestSetOwnerData(APITestCase.ForUser):
 
     def test_must_be_owned(self):
         node = self.maker(status=NODE_STATUS.READY)
-        owner_data = {
+        params = {
             factory.make_name("key"): factory.make_name("value")
             for _ in range(3)
         }
-        params = dict(owner_data)
-        params["op"] = "set_owner_data"
+        params["op"] = "set_workload_annotations"
         response = self.client.post(self.get_node_uri(node), params)
         self.assertEqual(http.client.CONFLICT, response.status_code)
 
     def test_adds_data(self):
         node = self.maker(status=NODE_STATUS.ALLOCATED, owner=self.user)
-        owner_data = {
+        annotations = {
             factory.make_name("key"): factory.make_name("value")
             for _ in range(3)
         }
-        params = dict(owner_data)
-        params["op"] = "set_owner_data"
+        params = annotations.copy()
+        params["op"] = "set_workload_annotations"
         response = self.client.post(self.get_node_uri(node), params)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            owner_data, json_load_bytes(response.content)["owner_data"]
+            json_load_bytes(response.content)["workload_annotations"],
+            annotations,
         )
 
     def test_updates_data(self):
-        owner_data = {
+        annotations = {
             factory.make_name("key"): factory.make_name("value")
             for _ in range(3)
         }
         node = self.maker(
             status=NODE_STATUS.ALLOCATED,
             owner=self.user,
-            owner_data=owner_data,
+            owner_data=annotations,
         )
-        for key in owner_data.keys():
-            owner_data[key] = factory.make_name("value")
-        params = dict(owner_data)
+        for key in annotations:
+            annotations[key] = factory.make_name("value")
+        params = annotations.copy()
+        params["op"] = "set_workload_annotations"
+        response = self.client.post(self.get_node_uri(node), params)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            json_load_bytes(response.content)["workload_annotations"],
+            annotations,
+        )
+
+    def test_removes_data(self):
+        annotations = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+        node = self.maker(
+            status=NODE_STATUS.ALLOCATED,
+            owner=self.user,
+            owner_data=annotations,
+        )
+        for key in annotations:
+            annotations[key] = ""
+        params = annotations.copy()
+        params["op"] = "set_workload_annotations"
+        response = self.client.post(self.get_node_uri(node), params)
+        self.assertEqual(http.client.OK, response.status_code)
+        self.assertEqual(
+            json_load_bytes(response.content)["workload_annotations"],
+            {},
+        )
+
+
+class TestSetOwnerData(APITestCase.ForUser):
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse("machine_handler", args=[node.system_id])
+
+    def test_adds_data(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=self.user)
+        owner_data = {
+            factory.make_name("key"): factory.make_name("value")
+            for _ in range(3)
+        }
+        params = owner_data.copy()
         params["op"] = "set_owner_data"
         response = self.client.post(self.get_node_uri(node), params)
         self.assertEqual(http.client.OK, response.status_code)
         self.assertEqual(
-            owner_data, json_load_bytes(response.content)["owner_data"]
+            json_load_bytes(response.content)["owner_data"],
+            owner_data,
         )
-
-    def test_removes_data(self):
-        owner_data = {
-            factory.make_name("key"): factory.make_name("value")
-            for _ in range(3)
-        }
-        node = self.maker(
-            status=NODE_STATUS.ALLOCATED,
-            owner=self.user,
-            owner_data=owner_data,
-        )
-        for key in owner_data.keys():
-            owner_data[key] = ""
-        params = dict(owner_data)
-        params["op"] = "set_owner_data"
-        response = self.client.post(self.get_node_uri(node), params)
-        self.assertEqual(http.client.OK, response.status_code)
-        self.assertEqual({}, json_load_bytes(response.content)["owner_data"])
 
 
 class TestPowerMixin(APITestCase.ForUser):

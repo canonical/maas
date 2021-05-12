@@ -916,17 +916,21 @@ class NodesHandler(OperationsHandler):
         return ("nodes_handler", [])
 
 
-class OwnerDataMixin:
-    """Mixin that adds the owner_data classmethod and provides set_owner_data
-    to the handler."""
+class WorkloadAnnotationsMixin:
+    """Mixin that adds methods for workload annotations to the handler."""
 
     @classmethod
-    def owner_data(handler, machine):
-        """Owner data placed on machine."""
+    def workload_annotations(cls, machine):
+        """Workload annotations placed on the machine."""
         return OwnerData.objects.get_owner_data(machine)
 
+    @classmethod
+    def owner_data(cls, machine):
+        """Deprecated, use workload_annotations instead."""
+        return cls.workload_annotations(machine)
+
     @operation(idempotent=False)
-    def set_owner_data(self, request, system_id):
+    def set_workload_annotations(self, request, system_id):
         """@description-title Set key=value data
         @description Set key=value data for the current owner.
 
@@ -934,8 +938,8 @@ class OwnerDataMixin:
         A key is removed when the value for that key is set to an empty string.
 
         This operation will not remove any previous keys unless explicitly
-        passed with an empty string. All owner data is removed when the machine
-        is no longer allocated to a user.
+        passed with an empty string. All workload annotations are removed when
+        the machine is no longer allocated to a user.
 
         @param (string) "key" [required=true] ``key`` can be any string value.
 
@@ -946,13 +950,14 @@ class OwnerDataMixin:
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have set the zone.
+
         """
         node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NodePermission.edit
         )
         if node.owner_id != request.user.id:
             raise NodeStateViolation(
-                "Cannot set owner data: it hasn't been allocated."
+                "Cannot set workload annotation: it hasn't been acquired."
             )
         owner_data = {
             key: None if value == "" else value
@@ -961,6 +966,12 @@ class OwnerDataMixin:
         }
         OwnerData.objects.set_owner_data(node, owner_data)
         return node
+
+    @operation(idempotent=False)
+    def set_owner_data(self, request, system_id):
+        """@description-title Deprecated, use set-workload-annotations.
+        @description Deprecated, use set-workload-annotations instead."""
+        return self.set_workload_annotations(request, system_id)
 
 
 class PowerMixin:

@@ -34,9 +34,9 @@ from maasserver.api.nodes import (
     AnonNodesHandler,
     NodeHandler,
     NodesHandler,
-    OwnerDataMixin,
     PowerMixin,
     PowersMixin,
+    WorkloadAnnotationsMixin,
 )
 from maasserver.api.support import admin_method, operation
 from maasserver.api.utils import (
@@ -189,6 +189,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "interface_test_status_name",
     ("numanode_set", DISPLAYED_NUMANODE_FIELDS),
     "virtualmachine_id",
+    "workload_annotations",
 )
 
 # Limited set of machine fields exposed on the anonymous API.
@@ -354,7 +355,7 @@ def get_allocated_composed_machine(
     return machine, storage, interfaces
 
 
-class MachineHandler(NodeHandler, OwnerDataMixin, PowerMixin):
+class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
     """
     Manage an individual machine.
 
