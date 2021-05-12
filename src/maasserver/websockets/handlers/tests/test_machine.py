@@ -1,8 +1,6 @@
 # Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.node`"""
-
 
 from functools import partial
 import logging
@@ -5313,14 +5311,12 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         )
 
 
-class TestMachineHandlerOwnerData(MAASServerTestCase):
-    """Tests for MachineHandle methods set_workload_annotations and get_workload_annotations."""
-
+class TestMachineHandlerWorkloadAnnotations(MAASServerTestCase):
     def test_set_workload_annotations(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        workload_annotations = {"data 1": "value 1"}
+        workload_annotations = {"data1": "value 1"}
         self.assertEqual(
             workload_annotations,
             handler.set_workload_annotations(
@@ -5330,12 +5326,27 @@ class TestMachineHandlerOwnerData(MAASServerTestCase):
                 }
             ),
         )
+
+    def test_set_workload_annotations_invalid_char(self):
+        user = factory.make_User()
+        node = factory.make_Node(owner=user)
+        handler = MachineHandler(user, {}, None)
+        workload_annotations = {"data 1": "value 1"}
+        error = self.assertRaises(
+            HandlerValidationError,
+            handler.set_workload_annotations,
+            {
+                "system_id": node.system_id,
+                "workload_annotations": workload_annotations,
+            },
+        )
+        self.assertEqual(error.message, "Invalid character in key name")
 
     def test_set_workload_annotations_overwrite(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        workload_annotations = {"data 1": "value 1"}
+        workload_annotations = {"data1": "value 1"}
         self.assertEqual(
             workload_annotations,
             handler.set_workload_annotations(
@@ -5345,7 +5356,7 @@ class TestMachineHandlerOwnerData(MAASServerTestCase):
                 }
             ),
         )
-        workload_annotations = {"data 1": "value 2"}
+        workload_annotations = {"data1": "value 2"}
         self.assertEqual(
             workload_annotations,
             handler.set_workload_annotations(
@@ -5360,7 +5371,7 @@ class TestMachineHandlerOwnerData(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        workload_annotations = {"data 1": "value 1"}
+        workload_annotations = {"data1": "value 1"}
         self.assertEqual(
             workload_annotations,
             handler.set_workload_annotations(
@@ -5370,7 +5381,7 @@ class TestMachineHandlerOwnerData(MAASServerTestCase):
                 }
             ),
         )
-        workload_annotations = {"data 1": ""}
+        workload_annotations = {"data1": ""}
         self.assertEqual(
             {},
             handler.set_workload_annotations(
@@ -5385,7 +5396,7 @@ class TestMachineHandlerOwnerData(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         handler = MachineHandler(user, {}, None)
-        workload_annotations = {"data 1": "value 1"}
+        workload_annotations = {"data1": "value 1"}
         self.assertEqual(
             workload_annotations,
             handler.set_workload_annotations(

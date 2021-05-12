@@ -1133,5 +1133,8 @@ class MachineHandler(NodeHandler):
             key: None if value == "" else value
             for key, value in params["workload_annotations"].items()
         }
-        OwnerData.objects.set_owner_data(machine, owner_data)
+        try:
+            OwnerData.objects.set_owner_data(machine, owner_data)
+        except ValueError as e:
+            raise HandlerValidationError(str(e))
         return OwnerData.objects.get_owner_data(machine)

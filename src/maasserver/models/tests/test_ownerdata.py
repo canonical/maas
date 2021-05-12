@@ -25,6 +25,13 @@ class TestOwnerData(MAASServerTestCase):
         OwnerData.objects.set_owner_data(node, owner_data)
         self.assertEqual(owner_data, self.get_owner_data(node))
 
+    def test_set_owner_data_invalid_name(self):
+        node = factory.make_Node()
+        owner_data = {"this is invalid": factory.make_name("value")}
+        self.assertRaises(
+            ValueError, OwnerData.objects.set_owner_data, node, owner_data
+        )
+
     def test_set_owner_data_updates_data(self):
         node = factory.make_Node()
         owner_data = {

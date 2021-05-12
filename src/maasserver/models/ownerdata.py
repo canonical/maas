@@ -4,6 +4,8 @@
 """Owner key/value data placed on a machine while it is owned."""
 
 
+import re
+
 from django.db.models import (
     CASCADE,
     CharField,
@@ -16,6 +18,8 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 
+DATA_KEY_RE = re.compile(r"[\w.-]+$")
+
 
 class OwnerDataManager(Manager):
     def set_owner_data(self, node, owner_data):
@@ -24,20 +28,19 @@ class OwnerDataManager(Manager):
         This will update any keys for `node` in `owner_data`. If the key has
         the value of None then that key will be removed from the `node`.
         """
-        # Remove the keys set to None value.
-        keys_to_remove = {
-            key for key, value in owner_data.items() if value is None
-        }
-        if len(keys_to_remove) > 0:
-            self.delete_owner_data(node, keys_to_remove)
-
-        # Create/update the owner data.
+        to_remove = set()
         for key, value in owner_data.items():
             if value is None:
-                continue
-            self.update_or_create(
-                node=node, key=key, defaults={"value": value}
-            )
+                to_remove.add(key)
+            else:
+                if not DATA_KEY_RE.match(key):
+                    raise ValueError("Invalid character in key name")
+
+                self.update_or_create(
+                    node=node, key=key, defaults={"value": value}
+                )
+        if to_remove:
+            self.delete_owner_data(node, to_remove)
 
     def get_owner_data(self, node):
         # Note: ownerdata_set is prefetched, so this is more efficient than it
