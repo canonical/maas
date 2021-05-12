@@ -3008,16 +3008,16 @@ class Node(CleanSave, TimestampedModel):
             raise UnknownPowerType("Node power type is unconfigured")
         return self.bmc.power_type
 
-    def get_effective_kernel_options(self, default_kernel_opts=""):
+    def get_effective_kernel_options(self, default_kernel_opts=None):
         """Return a string with kernel commandline."""
-        options = (
+        options = list(
             self.tags.exclude(kernel_opts="")
             .order_by("name")
             .values_list("kernel_opts", flat=True)
         )
-        if options:
-            return " ".join(options)
-        return default_kernel_opts or ""
+        if default_kernel_opts:
+            options.insert(0, default_kernel_opts)
+        return " ".join(options)
 
     def get_osystem(self, default=undefined):
         """Return the operating system to install that node."""

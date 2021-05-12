@@ -2040,7 +2040,7 @@ class TestNode(MAASServerTestCase):
         node.tags.add(tag)
         self.assertEqual(node.get_effective_kernel_options(), tag.kernel_opts)
 
-    def test_get_effective_kernel_options_tag_overrides_default(self):
+    def test_get_effective_kernel_options_tag_includes_default(self):
         node = factory.make_Node()
         default_opts = factory.make_string()
         tag = factory.make_Tag(kernel_opts=factory.make_string())
@@ -2049,7 +2049,7 @@ class TestNode(MAASServerTestCase):
             node.get_effective_kernel_options(
                 default_kernel_opts=default_opts
             ),
-            tag.kernel_opts,
+            f"{default_opts} {tag.kernel_opts}",
         )
 
     def test_acquire(self):
