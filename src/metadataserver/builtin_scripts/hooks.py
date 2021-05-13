@@ -16,7 +16,6 @@ from django.db.models import Q
 
 from maasserver.enum import NODE_DEVICE_BUS, NODE_METADATA, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.fabric import Fabric
 from maasserver.models.interface import Interface, PhysicalInterface
 from maasserver.models.node import Node
 from maasserver.models.nodedevice import NodeDevice
@@ -31,7 +30,7 @@ from metadataserver.builtin_scripts.network import (
     is_commissioning,
     update_node_interfaces,
 )
-from metadataserver.enum import HARDWARE_TYPE, SCRIPT_STATUS
+from metadataserver.enum import HARDWARE_TYPE
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
@@ -66,30 +65,6 @@ SWITCH_HARDWARE = [
         "Ethernet Switch ASIC",
     },
 ]
-
-
-def _create_default_physical_interface(
-    node, ifname, mac, link_connected, **kwargs
-):
-    """Assigns the specified interface to the specified Node.
-
-    Creates or updates a PhysicalInterface that corresponds to the given MAC.
-
-    :param node: Node model object
-    :param ifname: the interface name (for example, 'eth0')
-    :param mac: the Interface to update and associate
-    """
-    # We don't yet have enough information to put this newly-created Interface
-    # into the proper Fabric/VLAN. (We'll do this on a "best effort" basis
-    # later, if we are able to determine that the interface is on a particular
-    # subnet due to a DHCP reply during commissioning.)
-    fabric = Fabric.objects.get_default_fabric()
-    vlan = fabric.get_default_vlan()
-    interface = PhysicalInterface.objects.create(
-        mac_address=mac, name=ifname, node=node, vlan=vlan, **kwargs
-    )
-
-    return interface
 
 
 def _parse_interface_speed(port):
@@ -149,25 +124,6 @@ def parse_interfaces(node, data):
                     process_port(vf, vf_port)
 
     return interfaces
-
-
-def parse_interfaces_details(node):
-    """Get details for node interfaces from commissioning script results."""
-    interfaces = {}
-
-    script_set = node.current_commissioning_script_set
-    if not script_set:
-        return interfaces
-    script_result = script_set.find_script_result(script_name=LXD_OUTPUT_NAME)
-    if not script_result or script_result.status != SCRIPT_STATUS.PASSED:
-        logger.error(
-            f"{node.hostname}: Unable to discover NIC information due to "
-            f"missing output from {LXD_OUTPUT_NAME}"
-        )
-        return interfaces
-
-    data = json.loads(script_result.stdout)
-    return parse_interfaces(node, data)
 
 
 def update_interface_details(interface, details):
@@ -658,7 +614,7 @@ def _parse_memory(memory, numa_nodes):
     return int(total_memory / 1024 ** 2), hugepages_size, numa_nodes
 
 
-def get_tags_from_block_info(block_info):
+def _get_tags_from_block_info(block_info):
     """Return array of tags that will populate the `PhysicalBlockDevice`.
 
     Tags block devices for:
@@ -683,7 +639,7 @@ def get_tags_from_block_info(block_info):
     return tags
 
 
-def get_matching_block_device(block_devices, serial=None, id_path=None):
+def _get_matching_block_device(block_devices, serial=None, id_path=None):
     """Return the matching block device based on `serial` or `id_path` from
     the provided list of `block_devices`."""
     if serial:
@@ -797,7 +753,7 @@ def update_node_physical_block_devices(node, data, numa_nodes):
             block_size = 512
         firmware_version = block_info.get("firmware_version")
         numa_index = block_info.get("numa_node")
-        tags = get_tags_from_block_info(block_info)
+        tags = _get_tags_from_block_info(block_info)
 
         # First check if there is an existing device with the same name.
         # If so, we need to rename it. Its name will be changed back later,
@@ -810,7 +766,7 @@ def update_node_physical_block_devices(node, data, numa_nodes):
             device.name = "%s.%d" % (device.name, device.id)
             device.save(update_fields=["name"])
 
-        block_device = get_matching_block_device(
+        block_device = _get_matching_block_device(
             previous_block_devices, serial, id_path
         )
         if block_device is not None:
