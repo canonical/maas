@@ -29,10 +29,8 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
 )
 from maasserver.listener import PostgresListenerService
-from maasserver.models import ControllerInfo
+from maasserver.models import Config, ControllerInfo, Node, OwnerData
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.config import Config
-from maasserver.models.node import Node
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
@@ -47,6 +45,7 @@ from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS
+from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.twisted import (
     asynchronous,
     DeferredValue,
@@ -177,6 +176,26 @@ class TestNodeListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_calls_handler_on_description_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        node = yield deferToDatabase(self.create_node, self.params)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_node,
+                node.system_id,
+                {"description": factory.make_name("hostname")},
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
@@ -249,7 +268,7 @@ class TestNodeListener(
 
     def test_expected_number_of_fields_watched(self):
         self.assertEqual(
-            25,
+            26,
             len(node_fields),
             "Any field listed here will be monitored for changes causing "
             "the UI on all clients to refresh this node object. This is "
@@ -290,6 +309,9 @@ class TestControllerListener(
     def set_version(self, controller, version):
         ControllerInfo.objects.set_version(controller, version)
 
+    def set_versions_info(self, controller, versions_info):
+        ControllerInfo.objects.set_versions_info(controller, versions_info)
+
     def delete_controllerinfo(self, controller):
         ControllerInfo.objects.filter(node=controller).delete()
 
@@ -322,6 +344,31 @@ class TestControllerListener(
         yield listener.startService()
         try:
             yield deferToDatabase(self.set_version, controller, "2.10.1")
+            yield dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_controllerinfo_versionsinfo_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        params = self.params.copy()
+        controller = yield deferToDatabase(self.create_node, params)
+        # first set the version
+        yield deferToDatabase(self.set_version, controller, "3.0.0")
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            # update other fields but keep the same version
+            yield deferToDatabase(
+                self.set_versions_info,
+                controller,
+                SnapVersionsInfo(
+                    current={"version": "3.0.0", "revision": "1234"}
+                ),
+            )
             yield dv.get(timeout=2)
         finally:
             yield listener.stopService()
@@ -894,6 +941,109 @@ class TestNodeTagListener(
             )
             yield dv.get(timeout=2)
             self.assertEqual(("update", "%s" % node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestOwnerDataTriggers(
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
+
+    scenarios = (
+        (
+            "machine",
+            {
+                "params": {"node_type": NODE_TYPE.MACHINE},
+                "listener": "machine",
+            },
+        ),
+        (
+            "device",
+            {"params": {"node_type": NODE_TYPE.DEVICE}, "listener": "device"},
+        ),
+        (
+            "rack",
+            {
+                "params": {"node_type": NODE_TYPE.RACK_CONTROLLER},
+                "listener": "controller",
+            },
+        ),
+        (
+            "region_and_rack",
+            {
+                "params": {"node_type": NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+                "listener": "controller",
+            },
+        ),
+        (
+            "region",
+            {
+                "params": {"node_type": NODE_TYPE.REGION_CONTROLLER},
+                "listener": "controller",
+            },
+        ),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_with_update_on_create(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                OwnerData.objects.set_owner_data, node, {"foo": "baz"}
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_with_update_on_update(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield deferToDatabase(
+            OwnerData.objects.set_owner_data, node, {"foo": "bar"}
+        )
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                OwnerData.objects.set_owner_data, node, {"foo": "baz"}
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_with_update_on_replace(self):
+        yield deferToDatabase(register_websocket_triggers)
+        node = yield deferToDatabase(self.create_node, self.params)
+
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield deferToDatabase(
+            OwnerData.objects.set_owner_data, node, {"foo": "bar"}
+        )
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                OwnerData.objects.set_owner_data, node, {"new": "value"}
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 

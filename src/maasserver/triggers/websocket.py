@@ -1355,31 +1355,32 @@ def render_notification_dismissal_notification_procedure(
 # Only trigger updates to the websocket on the node object for fields
 # the UI cares about.
 node_fields = (
-    "hostname",
-    "pool_id",
-    "domain_id",
-    "status",
-    "owner_id",
-    "osystem",
-    "distro_series",
     "architecture",
-    "min_hwe_kernel",
-    "hwe_kernel",
-    "parent_id",
-    "zone_id",
+    "bmc_id",
     "cpu_count",
     "cpu_speed",
-    "swap_size",
-    "bmc_id",
-    "instance_power_parameters",
-    "power_state",
-    "last_image_sync",
-    "error",
-    "license_key",
     "current_commissioning_script_set_id",
     "current_installation_script_set_id",
     "current_testing_script_set_id",
+    "description",
+    "distro_series",
+    "domain_id",
+    "error",
+    "hostname",
+    "hwe_kernel",
+    "instance_power_parameters",
+    "last_image_sync",
+    "license_key",
     "locked",
+    "min_hwe_kernel",
+    "osystem",
+    "owner_id",
+    "parent_id",
+    "pool_id",
+    "power_state",
+    "status",
+    "swap_size",
+    "zone_id",
 )
 
 
@@ -1445,9 +1446,6 @@ def register_websocket_triggers():
     register_triggers(
         "maasserver_controllerinfo",
         "controllerinfo",
-        # Trigger only fires for version information on update; it doesn't
-        # care when the other metadata is updated.
-        fields=("version",),
         events=EVENTS_LUU,
     )
 
@@ -1470,6 +1468,24 @@ def register_websocket_triggers():
     register_triggers(
         "maasserver_nodemetadata", "nodemetadata", events=EVENTS_LUU
     )
+
+    # workload annotations notifications
+    register_procedure(
+        render_node_related_notification_procedure(
+            "ownerdata_link_notify", "NEW.node_id"
+        )
+    )
+    register_procedure(
+        render_node_related_notification_procedure(
+            "ownerdata_update_notify", "NEW.node_id"
+        )
+    )
+    register_procedure(
+        render_node_related_notification_procedure(
+            "ownerdata_unlink_notify", "OLD.node_id"
+        )
+    )
+    register_triggers("maasserver_ownerdata", "ownerdata", events=EVENTS_LUU)
 
     register_procedure(
         POOL_NODE_INSERT_NOTIFY.format(
