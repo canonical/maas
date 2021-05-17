@@ -194,7 +194,8 @@ lint-shell: bin/shellcheck
 		snap/hooks/* \
 		snap/local/tree/bin/* \
 		snap/local/tree/sbin/* \
-		utilities/release-*
+		utilities/release-* \
+		utilities/gen-db-schema-svg
 .PHONY: lint-shell
 
 format.parallel:

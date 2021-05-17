@@ -1,0 +1,89 @@
+#!/bin/bash -e
+
+OUTPUT_DIR=${OUTPUT_DIR:-"../tmp"}
+OUTPUT_FILE=${OUTPUT_FILE:-"${OUTPUT_DIR}/db-schema.svg"}
+TMP_DBM=${TMP_DBM:-"${OUTPUT_DIR}/maas.dbm"}
+PG_HOST=${PG_HOST:-localhost}
+PG_PORT=${PG_PORT:-5432}
+PG_DB="maasdb"
+PG_USER=${PG_USER:-maas}
+PG_PASSWORD=${PG_PASSWORD:-""}
+
+print_help () {
+    cat <<EOF
+gen-db-schema-svg
+
+Generates a svg of the database schema, including relations and indexes.
+Requires pgmodeler is installed and DISPLAY must be set.
+
+Variables:
+
+OUTPUT_DIR  The directory to output the svg to, defaults to '../tmp'
+OUTPUT_FILE The path to the output file, defaults to '\$\{OUTPUT_DIR\}/db-schema.svg'
+TMP_DBM     The path to the intermittent dbm file, gets removed after the svg is generated, defaults to '\$\{OUTPUT_DIR\}/maas.dbm'
+PG_HOST     The IP or hostname to connect to postgres with, defaults to 'localhost'
+PG_PORT     The port to connect to postgres with, defaults to '5432'
+PG_DB       The database to connect to and generate schema of, defaults to 'maasdb'
+PG_USER     The user to authenticate to postgres with, defaults to 'maas'
+PG_PASSWORD The password to authenticate to postgres with, must be set
+EOF
+}
+
+check_for_pg_modeler () {
+    if [ -z "$(which pgmodeler-cli)" ]; then
+        echo "please install pgmodeler in order to run this script" && exit 2
+    fi
+}
+
+check_pg_password_is_set () {
+    if [ -z "${PG_PASSWORD}" ]; then
+        echo "please set PG_PASSWORD in order to run this script" && exit 2
+    fi
+}
+
+check_display_set () {
+    if [ -z "${DISPLAY}" ]; then
+        echo "pgmodeler requires a display to run" && exit 2
+    fi
+}
+
+create_output_dir_if_not_exist () {
+    mkdir -p "${OUTPUT_DIR}"
+}
+
+gen_dbm () {
+    pgmodeler-cli --import-db --input-db "${PG_DB}"\
+        --host "${PG_HOST}" --port "${PG_PORT}"\
+        --user "${PG_USER}" --passwd "${PG_PASSWORD}"\
+        -D "${PG_DB}" --output "${TMP_DBM}"
+}
+
+gen_svg () {
+    pgmodeler-cli --host "${PG_HOST}" --port "${PG_PORT}"\
+        --user "${PG_USER}" --passwd "${PG_PASSWORD}"\
+        -D "${PG_DB}" --output "${OUTPUT_FILE}"\
+        --input "${TMP_DBM}" --export-to-svg
+}
+
+remove_dbm () {
+    rm "${TMP_DBM}"
+}
+
+main () {
+    case $1 in
+        -h | --help)
+            print_help
+            ;;
+        *)
+            check_for_pg_modeler
+            check_pg_password_is_set
+            check_display_set
+            create_output_dir_if_not_exist
+            gen_dbm
+            gen_svg
+            remove_dbm
+            ;;
+    esac
+}
+
+main "$1"
