@@ -14,13 +14,14 @@ from twisted.internet.defer import fail
 
 from maasserver import stats
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE, NODE_STATUS
-from maasserver.models import Config, Fabric, Space, Subnet, VLAN
+from maasserver.models import Config, Fabric, OwnerData, Space, Subnet, VLAN
 from maasserver.stats import (
     get_maas_stats,
     get_machine_stats,
     get_machines_by_architecture,
     get_request_params,
     get_vm_hosts_stats,
+    get_workload_annotations_stats,
     make_maas_user_agent_request,
 )
 from maasserver.testing.factory import factory
@@ -190,8 +191,9 @@ class TestMAASStats(MAASServerTestCase):
         factory.make_Machine(
             cpu_count=3, memory=100, status=NODE_STATUS.FAILED_DEPLOYMENT
         )
-        for _ in range(2):
-            factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        deployed_machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        OwnerData.objects.set_owner_data(deployed_machine, {"foo": "bar"})
         factory.make_Device()
         factory.make_Device()
         self.make_pod(cpu=10, mem=100, pod_type="lxd")
@@ -271,8 +273,46 @@ class TestMAASStats(MAASServerTestCase):
                     },
                 },
             },
+            "workload_annotations": {
+                "annotated_machines": 1,
+                "total_annotations": 1,
+                "unique_keys": 1,
+                "unique_values": 1,
+            },
         }
         self.assertEqual(json.loads(stats), expected)
+
+    def test_get_workload_annotations_stats_machines(self):
+        machine1 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine2 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine3 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+
+        OwnerData.objects.set_owner_data(
+            machine1, {"key1": "value1", "key2": "value2"}
+        )
+        OwnerData.objects.set_owner_data(machine2, {"key1": "value1"})
+        OwnerData.objects.set_owner_data(machine3, {"key2": "value2"})
+
+        workload_stats = get_workload_annotations_stats()
+        self.assertEqual(3, workload_stats["annotated_machines"])
+
+    def test_get_workload_annotations_stats_keys(self):
+        machine1 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine2 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine3 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+
+        OwnerData.objects.set_owner_data(
+            machine1, {"key1": "value1", "key2": "value2"}
+        )
+        OwnerData.objects.set_owner_data(machine2, {"key1": "value3"})
+        OwnerData.objects.set_owner_data(machine3, {"key2": "value2"})
+
+        workload_stats = get_workload_annotations_stats()
+        self.assertEqual(4, workload_stats["total_annotations"])
+        self.assertEqual(2, workload_stats["unique_keys"])
+        self.assertEqual(3, workload_stats["unique_values"])
 
     def test_get_maas_stats_no_machines(self):
         expected = {
@@ -336,6 +376,12 @@ class TestMAASStats(MAASServerTestCase):
                         "storage": 0,
                     },
                 },
+            },
+            "workload_annotations": {
+                "annotated_machines": 0,
+                "total_annotations": 0,
+                "unique_keys": 0,
+                "unique_values": 0,
             },
         }
         self.assertEqual(json.loads(get_maas_stats()), expected)

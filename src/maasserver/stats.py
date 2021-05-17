@@ -30,6 +30,7 @@ from maasserver.models import (
     Fabric,
     Machine,
     Node,
+    OwnerData,
     Pod,
     Space,
     StaticIPAddress,
@@ -198,6 +199,15 @@ def _get_subnets_ipaddress_count():
     return counts
 
 
+def get_workload_annotations_stats():
+    return OwnerData.objects.aggregate(
+        annotated_machines=Count("node", distinct=True),
+        total_annotations=Count("id"),
+        unique_keys=Count("key", distinct=True),
+        unique_values=Count("value", distinct=True),
+    )
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -232,6 +242,7 @@ def get_maas_stats():
                 "lxd": get_vm_hosts_stats(power_type="lxd"),
                 "virsh": get_vm_hosts_stats(power_type="virsh"),
             },
+            "workload_annotations": get_workload_annotations_stats(),
         }
     )
 
