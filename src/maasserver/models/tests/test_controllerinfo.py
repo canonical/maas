@@ -415,13 +415,10 @@ class TestGetTargetVersion(MAASServerTestCase):
             c3,
             DebVersionsInfo(current={"version": "3.0.0-333-g.ccc"}),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-333-g.ccc"),
-                snap_channel=SnapChannel.from_string("3.0/stable"),
-                first_reported=None,
-            ),
+            target_version.version,
+            MAASVersion.from_string("3.0.0-333-g.ccc"),
         )
 
     def test_return_highest_update(self):
@@ -449,13 +446,15 @@ class TestGetTargetVersion(MAASServerTestCase):
                 update={"version": "3.0.0-333-g.ccc"},
             ),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-333-g.ccc"),
-                snap_channel=SnapChannel.from_string("3.0/stable"),
-                first_reported=c3.info.update_first_reported,
-            ),
+            target_version.version,
+            MAASVersion.from_string("3.0.0-333-g.ccc"),
+        )
+
+        self.assertEqual(
+            target_version.first_reported,
+            c3.info.update_first_reported,
         )
 
     def test_update_return_earliest_reported(self):
@@ -483,13 +482,14 @@ class TestGetTargetVersion(MAASServerTestCase):
                 update={"version": "3.0.0-333-g.ccc"},
             ),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-333-g.ccc"),
-                snap_channel=SnapChannel.from_string("3.0/stable"),
-                first_reported=c2.info.update_first_reported,
-            ),
+            target_version.version,
+            MAASVersion.from_string("3.0.0-333-g.ccc"),
+        )
+        self.assertEqual(
+            target_version.first_reported,
+            c2.info.update_first_reported,
         )
 
     def test_update_older_than_installed(self):
@@ -508,13 +508,9 @@ class TestGetTargetVersion(MAASServerTestCase):
                 update={"version": "2.9.1-010-g.bbb"},
             ),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
-                snap_channel=SnapChannel.from_string("3.0/stable"),
-                first_reported=None,
-            ),
+            target_version.version, MAASVersion.from_string("3.0.0-111-g.aaa")
         )
 
     def test_snap_channel(self):
@@ -534,13 +530,11 @@ class TestGetTargetVersion(MAASServerTestCase):
                 channel={"track": "3.0", "risk": "beta"},
             ),
         )
+        target_version = get_target_version()
+        # the most stable channel is returned
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
-                snap_channel=SnapChannel("3.0", "beta"),
-                first_reported=None,
-            ),
+            target_version.snap_channel,
+            SnapChannel("3.0", "stable"),
         )
 
     def test_snap_channel_no_branch(self):
@@ -552,13 +546,10 @@ class TestGetTargetVersion(MAASServerTestCase):
                 channel={"track": "3.0", "risk": "beta", "branch": "mybranch"},
             ),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
-                snap_channel=SnapChannel.from_string("3.0/beta"),
-                first_reported=None,
-            ),
+            target_version.snap_channel,
+            SnapChannel("3.0", "beta"),
         )
 
     def test_snap_channel_keep_release_branch(self):
@@ -574,13 +565,10 @@ class TestGetTargetVersion(MAASServerTestCase):
                 },
             ),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
-                snap_channel=SnapChannel.from_string("3.0/beta/ubuntu-20.04"),
-                first_reported=None,
-            ),
+            target_version.snap_channel,
+            SnapChannel("3.0", "beta", branch="ubuntu-20.04"),
         )
 
     def test_snap_channel_from_version(self):
@@ -591,13 +579,10 @@ class TestGetTargetVersion(MAASServerTestCase):
                 current={"version": "3.0.0~rc1-111-g.aaa"},
             ),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0~rc1-111-g.aaa"),
-                snap_channel=SnapChannel("3.0", "candidate"),
-                first_reported=None,
-            ),
+            target_version.snap_channel,
+            SnapChannel("3.0", "candidate"),
         )
 
     def test_snap_channel_ignores_deb(self):
@@ -623,13 +608,10 @@ class TestGetTargetVersion(MAASServerTestCase):
                 },
             ),
         )
+        target_version = get_target_version()
         self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
-                snap_channel=SnapChannel("3.0", "stable"),
-                first_reported=None,
-            ),
+            target_version.snap_channel,
+            SnapChannel("3.0", "stable"),
         )
 
     def test_snap_cohort_from_target_version(self):
@@ -649,14 +631,8 @@ class TestGetTargetVersion(MAASServerTestCase):
                 cohort="xyz",
             ),
         )
-        self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.1-222-g.bbb"),
-                snap_channel=SnapChannel("3.0", "stable"),
-                snap_cohort="xyz",
-            ),
-        )
+        target_version = get_target_version()
+        self.assertEqual(target_version.snap_cohort, "xyz")
 
     def test_snap_cohort_from_update(self):
         c1 = factory.make_RackController()
@@ -696,14 +672,8 @@ class TestGetTargetVersion(MAASServerTestCase):
                 cohort="xyz",
             ),
         )
-        self.assertEqual(
-            get_target_version(),
-            TargetVersion(
-                version=MAASVersion.from_string("3.0.0-111-g.aaa"),
-                snap_channel=SnapChannel("3.0", "stable"),
-                snap_cohort="",
-            ),
-        )
+        target_version = get_target_version()
+        self.assertEqual(target_version.snap_cohort, "")
 
 
 class TestGetMAASVersion(MAASServerTestCase):

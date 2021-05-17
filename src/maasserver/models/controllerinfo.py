@@ -204,22 +204,11 @@ def get_target_version() -> Optional[TargetVersion]:
     highest_version = None
     highest_update = None
     update_first_reported = None
-    snap_channel = None
-
     for info in ControllerInfo.objects.exclude(version=""):
         version = MAASVersion.from_string(info.version)
         highest_version = (
             max((highest_version, version)) if highest_version else version
         )
-
-        if (
-            info.install_type == CONTROLLER_INSTALL_TYPE.SNAP
-            and info.update_origin
-        ):
-            channel = SnapChannel.from_string(info.update_origin)
-            snap_channel = (
-                max(snap_channel, channel) if snap_channel else channel
-            )
 
         if not info.update_version:
             continue
@@ -248,11 +237,32 @@ def get_target_version() -> Optional[TargetVersion]:
     if version is None:
         return None
 
-    if snap_channel:
-        if not snap_channel.is_release_branch():
-            # only point to a branch if it's a release one, as other branches
-            # are in general intended as a temporary change for testing
-            snap_channel.branch = ""
+    def field_for_snap_controllers(field, version):
+        version = str(version)
+        return list(
+            ControllerInfo.objects.filter(
+                Q(version=version) | Q(update_version=version),
+                install_type=CONTROLLER_INSTALL_TYPE.SNAP,
+            )
+            .exclude(**{field: ""})
+            .values_list(field, flat=True)
+            .distinct()
+        )
+
+    channels = field_for_snap_controllers("update_origin", version)
+    snap_channel = None
+    if channels:
+        # report the minimum (with lowest risk) channel that sees the target
+        # version
+        for channel in channels:
+            channel = SnapChannel.from_string(channel)
+            if not channel.is_release_branch():
+                # only point to a branch if it's a release one, as other branches
+                # are in general intended as a temporary change for testing
+                channel.branch = ""
+            snap_channel = (
+                min(channel, snap_channel) if snap_channel else channel
+            )
     else:
         # compose the channel from the target version
         risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
@@ -264,15 +274,7 @@ def get_target_version() -> Optional[TargetVersion]:
 
     # report a cohort only if all controllers with the target version are on
     # the same cohort (or have no cohort)
-    cohorts = list(
-        ControllerInfo.objects.filter(
-            Q(version=str(version)) | Q(update_version=str(version)),
-            install_type=CONTROLLER_INSTALL_TYPE.SNAP,
-        )
-        .exclude(snap_cohort="")
-        .values_list("snap_cohort", flat=True)
-        .distinct()
-    )
+    cohorts = field_for_snap_controllers("snap_cohort", version)
     snap_cohort = cohorts[0] if len(cohorts) == 1 else ""
 
     return TargetVersion(
