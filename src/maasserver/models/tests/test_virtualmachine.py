@@ -84,21 +84,41 @@ class TestVirtualMachine(MAASServerTestCase):
 
 class TestGetVMHostResources(MAASServerTestCase):
     def test_get_resources_no_host(self):
-        pod = factory.make_Pod(pod_type="lxd", host=None)
-        factory.make_VirtualMachine(
+        pod = factory.make_Pod(
+            pod_type="lxd",
+            host=None,
+            cores=8,
+            memory=4096,
+        )
+        node = factory.make_Node(bmc=pod)
+        vm = factory.make_VirtualMachine(
+            machine=node,
             memory=1024,
             pinned_cores=[0, 2],
+            hugepages_backed=False,
             bmc=pod,
         )
         resources = get_vm_host_resources(pod)
-        self.assertEqual(resources.cores.free, 0)
-        self.assertEqual(resources.cores.allocated, 0)
-        self.assertEqual(resources.memory.general.free, 0)
-        self.assertEqual(resources.memory.general.allocated, 0)
+        self.assertEqual(resources.cores.free, 6)
+        self.assertEqual(resources.cores.allocated, 2)
+        self.assertEqual(resources.memory.general.free, 3072 * MB)
+        self.assertEqual(resources.memory.general.allocated, 1024 * MB)
         self.assertEqual(resources.memory.hugepages.free, 0)
         self.assertEqual(resources.memory.hugepages.allocated, 0)
         self.assertEqual(resources.numa, [])
-        self.assertEqual(resources.vms, [])
+        self.assertEqual(
+            resources.vms,
+            [
+                VMHostVirtualMachineResources(
+                    id=vm.id,
+                    system_id=node.system_id,
+                    pinned_cores=[0, 2],
+                    unpinned_cores=0,
+                    memory=1024 * MB,
+                    hugepages_backed=False,
+                ),
+            ],
+        )
 
     def test_get_resources_no_detailed(self):
         pod = factory.make_Pod(pod_type="lxd", host=factory.make_Node())

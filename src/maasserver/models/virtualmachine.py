@@ -289,11 +289,7 @@ def get_vm_host_resources(pod, detailed=True) -> VMHostResources:
 
     If `detailed` is true, also include info about NUMA nodes resource usage.
     """
-    resources = VMHostResources()
-    if pod.host is None:
-        return resources
-
-    _update_global_resource_counters(pod, resources)
+    resources = _get_global_vm_host_resources(pod)
     if detailed:
         _update_detailed_resource_counters(pod, resources)
     return resources
@@ -381,12 +377,24 @@ def _update_detailed_resource_counters(pod, resources):
     return resources
 
 
-def _update_global_resource_counters(pod, resources):
-    totals = NUMANode.objects.filter(node=pod.host).aggregate(
-        cores=Sum(ArrayLength("cores")),
-        memory=Sum("memory") * MB,
-        hugepages=Coalesce(Sum("hugepages_set__total"), Value(0)),
-    )
+def _get_global_vm_host_resources(pod):
+    resources = VMHostResources()
+
+    if pod.host:
+        totals = NUMANode.objects.filter(node=pod.host).aggregate(
+            cores=Sum(ArrayLength("cores")),
+            memory=Sum("memory") * MB,
+            hugepages=Coalesce(Sum("hugepages_set__total"), Value(0)),
+        )
+    else:
+        # for VM hosts where there is no known machines backing it, info about
+        # hardware configuration and NUMA nodes is now known. In this case,
+        # fallback to what we know from the Pod object itself.
+        totals = {
+            "cores": pod.cores,
+            "memory": pod.memory * MB,
+            "hugepages": 0,  # no info about hugepages configuration
+        }
 
     storage = (
         VirtualMachineDisk.objects.filter(
@@ -422,11 +430,11 @@ def _update_global_resource_counters(pod, resources):
             ),
             vms=Count("id"),
             cores=Sum(F("unpinned_cores") + ArrayLength("pinned_cores")),
-            memory=Sum("memory"),
+            memory=Sum("memory") * MB,
         )
     )
     for entry in vms:
-        mem = entry["memory"] * MB
+        mem = entry["memory"]
         if entry["tracked"]:
             resources.cores.allocated_tracked += entry["cores"]
             resources.vm_count.tracked += entry["vms"]
@@ -489,6 +497,8 @@ def _update_global_resource_counters(pod, resources):
             vfs.allocated_other += allocated
         vfs.free -= allocated
     resources.interfaces = list(host_interfaces.values())
+
+    return resources
 
 
 def _update_numanode_resources_usage(
