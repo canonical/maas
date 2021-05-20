@@ -15,15 +15,11 @@ from maasserver.clusterrpc.pods import (
     discover_pod_projects,
     get_best_discovered_result,
 )
-from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import PodProblem
 from maasserver.forms.pods import ComposeMachineForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.models.resourcepool import ResourcePool
-from maasserver.models.virtualmachine import (
-    get_vm_host_resources,
-    get_vm_host_used_resources,
-)
+from maasserver.models.virtualmachine import get_vm_host_resources
 from maasserver.models.zone import Zone
 from maasserver.permissions import PodPermission
 from maasserver.rbac import rbac
@@ -108,19 +104,6 @@ class PodHandler(TimestampedModelHandler):
         data.update(
             {
                 "type": obj.power_type,
-                "total": self.dehydrate_total(obj),
-                "used": self.dehydrate_used(obj),
-                "available": self.dehydrate_available(obj),
-                "composed_machines_count": obj.node_set.filter(
-                    node_type=NODE_TYPE.MACHINE
-                ).count(),
-                "owners_count": (
-                    obj.node_set.exclude(owner=None)
-                    .values_list("owner")
-                    .distinct()
-                    .count()
-                ),
-                "hints": self.dehydrate_hints(obj.hints),
                 "storage_pools": [
                     self.dehydrate_storage_pool(pool)
                     for pool in obj.storage_pools.all()
@@ -157,52 +140,6 @@ class PodHandler(TimestampedModelHandler):
             data["permissions"].append("compose")
 
         return data
-
-    def dehydrate_total(self, obj):
-        """Dehydrate total Pod resources."""
-        return {
-            "cores": obj.cores,
-            "memory": obj.memory,
-            "memory_gb": "%.1f" % (obj.memory / 1024.0),
-            "local_storage": obj.local_storage,
-            "local_storage_gb": "%.1f" % (obj.local_storage / (1024 ** 3)),
-        }
-
-    def dehydrate_used(self, obj):
-        """Dehydrate used Pod resources."""
-        used_resources = get_vm_host_used_resources(obj)
-        return {
-            "cores": used_resources.cores,
-            "memory": used_resources.total_memory,
-            "memory_gb": "%.1f" % (used_resources.total_memory / 1024.0),
-            "local_storage": used_resources.storage,
-            "local_storage_gb": "%.1f"
-            % (used_resources.storage / (1024 ** 3)),
-        }
-
-    def dehydrate_available(self, obj):
-        """Dehydrate available Pod resources."""
-        used_resources = get_vm_host_used_resources(obj)
-        return {
-            "cores": obj.cores - used_resources.cores,
-            "memory": obj.memory - used_resources.total_memory,
-            "memory_gb": "%.1f"
-            % ((obj.memory - used_resources.total_memory) / 1024.0),
-            "local_storage": obj.local_storage - used_resources.storage,
-            "local_storage_gb": "%.1f"
-            % ((obj.local_storage - used_resources.storage) / (1024 ** 3)),
-        }
-
-    def dehydrate_hints(self, hints):
-        """Dehydrate Pod hints."""
-        return {
-            "cores": hints.cores,
-            "cpu_speed": hints.cpu_speed,
-            "memory": hints.memory,
-            "memory_gb": "%.1f" % (hints.memory / 1024.0),
-            "local_storage": hints.local_storage,
-            "local_storage_gb": "%.1f" % (hints.local_storage / (1024 ** 3)),
-        }
 
     def dehydrate_storage_pool(self, pool):
         """Dehydrate PodStoragePool."""

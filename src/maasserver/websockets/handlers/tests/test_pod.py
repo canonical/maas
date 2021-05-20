@@ -1,8 +1,6 @@
 # Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.pod`"""
-
 
 import random
 from unittest.mock import MagicMock
@@ -145,7 +143,6 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(
             result["storage_pools"], Equals(expected_data["storage_pools"])
         )
-        self.assertThat(result["owners_count"], Equals(2))
 
     def test_get_with_pod_host(self):
         admin = factory.make_admin()
