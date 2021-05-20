@@ -45,6 +45,15 @@ class TestOmapiClient(MAASTestCase):
             "1.2.3.4", "aa:bb:cc:dd:ee:ff", b"aa-bb-cc-dd-ee-ff"
         )
 
+    def test_add_host_ipv6(self):
+        cli = OmapiClient("shared-key", ipv6=True)
+        cli.add_host("aa:bb:cc:dd:ee:ff", "fe80::216:3eff:fe72:d72e")
+        self.mock_omapi_cli.add_host_supersede.assert_called_once_with(
+            "fe80::216:3eff:fe72:d72e",
+            "aa:bb:cc:dd:ee:ff",
+            b"aa-bb-cc-dd-ee-ff",
+        )
+
     def test_remove_host(self):
         cli = OmapiClient("shared-key")
         cli.del_host("aa:bb:cc:dd:ee:ff")

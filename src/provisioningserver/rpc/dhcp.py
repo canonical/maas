@@ -15,6 +15,7 @@ import os
 import re
 from tempfile import NamedTemporaryFile
 
+from netaddr import AddrConversionError, IPAddress
 from twisted.internet.defer import inlineCallbacks, maybeDeferred
 from twisted.internet.threads import deferToThread
 
@@ -87,7 +88,7 @@ class DHCPState(DHCPStateBase):
             global_dhcp_snippets=global_dhcp_snippets,
         )
 
-    def requires_restart(self, other_state):
+    def requires_restart(self, other_state, is_dhcpv6_server=False):
         """Return True when this state differs from `other_state` enough to
         require a restart."""
 
@@ -98,12 +99,26 @@ class DHCPState(DHCPStateBase):
                     hosts_dhcp_snippets.append(dhcp_snippet)
             return sorted(hosts_dhcp_snippets, key=itemgetter("name"))
 
+        def ipv6_hosts_require_restart(hosts):
+            if is_dhcpv6_server:  # dhcpv4 can still manage ipv6 subnets
+                return False
+
+            for host in hosts.values():
+                ip = host.get("ip")
+                if ip is not None:
+                    try:
+                        IPAddress(ip).ipv4()
+                    except AddrConversionError:
+                        return True
+            return False
+
         # Currently the OMAPI doesn't allow you to add or remove arbitrary
         # config options. So gather a list of DHCP snippets from
         hosts_dhcp_snippets = gather_hosts_dhcp_snippets(self.hosts)
         other_hosts_dhcp_snippets = gather_hosts_dhcp_snippets(
             other_state.hosts
         )
+
         return (
             self.omapi_key != other_state.omapi_key
             or self.failover_peers != other_state.failover_peers
@@ -111,6 +126,8 @@ class DHCPState(DHCPStateBase):
             or self.interfaces != other_state.interfaces
             or self.global_dhcp_snippets != other_state.global_dhcp_snippets
             or hosts_dhcp_snippets != other_hosts_dhcp_snippets
+            or ipv6_hosts_require_restart(self.hosts)
+            or ipv6_hosts_require_restart(other_state.hosts)
         )
 
     def host_diff(self, other_state):
@@ -342,7 +359,9 @@ def configure(
                 service_monitor.restartService,
                 server.dhcp_service,
             )
-        elif new_state.requires_restart(current_state):
+        elif new_state.requires_restart(
+            current_state, is_dhcpv6_server=server.ipv6
+        ):
             log.debug(
                 "Restarting {name} service; configuration change requires "
                 "full restart.",
