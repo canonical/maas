@@ -41,7 +41,6 @@ from provisioningserver.utils import (
     kernel_to_debian_architecture,
     typed,
 )
-from provisioningserver.utils.ipaddr import get_vid_from_ifname
 from provisioningserver.utils.lxd import lxd_cpu_speed
 from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.twisted import asynchronous, threadDeferred
@@ -638,7 +637,7 @@ class LXDPodDriver(PodDriver):
                 mac = iface_to_mac.get(name)
             return DiscoveredMachineInterface(
                 mac_address=mac,
-                vid=int(device.get("vlan", get_vid_from_ifname(name))),
+                vid=int(device.get("vlan", 0)),
                 boot=boot,
                 attach_type=attach_type,
                 attach_name=attach_name,

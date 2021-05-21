@@ -6,32 +6,12 @@
 import json
 import os
 from pathlib import Path
-import re
 
 import netifaces
 
 from provisioningserver.refresh import get_resources_bin_path
 from provisioningserver.utils.lxd import parse_lxd_networks
 from provisioningserver.utils.shell import call_and_check
-
-
-def get_vid_from_ifname(ifname):
-    """Returns the VID for the specified VLAN interface name.
-
-    Returns 0 if the VID could not be determined.
-
-    :return:int
-    """
-    vid = 0
-    iface_vid_re = re.compile(r".*\.([0-9]+)$")
-    iface_vid_match = iface_vid_re.match(ifname)
-    vlan_vid_re = re.compile(r"vlan([0-9]+)$")
-    vlan_vid_match = vlan_vid_re.match(ifname)
-    if iface_vid_match:
-        vid = int(iface_vid_match.group(1))
-    elif vlan_vid_match:
-        vid = int(vlan_vid_match.group(1))
-    return vid
 
 
 def get_ip_addr():
