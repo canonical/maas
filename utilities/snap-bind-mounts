@@ -1,0 +1,140 @@
+#!/usr/bin/python3
+"""Manage local changes as bind mounts for locally installed MAAS snap.
+
+It check the git status for src/maasserver, src/provisioningserver and
+src/metadataserver. If any file is modified, it will create a bind mount in
+/snap/maas/current/lib/python3.8/site-packages/ for that.
+
+You should check out the commit of MAAS that the snap is based on. For
+example, if the local installed snap is 2.9.2-9165-g.c3e7848d1, checkout
+c3e7848d1. Otherwise, the file you change might depend on something that
+isn't in the snap.
+
+It uses 'git ls-files -m' to determine which files have been modified.
+"""
+
+import argparse
+from pathlib import Path
+import subprocess
+import sys
+
+GIT_BASE_PATHS = [
+    Path("src/maasserver"),
+    Path("src/provisioningserver"),
+    Path("src/metadataserver"),
+]
+
+
+def is_relative_to(path, base_path):
+    """Implementation of Path.is_relative_to which was added in Python 3.9"""
+    try:
+        path.relative_to(base_path)
+    except ValueError:
+        return False
+    else:
+        return True
+
+
+def get_snap_base_path():
+    return Path("/snap/maas/current/lib/python3.8/site-packages").resolve()
+
+
+def get_active_mounts(base_path):
+    mounts = []
+    for mount_line in Path("/proc/mounts").read_text().splitlines():
+        mount_target = Path(mount_line.split(" ")[1])
+        if is_relative_to(mount_target, base_path):
+            mounts.append(mount_target)
+    return mounts
+
+
+def get_modified_files():
+    proc = subprocess.run(
+        ["git", "ls-files", "-m"], text=True, stdout=subprocess.PIPE
+    )
+    modified_files = []
+    for modified_file in [Path(path) for path in proc.stdout.splitlines()]:
+        for base_path in GIT_BASE_PATHS:
+            if is_relative_to(modified_file, base_path):
+                modified_files.append(modified_file)
+    return modified_files
+
+
+def unmount(target):
+    print(f"Umounting {target}")
+    subprocess.run(["sudo", "umount", str(target)], check=True)
+
+
+def mount(source, target):
+    print(f"Mounting {source}")
+    subprocess.run(
+        [
+            "sudo",
+            "mount",
+            "-o",
+            "ro,bind",
+            str(Path(source).resolve()),
+            str(target),
+        ],
+        check=True,
+    )
+
+
+def show_status():
+    snap_base_path = get_snap_base_path()
+    for mount in get_active_mounts(snap_base_path):
+        print(mount.relative_to(snap_base_path))
+
+
+def revert_mounts():
+    for mount in get_active_mounts(get_snap_base_path()):
+        unmount(mount)
+    print("Restarting MAAS...")
+    subprocess.run(["sudo", "snap", "restart", "maas"], check=True)
+
+
+def apply_mounts():
+    snap_base_path = get_snap_base_path()
+    local_files = get_modified_files()
+    active_mounts = get_active_mounts(snap_base_path)
+    for active_mount in active_mounts:
+        local_file = Path("src") / active_mount.relative_to(snap_base_path)
+        if local_file not in local_files:
+            unmount(active_mount)
+    for local_file in local_files:
+        snap_path = get_snap_base_path() / local_file.relative_to("src")
+        if snap_path in active_mounts:
+            # Unmount the old mount, so that it won't reference an older
+            # version of the file.
+            unmount(snap_path)
+        mount(local_file, snap_path)
+    print("Restarting MAAS...")
+    subprocess.run(["sudo", "snap", "restart", "maas"], check=True)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(
+        title="command", metavar="COMMAND", dest="command"
+    )
+    subparsers.add_parser(
+        "apply", help="Sync bind mounts for all locally changed files"
+    )
+
+    subparsers.add_parser(
+        "revert", help="Remove bind mounts for all locally changed files"
+    )
+    subparsers.add_parser("status", help="Show active bind mounts")
+    args = parser.parse_args()
+    if args.command is None:
+        args.command = "status"
+    if args.command == "status":
+        show_status()
+    elif args.command == "revert":
+        revert_mounts()
+    elif args.command == "apply":
+        apply_mounts()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
