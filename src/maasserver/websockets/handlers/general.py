@@ -52,7 +52,6 @@ class GeneralHandler(Handler):
             "known_boot_architectures",
             "machine_actions",
             "min_hwe_kernels",
-            "navigation_options",
             "osinfo",
             "pockets_to_disable",
             "power_types",
@@ -219,10 +218,6 @@ class GeneralHandler(Handler):
                 "disk_erase_with_quick_erase"
             ),
         }
-
-    def navigation_options(self, params):
-        """Return the options for navigation."""
-        return {}
 
     def known_boot_architectures(self, params):
         """Return all known boot architectures."""

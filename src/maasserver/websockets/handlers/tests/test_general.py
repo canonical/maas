@@ -343,10 +343,6 @@ class TestGeneralHandler(MAASServerTestCase):
             handler.release_options({}),
         )
 
-    def test_navigation_options(self):
-        handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertEqual({}, handler.navigation_options({}))
-
     def test_known_boot_architectures(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
         self.assertEqual(
