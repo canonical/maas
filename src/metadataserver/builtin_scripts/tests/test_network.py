@@ -545,6 +545,24 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertTrue(eth0_0102.enabled)
         self.assertEqual([eth0], list(eth0_0102.parents.all()))
 
+    def test_vlans_with_alternate_naming_conventions_vm_host(self):
+        host = factory.make_Machine()
+        factory.make_Pod(host=host)
+        data = FakeCommissioningData()
+        eth0_network = data.create_physical_network("eth0")
+        data.create_vlan_network("vlan0100", parent=eth0_network, vid=1)
+        data.create_vlan_network("vlan101", parent=eth0_network, vid=2)
+        data.create_vlan_network("eth0.0102", parent=eth0_network, vid=3)
+
+        self.update_interfaces(host, data)
+
+        interface_names = VLANInterface.objects.filter(node=host).values_list(
+            "name", flat=True
+        )
+        self.assertEqual(
+            ["eth0.0102", "vlan0100", "vlan101"], sorted(interface_names)
+        )
+
     def test_sets_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
