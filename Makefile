@@ -510,13 +510,13 @@ snap:
 # Helpers for using the snap for development testing.
 #
 
-DEV_SNAP_DIR ?= build/dev-snap
+DEV_SNAP_DIR ?= $(PWD)/build/dev-snap
 DEV_SNAP_PRIME_DIR = $(DEV_SNAP_DIR)/prime
 DEV_SNAP_PRIME_MARKER = $(DEV_SNAP_PRIME_DIR)/snap/primed
 
 $(DEV_SNAP_DIR): ## Check out a clean version of the working tree.
 	git checkout-index -a --prefix $(DEV_SNAP_DIR)/
-	git submodule foreach --recursive 'git checkout-index -a --prefix $(PWD)/$(DEV_SNAP_DIR)/$$sm_path/'
+	git submodule foreach --recursive 'git checkout-index -a --prefix $(DEV_SNAP_DIR)/$$sm_path/'
 
 $(DEV_SNAP_PRIME_MARKER): $(DEV_SNAP_DIR)
 	cd $(DEV_SNAP_DIR) && $(snapcraft) prime --destructive-mode

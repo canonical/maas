@@ -18,7 +18,7 @@ maas_version() {
 # compatibility.
 VERSION=$(maas_version)
 GIT_REF=HEAD
-GIT_HASH=$(git rev-parse --short "$GIT_REF")
-GIT_REV_COUNT=$(git rev-list --count "$GIT_REF")
+GIT_HASH=$(git rev-parse --short "$GIT_REF" || echo "0000000000" )
+GIT_REV_COUNT=$(git rev-list --count "$GIT_REF" || echo "0")
 
 echo "${VERSION}-${GIT_REV_COUNT}-g.${GIT_HASH}"
