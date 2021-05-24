@@ -1912,7 +1912,7 @@ class VLANInterface(ChildInterface):
         :raises: AssertionError if the VLAN is not defined, or if the related
             VLAN is not tagged with a valid 802.1Q VLAN tag (between 1-4094).
         """
-        if self._is_related_node_a_controller() and self.name is not None:
+        if self._should_preserve_name():
             # Controllers must preserve original VLAN interface names, since
             # having an accurate name is important for MAAS (in order to
             # perform actions such as providing DHCP or monitoring interfaces).
@@ -1970,9 +1970,13 @@ class VLANInterface(ChildInterface):
                     {"vlan": ["VLAN interface requires connection to a VLAN."]}
                 )
 
-    def _is_related_node_a_controller(self):
-        """Returns True if the related Node is a Controller."""
-        return self.get_node().is_controller
+    # XXX: We should always trust the name that is passed when creating
+    #      the VLANInterface. This should be removed when 3.0 is
+    #      released.
+    def _should_preserve_name(self):
+        """Returns True if the VLAN interface name shouldn't be generated"""
+        node = self.get_node()
+        return (node.is_controller or node.is_pod) and self.name is not None
 
     def save(self, *args, **kwargs):
         # Set the node of this VLAN to the same as its parents.
@@ -1984,18 +1988,7 @@ class VLANInterface(ChildInterface):
             parent = self.parents.first()
             if parent is not None:
                 self.mac_address = parent.mac_address
-        # There are two cases where we want to automatically generate a
-        # VLAN interface's name:
-        # (1) The interface is not attached to a Controller. Controllers
-        #     always inform MAAS what their interface name is, so MAAS
-        #     must trust what they say. On controllers, we allow
-        #     non-standard naming conventions, such as 'vlan100',
-        #     'vlan0100', or 'eth0.0100'. On deployed nodes, we always
-        #     coerce the name to '<parent>.<vid-no-pad>' format.
-        # (2) The interface is on a controller, but no name was specified.
-        #     (This is useful more for the test suite than anything else.)
-        is_controller = self._is_related_node_a_controller()
-        if not is_controller or (is_controller and self.name is None):
+        if not self._should_preserve_name():
             new_name = self.get_name()
             if self.name != new_name:
                 self.name = new_name
