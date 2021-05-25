@@ -77,7 +77,7 @@ def get_maas_facing_server_addresses(
         )
     else:
         addresses = set()
-    if len(addresses) == 0:
+    if not addresses:
         raise UnresolvableHost("No address found for host %s." % hostname)
     if not link_local:
         addresses = [ip for ip in addresses if not ip.is_link_local()]
@@ -88,7 +88,6 @@ def get_maas_facing_server_addresses(
     if include_alternates:
         maas_id = get_maas_id()
         if maas_id is not None:
-            # Circular imports
             from maasserver.models import StaticIPAddress, Subnet
 
             # Don't include more than one alternate IP address, per region,
@@ -107,26 +106,25 @@ def get_maas_facing_server_addresses(
                             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                             NODE_TYPE.REGION_CONTROLLER,
                         ),
-                    )
+                    ).exclude(ip__isnull=True)
                     region_ips = region_ips.prefetch_related(
                         "interface_set__node"
                     )
                     region_ips = region_ips.order_by("ip")
                     for region_ip in region_ips:
+                        ip_addr = region_ip.get_ipaddress()
                         for iface in region_ip.interface_set.all():
-                            ipa = region_ip.get_ipaddress()
-                            if ipa is None:
-                                continue
                             # Pick at most one alternate IP address for each
                             # region, per address family.
-                            id_plus_family = iface.node.system_id + str(
-                                ipa.version
+                            id_plus_family = (
+                                iface.node.system_id,
+                                ip_addr.version,
                             )
                             if id_plus_family in regions:
                                 continue
                             else:
                                 regions.add(id_plus_family)
-                                alternate_ips.append(ipa)
+                                alternate_ips.append(ip_addr)
             # Append non-duplicate region IP addresses to the list of
             # addresses to return. We don't want duplicates, but we
             # also need to preserve the existing order.
