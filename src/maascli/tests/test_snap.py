@@ -598,3 +598,25 @@ class TestCmdConfig(MAASTestCase):
         config_manager.update.assert_not_called()
         self.assertEqual(stdout.getvalue(), "")
         mock_sighup_supervisord.assert_not_called()
+
+
+class TestDBNeedInit(MAASTestCase):
+    def test_has_tables(self):
+        connection = MagicMock()
+        connection.introspection.table_names.return_value = [
+            "table1",
+            "table2",
+        ]
+        self.assertFalse(snap.db_need_init(connection))
+
+    def test_no_tables(self):
+        connection = MagicMock()
+        connection.introspection.table_names.return_value = []
+        self.assertTrue(snap.db_need_init(connection))
+
+    def test_fail(self):
+        connection = MagicMock()
+        connection.introspection.table_names.side_effect = Exception(
+            "connection failed"
+        )
+        self.assertTrue(snap.db_need_init(connection))

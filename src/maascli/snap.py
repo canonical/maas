@@ -315,6 +315,21 @@ def change_user(username, effective=False):
         os.setuid(running_uid)
 
 
+def db_need_init(connection=None) -> bool:
+    """Whether the database needs initializing.
+
+    It assumes the database is set up if there's any table in it.
+    """
+    if connection is None:
+        # local import since the CLI shouldn't unconditionally depend on Django
+        from django.db import connection
+
+    try:
+        return not connection.introspection.table_names()
+    except Exception:
+        return True
+
+
 def migrate_db(capture=False):
     """Migrate the database."""
     if capture:
@@ -645,7 +660,7 @@ class cmd_init(SnapCommand):
             start_services,
         )
 
-        if mode in ("region", "region+rack"):
+        if mode in ("region", "region+rack") and db_need_init():
             # When in 'region' or 'region+rack' the migrations for the database
             # must be at the same level as this controller.
             perform_work(
