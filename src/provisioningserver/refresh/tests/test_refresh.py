@@ -1,18 +1,16 @@
 # Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test refresh functions."""
-
-
 from collections import OrderedDict
 import os
 from pathlib import Path
 import random
 import stat
+import subprocess
 import sys
 import tempfile
 from textwrap import dedent
-from unittest.mock import patch, sentinel
+from unittest.mock import ANY, patch, sentinel
 
 from testtools.matchers import Contains, DirExists, Not
 
@@ -55,6 +53,9 @@ class TestRefresh(MAASTestCase):
         # When running scripts in a tty MAAS outputs the results to help with
         # debug. Quiet the output when running in tests.
         self.patch(sys, "stdout")
+        # by default, fake running in snap so sudo is not used
+        self.mock_running_in_snap = self.patch(refresh, "running_in_snap")
+        self.mock_running_in_snap.return_value = True
 
     def _cleanup(self, path):
         if os.path.exists(path):
@@ -580,4 +581,74 @@ class TestRefresh(MAASTestCase):
 
         self.assertThat(
             maaslog, MockAnyCall("Error during controller refresh: %s" % error)
+        )
+
+    def test_refresh_runs_script_no_sudo_snap(self):
+        mock_popen = self.patch(refresh, "Popen")
+        mock_popen.side_effect = OSError()
+        self.patch(refresh, "signal")
+        script_name = factory.make_name("script_name")
+        script_content = dedent(
+            """\
+        #!/bin/bash
+        echo 'test script'
+        """
+        )
+        info_scripts = self.create_scripts_success(
+            script_name, script_content=script_content
+        )
+
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        url = factory.make_url()
+
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
+        script_path = (Path(refresh.__file__) / ".." / script_name).resolve()
+        mock_popen.assert_called_once_with(
+            [str(script_path)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=ANY,
+        )
+
+    def test_refresh_runs_script_sudo_if_no_snap(self):
+        self.mock_running_in_snap.return_value = False
+        mock_popen = self.patch(refresh, "Popen")
+        mock_popen.side_effect = OSError()
+        self.patch(refresh, "signal")
+        script_name = factory.make_name("script_name")
+        script_content = dedent(
+            """\
+        #!/bin/bash
+        echo 'test script'
+        echo '{status: skipped}' > $RESULT_PATH
+        """
+        )
+        info_scripts = self.create_scripts_success(
+            script_name, script_content=script_content
+        )
+
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        url = factory.make_url()
+
+        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
+        script_path = (Path(refresh.__file__) / ".." / script_name).resolve()
+        mock_popen.assert_called_once_with(
+            ["sudo", "-E", str(script_path)],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=ANY,
         )
