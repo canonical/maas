@@ -26,10 +26,5 @@
 # timeout: 00:05:00
 # --- End MAAS 1.0 script metadata ---
 
-# The script is run both on controllers (which can be run inside a snap) and
-# commissioned machines.
-if [ -z "$SNAP" ]; then
-    sudo -n /usr/bin/lshw -xml
-else
-    "$SNAP/usr/bin/lshw" -xml
-fi
+# the SNAP var is empty if not running in a snap
+"$SNAP/usr/bin/lshw" -xml

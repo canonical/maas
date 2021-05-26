@@ -21,7 +21,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
-from provisioningserver.utils.snap import SnapPaths
+from provisioningserver.utils.snap import running_in_snap, SnapPaths
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("refresh")
@@ -97,15 +97,15 @@ def refresh(
             post_process_hook=post_process_hook,
         )
 
-    if len(failed_scripts) == 0:
-        signal_wrapper(url, creds, "OK", "Finished refreshing %s" % system_id)
+    if failed_scripts:
+        signal_wrapper(url, creds, "FAILED", f"Failed refreshing {system_id}")
     else:
-        signal_wrapper(
-            url, creds, "FAILED", "Failed refreshing %s" % system_id
-        )
+        signal_wrapper(url, creds, "OK", f"Finished refreshing {system_id}")
 
 
 def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
+    in_snap = running_in_snap()
+
     total_scripts = len(scripts)
     current_script = 1
     failed_scripts = []
@@ -143,9 +143,11 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
 
         timeout = 60
 
+        command = [script_path] if in_snap else ["sudo", "-E", script_path]
+
         try:
             proc = Popen(
-                script_path, stdin=DEVNULL, stdout=PIPE, stderr=PIPE, env=env
+                command, stdin=DEVNULL, stdout=PIPE, stderr=PIPE, env=env
             )
             capture_script_output(
                 proc, combined_path, stdout_path, stderr_path, timeout

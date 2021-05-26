@@ -1,9 +1,6 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test parser for 'ip addr show'."""
-
-
 import json
 import os
 from pathlib import Path
@@ -14,7 +11,6 @@ from textwrap import dedent
 import netifaces
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import get_resources_bin_path
 from provisioningserver.utils import ipaddr as ipaddr_module
@@ -133,15 +129,26 @@ class TestGetIPAddr(MAASTestCase):
     """Tests for `get_ip_addr`, `get_mac_addresses`."""
 
     def test_get_ip_addr_calls_methods(self):
+        self.patch(ipaddr_module, "running_in_snap").return_value = False
         patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
         patch_call_and_check.return_value = json.dumps(
             {"networks": SAMPLE_LXD_NETWORKS}
         )
         # all interfaces from binary output are included in result
         self.assertCountEqual(SAMPLE_LXD_NETWORKS, get_ip_addr())
-        self.assertThat(
-            patch_call_and_check,
-            MockCalledOnceWith([get_resources_bin_path()]),
+        patch_call_and_check.assert_called_once_with(
+            ["sudo", get_resources_bin_path()]
+        )
+
+    def test_no_use_sudo_in_snap(self):
+        patch_call_and_check = self.patch(ipaddr_module, "call_and_check")
+        patch_call_and_check.return_value = json.dumps(
+            {"networks": SAMPLE_LXD_NETWORKS}
+        )
+        self.patch(ipaddr_module, "running_in_snap").return_value = True
+        get_ip_addr()
+        patch_call_and_check.assert_called_once_with(
+            [get_resources_bin_path()]
         )
 
     def test_get_mac_addresses_returns_all_mac_addresses(self):

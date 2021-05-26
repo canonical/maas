@@ -13,6 +13,7 @@ import netifaces
 from provisioningserver.refresh import get_resources_bin_path
 from provisioningserver.utils.lxd import parse_lxd_networks
 from provisioningserver.utils.shell import call_and_check
+from provisioningserver.utils.snap import running_in_snap
 
 
 def get_vid_from_ifname(ifname):
@@ -40,7 +41,9 @@ def get_ip_addr():
     :raises:ExternalProcessError: if IP address information could not be
         gathered.
     """
-    output = call_and_check([get_resources_bin_path()])
+    cmd_path = get_resources_bin_path()
+    command = [cmd_path] if running_in_snap() else ["sudo", cmd_path]
+    output = call_and_check(command)
     ifaces = parse_lxd_networks(json.loads(output)["networks"])
     _update_interface_type(ifaces)
     _annotate_with_proc_net_bonding_original_macs(ifaces)
