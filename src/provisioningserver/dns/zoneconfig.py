@@ -408,6 +408,10 @@ class DNSReverseZoneConfig(DomainConfigBase):
                     try:
                         base += 1
                         first += step
+                        if (
+                            first > last
+                        ):  # if the excluding subnet pushes the base IP beyond the bounds of the generating subnet, we've reached the end and return early
+                            return info
                         continue
                     except IndexError:
                         # IndexError occurs when we go from 255.255.255.255 to

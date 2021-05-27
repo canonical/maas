@@ -366,6 +366,31 @@ class TestZoneGenerator(MAASServerTestCase):
             ),
         )
 
+    def test_yields_forward_and_reverse_zone_no_overlap_bug(self):
+        domain = factory.make_Domain(name="overlap")
+        subnet1 = factory.make_Subnet(cidr="192.168.33.0/25")
+        subnet2 = factory.make_Subnet(cidr="192.168.35.0/26")
+        subnet3 = factory.make_Subnet(cidr="192.168.36.0/26")
+        zones = ZoneGenerator(
+            domain,
+            [
+                subnet2,
+                subnet1,
+                subnet3,
+            ],  # purposely out of order to assert subnets are being sorted
+            serial=random.randint(0, 65535),
+        ).as_list()
+        expected_domains = [
+            "0-25.33.168.192.in-addr.arpa",
+            "0-26.35.168.192.in-addr.arpa",
+            "0-26.36.168.192.in-addr.arpa",
+            "overlap",
+        ]
+        zone_names = [
+            info.zone_name for zone in zones for info in zone.zone_info
+        ]
+        self.assertCountEqual(zone_names, expected_domains)
+
     def test_yields_forward_and_reverse_zone_no_overlap(self):
         domain = factory.make_Domain(name="overlap")
         vlan1 = factory.make_VLAN(vid=1, dhcp_on=True)
@@ -389,33 +414,25 @@ class TestZoneGenerator(MAASServerTestCase):
             serial=random.randint(0, 65535),
         ).as_list()
         self.assertEqual(len(zones), 7)
-        expected_domains = set(
-            [
-                "overlap",
-                "36.232.10.in-addr.arpa",
-                "32.232.10.in-addr.arpa",
-                "6.232.10.in-addr.arpa",
-                "36.2.10.in-addr.arpa",
-                "36.231.10.in-addr.arpa",
-                "40.232.10.in-addr.arpa",
-                "38.232.10.in-addr.arpa",
-                "34.232.10.in-addr.arpa",
-                "35.232.10.in-addr.arpa",
-                "39.232.10.in-addr.arpa",
-                "37.232.10.in-addr.arpa",
-                "33.232.10.in-addr.arpa",
-            ]
-        )
-        zone_names = set(
+        expected_domains = [
+            "overlap",
+            "36.232.10.in-addr.arpa",
+            "32.232.10.in-addr.arpa",
+            "6.232.10.in-addr.arpa",
+            "36.2.10.in-addr.arpa",
+            "36.231.10.in-addr.arpa",
+            "40.232.10.in-addr.arpa",
+            "38.232.10.in-addr.arpa",
+            "34.232.10.in-addr.arpa",
+            "35.232.10.in-addr.arpa",
+            "39.232.10.in-addr.arpa",
+            "37.232.10.in-addr.arpa",
+            "33.232.10.in-addr.arpa",
+        ]
+        zone_names = [
             info.zone_name for zone in zones for info in zone.zone_info
-        )
-        self.assertEqual(zone_names, expected_domains)
-        for expected_domain in expected_domains:
-            self.assertIn(
-                expected_domain,
-                zone_names,
-                f"{expected_domain} is not in domains",
-            )
+        ]
+        self.assertCountEqual(zone_names, expected_domains)
 
     def test_with_node_yields_fwd_and_rev_zone(self):
         default_domain = Domain.objects.get_default_domain().name
