@@ -8,30 +8,14 @@ Hacking MAAS
 Coding style
 ============
 
-MAAS follows the `Launchpad Python Style Guide`_, except where it gets
-Launchpad specific, and where it talks about `method naming`_. MAAS
-instead adopts `PEP-8`_ naming in all cases, so method names should
-usually use the ``lowercase_with_underscores`` form.
+MAAS uses linters for Python, Go and Bash code.
 
-.. _Launchpad Python Style Guide:
-  https://dev.launchpad.net/PythonStyleGuide
-
-.. _method naming:
-  https://dev.launchpad.net/PythonStyleGuide#Naming
-
-.. _PEP-8:
-  http://www.python.org/dev/peps/pep-0008/
+Run ``make lint`` to check for issues/errors and ``make format`` to
+automatically reformat code.
 
 
 Prerequisites
 =============
-
-Container
-^^^^^^^^^
-
-There's a configure-lxd-profile script in utilities, that will set
-up a LXD profile that is configured properly.
-
 
 Dependencies
 ^^^^^^^^^^^^
@@ -53,20 +37,18 @@ everything that's needed for running and developing MAAS, run::
 
     $ make install-dependencies
 
-Careful: this will ``apt-get install`` many packages on your system,
-via ``sudo``. It may prompt you for your password.
+Careful: this will ``apt install`` many packages on your system, via
+``sudo``. It may prompt you for your password.
 
 This will install ``bind9``. As a result you will have an extra daemon
-running. If you are a developer and don't intend to run BIND locally,
-you can disable the daemon by inserting ``exit 1`` at the top of
-``/etc/default/bind9``. The package still needs to be installed for
-tests though.
+running. If you are a developer and don't intend to run BIND locally, you can
+disable the daemon via ``sudo systemctl disable --now named``.
 
 Python development dependencies are pulled automatically from `PyPI`_ in a
 virtualenv located under ``.ve``.
 
 .. _PyPI:
-  http://pypi.python.org/
+  https://pypi.org/
 
 
 Git Workflow
@@ -124,10 +106,9 @@ To run tests at a lower level of granularity::
     $ ./bin/test.region src/maasserver/tests/test_api.py
     $ ./bin/test.region src/maasserver/tests/test_api.py:AnonymousEnlistmentAPITest
 
-The test runner is `nose`_, so you can pass in options like
-``--with-coverage`` and ``--nocapture`` (short option: ``-s``). The
-latter is essential when using ``pdb`` so that stdout is not
-adulterated.
+The test runner is `nose`_, so you can pass in options like ``--nocapture``
+(short option: ``-s``). This option is essential when using ``pdb`` so that
+stdout is not adulterated.
 
 .. _nose: http://readthedocs.org/docs/nose/en/latest/
 
@@ -209,10 +190,9 @@ Development MAAS server setup
 Access to the database is configured in
 ``src/maasserver/djangosettings/development.py``.
 
-The ``Makefile`` or the test suite sets up a development database
-cluster inside your branch. It lives in the ``db`` directory, which
-gets created on demand. You'll want to shut it down before deleting a
-branch; see below.
+The test suite sets up a development database cluster inside your branch. It
+lives in the ``db`` directory, which gets created on demand. You'll want to
+shut it down before deleting a branch; see below.
 
 First, set up the project. This fetches all the required dependencies
 and sets up some useful commands in ``bin/``::
@@ -232,31 +212,34 @@ database with the sample data::
 You can login as a simple user using the test account (username: 'test',
 password: 'test') or the admin account (username: 'admin', password: 'test').
 
-If you want to interact with real machines or VMs, it's better to use
-the snap. Instead of building a real snap, though, you can use
-'snapcraft prime' to create the prime directory. That has all the
-contents of the snap, but it's in a plain directory insted of in a
-squashfs image. Using a directory is better for testing, since you can
-change the files in there and not rebuild the snap.
+Development using the snap
+==========================
 
-There's a ``sync-dev-snap`` make target to automate this:
+If you want to interact with real machines or VMs, it's better to use the
+snap. Instead of building a real snap, though, you can run
 
 ::
 
-    $ make sync-dev-snap
+    $ make snap-prime
 
-The ``sync-dev-snap`` target creates a clean copy of your working tree (so
-that you don't have to run 'make clean' before building the snap) in
-build/dev-snap and creates the snap directory in build/dev-snap/prime.
+to create an unpacked snap in the ``build/dev-snap/prime`` directory. That has
+all the contents of the snap, but it's in a plain directory insted of in a
+squashfs image. Using a directory is better for testing, since you can change
+the files in there and not rebuild the snap.
 
 You can now install the snap:
 
 ::
 
     $ sudo snap try build/dev-snap/prime
+    $ utilities/connect-snap-interfaces
 
-Note that 'snap try' is used instead of 'snap install'. The maas snap
-should now be installed:
+Note that ``snap try`` is used instead of ``snap install``. The maas snap
+should now be installed.
+
+The latter command connects all the interfaces needed
+for the snap to work. This is performed automatically by snapd when installing
+the snap from the store, but is a manual step when installing via ``snap try``.
 
 ::
 
@@ -269,6 +252,8 @@ should now be installed:
     snapd         2.41                    4605  stable    canonical✓  snapd
 
 Next you need to initialize the snap, just like you would normally do:
+
+::
 
     $ sudo maas init
 
@@ -314,105 +299,6 @@ network you created. For example::
 Note that your LXD host will have the .1 address and will act as a
 gateway for your VMs.
 
-To shut down the database cluster and clean up all other generated files in
-your branch::
-
-    $ make clean
-
-
-Downloading PXE boot resources
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To use PXE booting, each cluster controller needs to download several
-files relating to PXE booting. This process is automated, but it does
-not start by default.
-
-First create a superuser and start all MAAS services::
-
-    $ bin/maas-region createadmin
-    $ make run
-
-Substitute your own email.  The command will prompt for a choice of password.
-
-Next, get the superuser's API key on the `account preferences`_ page in the
-web UI, and use it to log into MAAS at the command-line::
-
-    $ bin/maas login dev http://localhost:5240/MAAS/
-
-.. _`account preferences`: http://localhost:5240/MAAS/account/prefs/
-
-Start downloading PXE boot resources::
-
-    $  bin/maas dev node-groups import-boot-images
-
-This sends jobs to each cluster controller, asking each to download
-the boot resources they require. This may download dozens or hundreds
-of megabytes, so it may take a while. To save bandwidth, set an HTTP
-proxy beforehand::
-
-    $ bin/maas dev maas set-config name=http_proxy value=http://...
-
-
-Running the built-in TFTP server
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-You will need to run the built-in TFTP server on the real TFTP port (69) if
-you want to boot some real hardware. By default, it's set to start up on
-port 5244 for testing purposes. To make it run on port 69, set the
-MAAS_TFTP_PORT environment variable before running make run/start::
-
-    export MAAS_TFTP_PORT=69
-
-
-Then you need install and configure the authbind, so that your user can
-bind to port 69::
-
-    * Install the ``authbind``package:
-
-      $ sudo apt install authbind
-
-    * Create a file ``/etc/authbind/byport/69`` that is *executable* by the
-      user running MAAS.
-
-      $ sudo touch /etc/authbind/byport/69
-      $ sudo chown $USER /etc/authbind/byport/69
-      $ sudo chmod u+x /etc/authbind/byport/69
-
-Now when starting up the MAAS development webserver, "make run" and "make
-start" will detect authbind's presence and use it automatically.
-
-
-Running the BIND daemon for real
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-There's a BIND daemon that is started up as part of the development service
-but it runs on port 5246 by default. If you want to make it run as a real
-DNS server on the box then set the MAAS_BIND_PORT environment variable
-before running make run/start::
-
-    export MAAS_BIND_PORT=53
-
-Then as for TFTP above, create an authbind authorisation::
-
-    $ sudo touch /etc/authbind/byport/53
-    $ sudo chown $USER /etc/authbind/byport/53
-    $ sudo chmod u+x /etc/authbind/byport/53
-
-and run as normal.
-
-
-Running the cluster worker
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The cluster also needs authbind as it needs to bind a socket on UDP port
-68 for DHCP probing::
-
-    $ sudo touch /etc/authbind/byport/68
-    $ sudo chown $USER /etc/authbind/byport/68
-    $ sudo chmod u+x /etc/authbind/byport/68
-
-If you omit this, nothing else will break, but you will get an error in
-the cluster log because it can't bind to the port.
 
 
 Configuring DHCP
@@ -442,68 +328,6 @@ maas with the RBAC service in a non-interactive way, with the following::
 
 This will automatically handle logging in with Candid, without requiring the
 user to fill in the authentication form via browser.
-
-
-Development services
-====================
-
-The development environment uses *daemontools* to manage the various
-services that are required. These are all defined in subdirectories in
-``services/``.
-
-There are familiar service-like commands::
-
-  $ make start
-  $ make status
-  $ make restart
-  $ make stop
-
-The latter is a dependency of ``distclean`` so just running ``make
-distclean`` when you've finished with your branch is enough to stop
-everything.
-
-Individual services can be manipulated too::
-
-  $ make services/rackd/@start
-
-The ``@<action>`` pattern works for any of the services.
-
-There's an additional special action, ``run``::
-
-  $ make run
-
-This starts all services up and tails their log files. When you're
-done, kill ``tail`` (e.g. Ctrl-c), and all the services will be
-stopped.
-
-However, when used with individual services::
-
-  $ make services/regiond/@run
-
-it does something even cooler. First it shuts down the service, then
-it restarts it in the foreground so you can see the logs in the
-console. More importantly, it allows you to use ``pdb``, for example.
-
-A note of caution: some of the services have slightly different
-behaviour when run in the foreground:
-
-* regiond (the *webapp* service) will be run with its auto-reloading
-  enabled.
-
-There's a convenience target for hacking regiond that starts everything
-up, but with regiond in the foreground::
-
-  $ make run+regiond
-
-Apparently Django needs a lot of debugging ;)
-
-
-Adding new source files
-=======================
-
-When creating a new source file, a Python module or test for example,
-always start with the appropriate template from the ``templates``
-directory.
 
 
 Database information
@@ -546,6 +370,12 @@ Don't forget to add that file to the project with::
 To apply that migration, run::
 
     $ make syncdb
+
+If you're developing using the snap, you can run::
+
+    $ sudo snap run --shell maas.supervisor -c "maas-region dbupgrade"
+
+to run pending migrations.
 
 
 Performing data migration

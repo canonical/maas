@@ -1,6 +1,5 @@
 bind9
 bind9utils
-daemontools
 devscripts
 distro-info
 dnsutils

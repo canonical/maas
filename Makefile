@@ -28,20 +28,8 @@ endif
 # which those commands appear.
 dbrun := bin/database --preserve run --
 
-# For anything we start, we want to hint as to its root and data directories.
-export MAAS_ROOT := $(CURDIR)/.run
-export MAAS_DATA := $(CURDIR)/.run/maas
-# For things that care, postgresfixture for example, we always want to
-# use the "maas" databases.
+# Default PostgreSQL tools to use the maas database
 export PGDATABASE := maas
-
-# Check if a command is found on PATH. Raise an error if not, citing
-# the package to install. Return the command otherwise.
-# Usage: $(call available,<command>,<package>)
-define available
-  $(if $(shell which $(1)),$(1),$(error $(1) not found; \
-    install it with 'sudo apt install $(2)'))
-endef
 
 .DEFAULT_GOAL := build
 
@@ -151,10 +139,6 @@ test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyu
 	@utilities/run-py-tests-ci
 .PHONY: test-py
 
-clean-failed:
-	$(RM) .noseids
-.PHONY: clean-failed
-
 src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
     # Run migrations without any triggers created.
 	$(dbrun) bin/maas-region dbupgrade --internal-no-triggers
@@ -242,7 +226,7 @@ clean-machine-resources:
 	$(MAKE) -C src/machine-resources clean
 .PHONY: clean-machine-resources
 
-clean: stop clean-failed clean-ui clean-machine-resources
+clean: clean-ui clean-machine-resources
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -255,10 +239,10 @@ clean: stop clean-failed clean-ui clean-machine-resources
 	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
-	$(RM) -r services/*/supervise
 	$(RM) -r .run
 	$(RM) junit*.xml
 	$(RM) xunit.*.xml
+	$(RM) .noseids
 	$(RM) .failed
 	$(RM) -r $(VENV)
 	$(RM) -r .tox
@@ -281,99 +265,6 @@ dbharness: bin/database
 syncdb: bin/maas-region bin/database
 	$(dbrun) bin/maas-region dbupgrade
 .PHONY: syncdb
-
-#
-# Development services.
-#
-
-service_names_region := database dns regiond reloader
-service_names_rack := http rackd reloader
-service_names_all := $(service_names_region) $(service_names_rack)
-
-# The following template is intended to be used with `call`, and it
-# accepts a single argument: a target name. The target name must
-# correspond to a service action (see "Pseudo-magic targets" below). A
-# region- and rack-specific variant of the target will be created, in
-# addition to the target itself. These can be used to apply the service
-# action to the region services, the rack services, or all services, at
-# the same time.
-define service_template
-$(1)-region: $(patsubst %,services/%/@$(1),$(service_names_region))
-$(1)-rack: $(patsubst %,services/%/@$(1),$(service_names_rack))
-$(1): $(1)-region $(1)-rack
-endef
-
-# Expand out aggregate service targets using `service_template`.
-$(eval $(call service_template,pause))
-$(eval $(call service_template,restart))
-$(eval $(call service_template,start))
-$(eval $(call service_template,status))
-$(eval $(call service_template,stop))
-$(eval $(call service_template,supervise))
-
-# The `run` targets do not fit into the mould of the others.
-run-region:
-	@services/run $(service_names_region)
-.PHONY: run-region
-run-rack:
-	@services/run $(service_names_rack)
-.PHONY: run-rack
-run:
-	@services/run $(service_names_all)
-.PHONY: run
-
-# Convenient variables and functions for service control.
-
-setlock = $(call available,setlock,daemontools)
-supervise = $(call available,supervise,daemontools)
-svc = $(call available,svc,daemontools)
-svok = $(call available,svok,daemontools)
-svstat = $(call available,svstat,daemontools)
-
-service_lock = $(setlock) -n /run/lock/maas.dev.$(firstword $(1))
-
-# Pseudo-magic targets for controlling individual services.
-
-services/%/@run: services/%/@stop services/%/@deps
-	@$(call service_lock, $*) services/$*/run
-
-services/%/@start: services/%/@supervise
-	@$(svc) -u $(@D)
-
-services/%/@pause: services/%/@supervise
-	@$(svc) -d $(@D)
-
-services/%/@status:
-	@$(svstat) $(@D)
-
-services/%/@restart: services/%/@supervise
-	@$(svc) -du $(@D)
-
-services/%/@stop:
-	@if $(svok) $(@D); then $(svc) -dx $(@D); fi
-	@while $(svok) $(@D); do sleep 0.1; done
-
-services/%/@supervise: services/%/@deps
-	@mkdir -p logs/$*
-	@touch $(@D)/down
-	@if ! $(svok) $(@D); then \
-	    logdir=$(CURDIR)/logs/$* \
-	        $(call service_lock, $*) $(supervise) $(@D) & fi
-	@while ! $(svok) $(@D); do sleep 0.1; done
-
-# Dependencies for individual services.
-
-services/dns/@deps: bin/py bin/maas-common
-
-services/database/@deps: bin/database
-
-services/http/@deps: bin/py
-
-services/rackd/@deps: bin/rackd bin/maas-rack bin/maas-common bin/maas-power
-
-services/reloader/@deps:
-
-services/regiond/@deps: bin/maas-region bin/maas-rack bin/maas-common bin/maas-power
 
 #
 # Package building
