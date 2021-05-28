@@ -86,11 +86,6 @@ install-dependencies:
 	if [ -x /usr/bin/snap ]; then cat required-packages/snaps | xargs -L1 sudo snap install; fi
 .PHONY: install-dependencies
 
-sudoers:
-	utilities/install-sudoers
-	utilities/grant-nmap-permissions
-.PHONY: sudoers
-
 $(VENV): requirements-dev.txt
 	python3 -m venv --system-site-packages --clear $@
 	$(VENV)/bin/pip install -r $<

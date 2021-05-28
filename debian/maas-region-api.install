@@ -17,4 +17,3 @@ debian/tmp/usr/bin/maas-generate-winrm-cert
 usr/bin/maas-region usr/sbin
 usr/bin/regiond usr/sbin
 debian/extras/maas_remote_syslog_compress etc/cron.d
-debian/extras/99-maas-region-sudoers etc/sudoers.d
