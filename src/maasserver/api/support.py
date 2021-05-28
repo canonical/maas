@@ -53,8 +53,7 @@ class OperationsResource(Resource):
         return False
 
     def __call__(self, request, *args, **kwargs):
-        upcall = super().__call__
-        response = upcall(request, *args, **kwargs)
+        response = super().__call__(request, *args, **kwargs)
         response["X-MAAS-API-Hash"] = get_api_description_hash()
         return response
 
@@ -367,6 +366,12 @@ def method_fields_reserved_fields_patch(self, handler, fields):
 
 
 Emitter.method_fields = method_fields_reserved_fields_patch
+
+# only keep the JSON emitter as it's the only format we support
+for name in list(Emitter.EMITTERS):
+    if name == "json":
+        continue
+    Emitter.unregister(name)
 
 
 class ModelOperationsHandlerType(OperationsHandlerType, ABCMeta):
