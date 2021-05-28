@@ -441,9 +441,7 @@ class ZoneGenerator:
                 network=network,
                 ns_host_name=ns_host_name,
                 rfc2317_ranges=ranges,
-                exclude=set(
-                    [IPNetwork(s.cidr) for s in subnets if s is not subnet]
-                ),
+                exclude=set([IPNetwork(s.cidr) for s in subnets]),
             )
 
     def __iter__(self):
