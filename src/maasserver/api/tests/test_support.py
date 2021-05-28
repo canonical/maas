@@ -17,6 +17,7 @@ from maasserver.api.doc import get_api_description_hash
 from maasserver.api.support import (
     admin_method,
     AdminRestrictedResource,
+    Emitter,
     OperationsHandlerMixin,
     OperationsResource,
     RestrictedResource,
@@ -26,6 +27,11 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
+
+
+class TestEmitterOnlyJSON(MAASTestCase):
+    def test_emitters(self):
+        self.assertItemsEqual(Emitter.EMITTERS.keys(), ["json"])
 
 
 class StubHandler:
