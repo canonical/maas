@@ -14,8 +14,7 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 import json
 
-from django.db.models import Count, Sum, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Count
 import requests
 from twisted.application.internet import TimerService
 
@@ -39,17 +38,12 @@ from maasserver.models import (
 )
 from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.utils import get_maas_user_agent
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import IPRangeStatistics
 
 log = LegacyLogger()
-
-
-def NotNullSum(column):
-    """Like Sum, but returns 0 if the aggregate is None."""
-    return Coalesce(Sum(column), Value(0))
 
 
 def get_machine_stats():
@@ -62,26 +56,30 @@ def get_machine_stats():
 
 
 def get_machine_state_stats():
-    node_status = Node.objects.filter(node_type=NODE_TYPE.MACHINE)
-    node_status = Counter(node_status.values_list("status", flat=True))
-
+    node_status = (
+        Node.objects.filter(
+            node_type=NODE_TYPE.MACHINE,
+        )
+        .values_list("status")
+        .annotate(count=Count("status"))
+    )
+    node_status = defaultdict(int, node_status)
+    statuses = (
+        "new",
+        "ready",
+        "allocated",
+        "deployed",
+        "commissioning",
+        "testing",
+        "deploying",
+        "failed_deployment",
+        "failed_commissioning",
+        "failed_testing",
+        "broken",
+    )
     return {
-        # base status
-        "new": node_status.get(NODE_STATUS.NEW, 0),
-        "ready": node_status.get(NODE_STATUS.READY, 0),
-        "allocated": node_status.get(NODE_STATUS.ALLOCATED, 0),
-        "deployed": node_status.get(NODE_STATUS.DEPLOYED, 0),
-        # in progress status
-        "commissioning": node_status.get(NODE_STATUS.COMMISSIONING, 0),
-        "testing": node_status.get(NODE_STATUS.TESTING, 0),
-        "deploying": node_status.get(NODE_STATUS.DEPLOYING, 0),
-        # failure status
-        "failed_deployment": node_status.get(NODE_STATUS.FAILED_DEPLOYMENT, 0),
-        "failed_commissioning": node_status.get(
-            NODE_STATUS.FAILED_COMMISSIONING, 0
-        ),
-        "failed_testing": node_status.get(NODE_STATUS.FAILED_TESTING, 0),
-        "broken": node_status.get(NODE_STATUS.BROKEN, 0),
+        status: node_status[getattr(NODE_STATUS, status.upper())]
+        for status in statuses
     }
 
 
@@ -222,37 +220,32 @@ def get_maas_stats():
     # get summary of network objects
     netstats = get_subnets_stats()
 
-    return json.dumps(
-        {
-            "controllers": {
-                "regionracks": node_types.get(
-                    NODE_TYPE.REGION_AND_RACK_CONTROLLER, 0
-                ),
-                "regions": node_types.get(NODE_TYPE.REGION_CONTROLLER, 0),
-                "racks": node_types.get(NODE_TYPE.RACK_CONTROLLER, 0),
-            },
-            "nodes": {
-                "machines": node_types.get(NODE_TYPE.MACHINE, 0),
-                "devices": node_types.get(NODE_TYPE.DEVICE, 0),
-            },
-            "machine_stats": stats,  # count of cpus, mem, storage
-            "machine_status": machine_status,  # machines by status
-            "network_stats": netstats,  # network status
-            "vm_hosts": {
-                "lxd": get_vm_hosts_stats(power_type="lxd"),
-                "virsh": get_vm_hosts_stats(power_type="virsh"),
-            },
-            "workload_annotations": get_workload_annotations_stats(),
-        }
-    )
+    return {
+        "controllers": {
+            "regionracks": node_types.get(
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER, 0
+            ),
+            "regions": node_types.get(NODE_TYPE.REGION_CONTROLLER, 0),
+            "racks": node_types.get(NODE_TYPE.RACK_CONTROLLER, 0),
+        },
+        "nodes": {
+            "machines": node_types.get(NODE_TYPE.MACHINE, 0),
+            "devices": node_types.get(NODE_TYPE.DEVICE, 0),
+        },
+        "machine_stats": stats,  # count of cpus, mem, storage
+        "machine_status": machine_status,  # machines by status
+        "network_stats": netstats,  # network status
+        "vm_hosts": {
+            "lxd": get_vm_hosts_stats(power_type="lxd"),
+            "virsh": get_vm_hosts_stats(power_type="virsh"),
+        },
+        "workload_annotations": get_workload_annotations_stats(),
+    }
 
 
 def get_request_params():
-    return {
-        "data": base64.b64encode(
-            json.dumps(get_maas_stats()).encode()
-        ).decode()
-    }
+    data = json.dumps(json.dumps(get_maas_stats()))
+    return {"data": base64.b64encode(data.encode()).decode()}
 
 
 def make_maas_user_agent_request():

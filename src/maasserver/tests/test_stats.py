@@ -280,7 +280,7 @@ class TestMAASStats(MAASServerTestCase):
                 "unique_values": 1,
             },
         }
-        self.assertEqual(json.loads(stats), expected)
+        self.assertEqual(stats, expected)
 
     def test_get_workload_annotations_stats_machines(self):
         machine1 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
@@ -384,13 +384,13 @@ class TestMAASStats(MAASServerTestCase):
                 "unique_values": 0,
             },
         }
-        self.assertEqual(json.loads(get_maas_stats()), expected)
+        self.assertEqual(get_maas_stats(), expected)
 
     def test_get_request_params_returns_params(self):
         factory.make_RegionRackController()
         params = {
             "data": base64.b64encode(
-                json.dumps(get_maas_stats()).encode()
+                json.dumps(json.dumps(get_maas_stats())).encode()
             ).decode()
         }
         self.assertEqual(params, get_request_params())

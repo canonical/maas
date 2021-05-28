@@ -5,7 +5,6 @@
 
 
 from datetime import timedelta
-import json
 
 from django.http import HttpResponse, HttpResponseNotFound
 from twisted.application.internet import TimerService
@@ -134,7 +133,7 @@ def prometheus_stats_handler(request):
 
 def update_prometheus_stats(metrics: PrometheusMetrics):
     """Update metrics in a PrometheusMetrics based on database values."""
-    stats = json.loads(get_maas_stats())
+    stats = get_maas_stats()
     architectures = get_machines_by_architecture()
     vm_hosts = get_vm_hosts_stats()
 

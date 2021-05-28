@@ -38,7 +38,7 @@ from maasserver.models.node import Machine
 from maasserver.models.numa import NUMANode
 from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import ArrayLength
+from maasserver.utils.orm import ArrayLength, NotNullSum
 from provisioningserver.drivers.pod import (
     InterfaceAttachType,
     InterfaceAttachTypeChoices,
@@ -384,7 +384,7 @@ def _get_global_vm_host_resources(pod):
         totals = NUMANode.objects.filter(node=pod.host).aggregate(
             cores=Sum(ArrayLength("cores")),
             memory=Sum("memory") * MB,
-            hugepages=Coalesce(Sum("hugepages_set__total"), Value(0)),
+            hugepages=NotNullSum("hugepages_set__total"),
         )
     else:
         # for VM hosts where there is no known machines backing it, info about
@@ -416,7 +416,7 @@ def _get_global_vm_host_resources(pod):
         else:
             resources.storage.allocated_other += entry["used"]
     total_storage = PodStoragePool.objects.filter(pod=pod).aggregate(
-        storage=Coalesce(Sum("storage"), Value(0))
+        storage=NotNullSum("storage")
     )["storage"]
     resources.storage.free = total_storage - resources.storage.allocated
 

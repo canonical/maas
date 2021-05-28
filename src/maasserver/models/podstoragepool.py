@@ -10,13 +10,11 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Model,
-    Sum,
-    Value,
 )
-from django.db.models.functions import Coalesce
 
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.utils.orm import NotNullSum
 
 
 class PodStoragePool(CleanSave, Model):
@@ -50,5 +48,5 @@ class PodStoragePool(CleanSave, Model):
         count = VirtualMachineDisk.objects.filter(
             vm__project=self.pod.tracked_project,
             backing_pool=self,
-        ).aggregate(used=Coalesce(Sum("size"), Value(0)))
+        ).aggregate(used=NotNullSum("size"))
         return count["used"]

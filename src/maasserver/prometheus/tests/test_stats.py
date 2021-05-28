@@ -1,11 +1,8 @@
 # Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver.prometheus.stats."""
-
 
 import http.client
-import json
 from unittest import mock
 
 from django.db import transaction
@@ -135,7 +132,7 @@ class TestPrometheus(MAASServerTestCase):
             "machine_stats": {"total_cpu": 0},
         }
         mock = self.patch(stats, "get_maas_stats")
-        mock.return_value = json.dumps(values)
+        mock.return_value = values
         # architecture
         arches = {"amd64": 0, "i386": 0}
         mock_arches = self.patch(stats, "get_machines_by_architecture")
