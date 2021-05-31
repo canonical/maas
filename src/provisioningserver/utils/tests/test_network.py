@@ -1,15 +1,12 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for network helpers."""
-
-
 import itertools
 import json
 import socket
 from socket import EAI_BADFLAGS, EAI_NODATA, EAI_NONAME, gaierror, IPPROTO_TCP
 from typing import List
-from unittest import mock
+from unittest import mock, TestCase
 from unittest.mock import Mock
 
 from netaddr import EUI, IPAddress, IPNetwork, IPRange
@@ -57,6 +54,7 @@ from provisioningserver.utils.network import (
     enumerate_ipv4_addresses,
     find_ip_via_arp,
     find_mac_via_arp,
+    fix_link_addresses,
     format_eui,
     generate_mac_address,
     get_all_addresses_for_interface,
@@ -92,6 +90,44 @@ from provisioningserver.utils.network import (
     reverseResolve,
 )
 from provisioningserver.utils.shell import get_env_with_locale
+
+
+class TestFixLinkAddresses(TestCase):
+    def test_fixes_with_cidr(self):
+        links = [
+            {"address": "1.2.3.1/24", "mode": "static"},
+            {"address": "1.2.3.4/32", "mode": "static"},
+            {"address": "2001::1/96", "mode": "static"},
+            {"address": "2001::123/128", "mode": "static"},
+        ]
+        fix_link_addresses(links)
+        self.assertEqual(
+            links,
+            [
+                {"address": "1.2.3.1/24", "mode": "static"},
+                {"address": "1.2.3.4/24", "mode": "static"},
+                {"address": "2001::1/96", "mode": "static"},
+                {"address": "2001::123/96", "mode": "static"},
+            ],
+        )
+
+    def test_fixes_with_netmask(self):
+        links = [
+            {"address": "1.2.3.1", "netmask": 24, "mode": "static"},
+            {"address": "1.2.3.4", "netmask": 32, "mode": "static"},
+            {"address": "2001::1", "netmask": 96, "mode": "static"},
+            {"address": "2001::123", "netmask": 128, "mode": "static"},
+        ]
+        fix_link_addresses(links)
+        self.assertEqual(
+            links,
+            [
+                {"address": "1.2.3.1", "netmask": 24, "mode": "static"},
+                {"address": "1.2.3.4", "netmask": 24, "mode": "static"},
+                {"address": "2001::1", "netmask": 96, "mode": "static"},
+                {"address": "2001::123", "netmask": 96, "mode": "static"},
+            ],
+        )
 
 
 class TestMakeNetwork(MAASTestCase):

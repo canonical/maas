@@ -16,6 +16,7 @@ from maasserver.models.vlan import VLAN
 from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import flatten, sorttop
+from provisioningserver.utils.network import fix_link_addresses
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("metadataserver.network")
@@ -160,13 +161,17 @@ def update_interface(node, name, data, address_extra, hints=None):
         # same, hard-coded OpenBMC MAC address.
         return None
 
-    links = [
-        address.copy()
-        for address in network["addresses"]
-        if address["scope"] == "global"
-    ]
-    for link in links:
+    links = []
+    for address in network["addresses"]:
+        if address["scope"] != "global":
+            continue
+        link = address.copy()
         link.update(address_extra.get(link["address"], {}))
+        links.append(link)
+    # fix networks that have a /32 or /128 netmask to the closest wider known
+    # subnet
+    fix_link_addresses(links)
+
     if network["vlan"]:
         return update_vlan_interface(node, name, network, links)
     elif network["bond"] or network["bridge"]:
