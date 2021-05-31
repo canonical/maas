@@ -424,6 +424,7 @@ class VirshRunFake:
     def add_pool(
         self,
         name,
+        pool_type="dir",
         active=True,
         autostart=True,
         pool_uuid=None,
@@ -442,25 +443,27 @@ class VirshRunFake:
             available = capacity - allocation
         if path is None:
             path = "var/lib/virtlib/" + factory.make_name("images")
-        self.pools.append(
-            {
-                "name": name,
-                "active": active,
-                "autostart": autostart,
-                "uuid": pool_uuid,
-                "capacity": capacity,
-                "allocation": allocation,
-                "available": available,
-                "path": path,
-            }
-        )
+        pool = {
+            "name": name,
+            "type": pool_type,
+            "active": active,
+            "autostart": autostart,
+            "uuid": pool_uuid,
+            "capacity": capacity,
+            "allocation": allocation,
+            "available": available,
+            "path": path,
+        }
+        self.pools.append(pool)
+        return pool
 
     def __call__(self, args):
         command = args.pop(0)
         func = getattr(self, "cmd_" + command.replace("-", "_"))
         return func(*args)
 
-    def cmd_pool_list(self):
+    def cmd_pool_list(self, _, pool_types):
+        filter_types = pool_types.split(",")
         template = " {name: <21}{state: <11}{autostart}"
         lines = [
             template.format(name="Name", state="State", autostart="Autostart")
@@ -473,6 +476,7 @@ class VirshRunFake:
                 autostart="yes" if pool["autostart"] else "no",
             )
             for pool in self.pools
+            if pool["type"] in filter_types
         )
         return "\n".join(lines)
 
@@ -826,6 +830,29 @@ class TestVirshSSH(MAASTestCase):
             for pool in fake_runner.pools
         ]
         self.assertEqual(expected, conn.get_pod_storage_pools())
+
+    def test_get_pod_storage_pools_filters_supported(self):
+        conn = virsh.VirshSSH()
+        fake_runner = VirshRunFake()
+        valid_pools = [
+            fake_runner.add_pool(factory.make_name("pool")) for _ in range(3)
+        ]
+        # extra pool of unsupported type is not returned
+        fake_runner.add_pool(factory.make_name("pool"), pool_type="disk")
+        self.patch(virsh.VirshSSH, "run").side_effect = fake_runner
+        self.assertEqual(
+            conn.get_pod_storage_pools(),
+            [
+                DiscoveredPodStoragePool(
+                    id=pool["uuid"],
+                    type="dir",
+                    name=pool["name"],
+                    storage=pool["capacity"],
+                    path=pool["path"],
+                )
+                for pool in valid_pools
+            ],
+        )
 
     def test_get_pod_storage_pools_no_pool(self):
         conn = self.configure_virshssh(SAMPLE_POOLINFO)
@@ -1517,7 +1544,9 @@ class TestVirshSSH(MAASTestCase):
             None,
             None,
         )
-        self.assertIsNone(conn.create_local_volume(random.randint(1000, 2000)))
+        self.assertIsNone(
+            conn._create_local_volume(random.randint(1000, 2000))
+        )
 
     def test_create_local_volume_returns_tagged_pool_and_volume(self):
         tagged_pools = ["pool1", "pool2"]
@@ -1526,21 +1555,20 @@ class TestVirshSSH(MAASTestCase):
         )
         self.patch(conn, "list_pools").return_value = tagged_pools
         disk = RequestedMachineBlockDevice(size=4096, tags=tagged_pools)
-        used_pool, _ = conn.create_local_volume(disk)
+        used_pool, _ = conn._create_local_volume(disk)
         self.assertEqual(tagged_pools[1], used_pool)
 
-    def test_create_local_volume_makes_call_returns_pool_and_volume(self):
+    def test_create_local_volume_makes_call_returns_pool_and_volume_dir(self):
         conn = self.configure_virshssh("")
         pool = factory.make_name("pool")
-        pool_type = factory.make_name("pool_type")
         self.patch(virsh.VirshSSH, "get_usable_pool").return_value = (
-            pool_type,
+            "dir",
             pool,
         )
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
-        used_pool, volume_name = conn.create_local_volume(disk)
+        used_pool, volume_name = conn._create_local_volume(disk)
         conn.run.assert_called_once_with(
             [
                 "vol-create-as",
@@ -1566,15 +1594,13 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
-        used_pool, volume_name = conn.create_local_volume(disk)
+        used_pool, volume_name = conn._create_local_volume(disk)
         conn.run.assert_called_once_with(
             [
                 "vol-create-as",
                 used_pool,
                 volume_name,
                 str(disk.size),
-                "--format",
-                "raw",
             ]
         )
         self.assertEqual(pool, used_pool)
@@ -1590,7 +1616,7 @@ class TestVirshSSH(MAASTestCase):
         disk = RequestedMachineBlockDevice(
             size=random.randint(1000, 2000), tags=[]
         )
-        used_pool, volume_name = conn.create_local_volume(disk)
+        used_pool, volume_name = conn._create_local_volume(disk)
         size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
         conn.run.assert_called_once_with(
             [
@@ -1600,8 +1626,6 @@ class TestVirshSSH(MAASTestCase):
                 str(size),
                 "--allocation",
                 "0",
-                "--format",
-                "raw",
             ]
         )
         self.assertEqual(pool, used_pool)
@@ -2032,7 +2056,7 @@ class TestVirshSSH(MAASTestCase):
             factory.make_name("pool"),
             factory.make_name("vol"),
         )
-        self.patch(virsh.VirshSSH, "create_local_volume").side_effect = [
+        self.patch(virsh.VirshSSH, "_create_local_volume").side_effect = [
             (first_pool, first_vol),
             exception,
         ]
@@ -2046,7 +2070,7 @@ class TestVirshSSH(MAASTestCase):
     def test_create_domain_handles_no_space(self):
         conn = self.configure_virshssh("")
         request = make_requested_machine()
-        self.patch(virsh.VirshSSH, "create_local_volume").return_value = None
+        self.patch(virsh.VirshSSH, "_create_local_volume").return_value = None
         error = self.assertRaises(
             PodInvalidResources, conn.create_domain, request
         )
@@ -2063,7 +2087,7 @@ class TestVirshSSH(MAASTestCase):
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
         self.patch(
-            virsh.VirshSSH, "create_local_volume"
+            virsh.VirshSSH, "_create_local_volume"
         ).return_value = disk_info
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"
@@ -2135,7 +2159,7 @@ class TestVirshSSH(MAASTestCase):
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
         self.patch(
-            virsh.VirshSSH, "create_local_volume"
+            virsh.VirshSSH, "_create_local_volume"
         ).return_value = disk_info
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"
@@ -2199,7 +2223,7 @@ class TestVirshSSH(MAASTestCase):
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
         self.patch(
-            virsh.VirshSSH, "create_local_volume"
+            virsh.VirshSSH, "_create_local_volume"
         ).return_value = disk_info
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"
@@ -2263,7 +2287,7 @@ class TestVirshSSH(MAASTestCase):
             "emulator": "/usr/bin/qemu-system-x86_64",
         }
         self.patch(
-            virsh.VirshSSH, "create_local_volume"
+            virsh.VirshSSH, "_create_local_volume"
         ).return_value = disk_info
         self.patch(
             virsh.VirshSSH, "get_domain_capabilities"

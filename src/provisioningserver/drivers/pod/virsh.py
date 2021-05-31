@@ -253,6 +253,9 @@ REQUIRED_PACKAGES = [
 ]
 
 
+SUPPORTED_STORAGE_TYPES = ("dir", "logical", "zfs")
+
+
 class VirshVMState:
     OFF = "shut off"
     ON = "running"
@@ -465,8 +468,10 @@ class VirshSSH(pexpect.spawn):
         return [m for m in machines if m.startswith(self.dom_prefix)]
 
     def list_pools(self):
-        """Lists all pools in the pod."""
-        output = self.run(["pool-list"])
+        """Lists supported pools in the host."""
+        output = self.run(
+            ["pool-list", "--type", ",".join(SUPPORTED_STORAGE_TYPES)]
+        )
         pools = self._get_column_values(output, ["Name"])
         return [p[0] for p in pools]
 
@@ -892,7 +897,7 @@ class VirshSSH(pexpect.spawn):
             % (", ".join([pool.name for pool in pools]))
         )
 
-    def create_local_volume(self, disk, default_pool=None):
+    def _create_local_volume(self, disk, default_pool=None):
         """Create a local volume with `disk.size`."""
         usable_pool_type, usable_pool = self.get_usable_pool(
             disk, default_pool
@@ -900,47 +905,35 @@ class VirshSSH(pexpect.spawn):
         if usable_pool is None:
             return None
         volume = str(uuid4())
-        if usable_pool_type == "logical":
-            self.run(
-                [
-                    "vol-create-as",
-                    usable_pool,
-                    volume,
-                    str(disk.size),
-                    "--format",
-                    "raw",
-                ]
-            )
+
+        disk_size = disk.size
+        extra_args = []
+        if usable_pool_type == "dir":
+            extra_args = [
+                "--allocation",
+                "0",
+                "--format",
+                "raw",
+            ]
         elif usable_pool_type == "zfs":
             # LP: #1858201
             # Round down to the nearest MiB for zfs.
             # See bug comments for more details.
-            size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
-            self.run(
-                [
-                    "vol-create-as",
-                    usable_pool,
-                    volume,
-                    str(size),
-                    "--allocation",
-                    "0",
-                    "--format",
-                    "raw",
-                ]
-            )
-        else:
-            self.run(
-                [
-                    "vol-create-as",
-                    usable_pool,
-                    volume,
-                    str(disk.size),
-                    "--allocation",
-                    "0",
-                    "--format",
-                    "raw",
-                ]
-            )
+            disk_size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
+            extra_args = [
+                "--allocation",
+                "0",
+            ]
+
+        self.run(
+            [
+                "vol-create-as",
+                usable_pool,
+                volume,
+                str(disk_size),
+            ]
+            + extra_args,
+        )
         return usable_pool, volume
 
     def delete_local_volume(self, pool, volume):
@@ -1175,7 +1168,7 @@ class VirshSSH(pexpect.spawn):
         created_disks = []
         for idx, disk in enumerate(request.block_devices):
             try:
-                disk_info = self.create_local_volume(disk, default_pool)
+                disk_info = self._create_local_volume(disk, default_pool)
             except Exception:
                 self.cleanup_disks(created_disks)
                 raise
