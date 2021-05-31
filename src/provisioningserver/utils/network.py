@@ -939,6 +939,11 @@ def get_mac_organization(mac):
 def fix_link_addresses(links):
     """Fix the addresses defined in `links`.
 
+    Each link entry can contain addresses in the form:
+       {"address": "1.2.3.4/24", ...}
+    or
+       {"address": "1.2.3.4", "netmask": 24, ...}
+
     Some address will have a prefixlen of 32 or 128 depending if IPv4 or IPv6.
     Fix those address to fall within a subnet that is already defined in
     another link. The addresses that get fixed will be placed into the smallest
@@ -952,7 +957,10 @@ def fix_link_addresses(links):
     # Loop through and build a list of subnets where the prefixlen is not
     # 32 or 128 for IPv4 and IPv6 respectively.
     for link in links:
-        ip_addr = IPNetwork(link["address"])
+        if "netmask" in link:
+            ip_addr = IPNetwork(f"{link['address']}/{link['netmask']}")
+        else:
+            ip_addr = IPNetwork(link["address"])
         if ip_addr.version == 4:
             if ip_addr.prefixlen == 32:
                 links_v4.append(link)
@@ -964,26 +972,25 @@ def fix_link_addresses(links):
             else:
                 subnets_v6.append(ip_addr.cidr)
 
-    # Sort the subnets so the smallest prefixlen is first.
-    subnets_v4 = sorted(subnets_v4, key=attrgetter("prefixlen"), reverse=True)
-    subnets_v6 = sorted(subnets_v6, key=attrgetter("prefixlen"), reverse=True)
+    for links, subnets in ((links_v4, subnets_v4), (links_v6, subnets_v6)):
+        subnets = sorted(subnets, key=attrgetter("prefixlen"), reverse=True)
+        # Fix all addresses that have prefixlen of 32 or 128 that fit in inside
+        # one of the already defined subnets.
+        for link in links:
+            has_separate_netmask = "netmask" in link
+            if has_separate_netmask:
+                ip_addr = IPNetwork(f"{link['address']}/{link['netmask']}")
+            else:
+                ip_addr = IPNetwork(link["address"])
 
-    # Fix all addresses that have prefixlen of 32 or 128 that fit in inside
-    # one of the already defined subnets.
-    for link in links_v4:
-        ip_addr = IPNetwork(link["address"])
-        for subnet in subnets_v4:
-            if ip_addr.ip in subnet:
-                ip_addr.prefixlen = subnet.prefixlen
-                link["address"] = str(ip_addr)
-                break
-    for link in links_v6:
-        ip_addr = IPNetwork(link["address"])
-        for subnet in subnets_v6:
-            if ip_addr.ip in subnet:
-                ip_addr.prefixlen = subnet.prefixlen
-                link["address"] = str(ip_addr)
-                break
+            for subnet in subnets:
+                if ip_addr.ip in subnet:
+                    if has_separate_netmask:
+                        link["netmask"] = subnet.prefixlen
+                    else:
+                        ip_addr.prefixlen = subnet.prefixlen
+                        link["address"] = str(ip_addr)
+                    break
 
 
 def fix_link_gateways(links, iproute_info):

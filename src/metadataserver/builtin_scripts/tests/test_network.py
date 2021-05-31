@@ -2419,6 +2419,32 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertTrue(eth0.enabled)
         self.assertEqual(data.networks["eth0"].hwaddr, eth0.mac_address)
 
+    def test_fixes_link_netmasks(self):
+        controller = self.create_empty_controller(with_empty_script_sets=True)
+        data = FakeCommissioningData()
+        card = data.create_network_card()
+        card.vendor = factory.make_name("vendor")
+        card.product = factory.make_name("product")
+        card.firmware_version = factory.make_name("firmware_version")
+        network = data.create_physical_network("eth0", card=card)
+        network.addresses = [
+            LXDAddress("192.168.0.1", 24),
+            LXDAddress("192.168.0.2", 32),
+            LXDAddress("2001::aaaa:1", 112),
+            LXDAddress("2001::aaaa:2", 128),
+        ]
+        self.update_interfaces(controller, data)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        self.assertItemsEqual(
+            eth0.ip_addresses.values_list("ip", "subnet__cidr"),
+            [
+                ("192.168.0.1", "192.168.0.0/24"),
+                ("192.168.0.2", "192.168.0.0/24"),
+                ("2001::aaaa:1", "2001::aaaa:0/112"),
+                ("2001::aaaa:2", "2001::aaaa:0/112"),
+            ],
+        )
+
 
 class TestUpdateInterfacesWithHints(
     MAASTransactionServerTestCase, UpdateInterfacesMixin
