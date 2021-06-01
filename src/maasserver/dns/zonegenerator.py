@@ -429,7 +429,7 @@ class ZoneGenerator:
                 dynamic_ranges=dynamic_ranges,
                 rfc2317_ranges=glue,
                 exclude=set(
-                    [IPNetwork(s.cidr) for s in subnets if s is not subnet]
+                    IPNetwork(s.cidr) for s in subnets if s is not subnet
                 ),
             )
         # Now provide any remaining rfc2317 glue networks.
@@ -441,7 +441,11 @@ class ZoneGenerator:
                 network=network,
                 ns_host_name=ns_host_name,
                 rfc2317_ranges=ranges,
-                exclude=set([IPNetwork(s.cidr) for s in subnets]),
+                exclude=set(
+                    IPNetwork(s.cidr)
+                    for s in subnets
+                    if network in IPNetwork(s.cidr)
+                ),
             )
 
     def __iter__(self):

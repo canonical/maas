@@ -384,6 +384,9 @@ class TestZoneGenerator(MAASServerTestCase):
             "0-25.33.168.192.in-addr.arpa",
             "0-26.35.168.192.in-addr.arpa",
             "0-26.36.168.192.in-addr.arpa",
+            "33.168.192.in-addr.arpa",
+            "35.168.192.in-addr.arpa",
+            "36.168.192.in-addr.arpa",
             "overlap",
         ]
         zone_names = [
