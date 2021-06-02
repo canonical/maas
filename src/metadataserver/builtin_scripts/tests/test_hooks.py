@@ -2630,6 +2630,104 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             },
         )
 
+    def test_no_condense_luns_different_serial(self):
+        node = factory.make_Node()
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        resources["storage"]["disks"] = [
+            {
+                "id": "sda",
+                "device": "8:0",
+                "model": factory.make_name("model"),
+                "type": "scsi",
+                "read_only": False,
+                "size": 1024 ** 3 * 10,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"pci-0.0.0008-sas-0x{factory.make_hex_string(16)}-lun-123",
+                "block_size": 512,
+                "firmware_version": factory.make_name("firmware"),
+                "rpm": 0,
+                "serial": factory.make_name("serial"),
+                "device_id": factory.make_name("device_id"),
+                "partitions": [],
+            },
+            {
+                "id": "sdb",
+                "device": "8:16",
+                "model": factory.make_name("model"),
+                "type": "scsi",
+                "read_only": False,
+                "size": 1024 ** 3 * 10,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"pci-0.0.0004-sas-0x{factory.make_hex_string(16)}-lun-123",
+                "block_size": 512,
+                "firmware_version": factory.make_name("firmware"),
+                "rpm": 0,
+                "serial": factory.make_name("serial"),
+                "device_id": factory.make_name("device_id"),
+                "partitions": [],
+            },
+        ]
+
+        update_node_physical_block_devices(
+            node, resources, create_numa_nodes(node)
+        )
+
+        self.assertCountEqual(
+            node.physicalblockdevice_set.values_list("name", flat=True),
+            ["sda", "sdb"],
+        )
+
+    def test_no_condense_luns_empty_serial(self):
+        node = factory.make_Node()
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        resources["storage"]["disks"] = [
+            {
+                "id": "sda",
+                "device": "8:0",
+                "model": factory.make_name("model"),
+                "type": "scsi",
+                "read_only": False,
+                "size": 1024 ** 3 * 10,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"pci-0.0.0008-sas-0x{factory.make_hex_string(16)}-lun-123",
+                "block_size": 512,
+                "firmware_version": factory.make_name("firmware"),
+                "rpm": 0,
+                "serial": "",
+                "device_id": factory.make_name("device_id"),
+                "partitions": [],
+            },
+            {
+                "id": "sdb",
+                "device": "8:16",
+                "model": factory.make_name("model"),
+                "type": "scsi",
+                "read_only": False,
+                "size": 1024 ** 3 * 10,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": f"pci-0.0.0004-sas-0x{factory.make_hex_string(16)}-lun-123",
+                "block_size": 512,
+                "firmware_version": factory.make_name("firmware"),
+                "rpm": 0,
+                "serial": "",
+                "device_id": factory.make_name("device_id"),
+                "partitions": [],
+            },
+        ]
+
+        update_node_physical_block_devices(
+            node, resources, create_numa_nodes(node)
+        )
+
+        self.assertCountEqual(
+            node.physicalblockdevice_set.values_list("name", flat=True),
+            ["sda", "sdb"],
+        )
+
 
 class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     """Tests the update_node_network_information function using data from LXD.
