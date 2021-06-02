@@ -40,7 +40,7 @@ DISPLAYED_POD_FIELDS = (
 )
 
 
-class VMHostHandler(OperationsHandler):
+class VmHostHandler(OperationsHandler):
     """
     Manage an individual VM host.
 
@@ -421,7 +421,7 @@ class VMHostHandler(OperationsHandler):
 
 # Pods are being renamed to VM hosts. Keep the old name on the API as well for
 # backwards-compatibility.
-class PodHandler(VMHostHandler):
+class PodHandler(VmHostHandler):
     """
     Manage an individual Pod.
 
@@ -437,7 +437,7 @@ class PodHandler(VMHostHandler):
         return ("pod_handler", (pod_id,))
 
 
-class VMHostsHandler(OperationsHandler):
+class VmHostsHandler(OperationsHandler):
     """
     Manage the collection of all the VM hosts in MAAS.
     """
@@ -526,7 +526,7 @@ class VMHostsHandler(OperationsHandler):
 
 # Pods are being renamed to VM hosts. Keep the old name on the API as well for
 # backwards-compatibility.
-class PodsHandler(VMHostsHandler):
+class PodsHandler(VmHostsHandler):
     """
     Manage the collection of all the pods in the MAAS.
 

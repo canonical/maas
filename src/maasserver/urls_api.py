@@ -64,8 +64,8 @@ from maasserver.api.partitions import PartitionHandler, PartitionsHandler
 from maasserver.api.pods import (
     PodHandler,
     PodsHandler,
-    VMHostHandler,
-    VMHostsHandler,
+    VmHostHandler,
+    VmHostsHandler,
 )
 from maasserver.api.rackcontrollers import (
     RackControllerHandler,
@@ -159,8 +159,8 @@ device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 pod_handler = RestrictedResource(PodHandler, authentication=api_auth)
 pods_handler = RestrictedResource(PodsHandler, authentication=api_auth)
-vm_host_handler = RestrictedResource(VMHostHandler, authentication=api_auth)
-vm_hosts_handler = RestrictedResource(VMHostsHandler, authentication=api_auth)
+vm_host_handler = RestrictedResource(VmHostHandler, authentication=api_auth)
+vm_hosts_handler = RestrictedResource(VmHostsHandler, authentication=api_auth)
 virtual_machine_handler = RestrictedResource(
     VirtualMachineHandler, authentication=api_auth
 )
