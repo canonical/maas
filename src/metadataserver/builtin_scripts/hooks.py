@@ -9,6 +9,7 @@ import fnmatch
 from functools import partial
 import json
 import logging
+from operator import itemgetter
 import re
 
 from django.core.exceptions import ValidationError
@@ -662,20 +663,14 @@ def _condense_luns(disks):
     model one storage source and ignore the paths. On deployment Curtin will
     detect multipath and properly set it up.
     """
-    condensed_luns = defaultdict(list)
+    serial_lun_map = defaultdict(list)
     processed_disks = []
     for disk in disks:
-        device_path = {}
-        key = None
-        # LXD provides the LUN as part of the device_path. Try to detect it
-        # and other keys for later use.
-        for i in disk.get("device_path", "").split("-"):
-            if key is None:
-                key = i
-            else:
-                device_path[key] = i
-                key = None
-        # LXD does not currently give a pci_address, its included in the
+        # split the device path from the form "key1-value1-key2-value2..." into
+        # a dict
+        tokens = disk.get("device_path", "").split("-")
+        device_path = dict(zip(tokens[::2], tokens[1::2]))
+        # LXD does not currently give a pci_address, it's included in the
         # device_path. Add it if it isn't there. A USB disk include the
         # USB device and PCI device the USB controller is connected to.
         # Ignore USB devices as they are removable which MAAS doesn't
@@ -686,18 +681,19 @@ def _condense_luns(disks):
             and "pci_address" not in disk
         ):
             disk["pci_address"] = device_path["pci"]
-        if "lun" in device_path:
-            condensed_luns[device_path["lun"]].append(disk)
+        if device_path.get("lun") not in ("0", None) and disk.get("serial"):
+            # multipath devices have LUN different from 0
+            serial_lun_map[(disk["serial"], device_path["lun"])].append(disk)
         else:
             processed_disks.append(disk)
 
-    for lun, paths in condensed_luns.items():
+    for (serial, lun), paths in serial_lun_map.items():
         # The first disk is usually the smallest id however doesn't usually
         # have the device_id associated with it.
         condensed_disk = paths[0]
         if len(paths) > 1:
-            # Only tag a disk as multipath if it actually has multiple
-            # pathes to it.
+            # Only tag a disk as multipath if it actually has multiple paths to
+            # it.
             condensed_disk["maas_multipath"] = True
         for path in paths[1:]:
             # Make sure the disk processed has the lowest id. Each path is
@@ -714,7 +710,7 @@ def _condense_luns(disks):
                 condensed_disk["device_id"] = path["device_id"]
         processed_disks.append(condensed_disk)
 
-    return sorted(processed_disks, key=lambda disk: disk["id"])
+    return sorted(processed_disks, key=itemgetter("id"))
 
 
 def update_node_physical_block_devices(node, data, numa_nodes):
