@@ -173,8 +173,11 @@ lint-shell: bin/shellcheck
 		snap/hooks/* \
 		snap/local/tree/bin/* \
 		snap/local/tree/sbin/* \
+		utilities/gen-db-schema-svg \
+		utilities/package-version \
 		utilities/release-* \
-		utilities/gen-db-schema-svg
+		utilities/run-performanced \
+		utilities/run-py-tests-ci
 .PHONY: lint-shell
 
 format.parallel:
