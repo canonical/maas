@@ -6,7 +6,7 @@
 
 from operator import attrgetter
 
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 import yaml
 
 from maasserver.enum import (
@@ -14,15 +14,18 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models.partition import Partition
+from maasserver.models import (
+    FilesystemGroup,
+    Partition,
+    PhysicalBlockDevice,
+    VirtualBlockDevice,
+)
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
     INITIAL_PARTITION_OFFSET,
     PARTITION_TABLE_EXTRA_SPACE,
     PREP_PARTITION_SIZE,
 )
-from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
 
 class CurtinStorageGenerator:
@@ -87,34 +90,60 @@ class CurtinStorageGenerator:
         These operations come from all of the physical block devices attached
         to the node.
         """
+        filesystem_group_ids = set()
         for block_device in self.node.blockdevice_set.order_by("id"):
             block_device = block_device.actual_instance
             if isinstance(block_device, PhysicalBlockDevice):
                 self.operations["disk"].append(block_device)
             elif isinstance(block_device, VirtualBlockDevice):
-                filesystem_group = block_device.filesystem_group
-                if filesystem_group.is_lvm():
-                    if filesystem_group not in self.operations["lvm_volgroup"]:
-                        self.operations["lvm_volgroup"].append(
-                            filesystem_group
-                        )
-                    self.operations["lvm_partition"].append(block_device)
-                elif filesystem_group.is_raid():
-                    self.operations["raid"].append(filesystem_group)
-                elif filesystem_group.is_bcache():
-                    self.operations["bcache"].append(filesystem_group)
-                elif filesystem_group.is_vmfs():
-                    self.operations["vmfs"].append(filesystem_group)
-                else:
-                    raise ValueError(
-                        "Unknown filesystem group type: %s"
-                        % (filesystem_group.group_type)
-                    )
+                filesystem_group_ids.add(block_device.filesystem_group.id)
+                self._add_filesystem_group_operation(
+                    block_device.filesystem_group, block_device
+                )
             else:
                 raise ValueError(
                     "Unknown block device instance: %s"
                     % (block_device.__class__.__name__)
                 )
+
+        # also add operations for filesystem groups that are not backed by a
+        # virtual block device. In that case there's no direct link from the
+        # disk to the group, but it goes through a filesystem
+        filesystem_groups = (
+            FilesystemGroup.objects.filter(
+                filesystems__block_device__node=self.node,
+            )
+            .exclude(id__in=filesystem_group_ids)
+            .annotate(block_device_id=F("filesystems__block_device_id"))
+        )
+        for filesystem_group in filesystem_groups:
+            self._add_filesystem_group_operation(filesystem_group)
+
+    def _add_filesystem_group_operation(
+        self, filesystem_group, block_device=None
+    ):
+        operations_map = (
+            (filesystem_group.is_lvm, "lvm_volgroup"),
+            (filesystem_group.is_raid, "raid"),
+            (filesystem_group.is_bcache, "bcache"),
+            (filesystem_group.is_vmfs, "vmfs"),
+        )
+        for check, key in operations_map:
+            if check():
+                if filesystem_group not in self.operations[key]:
+                    self.operations[key].append(filesystem_group)
+                break
+        else:
+            raise ValueError(
+                f"Unknown filesystem group type: {filesystem_group.group_type}"
+            )
+
+        if (
+            filesystem_group.is_lvm()
+            and block_device
+            and block_device not in self.operations["lvm_partition"]
+        ):
+            self.operations["lvm_partition"].append(block_device)
 
     def _requires_prep_partition(self, block_device):
         """Return True if block device requires the prep partition."""
@@ -475,13 +504,22 @@ class CurtinStorageGenerator:
     def _generate_logical_volume_operation(self, block_device):
         """Generate logical volume operation for `block_device` and place in
         `storage_config`."""
+
+        filesystem_group = getattr(block_device, "filesystem_group", None)
+        if not filesystem_group:
+            # physical block devices are not directly linked to a filesystem
+            # group, but through a filesystem. This is the case for instance
+            # for LVM VGs created directly on a physical disk
+            filesystem_group = (
+                block_device.get_effective_filesystem().filesystem_group
+            )
         self.storage_config.append(
             {
                 "id": block_device.get_name(),
                 "name": block_device.name,  # Use name of logical volume only.
                 "type": "lvm_partition",
-                "volgroup": block_device.filesystem_group.name,
-                "size": "%sB" % block_device.size,
+                "volgroup": filesystem_group.name,
+                "size": f"{block_device.size}B",
             }
         )
 

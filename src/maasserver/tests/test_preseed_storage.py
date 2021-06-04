@@ -1,8 +1,6 @@
 # Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test `maasserver.preseed_storage`."""
-
 
 from difflib import ndiff
 import random
@@ -25,8 +23,7 @@ from maasserver.enum import (
     NODE_STATUS,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models import Filesystem
-from maasserver.models.filesystemgroup import Bcache, RAID, VMFS, VolumeGroup
+from maasserver.models import Bcache, Filesystem, RAID, VMFS, VolumeGroup
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
     PARTITION_TABLE_EXTRA_SPACE,
@@ -860,6 +857,69 @@ class TestGPTPXELargeBootDiskLayout(
             label="root",
             mount_point="/",
             mount_options="rw,relatime,errors=remount-ro,data=journal",
+        )
+        node._create_acquired_filesystems()
+        config = compose_curtin_storage_config(node)
+        self.assertStorageConfig(self.STORAGE_CONFIG, config)
+
+
+class TestLVMOnlyVG(MAASServerTestCase, AssertStorageConfigMixin):
+
+    STORAGE_CONFIG = dedent(
+        """\
+        config:
+          - id: sda
+            name: sda
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00001
+            grub_device: true
+          - id: sdb
+            name: sdb
+            type: disk
+            wipe: superblock
+            ptable: gpt
+            model: QEMU HARDDISK
+            serial: QM00002
+          - id: vg0
+            name: vg0
+            type: lvm_volgroup
+            uuid: 1793be1b-890a-44cb-9322-057b0d53b53c
+            devices:
+              - sdb
+        """
+    )
+
+    def test_lvm_only_vg(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED,
+            bios_boot_method="uefi",
+            with_boot_disk=False,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=node,
+            size=8 * 1024 ** 3,
+            name="sda",
+            model="QEMU HARDDISK",
+            serial="QM00001",
+        )
+        disk = factory.make_PhysicalBlockDevice(
+            node=node,
+            size=8 * 1024 ** 3,
+            name="sdb",
+            model="QEMU HARDDISK",
+            serial="QM00002",
+        )
+        factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT, block_device=disk
+        )
+        VolumeGroup.objects.create_volume_group(
+            name="vg0",
+            uuid="1793be1b-890a-44cb-9322-057b0d53b53c",
+            block_devices=[disk],
+            partitions=[],
         )
         node._create_acquired_filesystems()
         config = compose_curtin_storage_config(node)
