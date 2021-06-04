@@ -24,7 +24,6 @@ from django.http import (
     HttpResponseRedirect,
 )
 from django.urls import get_resolver, get_urlconf, reverse
-from django.utils import six
 from django.utils.encoding import force_str
 from django.utils.http import urlquote_plus
 
@@ -314,16 +313,9 @@ class DebuggingLoggerMiddleware:
         except Exception:
             meta = "<could not parse>"
         path = path_override if path_override is not None else request.path
+        name = request.__class__.__name__
         return force_str(
-            "<%s\npath:%s,\nGET:%s,\nPOST:%s,\nCOOKIES:%s,\nMETA:%s>"
-            % (
-                request.__class__.__name__,
-                path,
-                six.text_type(get),
-                six.text_type(post),
-                six.text_type(cookies),
-                six.text_type(meta),
-            )
+            f"<{name}\npath:{path},\nGET:{get},\nPOST:{post},\nCOOKIES:{cookies},\nMETA:{meta}>"
         )
 
     def __call__(self, request):

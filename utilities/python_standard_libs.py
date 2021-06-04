@@ -17,7 +17,8 @@ reformatting most modern Python source files should DTRT.
 if __name__ == "__main__":
     from operator import methodcaller
     from sys import version_info as version
-    from six.moves.urllib.request import urlopen
+    from urllib.request import urlopen
+
     from lxml import html
 
     modindex_url = f"https://docs.python.org/{version.major}.{version.minor}/py-modindex.html"
