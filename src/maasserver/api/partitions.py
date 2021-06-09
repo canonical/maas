@@ -112,8 +112,8 @@ class PartitionsHandler(OperationsHandler):
         @param (string) "{system_id}" [required=true] The system_id.
         @param (int) "{device_id}" [required=true] The block device_id.
 
-        @param (int) "size" [required=false] The size of the partition. If not
-        specified, all available space will be used.
+        @param (int) "size" [required=false] The size of the partition in bytes.
+        If not specified, all available space will be used.
 
         @param (string) "uuid" [required=false] UUID for the partition. Only
         used if the partition table type for the block device is GPT.
