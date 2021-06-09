@@ -614,6 +614,65 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertFalse(eth0_vlan.neighbour_discovery_state)
         self.assertTrue(eth0_vlan.mdns_discovery_state)
 
+    def test_link_alias_controller(self):
+        controller = self.create_empty_controller()
+        network = factory.make_ip4_or_6_network()
+        ip1 = factory.pick_ip_in_network(network)
+        ip2 = factory.pick_ip_in_network(network)
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        eth0.addresses = [
+            LXDAddress(str(ip1), network.prefixlen),
+            LXDAddress(str(ip2), network.prefixlen),
+        ]
+        self.update_interfaces(controller, data)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        eth0_addresses = list(eth0.ip_addresses.all())
+        subnet = Subnet.objects.get(cidr=str(network.cidr))
+        self.assertCountEqual(
+            [
+                (IPADDRESS_TYPE.STICKY, ip1, subnet),
+                (IPADDRESS_TYPE.STICKY, ip2, subnet),
+            ],
+            [
+                (address.alloc_type, address.ip, address.subnet)
+                for address in eth0_addresses
+            ],
+        )
+
+    def test_link_alias_commissioning(self):
+        machine = factory.make_Machine(status=NODE_STATUS.COMMISSIONING)
+        network = factory.make_ip4_or_6_network()
+        ip1 = factory.pick_ip_in_network(network)
+        ip2 = factory.pick_ip_in_network(network)
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        eth0.addresses = [
+            LXDAddress(str(ip1), network.prefixlen),
+            LXDAddress(str(ip2), network.prefixlen),
+        ]
+        self.update_interfaces(machine, data)
+        eth0 = Interface.objects.get(name="eth0", node=machine)
+        eth0_addresses = list(eth0.ip_addresses.all())
+        subnet = Subnet.objects.get(cidr=str(network.cidr))
+        self.assertCountEqual(
+            [
+                (IPADDRESS_TYPE.AUTO, None, subnet),
+                (IPADDRESS_TYPE.DISCOVERED, ip1, subnet),
+                (IPADDRESS_TYPE.DISCOVERED, ip2, subnet),
+            ],
+            [
+                (address.alloc_type, address.ip, address.subnet)
+                for address in eth0_addresses
+            ],
+        )
+
     def test_new_physical_with_new_subnet_link(self):
         controller = self.create_empty_controller()
         network = factory.make_ip4_or_6_network()
