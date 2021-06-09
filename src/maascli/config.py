@@ -6,8 +6,7 @@
 
 from contextlib import closing, contextmanager
 import json
-import os
-from os.path import expanduser
+from pathlib import Path
 import sqlite3
 
 
@@ -82,11 +81,11 @@ class ProfileConfig:
     @classmethod
     def create_database(cls, dbpath):
         # Initialise the database file with restrictive permissions.
-        os.close(os.open(dbpath, os.O_CREAT | os.O_APPEND, 0o600))
+        Path(dbpath).touch(mode=0o600)
 
     @classmethod
     @contextmanager
-    def open(cls, dbpath=expanduser("~/.maascli.db"), create=False):
+    def open(cls, dbpath=None, create=False):
         """Load a profiles database.
 
         Called without arguments this will open (and create, if create=True) a
@@ -96,9 +95,12 @@ class ProfileConfig:
         database on exit, saving if the exit is clean.
 
         """
+        if not dbpath:
+            dbpath = "~/.maascli.db"
+        dbpath = Path(dbpath).expanduser()
         if create:
             cls.create_database(dbpath)
-        elif not os.path.exists(dbpath):
+        elif not dbpath.exists():
             raise FileNotFoundError(dbpath)
         database = sqlite3.connect(dbpath)
         try:
