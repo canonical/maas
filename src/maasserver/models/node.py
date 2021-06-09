@@ -4665,10 +4665,11 @@ class Node(CleanSave, TimestampedModel):
         discovered_addresses = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet__isnull=False
         )
-        for ip_address in discovered_addresses:
-            boot_interface.link_subnet(
-                INTERFACE_LINK_TYPE.AUTO, ip_address.subnet
-            )
+        subnets_to_link = set(
+            ip_address.subnet for ip_address in discovered_addresses
+        )
+        for subnet in subnets_to_link:
+            boot_interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
             auto_set = True
         if not auto_set:
             # Failed to set AUTO mode on the boot interface. Lets force an
