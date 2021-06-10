@@ -2403,6 +2403,11 @@ class TestCoerceHostname(MAASTestCase):
             "ubunturocks", coerce_to_valid_hostname("UbuntuRocks")
         )
 
+    def test_preserve_hostname_case(self):
+        self.assertEqual(
+            "UbuntuRocks", coerce_to_valid_hostname("UbuntuRocks", False)
+        )
+
     def test_returns_none_if_result_empty(self):
         self.assertIsNone(coerce_to_valid_hostname("-人間性-"))
 

@@ -39,7 +39,7 @@ def create_node(
     :param domain: The domain the node should join.
     """
     if hostname is not None:
-        hostname = coerce_to_valid_hostname(hostname)
+        hostname = coerce_to_valid_hostname(hostname, False)
 
     for elapsed, remaining, wait in retries(15, 5, reactor):
         try:
