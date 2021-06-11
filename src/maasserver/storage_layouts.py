@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Storage layouts."""
@@ -870,6 +870,8 @@ class VMFS6StorageLayout(StorageLayoutBase):
             for i, (partition, base_partition) in enumerate(
                 zip(ordered_partitions, self.base_partitions)
             ):
+                if (i + 1) == len(self.base_partitions):
+                    return bd
                 if partition.bootable != base_partition.get("bootable", False):
                     break
                 # Skip checking the size of the Datastore partition as that
@@ -878,9 +880,40 @@ class VMFS6StorageLayout(StorageLayoutBase):
                     continue
                 if partition.size != base_partition["size"]:
                     break
-                if (i + 1) == len(self.base_partitions):
-                    return bd
         return None
+
+
+class VMFS7StorageLayout(VMFS6StorageLayout):
+    """VMFS7 layout.
+
+    The VMware ESXi 7+ image is a DD. The image has 5 partitions which are
+    in order but not linear. Users may only change the last partition which
+    is partition 8 and stored at the end of the disk.
+
+    NAME                PARTITION   SIZE      START BLOCK   END BLOCK
+    EFI System          1           105MB     0             105
+    Basic Data          5           1074MB    106           1180
+    Basic Data          6           1074MB    1181          2255
+    VMFSL               7           8.5GB     2256          10959
+    VMFS                8           Remaining 10960         End of disk
+    """
+
+    base_partitions = [
+        # EFI System
+        {"size": 105 * 1024 ** 2, "bootable": True},
+        # Basic Data
+        {"size": 1074 * 1024 ** 2},
+        # Basic Data
+        {"size": 1074 * 1024 ** 2},
+        # VMFSL
+        {"size": 8704 * 1024 ** 2},
+        # VMFS
+        {"size": 0},
+    ]
+
+    def configure_storage(self, allow_fallback):
+        super().configure_storage(allow_fallback)
+        return "VMFS7"
 
 
 class BlankStorageLayout(StorageLayoutBase):
@@ -914,6 +947,7 @@ STORAGE_LAYOUTS = {
     "lvm": ("LVM layout", LVMStorageLayout),
     "bcache": ("Bcache layout", BcacheStorageLayout),
     "vmfs6": ("VMFS6 layout", VMFS6StorageLayout),
+    "vmfs7": ("VMFS7 layout", VMFS7StorageLayout),
     "blank": ("No storage (blank) layout", BlankStorageLayout),
 }
 

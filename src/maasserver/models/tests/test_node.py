@@ -140,6 +140,7 @@ from maasserver.storage_layouts import (
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
     VMFS6StorageLayout,
+    VMFS7StorageLayout,
 )
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -9399,7 +9400,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             osystem="esxi", distro_series="6.7", with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
-        layout = VMFS6StorageLayout(node)
+        layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
+        layout = layout_class(node)
         layout.configure()
         self.assertItemsEqual([], node.storage_layout_issues())
 
@@ -9408,7 +9410,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             osystem="esxi", distro_series="6.7", with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
-        layout = VMFS6StorageLayout(node)
+        layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
+        layout = layout_class(node)
         layout.configure()
         node.virtualblockdevice_set.delete()
         self.assertEqual(
@@ -9422,7 +9425,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             with_boot_disk=False,
         )
         factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
-        layout = VMFS6StorageLayout(node)
+        layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
+        layout = layout_class(node)
         layout.configure()
         self.assertItemsEqual(
             [
