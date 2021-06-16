@@ -1,8 +1,6 @@
 # Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for boot configuration retrieval from RPC."""
-
 
 from datetime import timedelta
 import random
@@ -42,23 +40,11 @@ from provisioningserver.utils.network import get_source_address
 
 
 def get_config(*args, **kwargs):
-    explicit_count = kwargs.pop("query_count", None)
+    query_count = kwargs.pop("query_count", 23)
     count, result = count_queries(orig_get_config, *args, **kwargs)
-    if explicit_count is None:
-        # If you need to adjust this value up be sure that 100% you cannot
-        # lower this value. If you want to adjust this value down, big +1!
-        assert count <= 23, (
-            "%d > 22; Query count should remain below 22 queries "
-            "at all times." % count
-        )
-    else:
-        # This test sets an explicit count. This should *ONLY* be used if
-        # the test is taking a rare path that requires the query count to
-        # some what greater.
-        assert count == explicit_count, (
-            "%d != %d; Query count should remain below %d queries "
-            "at all times." % (count, explicit_count, explicit_count)
-        )
+    assert (
+        count <= query_count
+    ), f"Query count should be at most {query_count}, got {count}"
     return result
 
 

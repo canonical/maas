@@ -137,14 +137,14 @@ for klass in NODE_CLASSES:
 
 def create_default_numanode_on_create(sender, instance, created, **kwargs):
     """Create NUMA node "0" for a node on creation."""
-    if not created or not instance.is_machine:
+    if not created or instance.is_device:
         return
 
     create_default_numanode(instance)
 
 
-signals.watch(post_save, create_default_numanode_on_create, sender=Machine)
-signals.watch(post_save, create_default_numanode_on_create, sender=Node)
+for sender in (Machine, Node, RackController, RegionController):
+    signals.watch(post_save, create_default_numanode_on_create, sender=sender)
 
 
 def release_auto_ips(node, old_values, deleted=False):

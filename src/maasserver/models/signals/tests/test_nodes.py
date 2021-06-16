@@ -17,7 +17,7 @@ from maasserver.enum import (
     POWER_STATE,
     POWER_STATE_CHOICES,
 )
-from maasserver.models import Node, StaticIPAddress
+from maasserver.models import Node, RackController, StaticIPAddress
 from maasserver.models.service import RACK_SERVICES, REGION_SERVICES, Service
 from maasserver.models.signals import power
 from maasserver.node_status import NODE_TRANSITIONS
@@ -217,6 +217,13 @@ class TestNodeCreateServices(MAASServerTestCase):
 class TestNodeDefaultNUMANode(MAASServerTestCase):
     def test_create_node_creates_default_numanode(self):
         node = Node()
+        node.save()
+        [numanode] = node.numanode_set.all()
+        self.assertIs(numanode.node, node)
+        self.assertEqual(numanode.index, 0)
+
+    def test_create_node_creates_default_numanode_controller(self):
+        node = RackController()
         node.save()
         [numanode] = node.numanode_set.all()
         self.assertIs(numanode.node, node)

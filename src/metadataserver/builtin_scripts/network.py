@@ -69,7 +69,6 @@ def update_node_interfaces(node, data):
 
     :param data: a dict containing commissioning data
     """
-    # Avoid circular imports
     from metadataserver.builtin_scripts.hooks import (
         parse_interfaces,
         update_interface_details,
@@ -84,10 +83,8 @@ def update_node_interfaces(node, data):
         monitored_interfaces = []
         address_extra = {}
 
-    # Get all of the current interfaces on this node.
     current_interfaces = {
-        interface.id: interface
-        for interface in node.interface_set.all().order_by("id")
+        interface.id: interface for interface in node.interface_set.all()
     }
 
     # Update the interfaces in dependency order. This make sure that the

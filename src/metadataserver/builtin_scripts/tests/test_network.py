@@ -477,6 +477,14 @@ class UpdateInterfacesMixin:
 
 
 class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
+    def test_create_interface_default_numanode(self):
+        node = factory.make_Machine()
+        data = FakeCommissioningData()
+        data.create_physical_network_without_nic("eth0")
+        self.update_interfaces(node, data)
+        eth0 = node.interface_set.get(name="eth0")
+        self.assertEqual(eth0.numa_node, node.default_numanode)
+
     def test_all_new_physical_interfaces_no_links(self):
         controller = self.create_empty_controller()
         data = FakeCommissioningData()

@@ -1,8 +1,6 @@
 # Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for NodeInterfaces API."""
-
 
 import http.client
 import random
@@ -1952,12 +1950,12 @@ class TestInterfaceAPIForControllers(APITestCase.ForUser):
                     "name": Equals(interface.name),
                     "type": Equals(interface.type),
                     "vlan": ContainsDict({"id": Equals(interface.vlan.id)}),
-                    "mac_address": Equals("%s" % interface.mac_address),
+                    "mac_address": Equals(str(interface.mac_address)),
                     "tags": Equals(interface.tags),
                     "resource_uri": Equals(get_interface_uri(interface)),
                     "params": Equals(interface.params),
                     "effective_mtu": Equals(interface.get_effective_mtu()),
-                    "numa_node": Equals(None),
+                    "numa_node": Equals(0),
                 }
             ),
         )

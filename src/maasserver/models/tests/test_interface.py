@@ -1,9 +1,6 @@
 # Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the Interface model."""
-
-
 from collections.abc import Iterable
 import datetime
 import random
@@ -1560,6 +1557,16 @@ class TestPhysicalInterface(MAASServerTestCase):
         node = factory.make_Node()
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         self.assertEqual(node, interface.get_node())
+
+    def test_default_node_numanode(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        self.assertEqual(interface.numa_node, node.default_numanode)
+
+    def test_no_default_node_numanode_device(self):
+        node = factory.make_Device()
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        self.assertIsNone(interface.numa_node)
 
     def test_requires_node(self):
         interface = PhysicalInterface(

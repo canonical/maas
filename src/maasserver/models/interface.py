@@ -41,6 +41,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     INTERFACE_TYPE_CHOICES,
     IPADDRESS_TYPE,
+    NODE_TYPE,
 )
 from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
@@ -1662,7 +1663,7 @@ class PhysicalInterface(Interface):
             validation_errors["node"] = ["This field cannot be blank."]
         if self.mac_address is None:
             validation_errors["mac_address"] = ["This field cannot be blank."]
-        if len(validation_errors) > 0:
+        if validation_errors:
             raise ValidationError(validation_errors)
 
         # MAC address must be unique amongst every PhysicalInterface.
@@ -1689,6 +1690,17 @@ class PhysicalInterface(Interface):
                 raise ValidationError(
                     {"parents": ["A physical interface cannot have parents."]}
                 )
+
+    def save(self, *args, **kwargs):
+        if (
+            self.numa_node_id is None
+            and self.node
+            and self.node.node_type != NODE_TYPE.DEVICE
+        ):
+            # the node is required; if not provided, let the upcall raise an
+            # error
+            self.numa_node_id = self.node.default_numanode.id
+        super().save(*args, **kwargs)
 
 
 class ChildInterface(Interface):
