@@ -56,7 +56,7 @@ def signal_wrapper(*args, **kwargs):
     try:
         signal(*args, **kwargs)
     except SignalException as e:
-        maaslog.error("Error during controller refresh: %s" % e.error)
+        maaslog.error("Error during controller refresh: %s" % e)
 
 
 @synchronous

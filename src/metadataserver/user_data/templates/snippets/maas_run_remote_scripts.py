@@ -75,9 +75,7 @@ NETPLAN_DIR = "/etc/netplan"
 
 
 def fail(msg):
-    sys.stderr.write("FAIL: %s" % msg)
-    sys.stderr.flush()
-    sys.exit(1)
+    sys.exit("FAIL: %s" % msg)
 
 
 def signal_wrapper(url, creds, *args, **kwargs):
@@ -90,14 +88,13 @@ def signal_wrapper(url, creds, *args, **kwargs):
     try:
         signal(url, creds, *args, **kwargs)
     except SignalException as e:
-        fail(e.error)
+        fail(e)
     return True
 
 
 def output_and_send(error, send_result=True, *args, **kwargs):
     """Output the error message to stderr and send iff send_result is True."""
-    sys.stdout.write("%s\n" % error)
-    sys.stdout.flush()
+    sys.stderr.write("%s\n" % error)
     if send_result:
         return signal_wrapper(*args, error=error, **kwargs)
     else:
@@ -950,7 +947,7 @@ def get_mac_addresses_for_enlistment():
     return ",".join(
         [
             mac
-            for mac in get_interfaces().keys()
+            for mac in get_interfaces()
             # This is an OpenBMC MAC and as such, we ignore it.
             # This MAC will be the same for all Wedge systems (e.g Wedge 40/100).
             if mac != "02:00:00:00:00:02"
@@ -1339,7 +1336,7 @@ def run_parallel_scripts(scripts, scripts_dir, config_dir, send_result=True):
                 for script in sorted(
                     nscripts,
                     key=lambda i: (
-                        len(i.get("packages", {}).keys()),
+                        len(i.get("packages", {})),
                         i["name"],
                     ),
                 ):

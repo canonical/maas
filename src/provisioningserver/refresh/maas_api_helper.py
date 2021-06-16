@@ -9,6 +9,7 @@ from email.utils import parsedate
 import json
 import mimetypes
 import os
+from pathlib import Path
 import random
 import selectors
 import socket
@@ -29,8 +30,7 @@ MD_VERSION = "2012-03-01"
 
 # See fcntl(2), re. F_SETPIPE_SZ. By requesting this many bytes from a pipe on
 # each read we can be sure that we are always draining its buffer completely.
-with open("/proc/sys/fs/pipe-max-size") as _pms:
-    PIPE_MAX_SIZE = int(_pms.read())
+PIPE_MAX_SIZE = int(Path("/proc/sys/fs/pipe-max-size").read_text())
 
 
 def oauth_headers(
@@ -202,7 +202,7 @@ def read_config(url, creds):
     else:
         if url.startswith("file://"):
             url = url[7:]
-        cfg_str = open(url, "r").read()
+        cfg_str = Path(url).read_text()
 
     cfg = yaml.safe_load(cfg_str)
 
@@ -216,11 +216,7 @@ def read_config(url, creds):
 
 
 class SignalException(Exception):
-    def __init__(self, error):
-        self.error = error
-
-    def __str__(self):
-        return self.error
+    pass
 
 
 def signal(
@@ -342,7 +338,7 @@ def capture_script_output(
     # Create the file and then open it in read write mode for terminal
     # emulation.
     for path in (stdout_path, stderr_path, combined_path):
-        open(path, "w").close()
+        Path(path).touch()
     with open(stdout_path, "r+b") as out, open(stderr_path, "r+b") as err:
         with open(combined_path, "r+b") as combined:
             with selectors.DefaultSelector() as selector:
@@ -385,7 +381,7 @@ def _select_script_output(selector, combined, timeout, proc):
             # read(n) returns n bytes or the stream reaches end-of-file,
             # but here we only want to get what's there without blocking.
             chunk = key.fileobj.raw.read(PIPE_MAX_SIZE)
-            if len(chunk) == 0:  # EOF
+            if not chunk:  # EOF
                 selector.unregister(key.fileobj)
             else:
                 # Output to console if running in a shell.

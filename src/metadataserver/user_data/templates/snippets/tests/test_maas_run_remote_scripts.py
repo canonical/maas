@@ -220,11 +220,8 @@ def make_fake_os_path_exists(testcase, exists=True):
 class TestOutputAndSend(MAASTestCase):
     def setUp(self):
         super().setUp()
-        self.stdout_write = self.patch(
-            maas_run_remote_scripts.sys.stdout, "write"
-        )
-        self.stdout_flush = self.patch(
-            maas_run_remote_scripts.sys.stdout, "flush"
+        self.stderr_write = self.patch(
+            maas_run_remote_scripts.sys.stderr, "write"
         )
         self.signal_wrapper = self.patch(
             maas_run_remote_scripts, "signal_wrapper"
@@ -234,24 +231,21 @@ class TestOutputAndSend(MAASTestCase):
         error = factory.make_string()
         output_and_send(error)
 
-        self.assertThat(self.stdout_write, MockCalledOnceWith("%s\n" % error))
-        self.assertThat(self.stdout_flush, MockCalledOnce())
+        self.assertThat(self.stderr_write, MockCalledOnceWith("%s\n" % error))
         self.assertThat(self.signal_wrapper, MockCalledOnceWith(error=error))
 
     def test_output_and_send_doesnt_send_when_false(self):
         error = factory.make_string()
         self.assertFalse(output_and_send(error, False))
-        self.assertThat(self.stdout_write, MockCalledOnceWith("%s\n" % error))
-        self.assertThat(self.stdout_flush, MockCalledOnce())
+        self.assertThat(self.stderr_write, MockCalledOnceWith("%s\n" % error))
         self.assertThat(self.signal_wrapper, MockNotCalled())
 
     def test_output_and_send_scripts(self):
         scripts = make_scripts()
         error = "{msg_name} %s" % factory.make_string()
         output_and_send_scripts(error, scripts)
-
         self.assertThat(
-            self.stdout_write,
+            self.stderr_write,
             MockCallsMatch(
                 *[call("%s\n" % error.format(**script)) for script in scripts]
             ),

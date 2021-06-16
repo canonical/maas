@@ -196,7 +196,7 @@ def send_pod_commissioning_results(
                 )
             except SignalException as e:
                 raise PodActionFail(
-                    f"Unable to send Pod commissioning information for {name}({system_id}): {e.error}"
+                    f"Unable to send Pod commissioning information for {name}({system_id}): {e}"
                 )
 
     d.addCallback(

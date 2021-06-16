@@ -9,8 +9,8 @@ VALID_STATUS = ("OK", "FAILED", "WORKING", "TESTING", "COMMISSIONING")
 POWER_TYPES = ("ipmi", "virsh", "manual", "moonshot", "wedge")
 
 
-def fail(msg):
-    sys.stderr.write("FAIL: %s" % msg)
+def fail(msg_or_exc):
+    sys.stderr.write("FAIL: %s" % msg_or_exc)
     sys.exit(1)
 
 
@@ -155,7 +155,7 @@ def main():
             args.power_params,
         )
     except SignalException as e:
-        fail(e.error)
+        fail(str(e))
 
 
 if __name__ == "__main__":
