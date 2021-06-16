@@ -27,6 +27,7 @@ from maasserver.dns.config import (
     current_zone_serial,
     dns_force_reload,
     dns_update_all_zones,
+    forward_domains_to_forwarded_zones,
     get_internal_domain,
     get_resource_name_for_subnet,
     get_trusted_acls,
@@ -76,6 +77,27 @@ class TestDNSUtilities(MAASServerTestCase):
         self.assertThat(
             DNSPublication.objects.get_most_recent(),
             MatchesStructure.byEquality(source="Force reload"),
+        )
+
+    def test_forward_domains_to_forwarded_zones(self):
+        name1 = factory.make_name("domain")
+        name2 = factory.make_name("other")
+        domain1 = factory.make_Domain(name=name1)
+        domain2 = factory.make_Domain(name=name2)
+        ip1 = factory.make_ip_address()
+        ip2 = factory.make_ip_address()
+        fwd_srvr1 = factory.make_ForwardDNSServer(
+            ip_address=ip1, domains=[domain1]
+        )
+        fwd_srvr2 = factory.make_ForwardDNSServer(
+            ip_address=ip2, domains=[domain2]
+        )
+        fwd_zones = forward_domains_to_forwarded_zones(
+            Domain.objects.get_forward_domains()
+        )
+        self.assertItemsEqual(
+            fwd_zones,
+            [(name1, [fwd_srvr1.ip_address]), (name2, [fwd_srvr2.ip_address])],
         )
 
 

@@ -289,10 +289,13 @@ class DNSConfig:
     template_file_name = "named.conf.template"
     target_file_name = MAAS_NAMED_CONF_NAME
 
-    def __init__(self, zones=None):
+    def __init__(self, zones=None, forwarded_zones=None):
         if zones is None:
             zones = ()
+        if forwarded_zones is None:
+            forwarded_zones = ()
         self.zones = zones
+        self.forwarded_zones = forwarded_zones
 
     def write_config(self, overwrite=True, **kwargs):
         """Write out this DNS config file.
@@ -303,6 +306,7 @@ class DNSConfig:
         trusted_networks = kwargs.pop("trusted_networks", "")
         context = {
             "zones": self.zones,
+            "forwarded_zones": self.forwarded_zones,
             "DNS_CONFIG_DIR": get_dns_config_dir(),
             "named_rndc_conf_path": get_named_rndc_conf_path(),
             "trusted_networks": trusted_networks,

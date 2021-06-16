@@ -62,6 +62,9 @@ class DomainsHandler(OperationsHandler):
         @param (string) "authoritative" [required=false] Class type of the
         domain.
 
+        @param (string) "forward_dns_servers" [required=false] List of forward dns
+        server IP addresses when MAAS is not authorititative.
+
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the new domain
         object.
@@ -174,6 +177,9 @@ class DomainHandler(OperationsHandler):
         authoritative for this domain.
 
         @param (string) "ttl" [required=false] The default TTL for this domain.
+
+        @param (string) "forward_dns_servers" [required=false] List of IP addresses for
+        forward DNS servers when MAAS is not authoritative for this domain.
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing

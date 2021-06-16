@@ -135,6 +135,15 @@ class TestDomainManager(MAASServerTestCase):
             Domain.objects.filter_by_specifiers("name:%s" % name), [domain]
         )
 
+    def test_get_forward_domains(self):
+        name1 = factory.make_name("domain")
+        domain1 = factory.make_Domain(name=name1, authoritative=False)
+        name2 = factory.make_name("other")
+        factory.make_Domain(name=name2, authoritative=True)
+        fwd_ip = factory.make_ip_address()
+        factory.make_ForwardDNSServer(ip_address=fwd_ip, domains=[domain1])
+        self.assertItemsEqual(Domain.objects.get_forward_domains(), [domain1])
+
 
 class DomainTest(MAASServerTestCase):
     def test_creates_domain(self):
@@ -180,6 +189,17 @@ class DomainTest(MAASServerTestCase):
         domain = factory.make_Domain(name=name)
         domain.delete()
         self.assertItemsEqual([], Domain.objects.filter(name=name))
+
+    def test_validate_authority_raises_exception_when_both_authoritative_and_has_forward_dns_servers(
+        self,
+    ):
+        name = factory.make_name("name")
+        forward_server = factory.make_ip_address()
+        domain = factory.make_Domain(name=name, authoritative=True)
+        factory.make_ForwardDNSServer(
+            ip_address=forward_server, domains=[domain]
+        )
+        self.assertRaises(ValidationError, domain.validate_authority)
 
     def test_cant_be_deleted_if_contains_resources(self):
         domain = factory.make_Domain()

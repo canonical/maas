@@ -63,7 +63,7 @@ from provisioningserver.dns.zoneconfig import (
     DNSReverseZoneConfig,
 )
 from provisioningserver.utils import locate_config
-from provisioningserver.utils.isc import read_isc_file
+from provisioningserver.utils.isc import parse_isc_string, read_isc_file
 
 NAMED_CONF_OPTIONS_CONTENTS = dedent(
     """\
@@ -546,6 +546,28 @@ class TestDNSConfig(MAASTestCase):
                 )
             ),
         )
+
+    def test_write_config_with_forwarded_zones(self):
+        name = factory.make_name("domain")
+        ip = factory.make_ip_address()
+        forwarded_zones = [(name, [ip])]
+        target_dir = patch_dns_config_path(self)
+        DNSConfig(forwarded_zones=forwarded_zones).write_config()
+        config_path = os.path.join(target_dir, MAAS_NAMED_CONF_NAME)
+        expected_content = dedent(
+            f"""
+        zone "{name}" {{
+            type forward;
+            forward only;
+            forwarders {{
+                {ip};
+            }};
+        }};
+        """
+        )
+        config = read_isc_file(config_path)
+        expected = parse_isc_string(expected_content)
+        self.assertEqual(expected[f'zone "{name}"'], config[f'zone "{name}"'])
 
     def test_write_config_makes_config_world_readable(self):
         target_dir = patch_dns_config_path(self)

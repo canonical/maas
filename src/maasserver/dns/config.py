@@ -47,6 +47,20 @@ def dns_force_reload():
     DNSPublication(source="Force reload").save()
 
 
+def forward_domains_to_forwarded_zones(forward_domains):
+    # converted to a list of tuple to keep model within maasserver code
+    return [
+        (
+            domain.name,
+            [
+                fwd_dns_srvr.ip_address
+                for fwd_dns_srvr in domain.forward_dns_servers
+            ],
+        )
+        for domain in forward_domains
+    ]
+
+
 def dns_update_all_zones(reload_retry=False, reload_timeout=2):
     """Update all zone files for all domains.
 
@@ -61,6 +75,9 @@ def dns_update_all_zones(reload_retry=False, reload_timeout=2):
         return
 
     domains = Domain.objects.filter(authoritative=True)
+    forwarded_zones = forward_domains_to_forwarded_zones(
+        Domain.objects.get_forward_domains()
+    )
     subnets = Subnet.objects.exclude(rdns_mode=RDNS_MODE.DISABLED)
     default_ttl = Config.objects.get_config("default_dns_ttl")
     serial = current_zone_serial()
@@ -87,7 +104,11 @@ def dns_update_all_zones(reload_retry=False, reload_timeout=2):
     # recursive queries to the upstream DNS servers. Again, this is legacy,
     # where the "trusted" ACL ended up in the same configuration file as the
     # zone stanzas, and so both need to be rewritten at the same time.
-    bind_write_configuration(zones, trusted_networks=get_trusted_networks())
+    bind_write_configuration(
+        zones,
+        trusted_networks=get_trusted_networks(),
+        forwarded_zones=forwarded_zones,
+    )
 
     # Reloading with retries may be a legacy from Celery days, or it may be
     # necessary to recover from races during start-up. We're not sure if it is

@@ -34,6 +34,7 @@ __all__ = [
     "FileStorage",
     "Filesystem",
     "FilesystemGroup",
+    "ForwardDNSServer",
     "GlobalDefault",
     "Interface",
     "IPRange",
@@ -136,6 +137,7 @@ from maasserver.models.filesystemgroup import (
     VMFS,
     VolumeGroup,
 )
+from maasserver.models.forwarddnsserver import ForwardDNSServer
 from maasserver.models.globaldefault import GlobalDefault
 from maasserver.models.interface import (
     BondInterface,

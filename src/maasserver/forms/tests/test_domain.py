@@ -84,3 +84,35 @@ class TestDomainForm(MAASServerTestCase):
         self.assertEqual(name, domain.name)
         self.assertEqual(authoritative, domain.authoritative)
         self.assertEqual(None, domain.ttl)
+
+    def test_can_create_forward_dns_server(self):
+        name = factory.make_name("domain")
+        forward_dns_servers = [factory.make_ip_address() for _ in range(0, 2)]
+        form = DomainForm(
+            {
+                "name": name,
+                "authoritative": False,
+                "forward_dns_servers": "  ".join(forward_dns_servers),
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        domain = form.save()
+        self.assertEqual(
+            forward_dns_servers,
+            [
+                fwd_dns_srvr.ip_address
+                for fwd_dns_srvr in domain.forward_dns_servers
+            ],
+        )
+
+    def test_validate_authority(self):
+        name = factory.make_name("domain")
+        forward_dns_servers = [factory.make_ip_address() for _ in range(0, 2)]
+        form = DomainForm(
+            {
+                "name": name,
+                "authoritative": True,
+                "forward_dns_servers": " ".join(forward_dns_servers),
+            }
+        )
+        self.assertRaises(ValueError, form.save)

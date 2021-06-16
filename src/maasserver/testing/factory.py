@@ -67,6 +67,7 @@ from maasserver.models import (
     FileStorage,
     Filesystem,
     FilesystemGroup,
+    ForwardDNSServer,
     IPRange,
     KeySource,
     LargeFile,
@@ -702,6 +703,15 @@ class Factory(maastesting.factory.Factory):
         domain = Domain(name=name, ttl=ttl, authoritative=authoritative)
         domain.save()
         return domain
+
+    def make_ForwardDNSServer(self, ip_address=None, domains=None):
+        if ip_address is None:
+            ip_address = self.make_ip_address()
+        fwd_dns_srvr = ForwardDNSServer(ip_address=ip_address)
+        fwd_dns_srvr.save()
+        fwd_dns_srvr.domains.set(domains)
+        fwd_dns_srvr.save()
+        return fwd_dns_srvr
 
     def pick_rrset(self, rrtype=None, rrdata=None, exclude=[]):
         while rrtype is None:
