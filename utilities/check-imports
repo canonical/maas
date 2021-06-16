@@ -27,6 +27,7 @@ def flatten(*things):
 
     :return: An iterator.
     """
+
     def _flatten(things):
         if isinstance(things, (bytes, str)):
             # String- and byte-like objects are treated as leaves; iterating
@@ -45,7 +46,6 @@ def flatten(*things):
 
 
 class Pattern:
-
     def __init__(self, *patterns):
         super(Pattern, self).__init__()
         self.patterns = tuple(flatten(patterns))
@@ -53,7 +53,7 @@ class Pattern:
     def _compile_pattern(self, pattern):
         for part in pattern.split("|"):
             expr = []
-            for component in re.findall('([*]+|[^*]+)', part):
+            for component in re.findall("([*]+|[^*]+)", part):
                 if component == "*":
                     expr.append("[^.]+")
                 elif component == "**":
@@ -66,9 +66,12 @@ class Pattern:
 
     def compile(self):
         self._matcher = re.compile(
-            r"(%s)\Z" % "|".join(chain.from_iterable(
-                map(self._compile_pattern, self.patterns))),
-            re.MULTILINE | re.DOTALL)
+            r"(%s)\Z"
+            % "|".join(
+                chain.from_iterable(map(self._compile_pattern, self.patterns))
+            ),
+            re.MULTILINE | re.DOTALL,
+        )
 
     def match(self, name):
         return self._matcher.match(name) is not None
@@ -81,7 +84,6 @@ ALLOWED, DENIED, INDIFFERENT = True, False, None
 
 
 class Action:
-
     def __init__(self, *patterns):
         super(Action, self).__init__()
         self.pattern = Pattern(patterns)
@@ -94,7 +96,6 @@ class Action:
 
 
 class Allow(Action):
-
     def check(self, name):
         if self.pattern.match(name):
             return ALLOWED
@@ -103,7 +104,6 @@ class Allow(Action):
 
 
 class Deny(Action):
-
     def check(self, name):
         if self.pattern.match(name):
             return DENIED
@@ -112,7 +112,6 @@ class Deny(Action):
 
 
 class Rule:
-
     def __init__(self, *actions):
         super(Rule, self).__init__()
         allows = {act for act in actions if isinstance(act, Allow)}
@@ -121,7 +120,8 @@ class Rule:
         if len(leftover) != 0:
             raise ValueError(
                 "Expected Allow or Deny instance, got: %s"
-                % ", ".join(map(repr, leftover)))
+                % ", ".join(map(repr, leftover))
+            )
         self.allow = Allow(allows)
         self.deny = Deny(denies)
 
@@ -140,10 +140,10 @@ class Rule:
     def __or__(self, other):
         if isinstance(other, self.__class__):
             return self.__class__(
-                self.allow, self.deny, other.allow, other.deny)
+                self.allow, self.deny, other.allow, other.deny
+            )
         else:
-            return self.__class__(
-                self.allow, self.deny, other)
+            return self.__class__(self.allow, self.deny, other)
 
 
 # Common module patterns.
@@ -170,27 +170,28 @@ TestingLibraries = Pattern(
 
 
 def files(*patterns):
-    return frozenset(chain.from_iterable(
-        iglob(pattern, recursive=True)
-        for pattern in flatten(patterns)))
+    return frozenset(
+        chain.from_iterable(
+            iglob(pattern, recursive=True) for pattern in flatten(patterns)
+        )
+    )
 
 
 APIClient = files("src/apiclient/**/*.py")
 
 
-RackControllerConfig = files(
-    "src/provisioningserver/config.py")
-RackControllerUtilsInit = files(
-    "src/provisioningserver/utils/__init__.py")
-RackControllerUtilsFS = files(
-    "src/provisioningserver/utils/fs.py")
-RackControllerLogging = files(
-    "src/provisioningserver/logger/*.py")
+RackControllerConfig = files("src/provisioningserver/config.py")
+RackControllerUtilsInit = files("src/provisioningserver/utils/__init__.py")
+RackControllerUtilsFS = files("src/provisioningserver/utils/fs.py")
+RackControllerLogging = files("src/provisioningserver/logger/*.py")
 RackController = (
-    files("src/provisioningserver/**/*.py") -
-    files("src/provisioningserver/twisted/**/*.py") -
-    RackControllerConfig - RackControllerUtilsInit - RackControllerLogging -
-    RackControllerUtilsFS)
+    files("src/provisioningserver/**/*.py")
+    - files("src/provisioningserver/twisted/**/*.py")
+    - RackControllerConfig
+    - RackControllerUtilsInit
+    - RackControllerLogging
+    - RackControllerUtilsFS
+)
 RackControllerRule = Rule(
     Allow("apiclient.creds.*"),
     Allow("apiclient.maas_client.*"),
@@ -244,14 +245,16 @@ RackControllerRule = Rule(
 
 
 RegionMigrations = files(
-    "src/maasserver/migrations/**/*.py",
-    "src/metadataserver/migrations/*.py")
+    "src/maasserver/migrations/**/*.py", "src/metadataserver/migrations/*.py"
+)
 RegionUserDataSnippets = files(
-    "src/metadataserver/user_data/templates/"
-    "snippets/**/*.py")
+    "src/metadataserver/user_data/templates/" "snippets/**/*.py"
+)
 RegionController = (
-    files("src/maasserver/**/*.py", "src/metadataserver/**/*.py") -
-    RegionMigrations - RegionUserDataSnippets)
+    files("src/maasserver/**/*.py", "src/metadataserver/**/*.py")
+    - RegionMigrations
+    - RegionUserDataSnippets
+)
 RegionControllerRule = Rule(
     Allow("apiclient.creds.*"),
     Allow("apiclient.multipart.*"),
@@ -295,9 +298,8 @@ RegionControllerRule = Rule(
 
 
 Tests = files(
-    "src/**/test_*.py",
-    "src/**/testing/**/*.py",
-    "src/**/testing.py")
+    "src/**/test_*.py", "src/**/testing/**/*.py", "src/**/testing.py"
+)
 
 
 TestScriptEntryPoints = files("src/maastesting/scripts.py")
@@ -362,7 +364,8 @@ checks = [
     ),
     (
         RackControllerUtilsInit,
-        RackControllerRule | Rule(
+        RackControllerRule
+        | Rule(
             Allow("maastesting.typecheck.typed"),
             Allow("provisioningserver.path.get_tentative_path"),
             Allow("tempita"),
@@ -371,7 +374,8 @@ checks = [
     ),
     (
         RackController & Tests,
-        RackControllerRule | Rule(
+        RackControllerRule
+        | Rule(
             Allow("apiclient.testing.credentials.make_api_credentials"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
@@ -379,7 +383,8 @@ checks = [
     ),
     (
         RackControllerLogging,
-        RackControllerRule | Rule(
+        RackControllerRule
+        | Rule(
             Allow("django.utils.log"),
             Allow("django.utils.deprecation.*"),
         ),
@@ -393,7 +398,8 @@ checks = [
     ),
     (
         RegionUserDataSnippets - Tests,
-        RegionControllerRule | Rule(
+        RegionControllerRule
+        | Rule(
             Allow("maas_api_helper.**"),
             Allow("snippets.**"),
         ),
@@ -406,23 +412,24 @@ checks = [
             Allow("petname"),
             Allow("piston3.models"),
             Allow(StandardLibraries),
-
             # XXX: The following three permissions are temporary;
             # they MUST be eliminated before MAAS 2.0 release.
             Allow("maasserver|maasserver.**"),
             Allow("metadataserver|metadataserver.**"),
             Allow("provisioningserver|provisioningserver.**"),
-        )
+        ),
     ),
     (
         RegionController & Tests,
-        RegionControllerRule | Rule(
+        RegionControllerRule
+        | Rule(
             Allow(TestingLibraries),
         ),
     ),
     (
         RegionUserDataSnippets & Tests,
-        RegionControllerRule | Rule(
+        RegionControllerRule
+        | Rule(
             Allow("snippets.**"),
             Allow(StandardLibraries),
             Allow(TestingLibraries),
@@ -452,7 +459,7 @@ def extract(node):
             for alias in node.names:
                 # Note that `node.module is None` if the import in the format:
                 #     from . import <thing>
-                module = '.' if node.module is None else node.module
+                module = "." if node.module is None else node.module
                 yield "%s.%s" % (module, alias.name)
         else:
             pass  # Not an import.
@@ -465,7 +472,10 @@ def _batch(objects, size):
     may contain fewer than `size` elements.
     """
     objects = iter(objects)
-    batch = lambda: list(islice(objects, size))
+
+    def batch():
+        return list(islice(objects, size))
+
     return iter(batch, [])
 
 
@@ -506,13 +516,14 @@ def scan(checks):
 if sys.stdout.isatty():
 
     def print_filename(filename):
-        print('\x1b[36m' + filename + '\x1b[39m')
+        print("\x1b[36m" + filename + "\x1b[39m")
 
     def print_allowed(name):
         print(" \x1b[32mallowed:\x1b[39m", name)
 
     def print_denied(name):
         print("  \x1b[31mdenied:\x1b[39m", name)
+
 
 else:
 
@@ -528,28 +539,36 @@ else:
 
 def main(args):
     parser = argparse.ArgumentParser(
-        description="Statically check imports against policy.",
-        add_help=False)
+        description="Statically check imports against policy.", add_help=False
+    )
     parser.add_argument(
-        "--show-allowed", action="store_true", dest="show_allowed",
-        help="Log allowed imports.")
+        "--show-allowed",
+        action="store_true",
+        dest="show_allowed",
+        help="Log allowed imports.",
+    )
     parser.add_argument(
-        "--hide-denied", action="store_false", dest="show_denied",
-        help="Log denied imports.")
+        "--hide-denied",
+        action="store_false",
+        dest="show_denied",
+        help="Log denied imports.",
+    )
     parser.add_argument(
-        "--hide-summary", action="store_false", dest="show_summary",
-        help="Show summary of allowed and denied imports.")
-    parser.add_argument(
-        "-h", "--help", action="help", help=argparse.SUPPRESS)
+        "--hide-summary",
+        action="store_false",
+        dest="show_summary",
+        help="Show summary of allowed and denied imports.",
+    )
+    parser.add_argument("-h", "--help", action="help", help=argparse.SUPPRESS)
     options = parser.parse_args(args)
 
     allowedcount, deniedcount = 0, 0
     for filename, allowed, denied in scan(checks):
         allowedcount += len(allowed)
         deniedcount += len(denied)
-        show_filename = (
-            (options.show_allowed and len(allowed) != 0) or
-            (options.show_denied and len(denied) != 0))
+        show_filename = (options.show_allowed and len(allowed) != 0) or (
+            options.show_denied and len(denied) != 0
+        )
         if show_filename:
             print_filename(filename)
         if options.show_allowed and len(allowed) != 0:
@@ -560,9 +579,9 @@ def main(args):
                 print_denied(imported_name)
 
     if options.show_summary:
-        if (options.show_allowed and allowedcount != 0):
+        if options.show_allowed and allowedcount != 0:
             print()
-        elif (options.show_denied and deniedcount != 0):
+        elif options.show_denied and deniedcount != 0:
             print()
 
         print(allowedcount, "imported names were ALLOWED.")
@@ -571,5 +590,5 @@ def main(args):
     return deniedcount == 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     raise SystemExit(0 if main(sys.argv[1:]) else 1)

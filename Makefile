@@ -174,10 +174,12 @@ lint-shell: bin/shellcheck
 		snap/local/tree/bin/* \
 		snap/local/tree/sbin/* \
 		utilities/gen-db-schema-svg \
+		utilities/ldap-setup \
 		utilities/package-version \
 		utilities/release-* \
 		utilities/run-performanced \
-		utilities/run-py-tests-ci
+		utilities/run-py-tests-ci \
+		utilities/connect-snap-interfaces
 .PHONY: lint-shell
 
 format.parallel:
