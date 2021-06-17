@@ -53,6 +53,7 @@ import yaml
 try:
     from maas_api_helper import (
         capture_script_output,
+        get_base_url,
         geturl,
         MD_VERSION,
         read_config,
@@ -63,6 +64,7 @@ except ImportError:
     # For running unit tests.
     from snippets.maas_api_helper import (
         capture_script_output,
+        get_base_url,
         geturl,
         MD_VERSION,
         read_config,
@@ -1063,6 +1065,7 @@ def run_script(script, scripts_dir, send_result=True):
     output_and_send("Starting %s" % script["msg_name"], **args)
 
     env = copy.deepcopy(os.environ)
+    env["MAAS_BASE_URL"] = get_base_url(script["args"]["url"])
     env["OUTPUT_COMBINED_PATH"] = script["combined_path"]
     env["OUTPUT_STDOUT_PATH"] = script["stdout_path"]
     env["OUTPUT_STDERR_PATH"] = script["stderr_path"]

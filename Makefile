@@ -173,13 +173,20 @@ lint-shell: bin/shellcheck
 		snap/hooks/* \
 		snap/local/tree/bin/* \
 		snap/local/tree/sbin/* \
+		src/metadataserver/builtin_scripts/commissioning_scripts/50-maas-01-commissioning \
+		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \
+		src/metadataserver/builtin_scripts/commissioning_scripts/maas-kernel-cmdline \
+		src/provisioningserver/refresh/maas-list-modaliases \
+		src/provisioningserver/refresh/maas-lshw \
+		src/provisioningserver/refresh/maas-serial-ports \
+		src/provisioningserver/refresh/maas-support-info \
+		utilities/connect-snap-interfaces \
 		utilities/gen-db-schema-svg \
 		utilities/ldap-setup \
 		utilities/package-version \
 		utilities/release-* \
 		utilities/run-performanced \
-		utilities/run-py-tests-ci \
-		utilities/connect-snap-interfaces
+		utilities/run-py-tests-ci
 .PHONY: lint-shell
 
 format.parallel:

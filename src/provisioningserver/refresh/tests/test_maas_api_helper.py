@@ -1,8 +1,6 @@
 # Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maas_api_helper functions."""
-
 
 from collections import OrderedDict
 from email.utils import formatdate
@@ -122,6 +120,24 @@ class MAASMockHTTPHandler(urllib.request.HTTPHandler):
         )
         resp.msg = "OK"
         return resp
+
+
+class TestGetBase(MAASTestCase):
+    def test_get_base_url(self):
+        self.assertEqual(
+            maas_api_helper.get_base_url(
+                "http://example.com:1234/some/path?and=query"
+            ),
+            "http://example.com:1234",
+        )
+
+    def test_get_base_url_no_port(self):
+        self.assertEqual(
+            maas_api_helper.get_base_url(
+                "http://example.com/some/path?and=query"
+            ),
+            "http://example.com",
+        )
 
 
 class TestGetUrl(MAASTestCase):

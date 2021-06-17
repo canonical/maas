@@ -25,33 +25,8 @@
 # timeout: 60
 # --- End MAAS 1.0 script metadata ---
 
-# When booting into the ephemeral environment root filesystem
-# is the retrieved from the rack controller.
-while read -d ' ' -r token; do
-    arg="${token%%=*}"
-    if [ "$arg" = "root" ]; then
-        value="${token#*=}"
-        # MAAS normally specifies the file has "filetype:url"
-        filetype="${value%%:*}"
-        if [ "$filetype" = "squash" ]; then
-            url="${value#*:}"
-        else
-            url="$filetype"
-        fi
-        break
-    fi
-done < /proc/cmdline
-
-# Get only the protocol, hostname, and port.
-url=$(echo "$url" | awk -F '/' ' { print $1 "//" $3 } ')
-
-if [ -z "$url" ]; then
-    echo "ERROR: Unable to find rack controller URL!" >&2
-    exit 1
-fi
-
 resources_bin="$DOWNLOAD_PATH/machine-resources"
-wget "$url/machine-resources/$(dpkg --print-architecture)" \
-  -O "$resources_bin" >&2
+arch="$(dpkg --print-architecture)"
+wget "$MAAS_BASE_URL/machine-resources/$arch" -O "$resources_bin" >&2
 chmod +x "$resources_bin"
 "$resources_bin"

@@ -69,6 +69,14 @@ def warn(msg):
     sys.stderr.write(msg + "\n")
 
 
+def get_base_url(url):
+    """Return the base URL (no path) for the specified URL."""
+    parsed = urllib.parse.urlparse(url)
+    return urllib.parse.urlunparse(
+        (parsed.scheme, parsed.netloc, "", "", "", "")
+    )
+
+
 def geturl(url, creds=None, headers=None, data=None, post_data=None):
     # Takes a dict of creds to be passed through to oauth_headers,
     #   so it should have consumer_key, token_key, ...

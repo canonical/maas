@@ -2444,6 +2444,7 @@ class TestRunScript(MAASTestCase):
         self.assertEqual(str(script["timeout_seconds"]), env["RUNTIME"])
         self.assertEqual(str(script["has_started"]), env["HAS_STARTED"])
         self.assertEqual(script["bmc_config_path"], env["BMC_CONFIG_PATH"])
+        self.assertIn("MAAS_BASE_URL", env)
         self.assertIn("PATH", env)
         self.assertThat(
             self.mock_check_link_connected, MockCalledOnceWith(script)
