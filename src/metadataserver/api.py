@@ -1248,17 +1248,44 @@ class AnonMAASScriptsHandler(AnonymousOperationsHandler):
         )
 
 
+def get_script_result_properties(script_result):
+    return {
+        "name": script_result.name,
+        "script_result_id": script_result.id,
+        "script_version_id": script_result.script.script.id,
+        "timeout_seconds": (script_result.script.timeout.total_seconds()),
+        "parallel": script_result.script.parallel,
+        "hardware_type": script_result.script.hardware_type,
+        "parameters": script_result.parameters,
+        "packages": script_result.script.packages,
+        "for_hardware": script_result.script.for_hardware,
+        "apply_configured_networking": (
+            script_result.script.apply_configured_networking
+        ),
+        "has_started": script_result.status != SCRIPT_STATUS.PENDING,
+        "has_finished": (
+            script_result.status not in SCRIPT_STATUS_RUNNING_OR_PENDING
+        ),
+    }
+
+
 class MAASScriptsHandler(OperationsHandler):
 
     anonymous = AnonMAASScriptsHandler
 
-    def _add_script_set_to_tar(self, script_set, tar, prefix, mtime):
+    def _add_script_set_to_tar(
+        self, script_set, tar, prefix, mtime, include_finshed=False
+    ):
         if script_set is None:
             return []
         meta_data = []
         for script_result in script_set:
             # Don't rerun Scripts which have already run.
-            if script_result.status not in SCRIPT_STATUS_RUNNING_OR_PENDING:
+            if (
+                not include_finshed
+                and script_result.status
+                not in SCRIPT_STATUS_RUNNING_OR_PENDING
+            ):
                 continue
 
             path = os.path.join(prefix, script_result.name)
@@ -1268,30 +1295,11 @@ class MAASScriptsHandler(OperationsHandler):
                 # commissioning script. Don't expect a result.
                 script_result.delete()
                 continue
-            else:
-                content = script_result.script.script.data.encode()
-                add_file_to_tar(tar, path, content, mtime)
-                md_item = {
-                    "name": script_result.name,
-                    "path": path,
-                    "script_result_id": script_result.id,
-                    "script_version_id": script_result.script.script.id,
-                    "timeout_seconds": (
-                        script_result.script.timeout.total_seconds()
-                    ),
-                    "parallel": script_result.script.parallel,
-                    "hardware_type": script_result.script.hardware_type,
-                    "parameters": script_result.parameters,
-                    "packages": script_result.script.packages,
-                    "for_hardware": script_result.script.for_hardware,
-                    "apply_configured_networking": (
-                        script_result.script.apply_configured_networking
-                    ),
-                }
-            if script_result.status == SCRIPT_STATUS.PENDING:
-                md_item["has_started"] = False
-            else:
-                md_item["has_started"] = True
+            content = script_result.script.script.data.encode()
+            add_file_to_tar(tar, path, content, mtime)
+            md_item = get_script_result_properties(script_result)
+            md_item["path"] = path
+            if md_item["has_started"]:
                 # If the script has already started send any results MAAS has
                 # received. The script runner will append these files and send
                 # them back when done.
@@ -1367,6 +1375,7 @@ class MAASScriptsHandler(OperationsHandler):
                 node.status
                 in (
                     NODE_STATUS.COMMISSIONING,
+                    NODE_STATUS.DEPLOYED,
                     NODE_STATUS.ENTERING_RESCUE_MODE,
                     NODE_STATUS.RESCUE_MODE,
                 )
@@ -1394,6 +1403,7 @@ class MAASScriptsHandler(OperationsHandler):
                     tar,
                     "commissioning",
                     mtime,
+                    include_finshed=node.status == NODE_STATUS.DEPLOYED,
                 )
                 if meta_data != []:
                     tar_meta_data["commissioning_scripts"] = sorted(

@@ -76,6 +76,7 @@ from metadataserver.api import (
     get_node_for_mac,
     get_node_for_request,
     get_queried_node,
+    get_script_result_properties,
     make_list_response,
     make_text_response,
     MetaDataHandler,
@@ -90,6 +91,8 @@ from metadataserver.enum import (
     SCRIPT_PARALLEL,
     SCRIPT_STATUS,
     SCRIPT_STATUS_CHOICES,
+    SCRIPT_STATUS_RUNNING,
+    SCRIPT_STATUS_RUNNING_OR_PENDING,
     SCRIPT_TYPE,
     SIGNAL_STATUS,
     SIGNAL_STATUS_CHOICES,
@@ -1522,6 +1525,9 @@ class TestMAASScripts(MAASServerTestCase):
                     "apply_configured_networking"
                 ] = script_result.script.apply_configured_networking
 
+            md_item["has_finished"] = (
+                script_result.status not in SCRIPT_STATUS_RUNNING_OR_PENDING
+            )
             if script_result.status == SCRIPT_STATUS.PENDING:
                 md_item["has_started"] = False
             else:
@@ -2053,6 +2059,50 @@ class TestMAASScripts(MAASServerTestCase):
             meta_data,
         )
 
+    def test_returns_finished_scripts_when_deployed(self):
+        start_time = floor(time.time())
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
+        )
+        node.current_commissioning_script_set.scriptresult_set.all().update(
+            status=SCRIPT_STATUS.PASSED
+        )
+        response = make_node_client(node=node).get(
+            reverse("maas-scripts", args=["latest"])
+        )
+        self.assertEqual(
+            http.client.OK,
+            response.status_code,
+            "Unexpected response %d: %s"
+            % (response.status_code, response.content),
+        )
+        self.assertEqual("application/x-tar", response["Content-Type"])
+        tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
+        commissioning_scripts = [
+            name.split("/", 1)[-1]
+            for name in tar.getnames()
+            if name.startswith("commissioning/")
+        ]
+        self.assertCountEqual(NODE_INFO_SCRIPTS.keys(), commissioning_scripts)
+
+        end_time = ceil(time.time())
+
+        commissioning_meta_data = self.validate_scripts(
+            node.current_commissioning_script_set,
+            "commissioning",
+            tar,
+            start_time,
+            end_time,
+        )
+
+        meta_data = json.loads(
+            tar.extractfile("index.json").read().decode("utf-8")
+        )
+        self.assertCountEqual(
+            commissioning_meta_data,
+            meta_data["1.0"]["commissioning_scripts"],
+        )
+
     def test_removes_scriptless_script_result(self):
         node = factory.make_Node(
             status=NODE_STATUS.TESTING, with_empty_script_sets=True
@@ -2110,6 +2160,7 @@ class TestMAASScripts(MAASServerTestCase):
                                 script_result.script.apply_configured_networking
                             ),
                             "has_started": False,
+                            "has_finished": False,
                         }
                     ]
                 }
@@ -2357,6 +2408,39 @@ class TestMAASScripts(MAASServerTestCase):
             },
             meta_data,
         )
+
+
+class TestMAASScriptsProperties(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
+
+    def test_script_pending(self):
+        result = factory.make_ScriptResult(
+            status=SCRIPT_STATUS.PENDING,
+        )
+        properties = get_script_result_properties(result)
+        self.assertFalse(properties["has_started"])
+        self.assertFalse(properties["has_finished"])
+
+    def test_script_running(self):
+        result = factory.make_ScriptResult(
+            status=random.choice(list(SCRIPT_STATUS_RUNNING)),
+        )
+        properties = get_script_result_properties(result)
+        self.assertTrue(properties["has_started"])
+        self.assertFalse(properties["has_finished"])
+
+    def test_script_finished(self):
+        result = factory.make_ScriptResult(
+            status=factory.pick_choice(
+                SCRIPT_STATUS_CHOICES,
+                but_not=SCRIPT_STATUS_RUNNING_OR_PENDING,
+            ),
+        )
+        properties = get_script_result_properties(result)
+        self.assertTrue(properties["has_started"])
+        self.assertTrue(properties["has_finished"])
 
 
 class TestCommissioningAPI(MAASServerTestCase):
