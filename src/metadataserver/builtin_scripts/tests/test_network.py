@@ -496,13 +496,15 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         eth0 = PhysicalInterface.objects.get(name="eth0", node=controller)
         self.assertEqual("11:11:11:11:11:11", eth0.mac_address)
         self.assertTrue(eth0.enabled)
+        self.assertTrue(eth0.link_connected)
         self.assertEqual(
             Fabric.objects.get_default_fabric().get_default_vlan(), eth0.vlan
         )
         self.assertEqual([], list(eth0.parents.all()))
         eth1 = PhysicalInterface.objects.get(name="eth1", node=controller)
         self.assertEqual("22:22:22:22:22:22", eth1.mac_address)
-        self.assertFalse(eth1.enabled)
+        self.assertTrue(eth1.enabled)
+        self.assertFalse(eth1.link_connected)
         self.assertIsNone(eth1.vlan)
         self.assertEqual([], list(eth1.parents.all()))
 
@@ -519,6 +521,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         eth0 = PhysicalInterface.objects.get(name="eth0", node=controller)
         self.assertEqual(eth0_network.hwaddr, eth0.mac_address)
         self.assertTrue(eth0.enabled)
+        self.assertTrue(eth0.link_connected)
         self.assertEqual([], list(eth0.parents.all()))
         vlan0100 = Interface.objects.get(name="vlan0100", node=controller)
         self.assertEqual(INTERFACE_TYPE.VLAN, vlan0100.type)
@@ -527,6 +530,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         # have different MAC addresses.
         self.assertEqual(eth0_network.hwaddr, vlan0100.mac_address)
         self.assertTrue(vlan0100.enabled)
+        self.assertTrue(vlan0100.link_connected)
         self.assertEqual([eth0], list(vlan0100.parents.all()))
         vlan101 = Interface.objects.get(name="vlan101", node=controller)
         self.assertEqual(INTERFACE_TYPE.VLAN, vlan101.type)
@@ -535,6 +539,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         # have different MAC addresses.
         self.assertEqual(eth0_network.hwaddr, vlan101.mac_address)
         self.assertTrue(vlan101.enabled)
+        self.assertTrue(vlan101.link_connected)
         self.assertEqual([eth0], list(vlan101.parents.all()))
         eth0_0102 = Interface.objects.get(name="eth0.0102", node=controller)
         self.assertEqual(INTERFACE_TYPE.VLAN, eth0_0102.type)
@@ -543,6 +548,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         # have different MAC addresses.
         self.assertEqual(eth0_network.hwaddr, eth0_0102.mac_address)
         self.assertTrue(eth0_0102.enabled)
+        self.assertTrue(eth0_0102.link_connected)
         self.assertEqual([eth0], list(eth0_0102.parents.all()))
 
     def test_vlans_with_alternate_naming_conventions_vm_host(self):

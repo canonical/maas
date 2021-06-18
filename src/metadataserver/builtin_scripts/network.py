@@ -207,9 +207,9 @@ def update_physical_interface(
     # associated with them. We still model them as physical NICs.
     mac_address = port["address"] if port else network["hwaddr"]
     update_fields = set()
-    is_enabled = network["state"] == "up"
+    is_connected = network["state"] == "up"
     if port is not None:
-        is_enabled = is_enabled and port["link_detected"]
+        is_connected = is_connected and port["link_detected"]
     # If an interface with same name and different MAC exists in the
     # machine, delete it. Interface names are unique on a machine, so this
     # might be an old interface which was removed and recreated with a
@@ -222,7 +222,7 @@ def update_physical_interface(
         defaults={
             "node": node,
             "name": name,
-            "enabled": is_enabled,
+            "enabled": True,
             "acquired": (
                 node.is_controller or node.status == NODE_STATUS.DEPLOYED
             ),
@@ -238,8 +238,8 @@ def update_physical_interface(
         )
     # Don't update the VLAN unless:
     # (1) The interface's VLAN wasn't previously known.
-    # (2) The interface is administratively enabled.
-    if interface.vlan is None and is_enabled:
+    # (2) The interface is connected
+    if interface.vlan is None and is_connected:
         if hints is not None:
             new_vlan = guess_vlan_from_hints(node, name, hints)
         if new_vlan is None:
@@ -257,9 +257,9 @@ def update_physical_interface(
             update_fields.add("node")
         interface.name = name
         update_fields.add("name")
-    if interface.enabled != is_enabled:
-        interface.enabled = is_enabled
-        update_fields.add("enabled")
+    if interface.link_connected != is_connected:
+        interface.link_connected = is_connected
+        update_fields.add("link_connected")
 
     # Update all the IP address on this interface. Fix the VLAN the
     # interface belongs to so its the same as the links.
