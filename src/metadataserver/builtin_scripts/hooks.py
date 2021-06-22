@@ -893,7 +893,7 @@ def process_lxd_results(node, output, exit_status):
     try:
         data = json.loads(output.decode("utf-8"))
     except ValueError as e:
-        raise ValueError(e.message + ": " + output)
+        raise ValueError(f"{e}: {output}")
 
     assert data.get("api_version") == "1.0", "Data not from LXD API 1.0!"
 
