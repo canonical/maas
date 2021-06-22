@@ -1886,7 +1886,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         layout = VMFS6StorageLayout(node)
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {"size": ["Boot disk must be atleast 10G."]}, error.message_dict
+            {"size": ["Boot disk must be at least 10G."]}, error.message_dict
         )
 
     def test_accepts_root_device_param(self):
@@ -2028,7 +2028,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         layout = VMFS7StorageLayout(node)
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {"size": ["Boot disk must be atleast 10G."]}, error.message_dict
+            {"size": ["Boot disk must be at least 10G."]}, error.message_dict
         )
 
     def test_accepts_root_device_param(self):

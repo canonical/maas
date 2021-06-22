@@ -812,7 +812,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
     def clean(self):
         cleaned_data = super().clean()
         if self.boot_disk.size < 1024 ** 3:
-            set_form_error(self, "size", "Boot disk must be atleast 10G.")
+            set_form_error(self, "size", "Boot disk must be at least 10G.")
         return cleaned_data
 
     def configure_storage(self, allow_fallback):
