@@ -38,7 +38,53 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.refresh import maas_api_helper
 
 
-class TestHeaders(MAASTestCase):
+class TestCredentials(MAASTestCase):
+    def test_update(self):
+        creds = maas_api_helper.Credentials()
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        consumer_secret = factory.make_name("consumer_secret")
+        creds.update(
+            {
+                "consumer_key": consumer_key,
+                "token_key": token_key,
+                "token_secret": token_secret,
+                "consumer_secret": consumer_secret,
+            }
+        )
+        self.assertEqual(creds.consumer_key, consumer_key)
+        self.assertEqual(creds.token_key, token_key)
+        self.assertEqual(creds.token_secret, token_secret)
+        self.assertEqual(creds.consumer_secret, consumer_secret)
+
+    def test_update_no_update_already_set(self):
+        creds = maas_api_helper.Credentials()
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        consumer_secret = factory.make_name("consumer_secret")
+        creds.update(
+            {
+                "consumer_key": consumer_key,
+                "token_key": token_key,
+                "token_secret": token_secret,
+                "consumer_secret": consumer_secret,
+            }
+        )
+        creds.update(
+            {
+                "consumer_key": factory.make_name(),
+                "token_key": factory.make_name(),
+                "token_secret": factory.make_name(),
+                "consumer_secret": factory.make_name(),
+            }
+        )
+        self.assertEqual(creds.consumer_key, consumer_key)
+        self.assertEqual(creds.token_key, token_key)
+        self.assertEqual(creds.token_secret, token_secret)
+        self.assertEqual(creds.consumer_secret, consumer_secret)
+
     def test_oauth_headers(self):
         now = time.time()
         is_about_now = MatchesAll(
@@ -50,9 +96,16 @@ class TestHeaders(MAASTestCase):
         token_key = factory.make_name("token_key")
         token_secret = factory.make_name("token_secret")
         consumer_secret = factory.make_name("consumer_secret")
-        headers = maas_api_helper.oauth_headers(
-            url, consumer_key, token_key, token_secret, consumer_secret
+        credentials = maas_api_helper.Credentials()
+        credentials.update(
+            {
+                "consumer_key": consumer_key,
+                "token_key": token_key,
+                "token_secret": token_secret,
+                "consumer_secret": consumer_secret,
+            }
         )
+        headers = credentials.oauth_headers(url)
         authorization = headers["Authorization"]
         self.assertRegex(authorization, "^OAuth .*")
         authorization = authorization.replace("OAuth ", "")
@@ -80,28 +133,9 @@ class TestHeaders(MAASTestCase):
             ),
         )
 
-    def test_authenticate_headers_appends_oauth(self):
-        url = factory.make_name("url")
-        consumer_key = factory.make_name("consumer_key")
-        token_key = factory.make_name("token_key")
-        token_secret = factory.make_name("token_secret")
-        consumer_secret = factory.make_name("consumer_secret")
-        creds = {
-            "consumer_key": consumer_key,
-            "token_key": token_key,
-            "token_secret": token_secret,
-            "consumer_secret": consumer_secret,
-        }
-        headers = {}
-        maas_api_helper.authenticate_headers(url, headers, creds)
-        self.assertIn("Authorization", headers)
-
-    def test_authenticate_headers_only_appends_with_consumer_key(self):
-        headers = {}
-        maas_api_helper.authenticate_headers(
-            factory.make_name("url"), headers, {}
-        )
-        self.assertEqual({}, headers)
+    def test_oauth_headers_empty(self):
+        creds = maas_api_helper.Credentials()
+        self.assertEqual(creds.oauth_headers("http://example.com"), {})
 
 
 class MAASMockHTTPHandler(urllib.request.HTTPHandler):
@@ -150,7 +184,7 @@ class TestGetUrl(MAASTestCase):
         self.assertEqual(
             "mock response",
             maas_api_helper.geturl(
-                "http://%s" % factory.make_hostname(), {}
+                "http://%s" % factory.make_hostname(),
             ).read(),
         )
 
@@ -161,7 +195,6 @@ class TestGetUrl(MAASTestCase):
             urllib.error.HTTPError,
             maas_api_helper.geturl,
             "http://%s-broken" % factory.make_hostname(),
-            {},
         )
         self.assertEqual(7, sleep.call_count)
         self.assertThat(warn, MockAnyCall("date field not in 400 headers"))
@@ -173,7 +206,6 @@ class TestGetUrl(MAASTestCase):
             urllib.error.HTTPError,
             maas_api_helper.geturl,
             "http://%s-broken_with_date" % factory.make_hostname(),
-            {},
         )
         self.assertEqual(7, sleep.call_count)
         clock_shew_updates = [

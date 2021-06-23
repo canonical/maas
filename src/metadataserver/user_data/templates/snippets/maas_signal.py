@@ -3,7 +3,7 @@
 import os
 import sys
 
-from maas_api_helper import MD_VERSION, read_config, signal, SignalException
+from maas_api_helper import Config, MD_VERSION, signal, SignalException
 
 VALID_STATUS = ("OK", "FAILED", "WORKING", "TESTING", "COMMISSIONING")
 POWER_TYPES = ("ipmi", "virsh", "manual", "moonshot", "wedge")
@@ -119,18 +119,21 @@ def main():
 
     args = parser.parse_args()
 
-    creds = {
-        "consumer_key": args.ckey,
-        "token_key": args.tkey,
-        "token_secret": args.tsec,
-        "consumer_secret": args.csec,
-        "metadata_url": args.url,
-    }
+    config = Config()
+    config.update(
+        {
+            "consumer_key": args.ckey,
+            "token_key": args.tkey,
+            "token_secret": args.tsec,
+            "consumer_secret": args.csec,
+            "metadata_url": args.url,
+        }
+    )
 
     if args.config:
-        read_config(args.config, creds)
+        config.update_from_url(args.config)
 
-    url = creds.get("metadata_url")
+    url = config.metadata_url
     if url is None:
         fail("URL must be provided either in --url or in config\n")
     url = "%s/%s/" % (url, args.apiver)
@@ -142,7 +145,7 @@ def main():
     try:
         signal(
             url,
-            creds,
+            config.credentials,
             args.status,
             args.error,
             args.script_name,

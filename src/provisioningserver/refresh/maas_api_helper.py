@@ -33,36 +33,84 @@ MD_VERSION = "2012-03-01"
 PIPE_MAX_SIZE = int(Path("/proc/sys/fs/pipe-max-size").read_text())
 
 
-def oauth_headers(
-    url, consumer_key, token_key, token_secret, consumer_secret, clockskew=0
-):
-    """Build OAuth headers using given credentials."""
-    timestamp = int(time.time()) + clockskew
-    client = oauth.Client(
-        consumer_key,
-        client_secret=consumer_secret,
-        resource_owner_key=token_key,
-        resource_owner_secret=token_secret,
-        signature_method=oauth.SIGNATURE_PLAINTEXT,
-        timestamp=str(timestamp),
+# This would be a dataclass, but needs to support python3.6
+class Credentials:
+
+    KEYS = frozenset(
+        ("token_key", "token_secret", "consumer_key", "consumer_secret")
     )
-    uri, signed_headers, body = client.sign(url)
-    return signed_headers
 
+    def __init__(self):
+        # empty defaults
+        for key in self.KEYS:
+            setattr(self, key, "")
 
-def authenticate_headers(url, headers, creds, clockskew=0):
-    """Update and sign a dict of request headers."""
-    if creds.get("consumer_key", None) is not None:
-        headers.update(
-            oauth_headers(
-                url,
-                consumer_key=creds["consumer_key"],
-                token_key=creds["token_key"],
-                token_secret=creds["token_secret"],
-                consumer_secret=creds["consumer_secret"],
-                clockskew=clockskew,
-            )
+    def update(self, config):
+        """Update credentials from a config dict.
+
+        Only empty keys are updated.
+        """
+        for key in self.KEYS:
+            if key in config and not getattr(self, key, None):
+                setattr(self, key, config[key])
+
+    def oauth_headers(self, url, clockskew=0):
+        """Return OAuth headers for credentials."""
+        if not self.consumer_key:
+            return {}
+
+        timestamp = int(time.time()) + clockskew
+        client = oauth.Client(
+            self.consumer_key,
+            client_secret=self.consumer_secret,
+            resource_owner_key=self.token_key,
+            resource_owner_secret=self.token_secret,
+            signature_method=oauth.SIGNATURE_PLAINTEXT,
+            timestamp=str(timestamp),
         )
+        uri, signed_headers, body = client.sign(url)
+        return signed_headers
+
+
+class Config:
+    def __init__(self):
+        self.credentials = Credentials()
+        self.metadata_url = None
+        self.config_path = None
+
+    def update(self, config):
+        """Update values from a config dict.
+
+        Updates only values that are None with their corresponding values in
+        the config.
+        """
+        # Support reading cloud-init config for MAAS datasource.
+        if "datasource" in config:
+            config = config["datasource"]["MAAS"]
+
+        for key in ("metadata_url", "config_path"):
+            if key in config and getattr(self, key, None) is None:
+                setattr(self, key, config[key])
+
+        if self.config_path is not None:
+            self.config_path = Path(self.config_path)
+
+        self.credentials.update(config)
+
+    def update_from_url(self, url):
+        """Read cloud-init config from given `url`.
+
+        Updates only values that are None with their corresponding values in
+        the config.
+        """
+        if url.startswith("http://") or url.startswith("https://"):
+            data = urllib.request.urlopen(urllib.request.Request(url=url))
+        else:
+            if url.startswith("file://"):
+                url = url[7:]
+            data = Path(url).read_text()
+
+        self.update(yaml.safe_load(data))
 
 
 def warn(msg):
@@ -77,15 +125,10 @@ def get_base_url(url):
     )
 
 
-def geturl(url, creds=None, headers=None, data=None, post_data=None):
-    # Takes a dict of creds to be passed through to oauth_headers,
-    #   so it should have consumer_key, token_key, ...
-    if headers is None:
-        headers = {}
-    else:
-        headers = dict(headers)
-    if creds is None:
-        creds = {}
+def geturl(url, credentials=None, headers=None, data=None, post_data=None):
+    headers = dict(headers) if headers else {}
+    if credentials is None:
+        credentials = Credentials()
     if post_data:
         post_data = urllib.parse.urlencode(post_data)
         post_data = post_data.encode("ascii")
@@ -94,7 +137,7 @@ def geturl(url, creds=None, headers=None, data=None, post_data=None):
 
     error = Exception("Unexpected Error")
     for naptime in (1, 1, 2, 4, 8, 16, 32):
-        authenticate_headers(url, headers, creds, clockskew)
+        headers.update(credentials.oauth_headers(url, clockskew))
         try:
             req = urllib.request.Request(url=url, data=data, headers=headers)
             if post_data:
@@ -196,40 +239,13 @@ def encode_multipart_data(data, files):
     return body, headers
 
 
-def read_config(url, creds):
-    """Read cloud-init config from given `url` into `creds` dict.
-
-    Updates any keys in `creds` that are None with their corresponding
-    values in the config.
-
-    Important keys include `metadata_url`, and the actual OAuth
-    credentials.
-    """
-    if url.startswith("http://") or url.startswith("https://"):
-        cfg_str = urllib.request.urlopen(urllib.request.Request(url=url))
-    else:
-        if url.startswith("file://"):
-            url = url[7:]
-        cfg_str = Path(url).read_text()
-
-    cfg = yaml.safe_load(cfg_str)
-
-    # Support reading cloud-init config for MAAS datasource.
-    if "datasource" in cfg:
-        cfg = cfg["datasource"]["MAAS"]
-
-    for key in creds.keys():
-        if key in cfg and creds[key] is None:
-            creds[key] = cfg[key]
-
-
 class SignalException(Exception):
     pass
 
 
 def signal(
     url,
-    creds,
+    credentials,
     status,
     error=None,
     script_name=None,
@@ -299,7 +315,7 @@ def signal(
     )
 
     try:
-        ret = geturl(url, creds=creds, headers=headers, data=data)
+        ret = geturl(url, credentials=credentials, headers=headers, data=data)
         if ret.status != 200:
             raise SignalException(
                 "Unexpected status(%d) sending region commissioning data: %s"
