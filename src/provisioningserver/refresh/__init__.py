@@ -13,6 +13,7 @@ from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.maas_api_helper import (
     capture_script_output,
+    Credentials,
     MD_VERSION,
     signal,
     SignalException,
@@ -75,12 +76,15 @@ def refresh(
         maas_url = "http://127.0.0.1:5240/MAAS"
     url = "%s/metadata/%s/" % (maas_url, MD_VERSION)
 
-    creds = {
-        "consumer_key": consumer_key,
-        "token_key": token_key,
-        "token_secret": token_secret,
-        "consumer_secret": "",
-    }
+    creds = Credentials()
+    creds.update(
+        {
+            "consumer_key": consumer_key,
+            "token_key": token_key,
+            "token_secret": token_secret,
+            "consumer_secret": "",
+        }
+    )
 
     scripts = {
         name: config

@@ -154,7 +154,18 @@ class FakeRefresher:
     def fake_signal(
         self, url, creds, status, error=None, files=None, exit_status=None
     ):
-        self.testcase.assertEqual(self.credentials, creds)
+        self.testcase.assertEqual(
+            self.credentials["token_key"], creds.token_key
+        )
+        self.testcase.assertEqual(
+            self.credentials["token_secret"], creds.token_secret
+        )
+        self.testcase.assertEqual(
+            self.credentials["consumer_key"], creds.consumer_key
+        )
+        self.testcase.assertEqual(
+            self.credentials["consumer_secret"], creds.consumer_secret
+        )
         script_runs = self.script_runs[url]
         if status == "WORKING":
             if error.startswith("Starting"):

@@ -18,6 +18,7 @@ from maastesting.factory import factory
 from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 from provisioningserver import refresh
+from provisioningserver.refresh import maas_api_helper
 from provisioningserver.refresh.maas_api_helper import (
     MD_VERSION,
     SignalException,
@@ -47,6 +48,11 @@ class TestGetArchitecture(MAASTestCase):
         mock_get_architectures.assert_not_called()
 
 
+class FakeResponse:
+
+    status = 200
+
+
 class TestRefresh(MAASTestCase):
     def setUp(self):
         super().setUp()
@@ -56,6 +62,14 @@ class TestRefresh(MAASTestCase):
         # by default, fake running in snap so sudo is not used
         self.mock_running_in_snap = self.patch(refresh, "running_in_snap")
         self.mock_running_in_snap.return_value = True
+        self.urlopen_calls = []
+        self.patch(
+            maas_api_helper.urllib.request, "urlopen"
+        ).side_effect = self._fake_urlopen
+
+    def _fake_urlopen(self, request, post_data=None):
+        self.urlopen_calls.append((request, post_data))
+        return FakeResponse()
 
     def _cleanup(self, path):
         if os.path.exists(path):
@@ -108,7 +122,6 @@ class TestRefresh(MAASTestCase):
         )
 
     def test_refresh_accepts_defined_url(self):
-        signal = self.patch(refresh, "signal")
         script_name = factory.make_name("script_name")
         info_scripts = self.create_scripts_success(script_name)
 
@@ -116,55 +129,34 @@ class TestRefresh(MAASTestCase):
         consumer_key = factory.make_name("consumer_key")
         token_key = factory.make_name("token_key")
         token_secret = factory.make_name("token_secret")
-        url = factory.make_url()
+        base_url = factory.make_simple_http_url()
 
         with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
             refresh.refresh(
-                system_id, consumer_key, token_key, token_secret, url
+                system_id, consumer_key, token_key, token_secret, base_url
             )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
-                "WORKING",
-                "Starting %s [1/1]" % script_name,
-            ),
+        requests = [call[0] for call in self.urlopen_calls]
+
+        for request in requests:
+            self.assertEqual(
+                f"{base_url}/metadata/{MD_VERSION}/", request.full_url
+            )
+            auth_header = request.get_header("Authorization")
+            self.assertTrue(
+                auth_header.startswith("OAuth oauth_nonce="), auth_header
+            )
+            self.assertIn(f'oauth_consumer_key="{consumer_key}"', auth_header)
+            self.assertIn(f'oauth_token="{token_key}"', auth_header)
+
+        self.assertIn(
+            f"Starting {script_name}", requests[0].data.decode("ascii")
         )
-
-    def test_refresh_signals_starting(self):
-        signal = self.patch(refresh, "signal")
-        script_name = factory.make_name("script_name")
-        info_scripts = self.create_scripts_success(script_name)
-
-        system_id = factory.make_name("system_id")
-        consumer_key = factory.make_name("consumer_key")
-        token_key = factory.make_name("token_key")
-        token_secret = factory.make_name("token_secret")
-        url = factory.make_url()
-
-        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
-            refresh.refresh(
-                system_id, consumer_key, token_key, token_secret, url
-            )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
-                "WORKING",
-                "Starting %s [1/1]" % script_name,
-            ),
+        self.assertIn(
+            f'filename="{script_name}"', requests[1].data.decode("ascii")
+        )
+        self.assertIn(
+            f"Finished refreshing {system_id}",
+            requests[2].data.decode("ascii"),
         )
 
     def test_refresh_signals_results(self):
@@ -194,13 +186,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "WORKING",
                 files={
                     script_name: b"test script\n",
@@ -261,13 +248,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "WORKING",
                 files={
                     script_name: b"[Errno 8] Exec format error",
@@ -298,13 +280,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "WORKING",
                 files={
                     script_name: b"Unable to execute script",
@@ -335,13 +312,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "WORKING",
                 files={
                     script_name: b"[Errno 0] Exec format error",
@@ -383,13 +355,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "TIMEDOUT",
                 files={
                     script_name: b"",
@@ -397,36 +364,6 @@ class TestRefresh(MAASTestCase):
                     "%s.err" % script_name: b"",
                 },
                 error="Timeout(60) expired on %s [1/1]" % script_name,
-            ),
-        )
-
-    def test_refresh_signals_finished(self):
-        signal = self.patch(refresh, "signal")
-        script_name = factory.make_name("script_name")
-        info_scripts = self.create_scripts_success(script_name)
-
-        system_id = factory.make_name("system_id")
-        consumer_key = factory.make_name("consumer_key")
-        token_key = factory.make_name("token_key")
-        token_secret = factory.make_name("token_secret")
-        url = factory.make_url()
-
-        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
-            refresh.refresh(
-                system_id, consumer_key, token_key, token_secret, url
-            )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
-                "OK",
-                "Finished refreshing %s" % system_id,
             ),
         )
 
@@ -447,13 +384,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "FAILED",
                 "Failed refreshing %s" % system_id,
             ),
@@ -477,13 +409,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "WORKING",
                 "Starting %s [1/1]" % script_name,
             ),
@@ -509,13 +436,8 @@ class TestRefresh(MAASTestCase):
         self.assertThat(
             signal,
             MockAnyCall(
-                "%s/metadata/%s/" % (url, MD_VERSION),
-                {
-                    "consumer_secret": "",
-                    "consumer_key": consumer_key,
-                    "token_key": token_key,
-                    "token_secret": token_secret,
-                },
+                ANY,
+                ANY,
                 "WORKING",
                 "Starting %s [1/1]" % script_name,
             ),
