@@ -18,19 +18,26 @@ from metadataserver.enum import HARDWARE_TYPE_CHOICES
 class TestNodeDevicesAPI(APITestCase.ForUser):
     """Tests for /api/2.0/nodes/<system_id>/devices/."""
 
-    @staticmethod
-    def get_script_results_uri(node):
+    def setUp(self):
+        super().setUp()
+        self.node = factory.make_Node()
+        # Remove existing devices to get a clean setup
+        self.node.node_devices.all().delete()
+
+    def get_script_results_uri(self, node=None):
         """Return the script's URI on the API."""
+        if node is None:
+            node = self.node
         return reverse("node_devices_handler", args=[node.system_id])
 
     def test_hander_path(self):
-        node = factory.make_Node()
         self.assertEqual(
-            "/MAAS/api/2.0/nodes/%s/devices/" % node.system_id,
-            self.get_script_results_uri(node),
+            "/MAAS/api/2.0/nodes/%s/devices/" % self.node.system_id,
+            self.get_script_results_uri(self.node),
         )
 
     def test_GET(self):
+        # For this test we want the random devices that the factory sets up
         node = factory.make_Node()
 
         response = self.client.get(self.get_script_results_uri(node))
@@ -43,29 +50,26 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         )
 
     def test_GET_filter_bus(self):
-        node = factory.make_Node()
         bus = factory.pick_choice(NODE_DEVICE_BUS_CHOICES)
 
-        response = self.client.get(
-            self.get_script_results_uri(node), {"bus": bus}
-        )
+        response = self.client.get(self.get_script_results_uri(), {"bus": bus})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
         self.assertEqual(
             [
                 node_device.id
-                for node_device in node.node_devices.filter(bus=bus)
+                for node_device in self.node.node_devices.filter(bus=bus)
             ],
             [node_device["id"] for node_device in parsed_results],
         )
 
     def test_GET_filter_hardware_type(self):
-        node = factory.make_Node()
         hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
 
         response = self.client.get(
-            self.get_script_results_uri(node), {"hardware_type": hardware_type}
+            self.get_script_results_uri(),
+            {"hardware_type": hardware_type},
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
@@ -73,7 +77,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertEqual(
             [
                 node_device.id
-                for node_device in node.node_devices.filter(
+                for node_device in self.node.node_devices.filter(
                     hardware_type=hardware_type
                 )
             ],
@@ -81,15 +85,14 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         )
 
     def test_GET_filter_vendor_id(self):
-        node = factory.make_Node()
         vendor_id = factory.make_hex_string(4)
         node_devices = [
-            factory.make_NodeDevice(node=node, vendor_id=vendor_id)
+            factory.make_NodeDevice(node=self.node, vendor_id=vendor_id)
             for _ in range(3)
         ]
 
         response = self.client.get(
-            self.get_script_results_uri(node), {"vendor_id": vendor_id}
+            self.get_script_results_uri(), {"vendor_id": vendor_id}
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
@@ -100,15 +103,14 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         )
 
     def test_GET_filter_product_id(self):
-        node = factory.make_Node()
         product_id = factory.make_hex_string(4)
         node_devices = [
-            factory.make_NodeDevice(node=node, product_id=product_id)
+            factory.make_NodeDevice(node=self.node, product_id=product_id)
             for _ in range(3)
         ]
 
         response = self.client.get(
-            self.get_script_results_uri(node), {"product_id": product_id}
+            self.get_script_results_uri(), {"product_id": product_id}
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
@@ -119,15 +121,14 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         )
 
     def test_GET_filter_vendor_name(self):
-        node = factory.make_Node()
         vendor_name = factory.make_name("vendor_name")
         node_devices = [
-            factory.make_NodeDevice(node=node, vendor_name=vendor_name)
+            factory.make_NodeDevice(node=self.node, vendor_name=vendor_name)
             for _ in range(3)
         ]
 
         response = self.client.get(
-            self.get_script_results_uri(node), {"vendor_name": vendor_name}
+            self.get_script_results_uri(), {"vendor_name": vendor_name}
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
@@ -138,15 +139,14 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         )
 
     def test_GET_filter_product_name(self):
-        node = factory.make_Node()
         product_name = factory.make_name("product_name")
         node_devices = [
-            factory.make_NodeDevice(node=node, product_name=product_name)
+            factory.make_NodeDevice(node=self.node, product_name=product_name)
             for _ in range(3)
         ]
 
         response = self.client.get(
-            self.get_script_results_uri(node), {"product_name": product_name}
+            self.get_script_results_uri(), {"product_name": product_name}
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
@@ -157,17 +157,16 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         )
 
     def test_GET_filter_commissioning_driver(self):
-        node = factory.make_Node()
         commissioning_driver = factory.make_name("commissioning_driver")
         node_devices = [
             factory.make_NodeDevice(
-                node=node, commissioning_driver=commissioning_driver
+                node=self.node, commissioning_driver=commissioning_driver
             )
             for _ in range(3)
         ]
 
         response = self.client.get(
-            self.get_script_results_uri(node),
+            self.get_script_results_uri(),
             {"commissioning_driver": commissioning_driver},
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
