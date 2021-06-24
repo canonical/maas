@@ -632,7 +632,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         controller = self.create_empty_controller()
         network = factory.make_ip4_or_6_network()
         ip1 = factory.pick_ip_in_network(network)
-        ip2 = factory.pick_ip_in_network(network)
+        ip2 = factory.pick_ip_in_network(network, but_not=[ip1])
         data = FakeCommissioningData()
         eth0 = data.create_physical_network(
             "eth0",
@@ -661,7 +661,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         machine = factory.make_Machine(status=NODE_STATUS.COMMISSIONING)
         network = factory.make_ip4_or_6_network()
         ip1 = factory.pick_ip_in_network(network)
-        ip2 = factory.pick_ip_in_network(network)
+        ip2 = factory.pick_ip_in_network(network, but_not=[ip1])
         data = FakeCommissioningData()
         eth0 = data.create_physical_network(
             "eth0",

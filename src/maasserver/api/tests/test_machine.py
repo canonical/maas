@@ -14,7 +14,7 @@ from django.conf import settings
 from django.db import transaction
 from django.urls import reverse
 from django.utils.http import urlencode
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 from testtools.matchers import (
     ContainsDict,
     MatchesListwise,
@@ -774,6 +774,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(node_module.Node, "_start_deployment")
         self.patch(node_module.Node, "_claim_auto_ips")
         self.patch(machines_module, "get_curtin_merged_config")
+        self.patch(
+            node_module, "get_maas_facing_server_addresses"
+        ).return_value = [IPAddress("127.0.0.1"), IPAddress("::1")]
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user,
             interface=True,
@@ -826,6 +829,9 @@ class TestMachineAPI(APITestCase.ForUser):
         self.patch(node_module.Node, "_start_deployment")
         self.patch(node_module.Node, "_claim_auto_ips")
         self.patch(machines_module, "get_curtin_merged_config")
+        self.patch(
+            node_module, "get_maas_facing_server_addresses"
+        ).return_value = [IPAddress("127.0.0.1"), IPAddress("::1")]
         machine = factory.make_Node_with_Interface_on_Subnet(
             owner=self.user,
             interface=True,
