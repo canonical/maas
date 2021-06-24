@@ -1559,6 +1559,8 @@ class TestMAASScripts(MAASServerTestCase):
                     end_time,
                     script_result.result,
                 )
+            md_item["default"] = script_result.script.default
+            md_item["tags"] = script_result.script.tags
 
             if md_item["apply_configured_networking"]:
                 contains_network_config = True
@@ -2161,6 +2163,8 @@ class TestMAASScripts(MAASServerTestCase):
                             ),
                             "has_started": False,
                             "has_finished": False,
+                            "default": False,
+                            "tags": script_result.script.tags,
                         }
                     ]
                 }
@@ -2441,6 +2445,34 @@ class TestMAASScriptsProperties(MAASServerTestCase):
         properties = get_script_result_properties(result)
         self.assertTrue(properties["has_started"])
         self.assertTrue(properties["has_finished"])
+
+    def test_script_default(self):
+        builtin_scriptresult = factory.make_ScriptResult(
+            script=random.choice(Script.objects.filter(default=True).all()),
+        )
+        user_scriptresult = factory.make_ScriptResult()
+        builtin_properties = get_script_result_properties(builtin_scriptresult)
+        user_properties = get_script_result_properties(user_scriptresult)
+        self.assertTrue(builtin_properties["default"])
+        self.assertFalse(user_properties["default"])
+
+    def test_script_tags(self):
+        tags_scriptresult = factory.make_ScriptResult(
+            script=factory.make_Script(
+                tags=["foo", "bar"], hardware_type=HARDWARE_TYPE.NODE
+            )
+        )
+        notags_scriptresult = factory.make_ScriptResult(
+            script=factory.make_Script(
+                tags=[], hardware_type=HARDWARE_TYPE.STORAGE
+            )
+        )
+        tags_properties = get_script_result_properties(tags_scriptresult)
+        notags_properties = get_script_result_properties(notags_scriptresult)
+        self.assertEqual(["foo", "bar", "node"], tags_properties["tags"])
+        # There is always a tag, since the hardware type gets added as
+        # an implicit tag.
+        self.assertEqual(["storage"], notags_properties["tags"])
 
 
 class TestCommissioningAPI(MAASServerTestCase):

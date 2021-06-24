@@ -107,6 +107,8 @@ def refresh(
         signal_wrapper(url, creds, "OK", f"Finished refreshing {system_id}")
 
 
+# XXX: This method should download the scripts from the region, instead
+# of relying on the scripts being available locally.
 def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
     in_snap = running_in_snap()
 

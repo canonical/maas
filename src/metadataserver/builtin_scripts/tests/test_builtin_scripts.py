@@ -6,7 +6,7 @@ import copy
 from datetime import timedelta
 import random
 
-from testtools.matchers import ContainsAll, Equals, Not
+from testtools.matchers import ContainsAll
 
 from maasserver.models import ControllerInfo, VersionedTextFile
 from maasserver.testing.factory import factory
@@ -18,6 +18,7 @@ from metadataserver.builtin_scripts import (
 )
 from metadataserver.enum import SCRIPT_TYPE_CHOICES
 from metadataserver.models import Script
+from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
 class TestBuiltinScripts(MAASServerTestCase):
@@ -39,7 +40,7 @@ class TestBuiltinScripts(MAASServerTestCase):
             self.assertTrue(script_in_db.title, script.name)
             self.assertTrue(script_in_db.description, script.name)
             self.assertTrue(script_in_db.script.data, script.name)
-            self.assertThat(script_in_db.tags, Not(Equals([])), script.name)
+            self.assertNotEqual([], script_in_db.tags, script.name)
 
             # These values should always be set by the script loader.
             self.assertEqual(
@@ -48,6 +49,13 @@ class TestBuiltinScripts(MAASServerTestCase):
                 script.name,
             )
             self.assertTrue(script_in_db.default, script.name)
+            if (
+                script.name in NODE_INFO_SCRIPTS
+                and NODE_INFO_SCRIPTS[script.name]["run_on_controller"]
+            ):
+                self.assertIn("deploy-info", script_in_db.tags)
+            else:
+                self.assertNotIn("deploy-info", script_in_db.tags)
 
     def test_update_script(self):
         load_builtin_scripts()
@@ -99,6 +107,27 @@ class TestBuiltinScripts(MAASServerTestCase):
         self.assertEqual(old_script, script.script.previous_version)
         self.assertEqual("Updated by maas-3.0.1", script.script.comment)
         self.assertTrue(script.default)
+
+    def test_update_removes_deploy_info_tag(self):
+        load_builtin_scripts()
+        script = (
+            Script.objects.filter(default=True)
+            .exclude(tags__contains=["deploy-info"])
+            .first()
+        )
+
+        script.add_tag("deploy-info")
+        # Put fake old data in to simulate updating a script.
+        old_script = VersionedTextFile.objects.create(
+            data=factory.make_string()
+        )
+        script.script = old_script
+        script.save()
+
+        load_builtin_scripts()
+        script = reload_object(script)
+
+        self.assertNotIn("deploy-info", script.tags)
 
     def test_update_doesnt_revert_script(self):
         load_builtin_scripts()

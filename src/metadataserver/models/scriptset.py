@@ -42,7 +42,6 @@ from metadataserver.enum import (
 )
 from metadataserver.models.script import Script
 from provisioningserver.events import EVENT_TYPES
-from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 
 
 def _get_hw_pairs(script_set):
@@ -127,16 +126,18 @@ class ScriptSetManager(Manager):
         ScriptResults for. If None all user scripts will be assumed. Scripts
         may also have paramaters passed to them.
         """
+        builtin_scripts = Script.objects.filter(default=True)
+        builtin_scripts_names = builtin_scripts.values_list("name", flat=True)
         if node.is_controller:
             # Controllers can only run the builtin scripts for them.
-            scripts = [
-                script["name"]
-                for script in NODE_INFO_SCRIPTS.values()
-                if script["run_on_controller"]
-            ]
+            scripts = list(
+                builtin_scripts.filter(
+                    tags__contains=["deploy-info"]
+                ).values_list("name", flat=True)
+            )
         elif enlisting:
             if Config.objects.get_config("enlist_commissioning"):
-                scripts = list(NODE_INFO_SCRIPTS.keys()) + ["enlisting"]
+                scripts = list(builtin_scripts_names) + ["enlisting"]
             else:
                 scripts = ["bmc-config"]
         elif not scripts:
@@ -144,9 +145,9 @@ class ScriptSetManager(Manager):
             pass
         elif "none" in scripts:
             # Don't add any scripts besides the ones that come with MAAS.
-            scripts = list(NODE_INFO_SCRIPTS.keys())
+            scripts = list(builtin_scripts_names)
         else:
-            scripts = list(NODE_INFO_SCRIPTS.keys()) + scripts
+            scripts = list(builtin_scripts_names) + scripts
 
         script_set = self.create(
             node=node,

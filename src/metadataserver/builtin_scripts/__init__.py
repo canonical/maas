@@ -25,6 +25,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
     LXD_OUTPUT_NAME,
+    NODE_INFO_SCRIPTS,
     SERIAL_PORTS_OUTPUT_NAME,
     SUPPORT_INFO_OUTPUT_NAME,
 )
@@ -214,15 +215,10 @@ def load_builtin_scripts():
                     "comment": f"Created by maas-{get_maas_version()}",
                 }
             )
-            # Form validation should never fail as these are the scripts which
-            # ship with MAAS. If they ever do this will be cause by unit tests.
-            if not form.is_valid():
-                raise Exception("%s: %s" % (script.name, form.errors))
-            script_in_db = form.save(commit=False)
-            script_in_db.default = True
-            script_in_db.save()
         else:
-            if script_in_db.script.data != script_content:
+            if script_in_db.script.data == script_content:
+                continue
+            else:
                 # Don't add back old versions of a script. This prevents two
                 # connected regions with different versions of a script from
                 # fighting with eachother.
@@ -243,11 +239,17 @@ def load_builtin_scripts():
                     },
                     edit_default=True,
                 )
-                # Form validation should never fail as these are the scripts
-                # which ship with MAAS. If they ever do this will be cause by
-                # unit tests.
-                if not form.is_valid():
-                    raise Exception("%s: %s" % (script.name, form.errors))
-                script_in_db = form.save(commit=False)
-                script_in_db.default = True
-                script_in_db.save()
+
+        # Form validation should never fail as these are the scripts
+        # which ship with MAAS. If they ever do this will be cause by
+        # unit tests.
+        assert (
+            form.is_valid()
+        ), f"Builtin script {script.name} caused these errors: {form.errors}"
+        script_in_db = form.save(commit=False)
+        if NODE_INFO_SCRIPTS.get(script.name, {}).get("run_on_controller"):
+            script_in_db.add_tag("deploy-info")
+        else:
+            script_in_db.remove_tag("deploy-info")
+        script_in_db.default = True
+        script_in_db.save()

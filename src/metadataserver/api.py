@@ -1266,6 +1266,8 @@ def get_script_result_properties(script_result):
         "has_finished": (
             script_result.status not in SCRIPT_STATUS_RUNNING_OR_PENDING
         ),
+        "default": script_result.script.default,
+        "tags": script_result.script.tags,
     }
 
 
