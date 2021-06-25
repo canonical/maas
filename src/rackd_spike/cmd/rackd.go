@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -34,11 +35,18 @@ const (
 
 var (
 	options opts
+	Version string
+)
 
+var (
 	rootCMD = &cobra.Command{
 		Use:   "rackd",
 		Short: "rack controller daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.Version {
+				printVersion()
+				return nil
+			}
 			log.Info().Msg("rackd started successfully")
 			sigChan := make(chan os.Signal)
 			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
@@ -61,6 +69,10 @@ func init() {
 	rootCMD.PersistentFlags().StringVar(&options.Logger, "logger", "json", "type of logger to use")
 	rootCMD.PersistentFlags().StringVar(&options.LogFile, "log-file", "", "path to file to log to, stdout if not supplied")
 	rootCMD.PersistentFlags().StringVar(&options.PIDFile, "pid-file", "", "path to pid file when daemonized")
+}
+
+func printVersion() {
+	fmt.Printf("version: %s\n", Version)
 }
 
 func main() {
