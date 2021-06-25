@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
+	"rackd/cmd/subcommands"
 )
 
 type opts struct {
@@ -39,5 +41,6 @@ var rootCMD = &cobra.Command{
 
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	rootCMD.AddCommand(subcommands.RegisterCMD)
 	rootCMD.Execute()
 }
