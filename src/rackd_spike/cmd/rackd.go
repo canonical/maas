@@ -17,6 +17,7 @@ type opts struct {
 	Version  bool
 	NoDaemon bool
 	NoSave   bool
+	Syslog   bool
 	GID      uint32
 	UID      uint32
 	Chroot   string
@@ -24,19 +25,42 @@ type opts struct {
 	LogFile  string
 	Logger   string
 	PIDFile  string
-	Syslog   string
 }
 
-var rootCMD = &cobra.Command{
-	Use:   "rackd",
-	Short: "rack controller daemon",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Info().Msg("rackd started successfully")
-		sigChan := make(chan os.Signal)
-		signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-		<-sigChan
-		return nil
-	},
+const (
+	LoggerJSON = iota
+	LoggerConsole
+)
+
+var (
+	options opts
+
+	rootCMD = &cobra.Command{
+		Use:   "rackd",
+		Short: "rack controller daemon",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			log.Info().Msg("rackd started successfully")
+			sigChan := make(chan os.Signal)
+			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
+			<-sigChan
+			return nil
+		},
+	}
+)
+
+func init() {
+	rootCMD.PersistentFlags().BoolVar(&options.Euid, "euid", false, "set only effective user-id rather than real user-id.")
+	rootCMD.PersistentFlags().BoolVarP(&options.Version, "version", "v", false, "print version")
+	rootCMD.PersistentFlags().BoolVar(&options.NoDaemon, "nodaemon", true, "don't daemonize, don't use default umask of 0077")
+	rootCMD.PersistentFlags().BoolVar(&options.NoSave, "no_save", false, "do not save state on shutdow")
+	rootCMD.PersistentFlags().BoolVar(&options.Syslog, "syslog", false, "log to syslog instead of file")
+	rootCMD.PersistentFlags().Uint32Var(&options.GID, "gid", 0, "the gid to run as.  If not specified, the default gid associated with the specified --uid is used.")
+	rootCMD.PersistentFlags().Uint32Var(&options.UID, "uid", 0, "the uid to run as")
+	rootCMD.PersistentFlags().StringVar(&options.Chroot, "chroot", "", "chroot to a supplied directory before running")
+	rootCMD.PersistentFlags().StringVar(&options.RunDir, "rundir", "", "change to a supplied directory before running")
+	rootCMD.PersistentFlags().StringVar(&options.Logger, "logger", "json", "type of logger to use")
+	rootCMD.PersistentFlags().StringVar(&options.LogFile, "log-file", "", "path to file to log to, stdout if not supplied")
+	rootCMD.PersistentFlags().StringVar(&options.PIDFile, "pid-file", "", "path to pid file when daemonized")
 }
 
 func main() {
