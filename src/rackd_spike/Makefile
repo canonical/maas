@@ -1,7 +1,4 @@
-all: lint test build
-
-lint:
-	go lint ./...
+all: test build
 
 build: rackd
 
