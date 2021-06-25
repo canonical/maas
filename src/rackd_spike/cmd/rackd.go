@@ -44,5 +44,6 @@ func main() {
 	rootCMD.AddCommand(subcommands.RegisterCMD)
 	rootCMD.AddCommand(subcommands.ConfigCMD)
 	rootCMD.AddCommand(subcommands.ObserveCMD)
+	rootCMD.AddCommand(subcommands.SendBeaconCMD)
 	rootCMD.Execute()
 }
