@@ -46,5 +46,7 @@ func main() {
 	rootCMD.AddCommand(subcommands.ObserveCMD)
 	rootCMD.AddCommand(subcommands.SendBeaconCMD)
 	rootCMD.AddCommand(subcommands.ScanNetworkCMD)
+	rootCMD.AddCommand(subcommands.SetupDNSCMD)
+	rootCMD.AddCommand(subcommands.SupportDumpCMD)
 	rootCMD.Execute()
 }
