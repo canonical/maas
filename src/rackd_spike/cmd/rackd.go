@@ -1,15 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"rackd/cmd/logger"
 	"rackd/cmd/subcommands"
 )
 
@@ -24,14 +25,10 @@ type opts struct {
 	Chroot   string
 	RunDir   string
 	LogFile  string
+	LogLevel string
 	Logger   string
 	PIDFile  string
 }
-
-const (
-	LoggerJSON = iota
-	LoggerConsole
-)
 
 var (
 	options opts
@@ -43,14 +40,24 @@ var (
 		Use:   "rackd",
 		Short: "rack controller daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := context.WithCancel(context.Background())
 			if options.Version {
 				printVersion()
 				return nil
+			}
+			var (
+				err error
+				log zerolog.Logger
+			)
+			ctx, log, err = logger.New(ctx, options.Syslog, options.LogLevel, options.LogFile)
+			if err != nil {
+				return err
 			}
 			log.Info().Msg("rackd started successfully")
 			sigChan := make(chan os.Signal)
 			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 			<-sigChan
+			cancel()
 			return nil
 		},
 	}
@@ -68,6 +75,7 @@ func init() {
 	rootCMD.PersistentFlags().StringVar(&options.RunDir, "rundir", "", "change to a supplied directory before running")
 	rootCMD.PersistentFlags().StringVar(&options.Logger, "logger", "json", "type of logger to use")
 	rootCMD.PersistentFlags().StringVar(&options.LogFile, "log-file", "", "path to file to log to, stdout if not supplied")
+	rootCMD.PersistentFlags().StringVar(&options.LogLevel, "log-level", "info", "log level (info|debug|warn|error)")
 	rootCMD.PersistentFlags().StringVar(&options.PIDFile, "pid-file", "", "path to pid file when daemonized")
 }
 
@@ -76,7 +84,6 @@ func printVersion() {
 }
 
 func main() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	rootCMD.AddCommand(subcommands.RegisterCMD)
 	rootCMD.AddCommand(subcommands.ConfigCMD)
 	rootCMD.AddCommand(subcommands.ObserveCMD)
