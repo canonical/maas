@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a partition in a partition table."""
@@ -206,7 +206,10 @@ class Partition(CleanSave, TimestampedModel):
     def get_partition_number(self):
         """Return the partition number in the table."""
         # Avoid circular imports.
-        from maasserver.storage_layouts import VMFS6StorageLayout
+        from maasserver.storage_layouts import (
+            VMFS6StorageLayout,
+            VMFS7StorageLayout,
+        )
 
         # Sort manually instead of with `order_by`, this will prevent django
         # from making a query if the partitions are already cached.
@@ -223,16 +226,24 @@ class Partition(CleanSave, TimestampedModel):
             boot_disk = node.get_boot_disk()
             bios_boot_method = node.get_bios_boot_method()
             block_device = self.partition_table.block_device
-            vmfs_layout = VMFS6StorageLayout(self.get_node())
-            vmfs_bd = vmfs_layout.is_layout()
-            if vmfs_bd is not None:
-                # VMware ESXi is a DD image but MAAS allows partitions to
-                # be added to the end of the disk as well as resize the
-                # datastore partition. The EFI partition is already in the
-                # image so there is no reason to account for it.
-                if vmfs_bd.id == block_device.id and idx >= 3:
-                    # VMware ESXi skips the 4th partition.
+            vmfs6_layout = VMFS6StorageLayout(self.get_node())
+            vmfs6_bd = vmfs6_layout.is_layout()
+            vmfs7_layout = VMFS7StorageLayout(self.get_node())
+            vmfs7_bd = vmfs7_layout.is_layout()
+            # VMware ESXi is a DD image but MAAS allows partitions to
+            # be added to the end of the disk as well as resize the
+            # datastore partition. The EFI partition is already in the
+            # image so there is no reason to account for it.
+            if vmfs6_bd is not None:
+                if vmfs6_bd.id == block_device.id and idx >= 3:
+                    # VMware ESXi 6.7 skips the 4th partition.
                     return idx + 2
+                else:
+                    return idx + 1
+            elif vmfs7_bd is not None:
+                if vmfs7_bd.id == block_device.id and idx >= 1:
+                    # VMware ESXi 7.0 skips the partitions 2-4.
+                    return idx + 4
                 else:
                     return idx + 1
             elif arch == "ppc64el" and block_device.id == boot_disk.id:
@@ -341,7 +352,7 @@ class Partition(CleanSave, TimestampedModel):
                         }
                     )
 
-    def is_vmfs_partition(self):
+    def is_vmfs6_partition(self):
         # Avoid circular imports.
         from maasserver.storage_layouts import VMFS6StorageLayout
 
@@ -358,6 +369,27 @@ class Partition(CleanSave, TimestampedModel):
             # The + 2 is to account for partition 4 being skipped.
             return False
         return True
+
+    def is_vmfs7_partition(self):
+        # Avoid circular imports.
+        from maasserver.storage_layouts import VMFS7StorageLayout
+
+        vmfs_layout = VMFS7StorageLayout(self.get_node())
+        vmfs_bd = vmfs_layout.is_layout()
+        if vmfs_bd is None:
+            return False
+        if vmfs_bd.id != self.partition_table.block_device_id:
+            return False
+        if self.get_partition_number() < len(vmfs_layout.base_partitions) + 3:
+            # A user may apply the VMFS7 layout and leave space at the end of
+            # the disk for additional VMFS datastores. Those partitions may be
+            # deleted, the base partitions may not as they are part of the DD.
+            # The + 3 is to account for partition 2-4 being skipped.
+            return True
+        return False
+
+    def is_vmfs_partition(self):
+        return self.is_vmfs6_partition() or self.is_vmfs7_partition()
 
     def delete(self):
         """Delete the partition.
