@@ -54,7 +54,8 @@ var (
 			if err != nil {
 				return err
 			}
-			metricsSrvr, err := metrics.NewPrometheus("127.0.0.1", 9090, nil) // TODO make bind address configurable and provide TLS config
+			rootMetricsRegistry := metrics.NewRegistry("")
+			metricsSrvr, err := metrics.NewPrometheus("127.0.0.1", 9090, nil, rootMetricsRegistry) // TODO make bind address configurable and provide TLS config
 			if err != nil {
 				return err
 			}
