@@ -12,6 +12,7 @@ import (
 
 	"rackd/cmd/logger"
 	"rackd/cmd/subcommands"
+	"rackd/internal/metrics"
 )
 
 type opts struct {
@@ -53,6 +54,11 @@ var (
 			if err != nil {
 				return err
 			}
+			metricsSrvr, err := metrics.NewPrometheus("127.0.0.1", 9090, nil) // TODO make bind address configurable and provide TLS config
+			if err != nil {
+				return err
+			}
+			defer metricsSrvr.Close()
 			log.Info().Msg("rackd started successfully")
 			sigChan := make(chan os.Signal)
 			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
