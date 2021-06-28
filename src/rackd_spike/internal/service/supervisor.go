@@ -19,6 +19,7 @@ var (
 	ErrServiceAlreadyRunning = errors.New("service is already in a running state")
 	ErrServiceAlreadyStopped = errors.New("service is already in a stopped state")
 	ErrInvalidServiceState   = errors.New("service is in an invalid state for this operation")
+	ErrUnexpectedServiceExit = errors.New("service exited unexpectedly")
 )
 
 type Service interface {
