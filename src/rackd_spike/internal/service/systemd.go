@@ -69,6 +69,7 @@ func CloseSystemdConn() {
 }
 
 type SystemdService struct {
+	sync.RWMutex
 	conn     *dbus.Conn
 	name     string
 	t        int
@@ -98,10 +99,14 @@ func (s *SystemdService) Type() int {
 }
 
 func (s *SystemdService) PID() int {
+	s.RLock()
+	defer s.RUnlock()
 	return s.pid
 }
 
 func (s *SystemdService) readPIDFromProps(ctx context.Context) error {
+	s.Lock()
+	defer s.Unlock()
 	props, err := s.conn.GetAllPropertiesContext(ctx, s.UnitFile)
 	if err != nil {
 		return err
@@ -146,6 +151,8 @@ func (s *SystemdService) Stop(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	s.Lock()
+	defer s.Unlock()
 	s.pid = -1
 	return nil
 }

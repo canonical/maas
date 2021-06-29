@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sync"
 	"syscall"
 )
 
 type ExecService struct {
+	sync.RWMutex
 	name   string
 	t      int
 	pid    int
@@ -36,10 +38,14 @@ func (e *ExecService) Type() int {
 }
 
 func (e *ExecService) PID() int {
+	e.RLock()
+	defer e.RUnlock()
 	return e.pid
 }
 
 func (e *ExecService) Start(ctx context.Context) (err error) {
+	e.Lock()
+	defer e.Unlock()
 	if e.pid != -1 && e.cmd != nil && !e.cmd.ProcessState.Exited() {
 		return ErrServiceAlreadyRunning
 	}
@@ -59,9 +65,12 @@ func (e *ExecService) Start(ctx context.Context) (err error) {
 }
 
 func (e *ExecService) Stop(ctx context.Context) (err error) {
+	e.Lock()
+	defer e.Unlock()
 	if e.pid == -1 || e.cmd == nil || (e.cmd != nil && e.cmd.ProcessState != nil && e.cmd.ProcessState.Exited()) {
 		return ErrServiceAlreadyStopped
 	}
+	e.Lock()
 	defer func() {
 		if err == nil {
 			e.pid = -1
@@ -98,7 +107,9 @@ func (e *ExecService) Restart(ctx context.Context) (err error) {
 }
 
 func (e *ExecService) Status(_ context.Context) error {
-	if !e.cmd.ProcessState.Exited() || e.cmd.ProcessState.Success() {
+	e.RLock()
+	defer e.RUnlock()
+	if e.cmd.ProcessState != nil && (!e.cmd.ProcessState.Exited() || e.cmd.ProcessState.Success()) {
 		return nil
 	}
 	return fmt.Errorf("%w: service exited: %d", ErrUnexpectedServiceExit, e.cmd.ProcessState.ExitCode())
@@ -123,5 +134,7 @@ func NewReloadableExecService(sig os.Signal, name string, t int, cmd string, arg
 }
 
 func (r *ReloadableExecService) Reload(_ context.Context) error {
+	e.RLock()
+	defer e.RUnlock()
 	return r.cmd.Process.Signal(r.ReloadSig)
 }
