@@ -4266,7 +4266,10 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(with_boot_disk=False)
-        bds = [factory.make_PhysicalBlockDevice(node=node) for _ in range(2)]
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, bootable=True)
+            for _ in range(2)
+        ]
         ifaces = [factory.make_Interface(node=node) for _ in range(2)]
         testing_script_set = factory.make_ScriptSet(
             node=node, result_type=RESULT_TYPE.TESTING

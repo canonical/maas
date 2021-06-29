@@ -32,6 +32,7 @@ from maasserver.listener import PostgresListenerService
 from maasserver.models import Config, ControllerInfo, Node, OwnerData
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import MIN_PARTITION_SIZE
+from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import UserSkipCreateAuthorisationTokenFixture
@@ -3542,7 +3543,8 @@ class TestMachineBlockDeviceListener(
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
-            self.create_virtualblockdevice, {"node": node}
+            self.create_virtualblockdevice,
+            {"node": node, "size": MIN_BOOT_PARTITION_SIZE},
         )
 
         listener = self.make_listener_without_delay()

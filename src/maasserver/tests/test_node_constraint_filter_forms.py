@@ -1012,19 +1012,25 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 
     def test_storage_multi_contraint_matches_virtual_and_unused(self):
         node1 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node1, formatted_root=True)
+        factory.make_PhysicalBlockDevice(
+            node=node1, formatted_root=True, bootable=True
+        )
         # 1gb, 2gb, 3gb block device
         factory.make_VirtualBlockDevice(node=node1, size=1 * (1000 ** 3))
         factory.make_VirtualBlockDevice(node=node1, size=2 * (1000 ** 3))
         factory.make_VirtualBlockDevice(node=node1, size=3 * (1000 ** 3))
         node2 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node2, formatted_root=True)
+        factory.make_PhysicalBlockDevice(
+            node=node2, formatted_root=True, bootable=True
+        )
         # 5gb, 6gb, 7gb block device
         factory.make_VirtualBlockDevice(node=node2, size=5 * (1000 ** 3))
         factory.make_VirtualBlockDevice(node=node2, size=6 * (1000 ** 3))
         factory.make_VirtualBlockDevice(node=node2, size=7 * (1000 ** 3))
         node3 = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node3, formatted_root=True)
+        factory.make_PhysicalBlockDevice(
+            node=node3, formatted_root=True, bootable=True
+        )
         # 8gb, 9gb, 10gb block device
         factory.make_VirtualBlockDevice(node=node3, size=8 * (1000 ** 3))
         factory.make_VirtualBlockDevice(node=node3, size=9 * (1000 ** 3))

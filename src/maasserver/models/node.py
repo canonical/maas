@@ -157,6 +157,7 @@ from maasserver.rpc import (
 from maasserver.server_address import get_maas_facing_server_addresses
 from maasserver.storage_layouts import (
     get_storage_layout_for_node,
+    MIN_BOOT_PARTITION_SIZE,
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
     VMFS6StorageLayout,
@@ -2046,6 +2047,7 @@ class Node(CleanSave, TimestampedModel):
                     if isinstance(
                         block_device.actual_instance, PhysicalBlockDevice
                     )
+                    and block_device.size >= MIN_BOOT_PARTITION_SIZE
                 ],
                 key=attrgetter("id"),
             )

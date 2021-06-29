@@ -137,6 +137,7 @@ from maasserver.preseed_storage import compose_curtin_storage_config
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.storage_layouts import (
+    MIN_BOOT_PARTITION_SIZE,
     StorageLayoutError,
     StorageLayoutMissingBootDiskError,
     VMFS6StorageLayout,
@@ -1314,17 +1315,26 @@ class TestNode(MAASServerTestCase):
     def test_get_boot_disk_returns_set_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
         # First disk.
-        factory.make_PhysicalBlockDevice(node=node)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_PhysicalBlockDevice(node=node, bootable=True)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         node.boot_disk = boot_disk
         node.save()
         self.assertEqual(boot_disk, node.get_boot_disk())
 
     def test_get_boot_disk_returns_first(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         # Second disk.
         factory.make_PhysicalBlockDevice(node=node)
+        factory.make_PhysicalBlockDevice(node=node)
+        self.assertEqual(boot_disk, node.get_boot_disk())
+
+    def test_get_boot_disk_returns_big_enough(self):
+        node = factory.make_Node(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=node, size=MIN_BOOT_PARTITION_SIZE / 2
+        )
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         factory.make_PhysicalBlockDevice(node=node)
         self.assertEqual(boot_disk, node.get_boot_disk())
 
@@ -5434,7 +5444,7 @@ class TestNode(MAASServerTestCase):
 
     def test_storage_layout_issues_returns_valid_with_boot_and_bcache(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_partition = factory.make_Partition(node=node)
+        boot_partition = factory.make_Partition(node=node, bootable=True)
         factory.make_Filesystem(partition=boot_partition, mount_point="/boot")
         fs_group = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE
@@ -5477,7 +5487,9 @@ class TestNode(MAASServerTestCase):
 
     def test_storage_layout_issues_is_invalid_when_root_on_bcache(self):
         node = factory.make_Node(with_boot_disk=False, osystem="ubuntu")
-        factory.make_Partition(node=node)
+        factory.make_Partition(
+            node=node, block_device_size=MIN_BOOT_PARTITION_SIZE
+        )
         fs_group = factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE
         )

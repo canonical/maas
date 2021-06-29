@@ -143,6 +143,10 @@ class StorageLayoutBase(Form):
             raise StorageLayoutMissingBootDiskError(
                 "Node doesn't have any storage devices to configure."
             )
+        if self.boot_disk is None:
+            raise StorageLayoutMissingBootDiskError(
+                "Node doesn't have a boot partition defined."
+            )
         disk_size = self.boot_disk.size
         total_size = EFI_PARTITION_SIZE + self.get_boot_size()
         root_size = self.get_root_size()

@@ -131,7 +131,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
 
     def test_bcache_creation_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         cache_set = factory.make_CacheSet(node=node)
         form = CreateBcacheForm(
             node=node,
@@ -343,7 +343,7 @@ class TestUpdateBcacheForm(MAASServerTestCase):
 
     def test_bcache_update_with_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         cache_set = factory.make_CacheSet(node=node)
         filesystems = [
             factory.make_Filesystem(

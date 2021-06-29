@@ -196,7 +196,10 @@ class TestCreateRaidForm(MAASServerTestCase):
 
     def test_raid_creation_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        bds = [factory.make_PhysicalBlockDevice(node=node) for _ in range(10)]
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, bootable=True)
+            for _ in range(10)
+        ]
         partitions = []
         block_devices = [bd.id for bd in bds[:5]]
         for bd in bds[5:]:
@@ -275,7 +278,7 @@ class TestUpdateRaidForm(MAASServerTestCase):
 
     def test_add_valid_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         raid = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_6, node=node
         )
@@ -313,7 +316,7 @@ class TestUpdateRaidForm(MAASServerTestCase):
 
     def test_add_valid_spare_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         raid = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_6, node=node
         )

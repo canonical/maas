@@ -495,7 +495,7 @@ class TestBlockDevice(MAASServerTestCase):
 
     def test_create_partition_if_boot_disk_creates_partition(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         partition = boot_disk.create_partition_if_boot_disk()
         self.assertIsNotNone(partition)
         available_size = boot_disk.get_available_size()

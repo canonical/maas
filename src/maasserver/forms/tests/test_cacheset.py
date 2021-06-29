@@ -23,7 +23,10 @@ class TestCreateCacheSetForm(MAASServerTestCase):
     def test_choices_are_being_populated_correctly(self):
         node = factory.make_Node(with_boot_disk=False)
         # Make 10 block devices.
-        bds = [factory.make_PhysicalBlockDevice(node=node) for _ in range(10)]
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, bootable=True)
+            for _ in range(10)
+        ]
         # Partition the last 5 devices with a single partition.
         partitions = [
             factory.make_PartitionTable(block_device=bd).add_partition()
@@ -59,7 +62,7 @@ class TestCreateCacheSetForm(MAASServerTestCase):
 
     def test_cache_set_creation_with_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         form = CreateCacheSetForm(
             node=node, data={"cache_device": boot_disk.id}
         )
@@ -111,7 +114,10 @@ class TestUpdateCacheSetForm(MAASServerTestCase):
     def test_choices_are_being_populated_correctly(self):
         node = factory.make_Node(with_boot_disk=False)
         # Make 10 block devices.
-        bds = [factory.make_PhysicalBlockDevice(node=node) for _ in range(10)]
+        bds = [
+            factory.make_PhysicalBlockDevice(node=node, bootable=True)
+            for _ in range(10)
+        ]
         # Partition the last 5 devices with a single partition.
         partitions = [
             factory.make_PartitionTable(block_device=bd).add_partition()
@@ -152,7 +158,7 @@ class TestUpdateCacheSetForm(MAASServerTestCase):
 
     def test_save_updates_the_cache_set_with_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         partition = factory.make_Partition(node=node)
         cache_set = factory.make_CacheSet(partition=partition)
         form = UpdateCacheSetForm(

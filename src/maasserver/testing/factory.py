@@ -114,6 +114,7 @@ from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
 from maasserver.models.virtualmachine import VirtualMachine, VirtualMachineDisk
 from maasserver.node_status import NODE_TRANSITIONS
+from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
 from maasserver.testing import get_data
 from maasserver.testing.testclient import MAASSensibleRequestFactory
 from maasserver.utils.converters import round_size_to_nearest_block
@@ -485,7 +486,9 @@ class Factory(maastesting.factory.Factory):
                 INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan, fabric=fabric
             )
         if node_type == NODE_TYPE.MACHINE and with_boot_disk:
-            root_partition = self.make_Partition(node=node)
+            root_partition = self.make_Partition(
+                node=node, block_device_size=MIN_BOOT_PARTITION_SIZE
+            )
             acquired = node.status in ALLOCATED_NODE_STATUSES
             if node.osystem in ["centos", "rhel"]:
                 # CentOS and RHEL do not support Bcache or ZFS so don't create
@@ -2560,6 +2563,7 @@ class Factory(maastesting.factory.Factory):
         firmware_version=None,
         numa_node=None,
         pcie=False,
+        bootable=False,
     ):
         if node is None and numa_node is None:
             node = self.make_Node()
@@ -2578,6 +2582,8 @@ class Factory(maastesting.factory.Factory):
                 ),
                 block_size,
             )
+            if bootable and size < MIN_BOOT_PARTITION_SIZE:
+                size = MIN_BOOT_PARTITION_SIZE
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         if id_path is None:
@@ -2800,7 +2806,7 @@ class Factory(maastesting.factory.Factory):
                 node = self.make_Node()
             if node.physicalblockdevice_set.count() == 0:
                 # Add the boot disk and leave it as is.
-                self.make_PhysicalBlockDevice(node=node)
+                self.make_PhysicalBlockDevice(node=node, bootable=True)
             if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
                 for _ in range(num_lvm_devices):
                     block_device = self.make_PhysicalBlockDevice(

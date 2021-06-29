@@ -228,7 +228,7 @@ class TestFilesystem(MAASServerTestCase):
 
     def test_cannot_create_filesystem_directly_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         with ExpectedException(
             ValidationError,
             re.escape(

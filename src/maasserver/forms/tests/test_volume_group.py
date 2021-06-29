@@ -146,7 +146,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
 
     def test_creates_volume_group_with_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         data = {
             "name": factory.make_name("vg"),
             "block_devices": [boot_disk.id],
@@ -317,7 +317,7 @@ class TestUpdateVolumeGroupForm(MAASServerTestCase):
 
     def test_adds_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
         volume_group = factory.make_VolumeGroup(node=node)
         data = {"add_block_devices": [boot_disk.id]}
         form = UpdateVolumeGroupForm(volume_group, data=data)

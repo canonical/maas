@@ -333,6 +333,948 @@ SAMPLE_LXD_RESOURCES_NO_NUMA = {
     },
 }
 
+# This sample is from LP:1906834
+SAMPLE_LXD_RESOURCES_LP1906834 = {
+    "cpu": {
+        "architecture": "aarch64",
+        "sockets": [
+            {
+                "socket": 36,
+                "cache": [
+                    {"level": 1, "type": "Data", "size": 32768},
+                    {"level": 1, "type": "Instruction", "size": 32768},
+                    {"level": 2, "type": "Unified", "size": 262144},
+                ],
+                "cores": [
+                    {
+                        "core": 0,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 0,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 1,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 256,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 2,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 257,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 3,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 512,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 4,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 513,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 5,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 768,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 6,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 769,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 7,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1024,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 8,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1025,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 9,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1280,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 10,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1281,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 11,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1536,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 12,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1537,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 13,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1792,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 14,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 1793,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 15,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2048,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 16,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2049,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 17,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2304,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 18,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2305,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 19,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2560,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 20,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2561,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 21,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2816,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 22,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 2817,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 23,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3072,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 24,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3073,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 25,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3328,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 26,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3329,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 27,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3584,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 28,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3585,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 29,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3840,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 30,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                    {
+                        "core": 3841,
+                        "die": 0,
+                        "threads": [
+                            {
+                                "id": 31,
+                                "numa_node": 0,
+                                "thread": 0,
+                                "online": True,
+                                "isolated": False,
+                            }
+                        ],
+                    },
+                ],
+            }
+        ],
+        "total": 32,
+    },
+    "memory": {
+        "nodes": [
+            {
+                "numa_node": 0,
+                "hugepages_used": 0,
+                "hugepages_total": 0,
+                "used": 1831481344,
+                "total": 269430067200,
+            }
+        ],
+        "hugepages_total": 0,
+        "hugepages_used": 0,
+        "hugepages_size": 2097152,
+        "used": 6480928768,
+        "total": 274877906944,
+    },
+    "gpu": {
+        "cards": [
+            {
+                "driver": "ast",
+                "driver_version": "5.4.0-56-generic",
+                "drm": {
+                    "id": 0,
+                    "card_name": "card0",
+                    "card_device": "226:0",
+                    "control_name": "controlD64",
+                    "control_device": "226:0",
+                },
+                "numa_node": 0,
+                "pci_address": "0007:02:00.0",
+                "vendor": "ASPEED Technology, Inc.",
+                "vendor_id": "1a03",
+                "product": "ASPEED Graphics Family",
+                "product_id": "2000",
+            },
+            {
+                "driver": "amdgpu",
+                "driver_version": "5.4.0-56-generic",
+                "drm": {
+                    "id": 1,
+                    "card_name": "card1",
+                    "card_device": "226:1",
+                    "control_name": "controlD65",
+                    "control_device": "226:1",
+                    "render_name": "renderD128",
+                    "render_device": "226:128",
+                },
+                "numa_node": 0,
+                "pci_address": "0000:01:00.0",
+                "vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+                "vendor_id": "1002",
+                "product": "Ellesmere [Radeon Pro WX 5100]",
+                "product_id": "67c7",
+            },
+            {
+                "driver": "amdgpu",
+                "driver_version": "5.4.0-56-generic",
+                "drm": {
+                    "id": 2,
+                    "card_name": "card2",
+                    "card_device": "226:2",
+                    "control_name": "controlD66",
+                    "control_device": "226:2",
+                    "render_name": "renderD129",
+                    "render_device": "226:129",
+                },
+                "numa_node": 0,
+                "pci_address": "0002:01:00.0",
+                "vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+                "vendor_id": "1002",
+                "product": "Ellesmere [Radeon Pro WX 5100]",
+                "product_id": "67c7",
+            },
+        ],
+        "total": 3,
+    },
+    "network": {
+        "cards": [
+            {
+                "driver": "mlx4_core",
+                "driver_version": "4.0-0",
+                "ports": [
+                    {
+                        "id": "enP3p1s0",
+                        "address": "50:6b:4b:7f:98:20",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "supported_modes": [
+                            "1000baseKX/Full",
+                            "10000baseKR/Full",
+                        ],
+                        "supported_ports": ["fibre"],
+                        "port_type": "fibre",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": False,
+                        "link_detected": True,
+                        "link_speed": 1000,
+                        "link_duplex": "full",
+                    },
+                    {
+                        "id": "enP3p1s0d1",
+                        "address": "50:6b:4b:7f:98:21",
+                        "port": 1,
+                        "protocol": "ethernet",
+                        "supported_modes": [
+                            "1000baseKX/Full",
+                            "10000baseKR/Full",
+                        ],
+                        "supported_ports": ["fibre"],
+                        "port_type": "fibre",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": False,
+                        "link_detected": False,
+                    },
+                ],
+                "sriov": {"current_vfs": 0, "maximum_vfs": 8, "vfs": None},
+                "numa_node": 0,
+                "pci_address": "0003:01:00.0",
+                "vendor": "Mellanox Technologies",
+                "vendor_id": "15b3",
+                "product": "MT27520 Family [ConnectX-3 Pro]",
+                "product_id": "1007",
+                "firmware_version": "2.42.5000",
+            }
+        ],
+        "total": 1,
+    },
+    "storage": {
+        "disks": [
+            {
+                "id": "nvme0n1",
+                "device": "259:0",
+                "model": "T408-U2",
+                "type": "nvme",
+                "read_only": False,
+                "size": 393617408,
+                "removable": False,
+                "wwn": "nvme.1d82-545530352d30372d30322d4230342d30323434-543430382d5532-00000001",
+                "numa_node": 0,
+                "device_path": "pci-0004:01:00.0-nvme-1",
+                "block_size": 4096,
+                "firmware_version": "211X1B02",
+                "rpm": 0,
+                "serial": "TU05-07-02-B04-0244",
+                "device_id": "nvme-nvme.1d82-545530352d30372d30322d4230342d30323434-543430382d5532-00000001",
+                "partitions": [],
+            },
+            {
+                "id": "nvme1n1",
+                "device": "259:1",
+                "model": "T408-U2",
+                "type": "nvme",
+                "read_only": False,
+                "size": 393617408,
+                "removable": False,
+                "wwn": "nvme.1d82-545530352d30372d30322d4230342d30363137-543430382d5532-00000001",
+                "numa_node": 0,
+                "device_path": "pci-0005:01:00.0-nvme-1",
+                "block_size": 4096,
+                "firmware_version": "211X1B02",
+                "rpm": 0,
+                "serial": "TU05-07-02-B04-0617",
+                "device_id": "nvme-nvme.1d82-545530352d30372d30322d4230342d30363137-543430382d5532-00000001",
+                "partitions": [],
+            },
+            {
+                "id": "sda",
+                "device": "8:0",
+                "model": "SAMSUNG MZ7LH960HAJR-00005",
+                "type": "sata",
+                "read_only": False,
+                "size": 960197124096,
+                "removable": False,
+                "numa_node": 0,
+                "device_path": "platform-APMC0D33:00-ata-1",
+                "block_size": 4096,
+                "firmware_version": "HXT7404Q",
+                "rpm": 0,
+                "serial": "S45NNA0N209754",
+                "device_id": "wwn-0x5002538e0026cccb",
+                "partitions": [
+                    {
+                        "id": "sda1",
+                        "device": "8:1",
+                        "read_only": False,
+                        "size": 536870912,
+                        "partition": 1,
+                    },
+                    {
+                        "id": "sda2",
+                        "device": "8:2",
+                        "read_only": False,
+                        "size": 1073741824,
+                        "partition": 2,
+                    },
+                    {
+                        "id": "sda3",
+                        "device": "8:3",
+                        "read_only": False,
+                        "size": 958584061952,
+                        "partition": 3,
+                    },
+                ],
+            },
+            {
+                "id": "sdb",
+                "device": "8:16",
+                "model": "Virtual HDisk0",
+                "type": "usb",
+                "read_only": False,
+                "size": 0,
+                "removable": True,
+                "numa_node": 0,
+                "device_path": "platform-808622B7:00-usb-0:1.2:1.0-scsi-0:0:0:0",
+                "block_size": 0,
+                "firmware_version": "1.00",
+                "rpm": 0,
+                "serial": "AAAABBBBCCCC3",
+                "device_id": "usb-AMI_Virtual_HDisk0_AAAABBBBCCCC3-0:0",
+                "partitions": [],
+            },
+            {
+                "id": "sr0",
+                "device": "11:0",
+                "model": "Virtual CDROM0",
+                "type": "cdrom",
+                "read_only": False,
+                "size": 0,
+                "removable": True,
+                "numa_node": 0,
+                "device_path": "platform-808622B7:00-usb-0:1.1:1.0-scsi-0:0:0:0",
+                "block_size": 0,
+                "firmware_version": "1.00",
+                "rpm": 0,
+                "serial": "AAAABBBBCCCC1",
+                "device_id": "usb-AMI_Virtual_CDROM0_AAAABBBBCCCC1-0:0",
+                "partitions": [],
+            },
+        ],
+        "total": 8,
+    },
+    "usb": {
+        "devices": [
+            {
+                "bus_address": 1,
+                "device_address": 3,
+                "interfaces": [
+                    {
+                        "class": "Mass Storage",
+                        "class_id": 8,
+                        "driver": "usb-storage",
+                        "driver_version": "5.4.0-56-generic",
+                        "number": 0,
+                        "subclass": "SCSI",
+                        "subclass_id": 6,
+                    }
+                ],
+                "product": "Virtual Cdrom Device",
+                "product_id": "ff20",
+                "speed": 480,
+                "vendor": "American Megatrends, Inc.",
+                "vendor_id": "046b",
+            },
+            {
+                "bus_address": 1,
+                "device_address": 4,
+                "interfaces": [
+                    {
+                        "class": "Mass Storage",
+                        "class_id": 8,
+                        "driver": "usb-storage",
+                        "driver_version": "5.4.0-56-generic",
+                        "number": 0,
+                        "subclass": "SCSI",
+                        "subclass_id": 6,
+                    }
+                ],
+                "product": "Virtual HardDisk Device",
+                "product_id": "ff31",
+                "speed": 480,
+                "vendor": "American Megatrends, Inc.",
+                "vendor_id": "046b",
+            },
+            {
+                "bus_address": 1,
+                "device_address": 5,
+                "interfaces": [
+                    {
+                        "class": "Human Interface Device",
+                        "class_id": 3,
+                        "driver": "usbhid",
+                        "driver_version": "5.4.0-56-generic",
+                        "number": 0,
+                        "subclass": "Boot Interface Subclass",
+                        "subclass_id": 1,
+                    },
+                    {
+                        "class": "Human Interface Device",
+                        "class_id": 3,
+                        "driver": "usbhid",
+                        "driver_version": "5.4.0-56-generic",
+                        "number": 1,
+                        "subclass": "Boot Interface Subclass",
+                        "subclass_id": 1,
+                    },
+                ],
+                "product": "Virtual Keyboard and Mouse",
+                "product_id": "ff10",
+                "speed": 1.5,
+                "vendor": "American Megatrends, Inc.",
+                "vendor_id": "046b",
+            },
+        ],
+        "total": 3,
+    },
+    "pci": {
+        "devices": [
+            {
+                "driver": "pcieport",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0000:00:00.0",
+                "product": "Skylark PCI Express Root Port 0 [eMAG]",
+                "product_id": "e005",
+                "vendor": "Ampere Computing, LLC",
+                "vendor_id": "1def",
+            },
+            {
+                "driver": "amdgpu",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0000:01:00.0",
+                "product": "Ellesmere [Radeon Pro WX 5100]",
+                "product_id": "67c7",
+                "vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+                "vendor_id": "1002",
+            },
+            {
+                "driver": "",
+                "driver_version": "",
+                "numa_node": 0,
+                "pci_address": "0000:01:00.1",
+                "product": "Ellesmere [Radeon RX 580]",
+                "product_id": "aaf0",
+                "vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+                "vendor_id": "1002",
+            },
+            {
+                "driver": "pcieport",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0002:00:00.0",
+                "product": "Skylark PCI Express Root Port 2 [eMAG]",
+                "product_id": "e007",
+                "vendor": "Ampere Computing, LLC",
+                "vendor_id": "1def",
+            },
+            {
+                "driver": "amdgpu",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0002:01:00.0",
+                "product": "Ellesmere [Radeon Pro WX 5100]",
+                "product_id": "67c7",
+                "vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+                "vendor_id": "1002",
+            },
+            {
+                "driver": "",
+                "driver_version": "",
+                "numa_node": 0,
+                "pci_address": "0002:01:00.1",
+                "product": "Ellesmere [Radeon RX 580]",
+                "product_id": "aaf0",
+                "vendor": "Advanced Micro Devices, Inc. [AMD/ATI]",
+                "vendor_id": "1002",
+            },
+            {
+                "driver": "pcieport",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0003:00:00.0",
+                "product": "Skylark PCI Express Root Port 3 [eMAG]",
+                "product_id": "e008",
+                "vendor": "Ampere Computing, LLC",
+                "vendor_id": "1def",
+            },
+            {
+                "driver": "mlx4_core",
+                "driver_version": "4.0-0",
+                "numa_node": 0,
+                "pci_address": "0003:01:00.0",
+                "product": "MT27520 Family [ConnectX-3 Pro]",
+                "product_id": "1007",
+                "vendor": "Mellanox Technologies",
+                "vendor_id": "15b3",
+            },
+            {
+                "driver": "pcieport",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0004:00:00.0",
+                "product": "Skylark PCI Express Root Port 4 [eMAG]",
+                "product_id": "e009",
+                "vendor": "Ampere Computing, LLC",
+                "vendor_id": "1def",
+            },
+            {
+                "driver": "nvme",
+                "driver_version": "1.0",
+                "numa_node": 0,
+                "pci_address": "0004:01:00.0",
+                "product": "",
+                "product_id": "0202",
+                "vendor": "",
+                "vendor_id": "1d82",
+            },
+            {
+                "driver": "pcieport",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0005:00:00.0",
+                "product": "Skylark PCI Express Root Port 5 [eMAG]",
+                "product_id": "e00a",
+                "vendor": "Ampere Computing, LLC",
+                "vendor_id": "1def",
+            },
+            {
+                "driver": "nvme",
+                "driver_version": "1.0",
+                "numa_node": 0,
+                "pci_address": "0005:01:00.0",
+                "product": "",
+                "product_id": "0202",
+                "vendor": "",
+                "vendor_id": "1d82",
+            },
+            {
+                "driver": "pcieport",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0006:00:00.0",
+                "product": "Skylark PCI Express Root Port 6 [eMAG]",
+                "product_id": "e00b",
+                "vendor": "Ampere Computing, LLC",
+                "vendor_id": "1def",
+            },
+            {
+                "driver": "pcieport",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0007:00:00.0",
+                "product": "Skylark PCI Express Root Port 7 [eMAG]",
+                "product_id": "e00c",
+                "vendor": "Ampere Computing, LLC",
+                "vendor_id": "1def",
+            },
+            {
+                "driver": "",
+                "driver_version": "",
+                "numa_node": 0,
+                "pci_address": "0007:01:00.0",
+                "product": "AST1150 PCI-to-PCI Bridge",
+                "product_id": "1150",
+                "vendor": "ASPEED Technology, Inc.",
+                "vendor_id": "1a03",
+            },
+            {
+                "driver": "ast",
+                "driver_version": "5.4.0-56-generic",
+                "numa_node": 0,
+                "pci_address": "0007:02:00.0",
+                "product": "ASPEED Graphics Family",
+                "product_id": "2000",
+                "vendor": "ASPEED Technology, Inc.",
+                "vendor_id": "1a03",
+            },
+        ],
+        "total": 16,
+    },
+    "system": {
+        "uuid": "52bcf4c0-0906-11e9-a5f5-3c18a0043e06",
+        "vendor": "Lenovo",
+        "product": "HR350A            7X35CTO1WW",
+        "family": "Lenovo ThinkSystem HR330A/HR350A",
+        "version": "7X35A000NA",
+        "sku": "LENOVO_MT_OR",
+        "serial": "J300LEW9",
+        "type": "physical",
+        "firmware": {
+            "vendor": "LENOVO",
+            "date": "11/29/2019",
+            "version": "HVE104N-1.12",
+        },
+        "chassis": {
+            "vendor": "Lenovo",
+            "type": "Rack Mount Chassis",
+            "serial": "J300LEW9",
+            "version": "7X35CTO1WW",
+        },
+        "motherboard": {
+            "vendor": "Lenovo",
+            "product": "HR350A",
+            "serial": "8SSB27A42854L1HF8AF0023",
+            "version": "SB27A42854",
+        },
+    },
+}
 
 KERNEL_CMDLINE_OUTPUT = (
     "BOOT_IMAGE=http://10.245.136.6:5248/images/ubuntu/amd64/generic/bionic/"
@@ -1359,6 +2301,19 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(1, len(numa_nodes))
         for numa_node in numa_nodes:
             self.assertEqual(int(total_memory / 1024 / 1024), numa_node.memory)
+
+    def test_updates_invalid_storage_devices(self):
+        node = factory.make_Node()
+        self.patch(
+            hooks_module, "update_node_network_information"
+        ).return_value = {}
+
+        process_lxd_results(
+            node, make_lxd_output_json(SAMPLE_LXD_RESOURCES_LP1906834), 0
+        )
+        node = reload_object(node)
+        boot_disk = node.get_boot_disk()
+        self.assertEqual(boot_disk.name, "sda")
 
     def test_accepts_numa_node_zero_memory(self):
         # Regression test for LP:1878923
