@@ -70,7 +70,6 @@ func (e *ExecService) Stop(ctx context.Context) (err error) {
 	if e.pid == -1 || e.cmd == nil || (e.cmd != nil && e.cmd.ProcessState != nil && e.cmd.ProcessState.Exited()) {
 		return ErrServiceAlreadyStopped
 	}
-	e.Lock()
 	defer func() {
 		if err == nil {
 			e.pid = -1
@@ -79,7 +78,12 @@ func (e *ExecService) Stop(ctx context.Context) (err error) {
 	}()
 	procExitChan := make(chan error)
 	go func() {
-		procExitChan <- e.cmd.Wait()
+		select {
+		case <-ctx.Done():
+			close(procExitChan)
+			return
+		case procExitChan <- e.cmd.Wait():
+		}
 	}()
 	err = e.cmd.Process.Signal(syscall.SIGTERM)
 	if err != nil {
@@ -134,7 +138,7 @@ func NewReloadableExecService(sig os.Signal, name string, t int, cmd string, arg
 }
 
 func (r *ReloadableExecService) Reload(_ context.Context) error {
-	e.RLock()
-	defer e.RUnlock()
+	r.RLock()
+	defer r.RUnlock()
 	return r.cmd.Process.Signal(r.ReloadSig)
 }

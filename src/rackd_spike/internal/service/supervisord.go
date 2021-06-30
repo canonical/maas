@@ -12,11 +12,12 @@ import (
 )
 
 var (
-	xmlrpcConnOnce = &sync.Once{}
+	xmlrpcConnOnce  = &sync.Once{}
+	xmlrpcCloseOnce = &sync.Once{}
 )
 
 var (
-	conn *xmlrpc.Client
+	supConn *xmlrpc.Client
 )
 
 var (
@@ -27,13 +28,17 @@ var (
 func getSupervisordConn(endpoint string) (*xmlrpc.Client, error) {
 	var err error
 	xmlrpcConnOnce.Do(func() {
-		conn, err = xmlrpc.NewClient(endpoint, nil)
+		supConn, err = xmlrpc.NewClient(endpoint, nil)
 	})
-	return conn, err
+	return supConn, err
 }
 
 func CloseSupervisordConn() error {
-	return conn.Close()
+	var err error
+	xmlrpcCloseOnce.Do(func() {
+		err = supConn.Close()
+	})
+	return err
 }
 
 type SupervisordService struct {
@@ -53,7 +58,7 @@ func NewSupervisordService(endpoint, name string, t int) (Service, error) {
 		conn: conn,
 		name: name,
 		t:    t,
-	}
+	}, nil
 }
 
 func (s *SupervisordService) Name() string {
@@ -87,7 +92,7 @@ func (s *SupervisordService) readPIDFromResult(res map[string]interface{}) error
 		case float64:
 			s.pid = int(pid)
 		case string:
-			s.pid, err = strconv.Atoi(res)
+			s.pid, err = strconv.Atoi(pid)
 			if err != nil {
 				s.pid = -1
 				return err
@@ -102,7 +107,7 @@ func (s *SupervisordService) readPIDFromResult(res map[string]interface{}) error
 
 func (s *SupervisordService) Start(ctx context.Context) error {
 	resChan := make(chan *rpc.Call)
-	s.conn.Go("startProcess", []interface{ s.name }, nil, resChan)
+	s.conn.Go("startProcess", []interface{}{s.name}, nil, resChan)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -110,7 +115,7 @@ func (s *SupervisordService) Start(ctx context.Context) error {
 		if call.Error != nil {
 			return call.Error
 		}
-		res, err := s.getProcInf(ctx)
+		res, err := s.getProcInfo(ctx)
 		if err != nil {
 			return err
 		}
@@ -124,7 +129,7 @@ func (s *SupervisordService) Start(ctx context.Context) error {
 
 func (s *SupervisordService) Stop(ctx context.Context) error {
 	resChan := make(chan *rpc.Call)
-	s.conn.Go("stopProcess", []interface{ s.name }, nil, resChan)
+	s.conn.Go("stopProcess", []interface{}{s.name}, nil, resChan)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
@@ -136,6 +141,7 @@ func (s *SupervisordService) Stop(ctx context.Context) error {
 		defer s.Unlock()
 		s.pid = -1
 	}
+	return nil
 }
 
 func (s *SupervisordService) Restart(ctx context.Context) error {
@@ -148,7 +154,7 @@ func (s *SupervisordService) Restart(ctx context.Context) error {
 
 func (s *SupervisordService) getProcInfo(ctx context.Context) (map[string]interface{}, error) {
 	resChan := make(chan *rpc.Call)
-	s.conn.Go("getProcessInfo", []interface{ s.name }, nil, resChan)
+	s.conn.Go("getProcessInfo", []interface{}{s.name}, nil, resChan)
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -158,7 +164,7 @@ func (s *SupervisordService) getProcInfo(ctx context.Context) (map[string]interf
 		}
 		res, ok := call.Reply.(map[string]interface{})
 		if !ok {
-			return nil, ErrSupvisordUnsupportedType
+			return nil, ErrSupervisordUnsupportedType
 		}
 		return res, nil
 	}
@@ -170,7 +176,7 @@ func (s *SupervisordService) Status(ctx context.Context) error {
 		return err
 	}
 	if info["stop"] != 0 {
-		return fmt.Errorf("%w: service %s exited", ErrUnpexctedServiceExit, s.name)
+		return fmt.Errorf("%w: service %s exited", ErrUnexpectedServiceExit, s.name)
 	}
 	return nil
 }
