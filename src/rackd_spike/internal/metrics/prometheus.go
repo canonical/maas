@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog/log"
 )
 
 type Registry struct {
@@ -41,6 +42,13 @@ func NewPrometheus(host string, port int, tlsConf *tls.Config, registries ...*Re
 	if tlsConf != nil {
 		listener = tls.NewListener(listener, tlsConf)
 	}
-	go srvr.Serve(listener)
+
+	go func() {
+		err := srvr.Serve(listener)
+		if err != nil {
+			log.Err(err).Msg("failed to start metrics endpoint")
+		}
+	}()
+
 	return srvr, nil
 }

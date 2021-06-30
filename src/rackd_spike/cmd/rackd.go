@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"rackd/cmd/logger"
@@ -42,6 +43,7 @@ var (
 		Short: "rack controller daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 			if options.Version {
 				printVersion()
 				return nil
@@ -61,10 +63,9 @@ var (
 			}
 			defer metricsSrvr.Close()
 			log.Info().Msg("rackd started successfully")
-			sigChan := make(chan os.Signal)
+			sigChan := make(chan os.Signal, 1)
 			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
 			<-sigChan
-			cancel()
 			return nil
 		},
 	}
@@ -98,5 +99,6 @@ func main() {
 	rootCMD.AddCommand(subcommands.ScanNetworkCMD)
 	rootCMD.AddCommand(subcommands.SetupDNSCMD)
 	rootCMD.AddCommand(subcommands.SupportDumpCMD)
-	rootCMD.Execute()
+	err := rootCMD.Execute()
+	log.Err(err).Msg("rackd exiting")
 }
