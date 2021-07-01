@@ -1,9 +1,6 @@
 # Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for DHCP management."""
-
-
 from datetime import datetime
 from operator import itemgetter
 import random
@@ -1136,6 +1133,16 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
 
         servers = get_default_dns_servers(rack, subnet)
         self.assertThat(servers, Equals([IPAddress("192.168.200.1")]))
+
+    def test_no_default_region_ip(self):
+        self.patch(dhcp, "get_source_address").return_value = None
+        vlan = factory.make_VLAN()
+        rack_controller = factory.make_RackController(
+            interface=False, url="http://unknown:5240/MAAS/"
+        )
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
+        servers = get_default_dns_servers(rack_controller, subnet)
+        self.assertEqual(servers, [])
 
 
 class TestMakeSubnetConfig(MAASServerTestCase):

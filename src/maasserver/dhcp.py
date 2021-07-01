@@ -595,7 +595,7 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
             default_region_ip=default_region_ip,
         )
     except UnresolvableHost:
-        dns_servers = None
+        dns_servers = []
 
     if default_region_ip:
         default_region_ip = IPAddress(default_region_ip)
@@ -619,8 +619,11 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     # If no DNS servers were found give the region IP. This won't go through
     # the rack but its better than nothing.
     if not dns_servers:
-        log.warn("No DNS servers found, DHCP defaulting to region IP.")
-        dns_servers = [default_region_ip]
+        if default_region_ip:
+            log.warn("No DNS servers found, DHCP defaulting to region IP.")
+            dns_servers = [default_region_ip]
+        else:
+            log.warn("No DNS servers found.")
 
     return dns_servers
 
