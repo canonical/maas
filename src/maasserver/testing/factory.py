@@ -2633,6 +2633,7 @@ class Factory(maastesting.factory.Factory):
         block_device=None,
         node=None,
         block_device_size=None,
+        bootable=False,
     ):
         if block_device is None:
             if node is None:
@@ -2641,7 +2642,7 @@ class Factory(maastesting.factory.Factory):
                 else:
                     node = factory.make_Node()
             block_device = self.make_PhysicalBlockDevice(
-                node=node, size=block_device_size
+                node=node, size=block_device_size, bootable=bootable
             )
         return PartitionTable.objects.create(
             table_type=table_type, block_device=block_device
@@ -2659,7 +2660,9 @@ class Factory(maastesting.factory.Factory):
     ):
         if partition_table is None:
             partition_table = self.make_PartitionTable(
-                node=node, block_device_size=block_device_size
+                node=node,
+                block_device_size=block_device_size,
+                bootable=bootable,
             )
         if size is None:
             available_size = partition_table.get_available_size() // 2
