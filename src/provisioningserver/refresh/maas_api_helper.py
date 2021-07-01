@@ -73,10 +73,12 @@ class Credentials:
 
 
 class Config:
-    def __init__(self):
+    def __init__(self, config=None):
         self.credentials = Credentials()
         self.metadata_url = None
         self.config_path = None
+        if config:
+            self.update(config)
 
     def update(self, config):
         """Update values from a config dict.

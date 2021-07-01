@@ -394,7 +394,7 @@ checks = [
     #
     (
         RegionController - Tests,
-        RegionControllerRule,
+        RegionControllerRule | Rule(Allow("snippets.**")),
     ),
     (
         RegionUserDataSnippets - Tests,

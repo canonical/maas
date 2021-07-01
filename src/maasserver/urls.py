@@ -7,6 +7,7 @@
 from django.conf.urls import include, url
 from django.contrib.auth.decorators import user_passes_test
 from django.http import HttpResponse
+from django.views.generic import TemplateView
 
 from maasserver import urls_api
 from maasserver.bootresources import (
@@ -15,7 +16,6 @@ from maasserver.bootresources import (
 )
 from maasserver.macaroon_auth import MacaroonDischargeRequest
 from maasserver.prometheus.stats import prometheus_stats_handler
-from maasserver.views import TextTemplateView
 from maasserver.views.account import authenticate, csrf, login, logout
 from maasserver.views.rpc import info
 
@@ -45,10 +45,20 @@ urlpatterns = [
         simplestreams_file_handler,
         name="simplestreams_file_handler",
     ),
+    url(
+        r"^maas-run-scripts$",
+        TemplateView.as_view(
+            template_name="maas_run_scripts.template",
+            content_type="text/x-python",
+        ),
+        name="maas-run-scripts",
+    ),
     url(r"^metrics$", prometheus_stats_handler, name="metrics"),
     url(
         r"^robots\.txt$",
-        TextTemplateView.as_view(template_name="maasserver/robots.txt"),
+        TemplateView.as_view(
+            template_name="robots.txt", content_type="text/plain"
+        ),
         name="robots",
     ),
 ]

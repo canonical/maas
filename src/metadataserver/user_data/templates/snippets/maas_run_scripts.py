@@ -1,4 +1,4 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 #
 # This file is intended to be run with Python 3.6 or above, so it should only
@@ -20,27 +20,20 @@ import tarfile
 from tempfile import mkdtemp
 import time
 
-try:
-    from maas_api_helper import (
-        capture_script_output,
-        Config,
-        get_base_url,
-        geturl,
-        MD_VERSION,
-        signal,
-    )
-except ImportError:
-    # for tests
-    from snippets.maas_api_helper import (
-        capture_script_output,
-        Config,
-        get_base_url,
-        geturl,
-        MD_VERSION,
-        signal,
-    )
-
 import yaml
+
+# imports from maas_api_helpers (only used in tests)
+# {% comment %}
+from snippets.maas_api_helper import (
+    capture_script_output,
+    Config,
+    get_base_url,
+    geturl,
+    MD_VERSION,
+    signal,
+)
+
+# {% endcomment %}
 
 
 class ScriptsDir:
@@ -240,9 +233,7 @@ def get_config(ns):
         url = ns_url
     data["metadata_url"] = url
 
-    config = Config()
-    config.update(data)
-    return config
+    return Config(config=data)
 
 
 def fetch_scripts(maas_url, metadata_url, dirs, credentials):

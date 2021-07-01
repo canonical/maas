@@ -65,6 +65,8 @@ PUBLIC_URL_PREFIXES = [
     reverse("metadata"),
     # RPC information is for use by rack controllers; no login.
     reverse("rpc-info"),
+    # Script to run commissioning scripts manually on a machine
+    reverse("maas-run-scripts"),
     # Prometheus metrics with usage stats
     reverse("metrics"),
     # API meta-information is publicly visible.

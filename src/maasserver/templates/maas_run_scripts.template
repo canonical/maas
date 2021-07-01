@@ -1,0 +1,5 @@
+#!/usr/bin/env python3
+
+{% include "snippets/maas_api_helper.py" %}
+
+{% include "snippets/maas_run_scripts.py" %}

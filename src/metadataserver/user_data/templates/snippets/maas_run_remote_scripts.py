@@ -1669,9 +1669,8 @@ def main():
 
     args = parser.parse_args()
 
-    config = Config()
-    config.update(
-        {
+    config = Config(
+        config={
             "consumer_key": args.ckey,
             "token_key": args.tkey,
             "token_secret": args.tsec,
