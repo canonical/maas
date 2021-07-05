@@ -336,7 +336,12 @@ def signal(
 
 
 def capture_script_output(
-    proc, combined_path, stdout_path, stderr_path, timeout_seconds=None
+    proc,
+    combined_path,
+    stdout_path,
+    stderr_path,
+    timeout_seconds=None,
+    console_output=None,
 ):
     """Capture stdout and stderr from `proc`.
 
@@ -353,7 +358,11 @@ def capture_script_output(
     the process is killed and an exception is raised. Forked processes are not
     subject to the timeout.
 
+    If console_output is set to True or False, script output/error will be
+    printed or not accordingly. By default, it's printed output is a tty.
+
     :return: The exit code of `proc`.
+
     """
     if timeout_seconds in (None, 0):
         timeout = None
@@ -372,12 +381,16 @@ def capture_script_output(
                 selector.register(proc.stderr, selectors.EVENT_READ, err)
                 while selector.get_map() and proc.poll() is None:
                     # Select with a short timeout so that we don't tight loop.
-                    _select_script_output(selector, combined, 0.1, proc)
+                    _select_script_output(
+                        selector, combined, 0.1, proc, console_output
+                    )
                     if timeout is not None and time.monotonic() > timeout:
                         break
                 # Process has finished or has closed stdout and stderr.
                 # Process anything still sitting in the latter's buffers.
-                _select_script_output(selector, combined, 0.0, proc)
+                _select_script_output(
+                    selector, combined, 0.0, proc, console_output
+                )
 
     now = time.monotonic()
     # Wait for the process to finish.
@@ -399,8 +412,11 @@ def capture_script_output(
             raise
 
 
-def _select_script_output(selector, combined, timeout, proc):
+def _select_script_output(selector, combined, timeout, proc, console_output):
     """Helper for `capture_script_output`."""
+    if console_output is None:
+        console_output = sys.stdout.isatty()
+
     for key, event in selector.select(timeout):
         if event & selectors.EVENT_READ:
             # Read from the _raw_ file. Ordinarily Python blocks until a
@@ -410,8 +426,8 @@ def _select_script_output(selector, combined, timeout, proc):
             if not chunk:  # EOF
                 selector.unregister(key.fileobj)
             else:
-                # Output to console if running in a shell.
-                if chunk != b"" and sys.stdout.isatty():
+                # Output to console if specified
+                if chunk != b"" and console_output:
                     fd = (
                         sys.stdout
                         if key.fileobj == proc.stdout

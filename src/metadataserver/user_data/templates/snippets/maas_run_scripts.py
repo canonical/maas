@@ -112,7 +112,7 @@ class Script:
             "default", False
         ) and "deploy-info" in self.info.get("tags", [])
 
-    def run(self):
+    def run(self, console_output=False):
         exit_status = 0
         start = time.monotonic()
         proc = subprocess.Popen(
@@ -128,6 +128,7 @@ class Script:
                 self.stdout_path,
                 self.stderr_path,
                 timeout_seconds=self.info.get("timeout_seconds"),
+                console_output=console_output,
             )
         except OSError as e:
             if e.errno != 0:
@@ -206,6 +207,12 @@ def parse_args(args):
         "--cs",
         help="OAuth consumer secret",
     )
+    parser.add_argument(
+        "--debug",
+        help="Print debug messages and script output/error",
+        action="store_true",
+        default=False,
+    )
     ns = parser.parse_args(args=args)
     return ns
 
@@ -254,7 +261,11 @@ def fetch_scripts(maas_url, metadata_url, dirs, credentials):
 
 
 def main(args):
-    config = get_config(parse_args(args))
+    ns = parse_args(args)
+
+    config = get_config(ns)
+    if not config.metadata_url:
+        sys.exit("No MAAS URL set")
 
     dirs = ScriptsDir()
     dirs.ensure()
@@ -262,12 +273,34 @@ def main(args):
     maas_url = get_base_url(config.metadata_url)
     metadata_url = maas_url + "/MAAS/metadata/" + MD_VERSION + "/"
 
+    print(
+        "* Fetching scripts from {url} to {dir}".format(
+            url=metadata_url, dir=dirs.scripts
+        )
+    )
     for script in fetch_scripts(
         maas_url, metadata_url, dirs, config.credentials
     ):
         if not script.should_run():
             continue
-        result = script.run()
+        print(
+            "* Running '{name}'...".format(name=script.name),
+            end="\n" if ns.debug else " ",
+        )
+        result = script.run(console_output=ns.debug)
+        if ns.debug:
+            print(
+                "* Finished running '{name}': ".format(name=script.name),
+                end=" ",
+            )
+        if result.exit_status == 0:
+            print("success")
+        else:
+            print(
+                "FAILED (status {result.exit_status}): {result.error}".format(
+                    result=result
+                )
+            )
         signal(
             metadata_url,
             config.credentials,

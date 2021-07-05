@@ -136,6 +136,7 @@ class TestScript(MAASTestCase):
             script.stdout_path,
             script.stderr_path,
             timeout_seconds=100,
+            console_output=False,
         )
 
     def test_run_failed(self):
@@ -294,7 +295,7 @@ class TestMain(MAASTestCase):
 
         ran_scripts = []
 
-        def run_script(script):
+        def run_script(script, console_output=False):
             ran_scripts.append(script.name)
             return ScriptRunResult(0, "WORKING", None, 10, {})
 

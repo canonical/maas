@@ -743,7 +743,7 @@ class TestCaptureScriptOutput(MAASTestCase):
         self.isatty = self.patch(maas_api_helper.sys.stdout, "isatty")
         self.isatty.return_value = False
 
-    def capture(self, proc, timeout=None):
+    def capture(self, proc, timeout=None, console_output=None):
         scripts_dir = Path(self.useFixture(TempDirectory()).path)
         combined_path = scripts_dir.joinpath("combined")
         stdout_path = scripts_dir.joinpath("stdout")
@@ -754,7 +754,8 @@ class TestCaptureScriptOutput(MAASTestCase):
             str(combined_path),
             str(stdout_path),
             str(stderr_path),
-            timeout,
+            timeout_seconds=timeout,
+            console_output=console_output,
         )
 
         return (
@@ -804,6 +805,38 @@ class TestCaptureScriptOutput(MAASTestCase):
         self.assertThat(stderr, MockCalledOnceWith("stderr\n"))
         self.assertThat(stdout_flush, MockCalledOnce())
         self.assertThat(stderr_flush, MockCalledOnce())
+
+    def test_no_forwards_to_console_with_false(self):
+        stdout = self.patch(maas_api_helper.sys.stdout, "write")
+        stderr = self.patch(maas_api_helper.sys.stderr, "write")
+        self.patch(maas_api_helper.sys.stdout, "flush")
+        self.patch(maas_api_helper.sys.stderr, "flush")
+        self.isatty.return_value = True
+        proc = Popen(
+            'echo "stdout"; echo "stderr" 1>&2',
+            stdout=PIPE,
+            stderr=PIPE,
+            shell=True,
+        )
+        self.capture(proc, console_output=False)
+        stdout.assert_not_called()
+        stderr.assert_not_called()
+
+    def test_forwards_to_console_with_true_no_tty(self):
+        stdout = self.patch(maas_api_helper.sys.stdout, "write")
+        stderr = self.patch(maas_api_helper.sys.stderr, "write")
+        self.patch(maas_api_helper.sys.stdout, "flush")
+        self.patch(maas_api_helper.sys.stderr, "flush")
+        self.isatty.return_value = False
+        proc = Popen(
+            'echo "stdout"; echo "stderr" 1>&2',
+            stdout=PIPE,
+            stderr=PIPE,
+            shell=True,
+        )
+        self.capture(proc, console_output=True)
+        stdout.assert_called_once_with("stdout\n")
+        stderr.assert_called_once_with("stderr\n")
 
     def test_does_not_wait_for_forked_process(self):
         start_time = time.time()
