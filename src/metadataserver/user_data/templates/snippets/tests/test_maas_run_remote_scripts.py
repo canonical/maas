@@ -982,7 +982,9 @@ class TestCustomNetworking(MAASTestCase):
         self.mock_get_interfaces = self.patch(
             maas_run_remote_scripts, "get_interfaces"
         )
-        self.mock_signal = self.patch(maas_run_remote_scripts, "signal")
+        self.mock_signal = self.patch_autospec(
+            maas_run_remote_scripts, "signal"
+        )
         self.patch(maas_run_remote_scripts.sys.stdout, "write")
         self.patch(maas_run_remote_scripts.sys.stderr, "write")
         self.patch(maas_run_remote_scripts.time, "sleep")
@@ -3583,7 +3585,9 @@ class TestRunScriptsFromMetadata(MAASTestCase):
         self.mock_output_and_send = self.patch(
             maas_run_remote_scripts, "output_and_send"
         )
-        self.mock_signal = self.patch(maas_run_remote_scripts, "signal")
+        self.mock_signal = self.patch_autospec(
+            maas_run_remote_scripts, "signal"
+        )
         self.mock_run_scripts = self.patch(
             maas_run_remote_scripts, "run_scripts"
         )
@@ -3934,7 +3938,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         self.assertFalse(download_and_extract_tar(None, None, scripts_dir))
 
     def test_heartbeat(self):
-        mock_signal = self.patch(maas_run_remote_scripts, "signal")
+        mock_signal = self.patch_autospec(maas_run_remote_scripts, "signal")
         url = factory.make_url()
         creds = Credentials()
         creds.update({"token_secret": factory.make_name("token_secret")})
@@ -3946,7 +3950,7 @@ class TestMaasRunRemoteScripts(MAASTestCase):
         self.assertThat(mock_signal, MockCalledOnceWith(url, creds, "WORKING"))
 
     def test_heartbeat_with_long_sleep(self):
-        mock_signal = self.patch(maas_run_remote_scripts, "signal")
+        mock_signal = self.patch_autospec(maas_run_remote_scripts, "signal")
         self.patch(maas_run_remote_scripts.time, "monotonic").side_effect = [
             time.monotonic(),
             time.monotonic(),

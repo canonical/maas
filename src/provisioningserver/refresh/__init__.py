@@ -76,16 +76,11 @@ def refresh(
         maas_url = "http://127.0.0.1:5240/MAAS"
     url = "%s/metadata/%s/" % (maas_url, MD_VERSION)
 
-    creds = Credentials()
-    creds.update(
-        {
-            "consumer_key": consumer_key,
-            "token_key": token_key,
-            "token_secret": token_secret,
-            "consumer_secret": "",
-        }
+    creds = Credentials(
+        token_key=token_key,
+        token_secret=token_secret,
+        consumer_key=consumer_key,
     )
-
     scripts = {
         name: config
         for name, config in NODE_INFO_SCRIPTS.items()

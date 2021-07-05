@@ -39,6 +39,39 @@ from provisioningserver.refresh import maas_api_helper
 
 
 class TestCredentials(MAASTestCase):
+    def test_defaults(self):
+        creds = maas_api_helper.Credentials()
+        self.assertEqual(creds.consumer_key, "")
+        self.assertEqual(creds.token_key, "")
+        self.assertEqual(creds.token_secret, "")
+        self.assertEqual(creds.consumer_secret, "")
+
+    def test_with_args(self):
+        creds = maas_api_helper.Credentials(
+            token_key="token_key", consumer_secret="consumer_secret"
+        )
+        self.assertEqual(creds.consumer_key, "")
+        self.assertEqual(creds.token_key, "token_key")
+        self.assertEqual(creds.token_secret, "")
+        self.assertEqual(creds.consumer_secret, "consumer_secret")
+
+    def test_eq(self):
+        creds = maas_api_helper.Credentials(
+            token_key="token_key", consumer_secret="consumer_secret"
+        )
+        self.assertEqual(
+            creds,
+            maas_api_helper.Credentials(
+                token_key="token_key", consumer_secret="consumer_secret"
+            ),
+        )
+        self.assertNotEqual(
+            creds,
+            maas_api_helper.Credentials(
+                token_key="token_key2", consumer_key="consumer_key"
+            ),
+        )
+
     def test_update(self):
         creds = maas_api_helper.Credentials()
         consumer_key = factory.make_name("consumer_key")

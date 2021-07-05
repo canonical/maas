@@ -18,7 +18,11 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.refresh.maas_api_helper import signal, SignalException
+from provisioningserver.refresh.maas_api_helper import (
+    Credentials,
+    signal,
+    SignalException,
+)
 from provisioningserver.rpc.exceptions import (
     PodActionFail,
     PodInvalidResources,
@@ -175,12 +179,11 @@ def send_pod_commissioning_results(
             try:
                 signal(
                     url=metadata_url.geturl(),
-                    creds={
-                        "consumer_key": consumer_key,
-                        "token_key": token_key,
-                        "token_secret": token_secret,
-                        "consumer_secret": "",
-                    },
+                    credentials=Credentials(
+                        token_key=token_key,
+                        token_secret=token_secret,
+                        consumer_key=consumer_key,
+                    ),
                     status="WORKING",
                     files={
                         # UI shows combined output by default.

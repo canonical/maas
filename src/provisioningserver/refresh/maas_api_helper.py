@@ -40,10 +40,23 @@ class Credentials:
         ("token_key", "token_secret", "consumer_key", "consumer_secret")
     )
 
-    def __init__(self):
-        # empty defaults
+    def __init__(self, **kwargs):
         for key in self.KEYS:
-            setattr(self, key, "")
+            setattr(self, key, kwargs.get(key) or "")
+
+    def __eq__(self, other):
+        return all(
+            getattr(self, key) == getattr(other, key) for key in self.KEYS
+        )
+
+    def __repr__(self):
+        return "{name}({keys})".format(
+            name=self.__class__.__name__,
+            keys=", ".join(
+                "{key}={value}".format(key=key, value=getattr(self, key))
+                for key in self.KEYS
+            ),
+        )
 
     def update(self, config):
         """Update credentials from a config dict.

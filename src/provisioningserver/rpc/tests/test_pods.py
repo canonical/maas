@@ -26,7 +26,10 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
-from provisioningserver.refresh.maas_api_helper import SignalException
+from provisioningserver.refresh.maas_api_helper import (
+    Credentials,
+    SignalException,
+)
 from provisioningserver.rpc import exceptions, pods
 
 
@@ -407,7 +410,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
 
     @inlineCallbacks
     def test_sends_results(self):
-        mock_signal = self.patch(pods, "signal")
+        mock_signal = self.patch_autospec(pods, "signal")
         consumer_key = factory.make_name("consumer_key")
         token_key = factory.make_name("token_key")
         token_secret = factory.make_name("token_secret")
@@ -438,12 +441,11 @@ class TestSendPodCommissioningResults(MAASTestCase):
             MockCallsMatch(
                 call(
                     url=metadata_url,
-                    creds={
-                        "consumer_key": consumer_key,
-                        "token_key": token_key,
-                        "token_secret": token_secret,
-                        "consumer_secret": "",
-                    },
+                    credentials=Credentials(
+                        consumer_key=consumer_key,
+                        token_key=token_key,
+                        token_secret=token_secret,
+                    ),
                     status="WORKING",
                     files={
                         filename1: json.dumps(data1, indent=4).encode(),
@@ -458,12 +460,11 @@ class TestSendPodCommissioningResults(MAASTestCase):
                 ),
                 call(
                     url=metadata_url,
-                    creds={
-                        "consumer_key": consumer_key,
-                        "token_key": token_key,
-                        "token_secret": token_secret,
-                        "consumer_secret": "",
-                    },
+                    credentials=Credentials(
+                        consumer_key=consumer_key,
+                        token_key=token_key,
+                        token_secret=token_secret,
+                    ),
                     status="WORKING",
                     files={
                         filename2: json.dumps(data2, indent=4).encode(),
@@ -481,7 +482,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
 
     @inlineCallbacks
     def test_sends_results_raises_podactionfail_on_signalexception(self):
-        mock_signal = self.patch(pods, "signal")
+        mock_signal = self.patch_autospec(pods, "signal")
         err_msg = factory.make_name("error_message")
         mock_signal.side_effect = SignalException(err_msg)
         name = (factory.make_name("name"),)
