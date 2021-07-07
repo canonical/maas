@@ -8,28 +8,29 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"rackd/cmd/logger"
 	"rackd/cmd/subcommands"
+	"rackd/internal/config"
 	"rackd/internal/metrics"
 )
 
 type opts struct {
-	Euid     bool
-	Version  bool
-	NoDaemon bool
-	NoSave   bool
-	Syslog   bool
-	GID      uint32
-	UID      uint32
-	Chroot   string
-	RunDir   string
-	LogFile  string
-	LogLevel string
-	Logger   string
-	PIDFile  string
+	Euid       bool
+	Version    bool
+	NoDaemon   bool
+	NoSave     bool
+	Syslog     bool
+	GID        uint32
+	UID        uint32
+	Chroot     string
+	RunDir     string
+	LogFile    string
+	LogLevel   string
+	Logger     string
+	PIDFile    string
+	ConfigFile string
 }
 
 var (
@@ -56,17 +57,36 @@ var (
 			if err != nil {
 				return err
 			}
+
+			err = config.Load(ctx, options.ConfigFile)
+			if err != nil {
+				return err
+			}
+
 			rootMetricsRegistry := metrics.NewRegistry("")
 			metricsSrvr, err := metrics.NewPrometheus("127.0.0.1", 9090, nil, rootMetricsRegistry) // TODO make bind address configurable and provide TLS config
 			if err != nil {
 				return err
 			}
 			defer metricsSrvr.Close()
-			log.Info().Msg("rackd started successfully")
-			sigChan := make(chan os.Signal, 1)
-			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT)
-			<-sigChan
-			return nil
+
+			log.Info().Msgf("rackd %v started successfully", Version)
+
+			sigChan := make(chan os.Signal, 4)
+			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGUSR1)
+			for {
+				switch <-sigChan {
+				case syscall.SIGTERM, syscall.SIGINT:
+					log.Info().Msg("rackd stopping")
+					return nil
+
+				case syscall.SIGHUP:
+					// TODO reload service configuration
+
+				case syscall.SIGUSR1:
+					// TODO reopen logfiles (logrotate)
+				}
+			}
 		},
 	}
 )
@@ -85,6 +105,7 @@ func init() {
 	rootCMD.PersistentFlags().StringVar(&options.LogFile, "log-file", "", "path to file to log to, stdout if not supplied")
 	rootCMD.PersistentFlags().StringVar(&options.LogLevel, "log-level", "info", "log level (info|debug|warn|error)")
 	rootCMD.PersistentFlags().StringVar(&options.PIDFile, "pid-file", "", "path to pid file when daemonized")
+	rootCMD.PersistentFlags().StringVar(&options.ConfigFile, "config-file", "", "path to config file")
 }
 
 func printVersion() {
@@ -100,5 +121,7 @@ func main() {
 	rootCMD.AddCommand(subcommands.SetupDNSCMD)
 	rootCMD.AddCommand(subcommands.SupportDumpCMD)
 	err := rootCMD.Execute()
-	log.Err(err).Msg("rackd exiting")
+	if err != nil {
+		os.Exit(1)
+	}
 }

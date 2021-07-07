@@ -38,7 +38,7 @@ func New(ctx context.Context, doSyslog bool, level, file string) (context.Contex
 			if err != nil {
 				return
 			}
-			logger = zerolog.New(syslogger)
+			logger = zerolog.New(zerolog.SyslogLevelWriter(syslogger))
 		} else if len(file) > 0 {
 			var f io.WriteCloser
 			f, err = os.OpenFile(file, os.O_CREATE|os.O_APPEND, 0644)
@@ -53,7 +53,7 @@ func New(ctx context.Context, doSyslog bool, level, file string) (context.Contex
 		} else {
 			logger = zerolog.New(os.Stdout)
 		}
-		logger.WithContext(ctx)
+		ctx = logger.WithContext(ctx)
 		var logLevel zerolog.Level
 		logLevel, err = zerolog.ParseLevel(level)
 		if err != nil {
