@@ -6,8 +6,6 @@
 
 from django.conf.urls import include, url
 
-handler404 = "maasserver.views.handler404"
-
 urlpatterns = [
     url(r"^", include("maasserver.urls")),
     url(r"^metadata/", include("metadataserver.urls")),

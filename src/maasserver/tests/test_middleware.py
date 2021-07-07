@@ -14,7 +14,7 @@ from crochet import TimeoutError
 from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import Http404, HttpResponse
+from django.http import HttpResponse
 from fixtures import FakeLogger
 from testtools.matchers import Contains, Equals, Not
 
@@ -118,11 +118,6 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         self.assertRaises(
             type(exception), self.process_exception, request, exception
         )
-
-    def test_Http404_returns_302(self):
-        request = self.make_fake_request()
-        response = self.process_exception(request, Http404())
-        self.assertEqual(http.client.FOUND, response.status_code)
 
     def test_unknown_exception_generates_internal_server_error(self):
         # An unknown exception generates an internal server error with the

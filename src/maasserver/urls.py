@@ -5,7 +5,6 @@
 
 
 from django.conf.urls import include, url
-from django.contrib.auth.decorators import user_passes_test
 from django.http import HttpResponse
 from django.views.generic import TemplateView
 
@@ -18,12 +17,6 @@ from maasserver.macaroon_auth import MacaroonDischargeRequest
 from maasserver.prometheus.stats import prometheus_stats_handler
 from maasserver.views.account import authenticate, csrf, login, logout
 from maasserver.views.rpc import info
-
-
-def adminurl(regexp, view, *args, **kwargs):
-    view = user_passes_test(lambda u: u.is_superuser)(view)
-    return url(regexp, view, *args, **kwargs)
-
 
 # Anonymous views.
 urlpatterns = [
