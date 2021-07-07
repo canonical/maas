@@ -51,14 +51,20 @@ var (
 			}
 			var (
 				err error
-				log zerolog.Logger
+				log *zerolog.Logger
 			)
-			ctx, log, err = logger.New(ctx, options.Syslog, options.LogLevel, options.LogFile)
+
+			ctx, log, err = logger.New(ctx, options.Syslog, options.LogFile)
 			if err != nil {
 				return err
 			}
 
 			err = config.Load(ctx, options.ConfigFile)
+			if err != nil {
+				return err
+			}
+
+			log, err = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
 			if err != nil {
 				return err
 			}
@@ -81,10 +87,16 @@ var (
 					return nil
 
 				case syscall.SIGHUP:
-					// TODO reload service configuration
+					err = config.Load(ctx, options.ConfigFile)
+					log.Err(err).Msg("config reload")
+
+					// Update debug level
+					log, _ = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
 
 				case syscall.SIGUSR1:
-					// TODO reopen logfiles (logrotate)
+					// reopen logfiles (logrotate)
+					err = logger.ReOpen()
+					log.Err(err).Msg("rotate logs")
 				}
 			}
 		},

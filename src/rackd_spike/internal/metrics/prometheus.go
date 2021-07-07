@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"strconv"
@@ -45,7 +46,7 @@ func NewPrometheus(host string, port int, tlsConf *tls.Config, registries ...*Re
 
 	go func() {
 		err := srvr.Serve(listener)
-		if err != nil {
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Err(err).Msg("failed to start metrics endpoint")
 		}
 	}()

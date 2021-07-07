@@ -80,7 +80,7 @@ func getConfigFile(filename string) string {
 
 func Load(ctx context.Context, filename string) (err error) {
 	defer func() {
-		log.Ctx(ctx).Err(err).Msgf("load configuration file: %s", filename)
+		log.Ctx(ctx).Err(err).Msgf("configuration file: %s", filename)
 	}()
 
 	filename = getConfigFile(filename)

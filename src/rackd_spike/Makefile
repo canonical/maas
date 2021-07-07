@@ -3,7 +3,12 @@ VERSION:=develop-$(shell git rev-list -1 HEAD)
 PATH:=$(shell go env GOPATH)/bin:${PATH}
 export PATH
 
-all: test build
+LDFLAGS="-X main.Version=$(VERSION) -s -w"
+
+all: version test build
+
+version:
+	@go version
 
 build: rackd
 
@@ -11,7 +16,7 @@ build-dir:
 	mkdir -p ./build
 
 rackd: build-dir
-	go build -ldflags "-X main.Version=$(VERSION)" -o ./build/rackd ./cmd/rackd.go
+	go build -ldflags $(LDFLAGS) -o ./build/rackd ./cmd/rackd.go
 
 test:
 	go test ./...
