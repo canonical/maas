@@ -1010,3 +1010,4 @@ class TestCreateScriptsForDeployedForm(MAASServerTestCase):
         )
         for script_result in script_results:
             self.assertEqual(script_result.status, SCRIPT_STATUS.PENDING)
+        self.assertIs(node.current_commissioning_script_set, script_set)

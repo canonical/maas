@@ -330,6 +330,7 @@ class CreateScriptsForDeployedForm(Form):
         self.instance = instance
 
     def save(self):
+        node = self.instance
         scripts = list(
             Script.objects.filter(
                 script_type=SCRIPT_TYPE.COMMISSIONING,
@@ -338,10 +339,12 @@ class CreateScriptsForDeployedForm(Form):
             )
         )
         script_set = ScriptSet.objects.create(
-            node=self.instance,
+            node=node,
             result_type=RESULT_TYPE.COMMISSIONING,
             requested_scripts=[script.name for script in scripts],
         )
+        node.current_commissioning_script_set = script_set
+        node.save()
         for script in scripts:
             script_set.add_pending_script(script)
         return script_set
