@@ -70,7 +70,10 @@ from maasserver.forms import (
     MachineForm,
 )
 from maasserver.forms.clone import CloneForm
-from maasserver.forms.ephemeral import CommissionForm
+from maasserver.forms.ephemeral import (
+    CommissionForm,
+    CreateScriptsForDeployedForm,
+)
 from maasserver.forms.filesystem import (
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
@@ -1982,15 +1985,26 @@ class MachinesHandler(NodesHandler, PowersMixin):
         commission = get_optional_param(
             request.data, "commission", default=True, validator=StringBool
         )
+        deployed = get_optional_param(
+            request.data, "deployed", default=False, validator=StringBool
+        )
         machine = create_machine(request)
-        if request.user.is_superuser and commission:
-            form = CommissionForm(
-                instance=machine, user=request.user, data=request.data
-            )
-            # Silently ignore errors to prevent 500 errors. The commissioning
-            # callbacks have their own logging. This fixes LP1600328.
-            if form.is_valid():
-                machine = form.save()
+        if request.user.is_superuser:
+            if deployed:
+                form = CreateScriptsForDeployedForm(
+                    instance=machine,
+                    data=request.data,
+                )
+                form.save()
+            elif commission:
+                form = CommissionForm(
+                    instance=machine, user=request.user, data=request.data
+                )
+                # Silently ignore errors to prevent 500 errors. The commissioning
+                # callbacks have their own logging. This fixes LP:1600328.
+                if form.is_valid():
+                    machine = form.save()
+
         return machine
 
     def _check_system_ids_exist(self, system_ids):

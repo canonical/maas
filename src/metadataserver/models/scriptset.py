@@ -122,12 +122,18 @@ class ScriptSetManager(Manager):
         """Create a new commissioning ScriptSet with ScriptResults
 
         ScriptResults will be created for all builtin commissioning scripts.
-        Optionally a list of user scripts and tags can be given to create
-        ScriptResults for. If None all user scripts will be assumed. Scripts
-        may also have paramaters passed to them.
+        Optionally a list of user scripts can be given to create ScriptResults
+        for. If None all user scripts will be assumed. Scripts may also have
+        paramaters passed to them.
+
         """
+        scripts = (
+            [] if scripts is None else list(scripts)
+        )  # ensure it's always a list
         builtin_scripts = Script.objects.filter(default=True)
-        builtin_scripts_names = builtin_scripts.values_list("name", flat=True)
+        builtin_scripts_names = list(
+            builtin_scripts.values_list("name", flat=True)
+        )
         if node.is_controller:
             # Controllers can only run the builtin scripts for them.
             scripts = list(
@@ -137,7 +143,7 @@ class ScriptSetManager(Manager):
             )
         elif enlisting:
             if Config.objects.get_config("enlist_commissioning"):
-                scripts = list(builtin_scripts_names) + ["enlisting"]
+                scripts = builtin_scripts_names + ["enlisting"]
             else:
                 scripts = ["bmc-config"]
         elif not scripts:
@@ -145,15 +151,15 @@ class ScriptSetManager(Manager):
             pass
         elif "none" in scripts:
             # Don't add any scripts besides the ones that come with MAAS.
-            scripts = list(builtin_scripts_names)
+            scripts = builtin_scripts_names
         else:
-            scripts = list(builtin_scripts_names) + scripts
+            scripts = builtin_scripts_names + scripts
 
         script_set = self.create(
             node=node,
             result_type=RESULT_TYPE.COMMISSIONING,
             power_state_before_transition=node.power_state,
-            requested_scripts=scripts if scripts else [],
+            requested_scripts=scripts,
         )
 
         if not scripts:

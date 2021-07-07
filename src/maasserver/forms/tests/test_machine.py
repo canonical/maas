@@ -1,13 +1,12 @@
 # Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for node forms."""
-
 
 from crochet import TimeoutError
 
 from maasserver import forms
 from maasserver.clusterrpc.driver_parameters import get_driver_choices
+from maasserver.enum import NODE_STATUS
 from maasserver.forms import (
     AdminMachineForm,
     BLANK_CHOICE,
@@ -407,6 +406,20 @@ class TestAdminMachineForm(MAASServerTestCase):
             [""] + [choice[0] for choice in get_driver_choices()],
             [choice[0] for choice in form.fields["power_type"].choices],
         )
+
+    def test_AdminMachineForm_new_machine_deployed(self):
+        hostname = factory.make_string()
+        arch = make_usable_architecture(self)
+        form = AdminMachineForm(
+            data={
+                "hostname": hostname,
+                "architecture": arch,
+                "deployed": True,
+            },
+        )
+        self.assertTrue(form.is_valid())
+        node = form.save()
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
 
     def test_AdminMachineForm_populates_power_type_initial(self):
         node = factory.make_Node()

@@ -1145,10 +1145,13 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
     def __init__(self, data=None, instance=None, **kwargs):
         super().__init__(data=data, instance=instance, **kwargs)
         WithPowerTypeMixin.set_up_power_fields(self, data, instance)
+        if self.new_node:
+            self.fields["deployed"] = forms.BooleanField(required=False)
 
     def clean(self):
         cleaned_data = super().clean()
-        return WithPowerTypeMixin.check_driver(self, cleaned_data)
+        cleaned_data = WithPowerTypeMixin.check_driver(self, cleaned_data)
+        return cleaned_data
 
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
@@ -1159,6 +1162,8 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         pool = self.cleaned_data.get("pool")
         if pool:
             machine.pool = pool
+        if self.cleaned_data.get("deployed"):
+            machine.status = NODE_STATUS.DEPLOYED
         WithPowerTypeMixin.set_values(self, machine)
         if kwargs.get("commit", True):
             machine.save(*args, **kwargs)
