@@ -123,7 +123,9 @@ machine-resources: machine-resources-vendor
 	$(MAKE) -C src/machine-resources build
 .PHONY: machine-resources
 
-test: test-missing-migrations test-py
+# test: test-missing-migrations test-py
+test:
+	@echo "**** TEST ARE DISABLED IN THIS BRANCH ****"
 .PHONY: test
 
 test-missing-migrations: bin/database bin/maas-region
