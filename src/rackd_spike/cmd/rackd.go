@@ -14,6 +14,10 @@ import (
 	"rackd/cmd/subcommands"
 	"rackd/internal/config"
 	"rackd/internal/metrics"
+	"rackd/internal/transport"
+	"rackd/pkg/authenticate"
+	"rackd/pkg/region"
+	"rackd/pkg/register"
 )
 
 type opts struct {
@@ -75,6 +79,23 @@ var (
 				return err
 			}
 			defer metricsSrvr.Close()
+
+			initRegion := os.Getenv("REGION_URL")
+			rpcMgr := transport.NewRPCManager(initRegion, true) // TODO use the register command to provide info to connect instead and make TLS skip verify configurable
+			err = rpcMgr.Init(ctx)
+			if err != nil {
+				return err
+			}
+			rpcMgr.AddClient(ctx, authenticate.NewCapnpAuthenticator())
+			rpcMgr.AddClient(ctx, register.NewCapnpRegisterer())
+			err = rpcMgr.Init(ctx)
+			if err != nil {
+				return err
+			}
+			err = region.Handshake(ctx, initRegion, Version, rpcMgr)
+			if err != nil {
+				return err
+			}
 
 			log.Info().Msgf("rackd %v started successfully", Version)
 
