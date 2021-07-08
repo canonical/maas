@@ -3212,7 +3212,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         hostname = factory.make_url()
         username = factory.make_name("username")
         password = factory.make_name("password")
-        port = random.randint(0, 65535)
+        port = random.randint(1, 65535)
         for chassis_type in ("msftocs", "recs_box", "vmware"):
             response = self.client.post(
                 reverse("machines_handler"),
@@ -3222,7 +3222,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                     "hostname": hostname,
                     "username": username,
                     "password": password,
-                    "port": "%s" % port,
+                    "port": port,
                 },
             )
             self.assertEqual(
@@ -3262,7 +3262,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 "chassis_type": chassis_type,
                 "hostname": factory.make_url(),
                 "password": factory.make_name("password"),
-                "port": random.randint(0, 65535),
+                "port": random.randint(1, 65535),
             }
             if chassis_type not in ("virsh", "powerkvm"):
                 params["username"] = factory.make_name("username")
