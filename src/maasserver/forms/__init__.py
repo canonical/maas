@@ -80,10 +80,11 @@ from django.forms import CheckboxInput, Form, MultipleChoiceField
 from django.forms.models import ModelFormMetaclass
 from django.http import QueryDict
 from django.utils.safestring import mark_safe
+from formencode.validators import StringBool
 from lxml import etree
 from netaddr import IPNetwork, valid_ipv6
 
-from maasserver.api.utils import get_overridden_query_dict
+from maasserver.api.utils import get_optional_param, get_overridden_query_dict
 from maasserver.audit import create_audit_event
 from maasserver.clusterrpc.driver_parameters import (
     get_driver_choices,
@@ -738,17 +739,18 @@ class MachineForm(NodeForm):
         """
         architectures = list_all_usable_architectures()
         default_arch = pick_default_architecture(architectures)
-        if len(architectures) == 0:
-            choices = [BLANK_CHOICE]
-        else:
-            choices = list_architecture_choices(architectures)
+        choices = (
+            list_architecture_choices(architectures)
+            if architectures
+            else [BLANK_CHOICE]
+        )
         invalid_arch_message = compose_invalid_choice_text(
             "architecture", choices
         )
-        power_type = self.data.get("power_type", None)
+        required = requires_macs_and_architecture(self.data) or requires_arch
         self.fields["architecture"] = forms.ChoiceField(
             choices=choices,
-            required=(power_type != "ipmi" or requires_arch),
+            required=required,
             initial=default_arch,
             error_messages={"invalid_choice": invalid_arch_message},
         )
@@ -1319,6 +1321,13 @@ def merge_error_messages(summary, errors, limit=MAX_MESSAGES):
     )
 
 
+def requires_macs_and_architecture(data):
+    """Whether mac addresses and architecture need to be specified."""
+    power_type = data.get("power_type", "unknown")
+    deployed = get_optional_param(data, "deployed", validator=StringBool)
+    return not (power_type == "ipmi" or (deployed and power_type == "unknown"))
+
+
 class WithMACAddressesMixin:
     """A form mixin which dynamically adds a MultipleMACAddressField to the
     list of fields.  This mixin also overrides the 'save' method to persist
@@ -1339,7 +1348,8 @@ class WithMACAddressesMixin:
     def set_up_mac_addresses_field(self):
         macs = [mac for mac in self.data.getlist("mac_addresses") if mac]
         self.fields["mac_addresses"] = MultipleMACAddressField(
-            len(macs), required=(self.data.get("power_type") != "ipmi")
+            len(macs),
+            required=requires_macs_and_architecture(self.data),
         )
         self.data = self.data.copy()
         self.data["mac_addresses"] = macs
@@ -1399,14 +1409,13 @@ class WithMACAddressesMixin:
         """
         node = super().save()
         architecture = self.cleaned_data.get("architecture")
-        power_type = self.cleaned_data.get("power_type")
         # If a new node with an IPMI BMC is created the user doesn't have
         # to specify the architecture or MAC addresses. Anonymous POST
         # on the machines API will find the machine the user created by
         # power address. If only the MAC address is given ignore it so the
         # machine boots into the enlistment environment and MAAS can capture
         # the architecture.
-        if not architecture and power_type == "ipmi":
+        if not architecture and not requires_macs_and_architecture(self.data):
             mac_addresses = []
         else:
             mac_addresses = self.cleaned_data["mac_addresses"]

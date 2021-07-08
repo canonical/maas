@@ -180,6 +180,13 @@ class MachineWithMACAddressesFormTest(MAASServerTestCase):
         form = MachineWithMACAddressesForm(data=params)
         self.assertTrue(form.is_valid(), form.errors)
 
+    def test_no_architecture_or_mac_addresses_is_ok_if_deployed(self):
+        params = self.make_params(mac_addresses=[])
+        params["architecture"] = None
+        params["deployed"] = "true"
+        form = MachineWithMACAddressesForm(data=params)
+        self.assertTrue(form.is_valid(), form.errors)
+
     def test_save(self):
         macs = ["aa:bb:cc:dd:ee:ff", "9a:bb:c3:33:e5:7f"]
         form = MachineWithMACAddressesForm(
