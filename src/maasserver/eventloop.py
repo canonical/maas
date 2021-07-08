@@ -77,6 +77,12 @@ def make_RegionService(ipcWorker):
     return regionservice.RegionService(ipcWorker)
 
 
+def make_RPCShim(ipcWorker):
+    from maasserver.rpc.capnp import server
+
+    return server.RPCShimService(ipcWorker)
+
+
 def make_NonceCleanupService():
     from maasserver import nonces_cleanup
 
@@ -280,6 +286,11 @@ class RegionEventLoop:
         "rpc": {
             "only_on_master": False,
             "factory": make_RegionService,
+            "requires": ["ipc-worker"],
+        },
+        "rpc-shim": {
+            "only_on_master": False,
+            "factory": make_RPCShim,
             "requires": ["ipc-worker"],
         },
         "nonce-cleanup": {

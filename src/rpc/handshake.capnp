@@ -11,10 +11,6 @@ struct AuthResponse {
     digest @1 :Data;
 }
 
-interface Authenticator {
-    authenticate @0 (msg :Data) -> (resp :AuthResponse);
-}
-
 struct RegisterRequest {
     systemId @0 :Text;
     hostname @1 :Text;
@@ -29,8 +25,4 @@ struct RegisterResponse {
     systemId @0 :Text;
     uuid @1 :Text;
     version @2 :Text;
-}
-
-interface Registerer {
-    register @0 (req :RegisterRequest) -> (resp :RegisterResponse);
 }

@@ -11,10 +11,12 @@ import (
 	"github.com/rs/zerolog"
 
 	"rackd/internal/metrics"
+	"rackd/pkg/rpc"
 )
 
 var (
-	ErrRPCClientNotFound = errors.New("error client not found")
+	ErrRPCClientNotFound  = errors.New("error client not found")
+	ErrRPCHandlerNotFound = errors.New("error handler not found")
 )
 
 type RPCHandler interface {
@@ -35,19 +37,31 @@ type CapnpRPCClient interface {
 }
 
 type ConnWrapper struct {
-	Conn      net.Conn
-	capnpConn *capnprpc.Conn
+	Conn             net.Conn
+	capnpConn        *capnprpc.Conn
+	regionController *rpc.RegionController
 }
 
 func NewConnWrapper(conn net.Conn) *ConnWrapper {
+	capnpConn := capnprpc.NewConn(capnprpc.NewStreamTransport(conn), nil)
 	return &ConnWrapper{
 		Conn:      conn,
-		capnpConn: capnprpc.NewConn(capnprpc.NewStreamTransport(conn), nil),
+		capnpConn: capnpConn,
 	}
 }
 
-func (c *ConnWrapper) Capnp() *capnprpc.Conn {
+func (c *ConnWrapper) Bootstrap(ctx context.Context) {
+	c.regionController = &rpc.RegionController{
+		Client: c.capnpConn.Bootstrap(ctx),
+	}
+}
+
+func (c *ConnWrapper) CapnpConn() *capnprpc.Conn {
 	return c.capnpConn
+}
+
+func (c *ConnWrapper) Capnp() *rpc.RegionController {
+	return c.regionController
 }
 
 type RPCManager struct {
@@ -109,6 +123,7 @@ func (r *RPCManager) AddClient(ctx context.Context, client RPCClient) {
 
 func (r *RPCManager) AddConn(ctx context.Context, conn net.Conn) {
 	newConn := NewConnWrapper(conn)
+	newConn.Bootstrap(ctx)
 	r.conns[conn.RemoteAddr().String()] = newConn
 	for _, handler := range r.handlers {
 		handler.SetupServer(ctx, newConn)
@@ -124,4 +139,12 @@ func (r *RPCManager) GetClient(clientName string) (RPCClient, error) {
 		return nil, ErrRPCClientNotFound
 	}
 	return c, nil
+}
+
+func (r *RPCManager) GetHandler(handlerName string) (RPCHandler, error) {
+	h, ok := r.handlers[handlerName]
+	if !ok {
+		return nil, ErrRPCHandlerNotFound
+	}
+	return h, nil
 }

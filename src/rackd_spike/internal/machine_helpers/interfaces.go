@@ -81,6 +81,9 @@ func splitDhclientCmdlineFile(data []byte, atEOF bool) (advance int, token []byt
 }
 
 func GetLatestFixedAddress(leasePath string) (string, error) {
+	if len(leasePath) == 0 {
+		return "", nil
+	}
 	f, err := os.Open(leasePath)
 	if err != nil {
 		return "", err
@@ -229,14 +232,13 @@ func fixLinkAddresses(links []IPLink) ([]IPLink, error) {
 		)
 		if link.Netmask != 0 {
 			ipAddr, ipNet, err = net.ParseCIDR(fmt.Sprintf("%s/%d", link.Address, link.Netmask))
-			if err != nil {
-				return nil, err
-			}
+		} else if !strings.Contains(link.Address, "/") {
+			ipAddr, ipNet, err = net.ParseCIDR(fmt.Sprintf("%s/32", link.Address))
 		} else {
 			ipAddr, ipNet, err = net.ParseCIDR(link.Address)
-			if err != nil {
-				return nil, err
-			}
+		}
+		if err != nil {
+			return nil, err
 		}
 		prefixLen, _ := ipNet.Mask.Size()
 		if ipAddr.To4() != nil {
@@ -272,11 +274,7 @@ func fixLinkAddresses(links []IPLink) ([]IPLink, error) {
 	newSubnets := [][]*net.IPNet{subnetsV4, subnetsV6}
 	for i, currLinks := range newLinks {
 		currSubnets := sortableSubnets(newSubnets[i])
-		var ok bool
-		currSubnets, ok = sort.Reverse(currSubnets).(sortableSubnets)
-		if !ok {
-			return nil, fmt.Errorf("sort.Reverse() returned a type other than sortableSubnets, %T", currSubnets)
-		}
+		sort.Sort(sort.Reverse(currSubnets))
 		for _, link := range currLinks {
 			var (
 				ip  net.IP
@@ -286,6 +284,8 @@ func fixLinkAddresses(links []IPLink) ([]IPLink, error) {
 				ip, _, err = net.ParseCIDR(
 					fmt.Sprintf("%s:%d", link.Link.Address, link.Link.Netmask),
 				)
+			} else if !strings.Contains(link.Link.Address, "/") {
+				ip = net.ParseIP(link.Link.Address)
 			} else {
 				ip, _, err = net.ParseCIDR(link.Link.Address)
 			}
@@ -339,9 +339,14 @@ func GetIPRoute(ctx context.Context) (map[string]IPRoute, error) {
 	return routes, nil
 }
 
-func fixGateways(links []IPLink, ipRouteInfo map[string]IPRoute) ([]IPLink, error) {
+func fixGateways(links []IPLink, ipRouteInfo map[string]IPRoute) (res []IPLink, err error) {
 	for i, link := range links {
-		_, subnet, err := net.ParseCIDR(link.Address)
+		var subnet *net.IPNet
+		if link.Netmask != 0 {
+			_, subnet, err = net.ParseCIDR(fmt.Sprintf("%s/%d", link.Address, link.Netmask))
+		} else {
+			_, subnet, err = net.ParseCIDR(link.Address)
+		}
 		if err != nil {
 			return nil, err
 		}

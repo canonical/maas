@@ -439,3 +439,17 @@ sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) src/machine-resources/bin/ \
 		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/machine-resources/
 .PHONY: sync-dev-snap
+
+capnp_dir:
+	mkdir -p ./src/rpc/py
+
+%.capnp:
+	capnp compile -oc++:./src/rpc/py/ -ocython:./src/rpc/py/ ./src/rpc/$@ --src-prefix ./src/rpc  
+
+gen-capnp-setup: capnp_dir handshake.capnp network.capnp region.capnp rack.capnp controller.capnp
+
+gen-capnp-py: gen-capnp-setup
+	cd ./src/rpc/py && rm ./setup_capnp.py && cp ./setup_capnp.py.bak ./setup_capnp.py && $(python) setup_capnp.py build_ext --inplace
+
+clean-capnp-py:
+	rm -r ./src/rpc/py/*

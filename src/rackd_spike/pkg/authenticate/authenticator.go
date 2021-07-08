@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 
 	"rackd/internal/metrics"
 	"rackd/internal/transport"
@@ -30,14 +31,14 @@ type Authenticator interface {
 }
 
 type CapnpAuthenticator struct {
-	clients map[string]*rpc.Authenticator
+	clients map[string]*rpc.RegionController
 }
 
 func NewCapnpAuthenticator() Authenticator {
 	// Perhaps we should initialize this with the shared secret already loaded either
 	// from the config manager or load from the FS on instantiation?
 	return &CapnpAuthenticator{
-		clients: make(map[string]*rpc.Authenticator),
+		clients: make(map[string]*rpc.RegionController),
 	}
 }
 
@@ -51,15 +52,24 @@ func (c *CapnpAuthenticator) RegisterMetrics(registry *metrics.Registry) error {
 }
 
 func (c *CapnpAuthenticator) SetupClient(ctx context.Context, conn *transport.ConnWrapper) {
-	c.clients[conn.Conn.RemoteAddr().String()] = &rpc.Authenticator{Client: conn.Capnp().Bootstrap(ctx)}
+	c.clients[conn.Conn.RemoteAddr().String()] = conn.Capnp()
 }
 
 func (c *CapnpAuthenticator) Authenticate(ctx context.Context, region string, secret, message []byte) (*AuthCreds, error) {
-	regionClient, ok := c.clients[region]
-	if !ok {
-		return nil, fmt.Errorf("%w: %s", transport.ErrRPCClientNotFound, region)
+	regionUrl, err := url.Parse(region)
+	if err != nil {
+		return nil, err
 	}
-	result, release := regionClient.Authenticate(ctx, func(params rpc.Authenticator_authenticate_Params) error {
+	regionClient, ok := c.clients[regionUrl.Host]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", transport.ErrRPCClientNotFound, regionUrl.Host)
+	}
+	auth, release := regionClient.GetAuthenticator(ctx, func(params rpc.RegionController_getAuthenticator_Params) error {
+		return nil
+	})
+	defer release()
+	authClient := auth.Auth()
+	result, release := authClient.Authenticate(ctx, func(params rpc.RegionController_Authenticator_authenticate_Params) error {
 		return params.SetMsg(message)
 	})
 	defer release()

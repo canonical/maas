@@ -16,6 +16,7 @@ import (
 	"rackd/internal/metrics"
 	"rackd/internal/transport"
 	"rackd/pkg/authenticate"
+	"rackd/pkg/controller"
 	"rackd/pkg/region"
 	"rackd/pkg/register"
 )
@@ -88,6 +89,7 @@ var (
 			}
 			rpcMgr.AddClient(ctx, authenticate.NewCapnpAuthenticator())
 			rpcMgr.AddClient(ctx, register.NewCapnpRegisterer())
+			rpcMgr.AddHandler(ctx, controller.NewRackController())
 			err = rpcMgr.Init(ctx)
 			if err != nil {
 				return err

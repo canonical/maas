@@ -56,3 +56,8 @@ __pycache__
 \#*\#
 .#*
 *.*.swp
+/src/rpc/py/*.c++
+/src/rpc/py/*.cpp
+/src/rpc/py/*.h
+/src/rpc/py/*.pyx
+/src/rpc/py/*.so

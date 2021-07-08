@@ -2,12 +2,14 @@ package register
 
 import (
 	"context"
+	"net/url"
 
 	"github.com/rs/zerolog"
 
 	machinehelpers "rackd/internal/machine_helpers"
 	"rackd/internal/metrics"
 	"rackd/internal/transport"
+	"rackd/pkg/controller"
 	"rackd/pkg/rpc"
 )
 
@@ -15,21 +17,24 @@ type Registerer interface {
 	transport.RPCClient
 	Register(
 		ctx context.Context,
+		ctrlr controller.CapnpController,
 		region, clusterUUID, systemId, hostname, version string,
 		interfaces map[string]machinehelpers.Interface,
 	) error
 }
 
 type CapnpRegisterer struct {
-	clients map[string]*rpc.Registerer
+	clients map[string]*rpc.RegionController
 }
 
 func NewCapnpRegisterer() Registerer {
-	return &CapnpRegisterer{}
+	return &CapnpRegisterer{
+		clients: make(map[string]*rpc.RegionController),
+	}
 }
 
 func (c *CapnpRegisterer) Name() string {
-	return "Registerer"
+	return "registerer"
 }
 
 func (c *CapnpRegisterer) RegisterMetrics(registry *metrics.Registry) error {
@@ -38,19 +43,29 @@ func (c *CapnpRegisterer) RegisterMetrics(registry *metrics.Registry) error {
 }
 
 func (c *CapnpRegisterer) SetupClient(ctx context.Context, client *transport.ConnWrapper) {
-	c.clients[client.Conn.RemoteAddr().String()] = &rpc.Registerer{Client: client.Capnp().Bootstrap(ctx)}
+	c.clients[client.Conn.RemoteAddr().String()] = client.Capnp()
 }
 
 func (c *CapnpRegisterer) Register(
 	ctx context.Context,
+	ctrlr controller.CapnpController,
 	region, clusterUUID, systemId, hostname, version string,
 	interfaces map[string]machinehelpers.Interface,
 ) error {
-	client, ok := c.clients[region]
+	regionUrl, err := url.Parse(region)
+	if err != nil {
+		return nil
+	}
+	client, ok := c.clients[regionUrl.Host]
 	if !ok {
 		return transport.ErrRPCClientNotFound
 	}
-	result, release := client.Register(ctx, func(params rpc.Registerer_register_Params) error {
+	reg, release := client.GetRegisterer(ctx, func(params rpc.RegionController_getRegisterer_Params) error {
+		return params.SetRackController(ctrlr.Capnp())
+	})
+	defer release()
+	regClient := reg.Reg()
+	result, release := regClient.Register(ctx, func(params rpc.RegionController_Registerer_register_Params) error {
 		req, err := params.NewReq()
 		if err != nil {
 			return err

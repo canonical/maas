@@ -18,7 +18,7 @@ var (
 )
 
 func GetMAASDataPath(path string) string {
-	basePath, ok := os.LookupEnv(path)
+	basePath, ok := os.LookupEnv("MAAS_DATA")
 	if !ok {
 		basePath = "/var/lib/maas"
 	}
@@ -26,9 +26,8 @@ func GetMAASDataPath(path string) string {
 }
 
 func GetMAASID() (string, error) {
-	maasIdLock.RLock()
-	defer maasIdLock.RUnlock()
-
+	maasIdLock.Lock()
+	defer maasIdLock.Unlock()
 	if len(maasId) == 0 {
 		path := GetMAASDataPath("maas_id")
 		f, err := os.Open(path)
@@ -42,8 +41,6 @@ func GetMAASID() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		maasIdLock.Lock()
-		defer maasIdLock.Unlock()
 		maasId = strings.TrimSpace(string(contents))
 	}
 	return maasId, nil

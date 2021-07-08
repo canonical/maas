@@ -42,7 +42,7 @@ func PIDInContainer(pid int, procPath string) (bool, error) {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		cgroup := strings.SplitN(line, ":", 2)
+		cgroup := strings.SplitN(line, ":", 3)
 		// cgroup[2] will be the cgroup heirarchy
 		if strings.HasPrefix(cgroup[2], "/lxc") || strings.Contains(cgroup[2], "docker") {
 			return true, nil

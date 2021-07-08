@@ -39,5 +39,6 @@ six==1.14.0
 sqlparse==0.2.4
 traitlets==4.3.3
 wcwidth==0.1.8
+pycapnp==1.1.0
 # Install MAAS itself in editable mode
 -e .

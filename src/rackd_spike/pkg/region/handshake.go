@@ -10,6 +10,7 @@ import (
 	machinehelpers "rackd/internal/machine_helpers"
 	"rackd/internal/transport"
 	auth "rackd/pkg/authenticate"
+	"rackd/pkg/controller"
 	reg "rackd/pkg/register"
 )
 
@@ -44,7 +45,12 @@ func authenticate(ctx context.Context, region string, rpcMgr *transport.RPCManag
 	return nil
 }
 
-func register(ctx context.Context, region, localVersion string, rpcMgr *transport.RPCManager) error {
+func register(
+	ctx context.Context,
+	region, localVersion string,
+	rpcMgr *transport.RPCManager,
+	ctrlr *controller.RackController,
+) error {
 	registererIface, err := rpcMgr.GetClient("registerer")
 	if err != nil {
 		return err
@@ -69,6 +75,7 @@ func register(ctx context.Context, region, localVersion string, rpcMgr *transpor
 	}
 	err = registerer.Register(
 		ctx,
+		ctrlr,
 		region,
 		clusterUUID,
 		systemId,
@@ -87,5 +94,13 @@ func Handshake(ctx context.Context, region, localVersion string, rpcMgr *transpo
 	if err != nil {
 		return err
 	}
-	return register(ctx, region, localVersion, rpcMgr)
+	rackCtrlr, err := rpcMgr.GetHandler("rack-controller")
+	if err != nil {
+		return err
+	}
+	ctrlr, ok := rackCtrlr.(*controller.RackController)
+	if !ok {
+		return controller.ErrInvalidRackController
+	}
+	return register(ctx, region, localVersion, rpcMgr, ctrlr)
 }

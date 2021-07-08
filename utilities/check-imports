@@ -261,6 +261,7 @@ RegionControllerRule = Rule(
     Allow("apiclient.utils.*"),
     Allow("attr|attr.**"),
     Allow("bson"),
+    Allow("capnp"),
     Allow("crochet|crochet.**"),
     Allow("curtin|curtin.**"),
     Allow("dbus"),
