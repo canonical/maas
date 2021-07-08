@@ -23,6 +23,8 @@ from twisted.internet.process import reapAllProcesses
 from twisted.internet.task import deferLater, LoopingCall
 from twisted.internet.threads import blockingCallFromThread
 
+__unittest = True  # skip this line from traceback in failed tests
+
 
 def DelayedCall_bytes(call, __str__=DelayedCall.__str__):
     string = __str__(call)
