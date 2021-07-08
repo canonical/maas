@@ -223,17 +223,19 @@ class TestGetConfig(MAASTestCase):
             [
                 "--config",
                 str(config_file),
-                "--tk",
-                "new-token-key",
+                "--machine-token",
+                "new-consumer-key:new-token-key:new-token-secret:new-consumer-secret",
                 "--metadata-url",
                 "http://new.example.com",
             ]
         )
         config = get_config(ns)
         self.assertEqual(config.credentials.token_key, "new-token-key")
-        self.assertEqual(config.credentials.token_secret, "token-secret")
-        self.assertEqual(config.credentials.consumer_key, "consumer-key")
-        self.assertEqual(config.credentials.consumer_secret, "consumer-secret")
+        self.assertEqual(config.credentials.token_secret, "new-token-secret")
+        self.assertEqual(config.credentials.consumer_key, "new-consumer-key")
+        self.assertEqual(
+            config.credentials.consumer_secret, "new-consumer-secret"
+        )
         self.assertEqual(config.metadata_url, "http://new.example.com")
 
 

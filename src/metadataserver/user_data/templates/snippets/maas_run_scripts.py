@@ -27,8 +27,10 @@ import yaml
 from snippets.maas_api_helper import (
     capture_script_output,
     Config,
+    Credentials,
     get_base_url,
     geturl,
+    InvalidCredentialsFormat,
     MD_VERSION,
     signal,
 )
@@ -174,7 +176,16 @@ class Script:
         }
 
 
+def oauth_token(string):
+    """Helper to use as type for OAuth token commandline args."""
+    try:
+        return Credentials.from_string(string)
+    except InvalidCredentialsFormat as e:
+        raise argparse.ArgumentTypeError(str(e))
+
+
 def parse_args(args):
+    token_format = "'consumer-key:token-key:token-secret[:consumer_secret]'"
     parser = argparse.ArgumentParser(
         description="run MAAS commissioning scripts and report back results"
     )
@@ -188,24 +199,11 @@ def parse_args(args):
         help="MAAS metadata URL",
     )
     parser.add_argument(
-        "--token-key",
-        "--tk",
-        help="OAuth token key",
-    )
-    parser.add_argument(
-        "--token-secret",
-        "--ts",
-        help="OAuth token secret",
-    )
-    parser.add_argument(
-        "--consumer-key",
-        "--ck",
-        help="OAuth consumer key",
-    )
-    parser.add_argument(
-        "--consumer-secret",
-        "--cs",
-        help="OAuth consumer secret",
+        "--machine-token",
+        type=oauth_token,
+        help="Machine OAuth token, in the {form} form".format(
+            form=token_format
+        ),
     )
     parser.add_argument(
         "--debug",
@@ -225,14 +223,17 @@ def get_config(ns):
         conf = {}
 
     data = {}
-    for key in (
-        "token_key",
-        "token_secret",
-        "consumer_key",
-        "consumer_secret",
-    ):
-        ns_value = getattr(ns, key)
-        data[key] = ns_value if ns_value is not None else conf.get(key)
+    credentials = ns.machine_token
+    if not credentials:
+        data = {
+            key: conf.get(key)
+            for key in (
+                "token_key",
+                "token_secret",
+                "consumer_key",
+                "consumer_secret",
+            )
+        }
 
     url = conf.get("endpoint")
     ns_url = getattr(ns, "metadata_url")
@@ -240,7 +241,7 @@ def get_config(ns):
         url = ns_url
     data["metadata_url"] = url
 
-    return Config(config=data)
+    return Config(config=data, credentials=credentials)
 
 
 def fetch_scripts(maas_url, metadata_url, dirs, credentials):

@@ -11,6 +11,7 @@ import mimetypes
 import os
 from pathlib import Path
 import random
+import re
 import selectors
 import socket
 import string
@@ -33,11 +34,23 @@ MD_VERSION = "2012-03-01"
 PIPE_MAX_SIZE = int(Path("/proc/sys/fs/pipe-max-size").read_text())
 
 
+class InvalidCredentialsFormat(Exception):
+    """Raised when OAuth credentials string is in wrong format."""
+
+
 # This would be a dataclass, but needs to support python3.6
 class Credentials:
 
     KEYS = frozenset(
         ("token_key", "token_secret", "consumer_key", "consumer_secret")
+    )
+
+    _STRING_RE = re.compile(
+        r"(?P<consumer_key>[^:]+)"
+        r":(?P<token_key>[^:]+)"
+        r":(?P<token_secret>[^:]+)"
+        r"(:(?P<consumer_secret>[^:]+))?"
+        r"$",
     )
 
     def __init__(self, **kwargs):
@@ -49,6 +62,9 @@ class Credentials:
             getattr(self, key) == getattr(other, key) for key in self.KEYS
         )
 
+    def __bool__(self):
+        return any(getattr(self, key) for key in self.KEYS)
+
     def __repr__(self):
         return "{name}({keys})".format(
             name=self.__class__.__name__,
@@ -57,6 +73,15 @@ class Credentials:
                 for key in self.KEYS
             ),
         )
+
+    @classmethod
+    def from_string(cls, string):
+        if not string:
+            return cls()
+        match = cls._STRING_RE.match(string)
+        if not match:
+            raise InvalidCredentialsFormat("Invalid OAuth credentials format")
+        return cls(**match.groupdict())
 
     def update(self, config):
         """Update credentials from a config dict.
@@ -86,8 +111,8 @@ class Credentials:
 
 
 class Config:
-    def __init__(self, config=None):
-        self.credentials = Credentials()
+    def __init__(self, config=None, credentials=None):
+        self.credentials = credentials or Credentials()
         self.metadata_url = None
         self.config_path = None
         if config:

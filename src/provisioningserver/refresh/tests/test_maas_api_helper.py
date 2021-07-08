@@ -72,6 +72,55 @@ class TestCredentials(MAASTestCase):
             ),
         )
 
+    def test_bool(self):
+        self.assertTrue(
+            maas_api_helper.Credentials(
+                token_key="token_key", consumer_key="consumer_key"
+            )
+        )
+        self.assertFalse(maas_api_helper.Credentials())
+
+    def test_from_stringempty(self):
+        self.assertEqual(
+            maas_api_helper.Credentials.from_string(""),
+            maas_api_helper.Credentials(),
+        )
+        self.assertEqual(
+            maas_api_helper.Credentials.from_string(None),
+            maas_api_helper.Credentials(),
+        )
+
+    def test_all(self):
+        creds = maas_api_helper.Credentials.from_string("ck:tk:ts:cs")
+        self.assertEqual(
+            creds,
+            maas_api_helper.Credentials(
+                consumer_key="ck",
+                token_key="tk",
+                token_secret="ts",
+                consumer_secret="cs",
+            ),
+        )
+
+    def test_no_consumer_secret(self):
+        creds = maas_api_helper.Credentials.from_string("ck:tk:ts")
+        self.assertEqual(
+            creds,
+            maas_api_helper.Credentials(
+                consumer_key="ck",
+                token_key="tk",
+                token_secret="ts",
+                consumer_secret="",
+            ),
+        )
+
+    def test_wrong_format(self):
+        self.assertRaises(
+            maas_api_helper.InvalidCredentialsFormat,
+            maas_api_helper.Credentials.from_string,
+            "wrong:format",
+        )
+
     def test_update(self):
         creds = maas_api_helper.Credentials()
         consumer_key = factory.make_name("consumer_key")
