@@ -21,6 +21,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import SCRIPT_STATUS, SCRIPT_TYPE
+from metadataserver.models import NodeKey
 
 
 class TestTestForm(MAASServerTestCase):
@@ -1011,3 +1012,11 @@ class TestCreateScriptsForDeployedForm(MAASServerTestCase):
         for script_result in script_results:
             self.assertEqual(script_result.status, SCRIPT_STATUS.PENDING)
         self.assertIs(node.current_commissioning_script_set, script_set)
+
+    def test_create_node_token(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.assertFalse(NodeKey.objects.filter(node=node).exists())
+        form = CreateScriptsForDeployedForm(instance=node, data={})
+        self.assertTrue(form.is_valid())
+        form.save()
+        self.assertTrue(NodeKey.objects.filter(node=node).exists())

@@ -22,7 +22,7 @@ from maasserver.enum import NODE_STATUS
 from maasserver.node_action import compile_node_actions
 from maasserver.utils.forms import set_form_error
 from metadataserver.enum import RESULT_TYPE, SCRIPT_TYPE
-from metadataserver.models import Script, ScriptSet
+from metadataserver.models import NodeKey, Script, ScriptSet
 
 
 class TestForm(Form):
@@ -343,8 +343,10 @@ class CreateScriptsForDeployedForm(Form):
             result_type=RESULT_TYPE.COMMISSIONING,
             requested_scripts=[script.name for script in scripts],
         )
-        node.current_commissioning_script_set = script_set
-        node.save()
         for script in scripts:
             script_set.add_pending_script(script)
+        node.current_commissioning_script_set = script_set
+        node.save()
+        # ensure a token is available for the machine
+        NodeKey.objects.get_token_for_node(node)
         return script_set
