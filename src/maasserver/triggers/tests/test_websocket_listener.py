@@ -109,7 +109,11 @@ class TestNodeListener(
         (
             "machine",
             {
-                "params": {"node_type": NODE_TYPE.MACHINE},
+                "params": {
+                    "node_type": NODE_TYPE.MACHINE,
+                    # This is needed to avoid updating the node after creating it
+                    "with_boot_disk": False,
+                },
                 "listener": "machine",
             },
         ),
@@ -322,8 +326,7 @@ class TestControllerListener(
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        params = self.params.copy()
-        controller = yield deferToDatabase(self.create_node, params)
+        controller = yield deferToDatabase(self.create_node, self.params)
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
@@ -338,8 +341,7 @@ class TestControllerListener(
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        params = self.params.copy()
-        controller = yield deferToDatabase(self.create_node, params)
+        controller = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(self.set_version, controller, "2.10.0")
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
@@ -355,8 +357,7 @@ class TestControllerListener(
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        params = self.params.copy()
-        controller = yield deferToDatabase(self.create_node, params)
+        controller = yield deferToDatabase(self.create_node, self.params)
         # first set the version
         yield deferToDatabase(self.set_version, controller, "3.0.0")
         listener.register(self.listener, lambda *args: dv.set(args))
@@ -380,8 +381,7 @@ class TestControllerListener(
         yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
-        params = self.params.copy()
-        controller = yield deferToDatabase(self.create_node, params)
+        controller = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(self.set_version, controller, "2.10.0")
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()

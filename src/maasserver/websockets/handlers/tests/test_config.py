@@ -25,6 +25,11 @@ from maasserver.websockets.handlers.config import (
 
 
 class TestConfigHandler(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        # Avoid triggering updates e.g. update_boot_cache_source
+        Config.objects._config_changed_connections.clear()
+
     def test_dehydrate_no_choice_config(self):
         no_choice_name = random.choice(
             list(

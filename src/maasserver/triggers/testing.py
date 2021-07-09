@@ -112,7 +112,6 @@ class TransactionalHelpersMixin:
     def create_node(self, params=None):
         if params is None:
             params = {}
-        params["with_boot_disk"] = False
         vlan = factory.make_VLAN(space=factory.make_Space())
         return factory.make_Node(vlan=vlan, **params)
 

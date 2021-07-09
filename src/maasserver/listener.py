@@ -4,7 +4,7 @@
 """Listens for NOTIFY events from the postgres database."""
 
 
-from collections import defaultdict
+from collections import defaultdict, deque
 from errno import ENOENT
 import threading
 
@@ -81,7 +81,7 @@ class PostgresListenerService(Service):
         self.autoReconnect = False
         self.connection = None
         self.connectionFileno = None
-        self.notifications = set()
+        self.notifications = deque()
         self.notifier = task.LoopingCall(self.handleNotifies)
         self.notifierDone = None
         self.connecting = None
@@ -433,8 +433,8 @@ class PostgresListenerService(Service):
         """Process all notify message in the notifications set."""
 
         def gen_notifications(notifications):
-            while len(notifications) != 0:
-                yield notifications.pop()
+            while notifications:
+                yield notifications.popleft()
 
         return task.coiterate(
             self.handleNotify(notification, clock=clock)
@@ -502,7 +502,9 @@ class PostgresListenerService(Service):
             else:
                 # Place non-system messages into the queue to be
                 # processed.
-                self.notifications.add((notify.channel, notify.payload))
+                notification = (notify.channel, notify.payload)
+                if notification not in self.notifications:
+                    self.notifications.append(notification)
         # Delete the contents of the connection's notifies list so
         # that we don't process them a second time.
         del notifies[:]
