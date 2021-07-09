@@ -478,12 +478,3 @@ class TestVlanAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.content
         )
-
-    def test_delete_400_when_invalid_url(self):
-        factory.make_Fabric()
-        self.become_admin()
-        uri = reverse("vlan_handler", args=[" ", " "])
-        response = self.client.delete(uri)
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content
-        )

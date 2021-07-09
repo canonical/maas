@@ -318,13 +318,6 @@ class TestSubnetAPI(APITestCase.ForUser):
             http.client.NOT_FOUND, response.status_code, response.content
         )
 
-    def test_read_400_when_blank_id(self):
-        uri = reverse("subnet_handler", args=[" "])
-        response = self.client.get(uri)
-        self.assertEqual(
-            http.client.BAD_REQUEST, response.status_code, response.content
-        )
-
     def test_read_403_when_ambiguous(self):
         fabric = factory.make_Fabric(name="foo")
         factory.make_Subnet(fabric=fabric)

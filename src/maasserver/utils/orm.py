@@ -1288,7 +1288,7 @@ class MAASQueriesMixin:
         object_name = get_model_object_name(self)
         if isinstance(specifiers, str):
             specifiers = specifiers.strip()
-        if not specifiers:
+        if specifiers is None:
             raise MAASAPIBadRequest("%s specifier required." % object_name)
         try:
             object = get_one(self.filter_by_specifiers(specifiers, **kwargs))
