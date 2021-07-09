@@ -3835,7 +3835,9 @@ class TestMachineFilesystemgroupListener(
     def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
-        yield deferToDatabase(self.create_partitiontable, {"node": node})
+        yield deferToDatabase(
+            self.create_partitiontable, {"node": node, "bootable": True}
+        )
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -3853,7 +3855,9 @@ class TestMachineFilesystemgroupListener(
     def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
-        yield deferToDatabase(self.create_partitiontable, {"node": node})
+        yield deferToDatabase(
+            self.create_partitiontable, {"node": node, "bootable": True}
+        )
         filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {"node": node, "group_type": "raid-5"}
         )
@@ -3876,7 +3880,9 @@ class TestMachineFilesystemgroupListener(
     def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
-        yield deferToDatabase(self.create_partitiontable, {"node": node})
+        yield deferToDatabase(
+            self.create_partitiontable, {"node": node, "bootable": True}
+        )
         filesystemgroup = yield deferToDatabase(
             self.create_filesystemgroup, {"node": node, "group_type": "bcache"}
         )
