@@ -7,6 +7,10 @@
 
 set -o pipefail
 
+MAAS_RAND_SEED="$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')"
+export MAAS_RAND_SEED
+echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
+
 bin/test.parallel --subprocess-per-core --emit-subunit | \
     bin/subunit-1to2 | \
     bin/subunit2junitxml --no-passthrough -f -o junit.xml | \

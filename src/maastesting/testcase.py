@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from functools import wraps
 from importlib import import_module
 import os
+import random
 from unittest import mock
 from unittest.mock import MagicMock
 
@@ -19,6 +20,7 @@ from nose.proxy import ResultProxy
 from nose.tools import nottest
 import testresources
 import testtools
+from testtools.content import text_content
 import testtools.matchers
 from testtools.matchers import AllMatch, IsInstance, Not
 
@@ -125,6 +127,11 @@ class MAASTestCase(
             self.useFixture(MAASRootFixture())
         if "MAAS_DATA" in os.environ:
             self.useFixture(MAASDataFixture())
+
+        rand_seed = os.environ.get("MAAS_RAND_SEED", None)
+        random.seed(rand_seed)
+        if rand_seed is not None:
+            self.addDetail("Random seed", text_content(rand_seed))
 
         # Capture Twisted logs and add them as a test detail.
         twistedLog = self.useFixture(TwistedLoggerFixture())
