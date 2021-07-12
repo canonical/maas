@@ -8,8 +8,11 @@
 set -o pipefail
 
 MAAS_RAND_SEED="$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')"
-export MAAS_RAND_SEED
+PYTHONHASHSEED="$(shuf -i 0-4294967295 -n 1)"
+export MAAS_RAND_SEED PYTHONHASHSEED
+
 echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
+echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
 
 bin/test.parallel --subprocess-per-core --emit-subunit | \
     bin/subunit-1to2 | \
