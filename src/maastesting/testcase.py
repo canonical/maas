@@ -133,6 +133,11 @@ class MAASTestCase(
         if rand_seed is not None:
             self.addDetail("Random seed", text_content(rand_seed))
 
+        if "PYTHONHASHSEED" in os.environ:
+            self.addDetail(
+                "Python hash seed", text_content(os.environ["PYTHONHASHSEED"])
+            )
+
         # Capture Twisted logs and add them as a test detail.
         twistedLog = self.useFixture(TwistedLoggerFixture())
         self.addDetail("Twisted logs", twistedLog.getContent())
