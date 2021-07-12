@@ -1,9 +1,7 @@
 # Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test node constraint forms."""
-
-
+from functools import partial
 import random
 
 from django import forms
@@ -25,7 +23,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
 )
-from maasserver.models import Domain, Machine, Zone
+from maasserver.models import Domain, Machine, NodeDevice, Zone
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
     detect_nonexistent_names,
@@ -222,6 +220,14 @@ class FilterConstraintsMixin:
         )
         self.assertItemsEqual(nodes, filtered_nodes)
         return (filtered_nodes, storage, interfaces)
+
+
+def create_unique_node_device_needle(needle_name, needle_factory):
+    needles = NodeDevice.objects.all().values_list(needle_name, flat=True)
+    unique_needle = needle_factory()
+    while unique_needle in needles:
+        unique_needle = needle_factory()
+    return unique_needle
 
 
 class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
@@ -1767,35 +1773,61 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 
     def test_device_filter_by_vendor_id(self):
         node = random.choice([factory.make_Node() for _ in range(3)])
-        node_device = factory.make_NodeDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            vendor_id=create_unique_node_device_needle(
+                "vendor_id", partial(factory.make_hex_string, size=4)
+            ),
+        )
         self.assertConstrainedNodes(
             [node], {"devices": f"vendor_id={node_device.vendor_id}"}
         )
 
     def test_device_filter_by_product_id(self):
         node = random.choice([factory.make_Node() for _ in range(3)])
-        node_device = factory.make_NodeDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            product_id=create_unique_node_device_needle(
+                "product_id", partial(factory.make_hex_string, size=4)
+            ),
+        )
         self.assertConstrainedNodes(
             [node], {"devices": f"product_id={node_device.product_id}"}
         )
 
     def test_device_filter_by_vendor_name(self):
         node = random.choice([factory.make_Node() for _ in range(3)])
-        node_device = factory.make_NodeDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            vendor_name=create_unique_node_device_needle(
+                "vendor_name", partial(factory.make_name, "vendor_name")
+            ),
+        )
         self.assertConstrainedNodes(
             [node], {"devices": f"vendor_name={node_device.vendor_name}"}
         )
 
     def test_device_filter_by_product_name(self):
         node = random.choice([factory.make_Node() for _ in range(3)])
-        node_device = factory.make_NodeDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            product_name=create_unique_node_device_needle(
+                "product_name", partial(factory.make_name, "product_name")
+            ),
+        )
         self.assertConstrainedNodes(
             [node], {"devices": f"product_name={node_device.product_name}"}
         )
 
     def test_device_filter_by_commissioning_driver(self):
         node = random.choice([factory.make_Node() for _ in range(3)])
-        node_device = factory.make_NodeDevice(node=node)
+        node_device = factory.make_NodeDevice(
+            node=node,
+            commissioning_driver=create_unique_node_device_needle(
+                "commissioning_driver",
+                partial(factory.make_name, "commissioning_driver"),
+            ),
+        )
         self.assertConstrainedNodes(
             [node],
             {
