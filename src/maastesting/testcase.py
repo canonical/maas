@@ -128,16 +128,19 @@ class MAASTestCase(
         if "MAAS_DATA" in os.environ:
             self.useFixture(MAASDataFixture())
 
-        rand_seed = os.environ.get("MAAS_RAND_SEED", None)
+        rand_seed = os.environ.get("MAAS_RAND_SEED")
         random.seed(rand_seed)
+        seed_info = []
         if rand_seed is not None:
-            self.addDetail("Random seed", text_content(rand_seed))
+            seed_info.append(f"MAAS_RAND_SEED={rand_seed}")
 
         if "PYTHONHASHSEED" in os.environ:
-            self.addDetail(
-                "Python hash seed", text_content(os.environ["PYTHONHASHSEED"])
+            seed_info.append(
+                "PYTHONHASHSEED={}".format(os.environ["PYTHONHASHSEED"])
             )
 
+        if seed_info:
+            self.addDetail("Seeds", text_content(" ".join(seed_info)))
         # Capture Twisted logs and add them as a test detail.
         twistedLog = self.useFixture(TwistedLoggerFixture())
         self.addDetail("Twisted logs", twistedLog.getContent())
