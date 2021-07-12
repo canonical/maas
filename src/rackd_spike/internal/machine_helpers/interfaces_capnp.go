@@ -6,6 +6,7 @@ import (
 
 type CapnpInterfaces map[string]Interface
 
+// SetProto sets the capnp payload for a list of interfaces
 func (c CapnpInterfaces) SetProto(ifacePayload rpc.Interfaces) error {
 	ifaces, err := ifacePayload.NewIfaces(int32(len(c)))
 	if err != nil {

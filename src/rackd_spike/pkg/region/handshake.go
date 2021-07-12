@@ -89,6 +89,7 @@ func register(
 	return nil
 }
 
+// Handeshake executes the full handshake with a region controller
 func Handshake(ctx context.Context, region, localVersion string, rpcMgr *transport.RPCManager) error {
 	err := authenticate(ctx, region, rpcMgr)
 	if err != nil {

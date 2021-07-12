@@ -6,6 +6,7 @@ import (
 	"sync"
 )
 
+// an enum of service types
 const (
 	SvcUnknown = iota
 	SvcDHCP
@@ -22,6 +23,7 @@ var (
 	ErrUnexpectedServiceExit = errors.New("service exited unexpectedly")
 )
 
+// Service is an interface outlining behavior to manage external services
 type Service interface {
 	Name() string
 	Type() int
@@ -32,26 +34,41 @@ type Service interface {
 	Status(context.Context) error
 }
 
+// ReloadableService is a service that can reload configuration
 type ReloadableService interface {
 	Service
 	Reload(context.Context) error
 }
 
+// SvcManager is an interface outlining behavior to manage a group of services
 type SvcManager interface {
+	// RegisterService adds a given service to SvcManager's set of services
 	RegisterService(Service)
+	// StartAll starts all managed service
 	StartAll(context.Context) error
+	// Start starts a service of a given name
 	Start(context.Context, string) error
+	// StartByType starts all services of a given type
 	StartByType(context.Context, int) error
+	// StopAll stops all services
 	StopAll(context.Context) error
+	// Stop stops a given service
 	Stop(context.Context, string) error
+	// StopByType stops all services of a given type
 	StopByType(context.Context, int) error
+	// Restart restarts a given service
 	Restart(context.Context, string) error
+	// RestartByType restarts all services of a given type
 	RestartByType(context.Context, int) error
+	// Get returns a given service within SvcManager's set of services
 	Get(string) (Service, error)
+	// GetType returns all services of a given type
 	GetType(int) ([]Service, error)
+	// GetPID returns a service associated with a given pid
 	GetPID(int) (Service, error)
 }
 
+// Supervisor is an implementation of SvcManager
 type Supervisor struct {
 	sync.RWMutex
 	procsByPID  map[int]Service

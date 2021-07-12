@@ -10,6 +10,7 @@ func isDevEnv() bool {
 	return true
 }
 
+// GetResourcesBinPath returns the expected path for the machine-resources binary
 func GetResourcesBinPath() (string, error) {
 	var path string
 	if isDevEnv() {

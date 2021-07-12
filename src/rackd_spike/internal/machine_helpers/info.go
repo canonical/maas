@@ -15,6 +15,7 @@ type EnvInfo struct {
 	ServerVersion      string `json:"server_version"`
 }
 
+// MachineInfo correlates with the printed value from machine-resources
 type MachineInfo struct {
 	APIExtensions []string                             `json:"api_extension"`
 	APIVersion    string                               `json:"api_version"`

@@ -17,6 +17,7 @@ var (
 	maasIdLock = &sync.RWMutex{}
 )
 
+// GetMAASDataPath returns the path to the directory for MAAS' non-database data
 func GetMAASDataPath(path string) string {
 	basePath, ok := os.LookupEnv("MAAS_DATA")
 	if !ok {
@@ -25,6 +26,7 @@ func GetMAASDataPath(path string) string {
 	return filepath.Join(basePath, path)
 }
 
+// GetMAASID returns the MAAS cluster uuid associated with the rack controller
 func GetMAASID() (string, error) {
 	maasIdLock.Lock()
 	defer maasIdLock.Unlock()
@@ -46,6 +48,7 @@ func GetMAASID() (string, error) {
 	return maasId, nil
 }
 
+// SetMAASId writes the MAAS cluster uuid to disk
 func SetMAASId(id string) error {
 	path := GetMAASDataPath("maas_id")
 	maasIdLock.Lock()

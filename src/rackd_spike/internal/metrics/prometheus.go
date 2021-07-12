@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Registry is a wrapper around prometheus' registry object, adding a name for distinction
 type Registry struct {
 	prometheus.Registry
 	Name string
@@ -24,6 +25,7 @@ func NewRegistry(name string) *Registry {
 	}
 }
 
+// NewPrometheus setups a prometheus exporter, returning the corresponding *http.Server for said exporter
 func NewPrometheus(host string, port int, tlsConf *tls.Config, registries ...*Registry) (*http.Server, error) {
 	mux := http.NewServeMux()
 	for _, registry := range registries {

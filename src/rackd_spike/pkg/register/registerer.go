@@ -13,6 +13,7 @@ import (
 	"rackd/pkg/rpc"
 )
 
+// Registerer is an interface for making register calls to a region controller
 type Registerer interface {
 	transport.RPCClient
 	Register(
@@ -46,6 +47,8 @@ func (c *CapnpRegisterer) SetupClient(ctx context.Context, client *transport.Con
 	c.clients[client.Conn.RemoteAddr().String()] = client.Capnp()
 }
 
+// Register will send the info and rack controller interface necessary for the region controller to
+// register the running rack controller
 func (c *CapnpRegisterer) Register(
 	ctx context.Context,
 	ctrlr controller.CapnpController,

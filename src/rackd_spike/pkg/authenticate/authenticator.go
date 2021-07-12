@@ -11,20 +11,24 @@ import (
 	"rackd/pkg/rpc"
 )
 
+// AuthCreds contains the credentials returned from the server
 type AuthCreds struct {
 	Salt   []byte
 	Digest []byte
 }
 
+// local digest calculates the digest of the secret and generated message
 func (c *AuthCreds) localDigest(secret, message []byte) []byte {
 	// TODO
 	return nil
 }
 
+// Verify verifies that both the local digest and the digest returned from the server match
 func (c *AuthCreds) Verify(secret, message []byte) bool {
 	return bytes.Compare(c.Digest, c.localDigest(secret, message)) == 0
 }
 
+// Authenticator is an interface for making calls to authenticate with a server
 type Authenticator interface {
 	transport.RPCClient
 	Authenticate(context.Context, string, []byte, []byte) (*AuthCreds, error)

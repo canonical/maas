@@ -25,6 +25,7 @@ var (
 	ErrSupervisordUnsupportedType = errors.New("received an unsupported type from supervisord")
 )
 
+// getSupervisordConn will get a connection to supervisord's rpc interface, instantiated once and can be returned multiple times
 func getSupervisordConn(endpoint string) (*xmlrpc.Client, error) {
 	var err error
 	xmlrpcConnOnce.Do(func() {
@@ -33,6 +34,7 @@ func getSupervisordConn(endpoint string) (*xmlrpc.Client, error) {
 	return supConn, err
 }
 
+// CloseSupervisordConn will close the connection to the supervisord rpc interface
 func CloseSupervisordConn() error {
 	var err error
 	xmlrpcCloseOnce.Do(func() {
@@ -41,6 +43,7 @@ func CloseSupervisordConn() error {
 	return err
 }
 
+// SupervisordService is a service managed by supervisord
 type SupervisordService struct {
 	sync.RWMutex
 	conn *xmlrpc.Client

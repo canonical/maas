@@ -12,11 +12,13 @@ var (
 	}
 )
 
+// IsRunningInSnap looks for the SNAP env variable, if set, it is assumed the running process is within a snap
 func IsRunningInSnap() bool {
 	_, ok := os.LookupEnv("SNAP")
 	return ok
 }
 
+// SnapPaths provides lookup for given snap paths
 type SnapPaths map[string]string
 
 func (s SnapPaths) FromEnv() SnapPaths {

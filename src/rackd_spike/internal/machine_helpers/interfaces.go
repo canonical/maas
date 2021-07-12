@@ -28,6 +28,7 @@ var (
 	leaseRx = regexp.MustCompile(`(?m)(^\s*lease\s+{([^}]+)})`)
 )
 
+// isExcludedType returns true for excluded types, such as unknown or ethernet within a container
 func isExcludedType(ctx context.Context, t string) (bool, error) {
 	if _, ok := excludedInterfaceTypes[t]; ok {
 		return true, nil
@@ -45,6 +46,7 @@ func isExcludedType(ctx context.Context, t string) (bool, error) {
 	return false, nil
 }
 
+// GetIPAddr executes machine-resources to fetch IP address and interface info
 func GetIPAddr(ctx context.Context) (map[string]lxdresources.NetworkState, error) {
 	cmdPath, err := GetResourcesBinPath()
 	if err != nil {
@@ -80,6 +82,7 @@ func splitDhclientCmdlineFile(data []byte, atEOF bool) (advance int, token []byt
 	return 0, data, bufio.ErrFinalToken
 }
 
+// GetLatestFixedAddress parses dhclient's leasefile for the latest fixed address
 func GetLatestFixedAddress(leasePath string) (string, error) {
 	if len(leasePath) == 0 {
 		return "", nil
@@ -120,6 +123,7 @@ func getLatestFixedAddress(leaseFile io.Reader) (string, error) {
 	return "", nil
 }
 
+// GetDhclientInfo reads dhclient's cmdline args for the path to the lease file and parses said lease file
 func GetDhclientInfo(ctx context.Context, procPath string) (map[string]string, error) {
 	if len(procPath) == 0 {
 		procPath = "/proc"
@@ -211,6 +215,7 @@ func (s sortableSubnets) Swap(i, j int) {
 	s[i] = tmp
 }
 
+// fixLinkAddress fixes link addresses such that it finds a corresponding subnet for each
 func fixLinkAddresses(links []IPLink) ([]IPLink, error) {
 	var (
 		subnetsV4 []*net.IPNet
@@ -317,6 +322,7 @@ type IPRoute struct {
 	Flags     []int  `json:"flags"`
 }
 
+// GetIPRoute uses the ip command to fetch route info
 func GetIPRoute(ctx context.Context) (map[string]IPRoute, error) {
 	cmd := exec.CommandContext(ctx, "ip", "-json", "route", "list", "scope", "global")
 	routes := make(map[string]IPRoute)
@@ -339,6 +345,7 @@ func GetIPRoute(ctx context.Context) (map[string]IPRoute, error) {
 	return routes, nil
 }
 
+// fixGateways attempts to find a corresponding gateway IP if one exists for each link
 func fixGateways(links []IPLink, ipRouteInfo map[string]IPRoute) (res []IPLink, err error) {
 	for i, link := range links {
 		var subnet *net.IPNet
@@ -360,6 +367,7 @@ func fixGateways(links []IPLink, ipRouteInfo map[string]IPRoute) (res []IPLink, 
 	return links, nil
 }
 
+// GetInterfaceChildren constructs a tree of interface names for each parent interface to child interfaces
 func GetInterfaceChildren(interfaces map[string]Interface) map[string][]string {
 	children := make(map[string][]string)
 	for name, iface := range interfaces {
@@ -379,6 +387,7 @@ type InterfaceChild struct {
 	Iface Interface
 }
 
+// InterfaceChildren gets the interface definitions for children of a given interface
 func InterfaceChildren(ifname string, interfaces map[string]Interface, children map[string][]string) (res []InterfaceChild) {
 	if node, ok := children[ifname]; ok {
 		for _, child := range node {
@@ -388,6 +397,7 @@ func InterfaceChildren(ifname string, interfaces map[string]Interface, children 
 	return res
 }
 
+// GetDefaultMonitoredInterfaces sets which interfaces are monitored
 func GetDefaultMonitoredInterfaces(interfaces map[string]Interface) (res map[string]struct{}) {
 	res = make(map[string]struct{})
 	childrenMap := GetInterfaceChildren(interfaces)
@@ -418,6 +428,7 @@ func GetDefaultMonitoredInterfaces(interfaces map[string]Interface) (res map[str
 	return res
 }
 
+// GetAllInterfacesDefinition fetchs all interface info for the local machine
 func GetAllInterfacesDefinition(ctx context.Context, annotateWithMonitored bool) (map[string]Interface, error) {
 	dhclientInfo, err := GetDhclientInfo(ctx, "")
 	if err != nil {

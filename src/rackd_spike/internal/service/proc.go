@@ -9,6 +9,7 @@ import (
 	"syscall"
 )
 
+// ExecService provides a definition of a service for fork/exec'ing a process
 type ExecService struct {
 	sync.RWMutex
 	name   string
@@ -119,6 +120,7 @@ func (e *ExecService) Status(_ context.Context) error {
 	return fmt.Errorf("%w: service exited: %d", ErrUnexpectedServiceExit, e.cmd.ProcessState.ExitCode())
 }
 
+// ReloadableExecService is an ExecService that can also be SIGHUP'd to reload configuration
 type ReloadableExecService struct {
 	ExecService
 	ReloadSig os.Signal

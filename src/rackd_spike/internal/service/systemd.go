@@ -44,6 +44,8 @@ var (
 	dbusConn *dbus.Conn
 )
 
+// getDBusConn will instantiate a connection with dbus based on the current uid
+// this happens once and all subsequent calls return the existing connection
 func getDBusConn(ctx context.Context) (*dbus.Conn, error) {
 	var err error
 	systemdConnOnce.Do(func() {
@@ -62,12 +64,14 @@ func getDBusConn(ctx context.Context) (*dbus.Conn, error) {
 	return dbusConn, err
 }
 
+// CloseSystemdConn will close the dbus connection to systemd
 func CloseSystemdConn() {
 	systemdCloseOnce.Do(func() {
 		dbusConn.Close()
 	})
 }
 
+// SystemdService us a service for processes managed by systemd
 type SystemdService struct {
 	sync.RWMutex
 	conn     *dbus.Conn

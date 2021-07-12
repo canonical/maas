@@ -18,6 +18,7 @@ var (
 	vertCheckArgs = []string{"-c"}
 )
 
+// RunningInContainer detects if the running process is within a container
 func RunningInContainer(ctx context.Context) (bool, error) {
 	cmd := exec.CommandContext(ctx, vertCheckExec, vertCheckArgs...)
 	if err := cmd.Run(); err != nil {
@@ -29,6 +30,7 @@ func RunningInContainer(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
+// PIDInContainer detects if a given pid is within a container
 func PIDInContainer(pid int, procPath string) (bool, error) {
 	if len(procPath) == 0 {
 		procPath = "/proc"
@@ -51,6 +53,7 @@ func PIDInContainer(pid int, procPath string) (bool, error) {
 	return false, nil
 }
 
+// GetRunningPIDsWithCMD fetches all corresponding pids of a given command, if said command is running
 func GetRunningPIDsWithCMD(ctx context.Context, command, procPath string, excludeContainerProcesses bool) ([]int, error) {
 	if len(procPath) == 0 {
 		procPath = "/proc"

@@ -19,23 +19,27 @@ var (
 	ErrRPCHandlerNotFound = errors.New("error handler not found")
 )
 
+// RPCHandler is an interface for handlers with RPC server implementations
 type RPCHandler interface {
 	Name() string
 	RegisterMetrics(*metrics.Registry) error
 	SetupServer(context.Context, *ConnWrapper)
 }
 
+// RPCClient is an interface for structs that use client-side RPC
 type RPCClient interface {
 	Name() string
 	RegisterMetrics(*metrics.Registry) error
 	SetupClient(context.Context, *ConnWrapper)
 }
 
+// CapnpRPCClient is a RPC client specifically for capnp
 type CapnpRPCClient interface {
 	RPCClient
 	Release()
 }
 
+// ConnWrapper provides a wrapper for the connection to the RPC server
 type ConnWrapper struct {
 	Conn             net.Conn
 	capnpConn        *capnprpc.Conn
@@ -50,6 +54,7 @@ func NewConnWrapper(conn net.Conn) *ConnWrapper {
 	}
 }
 
+// Bootstrap will bootstrap the capnp connection as a RegionController
 func (c *ConnWrapper) Bootstrap(ctx context.Context) {
 	c.regionController = &rpc.RegionController{
 		Client: c.capnpConn.Bootstrap(ctx),
@@ -64,6 +69,8 @@ func (c *ConnWrapper) Capnp() *rpc.RegionController {
 	return c.regionController
 }
 
+// RPCManager manages all RPC clients and handlers. It is also responsible
+// for establishing a connection to the RPC server
 type RPCManager struct {
 	conns          map[string]*ConnWrapper
 	handlers       map[string]RPCHandler

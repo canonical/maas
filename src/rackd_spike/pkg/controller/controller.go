@@ -15,6 +15,7 @@ var (
 	ErrInvalidRackController = errors.New("rack controller of invalid type")
 )
 
+// Controller is an interface for a Controller's RPC implementation
 type Controller interface {
 	transport.RPCHandler
 	// TODO define protocl-agnostic behavior
@@ -25,6 +26,7 @@ type CapnpController interface {
 	Capnp() rpc.RegionController_RackController
 }
 
+// RackControllerServer is an implementation of the Capnp RackController Server
 type RackControllerServer struct {
 }
 
