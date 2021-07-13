@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"rackd/internal/config"
 	machinehelpers "rackd/internal/machine_helpers"
 	"rackd/internal/transport"
 	auth "rackd/pkg/authenticate"
@@ -59,9 +60,9 @@ func register(
 	if !ok {
 		return ErrNoRegistererProvided
 	}
-	// TODO get cluster UUID from config
-	clusterUUID := "123456"
-	systemId, err := machinehelpers.GetMAASID()
+
+	clusterUUID := config.Config.ClusterUUID
+	systemId := config.Config.SystemID
 	if err != nil {
 		return err
 	}

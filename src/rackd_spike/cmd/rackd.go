@@ -64,7 +64,7 @@ var (
 				return err
 			}
 
-			err = config.Load(ctx, options.ConfigFile)
+			ctx, err = config.Load(ctx, options.ConfigFile)
 			if err != nil {
 				return err
 			}
@@ -81,7 +81,7 @@ var (
 			}
 			defer metricsSrvr.Close()
 
-			initRegion := os.Getenv("REGION_URL")
+			initRegion := config.Config.MaasUrl[0]
 			rpcMgr := transport.NewRPCManager(initRegion, true) // TODO use the register command to provide info to connect instead and make TLS skip verify configurable
 			err = rpcMgr.Init(ctx)
 			if err != nil {
@@ -110,7 +110,7 @@ var (
 					return nil
 
 				case syscall.SIGHUP:
-					err = config.Load(ctx, options.ConfigFile)
+					err = config.Reload(ctx)
 					log.Err(err).Msg("config reload")
 
 					// Update debug level

@@ -1,9 +1,8 @@
-package config_test
+package config
 
 import (
 	"context"
 	"os"
-	"rackd/internal/config"
 	"reflect"
 
 	"testing"
@@ -14,14 +13,14 @@ func TestRackConfig_Load(t *testing.T) {
 		name      string
 		contents  string
 		maas_data string
-		c         *config.RackConfig
+		c         *RackConfig
 		wantErr   bool
 	}{
 		{
 			"defaults",
 			``,
 			"",
-			&config.RackConfig{
+			&RackConfig{
 				BasePath: "/var/lib/maas",
 				MaasUrl:  []string{"http://localhost:5240/MAAS"},
 				TftpRoot: "boot-resources/current",
@@ -33,7 +32,7 @@ func TestRackConfig_Load(t *testing.T) {
 			"environment set",
 			``,
 			"/my-dir",
-			&config.RackConfig{
+			&RackConfig{
 				BasePath: "/my-dir",
 				MaasUrl:  []string{"http://localhost:5240/MAAS"},
 				TftpRoot: "boot-resources/current",
@@ -53,7 +52,7 @@ func TestRackConfig_Load(t *testing.T) {
 			"valid UUID",
 			`cluster_uuid: 6d56b4e7-8df0-4bd3-b428-4a5bff6852eb`,
 			"",
-			&config.RackConfig{
+			&RackConfig{
 				BasePath:    "/var/lib/maas",
 				MaasUrl:     []string{"http://localhost:5240/MAAS"},
 				TftpRoot:    "boot-resources/current",
@@ -73,7 +72,7 @@ func TestRackConfig_Load(t *testing.T) {
 			"single URL",
 			`maas_url: http://host1:5240/MAAS`,
 			"",
-			&config.RackConfig{
+			&RackConfig{
 				BasePath: "/var/lib/maas",
 				MaasUrl:  []string{"http://host1:5240/MAAS"},
 				TftpRoot: "boot-resources/current",
@@ -85,7 +84,7 @@ func TestRackConfig_Load(t *testing.T) {
 			"multiple URLs",
 			`maas_url: ['http://host1:5240/MAAS', 'http://host2/MAAS']`,
 			"",
-			&config.RackConfig{
+			&RackConfig{
 				BasePath: "/var/lib/maas",
 				MaasUrl: []string{
 					"http://host1:5240/MAAS",
@@ -107,20 +106,20 @@ func TestRackConfig_Load(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if len(tt.maas_data) > 0 {
-				os.Setenv(config.BaseDirEnvVarname, tt.maas_data)
-				defer os.Unsetenv(config.BaseDirEnvVarname)
+				os.Setenv(baseDirEnvVarname, tt.maas_data)
+				defer os.Unsetenv(baseDirEnvVarname)
 			}
 
 			f, _ := os.CreateTemp(t.TempDir(), "config_test")
 			_, _ = f.Write([]byte(tt.contents))
 			f.Close()
 
-			if err := config.Load(context.TODO(), f.Name()); (err != nil) != tt.wantErr {
-				t.Fatalf("RackConfig.Load() error = %v, wantErr %v", err, tt.wantErr)
+			if err := loadGlobal(context.TODO(), f.Name()); (err != nil) != tt.wantErr {
+				t.Fatalf("RackConfig.loadGlobal() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if !tt.wantErr && !reflect.DeepEqual(config.Config, tt.c) {
-				t.Errorf("RackConfig.Load() got %v, wants %v", config.Config, tt.c)
+			if !tt.wantErr && !reflect.DeepEqual(Config, tt.c) {
+				t.Errorf("RackConfig.loadGlobal() got %v, wants %v", Config, tt.c)
 			}
 		})
 	}
@@ -129,12 +128,12 @@ func TestRackConfig_Load(t *testing.T) {
 func TestRackConfig_SaveAndReload(t *testing.T) {
 	tests := []struct {
 		name    string
-		c       *config.RackConfig
+		c       *RackConfig
 		wantErr bool
 	}{
 		{
 			"defaults",
-			&config.RackConfig{
+			&RackConfig{
 				BasePath: "/var/lib/maas",
 				MaasUrl:  []string{"http://localhost:5240/MAAS"},
 				TftpRoot: "boot-resources/current",
@@ -144,7 +143,7 @@ func TestRackConfig_SaveAndReload(t *testing.T) {
 		},
 		{
 			"multi-region",
-			&config.RackConfig{
+			&RackConfig{
 				BasePath: "/var/lib/maas",
 				MaasUrl:  []string{"http://host1:5240/MAAS", "http://host2:5240/MAAS"},
 				TftpRoot: "boot-resources/current",
@@ -156,21 +155,21 @@ func TestRackConfig_SaveAndReload(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			*config.Config = *tt.c
+			*Config = *tt.c
 
 			f, _ := os.CreateTemp(t.TempDir(), "config_test")
 			f.Close()
 
-			if err := config.Save(context.TODO(), f.Name()); (err != nil) != tt.wantErr {
+			if err := saveGlobal(context.TODO(), f.Name()); (err != nil) != tt.wantErr {
 				t.Fatalf("RackConfig.Save() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if err := config.Load(context.TODO(), f.Name()); (err != nil) != tt.wantErr {
+			if err := loadGlobal(context.TODO(), f.Name()); (err != nil) != tt.wantErr {
 				t.Fatalf("RackConfig.Load() error = %v, wantErr %v", err, tt.wantErr)
 			}
 
-			if !tt.wantErr && !reflect.DeepEqual(config.Config, tt.c) {
-				t.Errorf("RackConfig.Load() got %v, wants %v", config.Config, tt.c)
+			if !tt.wantErr && !reflect.DeepEqual(Config, tt.c) {
+				t.Errorf("RackConfig.Load() got %v, wants %v", Config, tt.c)
 			}
 		})
 	}

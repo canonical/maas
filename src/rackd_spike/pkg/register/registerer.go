@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	"rackd/internal/config"
 	machinehelpers "rackd/internal/machine_helpers"
 	"rackd/internal/metrics"
 	"rackd/internal/transport"
@@ -119,7 +120,9 @@ func (c *CapnpRegisterer) Register(
 		return err
 	}
 	// TODO set global metrics labels
-	err = machinehelpers.SetMAASId(localId)
+
+	config.Config.SystemID = localId
+	err = config.Save(ctx)
 	if err != nil {
 		return err
 	}

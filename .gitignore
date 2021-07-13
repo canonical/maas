@@ -61,3 +61,4 @@ __pycache__
 /src/rpc/py/*.h
 /src/rpc/py/*.pyx
 /src/rpc/py/*.so
+/src/rpc/py/build/
