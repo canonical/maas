@@ -24,7 +24,7 @@ import urllib.request
 from uuid import UUID, uuid1
 
 from distro_info import UbuntuDistroInfo
-from netaddr import IPAddress, IPNetwork
+from netaddr import IPAddress, IPNetwork, IPSet
 
 from maastesting.fixtures import TempDirectory
 
@@ -327,7 +327,6 @@ class Factory:
         :return: A network spanning at least 8 IP addresses (at most 29 bits).
         :rtype: :class:`IPNetwork`
         """
-        but_not = frozenset(but_not)
         if disjoint_from is None:
             disjoint_from = []
         if slash is None:
@@ -339,7 +338,11 @@ class Factory:
             network = IPNetwork(
                 "%s/%s" % (random_address_factory(), slash)
             ).cidr
-            forbidden = network in but_not
+            forbidden = False
+            for excluded_network in but_not:
+                if excluded_network == network:
+                    forbidden = True
+                    break
             clashes = network_clashes(network, disjoint_from)
             if not forbidden and not clashes:
                 return network
@@ -435,11 +438,11 @@ class Factory:
         )
 
     def pick_ip_in_network(self, network, *, but_not=EMPTY_SET):
-        but_not = {
-            IPAddress(but)
-            for but in but_not
-            if but is not None and IPAddress(but) in network
-        }
+        excluded_set = IPSet()
+        for exclusion in but_not:
+            if isinstance(exclusion, str):
+                exclusion = IPAddress(exclusion)
+            excluded_set.add(exclusion)
         # Unless the prefix length is very small, make sure we don't select
         # a normally-unusable IP address.
         if network.version == 6 and network.prefixlen < 127:
@@ -462,7 +465,7 @@ class Factory:
             )
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
-            if address not in but_not:
+            if address not in excluded_set:
                 return str(address)
         raise TooManyRandomRetries(
             "Could not find available IP in network: %s (but_not=%r)"

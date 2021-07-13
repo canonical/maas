@@ -35,7 +35,7 @@ class TestSubnetSignals(MAASServerTestCase):
 
     def test_updating_subnet_removes_existing_ip_address_adds_another(self):
         network1 = self.network_maker()
-        network2 = self.network_maker(but_not=network1)
+        network2 = self.network_maker(but_not=[network1])
         ip1 = factory.pick_ip_in_network(network1)
         ip2 = factory.pick_ip_in_network(network2)
 
