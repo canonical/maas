@@ -1,9 +1,6 @@
 # Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the Machine API."""
-
-
 from base64 import b64encode
 import http.client
 import logging
@@ -2064,6 +2061,38 @@ class TestMachineAPI(APITestCase.ForUser):
             reverse("machine_handler", args=[parsed_result["system_id"]]),
             parsed_result["resource_uri"],
         )
+
+    def test_get_token_with_token(self):
+        self.become_admin()
+        machine = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(machine)
+        response = self.client.get(
+            self.get_machine_uri(machine), {"op": "get_token"}
+        )
+        self.assertEqual(
+            json_load_bytes(response.content),
+            {
+                "token_key": token.key,
+                "token_secret": token.secret,
+                "consumer_key": token.consumer.key,
+            },
+        )
+
+    def test_get_token_no_token(self):
+        self.become_admin()
+        machine = factory.make_Node()
+        response = self.client.get(
+            self.get_machine_uri(machine), {"op": "get_token"}
+        )
+        self.assertIsNone(json_load_bytes(response.content))
+
+    def test_get_token_no_admin(self):
+        machine = factory.make_Node()
+        NodeKey.objects.get_token_for_node(machine)
+        response = self.client.get(
+            self.get_machine_uri(machine), {"op": "get_token"}
+        )
+        self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
     def test_PUT_rejects_invalid_data(self):
         # If the data provided to update a machine is invalid, a 'Bad request'

@@ -23,6 +23,7 @@ from django.http import (
 from django.urls import reverse
 from formencode import validators
 from formencode.validators import Int, StringBool
+from piston3.models import Token
 from piston3.utils import rc
 import yaml
 
@@ -649,6 +650,27 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         if machine is not None:
             machine_system_id = machine.system_id
         return ("machine_handler", (machine_system_id,))
+
+    @operation(idempotent=True)
+    def get_token(self, request, system_id):
+        node = self.model.objects.get_node_or_404(
+            system_id=system_id,
+            user=request.user,
+            perm=NodePermission.admin_read,
+        )
+
+        try:
+            token = Token.objects.select_related("consumer").get(
+                nodekey__node=node
+            )
+        except Token.DoesNotExist:
+            return None
+
+        return {
+            "token_key": token.key,
+            "token_secret": token.secret,
+            "consumer_key": token.consumer.key,
+        }
 
     @operation(idempotent=False)
     def deploy(self, request, system_id):
