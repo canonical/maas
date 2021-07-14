@@ -1,10 +1,13 @@
+import json
 import os
 from pathlib import Path
+from unittest.mock import ANY, call, MagicMock
 
 import yaml
 
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.refresh.maas_api_helper import Credentials
 from snippets import maas_run_scripts
 from snippets.maas_run_scripts import (
     get_config,
@@ -13,6 +16,7 @@ from snippets.maas_run_scripts import (
     Script,
     ScriptRunResult,
     ScriptsDir,
+    write_token,
 )
 
 
@@ -195,7 +199,7 @@ class TestGetConfig(MAASTestCase):
         config_file = tempdir / "conf.yaml"
         with config_file.open("w") as fd:
             yaml.dump(conf, fd)
-        ns = parse_args(["--config", str(config_file)])
+        ns = parse_args(["report-results", "--config", str(config_file)])
         config = get_config(ns)
         self.assertEqual(config.credentials.token_key, "token-key")
         self.assertEqual(config.credentials.token_secret, "token-secret")
@@ -221,6 +225,7 @@ class TestGetConfig(MAASTestCase):
             yaml.dump(conf, fd)
         ns = parse_args(
             [
+                "report-results",
                 "--config",
                 str(config_file),
                 "--machine-token",
@@ -240,7 +245,7 @@ class TestGetConfig(MAASTestCase):
 
 
 class TestMain(MAASTestCase):
-    def test_run(self):
+    def test_run_report_results(self):
         conf = {
             "reporting": {
                 "maas": {
@@ -303,6 +308,110 @@ class TestMain(MAASTestCase):
 
         self.patch(maas_run_scripts.Script, "run", run_script)
 
-        main(["--config", str(config_file)])
+        main(["report-results", "--config", str(config_file)])
         # only default scripts tagged as "deploy-info" are run
         self.assertEqual(ran_scripts, ["myscript1", "myscript2"])
+
+    def mock_geturl(self, results):
+        mock_geturl = self.patch(maas_run_scripts, "geturl")
+        # fake returning a json result from the API call
+        mock_result = MagicMock()
+        mock_result.read.side_effect = [
+            json.dumps(result) for result in results
+        ]
+        mock_geturl.return_value = mock_result
+        return mock_geturl
+
+    def test_register_machine(self):
+        token_info = {
+            "token_key": "tk",
+            "token_secret": "ts",
+            "consumer_key": "ck",
+        }
+        mock_geturl = self.mock_geturl([{"system_id": "abcde"}, token_info])
+        mock_node = self.patch(maas_run_scripts.platform, "node")
+        mock_node.return_value = "myhost"
+        mock_write_token = self.patch(maas_run_scripts, "write_token")
+
+        main(
+            [
+                "register-machine",
+                "http://mymaas.example.com:5240/MAAS",
+                "foo:bar:baz",
+            ]
+        )
+        mock_geturl.assert_has_calls(
+            [
+                call(
+                    "http://mymaas.example.com:5240/MAAS/api/2.0/machines/",
+                    credentials=Credentials.from_string("foo:bar:baz"),
+                    data=ANY,
+                    headers=ANY,
+                    retry=False,
+                ),
+                call().read(),
+                call(
+                    "http://mymaas.example.com:5240/MAAS/api/2.0/machines/abcde/?op=get_token",
+                    credentials=Credentials.from_string("foo:bar:baz"),
+                    retry=False,
+                ),
+                call().read(),
+            ]
+        )
+        mock_node.assert_called_once()
+        mock_write_token.assert_called_once_with("myhost", token_info)
+
+    def test_register_machine_with_hostname(self):
+        token_info = {
+            "token_key": "tk",
+            "token_secret": "ts",
+            "consumer_key": "ck",
+        }
+        mock_geturl = self.mock_geturl([{"system_id": "abcde"}, token_info])
+        mock_node = self.patch(maas_run_scripts.platform, "node")
+        mock_write_token = self.patch(maas_run_scripts, "write_token")
+
+        main(
+            [
+                "register-machine",
+                "http://mymaas.example.com:5240/MAAS",
+                "foo:bar:baz",
+                "--hostname",
+                "myhost",
+            ]
+        )
+        mock_geturl.assert_has_calls(
+            [
+                call(
+                    "http://mymaas.example.com:5240/MAAS/api/2.0/machines/",
+                    credentials=Credentials.from_string("foo:bar:baz"),
+                    data=ANY,
+                    headers=ANY,
+                    retry=False,
+                ),
+                call().read(),
+                call(
+                    "http://mymaas.example.com:5240/MAAS/api/2.0/machines/abcde/?op=get_token",
+                    credentials=Credentials.from_string("foo:bar:baz"),
+                    retry=False,
+                ),
+                call().read(),
+            ]
+        )
+        mock_node.assert_not_called()
+        mock_write_token.assert_called_once_with("myhost", token_info)
+
+
+class TestWriteToken(MAASTestCase):
+    def writes_file(self):
+        tempdir = Path(self.useFixture(TempDirectory()).path)
+        token_info = {
+            "token_key": "tk",
+            "token_secret": "ts",
+            "consumer_key": "ck",
+        }
+        path = write_token("myhost", token_info, basedir=tempdir)
+        self.assertEqual(
+            yaml.load(path),
+            {"reporting": {"maas": token_info}},
+        )

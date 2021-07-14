@@ -13,12 +13,14 @@ from io import BytesIO
 import json
 import os
 from pathlib import Path
+import platform
 import shutil
 import subprocess
 import sys
 import tarfile
 from tempfile import mkdtemp
 import time
+import urllib.error
 
 import yaml
 
@@ -28,6 +30,7 @@ from snippets.maas_api_helper import (
     capture_script_output,
     Config,
     Credentials,
+    encode_multipart_data,
     get_base_url,
     geturl,
     InvalidCredentialsFormat,
@@ -190,29 +193,60 @@ def parse_args(args):
         description="run MAAS commissioning scripts and report back results"
     )
     parser.add_argument(
+        "--debug",
+        help="Print verbose debug messages",
+        action="store_true",
+        default=False,
+    )
+    subparsers = parser.add_subparsers(
+        metavar="ACTION",
+        dest="action",
+        help="action to perform",
+    )
+    subparsers.required = True
+
+    register_machine = subparsers.add_parser(
+        "register-machine",
+        help="register the current machine in MAAS and report scripts results",
+    )
+    register_machine.add_argument(
+        "maas_url",
+        help="MAAS API URL",
+    )
+    register_machine.add_argument(
+        "admin_token",
+        type=oauth_token,
+        help="Admin user OAuth token, in the {form} form".format(
+            form=token_format
+        ),
+    )
+    register_machine.add_argument(
+        "--hostname",
+        help="machine hostname (by default, use the current hostname)",
+    )
+
+    report_results = subparsers.add_parser(
+        "report-results",
+        help="run scripts for the machine and report results to MAAS",
+    )
+    report_results.add_argument(
         "--config",
         help="cloud-init config with MAAS credentials and endpoint, (e.g. /etc/cloud/cloud.cfg.d/90_dpkg_local_cloud_config.cfg)",
         type=argparse.FileType(),
     )
-    parser.add_argument(
-        "--metadata-url",
-        help="MAAS metadata URL",
-    )
-    parser.add_argument(
+    report_results.add_argument(
         "--machine-token",
         type=oauth_token,
         help="Machine OAuth token, in the {form} form".format(
             form=token_format
         ),
     )
-    parser.add_argument(
-        "--debug",
-        help="Print debug messages and script output/error",
-        action="store_true",
-        default=False,
+    report_results.add_argument(
+        "--metadata-url",
+        help="MAAS metadata URL",
     )
-    ns = parser.parse_args(args=args)
-    return ns
+
+    return parser.parse_args(args=args)
 
 
 def get_config(ns):
@@ -245,9 +279,11 @@ def get_config(ns):
 
 
 def fetch_scripts(maas_url, metadata_url, dirs, credentials):
-    res = geturl(metadata_url + "maas-scripts", credentials=credentials)
+    res = geturl(
+        metadata_url + "maas-scripts", credentials=credentials, retry=False
+    )
     if res.status == http.client.NO_CONTENT:
-        sys.exit(1)
+        sys.exit("No script returned")
 
     with tarfile.open(mode="r|*", fileobj=BytesIO(res.read())) as tar:
         tar.extractall(dirs.scripts)
@@ -261,9 +297,19 @@ def fetch_scripts(maas_url, metadata_url, dirs, credentials):
     ]
 
 
-def main(args):
-    ns = parse_args(args)
+def write_token(hostname, credentials, basedir=Path()):
+    """Write the OAuth token for a machine to file."""
+    path = basedir / (hostname + "-creds.yaml")
+    path.write_text(
+        yaml.dump(
+            {"reporting": {"maas": credentials}},
+            default_flow_style=False,
+        )
+    )
+    return path
 
+
+def action_report_results(ns):
     config = get_config(ns)
     if not config.metadata_url:
         sys.exit("No MAAS URL set")
@@ -314,6 +360,69 @@ def main(args):
             exit_status=result.exit_status,
             script_version_id=script.info.get("script_version_id"),
         )
+
+
+def action_register_machine(ns):
+    hostname = ns.hostname
+    if not hostname:
+        hostname = platform.node().split(".")[0]
+
+    url = ns.maas_url.rstrip("/") + "/api/2.0/machines/"
+    data, headers = encode_multipart_data(
+        {
+            b"hostname": hostname.encode("utf8"),
+            b"deployed": b"true",
+        }
+    )
+    try:
+        response = geturl(
+            url,
+            data=data,
+            headers=headers,
+            credentials=ns.admin_token,
+            retry=False,
+        )
+    except urllib.error.HTTPError as e:
+        sys.exit(
+            "Machine creation failed: {reason}: {details}".format(
+                reason=e.reason, details=e.read().decode("utf8")
+            )
+        )
+    result = json.load(response)
+    system_id = result["system_id"]
+    print(
+        "Machine {hostname} created with system ID: {system_id}".format(
+            hostname=hostname,
+            system_id=system_id,
+        )
+    )
+    try:
+        response = geturl(
+            url + system_id + "/?op=get_token",
+            credentials=ns.admin_token,
+            retry=False,
+        )
+    except urllib.error.HTTPError as e:
+        sys.exit(
+            "Failed getting machine credentials: {reason}: {details}".format(
+                reason=e.reason, details=e.read().decode("utf8")
+            )
+        )
+    creds = json.load(response)
+    creds_path = write_token(hostname, creds)
+    print("Machine token written to {path}".format(path=creds_path))
+
+
+ACTIONS = {
+    "register-machine": action_register_machine,
+    "report-results": action_report_results,
+}
+
+
+def main(args):
+    ns = parse_args(args)
+    action = ACTIONS[ns.action]
+    return action(ns)
 
 
 if __name__ == "__main__":
