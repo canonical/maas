@@ -278,7 +278,7 @@ class TestGetUrl(MAASTestCase):
             maas_api_helper.geturl,
             "http://%s-broken" % factory.make_hostname(),
         )
-        self.assertEqual(7, sleep.call_count)
+        self.assertEqual(8, sleep.call_count)
         self.assertThat(warn, MockAnyCall("date field not in 400 headers"))
 
     def test_geturl_increments_skew(self):
@@ -289,12 +289,13 @@ class TestGetUrl(MAASTestCase):
             maas_api_helper.geturl,
             "http://%s-broken_with_date" % factory.make_hostname(),
         )
-        self.assertEqual(7, sleep.call_count)
-        clock_shew_updates = [
-            call[0][0].startswith("updated clock shew to")
+        self.assertEqual(8, sleep.call_count)
+        clock_skew_updates = [
+            call
             for call in warn.call_args_list
+            if call[0][0].startswith("updated clock skew to")
         ]
-        self.assertEqual(14, len(clock_shew_updates))
+        self.assertEqual(8, len(clock_skew_updates))
 
     def test_geturl_posts_data(self):
         mock_urlopen = self.patch(maas_api_helper.urllib.request.urlopen)
@@ -305,9 +306,14 @@ class TestGetUrl(MAASTestCase):
         self.assertThat(
             mock_urlopen,
             MockCalledOnceWith(
-                ANY, urllib.parse.urlencode(post_data).encode("ascii")
+                ANY, data=urllib.parse.urlencode(post_data).encode("ascii")
             ),
         )
+
+    def test_geturl_no_retry(self):
+        mock_urlopen = self.patch(maas_api_helper.urllib.request.urlopen)
+        maas_api_helper.geturl("http://example.com", retry=False)
+        mock_urlopen.assert_called_once()
 
 
 class TestEncode(MAASTestCase):
@@ -389,7 +395,8 @@ class TestSignal(MAASTestCase):
         self.assertThat(
             mock_encode_multipart_data,
             MockCalledWith(
-                {b"op": b"signal", b"status": status.encode("utf-8")}, {}
+                {b"op": b"signal", b"status": status.encode("utf-8")},
+                files=None,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())
@@ -419,7 +426,7 @@ class TestSignal(MAASTestCase):
                     b"status": status.encode("utf-8"),
                     b"error": error.encode("utf-8"),
                 },
-                {},
+                files=None,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())
@@ -451,7 +458,7 @@ class TestSignal(MAASTestCase):
                     b"status": status.encode("utf-8"),
                     b"script_result_id": str(script_result_id).encode("utf-8"),
                 },
-                {},
+                files=None,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())
@@ -481,7 +488,7 @@ class TestSignal(MAASTestCase):
                     b"status": status.encode("utf-8"),
                     b"exit_status": str(exit_status).encode("utf-8"),
                 },
-                {},
+                files=None,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())
@@ -511,7 +518,7 @@ class TestSignal(MAASTestCase):
                     b"status": status.encode("utf-8"),
                     b"name": str(script_name).encode("utf-8"),
                 },
-                {},
+                files=None,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())
@@ -545,7 +552,7 @@ class TestSignal(MAASTestCase):
                         "utf-8"
                     ),
                 },
-                {},
+                files=None,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())
@@ -579,7 +586,7 @@ class TestSignal(MAASTestCase):
                     b"name": str(script_name).encode("utf-8"),
                     b"runtime": str(runtime).encode("utf-8"),
                 },
-                {},
+                files=None,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())
@@ -693,7 +700,8 @@ class TestSignal(MAASTestCase):
         self.assertThat(
             mock_encode_multipart_data,
             MockCalledWith(
-                {b"op": b"signal", b"status": status.encode("utf-8")}, files
+                {b"op": b"signal", b"status": status.encode("utf-8")},
+                files=files,
             ),
         )
         self.assertThat(mock_geturl, MockCalledOnce())

@@ -67,8 +67,8 @@ class TestRefresh(MAASTestCase):
             maas_api_helper.urllib.request, "urlopen"
         ).side_effect = self._fake_urlopen
 
-    def _fake_urlopen(self, request, post_data=None):
-        self.urlopen_calls.append((request, post_data))
+    def _fake_urlopen(self, request, post_data=None, data=None):
+        self.urlopen_calls.append((request, post_data, data))
         return FakeResponse()
 
     def _cleanup(self, path):

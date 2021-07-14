@@ -165,45 +165,60 @@ def get_base_url(url):
     )
 
 
-def geturl(url, credentials=None, headers=None, data=None, post_data=None):
-    headers = dict(headers) if headers else {}
+def geturl(
+    url, credentials=None, headers=None, data=None, post_data=None, retry=True
+):
+    # This would be a dataclass, but needs to support python3.6
+    class ExecuteState:
+        def __init__(self, headers=None):
+            self.headers = dict(headers) if headers else {}
+            self.clockskew = 0
+
+    def execute(url, data, post_data, state):
+        state.headers.update(credentials.oauth_headers(url, state.clockskew))
+        try:
+            req = urllib.request.Request(
+                url=url, data=data, headers=state.headers
+            )
+            return urllib.request.urlopen(req, data=post_data)
+        except urllib.error.HTTPError as exc:
+            if "date" not in exc.headers:
+                warn("date field not in %d headers" % exc.code)
+            elif exc.code in (401, 403):
+                date = exc.headers["date"]
+                try:
+                    ret_time = time.mktime(parsedate(date))
+                    state.clockskew = int(ret_time - time.time())
+                    warn("updated clock skew to %d" % state.clockskew)
+                except Exception:
+                    warn("failed to convert date '%s'" % date)
+                    raise
+            raise
+
     if credentials is None:
         credentials = Credentials()
     if post_data:
         post_data = urllib.parse.urlencode(post_data)
         post_data = post_data.encode("ascii")
 
-    clockskew = 0
+    state = ExecuteState(headers=headers)
 
-    error = Exception("Unexpected Error")
-    for naptime in (1, 1, 2, 4, 8, 16, 32):
-        headers.update(credentials.oauth_headers(url, clockskew))
-        try:
-            req = urllib.request.Request(url=url, data=data, headers=headers)
-            if post_data:
-                return urllib.request.urlopen(req, post_data)
-            else:
-                return urllib.request.urlopen(req)
-        except urllib.error.HTTPError as exc:
-            error = exc
-            if "date" not in exc.headers:
-                warn("date field not in %d headers" % exc.code)
-                pass
-            elif exc.code in (401, 403):
-                date = exc.headers["date"]
-                try:
-                    ret_time = time.mktime(parsedate(date))
-                    clockskew = int(ret_time - time.time())
-                    warn("updated clock skew to %d" % clockskew)
-                except Exception:
-                    warn("failed to convert date '%s'" % date)
-        except Exception as exc:
-            error = exc
-
-        warn("request to %s failed. sleeping %d.: %s" % (url, naptime, error))
-        time.sleep(naptime)
-
-    raise error
+    if retry:
+        error = None
+        for naptime in (1, 1, 2, 4, 8, 16, 32, 0):
+            try:
+                return execute(url, data, post_data, state)
+            except Exception as e:
+                error = e
+                warn(
+                    "request to %s failed. sleeping %d.: %s"
+                    % (url, naptime, error)
+                )
+                time.sleep(naptime)
+        if error:
+            raise error
+    else:
+        return execute(url, data, post_data, state)
 
 
 def _encode_field(field_name, data, boundary):
@@ -249,7 +264,7 @@ def _get_content_type(filename):
     return mimetypes.guess_type(filename)[0] or "application/octet-stream"
 
 
-def encode_multipart_data(data, files):
+def encode_multipart_data(data, files=None):
     """Create a MIME multipart payload from L{data} and L{files}.
 
     @param data: A mapping of names (ASCII strings) to data (byte string).
@@ -259,6 +274,8 @@ def encode_multipart_data(data, files):
         and C{headers} is a dict of headers to add to the enclosing request in
         which this payload will travel.
     """
+    if not files:
+        files = {}
     boundary = _random_string(30)
 
     lines = []
@@ -350,9 +367,7 @@ def signal(
                 power_params["power_boot_type"] = boot_type
         params[b"power_parameters"] = json.dumps(power_params).encode()
 
-    data, headers = encode_multipart_data(
-        params, ({} if files is None else files)
-    )
+    data, headers = encode_multipart_data(params, files=files)
 
     try:
         ret = geturl(url, credentials=credentials, headers=headers, data=data)
