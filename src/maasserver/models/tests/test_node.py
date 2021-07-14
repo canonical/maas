@@ -8393,7 +8393,12 @@ class TestNode_Start(MAASTransactionServerTestCase):
         ephemeral_deploy=False,
     ):
         if network is None:
+            # can't use a link-local network as MAAS server IPs for those are
+            # not reported
             network = factory.make_ip4_or_6_network()
+            while network.is_link_local():
+                network = factory.make_ip4_or_6_network()
+
         cidr = str(network.cidr)
         # Make sure that the maas_server address is of the same addr family.
         gethost = self.patch(server_address, "get_maas_facing_server_host")
