@@ -1435,21 +1435,18 @@ class Factory(maastesting.factory.Factory):
         route.save()
         return route
 
-    def pick_ip_in_Subnet(self, subnet, but_not=None):
-        if but_not is None:
-            but_not = []
+    def pick_ip_in_Subnet(self, subnet, but_not=()):
+        but_not = list(but_not)
         # Exclude all addresses currently in use
         for iprange in subnet.get_ipranges_in_use():
             but_not.append(iprange)
         return self.pick_ip_in_network(IPNetwork(subnet.cidr), but_not=but_not)
 
-    def pick_ip_in_IPRange(self, ip_range, but_not=[]):
-        if but_not is None:
-            but_not = []
+    def pick_ip_in_IPRange(self, ip_range, but_not=()):
+        but_not = [IPAddress(but) for but in but_not]
         netaddr_range = ip_range.netaddr_iprange
         first = netaddr_range.first
         last = netaddr_range.last
-        but_not = [IPAddress(but) for but in but_not if but is not None]
         for _ in range(100):
             address = IPAddress(random.randint(first, last))
             if address not in but_not:

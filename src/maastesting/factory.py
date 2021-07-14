@@ -476,7 +476,6 @@ class Factory:
         """Return a pair of IP addresses from the given network.
 
         :param network: Return IP addresses within this network.
-        :param but_not: A pair of addresses that should not be returned.
         :return: A pair of `IPAddress`.
         """
         for _ in range(100):
@@ -496,7 +495,6 @@ class Factory:
         """Return a pair of IPv4 addresses.
 
         :param network: Return IP addresses within this network.
-        :param but_not: A pair of addresses that should not be returned.
         :return: A pair of `IPAddress`.
         """
         if network is None:
@@ -507,7 +505,6 @@ class Factory:
         """Return a pair of IPv6 addresses.
 
         :param network: Return IP addresses within this network.
-        :param but_not: A pair of addresses that should not be returned.
         :return: A pair of `IPAddress`.
         """
         if network is None:
