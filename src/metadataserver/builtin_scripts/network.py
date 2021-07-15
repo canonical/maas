@@ -252,8 +252,9 @@ def update_physical_interface(
             interface.ip_addresses.all().delete()
             interface.node = node
             update_fields.add("node")
-        interface.name = name
-        update_fields.add("name")
+        if interface.name != name:
+            interface.name = name
+            update_fields.add("name")
     if interface.link_connected != is_connected:
         interface.link_connected = is_connected
         update_fields.add("link_connected")
@@ -261,7 +262,7 @@ def update_physical_interface(
     # Update all the IP address on this interface. Fix the VLAN the
     # interface belongs to so its the same as the links.
     update_physical_links(node, interface, links, new_vlan, update_fields)
-    if len(update_fields) > 0:
+    if update_fields:
         interface.save(update_fields=list(update_fields))
     return interface
 
@@ -269,13 +270,14 @@ def update_physical_interface(
 def update_physical_links(node, interface, links, new_vlan, update_fields):
     update_ip_addresses = update_links(node, interface, links)
     linked_vlan = guess_best_vlan_from_ip_addresses(node, update_ip_addresses)
-    if linked_vlan is not None:
-        interface.vlan = linked_vlan
-        update_fields.add("vlan")
-        if new_vlan is not None and linked_vlan.id != new_vlan.id:
-            # Create a new VLAN for this interface and it was not used as
-            # a link re-assigned the VLAN this interface is connected to.
-            new_vlan.fabric.delete()
+    if linked_vlan is None:
+        return
+    interface.vlan = linked_vlan
+    update_fields.add("vlan")
+    if new_vlan is not None and linked_vlan.id != new_vlan.id:
+        # Create a new VLAN for this interface and it was not used as
+        # a link re-assigned the VLAN this interface is connected to.
+        new_vlan.fabric.delete()
 
 
 def guess_vlan_from_hints(node, ifname, hints):
@@ -531,14 +533,6 @@ def get_alloc_type_from_ip_addresses(node, alloc_type, ip_addresses):
     return None
 
 
-def get_ip_address_from_ip_addresses(node, ip, ip_addresses):
-    """Return IP address from `ip_addresses` that matches `ip`."""
-    for ip_address in ip_addresses:
-        if ip == ip_address.ip:
-            return ip_address
-    return None
-
-
 def guess_best_vlan_from_ip_addresses(node, ip_addresses):
     """Return the first VLAN for a STICKY IP address in `ip_addresses`."""
     second_best = None
@@ -557,7 +551,7 @@ def update_links(
     interface.ip_addresses.filter(
         alloc_type=IPADDRESS_TYPE.DISCOVERED
     ).delete()
-    current_ip_addresses = list(interface.ip_addresses.all())
+    current_ip_addresses = set(interface.ip_addresses.all())
     updated_ip_addresses = set()
     if use_interface_vlan and interface.vlan is not None:
         vlan = interface.vlan
@@ -659,40 +653,28 @@ def update_links(
                 subnet.gateway_ip = link["gateway"]
                 subnet.save()
 
-            # Determine if this interface already has this IP address.
-            ip_address = get_ip_address_from_ip_addresses(
-                node, ip_addr, current_ip_addresses
-            )
             address_type = (
                 IPADDRESS_TYPE.DISCOVERED
                 if is_commissioning(node)
                 else IPADDRESS_TYPE.STICKY
             )
-            if ip_address is None:
-                # IP address is not assigned to this interface. Get or
-                # create that IP address.
-                (ip_address, created,) = StaticIPAddress.objects.get_or_create(
-                    ip=ip_addr,
-                    defaults={
-                        "alloc_type": address_type,
-                        "subnet": subnet,
-                    },
-                )
-                if not created:
-                    ip_address.alloc_type = address_type
-                    ip_address.subnet = subnet
-                    ip_address.save()
-            else:
-                current_ip_addresses.remove(ip_address)
+            # IP address is not assigned to this interface. Get or
+            # create that IP address.
+            ip_address, created = StaticIPAddress.objects.update_or_create(
+                ip=ip_addr,
+                defaults={
+                    "alloc_type": address_type,
+                    "subnet": subnet,
+                },
+            )
+            if not created:
+                current_ip_addresses.discard(ip_address)
 
             # Update the properties and make sure all interfaces
             # assigned to the address belong to this node.
             for attached_nic in ip_address.interface_set.all():
                 if attached_nic.node != node:
                     attached_nic.ip_addresses.remove(ip_address)
-            ip_address.alloc_type = address_type
-            ip_address.subnet = subnet
-            ip_address.save()
 
             # Add this IP address to the interface.
             interface.ip_addresses.add(ip_address)
