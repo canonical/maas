@@ -14,14 +14,16 @@ type ConfigKey string
 type ctxFilename struct{}
 
 type RackConfig struct {
-	BasePath    string      `yaml:"-"`
-	SystemID    string      `yaml:"-"`
-	Secret      string      `yaml:"-"`
-	MaasUrl     StringArray `yaml:"maas_url,flow"`
-	TftpRoot    string      `yaml:"tftp_root,omitempty"`
-	TftpPort    int         `yaml:"tftp_port,omitempty"`
-	ClusterUUID string      `yaml:"cluster_uuid,omitempty"`
-	Debug       bool        `yaml:"debug,omitempty"`
+	BasePath       string      `yaml:"-"`
+	SystemID       string      `yaml:"-"`
+	Secret         string      `yaml:"-"`
+	MaasUrl        StringArray `yaml:"maas_url,flow"`
+	TftpRoot       string      `yaml:"tftp_root,omitempty"`
+	TftpPort       int         `yaml:"tftp_port,omitempty"`
+	ClusterUUID    string      `yaml:"cluster_uuid,omitempty"`
+	Debug          bool        `yaml:"debug,omitempty"`
+	SupervisordURL string      `yaml:"supervisord,omitempty"`
+	Proxy          bool        `yaml:"proxy"`
 }
 
 const (
@@ -96,4 +98,8 @@ func getAbsPath(path string) string {
 
 func GetTftpPath(path string) string {
 	return filepath.Join(getAbsPath(Config.TftpRoot), path)
+}
+
+func SupervisordURL() string {
+	return Config.SupervisordURL
 }

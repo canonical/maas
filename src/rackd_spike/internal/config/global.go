@@ -44,10 +44,11 @@ func isValid(c *RackConfig) error {
 
 func new() *RackConfig {
 	return &RackConfig{
-		BasePath: "/var/lib/maas",
-		MaasUrl:  []string{"http://localhost:5240/MAAS"},
-		TftpRoot: "boot-resources/current",
-		TftpPort: 69,
+		BasePath:       "/var/lib/maas",
+		MaasUrl:        []string{"http://localhost:5240/MAAS"},
+		SupervisordURL: "http://localhost:9002",
+		TftpRoot:       "boot-resources/current",
+		TftpPort:       69,
 	}
 }
 

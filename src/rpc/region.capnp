@@ -4,7 +4,7 @@ using Go = import "go.capnp";
 using Controller = import "controller.capnp";
 using Handshake = import "handshake.capnp";
 using Network = import "network.capnp";
-using Rack = import "rack.capnp";
+using Dhcp = import "dhcp.capnp";
 
 $Go.package("rpc");
 $Go.import("rpc");
@@ -189,7 +189,8 @@ interface RegionController extends(Controller.Controller) {
         register @0 (req :Handshake.RegisterRequest) -> (resp :Handshake.RegisterResponse);
     }
     interface RackController extends (Controller.Controller) {
-        todo @0 ();
+        configureDHCPv4 @0 (req: Dhcp.ConfigureDHCPReq);
+        configureDHCPv6 @1 (req: Dhcp.ConfigureDHCPReq);
     }
     reportBootImages @0 (msg :ReportBootImagesRequest);
     getBootConfig @1 (msg :BootConfigRequest) -> (resp :BootConfig);

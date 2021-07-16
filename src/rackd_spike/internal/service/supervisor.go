@@ -10,6 +10,8 @@ import (
 const (
 	SvcUnknown = iota
 	SvcDHCP
+	SvcDHCP6
+	SvcDHCPRelay
 	SvcDNS
 	SvcNTP
 	SvcPROXY
@@ -20,6 +22,7 @@ var (
 	ErrServiceAlreadyRunning = errors.New("service is already in a running state")
 	ErrServiceAlreadyStopped = errors.New("service is already in a stopped state")
 	ErrInvalidServiceState   = errors.New("service is in an invalid state for this operation")
+	ErrInvalidServiceType    = errors.New("invalid service type for given service")
 	ErrUnexpectedServiceExit = errors.New("service exited unexpectedly")
 )
 
@@ -62,10 +65,10 @@ type SvcManager interface {
 	RestartByType(context.Context, int) error
 	// Get returns a given service within SvcManager's set of services
 	Get(string) (Service, error)
-	// GetType returns all services of a given type
-	GetType(int) ([]Service, error)
-	// GetPID returns a service associated with a given pid
-	GetPID(int) (Service, error)
+	// GetByType returns all services of a given type
+	GetByType(int) ([]Service, error)
+	// GetByPID returns a service associated with a given pid
+	GetByPID(int) (Service, error)
 }
 
 // Supervisor is an implementation of SvcManager

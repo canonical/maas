@@ -45,4 +45,4 @@ capnp-dir:
 	capnp compile -ogo:$(PWD)/pkg/rpc $(ROOT_DIR)/rpc/$@ --src-prefix $(ROOT_DIR)/rpc
 
 .PHONY: gen-capnp
-gen-capnp: handshake.capnp network.capnp region.capnp rack.capnp controller.capnp
+gen-capnp: handshake.capnp network.capnp region.capnp controller.capnp dhcp.capnp

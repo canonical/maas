@@ -13,7 +13,10 @@ import (
 	"rackd/cmd/logger"
 	"rackd/cmd/subcommands"
 	"rackd/internal/config"
+	"rackd/internal/dhcp"
+	machinehelpers "rackd/internal/machine_helpers"
 	"rackd/internal/metrics"
+	"rackd/internal/service"
 	"rackd/internal/transport"
 	"rackd/pkg/authenticate"
 	"rackd/pkg/controller"
@@ -82,6 +85,34 @@ var (
 			defer metricsSrvr.Close()
 
 			initRegion := config.Config.MaasUrl[0]
+
+			sup := service.NewSupervisor()
+			if config.Config.Proxy {
+				sup.RegisterService(dhcp.NewRelaySvc())
+			} else if machinehelpers.IsRunningInSnap() {
+				dhcpv4, err := dhcp.NewDhcpdSupervisordService(config.SupervisordURL())
+				if err != nil {
+					return err
+				}
+				dhcpv6, err := dhcp.NewDhcpd6SupervisordService(config.SupervisordURL())
+				if err != nil {
+					return err
+				}
+				sup.RegisterService(dhcpv4)
+				sup.RegisterService(dhcpv6)
+			} else {
+				dhcpv4, err := dhcp.NewDhcpdSystemdService(ctx)
+				if err != nil {
+					return err
+				}
+				dhcpv6, err := dhcp.NewDhcpd6SystemdService(ctx)
+				if err != nil {
+					return err
+				}
+				sup.RegisterService(dhcpv4)
+				sup.RegisterService(dhcpv6)
+			}
+
 			rpcMgr := transport.NewRPCManager(initRegion, true) // TODO use the register command to provide info to connect instead and make TLS skip verify configurable
 			err = rpcMgr.Init(ctx)
 			if err != nil {
@@ -89,7 +120,11 @@ var (
 			}
 			rpcMgr.AddClient(ctx, authenticate.NewCapnpAuthenticator())
 			rpcMgr.AddClient(ctx, register.NewCapnpRegisterer())
-			rpcMgr.AddHandler(ctx, controller.NewRackController())
+			rackController, err := controller.NewRackController(ctx, true, initRegion, sup)
+			if err != nil {
+				return err
+			}
+			rpcMgr.AddHandler(ctx, rackController)
 			err = rpcMgr.Init(ctx)
 			if err != nil {
 				return err

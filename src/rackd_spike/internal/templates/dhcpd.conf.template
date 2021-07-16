@@ -1,0 +1,172 @@
+# WARNING: Do not edit /var/lib/maas/dhcpd.conf yourself.  MAAS will
+# overwrite any changes made there.  Instead, you can modify dhcpd.conf by
+# using DHCP snippets over the API or through the web interface.
+
+option arch code 93 = unsigned integer 16; # RFC4578
+option path-prefix code 210 = text; #RFC5071
+
+#
+# Shorter lease time for PXE booting
+#
+class "PXE" {
+   match if substring (option vendor-class-identifier, 0, 3) = "PXE";
+   default-lease-time 30;
+   max-lease-time 30;
+}
+
+#
+# Define lease time globally (can be overriden globally or per subnet
+# with a DHCP snippet)
+#
+default-lease-time 600;
+max-lease-time 600;
+
+#
+# Global DHCP snippets
+#
+{{ range .GlobalDHCPSnippets }}
+# Name: {{ .Name }}
+{{ if gt (len .Description) 0  }}# Description: {{ .Description }}{{ end }}
+{{ .Value }}
+{{ else }}
+# No global DHCP snippets defined
+{{ end }}
+#
+# Failover Peers
+#
+{{ range .FailoverPeers }}
+failover peer {{ .Name }} {
+    {{ .Mode }};
+    address {{ .Address }};
+    peer address {{ .PeerAddress }};
+    max-response-delay 60;
+    max-unacked-updates 10;
+    load balance max seconds 3;
+{{ if eq .Mode "primary" }}
+    mclt 3600;
+    split 255;
+{{ end }}
+}
+{{ end }}
+
+#
+# Networks
+#
+{{ range .SharedNetworks }}
+shared-network {{ .Name }} {
+{{ range .Subnets }}
+    subnet {{ .Subnet }} netmask {{ .SubnetMask }} {
+        ignore-client-uids true;
+        {{ if gt (len .NextServer) 0 }}next-server {{ .NextServer }};{{ end }}
+        option subnet-mask {{ .SubnetMask }};
+        option broadcast-address {{ .BroadcastIP }};
+        {{ if gt (len .DNSServers) 0 }}option domain-name-servers {{ .CommaList .DNSServers }};{{ end }}
+        option domain-name "{{ .DomainName }}";
+        {{ if gt (len .SearchList) 0 }}option domain-search {{ .QuotedCommaList .SearchList }};{{ end }}
+        {{ if gt (len .RouterIP) 0 }}option routers {{ .RouterIP }};{{ end }}
+        {{ if gt (len .NTPServersIPv4) 0 }}option ntp-servers {{ .NTPServersIPv4 }};{{ end }}
+        {{ if gt (len .NTPServersIPv6) 0 }}option dhcp6.sntp-servers {{ .NTPServersIPv6 }};{{ end }}
+        {{ if and (gt .MTU 0) (not (eq .MTU 1500)) }}option interface-mtu {{ .MTU }};{{ end }}
+        {{ if gt (len .Bootloader) 0 }}
+        #
+        # Bootloaders
+        #
+        {{ .Bootloader }}
+        {{ end }}
+        {{ range .DHCPSnippets }}
+        # Name: {{ .Name }}
+        {{ if gt (len .Description) 0 }}# Description: {{ .Description }}{{ end }}
+        {{ range .SplitLines .Value }}
+        {{ . }}
+        {{ end }}
+        {{ else }}
+        # No DHCP snippets defined for subnet
+        {{ end }}
+
+        {{ range .Pools }}
+        pool {
+            {{ if gt (len .FailoverPeer) 0 }}failover peer "{{ .FailoverPeer }}";{{ end }}
+
+            {{ range .DHCPSnippets }}# Name: {{ .Name }}
+            {{ if gt (len .Description) 0 }}# Description: {{ .Description }}{{ end }}
+            {{ range .splitLines .Value }}
+            {{ . }}
+            {{ end }}
+            {{ else }}
+            # No DHCP snippets for pool
+            {{ end }}
+
+            range {{.IPRangeLow}} {{.IPRangeHigh}};
+        }
+        {{ end }}
+    }
+    {{ end }}
+}
+{{ end }}
+
+#
+# Hosts
+#
+{{ range .Hosts }}
+# {{ .Host }}
+host {{ .Replace .MAC ":" "-" }} {
+    #
+    # Node DHCP snippets
+    #
+    {{ range .DHCPSnippets }}
+    # Name: {{ .Name }}
+    {{ if gt (len .Description) 0 }}# Descript: {{ .Description }}{{ end }}
+    {{ range .SplitLines .Value }}
+    {{ . }}
+    {{ end }}
+    {{ else }}
+    # No DHCP Snippets defined for host
+    {{ end }}
+
+    hardware ethernet {{ .MAC }};
+    fixed-address {{ .IP }};
+}
+{{ end }}
+
+#
+# Notify MAAS
+#
+on commit {
+    set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
+    set clip = binary-to-ascii(10, 8, ".", leased-address);
+    set cllt = binary-to-ascii(10, 32, "", encode-int(lease-time, 32));
+    execute(
+        "{{ .DHCPHelper }}", "notify",
+        "--action", "commit", "--mac", clhw,
+        "--ip-family", "ipv4", "--ip", clip,
+        "--lease-time", cllt, "--hostname", clht,
+        "--socket", "{{ .DHCPSocket }}",
+    );
+}
+on expiry {
+    set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
+    set clip = binary-to-ascii(10, 8, ".", leased-address);
+    execute(
+        "{{ .DHCPHelper}}", "notify",
+        "--action", "expiry", "--mac", clhw,
+        "--ip-family", "ipv4", "--ip", clip,
+        "--socket", "{{ .DHCPSocket }}",
+    );
+}
+on relase {
+    set clhw = binary-to-ascii(16, 8, ":", substring(hardware, 1, 6));
+    set clip = binary-to-ascii(10, 8, ".", leased-address);
+    execute(
+        "{{ .DHCPHelper }}", "notify",
+        "--action", "release", "--mac", clhw,
+        "--ip-family", "ipv4", "--ip", clip,
+        "--socket", "{{ .DHCPSocket }}",
+    );
+}
+
+omapi-port 7911;
+key omapi_key {
+    algorithm HMAC-MD5;
+    secret "{{ .OMAPIKey }}";
+};
+omapi-key omapi_key;
