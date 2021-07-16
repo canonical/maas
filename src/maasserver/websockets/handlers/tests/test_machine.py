@@ -3612,7 +3612,9 @@ class TestMachineHandler(MAASServerTestCase):
         request.user = user
         factory.make_SSHKey(user)
         self.patch(Machine, "on_network").return_value = True
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=user, interface=True
+        )
         self.patch(Machine, "_start").return_value = None
         self.patch(node_action_module, "get_curtin_config")
         osystem = make_usable_osystem(self)

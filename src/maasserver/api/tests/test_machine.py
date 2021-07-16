@@ -1700,6 +1700,7 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             owner=factory.make_User(),
             power_state=POWER_STATE.OFF,
+            interface=True,
         )
         self.become_admin()
         response = self.client.post(
@@ -1722,6 +1723,7 @@ class TestMachineAPI(APITestCase.ForUser):
             status=NODE_STATUS.READY,
             owner=factory.make_User(),
             power_state=POWER_STATE.OFF,
+            interface=True,
         )
         self.become_admin()
 

@@ -1,9 +1,6 @@
 # Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for node actions."""
-
-
 import random
 from unittest.mock import ANY
 
@@ -247,6 +244,19 @@ class TestNodeAction(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED, locked=True)
         self.assertTrue(MyAction(node, factory.make_User()).is_actionable())
 
+    def test_is_actionable_no_requires_networking_by_default(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.assertTrue(
+            FakeNodeAction(node, factory.make_User()).is_actionable()
+        )
+
+    def test_is_actionable_requires_networking(self):
+        class MyAction(FakeNodeAction):
+            requires_networking = True
+
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.assertFalse(MyAction(node, factory.make_User()).is_actionable())
+
     def test_delete_action_last_for_node(self):
         node = factory.make_Node()
         actions = compile_node_actions(
@@ -319,6 +329,10 @@ class TestCommissionAction(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         load_builtin_scripts()
+
+    def test_is_actionable_doesnt_require_interface_if_ipmi(self):
+        node = factory.make_Node(status=self.status, power_type="ipmi")
+        self.assertTrue(Commission(node, factory.make_admin()).is_actionable())
 
     def test_Commission_starts_commissioning_if_already_on(self):
         node = factory.make_Node(

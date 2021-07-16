@@ -129,6 +129,10 @@ class NodeAction(metaclass=ABCMeta):
     # Whether the action is allowed when the node is locked
     allowed_when_locked = False
 
+    # Whether the action is only allowed when the node has networking (e.g. has
+    # network interfaces)
+    requires_networking = False
+
     def __init__(self, node, user, request=None, endpoint=ENDPOINT.UI):
         """Initialize a node action.
 
@@ -148,14 +152,22 @@ class NodeAction(metaclass=ABCMeta):
         """
         if self.node.node_type not in self.for_type:
             return False
-        elif self.node.locked and not self.allowed_when_locked:
+        if self.node.locked and not self.allowed_when_locked:
             return False
-        elif (
+        if (
             self.node.node_type == NODE_TYPE.MACHINE
             and self.node.status not in self.actionable_statuses
         ):
             return False
-        return self.is_permitted()
+        if not self.is_permitted():
+            return False
+        if self.requires_networking and not self.has_networking():
+            return False
+        return True
+
+    def has_networking(self):
+        """Whether the node has networking access for the purpose of the action."""
+        return self.node.interface_set.exists()
 
     @abstractmethod
     def get_node_action_audit_description(self, action):
@@ -318,6 +330,7 @@ class Commission(NodeAction):
         NODE_STATUS.BROKEN,
     )
     permission = NodePermission.admin
+    requires_networking = True
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Started commissioning on '%s'."
@@ -325,6 +338,9 @@ class Commission(NodeAction):
     def get_node_action_audit_description(self, action):
         """Retrieve the node action audit description."""
         return self.audit_description % action.node.hostname
+
+    def has_networking(self):
+        return self.node.power_type == "ipmi" or super().has_networking()
 
     def _execute(
         self,
@@ -377,6 +393,7 @@ class Test(NodeAction):
         NODE_STATUS.FAILED_TESTING,
     )
     permission = NodePermission.admin
+    requires_networking = True
     for_type = {NODE_TYPE.MACHINE, NODE_TYPE.RACK_CONTROLLER}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Started testing on '%s'."
@@ -464,6 +481,7 @@ class Deploy(NodeAction):
     display_sentence = "deployed"
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
     permission = NodePermission.edit
+    requires_networking = True
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.LIFECYCLE
     audit_description = "Started deploying '%s'."
@@ -863,6 +881,7 @@ class RescueMode(NodeAction):
         NODE_STATUS.FAILED_TESTING,
     )
     permission = NodePermission.admin
+    requires_networking = True
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.TESTING
     audit_description = "Started rescue mode on '%s'."

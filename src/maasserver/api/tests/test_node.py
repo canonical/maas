@@ -877,7 +877,9 @@ class TestPowerMixin(APITestCase.ForUser):
             node_module.Node, "_power_control_node"
         ).return_value = succeed(None)
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_User()
+            status=NODE_STATUS.DEPLOYED,
+            owner=factory.make_User(),
+            interface=True,
         )
         self.become_admin()
         response = self.client.post(self.get_node_uri(node), {"op": "test"})
@@ -887,7 +889,9 @@ class TestPowerMixin(APITestCase.ForUser):
     def test_POST_test_tests_machine_with_options(self):
         self.patch(node_module.Machine, "_start").return_value = succeed(None)
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_User()
+            status=NODE_STATUS.DEPLOYED,
+            owner=factory.make_User(),
+            interface=True,
         )
         self.become_admin()
 
@@ -932,7 +936,9 @@ class TestPowerMixin(APITestCase.ForUser):
 
     def test_POST_test_tests_machine_errors_on_no_scripts_found(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_User()
+            status=NODE_STATUS.DEPLOYED,
+            owner=factory.make_User(),
+            interface=True,
         )
         self.become_admin()
         response = self.client.post(self.get_node_uri(node), {"op": "test"})
@@ -949,7 +955,9 @@ class TestPowerMixin(APITestCase.ForUser):
 
     def test_POST_test_deletes_scriptset_on_failure(self):
         node = factory.make_Node(
-            status=NODE_STATUS.READY, owner=factory.make_User()
+            status=NODE_STATUS.READY,
+            owner=factory.make_User(),
+            interface=True,
         )
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.TESTING,
