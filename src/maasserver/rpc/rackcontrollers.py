@@ -14,7 +14,7 @@ from typing import Optional
 from django.db.models import Q
 
 from maasserver import locks, worker_user
-from maasserver.enum import NODE_TYPE
+from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.models import (
     Controller,
     ControllerInfo,
@@ -108,7 +108,12 @@ def register(
     node = find(system_id, hostname, interfaces)
     version_log = "2.2 or below" if version is None else version
     if node is None:
-        node = RackController.objects.create(hostname=hostname, domain=domain)
+        node = RackController.objects.create(
+            hostname=hostname,
+            domain=domain,
+            status=NODE_STATUS.DEPLOYED,
+            dynamic=True,
+        )
         maaslog.info(
             "New rack controller '%s' running version %s was created by "
             "region '%s' upon first connection.",

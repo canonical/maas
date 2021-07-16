@@ -13,7 +13,6 @@ from fixtures import FakeLogger
 from maasserver import locks, worker_user
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
 from maasserver.models import (
-    Node,
     NodeGroupToRackController,
     RackController,
     RegionController,
@@ -189,9 +188,11 @@ class TestRegisterRackController(MAASServerTestCase):
         )
 
     def test_converts_existing_node(self):
-        node = factory.make_Node(node_type=NODE_TYPE.MACHINE)
+        node = factory.make_Machine()
         rack_registered = register(system_id=node.system_id)
         self.assertEqual(rack_registered.node_type, NODE_TYPE.RACK_CONTROLLER)
+        reload_object(node)
+        self.assertTrue(node.as_rack_controller()._was_probably_machine())
 
     def test_logs_converting_existing_node(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -216,19 +217,22 @@ class TestRegisterRackController(MAASServerTestCase):
         )
 
     def test_creates_new_rackcontroller(self):
-        factory.make_Node()
-        node_count = len(Node.objects.all())
+        existing_machine = factory.make_Machine()
+        rack_mac = (factory.make_mac_address(),)
         interfaces = {
             factory.make_name("eth0"): {
                 "type": "physical",
-                "mac_address": factory.make_mac_address(),
+                "mac_address": rack_mac,
                 "parents": [],
                 "links": [],
                 "enabled": True,
             }
         }
-        register(interfaces=interfaces)
-        self.assertEqual(node_count + 1, len(Node.objects.all()))
+        rack_controller = register(interfaces=interfaces)
+        self.assertNotEqual(
+            existing_machine.system_id, rack_controller.system_id
+        )
+        self.assertFalse(rack_controller._was_probably_machine())
 
     def test_always_has_current_commissioning_script_set(self):
         load_builtin_scripts()

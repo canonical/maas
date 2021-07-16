@@ -845,7 +845,11 @@ class RegionControllerManager(ControllerManager):
                 name=domainname, defaults={"authoritative": False}
             )
         return self.create(
-            owner=get_worker_user(), hostname=hostname, domain=domain
+            owner=get_worker_user(),
+            hostname=hostname,
+            domain=domain,
+            status=NODE_STATUS.DEPLOYED,
+            dynamic=True,
         )
 
     def get_or_create_uuid(self):
@@ -6254,7 +6258,7 @@ class Controller(Node):
         status changed to something other than NEW and a rack controller should
         only be installable when the machine is in a deployed state.  Second a
         machine must have power information."""
-        return self.status == NODE_STATUS.DEPLOYED and self.bmc is not None
+        return not (self.dynamic and self.bmc_id is None)
 
     def report_neighbours(self, neighbours):
         """Update the neighbour table for this controller.

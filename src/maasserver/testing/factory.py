@@ -598,17 +598,26 @@ class Factory(maastesting.factory.Factory):
         return machine.as_machine()
 
     def make_RackController(
-        self, last_image_sync=undefined, owner=None, **kwargs
+        self,
+        last_image_sync=undefined,
+        owner=None,
+        dynamic=True,
+        status=NODE_STATUS.DEPLOYED,
+        **kwargs,
     ):
         if owner is None:
             owner = get_worker_user()
+
         node = self.make_Node_with_Interface_on_Subnet(
             node_type=NODE_TYPE.RACK_CONTROLLER,
             owner=owner,
+            dynamic=dynamic,
+            status=status,
             with_dhcp_rack_primary=False,
             with_dhcp_rack_secondary=False,
             **kwargs,
         )
+        node.bmc = None
         if last_image_sync is undefined:
             node.last_image_sync = timezone.now() - timedelta(
                 minutes=random.randint(1, 15)

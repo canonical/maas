@@ -919,7 +919,9 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         # A controller is created and it is always a region controller.
         self.assertEqual(NODE_TYPE.REGION_CONTROLLER, region.node_type)
         # It's a fresh controller so the worker user is always owner.
-        self.assertThat(region.owner, Equals(get_worker_user()))
+        self.assertEqual(get_worker_user(), region.owner)
+        self.assertEqual(NODE_STATUS.DEPLOYED, region.status)
+        self.assertTrue(region.dynamic)
 
     def assertControllerDiscovered(self, region, host, owner):
         # The controller discovered is the original host.
@@ -10246,7 +10248,9 @@ class TestController(MAASServerTestCase):
         self.assertTrue(rack._was_probably_machine())
 
     def test_was_probably_machine_false(self):
-        self.assertFalse(factory.make_RackController()._was_probably_machine())
+        self.assertFalse(
+            factory.make_RackController(dynamic=True)._was_probably_machine()
+        )
 
 
 class TestControllerUpdateDiscoveryState(MAASServerTestCase):
