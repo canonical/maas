@@ -57,7 +57,7 @@ class TestScript(MAASTestCase):
         self.assertEqual(script.name, "myscript")
         self.assertEqual(
             script.command,
-            [dirs.scripts / "commissioning-scripts/myscript"],
+            [str(dirs.scripts / "commissioning-scripts/myscript")],
         )
         self.assertEqual(script.stdout_path, dirs.out / "myscript.out")
         self.assertEqual(script.stderr_path, dirs.out / "myscript.err")
@@ -316,7 +316,7 @@ class TestMain(MAASTestCase):
         mock_geturl = self.patch(maas_run_scripts, "geturl")
         # fake returning a json result from the API call
         mock_result = MagicMock()
-        mock_result.read.side_effect = [
+        mock_result.read.return_value.decode.side_effect = [
             json.dumps(result) for result in results
         ]
         mock_geturl.return_value = mock_result
@@ -349,14 +349,13 @@ class TestMain(MAASTestCase):
                     headers=ANY,
                     retry=False,
                 ),
-                call().read(),
                 call(
                     "http://mymaas.example.com:5240/MAAS/api/2.0/machines/abcde/?op=get_token",
                     credentials=Credentials.from_string("foo:bar:baz"),
                     retry=False,
                 ),
-                call().read(),
-            ]
+            ],
+            any_order=True,
         )
         mock_node.assert_called_once()
         mock_write_token.assert_called_once_with("myhost", token_info)
@@ -389,14 +388,13 @@ class TestMain(MAASTestCase):
                     headers=ANY,
                     retry=False,
                 ),
-                call().read(),
                 call(
                     "http://mymaas.example.com:5240/MAAS/api/2.0/machines/abcde/?op=get_token",
                     credentials=Credentials.from_string("foo:bar:baz"),
                     retry=False,
                 ),
-                call().read(),
-            ]
+            ],
+            any_order=True,
         )
         mock_node.assert_not_called()
         mock_write_token.assert_called_once_with("myhost", token_info)

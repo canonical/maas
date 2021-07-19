@@ -38,7 +38,7 @@ class InvalidCredentialsFormat(Exception):
     """Raised when OAuth credentials string is in wrong format."""
 
 
-# This would be a dataclass, but needs to support python3.6
+# This would be a dataclass, but needs to support python3.5
 class Credentials:
 
     KEYS = frozenset(
@@ -168,7 +168,7 @@ def get_base_url(url):
 def geturl(
     url, credentials=None, headers=None, data=None, post_data=None, retry=True
 ):
-    # This would be a dataclass, but needs to support python3.6
+    # This would be a dataclass, but needs to support python3.5
     class ExecuteState:
         def __init__(self, headers=None):
             self.headers = dict(headers) if headers else {}
@@ -423,12 +423,15 @@ def capture_script_output(
         # Pad the timeout by 5 minutes to allow for cleanup.
         timeout = time.monotonic() + timeout_seconds + (60 * 5)
 
+    stdout_path = Path(stdout_path)
+    stderr_path = Path(stderr_path)
+    combined_path = Path(combined_path)
     # Create the file and then open it in read write mode for terminal
     # emulation.
     for path in (stdout_path, stderr_path, combined_path):
-        Path(path).touch()
-    with open(stdout_path, "r+b") as out, open(stderr_path, "r+b") as err:
-        with open(combined_path, "r+b") as combined:
+        path.touch()
+    with stdout_path.open("r+b") as out, stderr_path.open("r+b") as err:
+        with combined_path.open("r+b") as combined:
             with selectors.DefaultSelector() as selector:
                 selector.register(proc.stdout, selectors.EVENT_READ, out)
                 selector.register(proc.stderr, selectors.EVENT_READ, err)

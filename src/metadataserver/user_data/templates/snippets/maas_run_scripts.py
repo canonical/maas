@@ -70,7 +70,7 @@ class Script:
 
     @property
     def command(self):
-        return [self.dirs.scripts / self.info["path"]]
+        return [str(self.dirs.scripts / self.info["path"])]
 
     @property
     def name(self):
@@ -94,22 +94,22 @@ class Script:
 
     @property
     def environ(self):
-        env = os.environ.copy()
-        env.update(
-            {
-                "MAAS_BASE_URL": self.maas_url,
-                "OUTPUT_COMBINED_PATH": self.combined_path,
-                "OUTPUT_STDOUT_PATH": self.stdout_path,
-                "OUTPUT_STDERR_PATH": self.stderr_path,
-                "RESULT_PATH": self.result_path,
-                "DOWNLOAD_PATH": self.dirs.downloads,
-                "HAS_STARTED": str(self.info.get("has_started", False)),
-                "RUNTIME": str(self.info.get("timeout_seconds")),
-            }
-        )
+        env = {
+            "MAAS_BASE_URL": self.maas_url,
+            "OUTPUT_COMBINED_PATH": self.combined_path,
+            "OUTPUT_STDOUT_PATH": self.stdout_path,
+            "OUTPUT_STDERR_PATH": self.stderr_path,
+            "RESULT_PATH": self.result_path,
+            "DOWNLOAD_PATH": self.dirs.downloads,
+            "HAS_STARTED": self.info.get("has_started", False),
+            "RUNTIME": self.info.get("timeout_seconds"),
+        }
         if "bmc_config_path" in self.info:
             env["BMC_CONFIG_PATH"] = self.info["bmc_config_path"]
-        return env
+
+        environ = os.environ.copy()
+        environ.update((key, str(value)) for key, value in env.items())
+        return environ
 
     def should_run(self):
         """Whether the script should be run."""
@@ -286,7 +286,7 @@ def fetch_scripts(maas_url, metadata_url, dirs, credentials):
         sys.exit("No script returned")
 
     with tarfile.open(mode="r|*", fileobj=BytesIO(res.read())) as tar:
-        tar.extractall(dirs.scripts)
+        tar.extractall(str(dirs.scripts))
 
     with (dirs.scripts / "index.json").open() as fd:
         data = json.load(fd)
@@ -388,7 +388,7 @@ def action_register_machine(ns):
                 reason=e.reason, details=e.read().decode("utf8")
             )
         )
-    result = json.load(response)
+    result = json.loads(response.read().decode("utf8"))
     system_id = result["system_id"]
     print(
         "Machine {hostname} created with system ID: {system_id}".format(
@@ -408,7 +408,7 @@ def action_register_machine(ns):
                 reason=e.reason, details=e.read().decode("utf8")
             )
         )
-    creds = json.load(response)
+    creds = json.loads(response.read().decode("utf8"))
     creds_path = write_token(hostname, creds)
     print("Machine token written to {path}".format(path=creds_path))
 
