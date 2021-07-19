@@ -361,11 +361,11 @@ class Factory:
             these, but it won't be identical.
         :param disjoint_from: Optional iterable of `IPNetwork` objects whose
             IP ranges the new network must not overlap.
-        :return: A network spanning at least 16 IP addresses (at most 28 bits).
+        :return: A network spanning at least 14 host addresses (at most 28 bits).
         :rtype: :class:`IPNetwork`
         """
         if slash is None:
-            slash = random.randint(16, 28)
+            slash = random.randint(24, 28)
         return self._make_random_network(
             slash=slash,
             but_not=but_not,
@@ -379,8 +379,7 @@ class Factory:
         """Generate a random IPv6 network.
 
         :param slash: Netmask or bit width of the network. If not
-            specified, will default to a bit width of between 112 (65536
-            addresses) and 125 (8 addresses);
+            specified, will default to a bit width of between 48 and 64
         :param but_not: Optional iterable of `IPNetwork` objects whose values
             should not be returned.  Use this when you need a different network
             from any returned previously.  The new network may overlap any of
@@ -391,7 +390,7 @@ class Factory:
         :rtype: :class:`IPNetwork`
         """
         if slash is None:
-            slash = random.randint(112, 125)
+            slash = random.randint(48, 64)
         return self._make_random_network(
             slash=slash,
             but_not=but_not,
