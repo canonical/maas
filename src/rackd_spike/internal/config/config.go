@@ -8,22 +8,40 @@ import (
 
 var (
 	ErrConfigFileNotDefined = errors.New("config file not defined")
+	ErrBadTlsConfig         = errors.New("invalid TLS config")
 )
 
 type ConfigKey string
 type ctxFilename struct{}
 
+type MetricsConfig struct {
+	Bind   string `yaml:"bind"`
+	Port   int    `yaml:"port"`
+	CACert string `yaml:"ca_cert,omitempty"`
+	Cert   string `yaml:"cert,omitempty"`
+	Key    string `yaml:"priv_key,omitempty"`
+}
+
+type TlsConfig struct {
+	CACert      string `yaml:"ca_cert,omitempty"`
+	Cert        string `yaml:"cert,omitempty"`
+	Key         string `yaml:"priv_key,omitempty"`
+	SkipCaCheck bool   `yaml:"insecure_ca,omitempty"`
+}
+
 type RackConfig struct {
-	BasePath       string      `yaml:"-"`
-	SystemID       string      `yaml:"-"`
-	Secret         string      `yaml:"-"`
-	MaasUrl        StringArray `yaml:"maas_url,flow"`
-	TftpRoot       string      `yaml:"tftp_root,omitempty"`
-	TftpPort       int         `yaml:"tftp_port,omitempty"`
-	ClusterUUID    string      `yaml:"cluster_uuid,omitempty"`
-	Debug          bool        `yaml:"debug,omitempty"`
-	SupervisordURL string      `yaml:"supervisord,omitempty"`
-	Proxy          bool        `yaml:"proxy"`
+	BasePath       string        `yaml:"-"`
+	SystemID       string        `yaml:"-"`
+	Secret         string        `yaml:"-"`
+	MaasUrl        StringArray   `yaml:"maas_url,flow"`
+	TftpRoot       string        `yaml:"tftp_root,omitempty"`
+	TftpPort       int           `yaml:"tftp_port,omitempty"`
+	ClusterUUID    string        `yaml:"cluster_uuid,omitempty"`
+	Debug          bool          `yaml:"debug,omitempty"`
+	Metrics        MetricsConfig `yaml:"metrics,omitempty"`
+	Tls            TlsConfig     `yaml:"rpc,omitempty"`
+	SupervisordURL string        `yaml:"supervisord,omitempty"`
+	Proxy          bool          `yaml:"proxy"`
 }
 
 const (

@@ -3,6 +3,8 @@ package authenticate
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"fmt"
 	"net/url"
 
@@ -19,13 +21,15 @@ type AuthCreds struct {
 
 // local digest calculates the digest of the secret and generated message
 func (c *AuthCreds) localDigest(secret, message []byte) []byte {
-	// TODO
-	return nil
+	mac := hmac.New(sha256.New, secret)
+	mac.Write(message)
+	mac.Write(c.Salt)
+	return mac.Sum(nil)
 }
 
 // Verify verifies that both the local digest and the digest returned from the server match
 func (c *AuthCreds) Verify(secret, message []byte) bool {
-	return bytes.Compare(c.Digest, c.localDigest(secret, message)) == 0
+	return bytes.Equal(c.Digest, c.localDigest(secret, message))
 }
 
 // Authenticator is an interface for making calls to authenticate with a server

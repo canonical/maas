@@ -15,7 +15,7 @@ const (
 	configFileEnvVarname = "MAAS_CLUSTER_CONFIG"
 	configFileDftFile    = "/etc/maas/rackd.conf"
 	baseDirEnvVarname    = "MAAS_DATA"
-	tftpGrubDir          = "grub" // FIXME move this to TFTP module
+	tftpGrubDir          = "grub" //nolint //FIXME move this to TFTP module
 )
 
 func isValid(c *RackConfig) error {
@@ -49,6 +49,13 @@ func new() *RackConfig {
 		SupervisordURL: "http://localhost:9002",
 		TftpRoot:       "boot-resources/current",
 		TftpPort:       69,
+		Metrics: MetricsConfig{
+			Bind: "0.0.0.0",
+			Port: 9090,
+		},
+		Tls: TlsConfig{
+			SkipCaCheck: true,
+		},
 	}
 }
 

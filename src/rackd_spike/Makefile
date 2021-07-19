@@ -23,7 +23,7 @@ build-dir:
 
 .PHONY: rackd
 rackd: build-dir gen-capnp
-	go build -ldflags $(LDFLAGS) -o ./build/rackd ./cmd/rackd.go
+	go build -ldflags $(LDFLAGS) -o ./build/rackd ./cmd/*.go
 
 .PHONY: test
 test:
@@ -31,7 +31,7 @@ test:
 
 .PHONY: lint
 lint:
-	go vet ./...
+	./go-lint.sh
 
 .PHONY: format
 format:

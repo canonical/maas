@@ -30,12 +30,12 @@ func authenticate(ctx context.Context, region string, rpcMgr *transport.RPCManag
 	if !ok {
 		return ErrNoAuthenticatorProvided
 	}
-	secret := []byte{} // TODO get this from filesystem
 	message := make([]byte, 16)
 	_, err = rand.Read(message)
 	if err != nil {
 		return err
 	}
+	secret := []byte(config.Config.Secret)
 	creds, err := authenticator.Authenticate(ctx, region, secret, message)
 	if err != nil {
 		return err

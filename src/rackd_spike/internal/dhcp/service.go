@@ -41,8 +41,9 @@ func NewDhcpdSystemdService(ctx context.Context) (service.ReloadableService, err
 	if !ok {
 		return nil, service.ErrInvalidServiceType
 	}
+
 	return &DhcpdSystemdService{
-		SystemdService: *unit,
+		SystemdService: *unit, //nolint:govet
 		configFileName: DhcpdConfFileName,
 	}, nil
 }
@@ -70,7 +71,7 @@ func NewDhcpd6SystemdService(ctx context.Context) (service.ReloadableService, er
 		return nil, service.ErrInvalidServiceType
 	}
 	return &Dhcpd6SystemdService{
-		SystemdService: *unit,
+		SystemdService: *unit, //nolint:govet
 		configFileName: Dhcpd6ConfFileName,
 	}, nil
 }
@@ -98,7 +99,7 @@ func NewDhcpdSupervisordService(supervisorAddr string) (service.Service, error) 
 		return nil, service.ErrInvalidServiceType
 	}
 	return &DhcpdSupervisordService{
-		SupervisordService: *supSvc,
+		SupervisordService: *supSvc, //nolint:govet
 		configFileName:     DhcpdConfFileName,
 	}, nil
 }
@@ -126,7 +127,7 @@ func NewDhcpd6SupervisordService(supervisorAddr string) (service.Service, error)
 		return nil, service.ErrInvalidServiceType
 	}
 	return &Dhcpd6SupervisordService{
-		SupervisordService: *supSvc,
+		SupervisordService: *supSvc, //nolint:govet
 		configFileName:     Dhcpd6ConfFileName,
 	}, nil
 }

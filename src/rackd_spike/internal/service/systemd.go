@@ -16,6 +16,7 @@ const (
 	// TODO add more supported start modes
 )
 
+//nolint
 const (
 	resultDone       = "done"
 	resultCanceled   = "canceled"

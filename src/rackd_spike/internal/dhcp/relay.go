@@ -92,7 +92,7 @@ func (r *RelayHandler) RelayMsg6(ctx context.Context, conn net.PacketConn, m dhc
 func (r *RelayHandler) HandleV4(ctx context.Context, conn net.PacketConn, m *dhcpv4.DHCPv4, peer *net.UDPAddr) error {
 	dhcpv4.WithRelay(r.localAddr.IP)(m)
 	dhcpv4.WithOption(dhcpv4.OptRelayAgentInfo(
-		dhcpv4.OptGeneric(dhcpv4.AgentRemoteIDSubOption, config.Config.ClusterUUID),
+		dhcpv4.OptGeneric(dhcpv4.AgentRemoteIDSubOption, []byte(config.Config.ClusterUUID)),
 	))(m)
 	return r.RelayMsg4(ctx, conn, m, peer)
 }

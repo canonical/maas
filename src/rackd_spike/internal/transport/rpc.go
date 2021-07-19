@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"time"
 
 	capnprpc "capnproto.org/go/capnp/v3/rpc"
 	"github.com/rs/zerolog"
@@ -69,49 +70,89 @@ func (c *ConnWrapper) Capnp() *rpc.RegionController {
 	return c.regionController
 }
 
+func (c *ConnWrapper) Done() <-chan struct{} {
+	return c.capnpConn.Done()
+}
+
 // RPCManager manages all RPC clients and handlers. It is also responsible
 // for establishing a connection to the RPC server
 type RPCManager struct {
-	conns          map[string]*ConnWrapper
-	handlers       map[string]RPCHandler
-	clients        map[string]RPCClient
-	initURL        string
-	skipHostVerify bool
+	conns     map[string]*ConnWrapper
+	handlers  map[string]RPCHandler
+	clients   map[string]RPCClient
+	tlsConfig *tls.Config
 }
 
-func NewRPCManager(rpcServerURL string, skipHostVerify bool) *RPCManager {
+func NewRPCManager(tlsConfig *tls.Config) *RPCManager {
 	return &RPCManager{
-		conns:          make(map[string]*ConnWrapper),
-		handlers:       make(map[string]RPCHandler),
-		clients:        make(map[string]RPCClient),
-		initURL:        rpcServerURL,
-		skipHostVerify: skipHostVerify,
+		conns:     make(map[string]*ConnWrapper),
+		handlers:  make(map[string]RPCHandler),
+		clients:   make(map[string]RPCClient),
+		tlsConfig: tlsConfig,
 	}
 }
 
 // Init initiates the initial region connection
-func (r *RPCManager) Init(ctx context.Context) error {
-	parsedURL, err := url.Parse(r.initURL)
+func (r *RPCManager) Init(
+	ctx context.Context,
+	rpcServerURL string,
+	onConnect func(ctx context.Context) error,
+) error {
+	parsedURL, err := url.Parse(rpcServerURL)
 	if err != nil {
 		return err
 	}
-	var conn net.Conn
-	if parsedURL.Scheme == "https" {
-		conn, err = tls.Dial(
-			"tcp",
-			net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()),
-			&tls.Config{InsecureSkipVerify: r.skipHostVerify},
-		)
-	} else {
-		conn, err = net.Dial("tcp", net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
-	}
-	if err != nil {
-		return err
-	}
-	r.AddConn(ctx, conn)
-	log := zerolog.Ctx(ctx)
-	log.Debug().Msg("connected to region server")
+
+	go func() {
+		for {
+			var (
+				conn net.Conn
+				newC *ConnWrapper
+			)
+			if parsedURL.Scheme == "https" {
+				conn, err = tls.Dial(
+					"tcp",
+					net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()),
+					r.tlsConfig,
+				)
+			} else {
+				conn, err = net.Dial(
+					"tcp",
+					net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
+			}
+			if err != nil {
+				goto reconnect
+			}
+
+			newC = r.AddConn(ctx, conn)
+
+			if err = onConnect(ctx); err != nil {
+				goto reconnect
+			}
+
+			zerolog.Ctx(ctx).Err(err).Msgf("connect to region server %v", rpcServerURL)
+
+			select {
+			case <-ctx.Done():
+				_ = newC.CapnpConn().Close()
+				return
+			case <-newC.Done():
+				// TODO remove connection from map
+			}
+
+		reconnect:
+			time.Sleep(5 * time.Second) // don't spin too fast
+			zerolog.Ctx(ctx).Debug().Msg("reconnecting")
+		}
+	}()
+
 	return nil
+}
+
+func (r *RPCManager) Stop(ctx context.Context) {
+	for _, conn := range r.conns {
+		conn.capnpConn.Close()
+	}
 }
 
 func (r *RPCManager) AddHandler(ctx context.Context, handler RPCHandler) {
@@ -128,7 +169,7 @@ func (r *RPCManager) AddClient(ctx context.Context, client RPCClient) {
 	}
 }
 
-func (r *RPCManager) AddConn(ctx context.Context, conn net.Conn) {
+func (r *RPCManager) AddConn(ctx context.Context, conn net.Conn) *ConnWrapper {
 	newConn := NewConnWrapper(conn)
 	newConn.Bootstrap(ctx)
 	r.conns[conn.RemoteAddr().String()] = newConn
@@ -138,6 +179,7 @@ func (r *RPCManager) AddConn(ctx context.Context, conn net.Conn) {
 	for _, client := range r.clients {
 		client.SetupClient(ctx, newConn)
 	}
+	return newConn
 }
 
 func (r *RPCManager) GetClient(clientName string) (RPCClient, error) {

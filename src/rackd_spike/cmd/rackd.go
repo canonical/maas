@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"rackd/cmd/logger"
@@ -77,14 +78,23 @@ var (
 				return err
 			}
 
+			// From here on, it's possible to gracefully stop the daemon
+			ctx = cancelSignalContext(ctx)
+
 			rootMetricsRegistry := metrics.NewRegistry("")
-			metricsSrvr, err := metrics.NewPrometheus("127.0.0.1", 9090, nil, rootMetricsRegistry) // TODO make bind address configurable and provide TLS config
+			metricTls, err := config.GetMetricsTlsConfig(ctx)
 			if err != nil {
 				return err
 			}
-			defer metricsSrvr.Close()
-
-			initRegion := config.Config.MaasUrl[0]
+			metricsSrvr, err := metrics.NewPrometheus(
+				config.Config.Metrics.Bind,
+				config.Config.Metrics.Port,
+				metricTls,
+				rootMetricsRegistry)
+			if err != nil {
+				return err
+			}
+			metricsSrvr.Start(ctx)
 
 			sup := service.NewSupervisor()
 			if config.Config.Proxy {
@@ -113,53 +123,74 @@ var (
 				sup.RegisterService(dhcpv6)
 			}
 
-			rpcMgr := transport.NewRPCManager(initRegion, true) // TODO use the register command to provide info to connect instead and make TLS skip verify configurable
-			err = rpcMgr.Init(ctx)
+			rpcTls, err := config.GetRpcTlsConfig(ctx)
 			if err != nil {
 				return err
 			}
+
+			initRegion := config.Config.MaasUrl[0]
+			rpcMgr := transport.NewRPCManager(rpcTls) // TODO use the register command to provide info
 			rpcMgr.AddClient(ctx, authenticate.NewCapnpAuthenticator())
 			rpcMgr.AddClient(ctx, register.NewCapnpRegisterer())
-			rackController, err := controller.NewRackController(ctx, true, initRegion, sup)
+			rackController, err := controller.NewRackController(ctx, config.Config.Proxy, initRegion, sup)
 			if err != nil {
 				return err
 			}
 			rpcMgr.AddHandler(ctx, rackController)
-			err = rpcMgr.Init(ctx)
-			if err != nil {
-				return err
-			}
-			err = region.Handshake(ctx, initRegion, Version, rpcMgr)
+
+			err = rpcMgr.Init(ctx, initRegion, func(ctx context.Context) error {
+				return region.Handshake(ctx, initRegion, Version, rpcMgr)
+			})
 			if err != nil {
 				return err
 			}
 
 			log.Info().Msgf("rackd %v started successfully", Version)
 
-			sigChan := make(chan os.Signal, 4)
-			signal.Notify(sigChan, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP, syscall.SIGUSR1)
+			sigChan := make(chan os.Signal, 2)
+			signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGUSR1)
+
 			for {
-				switch <-sigChan {
-				case syscall.SIGTERM, syscall.SIGINT:
+				select {
+				case <-ctx.Done():
+					rpcMgr.Stop(context.Background())
 					log.Info().Msg("rackd stopping")
 					return nil
 
-				case syscall.SIGHUP:
-					err = config.Reload(ctx)
-					log.Err(err).Msg("config reload")
+				case s := <-sigChan:
+					switch s {
+					case syscall.SIGHUP:
+						err = config.Reload(ctx)
+						log.Err(err).Msg("config reload")
 
-					// Update debug level
-					log, _ = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
+						// Update debug level
+						log, _ = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
 
-				case syscall.SIGUSR1:
-					// reopen logfiles (logrotate)
-					err = logger.ReOpen()
-					log.Err(err).Msg("rotate logs")
+					case syscall.SIGUSR1:
+						// reopen logfiles (logrotate)
+						err = logger.ReOpen()
+						log.Err(err).Msg("rotate logs")
+					}
 				}
 			}
 		},
 	}
 )
+
+func cancelSignalContext(ctx context.Context) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
+
+	go func() {
+		chSig := make(chan os.Signal, 2)
+		signal.Notify(chSig, syscall.SIGINT, syscall.SIGTERM)
+
+		s := <-chSig
+		log.Ctx(ctx).Info().Msgf("Catch signal %v, shutting down", s)
+		cancel()
+	}()
+
+	return ctx
+}
 
 func init() {
 	rootCMD.PersistentFlags().BoolVar(&options.Euid, "euid", false, "set only effective user-id rather than real user-id.")
