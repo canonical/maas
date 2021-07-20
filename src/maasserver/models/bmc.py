@@ -1501,24 +1501,20 @@ class Pod(BMC):
                 .distinct()
                 .first()
             )
-            update = {}
-            if node and node.is_device:
-                update["node_type"] = NODE_TYPE.MACHINE
-            elif not node:
-                # Avoid circular dependencies
-                from maasserver.forms import AdminMachineWithMACAddressesForm
-
-                form = AdminMachineWithMACAddressesForm(
-                    data={
-                        "hostname": self.name,
-                        "architecture": sorted(self.architectures)[0],
-                        "mac_addresses": discovered_pod.mac_addresses,
-                    }
+            if not node:
+                node = Node.objects.create(
+                    hostname=self.name,
+                    architecture=self.architectures[0],
+                    dynamic=True,
+                    status=NODE_STATUS.DEPLOYED,
                 )
-                assert form.is_valid(), form.errors
-                node = form.save()
+                for mac_address in discovered_pod.mac_addresses:
+                    node.add_physical_interface(mac_address)
+
+            update = {}
+            if node.is_device:
+                update["node_type"] = NODE_TYPE.MACHINE
             if not node.current_commissioning_script_set:
-                # Avoid circular dependencies
                 from metadataserver.models import ScriptSet
 
                 # ScriptResults will be created on upload.

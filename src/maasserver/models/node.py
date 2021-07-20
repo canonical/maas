@@ -1108,7 +1108,8 @@ class Node(CleanSave, TimestampedModel):
 
     license_key = CharField(max_length=30, null=True, blank=True)
 
-    # Whether this is a machine in a POD that was composed on allocation
+    # Whether this is a machine that was composed on allocation, or a machine
+    # automatically created by MAAS as either a controller or a VM host
     dynamic = BooleanField(default=False)
 
     tags = ManyToManyField(Tag)
