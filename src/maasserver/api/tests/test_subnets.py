@@ -1,8 +1,6 @@
 # Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for Subnet API."""
-
 
 import http.client
 import json
@@ -10,7 +8,7 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import Contains, ContainsDict, Equals, HasLength
+from testtools.matchers import Contains, ContainsDict, Equals
 
 from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, RDNS_MODE_CHOICES
 from maasserver.testing.api import APITestCase, explain_unexpected_response
@@ -474,7 +472,9 @@ class TestSubnetReservedIPRangesAPI(APITestCase.ForUser):
         self.assertThat(result, Equals([]))
 
     def test_returns_reserved_anycast_for_empty_ipv6_subnet(self):
-        subnet = factory.make_Subnet(version=6, dns_servers=[], gateway_ip="")
+        subnet = factory.make_Subnet(
+            version=6, host_bits=80, dns_servers=[], gateway_ip=""
+        )
         response = self.client.get(
             get_subnet_uri(subnet), {"op": "reserved_ip_ranges"}
         )
@@ -483,10 +483,11 @@ class TestSubnetReservedIPRangesAPI(APITestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.OK, response),
         )
-        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertThat(result, HasLength(1))
-        self.assertThat(result[0]["num_addresses"], Equals(1))
-        self.assertThat(result[0]["purpose"], Contains("rfc-4291-2.6.1"))
+        [result] = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        self.assertThat(result["num_addresses"], Equals(1))
+        self.assertThat(result["purpose"], Contains("rfc-4291-2.6.1"))
 
     def test_accounts_for_reserved_ip_address(self):
         subnet = factory.make_Subnet(dns_servers=[], gateway_ip="")
