@@ -122,7 +122,8 @@ func NewRelay(ifname, bindAddr, upstream string, packetBufferSize int) (r *Relay
 		},
 		bufPool: sync.Pool{
 			New: func() interface{} {
-				return make([]byte, packetBufferSize)
+				buf := make([]byte, packetBufferSize)
+				return &buf
 			},
 		},
 	}
@@ -198,8 +199,9 @@ func (r *Relay) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			default:
-				buffer := r.bufPool.Get().([]byte)
-				n, peer, err := r.server.ReadFromUDP(buffer)
+				buffer := r.bufPool.Get().(*[]byte)
+				buf := *buffer
+				n, peer, err := r.server.ReadFromUDP(buf)
 				if err != nil {
 					r.bufPool.Put(buffer)
 					logger.Err(err)
@@ -216,7 +218,7 @@ func (r *Relay) Start(ctx context.Context) error {
 							}
 						}
 					}()
-					err := r.handleRawPacket(ctx, r.server, buffer[:n], peer)
+					err := r.handleRawPacket(ctx, r.server, buf[:n], peer)
 					if err != nil {
 						logger.Err(err).Msgf("remote conn: %s", peer.String())
 					}

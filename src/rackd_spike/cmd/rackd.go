@@ -17,10 +17,12 @@ import (
 	"rackd/internal/dhcp"
 	machinehelpers "rackd/internal/machine_helpers"
 	"rackd/internal/metrics"
+	"rackd/internal/ntp"
 	"rackd/internal/service"
 	"rackd/internal/transport"
 	"rackd/pkg/authenticate"
 	"rackd/pkg/controller"
+	ntprpc "rackd/pkg/ntp"
 	"rackd/pkg/region"
 	"rackd/pkg/register"
 )
@@ -51,129 +53,7 @@ var (
 	rootCMD = &cobra.Command{
 		Use:   "rackd",
 		Short: "rack controller daemon",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			if options.Version {
-				printVersion()
-				return nil
-			}
-			var (
-				err error
-				log *zerolog.Logger
-			)
-
-			ctx, log, err = logger.New(ctx, options.Syslog, options.LogFile)
-			if err != nil {
-				return err
-			}
-
-			ctx, err = config.Load(ctx, options.ConfigFile)
-			if err != nil {
-				return err
-			}
-
-			log, err = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
-			if err != nil {
-				return err
-			}
-
-			// From here on, it's possible to gracefully stop the daemon
-			ctx = cancelSignalContext(ctx)
-
-			rootMetricsRegistry := metrics.NewRegistry("")
-			metricTls, err := config.GetMetricsTlsConfig(ctx)
-			if err != nil {
-				return err
-			}
-			metricsSrvr, err := metrics.NewPrometheus(
-				config.Config.Metrics.Bind,
-				config.Config.Metrics.Port,
-				metricTls,
-				rootMetricsRegistry)
-			if err != nil {
-				return err
-			}
-			metricsSrvr.Start(ctx)
-
-			sup := service.NewSupervisor()
-			if config.Config.Proxy {
-				sup.RegisterService(dhcp.NewRelaySvc())
-			} else if machinehelpers.IsRunningInSnap() {
-				dhcpv4, err := dhcp.NewDhcpdSupervisordService(config.SupervisordURL())
-				if err != nil {
-					return err
-				}
-				dhcpv6, err := dhcp.NewDhcpd6SupervisordService(config.SupervisordURL())
-				if err != nil {
-					return err
-				}
-				sup.RegisterService(dhcpv4)
-				sup.RegisterService(dhcpv6)
-			} else {
-				dhcpv4, err := dhcp.NewDhcpdSystemdService(ctx)
-				if err != nil {
-					return err
-				}
-				dhcpv6, err := dhcp.NewDhcpd6SystemdService(ctx)
-				if err != nil {
-					return err
-				}
-				sup.RegisterService(dhcpv4)
-				sup.RegisterService(dhcpv6)
-			}
-
-			rpcTls, err := config.GetRpcTlsConfig(ctx)
-			if err != nil {
-				return err
-			}
-
-			initRegion := config.Config.MaasUrl[0]
-			rpcMgr := transport.NewRPCManager(rpcTls) // TODO use the register command to provide info
-			rpcMgr.AddClient(ctx, authenticate.NewCapnpAuthenticator())
-			rpcMgr.AddClient(ctx, register.NewCapnpRegisterer())
-			rackController, err := controller.NewRackController(ctx, config.Config.Proxy, initRegion, sup)
-			if err != nil {
-				return err
-			}
-			rpcMgr.AddHandler(ctx, rackController)
-
-			err = rpcMgr.Init(ctx, initRegion, func(ctx context.Context) error {
-				return region.Handshake(ctx, initRegion, Version, rpcMgr)
-			})
-			if err != nil {
-				return err
-			}
-
-			log.Info().Msgf("rackd %v started successfully", Version)
-
-			sigChan := make(chan os.Signal, 2)
-			signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGUSR1)
-
-			for {
-				select {
-				case <-ctx.Done():
-					rpcMgr.Stop(context.Background())
-					log.Info().Msg("rackd stopping")
-					return nil
-
-				case s := <-sigChan:
-					switch s {
-					case syscall.SIGHUP:
-						err = config.Reload(ctx)
-						log.Err(err).Msg("config reload")
-
-						// Update debug level
-						log, _ = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
-
-					case syscall.SIGUSR1:
-						// reopen logfiles (logrotate)
-						err = logger.ReOpen()
-						log.Err(err).Msg("rotate logs")
-					}
-				}
-			}
-		},
+		RunE:  runRoot,
 	}
 )
 
@@ -190,6 +70,177 @@ func cancelSignalContext(ctx context.Context) context.Context {
 	}()
 
 	return ctx
+}
+
+func registerProxyServices(ctx context.Context, sup service.SvcManager) error {
+	ntpProxy, err := ntp.NewProxy(config.Config.NTPBindAddr, config.Config.NTPRefreshRate)
+	if err != nil {
+		return err
+	}
+	sup.RegisterService(dhcp.NewRelaySvc())
+	sup.RegisterService(ntpProxy)
+	return nil
+}
+
+func registerSnapServices(ctx context.Context, sup service.SvcManager) error {
+	dhcpv4, err := dhcp.NewDhcpdSupervisordService(config.SupervisordURL())
+	if err != nil {
+		return err
+	}
+	dhcpv6, err := dhcp.NewDhcpd6SupervisordService(config.SupervisordURL())
+	if err != nil {
+		return err
+	}
+	sup.RegisterService(dhcpv4)
+	sup.RegisterService(dhcpv6)
+	return nil
+}
+
+func registerSystemdServices(ctx context.Context, sup service.SvcManager) error {
+	dhcpv4, err := dhcp.NewDhcpdSystemdService(ctx)
+	if err != nil {
+		return err
+	}
+	dhcpv6, err := dhcp.NewDhcpd6SystemdService(ctx)
+	if err != nil {
+		return err
+	}
+	sup.RegisterService(dhcpv4)
+	sup.RegisterService(dhcpv6)
+	return nil
+}
+
+func runRoot(cmd *cobra.Command, args []string) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if options.Version {
+		printVersion()
+		return nil
+	}
+
+	var (
+		err error
+		log *zerolog.Logger
+	)
+
+	ctx, log, err = logger.New(ctx, options.Syslog, options.LogFile)
+	if err != nil {
+		return err
+	}
+
+	ctx, err = config.Load(ctx, options.ConfigFile)
+	if err != nil {
+		return err
+	}
+
+	log, err = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
+	if err != nil {
+		return err
+	}
+
+	// From here on, it's possible to gracefully stop the daemon
+	ctx = cancelSignalContext(ctx)
+
+	rootMetricsRegistry := metrics.NewRegistry("")
+	metricTls, err := config.GetMetricsTlsConfig(ctx)
+	if err != nil {
+		return err
+	}
+	metricsSrvr, err := metrics.NewPrometheus(
+		config.Config.Metrics.Bind,
+		config.Config.Metrics.Port,
+		metricTls,
+		rootMetricsRegistry)
+	if err != nil {
+		return err
+	}
+	metricsSrvr.Start(ctx)
+
+	sup := service.NewSupervisor()
+	if config.Config.Proxy {
+		err = registerProxyServices(ctx, sup)
+	} else if machinehelpers.IsRunningInSnap() {
+		err = registerSnapServices(ctx, sup)
+	} else {
+		err = registerSystemdServices(ctx, sup)
+	}
+	if err != nil {
+		return err
+	}
+
+	rpcTls, err := config.GetRpcTlsConfig(ctx)
+	if err != nil {
+		return err
+	}
+
+	initRegion := config.Config.MaasUrl[0]
+	rpcMgr := transport.NewRPCManager(rpcTls) // TODO use the register command to provide info
+	rpcMgr.AddClient(ctx, authenticate.NewCapnpAuthenticator())
+	rpcMgr.AddClient(ctx, register.NewCapnpRegisterer())
+	ntpClient, err := ntprpc.New(sup)
+	if err != nil {
+		return err
+	}
+	rpcMgr.AddClient(ctx, ntpClient)
+	rackController, err := controller.NewRackController(ctx, true, initRegion, sup)
+	if err != nil {
+		return err
+	}
+	rpcMgr.AddHandler(ctx, rackController)
+
+	err = rpcMgr.Init(ctx, initRegion, func(ctx context.Context) error {
+		err = region.Handshake(ctx, initRegion, Version, rpcMgr)
+		if err != nil {
+			return err
+		}
+		err = region.GetRemoteConfig(ctx, rpcMgr)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	err = sup.StartAll(ctx)
+	if err != nil {
+		return err
+	}
+
+	log.Info().Msgf("rackd %v started successfully", Version)
+
+	sigChan := make(chan os.Signal, 2)
+	signal.Notify(sigChan, syscall.SIGHUP, syscall.SIGUSR1)
+	for {
+		select {
+		case <-ctx.Done():
+			shutdownCtx := context.Background()
+			rpcMgr.Stop(shutdownCtx)
+			err = sup.StopAll(ctx)
+			if err != nil {
+				return err
+			}
+			log.Info().Msg("rackd stopping")
+			return nil
+
+		case s := <-sigChan:
+			switch s {
+			case syscall.SIGHUP:
+				err = config.Reload(ctx)
+				log.Err(err).Msg("config reload")
+
+				// Update debug level
+				log, _ = logger.SetLogLevel(log, options.LogLevel, config.Config.Debug)
+
+			case syscall.SIGUSR1:
+				// reopen logfiles (logrotate)
+				err = logger.ReOpen()
+				log.Err(err).Msg("rotate logs")
+			}
+		}
+	}
 }
 
 func init() {

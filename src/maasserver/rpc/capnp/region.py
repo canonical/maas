@@ -6,6 +6,7 @@ from maasserver.rpc.capnp import handshake, rpc_dir
 from maasserver.rpc.regionservice import RegionServer
 
 region = capnp.load(rpc_dir("region.capnp"))
+controller = capnp.load(rpc_dir("controller.capnp"))
 log = logging.getLogger(__name__)
 
 
@@ -92,7 +93,16 @@ class RegionController(region.RegionController.Server):
         return None
 
     def getTimeConfiguration(self, systemId):
-        return None
+        resp = controller.TimeConfiguration()
+        prom = capnp.Promise(resp)
+
+        def get_result(cfg):
+            resp.servers = cfg.get("servers", [])
+            resp.peers = cfg.get("peers", [])
+            prom.then(lambda resp: resp)
+
+        self.shim.getTimeConfiguration(systemId).addCallback(get_result)
+        return prom
 
     def getDNSConfiguration(self, systemId):
         return None

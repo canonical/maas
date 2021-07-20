@@ -42,6 +42,8 @@ type RackConfig struct {
 	Tls            TlsConfig     `yaml:"rpc,omitempty"`
 	SupervisordURL string        `yaml:"supervisord,omitempty"`
 	Proxy          bool          `yaml:"proxy"`
+	NTPBindAddr    string        `yaml:"ntp_bind_addr"`
+	NTPRefreshRate int           `yaml:"ntp_refresh_rate"`
 }
 
 const (

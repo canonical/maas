@@ -56,6 +56,8 @@ func new() *RackConfig {
 		Tls: TlsConfig{
 			SkipCaCheck: true,
 		},
+		NTPBindAddr:    "0.0.0.0",
+		NTPRefreshRate: 5,
 	}
 }
 
