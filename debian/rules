@@ -49,6 +49,7 @@ override_dh_auto_install:
 
 	install -d -m 755 $(CURDIR)/debian/tmp/etc/maas/certificates
 
+	mv $(CURDIR)/debian/tmp/usr/bin/maas-power $(CURDIR)/debian/tmp/usr/bin/maas.power
 	dh_install --list-missing
 
 override_dh_auto_clean:

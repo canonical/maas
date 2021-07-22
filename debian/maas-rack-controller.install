@@ -8,4 +8,5 @@ debian/tmp/usr/lib/maas/maas-test-enlistment
 debian/extras/99-maas-sudoers etc/sudoers.d
 usr/bin/maas-rack usr/sbin
 usr/bin/rackd usr/sbin
+usr/bin/maas.power usr/sbin
 debian/extras/nginx.conf var/lib/maas/http
