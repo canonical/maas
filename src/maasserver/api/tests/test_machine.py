@@ -2016,6 +2016,7 @@ class TestMachineAPI(APITestCase.ForUser):
             owner=self.user,
             power_type=original_power_type,
             architecture=make_usable_architecture(self),
+            interface=True,
         )
         response = self.client.put(
             self.get_machine_uri(machine),

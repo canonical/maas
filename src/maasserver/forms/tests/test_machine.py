@@ -427,7 +427,7 @@ class TestAdminMachineForm(MAASServerTestCase):
         self.assertEqual(node.power_type, form.fields["power_type"].initial)
 
     def test_AdminMachineForm_changes_power_parameters_with_skip_check(self):
-        node = factory.make_Node()
+        node = factory.make_Node(interface=True)
         hostname = factory.make_string()
         power_type = factory.pick_power_type()
         power_parameters_field = factory.make_string()
@@ -482,7 +482,7 @@ class TestAdminMachineForm(MAASServerTestCase):
         self.assertEqual(power_type, node.power_type)
 
     def test_AdminMachineForm_changes_power_type(self):
-        node = factory.make_Node()
+        node = factory.make_Node(interface=True)
         hostname = factory.make_string()
         power_type = factory.pick_power_type()
         arch = make_usable_architecture(self)
@@ -497,3 +497,24 @@ class TestAdminMachineForm(MAASServerTestCase):
         )
         node = form.save()
         self.assertEqual(power_type, node.power_type)
+
+    def test_AdminMachineForm_needs_interface_for_power_types(self):
+        node = factory.make_Node(power_type="")
+        arch = make_usable_architecture(self)
+        form = AdminMachineForm(
+            data={
+                "architecture": arch,
+                "power_type": "manual",
+                "power_parameters_skip_check": "true",
+            },
+            instance=node,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            dict(form.errors),
+            {
+                "power_type": [
+                    "Can't set power type to manual without network interfaces"
+                ]
+            },
+        )

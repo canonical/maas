@@ -814,6 +814,23 @@ class MachineForm(NodeForm):
     def clean(self):
         cleaned_data = super().clean()
 
+        power_type = cleaned_data.get("power_type")
+        have_interfaces = (
+            cleaned_data.get("mac_addresses")
+            or self.instance.interface_set.exists()
+        )
+        if (
+            power_type != self.instance.power_type
+            and power_type
+            and power_type != "ipmi"
+            and not have_interfaces
+        ):
+            set_form_error(
+                self,
+                "power_type",
+                f"Can't set power type to {power_type} without network interfaces",
+            )
+
         if not self.instance.hwe_kernel:
             osystem = cleaned_data.get("osystem")
             distro_series = cleaned_data.get("distro_series")
@@ -1937,7 +1954,7 @@ class InstanceListField(UnconstrainedMultipleChoiceField):
         field_name,
         text_for_invalid_object=None,
         *args,
-        **kwargs
+        **kwargs,
     ):
         """Instantiate an InstanceListField.
 
