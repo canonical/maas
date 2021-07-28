@@ -178,6 +178,13 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	rpcMgr := transport.NewRPCManager(rpcTls) // TODO use the register command to provide info
 	rpcMgr.AddClient(ctx, authenticate.NewCapnpAuthenticator())
 	rpcMgr.AddClient(ctx, register.NewCapnpRegisterer())
+
+	err = sup.StartAll(ctx)
+	if err != nil {
+		log.Err(err).Msg("failed to start supervisor")
+		return err
+	}
+
 	ntpClient, err := ntprpc.New(sup)
 	if err != nil {
 		return err
@@ -201,11 +208,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return nil
 	})
 	if err != nil {
-		return err
-	}
-
-	err = sup.StartAll(ctx)
-	if err != nil {
+		log.Err(err).Msg("failed to start RPC manager")
 		return err
 	}
 
@@ -218,7 +221,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		case <-ctx.Done():
 			shutdownCtx := context.Background()
 			rpcMgr.Stop(shutdownCtx)
-			err = sup.StopAll(ctx)
+			err = sup.StopAll(shutdownCtx)
 			if err != nil {
 				return err
 			}

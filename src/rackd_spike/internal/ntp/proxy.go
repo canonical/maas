@@ -226,34 +226,38 @@ func (p *Proxy) Start(ctx context.Context) (err error) {
 		p.listener.Close()
 		return err
 	}
-	p.tick = time.NewTicker(refreshRate)
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-p.tick.C:
-			go p.UpdateLocalTime(ctx)
-		default:
-			err = p.listener.SetReadDeadline(time.Now().Add(refreshRate))
-			if err != nil {
-				return err
-			}
-			buffer := p.bufPool.Get().(*[]byte)
-			buf := *buffer
-			n, peer, err := p.listener.ReadFromUDP(buf)
-			if err != nil {
-				p.bufPool.Put(buffer)
-				continue
-			}
-			go func() {
-				defer p.bufPool.Put(buffer)
-				err := p.handlePkt(ctx, peer, buf[:n])
+	go func() {
+		p.tick = time.NewTicker(refreshRate)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-p.tick.C:
+				go p.UpdateLocalTime(ctx)
+			default:
+				err = p.listener.SetReadDeadline(time.Now().Add(refreshRate))
 				if err != nil {
-					logger.Err(err).Msgf("remote addr: %s", peer.String())
+					logger.Err(err).Msg("failed to set listener deadline")
+					continue
 				}
-			}()
+				buffer := p.bufPool.Get().(*[]byte)
+				buf := *buffer
+				n, peer, err := p.listener.ReadFromUDP(buf)
+				if err != nil {
+					p.bufPool.Put(buffer)
+					continue
+				}
+				go func() {
+					defer p.bufPool.Put(buffer)
+					err := p.handlePkt(ctx, peer, buf[:n])
+					if err != nil {
+						logger.Err(err).Msgf("remote addr: %s", peer.String())
+					}
+				}()
+			}
 		}
-	}
+	}()
+	return nil
 }
 
 func (p *Proxy) Stop(ctx context.Context) error {

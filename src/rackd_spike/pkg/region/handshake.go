@@ -3,6 +3,7 @@ package region
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -35,7 +36,10 @@ func authenticate(ctx context.Context, region string, rpcMgr *transport.RPCManag
 	if err != nil {
 		return err
 	}
-	secret := []byte(config.Config.Secret)
+	secret, err := hex.DecodeString(config.Config.Secret)
+	if err != nil {
+		return err
+	}
 	creds, err := authenticator.Authenticate(ctx, region, secret, message)
 	if err != nil {
 		return err

@@ -446,10 +446,19 @@ capnp_dir:
 %.capnp:
 	capnp compile -oc++:./src/rpc/py/ -ocython:./src/rpc/py/ ./src/rpc/$@ --src-prefix ./src/rpc  
 
-gen-capnp-setup: capnp_dir handshake.capnp network.capnp region.capnp rack.capnp controller.capnp
+gen-capnp-setup: capnp_dir \
+	handshake.capnp \
+	network.capnp \
+	region.capnp \
+	dhcp.capnp \
+	controller.capnp
 
 gen-capnp-py: gen-capnp-setup
-	cd ./src/rpc/py && rm ./setup_capnp.py && cp ./setup_capnp.py.bak ./setup_capnp.py && $(python) setup_capnp.py build_ext --inplace
+	cd ./src/rpc/py && cp ./setup_capnp.py.bak ./setup_capnp.py && $(python) setup_capnp.py build_ext --inplace
 
 clean-capnp-py:
-	rm -r ./src/rpc/py/*
+	rm -f ./src/rpc/py/*.pyx \
+		./src/rpc/py/*.cpp \
+		./src/rpc/py/*.c++ \
+		./src/rpc/py/*.so \
+		./src/rpc/py/*.h

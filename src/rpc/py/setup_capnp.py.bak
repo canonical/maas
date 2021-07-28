@@ -6,7 +6,7 @@ import os
 import re
 
 
-files = ["network.capnp", "handshake.capnp", "region.capnp", "rack.capnp", "controller.capnp"]
+files = ["network.capnp", "handshake.capnp", "region.capnp", "dhcp.capnp", "controller.capnp"]
 
 for f in files:
   cpp_file = f + '.cpp'

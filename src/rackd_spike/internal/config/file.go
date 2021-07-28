@@ -8,7 +8,7 @@ import (
 
 var (
 	lock  sync.Mutex
-	cache map[ConfigKey]string
+	cache map[ConfigKey]string = make(map[ConfigKey]string)
 )
 
 func getConfigFromFile(id ConfigKey) (string, error) {

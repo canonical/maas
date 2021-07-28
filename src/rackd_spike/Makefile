@@ -1,7 +1,7 @@
 PWD:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 ROOT_DIR:=$(shell dirname $(PWD))
 RPC_DIR:=$(PWD)/pkg/rpc
-VERSION:=develop-$(shell git rev-list -1 HEAD)
+VERSION:=3.1.0-dev-$(shell git rev-list -1 HEAD)
 
 PATH:=$(shell go env GOPATH)/bin:${PATH}
 export PATH
@@ -46,3 +46,7 @@ capnp-dir:
 
 .PHONY: gen-capnp
 gen-capnp: handshake.capnp network.capnp region.capnp controller.capnp dhcp.capnp
+
+.PHONY: clean-capnp
+clean-capnp:
+	rm -f $(PWD)/pkg/rpc/*.capnp.go

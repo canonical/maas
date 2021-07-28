@@ -127,6 +127,7 @@ func (r *RPCManager) Init(
 			newC = r.AddConn(ctx, conn)
 
 			if err = onConnect(ctx); err != nil {
+				newC.capnpConn.Close()
 				goto reconnect
 			}
 

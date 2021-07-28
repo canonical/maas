@@ -300,7 +300,7 @@ func (r *RelaySvc) Status(ctx context.Context) (err error) {
 	return nil
 }
 
-func (r *RelaySvc) Configure(ctx context.Context, data ConfigData, regionIP string, pktSize int) error {
+func (r *RelaySvc) Configure(ctx context.Context, data ConfigData, regionIP string) error {
 	r.Lock()
 	defer r.Unlock()
 	for _, ifname := range data.Interfaces {
