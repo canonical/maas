@@ -2810,7 +2810,7 @@ class TestNode(MAASServerTestCase):
         self.expectThat(events[2].type.name, Equals(EVENT_TYPES.RELEASED))
         self.expectThat(node._stop, MockNotCalled())
         self.expectThat(Node._set_status_expires, MockNotCalled())
-        self.expectThat(node.status, Equals(NODE_STATUS.READY))
+        self.expectThat(node.status, Equals(NODE_STATUS.NEW))
         self.expectThat(node.owner, Equals(None))
         self.expectThat(node.agent_name, Equals(""))
         self.expectThat(node.netboot, Is(True))
@@ -2820,6 +2820,52 @@ class TestNode(MAASServerTestCase):
         self.expectThat(node.license_key, Equals(""))
         self.expectThat(node.install_rackd, Is(False))
         self.expectThat(OwnerData.objects.filter(node=node), HasLength(0))
+
+    def test_release_to_new_if_no_commissioning_data(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        self.patch(node, "_stop")
+        self.patch(node, "_set_status_expires")
+        node.power_state = POWER_STATE.OFF
+        with post_commit_hooks:
+            node.release()
+        self.assertIsNone(node.current_commissioning_script_set)
+        self.assertEqual(node.status, NODE_STATUS.NEW)
+
+    def test_release_to_new_if_no_commissioning_results(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        self.patch(node, "_stop")
+        self.patch(node, "_set_status_expires")
+        node.power_state = POWER_STATE.OFF
+        script_set = factory.make_ScriptSet(
+            node=node,
+            result_type=RESULT_TYPE.COMMISSIONING,
+        )
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        script_set.add_pending_script(script)
+        with post_commit_hooks:
+            node.release()
+        self.assertIsNone(node.current_commissioning_script_set)
+        self.assertEqual(node.status, NODE_STATUS.NEW)
+
+    def test_release_to_ready_if_commissioning_results(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        self.patch(node, "_stop")
+        self.patch(node, "_set_status_expires")
+        script_set = factory.make_ScriptSet(
+            node=node,
+            result_type=RESULT_TYPE.COMMISSIONING,
+        )
+        node.power_state = POWER_STATE.OFF
+        node.current_commissioning_script_set = script_set
+        node.save()
+        script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
+        script_set.add_pending_script(script)
+        script_result = script.scriptresult_set.first()
+        script_result.status = SCRIPT_STATUS.PASSED
+        script_result.save()
+        with post_commit_hooks:
+            node.release()
+        self.assertEqual(node.status, NODE_STATUS.READY)
 
     def test_dynamic_ip_addresses_from_ip_address_table(self):
         node = factory.make_Node()
@@ -4643,7 +4689,7 @@ class TestNode(MAASServerTestCase):
         self.patch(Node, "_clear_status_expires")
         with post_commit_hooks:
             node.update_power_state(POWER_STATE.OFF)
-        self.expectThat(node.status, Equals(NODE_STATUS.READY))
+        self.expectThat(node.status, Equals(NODE_STATUS.NEW))
         self.expectThat(node.owner, Is(None))
 
     def test_update_power_state_does_not_change_status_if_not_releasing(self):

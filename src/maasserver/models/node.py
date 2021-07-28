@@ -3697,7 +3697,16 @@ class Node(CleanSave, TimestampedModel):
             self.delete()
         else:
             self.release_interface_config()
-            self.status = NODE_STATUS.READY
+            has_commissioning_data = (
+                self.current_commissioning_script_set
+                and self.current_commissioning_script_set.status
+                == SCRIPT_STATUS.PASSED
+            )
+            self.status = (
+                NODE_STATUS.READY
+                if has_commissioning_data
+                else NODE_STATUS.NEW
+            )
             self.owner = None
             self.save()
 
