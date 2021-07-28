@@ -675,10 +675,7 @@ class Interface(CleanSave, TimestampedModel):
         node = self.get_node()
         if node is not None:
             hostname = node.hostname
-        return "%s (%s) on %s" % (self.get_name(), self.type, hostname)
-
-    def get_name(self):
-        return self.name
+        return f"{self.name} ({self.type}) on {hostname}"
 
     def is_enabled(self):
         return self.enabled
@@ -737,7 +734,7 @@ class Interface(CleanSave, TimestampedModel):
                 link = {"id": ip_address.id, "mode": link_type}
                 ip, subnet = ip_address.get_ip_and_subnet()
                 if ip and ip_address.temp_expires_on is None:
-                    link["ip_address"] = "%s" % ip
+                    link["ip_address"] = f"{ip}"
                 if subnet:
                     link["subnet"] = subnet
                 links.append(link)
@@ -766,7 +763,7 @@ class Interface(CleanSave, TimestampedModel):
                     discovered.append(
                         {
                             "subnet": discovered_ip.subnet,
-                            "ip_address": "%s" % discovered_ip.ip,
+                            "ip_address": f"{discovered_ip.ip}",
                         }
                     )
             return discovered
@@ -834,8 +831,8 @@ class Interface(CleanSave, TimestampedModel):
                 if subnet.vlan != self.vlan:
                     vlan = subnet.vlan
                     maaslog.info(
-                        "%s: Observed connected to %s via %s."
-                        % (self.get_log_string(), vlan.fabric.get_name(), cidr)
+                        f"{self.get_log_string()}: Observed connected to "
+                        f"{vlan.fabric.get_name()} via {cidr}."
                     )
                     self.vlan = vlan
                     self.save()
@@ -872,11 +869,8 @@ class Interface(CleanSave, TimestampedModel):
                     # interface, a Fabric/VLAN will already have been created.
                     subnet = Subnet.objects.create_from_cidr(cidr)
                     maaslog.info(
-                        "Creating subnet %s connected to interface %s "
-                        "of node %s.",
-                        cidr,
-                        self,
-                        self.get_node(),
+                        f"Creating subnet {cidr} connected to interface "
+                        f"{self} of node {self.get_node()}."
                     )
 
             # First check if this IP address exists in the database (at all).
@@ -1334,8 +1328,8 @@ class Interface(CleanSave, TimestampedModel):
                 % (self.get_log_string())
             )
             raise StaticIPAddressUnavailable(
-                "Automatic IP address cannot be configured on interface %s "
-                "without an associated subnet." % self.get_name()
+                "Automatic IP address cannot be configured on interface "
+                f"{self.name} without an associated subnet."
             )
 
         # Allocate a new IP address from the entire subnet, excluding already
@@ -1362,8 +1356,8 @@ class Interface(CleanSave, TimestampedModel):
         # is performed.
         if temp_expires_after is None:
             maaslog.info(
-                "Allocated automatic IP address %s for %s."
-                % (auto_ip.ip, self.get_log_string())
+                f"Allocated automatic IP address {auto_ip.ip} for "
+                f"{self.get_log_string()}."
             )
         return auto_ip
 
@@ -1393,7 +1387,7 @@ class Interface(CleanSave, TimestampedModel):
         """Returns the default name for a bridge created on this interface."""
         # This is a fix for bug #1672327, consistent with Juju's idea of what
         # the bridge name should be.
-        ifname = self.get_name().encode("utf-8")
+        ifname = self.name.encode("utf-8")
         name = b"br-%s" % ifname
         if len(name) > 15:
             name = b"b-%s" % ifname
@@ -1881,7 +1875,7 @@ class BondInterface(ChildInterface):
 
 def build_vlan_interface_name(parent, vlan):
     if parent:
-        return "%s.%d" % (parent.get_name(), vlan.vid)
+        return "%s.%d" % (parent.name, vlan.vid)
     else:
         return "unknown.%d" % vlan.vid
 
@@ -1905,41 +1899,6 @@ class VLANInterface(ChildInterface):
                 return parent.is_enabled()
             else:
                 return True
-
-    def get_name(self):
-        """Returns the name of this VLAN interface.
-
-        On non-Controller nodes, the name is computed from the parent interface
-        and the related VLAN.
-
-        On nodes that are a subclass of Controller (such as rack and region
-        controllers), the given name for the VLAN interface is used, since
-        the name might not conform to the default VLAN interface name format.
-
-        Note that if the VLAN interface has not yet been saved, it cannot yet
-        have a parent interface. In that case, this method will return a
-        generic name (such as 'vlan100'), rather than an expected
-        <parent>.<vid> format name (such as 'eth0.100').
-
-        :raises: AssertionError if the VLAN is not defined, or if the related
-            VLAN is not tagged with a valid 802.1Q VLAN tag (between 1-4094).
-        """
-        if self._should_preserve_name():
-            # Controllers must preserve original VLAN interface names, since
-            # having an accurate name is important for MAAS (in order to
-            # perform actions such as providing DHCP or monitoring interfaces).
-            return self.name
-        # This should never happen in production. (We raise a ValidationError.)
-        assert self.vlan is not None, (
-            "Interface %d on %s (%s): Could not generate VLAN interface name; "
-            "related VLAN not found."
-        ) % (self.id, self.node.hostname, self.node.system_id)
-        vid = self.vlan.vid
-        if self.id is not None:
-            parent = self.parents.first()
-            if parent is not None:
-                return "%s.%s" % (parent.name, vid)
-        return "vlan%s" % vid
 
     def clean(self):
         super().clean()
@@ -1982,14 +1941,6 @@ class VLANInterface(ChildInterface):
                     {"vlan": ["VLAN interface requires connection to a VLAN."]}
                 )
 
-    # XXX: We should always trust the name that is passed when creating
-    #      the VLANInterface. This should be removed when 3.0 is
-    #      released.
-    def _should_preserve_name(self):
-        """Returns True if the VLAN interface name shouldn't be generated"""
-        node = self.get_node()
-        return (node.is_controller or node.is_pod) and self.name is not None
-
     def save(self, *args, **kwargs):
         # Set the node of this VLAN to the same as its parents.
         self.node = self.get_node()
@@ -2000,10 +1951,6 @@ class VLANInterface(ChildInterface):
             parent = self.parents.first()
             if parent is not None:
                 self.mac_address = parent.mac_address
-        if not self._should_preserve_name():
-            new_name = self.get_name()
-            if self.name != new_name:
-                self.name = new_name
         return super().save(*args, **kwargs)
 
 

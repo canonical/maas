@@ -25,7 +25,6 @@ from maasserver.forms.interface import (
     PhysicalInterfaceForm,
     VLANInterfaceForm,
 )
-from maasserver.models.interface import build_vlan_interface_name
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
@@ -649,18 +648,30 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         vlan = factory.make_VLAN(vid=10)
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
         form = VLANInterfaceForm(
+            node=parent.node,
+            data={"name": "myvlan", "vlan": vlan.id, "parents": [parent.id]},
+        )
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        interface = form.save()
+        self.assertEqual("myvlan", interface.name)
+        self.assertEqual(INTERFACE_TYPE.VLAN, interface.type)
+        self.assertEqual(vlan, interface.vlan)
+        self.assertItemsEqual([parent], interface.parents.all())
+
+    def test_creates_vlan_interface_generates_name(self):
+        fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=fabric, vid=10)
+        parent = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth42",
+            vlan=fabric.get_default_vlan(),
+        )
+        form = VLANInterfaceForm(
             node=parent.node, data={"vlan": vlan.id, "parents": [parent.id]}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         interface = form.save()
-        interface_name = build_vlan_interface_name(parent, vlan)
-        self.assertThat(
-            interface,
-            MatchesStructure.byEquality(
-                name=interface_name, type=INTERFACE_TYPE.VLAN
-            ),
-        )
-        self.assertItemsEqual([parent], interface.parents.all())
+        self.assertEqual("eth42.10", interface.name)
 
     def test_create_ensures_link_up(self):
         vlan = factory.make_VLAN(vid=10)

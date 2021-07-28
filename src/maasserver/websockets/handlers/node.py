@@ -707,7 +707,7 @@ class NodeHandler(TimestampedModelHandler):
         data = {
             "id": interface.id,
             "type": interface.type,
-            "name": interface.get_name(),
+            "name": interface.name,
             "enabled": interface.is_enabled(),
             "tags": interface.tags,
             "is_boot": interface == obj.get_boot_interface(),

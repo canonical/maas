@@ -92,7 +92,7 @@ class InterfaceConfiguration:
         self.version = version
         self.source_routing = source_routing
         self.config = None
-        self.name = self.iface.get_name()
+        self.name = self.iface.name
 
         if self.type == INTERFACE_TYPE.PHYSICAL:
             self.config = self._generate_physical_operation(version=version)
@@ -446,7 +446,7 @@ class InterfaceConfiguration:
                     "id": name,
                     "type": "vlan",
                     "name": name,
-                    "vlan_link": self.iface.parents.first().get_name(),
+                    "vlan_link": self.iface.parents.first().name,
                     "vlan_id": vlan.vid,
                 }
             )
@@ -454,7 +454,7 @@ class InterfaceConfiguration:
                 vlan_operation["subnets"] = addrs
         elif version == 2:
             vlan_operation.update(
-                {"id": vlan.vid, "link": self.iface.parents.first().get_name()}
+                {"id": vlan.vid, "link": self.iface.parents.first().name}
             )
             vlan_operation.update(addrs)
         return vlan_operation
@@ -472,7 +472,7 @@ class InterfaceConfiguration:
                     "name": self.name,
                     "mac_address": str(self.iface.mac_address),
                     "bond_interfaces": [
-                        parent.get_name()
+                        parent.name
                         for parent in self.iface.parents.order_by("name")
                     ],
                     "params": self._get_bond_params(),
@@ -485,7 +485,7 @@ class InterfaceConfiguration:
                 {
                     "macaddress": str(self.iface.mac_address),
                     "interfaces": [
-                        parent.get_name()
+                        parent.name
                         for parent in self.iface.parents.order_by("name")
                     ],
                 }
@@ -508,7 +508,7 @@ class InterfaceConfiguration:
                     "name": self.name,
                     "mac_address": str(self.iface.mac_address),
                     "bridge_interfaces": [
-                        parent.get_name()
+                        parent.name
                         for parent in self.iface.parents.order_by("name")
                     ],
                     "params": self._get_bridge_params(version=version),
@@ -521,7 +521,7 @@ class InterfaceConfiguration:
                 {
                     "macaddress": str(self.iface.mac_address),
                     "interfaces": [
-                        parent.get_name()
+                        parent.name
                         for parent in self.iface.parents.order_by("name")
                     ],
                 }

@@ -233,7 +233,7 @@ class AssertNetworkConfigMixin:
                                 get_param_value(value),
                             )
             elif iface.type == "vlan":
-                fmt_dict["parent"] = iface.parents.first().get_name()
+                fmt_dict["parent"] = iface.parents.first().name
                 fmt_dict["vlan_id"] = iface.vlan.vid
                 ret += self.VLAN_CONFIG % fmt_dict
             ret = set_interface_params(iface, ret)

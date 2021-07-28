@@ -496,11 +496,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         iface1 = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan1, parents=[parent1]
         )
-        fabric2 = factory.make_Fabric()
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, vlan=fabric2.get_default_vlan()
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric1.get_default_vlan()
         )
-        vlan2 = factory.make_VLAN(fabric=fabric2)
+        vlan2 = factory.make_VLAN(fabric=fabric1)
         iface2 = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[parent2]
         )
@@ -528,11 +527,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         iface1 = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan1, parents=[parent1]
         )
-        fabric2 = factory.make_Fabric()
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, vlan=fabric2.get_default_vlan()
+            INTERFACE_TYPE.PHYSICAL, vlan=fabric1.get_default_vlan()
         )
-        vlan2 = factory.make_VLAN(fabric=fabric2)
+        vlan2 = factory.make_VLAN(fabric=fabric1)
         iface2 = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[parent2]
         )
@@ -1771,47 +1769,16 @@ class InterfaceMTUTest(MAASServerTestCase):
 
 
 class VLANInterfaceTest(MAASServerTestCase):
-    def test_vlan_has_generated_name(self):
+    def test_vlan_has_supplied_name(self):
         name = factory.make_name("eth", size=2)
-        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name=name)
-        vlan = factory.make_VLAN()
-        interface = factory.make_Interface(
-            INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent]
-        )
-        self.assertEqual(
-            "%s.%d" % (parent.get_name(), vlan.vid), interface.name
-        )
-
-    def test_generated_name_gets_update_if_vlan_id_changes(self):
-        name = factory.make_name("eth", size=2)
-        parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, name=name)
-        vlan = factory.make_VLAN()
-        interface = factory.make_Interface(
-            INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent]
-        )
-        new_vlan = factory.make_VLAN()
-        interface.vlan = new_vlan
-        interface.save()
-        self.assertEqual(
-            "%s.%d" % (parent.get_name(), new_vlan.vid), interface.name
-        )
-
-    def test_vlan_on_rack_has_supplied_name(self):
-        name = factory.make_name("eth", size=2)
-        controller = random.choice(
-            [
-                factory.make_RegionController,
-                factory.make_RackController,
-                factory.make_RegionRackController,
-            ]
-        )()
+        node = factory.make_Node()
         parent = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, name=name, node=controller
+            INTERFACE_TYPE.PHYSICAL, name=name, node=node
         )
         vlan = factory.make_VLAN()
         vlan_ifname = factory.make_name()
         interface = VLANInterface(
-            node=controller,
+            node=node,
             mac_address=factory.make_mac_address(),
             type=INTERFACE_TYPE.VLAN,
             name=vlan_ifname,

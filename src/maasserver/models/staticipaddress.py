@@ -1052,7 +1052,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     "is_container": node.parent_id is not None,
                 }
                 if iface is not None:
-                    data["node_summary"]["via"] = iface.get_name()
+                    data["node_summary"]["via"] = iface.name
                 if (
                     with_username
                     and self.alloc_type != IPADDRESS_TYPE.DISCOVERED

@@ -1249,7 +1249,7 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "id": interface.id,
                 "type": interface.type,
-                "name": interface.get_name(),
+                "name": interface.name,
                 "numa_node": interface.numa_node.index,
                 "enabled": interface.is_enabled(),
                 "tags": interface.tags,
@@ -1278,7 +1278,7 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "id": interface2.id,
                 "type": interface2.type,
-                "name": interface2.get_name(),
+                "name": interface2.name,
                 "numa_node": interface2.numa_node.index,
                 "enabled": interface2.is_enabled(),
                 "tags": interface2.tags,
@@ -1321,7 +1321,7 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "id": interface.id,
                 "type": interface.type,
-                "name": interface.get_name(),
+                "name": interface.name,
                 "numa_node": interface.numa_node.index,
                 "tags": interface.tags,
                 "enabled": interface.is_enabled(),
@@ -1374,7 +1374,7 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "id": interface.id,
                 "type": interface.type,
-                "name": interface.get_name(),
+                "name": interface.name,
                 "numa_node": interface.numa_node.index,
                 "tags": interface.tags,
                 "enabled": interface.is_enabled(),
@@ -1474,7 +1474,7 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "id": interface.id,
                 "type": interface.type,
-                "name": interface.get_name(),
+                "name": interface.name,
                 "numa_node": interface.numa_node.index,
                 "tags": interface.tags,
                 "enabled": interface.is_enabled(),
@@ -1528,7 +1528,7 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "id": interface.id,
                 "type": interface.type,
-                "name": interface.get_name(),
+                "name": interface.name,
                 "numa_node": interface.numa_node.index,
                 "tags": interface.tags,
                 "enabled": interface.is_enabled(),
@@ -1586,7 +1586,7 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "id": interface.id,
                 "type": interface.type,
-                "name": interface.get_name(),
+                "name": interface.name,
                 "numa_node": interface.numa_node.index,
                 "tags": interface.tags,
                 "enabled": interface.is_enabled(),

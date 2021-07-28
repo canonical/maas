@@ -358,7 +358,12 @@ class VLANInterfaceForm(InterfaceForm):
 
     class Meta:
         model = VLANInterface
-        fields = InterfaceForm.Meta.fields
+        fields = InterfaceForm.Meta.fields + ("name",)
+
+    def __init__(self, *args, **kwargs):
+        InterfaceForm.__init__(self, *args, **kwargs)
+        # Allow the name to be auto-generated if missing.
+        self.fields["name"].required = False
 
     def clean_parents(self):
         parents = self.get_clean_parents()
@@ -415,10 +420,14 @@ class VLANInterfaceForm(InterfaceForm):
                         "A VLAN interface can only belong to a tagged VLAN on "
                         "the same fabric as its parent interface.",
                     )
-                name = build_vlan_interface_name(
-                    self.cleaned_data.get("parents").first(), new_vlan
-                )
-                self.clean_interface_name_uniqueness(name)
+                new_name = cleaned_data.get("name")
+                if self.fields_ok(["name"]):
+                    if not new_name and self.instance.id is None:
+                        # No name provided and new instance. Auto-generate the name.
+                        cleaned_data["name"] = build_vlan_interface_name(
+                            cleaned_data.get("parents").first(), new_vlan
+                        )
+                    self.clean_interface_name_uniqueness(cleaned_data["name"])
         return cleaned_data
 
 

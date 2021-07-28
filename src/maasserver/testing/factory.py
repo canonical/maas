@@ -1688,20 +1688,6 @@ class Factory(maastesting.factory.Factory):
             vlan = subnet.vlan
         if iftype is None:
             iftype = INTERFACE_TYPE.PHYSICAL
-        if name is None:
-            if iftype in (INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.UNKNOWN):
-                name = self.make_name("eth")
-            elif iftype == INTERFACE_TYPE.ALIAS:
-                name = self.make_name("eth", sep=":")
-            elif iftype == INTERFACE_TYPE.BOND:
-                name = self.make_name("bond")
-            elif iftype == INTERFACE_TYPE.BRIDGE:
-                name = self.make_name("br")
-            elif iftype == INTERFACE_TYPE.UNKNOWN:
-                name = self.make_name("eth")
-            elif iftype == INTERFACE_TYPE.VLAN:
-                # Need to calculate this later based on the VID.
-                name = None
         if link_connected:
             if vlan is None:
                 if fabric is not None:
@@ -1720,6 +1706,26 @@ class Factory(maastesting.factory.Factory):
                     else:
                         fabric = self.make_Fabric()
                         vlan = fabric.get_default_vlan()
+        if name is None:
+            if iftype in (INTERFACE_TYPE.PHYSICAL, INTERFACE_TYPE.UNKNOWN):
+                name = self.make_name("eth")
+            elif iftype == INTERFACE_TYPE.ALIAS:
+                name = self.make_name("eth", sep=":")
+            elif iftype == INTERFACE_TYPE.BOND:
+                name = self.make_name("bond")
+            elif iftype == INTERFACE_TYPE.BRIDGE:
+                name = self.make_name("br")
+            elif iftype == INTERFACE_TYPE.UNKNOWN:
+                name = self.make_name("eth")
+            elif iftype == INTERFACE_TYPE.VLAN:
+                # Need to calculate this later based on the VID.
+                if vlan is not None and vlan.vid:
+                    if parents:
+                        name = f"{parents[0].name}.{vlan.vid}"
+                    else:
+                        name = f"{self.make_name('eth')}.{vlan.vid}"
+                else:
+                    name = self.make_name("vlan")
         if None not in (parents, name) and iftype == INTERFACE_TYPE.VLAN:
             name = "%s.%d" % (parents[0].name, vlan.vid)
         if mac_address is None and iftype in [
