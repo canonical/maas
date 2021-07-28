@@ -105,6 +105,7 @@ class RegionController(region.RegionController.Server):
         self.shim = RegionServer()
         self.rack_controllers = rack_controllers
         self.server = server
+        self.events = set()
         super(RegionController, self).__init__()
 
     def ping(self):
@@ -183,7 +184,8 @@ class RegionController(region.RegionController.Server):
         return None
 
     def getTimeConfiguration_context(self, context):
-        self.event = capnp.PromiseFulfillerPair()
+        event = capnp.PromiseFulfillerPair()
+        self.events.add(event)
         systemId = context.params.systemId
 
         def get_result(cfg):
@@ -200,7 +202,8 @@ class RegionController(region.RegionController.Server):
                 lst[i] = s
 
             context.results.resp = resp
-            self.event.fulfill()
+            event.fulfill()
+            self.events.remove(event)
 
         self.shim.get_time_configuration(systemId).addCallback(get_result)
         return self.event.promise
@@ -216,8 +219,27 @@ class RegionController(region.RegionController.Server):
         self.shim.get_dns_configuration(systemId).addCallback(get_result)
         return prom
 
-    def getProxyConfiguration(self, systemId):
-        return None
+    def getProxyConfiguration_context(self, context):
+        system_id = context.params.systemId
+        event = capnp.PromiseFulfillerPair()
+        self.events.add(event)
+
+        def get_results(cfg):
+            resp = controller.ProxyConfiguration()
+            resp.enabled = cfg.get("enabled", True)
+            resp.port = cfg.get("port")
+            allowed_cidrs = cfg.get("allowed_cidrs", [])
+            lst = resp.init("allowed_cidrs", len(allowed_cidrs))
+            for i, cidr in enumerate(allowed_cidrs):
+                lst[i] = cidr
+            resp.allowedCidrs = lst
+            resp.preferV4Proxy = cfg.get("prefer_v4_proxy", False)
+            context.results.proxyConfig = resp
+            event.fulfill()
+            self.events.remove(event)
+
+        self.shim.get_proxy_configuration(system_id).addCallback(get_results)
+        return event.promise
 
     def getSyslogConfiguration(self, systemId):
         return None

@@ -24,6 +24,8 @@ var (
 	ErrInvalidServiceState   = errors.New("service is in an invalid state for this operation")
 	ErrInvalidServiceType    = errors.New("invalid service type for given service")
 	ErrUnexpectedServiceExit = errors.New("service exited unexpectedly")
+	ErrUnsuccessfulStart     = errors.New("not all services started correctly")
+	ErrUnsuccessfulStop      = errors.New("not all services shutdown correctly")
 )
 
 // Service is an interface outlining behavior to manage external services

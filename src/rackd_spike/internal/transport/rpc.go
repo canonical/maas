@@ -198,3 +198,14 @@ func (r *RPCManager) GetHandler(handlerName string) (RPCHandler, error) {
 	}
 	return h, nil
 }
+
+func (r *RPCManager) ConnsToString() []string {
+	res := make([]string, len(r.conns))
+
+	var idx int
+	for k := range r.conns { // map key should be remote address of conn
+		res[idx] = k
+		idx++
+	}
+	return res
+}

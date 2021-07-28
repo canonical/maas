@@ -15,6 +15,7 @@ import (
 	"rackd/cmd/subcommands"
 	"rackd/internal/config"
 	"rackd/internal/dhcp"
+	"rackd/internal/http"
 	machinehelpers "rackd/internal/machine_helpers"
 	"rackd/internal/metrics"
 	"rackd/internal/ntp"
@@ -22,6 +23,7 @@ import (
 	"rackd/internal/transport"
 	"rackd/pkg/authenticate"
 	"rackd/pkg/controller"
+	httprpc "rackd/pkg/http"
 	ntprpc "rackd/pkg/ntp"
 	"rackd/pkg/region"
 	"rackd/pkg/register"
@@ -77,8 +79,22 @@ func registerProxyServices(ctx context.Context, sup service.SvcManager) error {
 	if err != nil {
 		return err
 	}
+	httpProxy, err := http.NewProxy(ctx, "0.0.0.0", 80)
+	if err != nil {
+		return err
+	}
+	machineResourcesPath, err := machinehelpers.GetResourcesBinPath()
+	if err != nil {
+		return err
+	}
+	reverseProxy, err := http.NewReverseProxy(ctx, machineResourcesPath, "0.0.0.0", 5248)
+	if err != nil {
+		return err
+	}
 	sup.RegisterService(dhcp.NewRelaySvc())
 	sup.RegisterService(ntpProxy)
+	sup.RegisterService(httpProxy)
+	sup.RegisterService(reverseProxy)
 	return nil
 }
 
@@ -190,6 +206,13 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	rpcMgr.AddClient(ctx, ntpClient)
+
+	proxyClient, err := httprpc.New(sup)
+	if err != nil {
+		return err
+	}
+	rpcMgr.AddClient(ctx, proxyClient)
+
 	rackController, err := controller.NewRackController(ctx, true, initRegion, sup)
 	if err != nil {
 		return err
@@ -201,7 +224,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		err = region.GetRemoteConfig(ctx, rpcMgr)
+		err = region.GetRemoteConfig(ctx, rpcMgr, sup)
 		if err != nil {
 			return err
 		}
