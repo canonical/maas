@@ -322,12 +322,10 @@ class Factory(maastesting.factory.Factory):
         return reload_object(device)
 
     def make_RegionController(
-        self, hostname=None, status=None, owner=None, zone=None
+        self, hostname=None, status=NODE_STATUS.DEPLOYED, owner=None, zone=None
     ):
         if hostname is None:
             hostname = self.make_string(20)
-        if status is None:
-            status = NODE_STATUS.DEFAULT
         if owner is None:
             owner = get_worker_user()
         if zone is None:
