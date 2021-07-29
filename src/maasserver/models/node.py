@@ -1339,6 +1339,9 @@ class Node(CleanSave, TimestampedModel):
     def is_pod(self):
         return self.get_hosted_pods().exists()
 
+    def is_commissioning(self):
+        return self.status not in (NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING)
+
     def set_power_config(self, power_type, power_params):
         """Update the power configuration for a node.
 

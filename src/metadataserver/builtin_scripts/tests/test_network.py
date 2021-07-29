@@ -456,7 +456,9 @@ class UpdateInterfacesMixin:
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]
         )
-        return factory.make_Node(node_type=node_type, **kwargs).as_self()
+        return factory.make_Node(
+            node_type=node_type, status=NODE_STATUS.DEPLOYED, **kwargs
+        ).as_self()
 
     def update_interfaces(
         self,

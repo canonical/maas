@@ -23,14 +23,6 @@ maaslog = get_maas_logger("metadataserver.network")
 SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
 
 
-def is_commissioning(node):
-    return (
-        node.status not in [NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING]
-        and not node.is_pod
-        and not node.is_controller
-    )
-
-
 def get_interface_dependencies(data):
     dependencies = {name: [] for name in data["networks"]}
     for name, network in data["networks"].items():
@@ -272,8 +264,9 @@ def update_physical_links(node, interface, links, new_vlan, update_fields):
     linked_vlan = guess_best_vlan_from_ip_addresses(node, update_ip_addresses)
     if linked_vlan is None:
         return
-    interface.vlan = linked_vlan
-    update_fields.add("vlan")
+    if interface.vlan != linked_vlan:
+        interface.vlan = linked_vlan
+        update_fields.add("vlan")
     if new_vlan is not None and linked_vlan.id != new_vlan.id:
         # Create a new VLAN for this interface and it was not used as
         # a link re-assigned the VLAN this interface is connected to.
@@ -655,7 +648,7 @@ def update_links(
 
             address_type = (
                 IPADDRESS_TYPE.DISCOVERED
-                if is_commissioning(node)
+                if node.is_commissioning()
                 else IPADDRESS_TYPE.STICKY
             )
             # IP address is not assigned to this interface. Get or

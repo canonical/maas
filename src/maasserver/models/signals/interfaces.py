@@ -9,7 +9,7 @@ import threading
 from django.db.models import Count
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import (
     BondInterface,
     BridgeInterface,
@@ -226,11 +226,7 @@ def interface_vlan_update(instance, old_values, **kwargs):
         return
 
     new_vlan = instance.vlan
-    if instance.node.node_type in (
-        NODE_TYPE.REGION_CONTROLLER,
-        NODE_TYPE.RACK_CONTROLLER,
-        NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-    ):
+    if not instance.node.is_commissioning():
         if old_vlan_id is None:
             return
         # Interface VLAN was changed on a controller. Move all linked subnets

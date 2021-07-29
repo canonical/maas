@@ -1,16 +1,13 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test the behaviour of interface signals."""
-
-
 import random
 import threading
 from unittest.mock import call
 
 from testtools.matchers import Contains, Not
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_TYPE
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import Controller, Interface
 from maasserver.models.config import Config, NetworkDiscoveryConfig
 from maasserver.models.signals.interfaces import (
@@ -242,14 +239,7 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
     scenarios = (
         ("region", {"maker": factory.make_RegionController}),
         ("rack", {"maker": factory.make_RackController}),
-        (
-            "region-rack",
-            {
-                "maker": lambda: factory.make_Node(
-                    node_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER
-                )
-            },
-        ),
+        ("region-rack", {"maker": factory.make_RegionRackController}),
     )
 
     def test_moves_link_subnets_to_same_vlan(self):

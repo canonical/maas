@@ -27,10 +27,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
-from metadataserver.builtin_scripts.network import (
-    is_commissioning,
-    update_node_interfaces,
-)
+from metadataserver.builtin_scripts.network import update_node_interfaces
 from metadataserver.enum import HARDWARE_TYPE
 from provisioningserver.refresh.node_info_scripts import (
     GET_FRUID_DATA_OUTPUT_NAME,
@@ -253,7 +250,7 @@ def update_node_network_information(node, data, numa_nodes):
 
     # Pods are already deployed. MAAS captures the network state, it does
     # not change it.
-    if is_commissioning(node):
+    if node.is_commissioning():
         # Only configured Interfaces are tested so configuration must be done
         # before regeneration.
         node.set_initial_networking_configuration()
