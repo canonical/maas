@@ -15,6 +15,7 @@ const (
 	SvcDNS
 	SvcNTP
 	SvcPROXY
+	SvcTFTP
 )
 
 var (

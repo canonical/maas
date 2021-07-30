@@ -8,6 +8,7 @@ import (
 	"rackd/internal/config"
 	httpInternal "rackd/internal/http"
 	"rackd/internal/service"
+	"rackd/internal/tftp"
 	"rackd/internal/transport"
 	"rackd/pkg/http"
 	"rackd/pkg/ntp"
@@ -21,12 +22,17 @@ func GetRemoteConfig(ctx context.Context, rpcMgr *transport.RPCManager, sup serv
 		return err
 	}
 
-	proxyIface, err := rpcMgr.GetClient("proxy")
+	proxyIface, err := rpcMgr.GetClient("http")
 	if err != nil {
 		return err
 	}
 
 	revProxyIface, err := sup.Get("http_reverse_proxy")
+	if err != nil {
+		return err
+	}
+
+	tftpSvcIface, err := sup.Get("tftp")
 	if err != nil {
 		return err
 	}
@@ -48,6 +54,10 @@ func GetRemoteConfig(ctx context.Context, rpcMgr *transport.RPCManager, sup serv
 	if revProxy, ok := revProxyIface.(httpInternal.RevProxyService); ok {
 		log.Info().Msg("configuring HTTP reverse proxy")
 		revProxy.Configure(ctx, rpcMgr.ConnsToString())
+	}
+	if tftpSvc, ok := tftpSvcIface.(tftp.TFTPService); ok {
+		log.Info().Msg("configuring TFTP service")
+		tftpSvc.Configure(ctx, rpcMgr.ConnsToString())
 	}
 
 	return nil

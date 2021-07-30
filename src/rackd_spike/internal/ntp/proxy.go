@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"net/url"
 	"os"
 	"rackd/internal/service"
 	"sync"
@@ -270,8 +271,6 @@ func (p *Proxy) Stop(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	p.listener = nil
-	p.upstreamConn = nil
 	return nil
 }
 
@@ -294,7 +293,15 @@ func (p *Proxy) Configure(_ context.Context, servers, _ []string) error {
 	defer p.Unlock()
 	p.upstreams = []*net.UDPAddr{} // clear existing servers
 	for _, server := range servers {
-		addr, err := net.ResolveUDPAddr("udp", server)
+		srvrUrl, err := url.Parse(server)
+		if err != nil {
+			return err
+		}
+		port := srvrUrl.Port()
+		if len(port) == 0 {
+			port = "123"
+		}
+		addr, err := net.ResolveUDPAddr("udp", net.JoinHostPort(srvrUrl.Hostname(), port))
 		if err != nil {
 			return err
 		}

@@ -49,6 +49,7 @@ func new() *RackConfig {
 		SupervisordURL: "http://localhost:9002",
 		TftpRoot:       "boot-resources/current",
 		TftpPort:       69,
+		TftpTimeout:    10,
 		Metrics: MetricsConfig{
 			Bind: "0.0.0.0",
 			Port: 9090,

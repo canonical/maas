@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/rs/zerolog"
@@ -20,6 +22,7 @@ import (
 	"rackd/internal/metrics"
 	"rackd/internal/ntp"
 	"rackd/internal/service"
+	"rackd/internal/tftp"
 	"rackd/internal/transport"
 	"rackd/pkg/authenticate"
 	"rackd/pkg/controller"
@@ -91,10 +94,15 @@ func registerProxyServices(ctx context.Context, sup service.SvcManager) error {
 	if err != nil {
 		return err
 	}
+	tftpSvc, err := tftp.New(net.JoinHostPort("0.0.0.0", strconv.Itoa(config.Config.TftpPort)), config.Config.TftpTimeout)
+	if err != nil {
+		return err
+	}
 	sup.RegisterService(dhcp.NewRelaySvc())
 	sup.RegisterService(ntpProxy)
 	sup.RegisterService(httpProxy)
 	sup.RegisterService(reverseProxy)
+	sup.RegisterService(tftpSvc)
 	return nil
 }
 

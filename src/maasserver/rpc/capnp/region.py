@@ -206,7 +206,7 @@ class RegionController(region.RegionController.Server):
             self.events.remove(event)
 
         self.shim.get_time_configuration(systemId).addCallback(get_result)
-        return self.event.promise
+        return event.promise
 
     def getDNSConfiguration(self, systemId, _context, **kwargs):
         resp = controller.DNSConfiguration()
@@ -229,10 +229,9 @@ class RegionController(region.RegionController.Server):
             resp.enabled = cfg.get("enabled", True)
             resp.port = cfg.get("port")
             allowed_cidrs = cfg.get("allowed_cidrs", [])
-            lst = resp.init("allowed_cidrs", len(allowed_cidrs))
+            lst = resp.init("allowedCidrs", len(allowed_cidrs))
             for i, cidr in enumerate(allowed_cidrs):
                 lst[i] = cidr
-            resp.allowedCidrs = lst
             resp.preferV4Proxy = cfg.get("prefer_v4_proxy", False)
             context.results.proxyConfig = resp
             event.fulfill()

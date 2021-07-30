@@ -36,6 +36,7 @@ type RackConfig struct {
 	MaasUrl        StringArray   `yaml:"maas_url,flow"`
 	TftpRoot       string        `yaml:"tftp_root,omitempty"`
 	TftpPort       int           `yaml:"tftp_port,omitempty"`
+	TftpTimeout    int           `yaml:"tftp_timeout,omitempty"`
 	ClusterUUID    string        `yaml:"cluster_uuid,omitempty"`
 	Debug          bool          `yaml:"debug,omitempty"`
 	Metrics        MetricsConfig `yaml:"metrics,omitempty"`
