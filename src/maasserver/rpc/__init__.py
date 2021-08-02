@@ -20,7 +20,7 @@ def getClientFromIdentifiers(identifiers, timeout=0):
         are no open connections to any rack controllers.
     """
     try:
-        service = eventloop.services.getServiceNamed("rpc")
+        service = eventloop.services.getServiceNamed("rpc-capnp")
     except KeyError:
         raise exceptions.NoConnectionsAvailable(
             "Unable to connect to any rack controller %s; no connections "
@@ -41,7 +41,7 @@ def getClientFor(uuid, timeout=0):
         are no open connections to the specified cluster controller.
     """
     try:
-        service = eventloop.services.getServiceNamed("rpc")
+        service = eventloop.services.getServiceNamed("rpc-capnp")
     except KeyError:
         raise exceptions.NoConnectionsAvailable(
             "Unable to connect to rack controller %s; no connections "
@@ -56,7 +56,7 @@ def getClientFor(uuid, timeout=0):
 def getAllClients():
     """Get all recorded clients ready to make RPCs to rack controllers."""
     try:
-        service = eventloop.services.getServiceNamed("rpc")
+        service = eventloop.services.getServiceNamed("rpc-capnp")
     except KeyError:
         return []
     else:
@@ -67,7 +67,7 @@ def getAllClients():
 def getRandomClient():
     """Return a random client to any connected rack controller."""
     try:
-        service = eventloop.services.getServiceNamed("rpc")
+        service = eventloop.services.getServiceNamed("rpc-capnp")
     except KeyError:
         return []
     else:

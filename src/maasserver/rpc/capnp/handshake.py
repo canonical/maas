@@ -32,10 +32,10 @@ class Authenticator(region.RegionController.Authenticator.Server):
 
 
 class Registerer(region.RegionController.Registerer.Server):
-    def __init__(self, shim, rack_controller, server):
+    def __init__(self, shim, server, service):
         self.shim = shim
-        self.rack_controller = rack_controller
         self.server = server
+        self.service = service
         super(Registerer, self).__init__()
 
     def register_context(self, context):
@@ -47,10 +47,9 @@ class Registerer(region.RegionController.Registerer.Server):
             resp.systemId = res.get("system_id")
             resp.uuid = res.get("uuid")
             resp.version = res.get("version")
-            self.server.register_rack_controller(
-                res.get("system_id"), self.rack_controller
-            )
             context.results.resp = resp
+            self.server.ident = res.get("system_id")
+            self.service._addConnectionFor(res.get("system_id"), self.server)
             self.event.fulfill()
 
         try:

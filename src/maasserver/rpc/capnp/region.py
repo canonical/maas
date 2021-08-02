@@ -17,10 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class RegionServer(Region):
-    connid = None
     ident = None
-    host = None
-    hostIsRemote = False
 
     @inlineCallbacks
     def register(
@@ -80,7 +77,6 @@ class RegionServer(Region):
                     nodegroup_uuid,
                 )
             self.ident = rack_controller.system_id
-            # yield self.initResponder(rack_controller)
         except Exception:
             # Ensure we're not hanging onto this connection.
             # self.factory.service._removeConnectionFor(self.ident, self)
@@ -101,9 +97,9 @@ class RegionServer(Region):
 
 
 class RegionController(region.RegionController.Server):
-    def __init__(self, rack_controllers, server, *args, **kwargs):
+    def __init__(self, server, service, *args, **kwargs):
         self.shim = RegionServer()
-        self.rack_controllers = rack_controllers
+        self.service = service
         self.server = server
         self.events = set()
         super(RegionController, self).__init__()
@@ -252,6 +248,6 @@ class RegionController(region.RegionController.Server):
 
     def getRegisterer_context(self, context):
         context.results.reg = handshake.Registerer(
-            self.shim, context.params.rackController, self.server
+            self.shim, self.server, self.service
         )
         return None
