@@ -38,26 +38,32 @@ func GetRemoteConfig(ctx context.Context, rpcMgr *transport.RPCManager, sup serv
 	}
 
 	if n, ok := ntpIface.(ntp.Client); ok {
-		log.Info().Msg("configuring NTP")
 		err = n.GetTimeConfiguration(ctx, config.Config.SystemID)
+		log.Err(err).Msg("configuring NTP")
 		if err != nil {
 			return err
 		}
 	}
 	if proxy, ok := proxyIface.(http.Client); ok {
-		log.Info().Msg("configuring proxy")
 		err = proxy.GetProxyConfiguration(ctx, config.Config.SystemID)
+		log.Err(err).Msg("configuring proxy")
 		if err != nil {
 			return err
 		}
 	}
 	if revProxy, ok := revProxyIface.(httpInternal.RevProxyService); ok {
-		log.Info().Msg("configuring HTTP reverse proxy")
-		revProxy.Configure(ctx, rpcMgr.ConnsToString())
+		err = revProxy.Configure(ctx, rpcMgr.ConnsToString())
+		log.Err(err).Msg("configuring HTTP reverse proxy")
+		if err != nil {
+			return err
+		}
 	}
 	if tftpSvc, ok := tftpSvcIface.(tftp.TFTPService); ok {
-		log.Info().Msg("configuring TFTP service")
-		tftpSvc.Configure(ctx, rpcMgr.ConnsToString())
+		err = tftpSvc.Configure(ctx, rpcMgr.ConnsToString())
+		log.Err(err).Msg("configuring TFTP service")
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -356,7 +356,7 @@ func (f *Forwarder) Start(ctx context.Context) (err error) {
 						time.Sleep(time.Second)
 						return
 					}
-					f.client, err = net.DialUDP("udp", f.upstreamAddr, clientBindAddr)
+					f.client, err = net.DialUDP("udp", clientBindAddr, f.upstreamAddr)
 					if err != nil {
 						logger.Err(err).Msg("error connecting to TFTP upstream")
 						return
@@ -422,13 +422,21 @@ func (f *Forwarder) Configure(_ context.Context, regions []string) (err error) {
 	defer f.Unlock()
 	f.upstreams = make([]*net.UDPAddr, len(regions))
 	for i, region := range regions {
-		regionURL, err := url.Parse(region)
-		if err != nil {
-			return err
-		}
-		f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(regionURL.Hostname(), strconv.Itoa(config.Config.TftpPort)))
-		if err != nil {
-			return err
+		if regionURL, err := url.Parse(region); err == nil {
+			f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(regionURL.Hostname(), strconv.Itoa(config.Config.TftpPort)))
+			if err != nil {
+				return err
+			}
+		} else if host, _, err := net.SplitHostPort(region); err == nil {
+			f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(host, strconv.Itoa(config.Config.TftpPort)))
+			if err != nil {
+				return err
+			}
+		} else { // if not url, try as host or IP
+			f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(region, strconv.Itoa(config.Config.TftpPort)))
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil

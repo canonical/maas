@@ -134,7 +134,7 @@ func (c *CapnpRegisterer) Register(
 		respVersion = "unknown MAAS version"
 	}
 	log := zerolog.Ctx(ctx)
-	log.Log().Msgf("Rack controller '%s' registered (via %s) with %s.", localId, region, respVersion)
+	log.Info().Msgf("Rack controller '%s' registered (via %s) with %s.", localId, region, respVersion)
 	return nil
 }
 

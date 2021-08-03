@@ -218,16 +218,21 @@ func (p *ReverseProxy) Configure(ctx context.Context, regions []string) (err err
 	}
 	p.upstreamRegions = make([]*net.TCPAddr, len(regions))
 	for i, region := range regions {
-		regionURL, err := url.Parse(region)
-		if err != nil { // if not url, try as host or IP
+		if regionURL, err := url.Parse(region); err == nil {
+			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", regionURL.Host)
+			if err != nil {
+				return err
+			}
+		} else if _, _, err := net.SplitHostPort(region); err == nil {
+			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", region)
+			if err != nil {
+				return err
+			}
+		} else { // if not url, try as host or IP
 			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", net.JoinHostPort(region, "5240"))
 			if err != nil {
 				return err
 			}
-		}
-		p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", regionURL.Host)
-		if err != nil {
-			return err
 		}
 	}
 	return p.Restart(ctx)
