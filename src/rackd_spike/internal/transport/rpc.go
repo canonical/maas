@@ -9,6 +9,7 @@ import (
 	"time"
 
 	capnprpc "capnproto.org/go/capnp/v3/rpc"
+
 	"github.com/rs/zerolog"
 
 	"rackd/internal/metrics"
@@ -121,12 +122,14 @@ func (r *RPCManager) Init(
 					net.JoinHostPort(parsedURL.Hostname(), parsedURL.Port()))
 			}
 			if err != nil {
+				zerolog.Ctx(ctx).Err(err).Msg("connection failed")
 				goto reconnect
 			}
 
 			newC = r.AddConn(ctx, conn)
 
 			if err = onConnect(ctx); err != nil {
+				zerolog.Ctx(ctx).Err(err).Msgf("handshake failed with %v", rpcServerURL)
 				newC.capnpConn.Close()
 				goto reconnect
 			}
@@ -135,13 +138,15 @@ func (r *RPCManager) Init(
 
 			select {
 			case <-ctx.Done():
+				// TODO remove connection from map
 				_ = newC.CapnpConn().Close()
 				return
 			case <-newC.Done():
-				// TODO remove connection from map
+				zerolog.Ctx(ctx).Err(err).Msg("connection closed")
 			}
 
 		reconnect:
+			// TODO remove connection from map
 			time.Sleep(5 * time.Second) // don't spin too fast
 			zerolog.Ctx(ctx).Debug().Msg("reconnecting")
 		}

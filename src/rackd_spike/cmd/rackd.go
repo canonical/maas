@@ -30,6 +30,7 @@ import (
 	ntprpc "rackd/pkg/ntp"
 	"rackd/pkg/region"
 	"rackd/pkg/register"
+	"rackd/pkg/servicemon"
 )
 
 type opts struct {
@@ -182,6 +183,8 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	metricsSrvr.Start(ctx)
 
 	sup := service.NewSupervisor()
+	sup.RegisterService(service.NewDummy("rackd"))
+
 	if config.Config.Proxy {
 		err = registerProxyServices(ctx, sup)
 	} else if machinehelpers.IsRunningInSnap() {
@@ -211,23 +214,34 @@ func runRoot(cmd *cobra.Command, args []string) error {
 
 	ntpClient, err := ntprpc.New(sup)
 	if err != nil {
+		log.Err(err).Msg("failed to start ntp client")
 		return err
 	}
 	rpcMgr.AddClient(ctx, ntpClient)
 
 	proxyClient, err := httprpc.New(sup)
 	if err != nil {
+		log.Err(err).Msg("failed to start http proxy")
 		return err
 	}
 	rpcMgr.AddClient(ctx, proxyClient)
 
+	svcMon, err := servicemon.New(ctx, sup)
+	if err != nil {
+		log.Err(err).Msg("failed to start service monitor")
+		return err
+	}
+	rpcMgr.AddClient(ctx, svcMon)
+
 	rackController, err := controller.NewRackController(ctx, true, initRegion, sup)
 	if err != nil {
+		log.Err(err).Msg("failed to start rack controller")
 		return err
 	}
 	rpcMgr.AddHandler(ctx, rackController)
 
 	err = rpcMgr.Init(ctx, initRegion, func(ctx context.Context) error {
+		log.Info().Msgf("connecting to %v", initRegion)
 		err = region.Handshake(ctx, initRegion, Version, rpcMgr)
 		if err != nil {
 			return err
@@ -250,13 +264,14 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	for {
 		select {
 		case <-ctx.Done():
+			log.Info().Msg("stopping services")
 			shutdownCtx := context.Background()
 			rpcMgr.Stop(shutdownCtx)
 			err = sup.StopAll(shutdownCtx)
 			if err != nil {
 				return err
 			}
-			log.Info().Msg("rackd stopping")
+			log.Info().Msg("rackd shutdown completed")
 			return nil
 
 		case s := <-sigChan:

@@ -9,6 +9,7 @@ import (
 // an enum of service types
 const (
 	SvcUnknown = iota
+	SvcRack
 	SvcDHCP
 	SvcDHCP6
 	SvcDHCPRelay
@@ -72,6 +73,10 @@ type SvcManager interface {
 	GetByType(int) ([]Service, error)
 	// GetByPID returns a service associated with a given pid
 	GetByPID(int) (Service, error)
+	// GetSvcCount returns the number of services registered
+	GetSvcCount() int
+	// GetStatusMap returns the status of the services
+	GetStatusMap(ctx context.Context) map[string]string
 }
 
 // Supervisor is an implementation of SvcManager
@@ -245,4 +250,29 @@ func (s *Supervisor) GetByPID(pid int) (Service, error) {
 		return svc, nil
 	}
 	return nil, ErrUnknownService
+}
+
+func (s *Supervisor) GetSvcCount() int {
+	s.RLock()
+	defer s.RUnlock()
+	return len(s.procsByName)
+}
+
+func (s *Supervisor) GetStatusMap(ctx context.Context) (status map[string]string) {
+	s.RLock()
+	defer s.RUnlock()
+
+	status = make(map[string]string, len(s.procsByName))
+
+	for id, svc := range s.procsByName {
+		switch err := svc.Status(ctx); err {
+		case nil:
+			status[id] = "running"
+
+			// TODO compare expected and current state
+		default:
+			status[id] = "off"
+		}
+	}
+	return
 }

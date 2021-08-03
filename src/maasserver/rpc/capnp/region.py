@@ -170,8 +170,26 @@ class RegionController(region.RegionController.Server):
     def updateLease(self, msg):
         return
 
-    def updateService(self, msg):
-        return
+    def updateService_context(self, context):
+        event = capnp.PromiseFulfillerPair()
+        self.events.add(event)
+        req = context.params.msg
+        systemId = req.systemId
+        svcs = [
+            {
+                "name": s.name,
+                "status": s.status,
+                "status_info": s.statusInfo,
+            }
+            for s in req.services
+        ]
+
+        def get_result(cfg):
+            event.fulfill()
+            self.events.remove(event)
+
+        self.shim.update_services(systemId, svcs).addCallback(get_result)
+        return event.promise
 
     def requestRackRefresh(self, systemId):
         return None
@@ -211,6 +229,7 @@ class RegionController(region.RegionController.Server):
         def get_result(cfg):
             resp.trustedNetworks = cfg.get("trusted_networks", [])
             prom.then(lambda resp: resp)
+            log.info("getDNSConfiguration ok")
 
         self.shim.get_dns_configuration(systemId).addCallback(get_result)
         return prom
