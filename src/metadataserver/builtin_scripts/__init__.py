@@ -206,6 +206,7 @@ def load_builtin_scripts():
         script_content = script_content.substitute(
             {"name": script.name, **script.substitutes}
         )
+        form = None
         try:
             script_in_db = Script.objects.get(name=script.name)
         except Script.DoesNotExist:
@@ -216,37 +217,33 @@ def load_builtin_scripts():
                 }
             )
         else:
-            if script_in_db.script.data == script_content:
-                continue
-            else:
+            if script_in_db.script.data != script_content:
                 # Don't add back old versions of a script. This prevents two
                 # connected regions with different versions of a script from
                 # fighting with eachother.
-                no_update = False
                 for vtf in script_in_db.script.previous_versions():
                     if vtf.data == script_content:
                         # Don't update anything if we detect we have an old
                         # version of the builtin scripts
-                        no_update = True
                         break
-                if no_update:
-                    continue
-                form = ScriptForm(
-                    instance=script_in_db,
-                    data={
-                        "script": script_content,
-                        "comment": f"Updated by maas-{get_maas_version()}",
-                    },
-                    edit_default=True,
-                )
+                else:
+                    form = ScriptForm(
+                        instance=script_in_db,
+                        data={
+                            "script": script_content,
+                            "comment": f"Updated by maas-{get_maas_version()}",
+                        },
+                        edit_default=True,
+                    )
 
-        # Form validation should never fail as these are the scripts
-        # which ship with MAAS. If they ever do this will be cause by
-        # unit tests.
-        assert (
-            form.is_valid()
-        ), f"Builtin script {script.name} caused these errors: {form.errors}"
-        script_in_db = form.save(commit=False)
+        if form is not None:
+            # Form validation should never fail as these are the scripts
+            # which ship with MAAS. If they ever do this will be cause by
+            # unit tests.
+            assert (
+                form.is_valid()
+            ), f"Builtin script {script.name} caused these errors: {form.errors}"
+            script_in_db = form.save(commit=False)
         if NODE_INFO_SCRIPTS.get(script.name, {}).get("run_on_controller"):
             script_in_db.add_tag("deploy-info")
         else:

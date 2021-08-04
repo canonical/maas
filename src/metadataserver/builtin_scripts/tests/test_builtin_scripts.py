@@ -129,6 +129,29 @@ class TestBuiltinScripts(MAASServerTestCase):
 
         self.assertNotIn("deploy-info", script.tags)
 
+    def test_update_tag_unchanged_content(self):
+        load_builtin_scripts()
+        untagged_script = (
+            Script.objects.filter(default=True)
+            .exclude(tags__contains=["deploy-info"])
+            .first()
+        )
+        tagged_script = Script.objects.filter(
+            default=True, tags__contains=["deploy-info"]
+        ).first()
+
+        untagged_script.add_tag("deploy-info")
+        untagged_script.save()
+        tagged_script.remove_tag("deploy-info")
+        tagged_script.save()
+
+        load_builtin_scripts()
+        untagged_script = reload_object(untagged_script)
+        tagged_script = reload_object(tagged_script)
+
+        self.assertNotIn("deploy-info", untagged_script.tags)
+        self.assertIn("deploy-info", tagged_script.tags)
+
     def test_update_doesnt_revert_script(self):
         load_builtin_scripts()
         update_script_index = random.randint(0, len(BUILTIN_SCRIPTS) - 2)
