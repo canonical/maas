@@ -296,20 +296,26 @@ DHCP_VLAN_UPDATE = dedent(
     BEGIN
       -- DHCP was turned off.
       IF OLD.dhcp_on AND NOT NEW.dhcp_on THEN
+        PERFORM pg_notify('sys_dhcp');
         PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
         IF OLD.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
         END IF;
       -- DHCP was turned on.
       ELSIF NOT OLD.dhcp_on AND NEW.dhcp_on THEN
+        PERFORM pg_notify('sys_dhcp');
         PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
         IF NEW.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
         END IF;
       -- MTU was changed.
       ELSIF OLD.mtu != NEW.mtu THEN
+        PERFORM pg_notify('sys_dhcp');
         PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
         IF OLD.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
         END IF;
       -- DHCP state was not changed but the rack controllers might have been.
@@ -322,15 +328,19 @@ DHCP_VLAN_UPDATE = dedent(
          OLD.secondary_rack_id != NEW.secondary_rack_id) THEN
         -- Send the message to the old primary if no longer the primary.
         IF OLD.primary_rack_id != NEW.primary_rack_id THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
         END IF;
         -- Always send the message to the primary as it has to be set.
+        PERFORM pg_notify('sys_dhcp');
         PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
         -- Send message to both old and new secondary rack controller if set.
         IF OLD.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
         END IF;
         IF NEW.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
         END IF;
       END IF;
@@ -343,9 +353,11 @@ DHCP_VLAN_UPDATE = dedent(
         FROM maasserver_vlan
         WHERE maasserver_vlan.id = NEW.relay_vlan_id;
         IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(
             CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
           IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify('sys_dhcp');
             PERFORM pg_notify(
               CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
           END IF;
@@ -356,9 +368,11 @@ DHCP_VLAN_UPDATE = dedent(
         FROM maasserver_vlan
         WHERE maasserver_vlan.id = OLD.relay_vlan_id;
         IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(
             CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
           IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify('sys_dhcp');
             PERFORM pg_notify(
               CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
           END IF;
@@ -370,9 +384,11 @@ DHCP_VLAN_UPDATE = dedent(
         FROM maasserver_vlan
         WHERE maasserver_vlan.id = OLD.relay_vlan_id;
         IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(
             CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
           IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify('sys_dhcp');
             PERFORM pg_notify(
               CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
           END IF;
@@ -382,9 +398,11 @@ DHCP_VLAN_UPDATE = dedent(
         FROM maasserver_vlan
         WHERE maasserver_vlan.id = NEW.relay_vlan_id;
         IF relay_vlan.primary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(
             CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
           IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify('sys_dhcp');
             PERFORM pg_notify(
               CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
           END IF;
@@ -405,8 +423,10 @@ DHCP_ALERT = dedent(
       relay_vlan maasserver_vlan;
     BEGIN
       IF vlan.dhcp_on THEN
+        PERFORM pg_notify('sys_dhcp');
         PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.primary_rack_id), '');
         IF vlan.secondary_rack_id IS NOT NULL THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.secondary_rack_id), '');
         END IF;
       END IF;
@@ -415,9 +435,11 @@ DHCP_ALERT = dedent(
         FROM maasserver_vlan
         WHERE maasserver_vlan.id = vlan.relay_vlan_id;
         IF relay_vlan.dhcp_on THEN
+          PERFORM pg_notify('sys_dhcp');
           PERFORM pg_notify(CONCAT(
             'sys_dhcp_', relay_vlan.primary_rack_id), '');
           IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+            PERFORM pg_notify('sys_dhcp');
             PERFORM pg_notify(CONCAT(
               'sys_dhcp_', relay_vlan.secondary_rack_id), '');
           END IF;
@@ -741,6 +763,7 @@ DHCP_UPDATE_ALL_VLANS = dedent(
     DECLARE
       rack INTEGER;
     BEGIN
+      PERFORM pg_notify('sys_dhcp');
       FOR rack IN (
         WITH racks AS (
           SELECT primary_rack_id, secondary_rack_id FROM maasserver_vlan
@@ -794,6 +817,7 @@ DHCP_SNIPPET_UPDATE_NODE = dedent(
     DECLARE
       rack INTEGER;
     BEGIN
+      PERFORM pg_notify('sys_dhcp');
       FOR rack IN (
         WITH racks AS (
           SELECT primary_rack_id, secondary_rack_id

@@ -181,6 +181,10 @@ struct UpdateControllerStateRequest {
     state @2 :ControllerState;
 }
 
+struct TFTPServerList {
+    servers @0 :List(Text);
+}
+
 interface RegionController extends(Controller.Controller) {
     interface Authenticator {
         authenticate @0 (msg :Data) -> (resp: Handshake.AuthResponse);
@@ -223,4 +227,5 @@ interface RegionController extends(Controller.Controller) {
     updateControllerState @28 (msg :UpdateControllerStateRequest);
     getAuthenticator @29 () -> (auth :Authenticator);
     getRegisterer @30 (rackController :RackController) -> (reg :Registerer);
+    getTFTPServers @31 (systemId :Text) -> (servers :TFTPServerList);
 }

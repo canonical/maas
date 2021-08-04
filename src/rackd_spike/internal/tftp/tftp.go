@@ -372,7 +372,10 @@ func (f *Forwarder) Start(ctx context.Context) (err error) {
 					n, peer, err := f.listener.ReadFromUDP(buf)
 					if err != nil {
 						f.bufPool.Put(buffer)
-						logger.Err(err).Msgf("error reading from: %s", peer.String())
+						var nErr net.Error
+						if errors.As(err, &nErr); !nErr.Timeout() {
+							logger.Err(err).Msgf("error reading from: %s", peer.String())
+						}
 						return
 					}
 					defer f.bufPool.Put(buffer)
@@ -423,12 +426,16 @@ func (f *Forwarder) Configure(_ context.Context, regions []string) (err error) {
 	f.upstreams = make([]*net.UDPAddr, len(regions))
 	for i, region := range regions {
 		if regionURL, err := url.Parse(region); err == nil {
-			f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(regionURL.Hostname(), strconv.Itoa(config.Config.TftpPort)))
+			port := regionURL.Port()
+			if len(port) == 0 {
+				port = strconv.Itoa(config.Config.TftpPort)
+			}
+			f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(regionURL.Hostname(), port))
 			if err != nil {
 				return err
 			}
-		} else if host, _, err := net.SplitHostPort(region); err == nil {
-			f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(host, strconv.Itoa(config.Config.TftpPort)))
+		} else if host, port, err := net.SplitHostPort(region); err == nil {
+			f.upstreams[i], err = net.ResolveUDPAddr("udp", net.JoinHostPort(host, port))
 			if err != nil {
 				return err
 			}

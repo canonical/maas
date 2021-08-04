@@ -162,8 +162,14 @@ func (p *Proxy) PID() int {
 	return os.Getpid()
 }
 
+func (p *Proxy) Enabled() bool {
+	p.Lock()
+	defer p.Unlock()
+	return p.enabled
+}
+
 func (p *Proxy) Start(ctx context.Context) (err error) {
-	if !p.enabled {
+	if !p.Enabled() {
 		return nil
 	}
 	var listener net.Listener
@@ -183,6 +189,9 @@ func (p *Proxy) Start(ctx context.Context) (err error) {
 }
 
 func (p *Proxy) Stop(ctx context.Context) error {
+	if !p.Enabled() {
+		return nil
+	}
 	return p.srvr.Shutdown(ctx)
 }
 
@@ -366,9 +375,11 @@ func (p *Proxy) Status(_ context.Context) error {
 }
 
 func (p *Proxy) Configure(ctx context.Context, enabled, preferV4 bool, port int16, allowedCidrs []*net.IPNet) (err error) {
-	p.Lock()
-	defer p.Unlock()
-	p.enabled = enabled
+	func() {
+		p.Lock()
+		defer p.Unlock()
+		p.enabled = enabled
+	}()
 	// TODO resolve DNS for IPv4 first if preferV4
 
 	p.opts.FrontendAddr = net.JoinHostPort(p.selfAddr.IP.String(), strconv.Itoa(int(port)))

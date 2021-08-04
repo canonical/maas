@@ -100,15 +100,16 @@ class RegionControllerService(Service):
         self.rbacInit = False
 
     @asynchronous(timeout=FOREVER)
-    def startService(self):
+    def startService(self, register_handlers=True):
         """Start listening for messages."""
         super().startService()
         self.postgresListener.register("sys_dns", self.markDNSForUpdate)
         self.postgresListener.register("sys_proxy", self.markProxyForUpdate)
         self.postgresListener.register("sys_rbac", self.markRBACForUpdate)
-        self.postgresListener.events.connected.registerHandler(
-            self.markAllForUpdate
-        )
+        if register_handlers:
+            self.postgresListener.events.connected.registerHandler(
+                self.markAllForUpdate
+            )
 
     @asynchronous(timeout=FOREVER)
     def stopService(self):
@@ -150,7 +151,7 @@ class RegionControllerService(Service):
         if not self.processing.running:
             self.processingDefer = self.processing.start(0.1, now=False)
 
-    def process(self):
+    def process(self, pending_defers=None):
         """Process the DNS and/or proxy update."""
 
         def _onFailureRetry(failure, attr):
@@ -175,6 +176,9 @@ class RegionControllerService(Service):
                 return pause(delay)
 
         defers = []
+        if pending_defers is not None:
+            defers = pending_defers
+
         if self.needsDNSUpdate:
             self.needsDNSUpdate = False
             d = deferToDatabase(transactional(dns_update_all_zones))

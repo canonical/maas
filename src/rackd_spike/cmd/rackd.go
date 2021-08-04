@@ -31,6 +31,7 @@ import (
 	"rackd/pkg/region"
 	"rackd/pkg/register"
 	"rackd/pkg/servicemon"
+	tftprpc "rackd/pkg/tftp"
 )
 
 type opts struct {
@@ -233,6 +234,12 @@ func runRoot(cmd *cobra.Command, args []string) error {
 	}
 	rpcMgr.AddClient(ctx, svcMon)
 
+	tftpClient, err := tftprpc.New(sup)
+	if err != nil {
+		return err
+	}
+	rpcMgr.AddClient(ctx, tftpClient)
+
 	rackController, err := controller.NewRackController(ctx, true, initRegion, sup)
 	if err != nil {
 		log.Err(err).Msg("failed to start rack controller")
@@ -244,6 +251,7 @@ func runRoot(cmd *cobra.Command, args []string) error {
 		log.Info().Msgf("connecting to %v", initRegion)
 		err = region.Handshake(ctx, initRegion, Version, rpcMgr)
 		if err != nil {
+			log.Err(err).Msg("")
 			return err
 		}
 		err = region.GetRemoteConfig(ctx, rpcMgr, sup)

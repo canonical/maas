@@ -1,39 +1,42 @@
-package http
+package tftp
 
 import (
 	"context"
-	"net"
-	internal "rackd/internal/http"
-	"rackd/internal/metrics"
-	"rackd/internal/service"
-	"rackd/internal/transport"
-	"rackd/pkg/rpc"
+	"errors"
 	"sync"
 
-	"github.com/rs/zerolog"
+	"rackd/internal/metrics"
+	"rackd/internal/service"
+	internal "rackd/internal/tftp"
+	"rackd/internal/transport"
+	"rackd/pkg/rpc"
+)
+
+var (
+	ErrInvalidTFTPService = errors.New("the provided service is not a TFTP service")
 )
 
 type Client interface {
 	transport.RPCClient
-	GetProxyConfiguration(context.Context, string) error
+	GetTFTPServers(context.Context, string) error
 }
 
 type CapnpClient struct {
-	sync.Mutex
-	svc            internal.ProxyService
+	sync.RWMutex
+	svc            internal.TFTPService
 	clients        map[string]*rpc.RegionController
 	lastGoodClient string
 	needReset      bool
 }
 
 func New(sup service.SvcManager) (Client, error) {
-	svcs, err := sup.GetByType(service.SvcPROXY)
+	svcs, err := sup.GetByType(service.SvcTFTP)
 	if err != nil {
 		return nil, err
 	}
-	svc, ok := svcs[0].(internal.ProxyService)
+	svc, ok := svcs[0].(internal.TFTPService)
 	if !ok {
-
+		return nil, ErrInvalidTFTPService
 	}
 	return &CapnpClient{
 		svc:     svc,
@@ -42,11 +45,10 @@ func New(sup service.SvcManager) (Client, error) {
 }
 
 func (c *CapnpClient) Name() string {
-	return "http"
+	return "tftp"
 }
 
 func (c *CapnpClient) RegisterMetrics(registry *metrics.Registry) error {
-	// TODO
 	return nil
 }
 
@@ -57,8 +59,8 @@ func (c *CapnpClient) SetupClient(ctx context.Context, client *transport.ConnWra
 }
 
 func (c *CapnpClient) getClient(reset bool) (*rpc.RegionController, error) {
-	c.Lock()
-	defer c.Unlock()
+	c.RLock()
+	defer c.RUnlock()
 	if len(c.clients) == 0 {
 		return nil, transport.ErrRPCClientNotFound
 	}
@@ -72,48 +74,40 @@ func (c *CapnpClient) getClient(reset bool) (*rpc.RegionController, error) {
 	return nil, transport.ErrRPCClientNotFound
 }
 
-func (c *CapnpClient) GetProxyConfiguration(ctx context.Context, systemID string) error {
-	log := zerolog.Ctx(ctx)
+func (c *CapnpClient) GetTFTPServers(ctx context.Context, systemID string) (err error) {
 	client, err := c.getClient(c.needReset)
 	if err != nil {
-		log.Err(err).Send()
 		return err
 	}
-	resp, release := client.GetProxyConfiguration(ctx, func(params rpc.RegionController_getProxyConfiguration_Params) error {
+	defer func() {
+		if err != nil {
+			c.Lock()
+			defer c.Unlock()
+			c.needReset = true
+		}
+	}()
+	resp, release := client.GetTFTPServers(ctx, func(params rpc.RegionController_getTFTPServers_Params) error {
 		return params.SetSystemId(systemID)
 	})
 	defer release()
-	cfgResp, err := resp.Struct()
+	srvrsResp, err := resp.Struct()
 	if err != nil {
-		log.Err(err).Send()
 		return err
 	}
-	cfg, err := cfgResp.ProxyConfig()
+	srvrsList, err := srvrsResp.Servers()
 	if err != nil {
-		log.Err(err).Send()
 		return err
 	}
-	enabled := cfg.Enabled()
-	preferV4 := cfg.PreferV4Proxy()
-	port := cfg.Port()
-	allowedCidrsProto, err := cfg.AllowedCidrs()
+	servers, err := srvrsList.Servers()
 	if err != nil {
-		log.Err(err).Send()
 		return err
 	}
-	allowedCidrs := make([]*net.IPNet, allowedCidrsProto.Len())
-	for i := 0; i < allowedCidrsProto.Len(); i++ {
-		cidrProto, err := allowedCidrsProto.At(i)
+	srvrs := make([]string, servers.Len())
+	for i := 0; i < servers.Len(); i++ {
+		srvrs[i], err = servers.At(i)
 		if err != nil {
-			log.Err(err).Send()
 			return err
 		}
-		_, cidr, err := net.ParseCIDR(cidrProto)
-		if err != nil {
-			log.Err(err).Send()
-			return err
-		}
-		allowedCidrs[i] = cidr
 	}
-	return c.svc.Configure(ctx, enabled, preferV4, port, allowedCidrs)
+	return c.svc.Configure(ctx, srvrs)
 }

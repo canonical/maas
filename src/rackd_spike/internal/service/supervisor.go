@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"sync"
+
+	"github.com/rs/zerolog"
 )
 
 // an enum of service types
@@ -105,7 +107,9 @@ func (s *Supervisor) RegisterService(svc Service) {
 }
 
 func (s *Supervisor) StartAll(ctx context.Context) error {
+	log := zerolog.Ctx(ctx)
 	for _, svc := range s.procsByName {
+		log.Info().Msgf("starting %s", svc.Name())
 		err := svc.Start(ctx)
 		if err != nil {
 			return err

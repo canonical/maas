@@ -7,6 +7,7 @@
 from collections import defaultdict, namedtuple
 from itertools import groupby
 from operator import itemgetter
+import os
 from typing import Iterable, Optional, Union
 
 from django.conf import settings
@@ -32,6 +33,7 @@ from maasserver.models import (
     DHCPSnippet,
     Domain,
     RackController,
+    RegionController,
     Service,
     StaticIPAddress,
     Subnet,
@@ -40,8 +42,10 @@ from maasserver.models import (
 from maasserver.rpc import getAllClients, getClientFor, getRandomClient
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.dhcp import DHCPv4Server, DHCPv6Server
 from provisioningserver.dhcp.omapi import generate_omapi_key
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.rpc import dhcp as rack_dhcp
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
@@ -625,6 +629,81 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     return dns_servers
 
 
+def get_dhcp_configure_local(
+    ip_version: int,
+    vlan,
+    subnets: list,
+    ntp_servers: Union[list, dict],
+    domain,
+    search_list=None,
+    dhcp_snippets: Iterable = None,
+    use_rack_proxy=True,
+):
+    """Get the DHCP configuration for `ip_version`."""
+    current_region_controller = (
+        RegionController.objects.get_running_controller()
+    )
+    # Select the best interface for this VLAN. This is an interface that
+    # at least has an IP address.
+    interfaces = get_interfaces_with_ip_on_vlan(
+        current_region_controller.system_id, vlan, ip_version
+    )
+    interface = get_best_interface(interfaces)
+    has_secondary = False
+
+    if has_secondary:
+        pass
+        # TODO
+        # Generate the failover peer for this VLAN.
+        # peer_name, peer_config, peer_rack = make_failover_peer_config(
+        #    vlan, current_region_controller
+        # )
+    else:
+        peer_name, peer_config, peer_rack = None, None, None
+
+    # TODO setup peer info for HA peers at the region level
+
+    if dhcp_snippets is None:
+        dhcp_snippets = []
+
+    subnets_dhcp_snippets = [
+        dhcp_snippet
+        for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.subnet is not None
+    ]
+    nodes_dhcp_snippets = [
+        dhcp_snippet
+        for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.node is not None
+    ]
+
+    # Generate the shared network configurations.
+    subnet_configs = []
+    for subnet in subnets:
+        # TODO find rack controllers for the subnet to fetch default DNS servers
+        maas_dns_servers = []
+        subnet_configs.append(
+            make_subnet_config(
+                None,
+                subnet,
+                maas_dns_servers,
+                ntp_servers,
+                domain,
+                search_list,
+                peer_name,
+                subnets_dhcp_snippets,
+                peer_rack,
+            )
+        )
+    hosts = make_hosts_for_subnets(subnets, nodes_dhcp_snippets)
+    return (
+        peer_config,
+        sorted(subnet_configs, key=itemgetter("subnet")),
+        hosts,
+        None if interface is None else interface.name,
+    )
+
+
 @typed
 def get_dhcp_configure_for(
     ip_version: int,
@@ -696,6 +775,138 @@ def get_dhcp_configure_for(
         sorted(subnet_configs, key=itemgetter("subnet")),
         hosts,
         None if interface is None else interface.name,
+    )
+
+
+@synchronous
+@transactional
+def get_local_dhcp_configuration(test_dhcp_snippet=None):
+    vlans = VLAN.objects.filter(dhcp_on=True)
+    vlan_subnets = {
+        vlan: split_managed_ipv4_ipv6_subnets(vlan.subnet_set.all())
+        for vlan in vlans
+    }
+
+    rack_controllers = RackController.objects.all()
+
+    dhcp_snippets = DHCPSnippet.objects.filter(enabled=True)
+
+    if test_dhcp_snippet is not None:
+        dhcp_snippets = list(dhcp_snippets)
+        replaced_snippet = False
+        for i, dhcp_snippet in enumerate(dhcp_snippets):
+            if dhcp_snippet.id == test_dhcp_snippet.id:
+                dhcp_snippets[i] = test_dhcp_snippet
+                replaced_snippet = True
+                break
+        if not replaced_snippet:
+            dhcp_snippets.append(test_dhcp_snippet)
+    global_dhcp_snippets = [
+        make_dhcp_snippet(dhcp_snippet)
+        for dhcp_snippet in dhcp_snippets
+        if dhcp_snippet.node is None and dhcp_snippet.subnet is None
+    ]
+
+    failover_peers_v4 = []
+    shared_networks_v4 = []
+    hosts_v4 = []
+    interfaces_v4 = set()
+    failover_peers_v6 = []
+    shared_networks_v6 = []
+    hosts_v6 = []
+    interfaces_v6 = set()
+
+    # DNS can either go through the rack controller or directly to the
+    # region controller.
+    use_rack_proxy = Config.objects.get_config("use_rack_proxy")
+
+    # NTP configuration can get tricky...
+    ntp_external_only = Config.objects.get_config("ntp_external_only")
+    if ntp_external_only:
+        ntp_servers = Config.objects.get_config("ntp_servers")
+        ntp_servers = list(split_string_list(ntp_servers))
+    else:
+        ntp_servers = []
+        for rack_controller in rack_controllers:
+            rack_ntp_servers = get_ntp_server_addresses_for_rack(
+                rack_controller
+            )
+            ntp_servers += rack_ntp_servers
+
+    default_domain = Domain.objects.get_default_domain()
+    search_list = [default_domain.name] + [
+        name
+        for name in sorted(get_dns_search_paths())
+        if name != default_domain.name
+    ]
+    for vlan, (subnets_v4, subnets_v6) in vlan_subnets.items():
+        # IPv4
+        if len(subnets_v4) > 0:
+            config = get_dhcp_configure_local(
+                4,
+                vlan,
+                subnets_v4,
+                ntp_servers,
+                default_domain,
+                search_list=search_list,
+                dhcp_snippets=dhcp_snippets,
+                use_rack_proxy=use_rack_proxy,
+            )
+            failover_peer, subnets, hosts, interface = config
+            if failover_peer is not None:
+                failover_peers_v4.append(failover_peer)
+            shared_network = {
+                "name": "vlan-%d" % vlan.id,
+                "mtu": vlan.mtu,
+                "subnets": subnets,
+            }
+            shared_networks_v4.append(shared_network)
+            hosts_v4.extend(hosts)
+            if interface is not None:
+                interfaces_v4.add(interface)
+                shared_network["interface"] = interface
+        # IPv6
+        if len(subnets_v6) > 0:
+            config = get_dhcp_configure_local(
+                6,
+                vlan,
+                subnets_v6,
+                ntp_servers,
+                default_domain,
+                search_list=search_list,
+                dhcp_snippets=dhcp_snippets,
+                use_rack_proxy=use_rack_proxy,
+            )
+            failover_peer, subnets, hosts, interface = config
+            if failover_peer is not None:
+                failover_peers_v6.append(failover_peer)
+            shared_network = {
+                "name": "vlan-%d" % vlan.id,
+                "mtu": vlan.mtu,
+                "subnets": subnets,
+            }
+            shared_networks_v6.append(shared_network)
+            hosts_v6.extend(hosts)
+            if interface is not None:
+                interfaces_v6.add(interface)
+                shared_network["interface"] = interface
+    # When no interfaces exist for each IP version clear the shared networks
+    # as DHCP server cannot be started and needs to be stopped.
+    if len(interfaces_v4) == 0:
+        shared_networks_v4 = {}
+    if len(interfaces_v6) == 0:
+        shared_networks_v6 = {}
+    return DHCPConfiguration(
+        failover_peers_v4,
+        shared_networks_v4,
+        hosts_v4,
+        interfaces_v4,
+        failover_peers_v6,
+        shared_networks_v6,
+        hosts_v6,
+        interfaces_v6,
+        get_omapi_key(),
+        global_dhcp_snippets,
     )
 
 
@@ -855,6 +1066,126 @@ DHCPConfigurationForRack = namedtuple(
         "global_dhcp_snippets",
     ),
 )
+
+DHCPConfiguration = namedtuple(
+    "DHCPConfiguration",
+    (
+        "failover_peers_v4",
+        "shared_networks_v4",
+        "hosts_v4",
+        "interfaces_v4",
+        "failover_peers_v6",
+        "shared_networks_v6",
+        "hosts_v6",
+        "interfaces_v6",
+        "omapi_key",
+        "global_dhcp_snippets",
+    ),
+)
+
+
+def _configure_local_dhcp4(config, interfaces):
+    server = DHCPv4Server(config.omapi_key)
+
+    d = rack_dhcp.configure(
+        server,
+        config.failover_peers_v4,
+        config.shared_networks_v4,
+        config.hosts_v4,
+        interfaces,
+        config.global_dhcp_snippets,
+    )
+    d.addCallback(lambda _: {})
+
+    return d
+
+
+def _configure_local_dhcp6(config, interfaces):
+    server = DHCPv6Server(config.omapi_key)
+
+    d = rack_dhcp.configure(
+        server,
+        config.failover_peers_v6,
+        config.shared_networks_v6,
+        config.hosts_v6,
+        interfaces,
+        config.global_dhcp_snippets,
+    )
+    d.addCallback(lambda _: {})
+
+    return d
+
+
+@asynchronous
+@inlineCallbacks
+def configure_local_dhcp():
+    if not settings.DHCP_CONNECT and os.getenv("MAAS_PROXY_MODE") is None:
+        return
+    config = yield deferToDatabase(get_local_dhcp_configuration)
+
+    interfaces_v4 = [{"name": name} for name in config.interfaces_v4]
+    interfaces_v6 = [{"name": name} for name in config.interfaces_v6]
+
+    ipv4_exc, ipv6_exc = None, None
+    ipv4_status, ipv6_status = SERVICE_STATUS.UNKNOWN, SERVICE_STATUS.UNKNOWN
+
+    try:
+        yield _configure_local_dhcp4(config, interfaces_v4)
+    except Exception as exc:
+        ipv4_exc = exc
+        ipv4_status = SERVICE_STATUS.DEAD
+        log.err("Error configuring DHCPv4 %s" % exc)
+    else:
+        if len(config.shared_networks_v4) > 0:
+            ipv4_status = SERVICE_STATUS.RUNNING
+        else:
+            ipv4_status = SERVICE_STATUS.OFF
+        log.msg("Successfully configured DHCPv4")
+
+    try:
+        yield _configure_local_dhcp6(config, interfaces_v6)
+    except Exception as exc:
+        ipv6_exc = exc
+        ipv6_status = SERVICE_STATUS.DEAD
+        log.err("Error configuring DHCPv6: %s" % exc)
+    else:
+        if len(config.shared_networks_v6) > 0:
+            ipv6_status = SERVICE_STATUS.RUNNING
+        else:
+            ipv6_status = SERVICE_STATUS.OFF
+        log.msg("Successfully configured DHCPv6.")
+
+    # Update the status for both services so the user is always seeing the
+    # most up to date status.
+    @transactional
+    def update_services():
+        current_region_controller = (
+            RegionController.objects.get_running_controller()
+        )
+        if ipv4_exc is None:
+            ipv4_status_info = ""
+        else:
+            ipv4_status_info = str(ipv4_exc)
+        if ipv6_exc is None:
+            ipv6_status_info = ""
+        else:
+            ipv6_status_info = str(ipv6_exc)
+        Service.objects.update_service_for(
+            current_region_controller, "dhcpd", ipv4_status, ipv4_status_info
+        )
+        Service.objects.update_service_for(
+            current_region_controller, "dhcpd6", ipv6_status, ipv6_status_info
+        )
+
+    yield deferToDatabase(update_services)
+
+    # Raise the exceptions to the caller, it might want to retry. This raises
+    # IPv4 before IPv6 if they both fail. No specific reason for this, if
+    # the function is called again both will be performed.
+    if ipv4_exc:
+        raise ipv4_exc
+    elif ipv6_exc:
+        raise ipv6_exc
 
 
 @asynchronous

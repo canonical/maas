@@ -3,6 +3,7 @@ import logging
 import capnp
 from twisted.internet.defer import inlineCallbacks
 
+from maasserver.regiondservices import tftp
 from maasserver.rpc import rackcontrollers
 from maasserver.rpc.capnp import handshake, rpc_dir
 from maasserver.rpc.regionservice import isLoopbackURL, Region
@@ -94,6 +95,10 @@ class RegionServer(Region):
                 "system_id": self.ident,
                 "uuid": GLOBAL_LABELS["maas_uuid"],
             }
+
+    @inlineCallbacks
+    def get_tftp_servers(self, system_id):
+        yield deferToDatabase(tftp.get_servers, system_id)
 
 
 class RegionController(region.RegionController.Server):
@@ -270,3 +275,22 @@ class RegionController(region.RegionController.Server):
             self.shim, self.server, self.service
         )
         return None
+
+    def getTFTPServers_context(self, context):
+        system_id = context.params.systemId
+        event = capnp.PromiseFulfillerPair()
+        self.events.add(event)
+
+        def get_results(servers):
+            if servers is None:
+                servers = []
+            resp = region.TFTPServerList()
+            lst = resp.init("servers", len(servers))
+            for i, server in enumerate(servers):
+                lst[i] = server
+            context.results.servers = resp
+            event.fulfill()
+            self.events.remove(event)
+
+        self.shim.get_tftp_servers(system_id).addCallback(get_results)
+        return event.promise

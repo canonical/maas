@@ -107,19 +107,34 @@ func (p *Proxy) UpdateLocalTime(ctx context.Context) {
 	pkt := &Packet{
 		Settings: ClientSettings,
 	}
-	err := binary.Write(p.upstreamConn, binary.BigEndian, pkt)
-	if err != nil {
-		logger.Err(err).Msg("error while requesting update local time")
-		return
-	}
-	err = binary.Read(p.upstreamConn, binary.BigEndian, pkt)
-	if err != nil {
-		logger.Err(err).Msg("error while reading update local time")
-		return
-	}
-	err = setLocalTime(pkt)
-	if err != nil {
-		logger.Err(err).Msg("error while settings update local time")
+
+	var currSrvrIdx, attempts int
+	buf := &bytes.Buffer{}
+	for {
+		srvr, err := p.getNextAvailableServer(&currSrvrIdx)
+		if err != nil {
+			if attempts == len(p.upstreams) {
+				logger.Err(err).Msg("unable to fetch upstream NTP")
+				return
+			}
+			attempts++
+		}
+		binary.Write(buf, binary.BigEndian, pkt)
+		_, err = p.upstreamConn.WriteTo(buf.Bytes(), srvr)
+		if err != nil {
+			logger.Err(err).Msg("error while requesting update local time")
+			return
+		}
+
+		err = binary.Read(p.upstreamConn, binary.BigEndian, pkt)
+		if err != nil {
+			logger.Err(err).Msg("error while reading update local time")
+			return
+		}
+		err = setLocalTime(pkt)
+		if err != nil {
+			logger.Err(err).Msg("error while settings update local time")
+		}
 	}
 }
 
@@ -135,10 +150,9 @@ func (p *Proxy) handlePkt(ctx context.Context, peer *net.UDPAddr, buf []byte) er
 	if err != nil {
 		return err
 	}
+	refreshRate := time.Duration(p.refreshRate) * time.Second
 	var currSrvrIdx, attempts int
 	err = func() error {
-		p.Lock()
-		defer p.Unlock()
 		recvBuffer := p.bufPool.Get().(*[]byte)
 		defer p.bufPool.Put(recvBuffer)
 		recvBuf := *recvBuffer
@@ -149,6 +163,7 @@ func (p *Proxy) handlePkt(ctx context.Context, peer *net.UDPAddr, buf []byte) er
 				if attempts == len(p.upstreams) {
 					return err
 				}
+				currSrvrIdx++
 				continue
 			}
 			_, err = p.upstreamConn.WriteTo(byteBuf.Bytes(), srvr)
@@ -157,6 +172,10 @@ func (p *Proxy) handlePkt(ctx context.Context, peer *net.UDPAddr, buf []byte) er
 					return err
 				}
 				continue
+			}
+			err = p.upstreamConn.SetReadDeadline(time.Now().Add(refreshRate))
+			if err != nil {
+				return err
 			}
 			n, err := p.upstreamConn.Read(recvBuf)
 			if err != nil {
@@ -238,7 +257,6 @@ func (p *Proxy) Start(ctx context.Context) (err error) {
 			default:
 				err = p.listener.SetReadDeadline(time.Now().Add(refreshRate))
 				if err != nil {
-					logger.Err(err).Msg("failed to set listener deadline")
 					continue
 				}
 				buffer := p.bufPool.Get().(*[]byte)
@@ -246,6 +264,10 @@ func (p *Proxy) Start(ctx context.Context) (err error) {
 				n, peer, err := p.listener.ReadFromUDP(buf)
 				if err != nil {
 					p.bufPool.Put(buffer)
+					var nErr net.Error
+					if errors.As(err, &nErr); !nErr.Timeout() {
+						logger.Err(err).Msgf("error reading from %s", peer.String())
+					}
 					continue
 				}
 				go func() {
@@ -295,7 +317,16 @@ func (p *Proxy) Configure(_ context.Context, servers, _ []string) error {
 	for _, server := range servers {
 		srvrUrl, err := url.Parse(server)
 		if err != nil {
-			return err
+			_, _, err := net.SplitHostPort(server)
+			if err != nil {
+				ip := net.ParseIP(server)
+				if ip == nil {
+					return err
+				}
+				srvrUrl = &url.URL{Host: ip.String()}
+			} else {
+				srvrUrl = &url.URL{Host: server}
+			}
 		}
 		port := srvrUrl.Port()
 		if len(port) == 0 {

@@ -5,6 +5,7 @@
 
 
 from datetime import timedelta
+import os
 
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
@@ -35,7 +36,7 @@ class ServiceMonitorService(TimerService):
         """Monitors all of the external services and makes sure they
         stay running.
         """
-        if is_dev_environment():
+        if is_dev_environment() and os.getenv("MAAS_PROXY_MODE") is None:
             log.msg(
                 "Skipping check of services; they're not running under "
                 "the supervision of systemd."

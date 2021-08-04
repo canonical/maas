@@ -36,7 +36,6 @@ def execute_from_command_line():
     from maasserver.utils import threads
 
     threads.install_default_pool(maxthreads=1)
-    threads.install_rpc_shim_pool(maxthreads=1)
     threads.install_database_unpool(maxthreads=1)
     # Disable all database connections in the reactor.
     from twisted.internet import reactor

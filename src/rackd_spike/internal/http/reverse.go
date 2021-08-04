@@ -62,12 +62,33 @@ func NewReverseProxyWithOptions(ctx context.Context, machineResourcePath string,
 	mux.HandleFunc("/images/", r.ServeImages)
 	mux.HandleFunc("/log", r.ServeLog)
 	mux.HandleFunc("/", r.ServeBoot)
-	r.Proxy.srvr.Handler = mux
+	r.srvr.Handler = mux
 	return r, nil
 }
 
 func (r *ReverseProxy) Name() string {
 	return "http_reverse_proxy"
+}
+
+func (r *ReverseProxy) Start(ctx context.Context) (err error) {
+	var listener net.Listener
+	if r.opts.FrontendTLSCfg != nil {
+		listener, err = tls.Listen("tcp", r.opts.FrontendAddr, r.opts.FrontendTLSCfg)
+	} else {
+		listener, err = net.Listen("tcp", r.opts.FrontendAddr)
+	}
+	if err != nil {
+		return err
+	}
+	r.Proxy.getCtx = func() context.Context {
+		return ctx
+	}
+	go r.srvr.Serve(listener)
+	return nil
+}
+
+func (r *ReverseProxy) Stop(ctx context.Context) error {
+	return r.srvr.Shutdown(ctx)
 }
 
 func (p *ReverseProxy) pickRegionHost() (*net.TCPAddr, error) {
@@ -212,25 +233,30 @@ func (p *ReverseProxy) ServeBoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *ReverseProxy) Configure(ctx context.Context, regions []string) (err error) {
+	log := zerolog.Ctx(ctx)
 	p.resourcePath, err = machinehelpers.GetResourcesBinPath()
 	if err != nil {
+		log.Err(err).Msg("")
 		return err
 	}
 	p.upstreamRegions = make([]*net.TCPAddr, len(regions))
 	for i, region := range regions {
 		if regionURL, err := url.Parse(region); err == nil {
-			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", regionURL.Host)
+			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", net.JoinHostPort(regionURL.Hostname(), "5240"))
 			if err != nil {
+				log.Err(err).Msg("")
 				return err
 			}
-		} else if _, _, err := net.SplitHostPort(region); err == nil {
-			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", region)
+		} else if host, _, err := net.SplitHostPort(region); err == nil {
+			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", net.JoinHostPort(host, "5240"))
 			if err != nil {
+				log.Err(err).Msg("")
 				return err
 			}
 		} else { // if not url, try as host or IP
 			p.upstreamRegions[i], err = net.ResolveTCPAddr("tcp", net.JoinHostPort(region, "5240"))
 			if err != nil {
+				log.Err(err).Msg("")
 				return err
 			}
 		}

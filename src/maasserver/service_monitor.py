@@ -4,16 +4,20 @@
 """Services monitored on regiond."""
 
 
+import os
+
 from maasserver.models.config import Config
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.proxy import config
+from provisioningserver.service_monitor import DHCPv4Service, DHCPv6Service
 from provisioningserver.utils.service_monitor import (
     AlwaysOnService,
     Service,
     SERVICE_STATE,
     ServiceMonitor,
+    ToggleableService,
 )
 
 maaslog = get_maas_logger("service_monitor_service")
@@ -73,6 +77,24 @@ class ProxyService(Service):
         return deferToDatabase(db_getExpectedState)
 
 
+class ProxiedService(ToggleableService):
+    def on(self, reason=None):
+        if int(os.environ.get("MAAS_PROXY_MODE", 0)) == 1:
+            super(ProxiedService, self).on(reason=reason)
+
+    def any(self, reason=None):
+        if int(os.environ.get("MAAS_PROXY_MODE", 0)) == 1:
+            super(ProxiedService, self).any(reason=reason)
+
+
+class RegionDHCPv4Service(ProxiedService, DHCPv4Service):
+    pass
+
+
+class RegionDHCPv6Service(ProxiedService, DHCPv6Service):
+    pass
+
+
 # Global service monitor for regiond. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
@@ -80,4 +102,6 @@ service_monitor = ServiceMonitor(
     NTPServiceOnRegion(),
     SyslogServiceOnRegion(),
     ProxyService(),
+    RegionDHCPv4Service(),
+    RegionDHCPv6Service(),
 )

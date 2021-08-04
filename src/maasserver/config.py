@@ -4,7 +4,9 @@
 """Configuration for the MAAS region."""
 
 
-from formencode.validators import Int
+import os
+
+from formencode.validators import Int, Number
 
 from provisioningserver.config import (
     Configuration,
@@ -12,7 +14,9 @@ from provisioningserver.config import (
     ConfigurationMeta,
     ConfigurationOption,
 )
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.config import (
+    DirectoryString,
     ExtendedURL,
     OneWayStringBool,
     UnicodeString,
@@ -115,3 +119,26 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         "Enable HTTP debugging. Logs all HTTP requests and HTTP responses.",
         OneWayStringBool(if_missing=False),
     )
+
+    # TFTP options.
+    tftp_port = ConfigurationOption(
+        "tftp_port",
+        "The UDP port on which to listen for TFTP requests.",
+        Number(min=0, max=(2 ** 16) - 1, if_missing=6969),  # proxied by rack
+    )
+    tftp_root = ConfigurationOption(
+        "tftp_root",
+        "The root directory for TFTP resources.",
+        DirectoryString(
+            # Don't validate values that are already stored.
+            accept_python=True,
+            if_missing=get_maas_data_path("boot-resources/current"),
+        ),
+    )
+
+    # GRUB options.
+
+    @property
+    def grub_root(self):
+        "The root directory for GRUB resources."
+        return os.path.join(self.tftp_root, "grub")

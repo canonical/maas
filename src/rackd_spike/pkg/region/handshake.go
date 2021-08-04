@@ -14,6 +14,8 @@ import (
 	auth "rackd/pkg/authenticate"
 	"rackd/pkg/controller"
 	reg "rackd/pkg/register"
+
+	"github.com/rs/zerolog"
 )
 
 var (
@@ -96,12 +98,16 @@ func register(
 
 // Handeshake executes the full handshake with a region controller
 func Handshake(ctx context.Context, region, localVersion string, rpcMgr *transport.RPCManager) error {
+	log := zerolog.Ctx(ctx)
+
 	err := authenticate(ctx, region, rpcMgr)
 	if err != nil {
+		log.Err(err).Msg("error authenticating")
 		return err
 	}
 	rackCtrlr, err := rpcMgr.GetHandler("rack-controller")
 	if err != nil {
+		log.Err(err).Msg("error registering")
 		return err
 	}
 	ctrlr, ok := rackCtrlr.(*controller.RackController)

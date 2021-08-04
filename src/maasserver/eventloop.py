@@ -64,10 +64,12 @@ def make_DatabaseTaskService():
 
 
 def make_RegionControllerService(postgresListener):
-    from maasserver.region_controller import RegionControllerService
+    from maasserver.proxied_region_controller import (
+        ProxiedRegionControllerService,
+    )
 
     log_deprecations()
-    return RegionControllerService(postgresListener)
+    return ProxiedRegionControllerService(postgresListener)
 
 
 def make_RegionService(ipcWorker):
@@ -105,6 +107,41 @@ def make_StatsService():
     from maasserver import stats
 
     return stats.StatsService()
+
+
+def make_TFTPService():
+    from maasserver.config import RegionConfiguration
+    from maasserver.regiondservices.tftp import RegionTFTPService
+
+    with RegionConfiguration.open() as config:
+        tftp_service = RegionTFTPService(config.tftp_root, config.tftp_port)
+        tftp_service.setName("tftp")
+
+        if config.tftp_port == 0:
+            from twisted.internet.endpoints import UNIXServerEndpoint
+
+            from provisioningserver.path import get_maas_data_path
+            from provisioningserver.rackdservices import tftp_offload
+
+            tftp_offload_socket = get_maas_data_path("tftp-offload.sock")
+            tftp_offload_endpoint = UNIXServerEndpoint(
+                reactor, tftp_offload_socket, wantPID=False
+            )
+            tftp_offload_service = tftp_offload.TFTPOffloadService(
+                reactor, tftp_offload_endpoint, tftp_service.backend
+            )
+            tftp_offload_service.setName("tftp-offload")
+            return tftp_offload_service
+
+        return tftp_service
+
+
+def make_LeaseSocketService():
+    from maasserver.regiondservices.lease_socket_service import (
+        RegionLeaseSocketService,
+    )
+
+    return RegionLeaseSocketService(reactor)
 
 
 def make_PrometheusService():
@@ -383,6 +420,16 @@ class RegionEventLoop:
         "ntp": {
             "only_on_master": True,
             "factory": make_NetworkTimeProtocolService,
+            "requires": [],
+        },
+        "tftp": {
+            "only_on_master": True,
+            "factory": make_TFTPService,
+            "requires": [],
+        },
+        "lease-socket": {
+            "only_on_master": False,
+            "factory": make_LeaseSocketService,
             "requires": [],
         },
         "syslog": {
