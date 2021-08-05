@@ -48,13 +48,7 @@ maas_snap_mode() {
 if [ "$(maas_snap_mode)" = "all" ]; then
     # When running in all mode and not disabled, start services to ensure
     # PostgreSQL is running to perform migrations
-    service="${SNAP_INSTANCE_NAME}.supervisor"
-    if snapctl services "$service"  | grep -q disabled; then
-        echo "Can't refresh snap in 'all' mode while disabled." >&2
-        exit 1
-    else
-        snapctl start "$service"
-    fi
+    snapctl start "${SNAP_INSTANCE_NAME}.supervisor"
 fi
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
