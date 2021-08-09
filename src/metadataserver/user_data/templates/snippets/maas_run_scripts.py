@@ -211,7 +211,7 @@ def parse_args(args):
     )
     register_machine.add_argument(
         "maas_url",
-        help="MAAS API URL",
+        help="MAAS URL",
     )
     register_machine.add_argument(
         "admin_token",
@@ -223,6 +223,12 @@ def parse_args(args):
     register_machine.add_argument(
         "--hostname",
         help="machine hostname (by default, use the current hostname)",
+    )
+    # Hide from help, since this is meant to be used from tests only.
+    register_machine.add_argument(
+        "--base-dir",
+        default=".",
+        help=argparse.SUPPRESS,
     )
 
     report_results = subparsers.add_parser(
@@ -297,7 +303,7 @@ def fetch_scripts(maas_url, metadata_url, dirs, credentials):
     ]
 
 
-def write_token(hostname, credentials, basedir=Path()):
+def write_token(hostname, credentials, basedir):
     """Write the OAuth token for a machine to file."""
     path = basedir / (hostname + "-creds.yaml")
     path.write_text(
@@ -367,7 +373,8 @@ def action_register_machine(ns):
     if not hostname:
         hostname = platform.node().split(".")[0]
 
-    url = ns.maas_url.rstrip("/") + "/api/2.0/machines/"
+    maas_url = ns.maas_url.rstrip("/")
+    machines_url = maas_url + "/api/2.0/machines/"
     data, headers = encode_multipart_data(
         {
             b"hostname": hostname.encode("utf8"),
@@ -376,7 +383,7 @@ def action_register_machine(ns):
     )
     try:
         response = geturl(
-            url,
+            machines_url,
             data=data,
             headers=headers,
             credentials=ns.admin_token,
@@ -398,7 +405,7 @@ def action_register_machine(ns):
     )
     try:
         response = geturl(
-            url + system_id + "/?op=get_token",
+            machines_url + system_id + "/?op=get_token",
             credentials=ns.admin_token,
             retry=False,
         )
@@ -409,7 +416,8 @@ def action_register_machine(ns):
             )
         )
     creds = json.loads(response.read().decode("utf8"))
-    creds_path = write_token(hostname, creds)
+    creds["endpoint"] = maas_url + "/metadata/status/" + system_id
+    creds_path = write_token(hostname, creds, Path(ns.base_dir))
     print("Machine token written to {path}".format(path=creds_path))
 
 

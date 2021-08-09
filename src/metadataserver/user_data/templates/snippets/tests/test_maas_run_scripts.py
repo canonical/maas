@@ -331,11 +331,13 @@ class TestMain(MAASTestCase):
         mock_geturl = self.mock_geturl([{"system_id": "abcde"}, token_info])
         mock_node = self.patch(maas_run_scripts.platform, "node")
         mock_node.return_value = "myhost"
-        mock_write_token = self.patch(maas_run_scripts, "write_token")
+        tempdir = self.useFixture(TempDirectory()).path
 
         main(
             [
                 "register-machine",
+                "--base-dir",
+                tempdir,
                 "http://mymaas.example.com:5240/MAAS",
                 "foo:bar:baz",
             ]
@@ -358,7 +360,17 @@ class TestMain(MAASTestCase):
             any_order=True,
         )
         mock_node.assert_called_once()
-        mock_write_token.assert_called_once_with("myhost", token_info)
+        creds_yaml = yaml.load(
+            (Path(tempdir) / "myhost-creds.yaml").read_text()
+        )
+        info = creds_yaml["reporting"]["maas"]
+        self.assertEqual("tk", info["token_key"])
+        self.assertEqual("ts", info["token_secret"])
+        self.assertEqual("ck", info["consumer_key"])
+        self.assertEqual(
+            "http://mymaas.example.com:5240/MAAS/metadata/status/abcde",
+            info["endpoint"],
+        )
 
     def test_register_machine_with_hostname(self):
         token_info = {
@@ -397,7 +409,7 @@ class TestMain(MAASTestCase):
             any_order=True,
         )
         mock_node.assert_not_called()
-        mock_write_token.assert_called_once_with("myhost", token_info)
+        mock_write_token.assert_called_once_with("myhost", ANY, Path("."))
 
 
 class TestWriteToken(MAASTestCase):
