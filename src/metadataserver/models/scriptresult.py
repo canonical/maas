@@ -267,10 +267,7 @@ class ScriptResult(CleanSave, TimestampedModel):
         # to prevent new ScriptSets being created everytime a controller
         # starts. This also allows us to avoid creating an RPC call for the
         # rack controller to create a new ScriptSet.
-        if (
-            not self.script_set.node.is_controller
-            and not self.script_set.node.is_pod
-        ):
+        if self.script_set.node.is_commissioning():
             # Allow PENDING, APPLYING_NETCONF, INSTALLING, and RUNNING scripts
             # incase the node didn't inform MAAS the Script was being run, it
             # just uploaded results.

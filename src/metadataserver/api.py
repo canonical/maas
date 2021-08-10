@@ -787,16 +787,13 @@ class VersionIndexHandler(MetadataViewHandler):
                 NODE_STATUS.TESTING: self._process_testing,
                 NODE_STATUS.COMMISSIONING: self._process_commissioning,
                 NODE_STATUS.DEPLOYING: self._process_deploying,
+                NODE_STATUS.DEPLOYED: self._process_commissioning,
                 NODE_STATUS.DISK_ERASING: self._process_disk_erasing,
                 NODE_STATUS.ENTERING_RESCUE_MODE: self._process_entering_rescue_mode,
                 NODE_STATUS.RESCUE_MODE: self._process_rescue_mode,
             }
             if node.status in process_status_dict:
                 process = process_status_dict[node.status]
-            elif node.is_pod:
-                # If a machine is also a Pod the RackController may update its
-                # commissioning results at any time.
-                process = self._process_commissioning
             elif node.status in self.signalable_states:
                 # If commissioning, it is already registered.  Nothing to be
                 # done. If it is installing, should be in deploying state.

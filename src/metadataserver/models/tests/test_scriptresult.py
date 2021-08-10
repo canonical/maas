@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 from django.core.exceptions import ValidationError
 import yaml
 
-from maasserver.enum import NODE_TYPE
+from maasserver.enum import NODE_STATUS
 from maasserver.models import Event, EventType
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -61,49 +61,12 @@ class TestScriptResult(MAASServerTestCase):
             AssertionError, script_result.store_result, random.randint(0, 255)
         )
 
-    def test_store_result_allows_controllers_to_overwrite(self):
-        node = factory.make_Node(
-            node_type=random.choice(
-                [
-                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-                    NODE_TYPE.REGION_CONTROLLER,
-                    NODE_TYPE.RACK_CONTROLLER,
-                ]
-            )
-        )
+    def test_store_result_allows_deployed_node_to_overwrite(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         script_set = factory.make_ScriptSet(node=node)
         script_result = factory.make_ScriptResult(
             script_set=script_set, status=SCRIPT_STATUS.PASSED
         )
-        exit_status = random.randint(0, 255)
-        output = factory.make_bytes()
-        stdout = factory.make_bytes()
-        stderr = factory.make_bytes()
-        result = factory.make_bytes()
-
-        script_result.store_result(
-            random.randint(0, 255),
-            factory.make_bytes(),
-            factory.make_bytes(),
-            factory.make_bytes(),
-            factory.make_bytes(),
-        )
-        script_result.store_result(exit_status, output, stdout, stderr, result)
-
-        self.assertEqual(exit_status, script_result.exit_status)
-        self.assertEqual(output, script_result.output)
-        self.assertEqual(stdout, script_result.stdout)
-        self.assertEqual(stderr, script_result.stderr)
-        self.assertEqual(result, script_result.result)
-
-    def test_store_result_allows_pod_to_overwrite(self):
-        pod = factory.make_Pod()
-        node = factory.make_Node()
-        script_set = factory.make_ScriptSet(node=node)
-        script_result = factory.make_ScriptResult(
-            script_set=script_set, status=SCRIPT_STATUS.PASSED
-        )
-        pod.hints.nodes.add(node)
         exit_status = random.randint(0, 255)
         output = factory.make_bytes()
         stdout = factory.make_bytes()

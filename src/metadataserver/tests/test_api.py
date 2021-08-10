@@ -2643,15 +2643,13 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(client, status=SIGNAL_STATUS.WORKING)
         self.assertThat(response, HasStatusCode(http.client.OK))
 
-    def test_signaling_commissioning_when_pod_overwrites(self):
-        pod = factory.make_Pod()
+    def test_signaling_commissioning_when_deployed_overwrites(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
         )
         script_result = factory.make_ScriptResult(
             node.current_commissioning_script_set, status=SCRIPT_STATUS.PASSED
         )
-        pod.hints.nodes.add(node)
         client = make_node_client(node=node)
         new_result = factory.make_string().encode()
         response = call_signal(
@@ -2684,13 +2682,13 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_machine_in_unexpected_state(self):
-        machine = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        machine = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         client = make_node_client(node=machine)
         response = call_signal(client)
         self.expectThat(response.status_code, Equals(http.client.CONFLICT))
         self.expectThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals("Machine status isn't valid (status is Deployed)"),
+            Equals("Machine status isn't valid (status is Allocated)"),
         )
 
     def test_signaling_accepts_non_machine_results(self):
