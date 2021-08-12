@@ -3,6 +3,7 @@
 
 
 from functools import partial
+import json
 import logging
 from operator import itemgetter
 import random
@@ -3634,6 +3635,43 @@ class TestMachineHandler(MAASServerTestCase):
         self.expectThat(node.osystem, Equals(osystem["name"]))
         self.expectThat(
             node.distro_series, Equals(osystem["releases"][0]["name"])
+        )
+
+    def test_action_clone_errors_bundled(self):
+        user = factory.make_admin()
+        node = factory.make_Node()
+
+        handler = MachineHandler(user, {}, None)
+        exc = self.assertRaises(
+            NodeActionError,
+            handler.action,
+            {
+                "system_id": node.system_id,
+                "action": "clone",
+                "extra": {
+                    "storage": False,
+                    "interfaces": False,
+                    "destinations": [],
+                },
+            },
+        )
+        (errors,) = exc.args
+        self.assertEqual(
+            json.loads(errors),
+            {
+                "destinations": [
+                    {
+                        "message": "This field is required.",
+                        "code": "required",
+                    }
+                ],
+                "__all__": [
+                    {
+                        "message": "Either storage or interfaces must be true.",
+                        "code": "required",
+                    }
+                ],
+            },
         )
 
     def test_create_physical_creates_interface(self):

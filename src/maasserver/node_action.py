@@ -38,6 +38,7 @@ from maasserver.exceptions import (
     NodeActionError,
     StaticIPAddressExhaustion,
 )
+from maasserver.forms.clone import CloneForm
 from maasserver.models import Config, ResourcePool, Tag, Zone
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
@@ -950,7 +951,36 @@ class AddTag(NodeAction):
             self.node.tags.add(t)
 
         self.node.save()
-        return
+
+
+class Clone(NodeAction):
+    """Clone storage/network configuration."""
+
+    name = "clone"
+    display = "Clone"
+    display_sentence = "cloned"
+    actionable_statuses = ALL_STATUSES
+    permission = NodePermission.edit
+    machine_permission = NodePermission.admin
+    for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.MISC
+    audit_description = "Cloning from '%s'."
+
+    def get_node_action_audit_description(self, action):
+        return self.audit_description % action.node.hostname
+
+    def _execute(self, destinations=None, storage=False, interfaces=False):
+        source = self.node
+        data = {
+            "source": source,
+            "destinations": destinations,
+            "storage": storage,
+            "interfaces": interfaces,
+        }
+        form = CloneForm(self.user, data=data)
+        if not form.is_valid():
+            raise NodeActionError(form.errors.as_json())
+        form.save()
 
 
 ACTION_CLASSES = (
@@ -970,6 +1000,7 @@ ACTION_CLASSES = (
     Lock,
     Unlock,
     AddTag,
+    Clone,
     SetZone,
     SetPool,
     ImportImages,

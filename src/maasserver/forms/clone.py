@@ -115,8 +115,12 @@ class CloneForm(forms.Form):
                             )
                             set_form_error(self, "destinations", error)
         if not storage and not interfaces:
-            set_form_error(
-                self, "__all__", "Either storage or interfaces must be true."
+            self.add_error(
+                "__all__",
+                ValidationError(
+                    "Either storage or interfaces must be true.",
+                    code="required",
+                ),
             )
         return cleaned_data
 

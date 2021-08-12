@@ -1,6 +1,7 @@
 # Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+import json
 import random
 from unittest.mock import ANY
 
@@ -32,6 +33,7 @@ from maasserver.node_action import (
     Acquire,
     ACTION_CLASSES,
     AddTag,
+    Clone,
     Commission,
     compile_node_actions,
     Delete,
@@ -1770,6 +1772,93 @@ class TestExitRescueModeAction(MAASServerTestCase):
         self.assertTrue(action.is_permitted())
         action.execute()
         self.assertThat(node_stop_rescue_mode, MockCalledOnceWith(user))
+
+
+class TestCloneAction(MAASServerTestCase):
+    def test_admin_permission_required(self):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node()
+        self.assertFalse(Clone(node, user, request).is_permitted())
+
+    def test_requires_destinations(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = user
+        source = factory.make_Machine()
+        action = Clone(source, user, request)
+        exception = self.assertRaises(
+            NodeActionError, action.execute, storage=True, interfaces=True
+        )
+        (error,) = exception.args
+        self.assertEqual(
+            json.loads(error)["destinations"],
+            [{"code": "required", "message": "This field is required."}],
+        )
+
+    def test_requires_storage_or_interfaces(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = user
+        source = factory.make_Machine()
+        destination1 = factory.make_Machine(
+            status=NODE_STATUS.READY,
+            with_boot_disk=False,
+        )
+        action = Clone(source, user, request)
+        exception = self.assertRaises(
+            NodeActionError,
+            action.execute,
+            destinations=[destination1.system_id],
+        )
+        (error,) = exception.args
+        self.assertEqual(
+            json.loads(error)["__all__"],
+            [
+                {
+                    "code": "required",
+                    "message": "Either storage or interfaces must be true.",
+                }
+            ],
+        )
+
+    def test_clone_action_log(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = user
+        source = factory.make_Machine(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024 ** 3, name="sda"
+        )
+        factory.make_Interface(node=source, name="eth0")
+        destination1 = factory.make_Machine(
+            status=NODE_STATUS.READY,
+            with_boot_disk=False,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination1, size=8 * 1024 ** 3, name="sda"
+        )
+        factory.make_Interface(node=destination1, name="eth0")
+        destination2 = factory.make_Machine(
+            status=NODE_STATUS.FAILED_TESTING,
+            with_boot_disk=False,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination2, size=8 * 1024 ** 3, name="sda"
+        )
+        factory.make_Interface(node=destination2, name="eth0")
+
+        action = Clone(source, user, request)
+        action.execute(
+            destinations=[destination1.system_id, destination2.system_id],
+            storage=True,
+            interfaces=True,
+        )
+        audit_event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(
+            audit_event.description, f"Cloning from '{source.hostname}'."
+        )
 
 
 class TestActionsErrorHandling(MAASServerTestCase):
