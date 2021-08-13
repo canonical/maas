@@ -1,6 +1,6 @@
 from netaddr import IPAddress, IPNetwork
 
-from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
+from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models.config import Config
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import (
@@ -212,9 +212,7 @@ def update_physical_interface(
             "node": node,
             "name": name,
             "enabled": True,
-            "acquired": (
-                node.is_controller or node.status == NODE_STATUS.DEPLOYED
-            ),
+            "acquired": not node.is_commissioning(),
         },
     )
     if not created and interface.node != node:

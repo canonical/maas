@@ -255,15 +255,7 @@ def update_node_network_information(node, data, numa_nodes):
         # before regeneration.
         node.set_initial_networking_configuration()
 
-        # XXX ltrager 11-16-2017 - Don't regenerate ScriptResults on
-        # controllers. Currently this is not needed saving us 1 database query.
-        # However, if commissioning is ever enabled for controllers
-        # regeneration will need to be allowed on controllers otherwise network
-        # testing may break.
-        if (
-            node.current_testing_script_set is not None
-            and not node.is_controller
-        ):
+        if node.current_testing_script_set is not None:
             # LP: #1731353 - Regenerate ScriptResults before deleting Interfaces.
             # This creates a ScriptResult with proper parameters for each interface
             # on the system. Interfaces no long available will be deleted which
@@ -833,7 +825,7 @@ def update_node_physical_block_devices(node, data, numa_nodes):
             id__in=delete_block_device_ids
         ).delete()
 
-    if not (node.status == NODE_STATUS.DEPLOYED and node.is_pod):
+    if node.is_commissioning():
         # Layout needs to be set last so removed disks aren't included in the
         # applied layout. Deployed Pods should not have a layout set as the
         # layout of the deployed system is unknown.
@@ -856,13 +848,10 @@ def _process_lxd_environment(node, data):
     # on the running machine. In those cases the information gathered below
     # is correct.
     if (
-        (node.is_controller or node.is_pod)
+        not node.is_commissioning()
         and data.get("os_name")
         and data.get("os_version")
     ):
-        # This is how the hostname gets set on controllers and stays in sync on Pods.
-        node.hostname = data["server_name"]
-
         # MAAS always stores OS information in lower case
         node.osystem = data["os_name"].lower()
         node.distro_series = data["os_version"].lower()

@@ -1402,64 +1402,43 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, make_lxd_output_json(uuid=uuid), 0)
         self.assertIsNone(reload_object(node).hardware_uuid)
 
-    def test_sets_os_hostname_for_controller(self):
-        rack = factory.make_RackController()
+    def test_sets_os_for_deployed_node(self):
+        node = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
         ubuntu_info = UbuntuDistroInfo()
         ubuntu_release = random.choice(
             [row.__dict__ for row in ubuntu_info._releases]
         )
         os_version = ubuntu_release["version"].replace(" LTS", "")
-        server_name = factory.make_hostname()
-        process_lxd_results(
-            rack,
-            make_lxd_output_json(
-                os_version=os_version, server_name=server_name
-            ),
-            0,
-        )
-        rack = reload_object(rack)
-        self.assertEqual("ubuntu", rack.osystem)
-        self.assertEqual(ubuntu_release["series"], rack.distro_series)
-        self.assertEqual(server_name, rack.hostname)
-
-    def test_doesnt_set_os_for_controller_if_blank(self):
-        osystem = factory.make_name("osystem")
-        distro_series = factory.make_name("distro_series")
-        rack = factory.make_RackController(
-            osystem=osystem, distro_series=distro_series
-        )
-        process_lxd_results(
-            rack, make_lxd_output_json(os_name="", os_version=""), 0
-        )
-        rack = reload_object(rack)
-        self.assertEqual(osystem, rack.osystem)
-        self.assertEqual(distro_series, rack.distro_series)
-
-    def test_sets_os_for_pod(self):
-        pod = factory.make_Pod()
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
-        )
-        pod.hints.nodes.add(node)
-        ubuntu_info = UbuntuDistroInfo()
-        ubuntu_release = random.choice(
-            [row.__dict__ for row in ubuntu_info._releases]
-        )
-        os_version = ubuntu_release["version"].replace(" LTS", "")
-        server_name = factory.make_hostname()
         process_lxd_results(
             node,
-            make_lxd_output_json(
-                os_version=os_version, server_name=server_name
-            ),
+            make_lxd_output_json(os_version=os_version),
             0,
         )
         node = reload_object(node)
         self.assertEqual("ubuntu", node.osystem)
         self.assertEqual(ubuntu_release["series"], node.distro_series)
 
-    def test_ignores_os_for_machine(self):
-        node = factory.make_Node(osystem="centos", distro_series="8")
+    def test_doesnt_set_os_for_controller_if_blank(self):
+        osystem = factory.make_name("osystem")
+        distro_series = factory.make_name("distro_series")
+        node = factory.make_Machine(
+            osystem=osystem,
+            distro_series=distro_series,
+            status=NODE_STATUS.DEPLOYED,
+        )
+        process_lxd_results(
+            node, make_lxd_output_json(os_name="", os_version=""), 0
+        )
+        node = reload_object(node)
+        self.assertEqual(osystem, node.osystem)
+        self.assertEqual(distro_series, node.distro_series)
+
+    def test_ignores_os_for_commissioning_machine(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING,
+            osystem="centos",
+            distro_series="8",
+        )
         hostname = node.hostname
         process_lxd_results(node, make_lxd_output_json(), 0)
         node = reload_object(node)
@@ -2730,12 +2709,10 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             Config.objects.get_config("default_storage_layout"), layout
         )
 
-    def test_doesnt_set_storage_layout_if_pod(self):
-        pod = factory.make_Pod()
+    def test_doesnt_set_storage_layout_if_deployed(self):
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED, with_empty_script_sets=True
         )
-        pod.hints.nodes.add(node)
         mock_set_default_storage_layout = self.patch(
             node_module.Node, "set_default_storage_layout"
         )
