@@ -10,6 +10,7 @@ import filecmp
 from itertools import count
 import os
 from os import chown, rename, stat
+from pathlib import Path
 from random import randint
 from shutil import copyfile, rmtree
 import string
@@ -48,6 +49,14 @@ def get_maas_common_command():
         )
     else:
         return get_path("usr/lib/maas/maas-common")
+
+
+def get_root_path():
+    """Return the root of the system
+
+    $SNAP if running in a snap, otherwise /.
+    """
+    return snap.SnapPaths.from_environ().snap or Path("/")
 
 
 def get_library_script_path(name):

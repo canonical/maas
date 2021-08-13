@@ -32,6 +32,7 @@ from maasserver.websockets.websockets import (
 )
 from metadataserver.api_twisted import StatusHandlerResource
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.utils.fs import get_root_path
 from provisioningserver.utils.twisted import (
     asynchronous,
     reducedWebLogFormatter,
@@ -265,6 +266,12 @@ class WebApplicationService(StreamServerEndpointService):
         maas.putChild(
             b"assets",
             NoListingFile(os.path.join(settings.STATIC_ROOT, "assets")),
+        )
+        maas.putChild(
+            b"machine-resources",
+            NoListingFile(
+                get_root_path() / "usr/share/maas/machine-resources"
+            ),
         )
 
         # Setup static docs

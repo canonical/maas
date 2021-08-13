@@ -1,9 +1,1 @@
 debian/tmp/usr/lib/python3*/dist-packages/provisioningserver
-
-# Install commissioning binaries
-debian/tmp/usr/share/maas/machine-resources/amd64 usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/arm64 usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/armhf usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/i386 usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/ppc64el usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/machine-resources/s390x usr/share/maas/machine-resources

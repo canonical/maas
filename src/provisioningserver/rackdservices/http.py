@@ -7,7 +7,6 @@
 from collections import defaultdict
 from datetime import timedelta
 import os
-from pathlib import Path
 import sys
 
 import attr
@@ -31,7 +30,7 @@ from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.prometheus.resource import PrometheusMetricsResource
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import load_template, snap
-from provisioningserver.utils.fs import atomic_write
+from provisioningserver.utils.fs import atomic_write, get_root_path
 from provisioningserver.utils.twisted import callOut
 
 log = LegacyLogger()
@@ -171,9 +170,7 @@ class RackHTTPService(TimerService):
     def _configure(self, upstream_http):
         """Update the HTTP configuration for the rack."""
         template = load_template("http", "rackd.nginx.conf.template")
-        machine_resources_prefix = snap.SnapPaths.from_environ().snap or Path(
-            "/"
-        )
+        machine_resources_prefix = get_root_path()
         try:
             rendered = template.substitute(
                 {

@@ -8,6 +8,7 @@ import glob
 import io
 import os
 import os.path
+from pathlib import Path
 import random
 from shutil import rmtree
 import stat
@@ -62,6 +63,7 @@ from provisioningserver.utils.fs import (
     FilesystemLock,
     get_library_script_path,
     get_maas_common_command,
+    get_root_path,
     incremental_write,
     NamedLock,
     read_text_file,
@@ -72,6 +74,18 @@ from provisioningserver.utils.fs import (
     tempdir,
     write_text_file,
 )
+
+
+class TestGetRootPath(MAASTestCase):
+    """Test get_root_path()."""
+
+    def test_snap(self):
+        self.patch(os, "environ", {"SNAP": "/snap/maas/123"})
+        self.assertEqual(Path("/snap/maas/123"), get_root_path())
+
+    def test_no_snap(self):
+        self.patch(os, "environ", {})
+        self.assertEqual(Path("/"), get_root_path())
 
 
 class TestFilesystemLock(MAASTestCase):

@@ -12,5 +12,13 @@ debian/tmp/usr/lib/maas/dhcp-monitor
 # https://bugs.launchpad.net/maas/+bug/1807231
 debian/tmp/usr/lib/maas/unverified-ssh
 
+# Install commissioning binaries
+debian/tmp/usr/share/maas/machine-resources/amd64 usr/share/maas/machine-resources
+debian/tmp/usr/share/maas/machine-resources/arm64 usr/share/maas/machine-resources
+debian/tmp/usr/share/maas/machine-resources/armhf usr/share/maas/machine-resources
+debian/tmp/usr/share/maas/machine-resources/i386 usr/share/maas/machine-resources
+debian/tmp/usr/share/maas/machine-resources/ppc64el usr/share/maas/machine-resources
+debian/tmp/usr/share/maas/machine-resources/s390x usr/share/maas/machine-resources
+
 usr/bin/maas-common /usr/lib/maas
 etc/maas/certificates

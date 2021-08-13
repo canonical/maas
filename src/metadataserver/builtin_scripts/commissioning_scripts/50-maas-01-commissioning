@@ -27,6 +27,6 @@
 
 resources_bin="$DOWNLOAD_PATH/machine-resources"
 arch="$(dpkg --print-architecture)"
-wget "$MAAS_BASE_URL/machine-resources/$arch" -O "$resources_bin" >&2
+wget "$MAAS_BASE_URL/MAAS/machine-resources/$arch" -O "$resources_bin" >&2
 chmod +x "$resources_bin"
 "$resources_bin"
