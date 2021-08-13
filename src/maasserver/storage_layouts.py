@@ -62,7 +62,7 @@ class StorageLayoutBase(Form):
     def _load_physical_block_devices(self):
         """Load all the `PhysicalBlockDevice`'s for node."""
         # The websocket prefetches node.blockdevice_set, creating a queryset
-        # on node.physicalblockdevice_set adds addtional queries.
+        # on node.physicalblockdevice_set adds additional queries.
         physical_bds = []
         for bd in self.node.blockdevice_set.all():
             try:
@@ -813,10 +813,15 @@ class VMFS6StorageLayout(StorageLayoutBase):
         {"size": 2560 * 1024 ** 2},
     ]
 
+    def _clean_boot_disk(self):
+        if self.boot_disk.size < (10 * 1024 ** 3):
+            set_form_error(
+                self, "boot_size", "Boot disk must be at least 10Gb."
+            )
+
     def clean(self):
         cleaned_data = super().clean()
-        if self.boot_disk.size < 1024 ** 3:
-            set_form_error(self, "size", "Boot disk must be at least 10G.")
+        self._clean_boot_disk()
         return cleaned_data
 
     def configure_storage(self, allow_fallback):
@@ -914,6 +919,19 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
         # VMFS
         {"size": 0},
     ]
+
+    def _clean_boot_disk(self):
+        """https://docs.vmware.com/en/VMware-vSphere/7.0/com.vmware.esxi.install.doc/GUID-DEB8086A-306B-4239-BF76-E354679202FC.html
+
+        ESXi 7.0 requires a boot disk of at least 32 GB of persistent
+        storage such as HDD, SSD, or NVMe. Use USB, SD and non-USB
+        flash media devices only for ESXi boot bank partitions. A boot
+        device must not be shared between ESXi hosts.
+        """
+        if self.boot_disk.size < (32 * 1024 ** 3):
+            set_form_error(
+                self, "boot_size", "Boot disk must be at least 32Gb."
+            )
 
     def configure_storage(self, allow_fallback):
         super().configure_storage(allow_fallback)

@@ -242,7 +242,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             error.message_dict,
         )
 
-    def test_raises_error_when_value_to_low_for_boot_disk(self):
+    def test_raises_error_when_value_too_low_for_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
         layout = StorageLayoutBase(
@@ -259,7 +259,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
             error.message_dict,
         )
 
-    def test_raises_error_when_percentage_to_high_for_boot_disk(self):
+    def test_raises_error_when_percentage_too_high_for_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
@@ -1853,7 +1853,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         layout = VMFS6StorageLayout(node)
         self.assertEqual("VMFS6", layout.configure())
         pt = node.boot_disk.get_partitiontable()
-        self.assertDictEqual(
+        self.assertEqual(
             {
                 "%s-part1" % node.boot_disk.name: 3 * 1024 ** 2,
                 "%s-part2" % node.boot_disk.name: 4 * 1024 ** 3,
@@ -1881,12 +1881,13 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
     def test_clean_validates_min_size(self):
         node = factory.make_Node(with_boot_disk=False)
         node.boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=1024 ** 3 - 1
+            node=node, size=10 * 1024 ** 3 - 1
         )
         layout = VMFS6StorageLayout(node)
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {"size": ["Boot disk must be at least 10G."]}, error.message_dict
+            {"boot_size": ["Boot disk must be at least 10Gb."]},
+            error.message_dict,
         )
 
     def test_accepts_root_device_param(self):
@@ -1901,7 +1902,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         layout = VMFS6StorageLayout(node, {"root_device": root_disk.id})
         self.assertEqual("VMFS6", layout.configure())
         pt = root_disk.get_partitiontable()
-        self.assertDictEqual(
+        self.assertEqual(
             {
                 "%s-part1" % root_disk.name: 3 * 1024 ** 2,
                 "%s-part2" % root_disk.name: 4 * 1024 ** 3,
@@ -1934,7 +1935,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         layout = VMFS6StorageLayout(node, {"root_size": 10 * 1024 ** 3})
         self.assertEqual("VMFS6", layout.configure())
         pt = node.boot_disk.get_partitiontable()
-        self.assertDictEqual(
+        self.assertEqual(
             {
                 "%s-part1" % node.boot_disk.name: 3 * 1024 ** 2,
                 "%s-part2" % node.boot_disk.name: 4 * 1024 ** 3,
@@ -1987,7 +1988,6 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
 class TestVMFS7StorageLayout(MAASServerTestCase):
     def test_init_sets_up_all_fields(self):
         node = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
         layout = VMFS7StorageLayout(node)
         self.assertItemsEqual(
             ["root_device", "root_size", "boot_size"], layout.fields.keys()
@@ -2001,7 +2001,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         layout = VMFS7StorageLayout(node)
         self.assertEqual("VMFS7", layout.configure())
         pt = node.boot_disk.get_partitiontable()
-        self.assertDictEqual(
+        self.assertEqual(
             {
                 "%s-part1" % node.boot_disk.name: 105 * 1024 ** 2,
                 "%s-part5" % node.boot_disk.name: 1074 * 1024 ** 2,
@@ -2023,12 +2023,13 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
     def test_clean_validates_min_size(self):
         node = factory.make_Node(with_boot_disk=False)
         node.boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=1024 ** 3 - 1
+            node=node, size=32 * 1024 ** 3 - 1
         )
         layout = VMFS7StorageLayout(node)
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
-            {"size": ["Boot disk must be at least 10G."]}, error.message_dict
+            {"boot_size": ["Boot disk must be at least 32Gb."]},
+            error.message_dict,
         )
 
     def test_accepts_root_device_param(self):
@@ -2043,7 +2044,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         layout = VMFS7StorageLayout(node, {"root_device": root_disk.id})
         self.assertEqual("VMFS7", layout.configure())
         pt = root_disk.get_partitiontable()
-        self.assertDictEqual(
+        self.assertEqual(
             {
                 "%s-part1" % root_disk.name: 105 * 1024 ** 2,
                 "%s-part5" % root_disk.name: 1074 * 1024 ** 2,
@@ -2070,7 +2071,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         layout = VMFS7StorageLayout(node, {"root_size": 10 * 1024 ** 3})
         self.assertEqual("VMFS7", layout.configure())
         pt = node.boot_disk.get_partitiontable()
-        self.assertDictEqual(
+        self.assertEqual(
             {
                 "%s-part1" % node.boot_disk.name: 105 * 1024 ** 2,
                 "%s-part5" % node.boot_disk.name: 1074 * 1024 ** 2,
