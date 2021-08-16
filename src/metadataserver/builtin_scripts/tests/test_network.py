@@ -8,7 +8,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
-    NODE_STATUS_CHOICES_DICT,
+    NODE_STATUS_CHOICES,
     NODE_TYPE,
 )
 from maasserver.models.fabric import Fabric
@@ -2792,12 +2792,12 @@ class TestUpdateInterfacesAcquiredNonDeployedNode(
     MAASServerTestCase, BaseUpdateInterfacesAcquire
 ):
     def create_empty_node(self):
-        non_deployed_status = [
-            status
-            for status in NODE_STATUS_CHOICES_DICT.keys()
-            if status != NODE_STATUS.DEPLOYED
-        ]
-        return factory.make_Machine(status=random.choice(non_deployed_status))
+        return factory.make_Machine(
+            status=factory.pick_choice(
+                NODE_STATUS_CHOICES,
+                but_not=(NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED),
+            )
+        )
 
     def assert_physical_interfaces(self, existing_eth0, new_eth1):
         self.assertFalse(existing_eth0.acquired)
