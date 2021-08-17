@@ -15,6 +15,9 @@ migrate_data() {
     # migrate /var/lib/maas to avoid space waste because of duplicated trees
     # for different snap revisions
     if [ -d "$SNAP_DATA/var/lib/maas" ]; then
+        # ensure target dir doesn't exist (in case it was left over because of
+        # lp:1938321)
+        rm -rf "$SNAP_COMMON/maas"
         mv "$SNAP_DATA/var/lib/maas" "$SNAP_COMMON/"
         # shellcheck disable=SC2115
         rm -rf "$SNAP_DATA/var"
