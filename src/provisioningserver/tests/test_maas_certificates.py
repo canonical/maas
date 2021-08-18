@@ -17,6 +17,63 @@ from provisioningserver import maas_certificates
 from provisioningserver.utils.fs import NamedLock
 
 
+class TestGenerateCertificate(MAASTestCase):
+    def test_generate_certificate(self):
+        cert = maas_certificates.generate_certificate("maas")
+        self.assertIsInstance(cert.cert, crypto.X509)
+        self.assertIsInstance(cert.key, crypto.PKey)
+        self.assertEqual(cert.cert.get_subject().CN, "maas")
+        self.assertEqual(
+            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.cert.get_pubkey()),
+            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.key),
+        )
+        self.assertEqual(cert.key.bits(), 4096)
+        self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
+        self.assertGreaterEqual(
+            datetime.utcnow() + timedelta(days=3650),
+            cert.expiration(),
+        )
+
+    def test_generate_certificate_key_bits(self):
+        cert = maas_certificates.generate_certificate("maas", key_bits=1024)
+        self.assertEqual(cert.key.bits(), 1024)
+
+    def test_generate_certificate_validity(self):
+        cert = maas_certificates.generate_certificate(
+            "maas", validity=timedelta(days=100)
+        )
+        self.assertGreaterEqual(
+            datetime.utcnow() + timedelta(days=100),
+            cert.expiration(),
+        )
+
+
+class TestCertificate(MAASTestCase):
+    def test_certificate(self):
+        cert = maas_certificates.generate_certificate("maas")
+        self.assertEqual(cert.cn(), "maas")
+        self.assertGreaterEqual(
+            datetime.utcnow() + timedelta(days=3650),
+            cert.expiration(),
+        )
+        self.assertTrue(
+            cert.certificate_pem().startswith(b"-----BEGIN CERTIFICATE-----")
+        )
+        self.assertTrue(
+            cert.public_key_pem().startswith(b"-----BEGIN PUBLIC KEY-----")
+        )
+        self.assertTrue(
+            cert.private_key_pem().startswith(b"-----BEGIN PRIVATE KEY-----")
+        )
+
+    def test_from_pem(self):
+        cert = maas_certificates.generate_certificate("maas")
+        material = cert.certificate_pem() + cert.private_key_pem()
+        other_cert = maas_certificates.Certificate.from_pem(material)
+        self.assertEqual(cert.certificate_pem(), other_cert.certificate_pem())
+        self.assertEqual(cert.private_key_pem(), other_cert.private_key_pem())
+
+
 class TestMAASCertificates(MAASTestCase):
     def setUp(self):
         super().setUp()
