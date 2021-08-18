@@ -17,6 +17,9 @@ system-usernames:
 # 3: (2.9) drop "all" mode and builtin PostgresSQL server
 epoch: 3*
 
+environment:
+  PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
+
 plugs:
   maas-cli:
     interface: content
@@ -33,7 +36,6 @@ apps:
     daemon: simple
     command: bin/ld-preload $SNAP/bin/run-supervisord
     environment:
-      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
       LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
     plugs:
         - avahi-observe # network discovery
@@ -49,8 +51,6 @@ apps:
 
   maas:
     command: bin/ld-preload $SNAP/bin/maas
-    environment:
-      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
         - home
         - mount-observe  # to read /proc/*/mounts
@@ -59,8 +59,6 @@ apps:
 
   power:
     command: bin/maas-power
-    environment:
-      PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
         - network
 
@@ -258,18 +256,12 @@ hooks:
   install:
     command-chain:
       - snap/command-chain/snapcraft-runner
-    passthrough:
-      environment:
-        PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
       - mount-observe  # to read /proc/*/mounts
       - network  # to connect to the db for running upgrades
   post-refresh:
     command-chain:
       - snap/command-chain/snapcraft-runner
-    passthrough:
-      environment:
-        PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
     plugs:
       - mount-observe  # to read /proc/*/mounts
       - network  # to connect to the db for running upgrades
