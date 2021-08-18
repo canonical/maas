@@ -4,7 +4,7 @@
 """LXD Pod Driver."""
 
 
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 import re
 from typing import Optional
 from urllib.parse import urlparse
@@ -205,51 +205,54 @@ class LXDPodDriver(PodDriver):
     @threadDeferred
     def power_on(self, pod_id: int, context: dict):
         """Power on LXD VM."""
-        machine = self._get_machine(pod_id, context)
-        if LXD_VM_POWER_STATE[machine.status_code] == "off":
-            machine.start()
+        with self._get_machine(pod_id, context) as machine:
+            if LXD_VM_POWER_STATE[machine.status_code] == "off":
+                machine.start()
 
     @typed
     @asynchronous
     @threadDeferred
     def power_off(self, pod_id: int, context: dict):
         """Power off LXD VM."""
-        machine = self._get_machine(pod_id, context)
-        if LXD_VM_POWER_STATE[machine.status_code] == "on":
-            machine.stop()
+        with self._get_machine(pod_id, context) as machine:
+            if LXD_VM_POWER_STATE[machine.status_code] == "on":
+                machine.stop()
 
     @typed
     @asynchronous
     @threadDeferred
     def power_query(self, pod_id: int, context: dict):
         """Power query LXD VM."""
-        machine = self._get_machine(pod_id, context)
-        state = machine.status_code
-        try:
-            return LXD_VM_POWER_STATE[state]
-        except KeyError:
-            raise LXDPodError(
-                f"Pod {pod_id}: Unknown power status code: {state}"
-            )
+        with self._get_machine(pod_id, context) as machine:
+            state = machine.status_code
+            try:
+                return LXD_VM_POWER_STATE[state]
+            except KeyError:
+                raise LXDPodError(
+                    f"Pod {pod_id}: Unknown power status code: {state}"
+                )
 
     @threadDeferred
     def discover_projects(self, pod_id: int, context: dict):
         """Discover the list of projects in a pod."""
-        client = self._get_client(pod_id, context)
-        if not client.has_api_extension("projects"):
-            raise LXDPodError(
-                "Please upgrade your LXD host to 3.6+ for projects support."
-            )
-        return [
-            {"name": project.name, "description": project.description}
-            for project in client.projects.all()
-        ]
+        with self._get_client(pod_id, context) as client:
+            if not client.has_api_extension("projects"):
+                raise LXDPodError(
+                    "Please upgrade your LXD host to 3.6+ for projects support."
+                )
+            return [
+                {"name": project.name, "description": project.description}
+                for project in client.projects.all()
+            ]
 
     @threadDeferred
     def discover(self, pod_id: int, context: dict):
         """Discover all Pod host resources."""
         # Connect to the Pod and make sure it is valid.
-        client = self._get_client(pod_id, context)
+        with self._get_client(pod_id, context) as client:
+            return self._discover(client, pod_id, context)
+
+    def _discover(self, client: Client, pod_id: int, context: dict):
         if not client.has_api_extension("virtual-machines"):
             raise LXDPodError(
                 "Please upgrade your LXD host to 3.19+ for virtual machine support."
@@ -320,15 +323,17 @@ class LXDPodDriver(PodDriver):
         projects = [project.name for project in client.projects.all()]
         machines = []
         for project in projects:
-            project_cli = self._get_client(pod_id, context, project=project)
-            for virtual_machine in project_cli.virtual_machines.all():
-                discovered_machine = self._get_discovered_machine(
-                    project_cli,
-                    virtual_machine,
-                    storage_pools=discovered_pod.storage_pools,
-                )
-                discovered_machine.cpu_speed = host_cpu_speed
-                machines.append(discovered_machine)
+            with self._get_client(
+                pod_id, context, project=project
+            ) as project_cli:
+                for virtual_machine in project_cli.virtual_machines.all():
+                    discovered_machine = self._get_discovered_machine(
+                        project_cli,
+                        virtual_machine,
+                        storage_pools=discovered_pod.storage_pools,
+                    )
+                    discovered_machine.cpu_speed = host_cpu_speed
+                    machines.append(discovered_machine)
         discovered_pod.machines = machines
 
         # Return the DiscoveredPod.
@@ -337,69 +342,69 @@ class LXDPodDriver(PodDriver):
     @threadDeferred
     def get_commissioning_data(self, pod_id: int, context: dict):
         """Retreive commissioning data from LXD."""
-        client = self._get_client(pod_id, context)
-        resources = {
-            # /1.0
-            **client.host_info,
-            # /1.0/resources
-            "resources": client.resources,
-            # /1.0/networks/<network>/state
-            "networks": {
-                net.name: dict(net.state()) for net in client.networks.all()
-            },
-        }
+        with self._get_client(pod_id, context) as client:
+            resources = {
+                # /1.0
+                **client.host_info,
+                # /1.0/resources
+                "resources": client.resources,
+                # /1.0/networks/<network>/state
+                "networks": {
+                    net.name: dict(net.state())
+                    for net in client.networks.all()
+                },
+            }
         return {LXD_OUTPUT_NAME: resources}
 
     @threadDeferred
     def compose(self, pod_id: int, context: dict, request: RequestedMachine):
         """Compose a virtual machine."""
-        client = self._get_client(pod_id, context)
+        with self._get_client(pod_id, context) as client:
+            storage_pools = client.storage_pools.all()
+            default_storage_pool = context.get(
+                "default_storage_pool_id", context.get("default_storage_pool")
+            )
 
-        storage_pools = client.storage_pools.all()
-        default_storage_pool = context.get(
-            "default_storage_pool_id", context.get("default_storage_pool")
-        )
+            include_profile = client.profiles.exists(LXD_MAAS_PROFILE)
+            definition = get_lxd_machine_definition(
+                request, include_profile=include_profile
+            )
+            definition["devices"] = {
+                **self._get_machine_disks(
+                    request.block_devices, storage_pools, default_storage_pool
+                ),
+                **self._get_machine_nics(request),
+            }
 
-        include_profile = client.profiles.exists(LXD_MAAS_PROFILE)
-        definition = get_lxd_machine_definition(
-            request, include_profile=include_profile
-        )
-        definition["devices"] = {
-            **self._get_machine_disks(
-                request.block_devices, storage_pools, default_storage_pool
-            ),
-            **self._get_machine_nics(request),
-        }
-
-        # Create the machine.
-        machine = client.virtual_machines.create(definition, wait=True)
-        # Pod hints are updated on the region after the machine is composed.
-        discovered_machine = self._get_discovered_machine(
-            client, machine, storage_pools, request=request
-        )
-        # Update the machine cpu speed.
-        discovered_machine.cpu_speed = lxd_cpu_speed(client.resources)
-        return discovered_machine, DiscoveredPodHints()
+            # Create the machine.
+            machine = client.virtual_machines.create(definition, wait=True)
+            # Pod hints are updated on the region after the machine is composed.
+            discovered_machine = self._get_discovered_machine(
+                client, machine, storage_pools, request=request
+            )
+            # Update the machine cpu speed.
+            discovered_machine.cpu_speed = lxd_cpu_speed(client.resources)
+            return discovered_machine, DiscoveredPodHints()
 
     @threadDeferred
     def decompose(self, pod_id: int, context: dict):
         """Decompose a virtual machine."""
-        machine = self._get_machine(pod_id, context)
-        if not machine:
-            maaslog.warning(
-                f"Pod {pod_id}: machine {context['instance_name']} not found"
-            )
-            return DiscoveredPodHints()
+        with self._get_machine(pod_id, context) as machine:
+            if not machine:
+                maaslog.warning(
+                    f"Pod {pod_id}: machine {context['instance_name']} not found"
+                )
+                return DiscoveredPodHints()
 
-        if machine.status_code != 102:  # 102 - Stopped
-            machine.stop(force=True, wait=True)
-        # collect machine attributes before removing it
-        devices = machine.devices
-        client = machine.client
-        machine.delete(wait=True)
-        self._delete_machine_volumes(client, pod_id, devices)
-        # Hints are updated on the region for LXDPodDriver.
-        return DiscoveredPodHints()
+            if machine.status_code != 102:  # 102 - Stopped
+                machine.stop(force=True, wait=True)
+            # collect machine attributes before removing it
+            devices = machine.devices
+            client = machine.client
+            machine.delete(wait=True)
+            self._delete_machine_volumes(client, pod_id, devices)
+            # Hints are updated on the region for LXDPodDriver.
+            return DiscoveredPodHints()
 
     def _get_machine_disks(
         self, requested_disks, storage_pools, default_storage_pool
@@ -722,27 +727,29 @@ class LXDPodDriver(PodDriver):
         )
 
     @typed
+    @contextmanager
     def _get_machine(self, pod_id: int, context: dict, fail: bool = True):
         """Retrieve LXD VM.
 
         If "fail" is False, return None instead of raising an exception.
         """
-        client = self._get_client(pod_id, context)
         instance_name = context.get("instance_name")
-        try:
-            return client.virtual_machines.get(instance_name)
-        except NotFound:
-            if fail:
-                raise LXDPodError(
-                    f"Pod {pod_id}: LXD VM {instance_name} not found."
-                )
-            return None
+        with self._get_client(pod_id, context) as client:
+            try:
+                yield client.virtual_machines.get(instance_name)
+            except NotFound:
+                if fail:
+                    raise LXDPodError(
+                        f"Pod {pod_id}: LXD VM {instance_name} not found."
+                    )
+                yield None
 
     @typed
+    @contextmanager
     def _get_client(
         self, pod_id: int, context: dict, project: Optional[str] = None
     ):
-        """Connect PyLXD client."""
+        """Return a context manager with a PyLXD client."""
         if not project:
             project = context.get("project", "default")
         endpoint = self.get_url(context)
@@ -768,7 +775,7 @@ class LXDPodDriver(PodDriver):
             raise LXDPodError(
                 f"Pod {pod_id}: Failed to connect to the LXD REST API."
             )
-        return client
+        yield client
 
 
 def _parse_cpu_cores(cpu_limits):
