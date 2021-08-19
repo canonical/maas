@@ -9,7 +9,7 @@ import random
 from socket import gethostname
 from threading import Lock
 from time import sleep
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, Union
 
 from OpenSSL import crypto
 
@@ -42,7 +42,7 @@ class Certificate(NamedTuple):
     cert: crypto.X509
 
     @classmethod
-    def from_pem(cls, material: bytes):
+    def from_pem(cls, material: Union[bytes, str]):
         """Return a Certificate from PEM encoded material.
 
         The material is expected to contain both the certificate and private
@@ -64,17 +64,23 @@ class Certificate(NamedTuple):
             return None
         return datetime.strptime(expiry.decode("ascii"), "%Y%m%d%H%M%SZ")
 
-    def public_key_pem(self) -> bytes:
+    def public_key_pem(self) -> str:
         """Return PEM-encoded public key."""
-        return crypto.dump_publickey(crypto.FILETYPE_PEM, self.key)
+        return crypto.dump_publickey(crypto.FILETYPE_PEM, self.key).decode(
+            "ascii"
+        )
 
-    def private_key_pem(self) -> bytes:
+    def private_key_pem(self) -> str:
         """Return PEM-encoded private key."""
-        return crypto.dump_privatekey(crypto.FILETYPE_PEM, self.key)
+        return crypto.dump_privatekey(crypto.FILETYPE_PEM, self.key).decode(
+            "ascii"
+        )
 
-    def certificate_pem(self) -> bytes:
+    def certificate_pem(self) -> str:
         """Return PEM-encoded certificate."""
-        return crypto.dump_certificate(crypto.FILETYPE_PEM, self.cert)
+        return crypto.dump_certificate(crypto.FILETYPE_PEM, self.cert).decode(
+            "ascii"
+        )
 
     def cert_hash(self) -> str:
         """Return the SHA-256 digest for the certificate."""

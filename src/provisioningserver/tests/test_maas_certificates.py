@@ -57,18 +57,27 @@ class TestCertificate(MAASTestCase):
             cert.expiration(),
         )
         self.assertTrue(
-            cert.certificate_pem().startswith(b"-----BEGIN CERTIFICATE-----")
+            cert.certificate_pem().startswith("-----BEGIN CERTIFICATE-----")
         )
         self.assertTrue(
-            cert.public_key_pem().startswith(b"-----BEGIN PUBLIC KEY-----")
+            cert.public_key_pem().startswith("-----BEGIN PUBLIC KEY-----")
         )
         self.assertTrue(
-            cert.private_key_pem().startswith(b"-----BEGIN PRIVATE KEY-----")
+            cert.private_key_pem().startswith("-----BEGIN PRIVATE KEY-----")
         )
 
-    def test_from_pem(self):
+    def test_from_pem_string(self):
         cert = maas_certificates.generate_certificate("maas")
         material = cert.certificate_pem() + cert.private_key_pem()
+        other_cert = maas_certificates.Certificate.from_pem(material)
+        self.assertEqual(cert.certificate_pem(), other_cert.certificate_pem())
+        self.assertEqual(cert.private_key_pem(), other_cert.private_key_pem())
+
+    def test_from_pem_bytes(self):
+        cert = maas_certificates.generate_certificate("maas")
+        material = bytes(
+            cert.certificate_pem() + cert.private_key_pem(), "ascii"
+        )
         other_cert = maas_certificates.Certificate.from_pem(material)
         self.assertEqual(cert.certificate_pem(), other_cert.certificate_pem())
         self.assertEqual(cert.private_key_pem(), other_cert.private_key_pem())
