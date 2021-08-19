@@ -180,6 +180,8 @@ lint-shell: bin/shellcheck
 		src/provisioningserver/refresh/maas-lshw \
 		src/provisioningserver/refresh/maas-serial-ports \
 		src/provisioningserver/refresh/maas-support-info \
+		utilities/build_custom_ubuntu_image \
+		utilities/build_custom_ubuntu_image_no_kernel \
 		utilities/connect-snap-interfaces \
 		utilities/gen-db-schema-svg \
 		utilities/ldap-setup \

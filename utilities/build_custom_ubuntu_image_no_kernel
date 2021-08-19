@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# This script provides a no-kernel no-bootloader custom image of Ubuntu for development purposes
+
+OS_VERSION="${OS_VERSION:-focal}"
+OS_ARCH="${OS_ARCH:-amd64}"
+OUTPUT_FILE="${OUTPUT_FILE:-../custom-ubuntu-${OS_VERSION}-${OS_ARCH}.tar.gz}"
+
+TMP_DIR=$(mktemp -d /tmp/custom-ubuntu-XXXX)
+
+pull_base_img () {
+    if [ ! -e "/tmp/${OS_VERSION}-server-cloudimg-${OS_ARCH}-root.tar.xz" ]; then
+        echo "Pulling base Ubuntu Image"
+        curl -L -o "/tmp/${OS_VERSION}-server-cloudimg-${OS_ARCH}-root.tar.xz"\
+            "http://cloud-images.ubuntu.com/${OS_VERSION}/current/${OS_VERSION}-server-cloudimg-${OS_ARCH}-root.tar.xz"
+    fi
+}
+
+unpack () {
+    echo "Unpacking base image"
+    sudo tar xf "../${OS_VERSION}-server-cloudimg-${OS_ARCH}-root.tar.xz"
+}
+
+setup_chroot () {
+    echo "Bootstrapping chroot"
+    mkdir -p "${TMP_DIR}/proc"
+    mkdir -p "${TMP_DIR}/dev"
+    mkdir -p "${TMP_DIR}/sys"
+    sudo mount -o bind /proc "${TMP_DIR}/proc"
+    sudo mount -o bind /dev "${TMP_DIR}/dev"
+    sudo mount -o bind /sys "${TMP_DIR}/sys"
+    sudo mv "${TMP_DIR}/etc/resolv.conf" "${TMP_DIR}/etc/resolv.conf.bak"
+    sudo cp /etc/resolv.conf "${TMP_DIR}/etc/"
+}
+
+teardown_chroot () {
+    echo "Tearing down chroot"
+    sudo umount "${TMP_DIR}/proc"
+    sudo umount "${TMP_DIR}/dev"
+    sudo umount "${TMP_DIR}/sys"
+    sudo mv "${TMP_DIR}/etc/resolv.conf.bak" "${TMP_DIR}/etc/resolv.conf"
+}
+
+package () {
+    echo "Packaging chroot"
+    sudo tar -czf "${OUTPUT_FILE}" -C "${TMP_DIR}" .
+}
+
+clean () {
+    echo "Cleaning workspace"
+    sudo rm -rf "${TMP_DIR}"
+}
+
+main () {
+    printf "\033[0;31mWARNING, FOR DEV USE, DO NOT USE FOR PRODUCTION IMAGES\033[0m\n"
+    case $1 in
+        -h)
+            echo "TMP_DIR: path to build image in, defaults to a random dir in /tmp"
+            echo "OS_VERSION: version of Ubuntu to build, defaults to focal"
+            echo "OS_ARCH: architecture to pull, defaults to amd64"
+            echo "CUSTOM_CMDS: bash commands to customize image with, none by default"
+            ;;
+        *)
+            cd /tmp/ || exit 1;
+            pull_base_img
+            cd "${TMP_DIR}" || exit 1;
+            unpack
+            setup_chroot
+            sudo chroot "${TMP_DIR}" /bin/bash -e <<'EOF'
+echo "running customizations...";
+apt update;
+${CUSTOM_CMDS};
+apt autoremove -y;
+exit;
+EOF
+            teardown_chroot
+            package
+            clean
+            ;;
+    esac
+}
+
+main "$1"
