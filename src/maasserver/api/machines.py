@@ -1915,10 +1915,13 @@ class MachinesHandler(NodesHandler, PowersMixin):
         """@description-title Create a new machine
         @description Create a new machine.
 
-        Adding a server to MAAS wipes its disks and re-installs its operating
-        system, in the event that it PXE boots.  In anonymous enlistment (and
-        when the enlistment is done by a non-admin), the machine is held in the
-        "New" state for approval by a MAAS admin.
+        Adding a server to MAAS will (by default) cause the machine to
+        network boot into an ephemeral environment to collect hardware
+        information.
+
+        In anonymous enlistment (and when the enlistment is done by a
+        non-admin), the machine is held in the "New" state for approval
+        by a MAAS admin.
 
         The minimum data required is:
 
@@ -1967,7 +1970,9 @@ class MachinesHandler(NodesHandler, PowersMixin):
 
         @param (boolean) "deployed" [required=false,formatting=true] Request
         the newly created machine to be created with status set to
-        DEPLOYED.
+        DEPLOYED. Setting this to true implies commissioning=false,
+        meaning that the machine won't go through the commissioning
+        process.
 
         @param (int) "enable_ssh" [required=false]  Whether to enable SSH for
         the commissioning environment using the user's SSH key(s). '1' == True,
