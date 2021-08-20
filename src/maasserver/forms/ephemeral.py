@@ -21,8 +21,8 @@ from django.http import QueryDict
 from maasserver.enum import NODE_STATUS
 from maasserver.node_action import compile_node_actions
 from maasserver.utils.forms import set_form_error
-from metadataserver.enum import RESULT_TYPE, SCRIPT_TYPE
-from metadataserver.models import NodeKey, Script, ScriptSet
+from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.models import Script
 
 
 class TestForm(Form):
@@ -322,31 +322,3 @@ class CommissionForm(TestForm):
             ),
         )
         return self.instance
-
-
-class CreateScriptsForDeployedForm(Form):
-    def __init__(self, instance, **kwargs):
-        super().__init__(**kwargs)
-        self.instance = instance
-
-    def save(self):
-        node = self.instance
-        scripts = list(
-            Script.objects.filter(
-                script_type=SCRIPT_TYPE.COMMISSIONING,
-                default=True,
-                tags__contains=["deploy-info"],
-            )
-        )
-        script_set = ScriptSet.objects.create(
-            node=node,
-            result_type=RESULT_TYPE.COMMISSIONING,
-            requested_scripts=[script.name for script in scripts],
-        )
-        for script in scripts:
-            script_set.add_pending_script(script)
-        node.current_commissioning_script_set = script_set
-        node.save()
-        # ensure a token is available for the machine
-        NodeKey.objects.get_token_for_node(node)
-        return script_set

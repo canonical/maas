@@ -748,6 +748,7 @@ class MachineForm(NodeForm):
             "architecture", choices
         )
         required = requires_macs_and_architecture(self.data) or requires_arch
+        self._need_boot_images = required
         self.fields["architecture"] = forms.ChoiceField(
             choices=choices,
             required=required,
@@ -853,7 +854,7 @@ class MachineForm(NodeForm):
         is_valid = super().is_valid()
         if not is_valid:
             return False
-        if len(list_all_usable_architectures()) == 0:
+        if self._need_boot_images and not list_all_usable_architectures():
             set_form_error(self, "architecture", NO_ARCHITECTURES_AVAILABLE)
             is_valid = False
         return is_valid
@@ -1172,6 +1173,23 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         cleaned_data = WithPowerTypeMixin.check_driver(self, cleaned_data)
         return cleaned_data
 
+    def _setup_deployed_machine(self, machine):
+        """Configure the Machine before it has been saved."""
+        from metadataserver.models import NodeKey
+        from metadataserver.models.scriptset import ScriptSet
+
+        machine.status = NODE_STATUS.DEPLOYED
+        # Foreign relations need to have an id to relate to, have to
+        # save here
+        machine.save()
+        script_set = ScriptSet.objects.create_deployed_machine_script_set(
+            machine
+        )
+        machine.current_commissioning_script_set = script_set
+
+        # ensure a token is available for the machine
+        NodeKey.objects.get_token_for_node(machine)
+
     def save(self, *args, **kwargs):
         """Persist the node into the database."""
         machine = super().save(commit=False)
@@ -1182,7 +1200,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         if pool:
             machine.pool = pool
         if self.cleaned_data.get("deployed"):
-            machine.status = NODE_STATUS.DEPLOYED
+            self._setup_deployed_machine(machine)
         WithPowerTypeMixin.set_values(self, machine)
         if kwargs.get("commit", True):
             machine.save(*args, **kwargs)

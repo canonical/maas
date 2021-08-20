@@ -10,7 +10,7 @@ from unittest.mock import PropertyMock
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from maasserver.enum import NODE_TYPE
+from maasserver.enum import NODE_STATUS, NODE_TYPE
 from maasserver.exceptions import NoScriptsFound
 from maasserver.models import Config, Event, EventType, Node
 from maasserver.preseed import CURTIN_INSTALL_LOG
@@ -1010,6 +1010,48 @@ class TestScriptSetManager(MAASServerTestCase):
             ScriptSet.objects.filter(
                 result_type=RESULT_TYPE.INSTALLATION
             ).all(),
+        )
+
+    def test_create_deployed_machine_script_set_scripts(self):
+        # Avoid builtins muddying the test
+        Script.objects.all().delete()
+        script1 = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            default=True,
+            tags=["foo", "deploy-info"],
+        )
+        script2 = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            default=True,
+            tags=["bar", "deploy-info"],
+        )
+        # other scripts that are not matched
+        factory.make_Script(  # not for commissioning
+            script_type=SCRIPT_TYPE.TESTING,
+            default=True,
+            tags=["bar", "deploy-info"],
+        )
+        factory.make_Script(  # not a builtin script
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            default=False,
+            tags=["deploy-info"],
+        )
+        factory.make_Script(  # no deploy-info tag
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            default=True,
+            tags=["foo"],
+        )
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        script_set = ScriptSet.objects.create_deployed_machine_script_set(node)
+        self.assertItemsEqual(
+            [
+                (script_result.script, script_result.status)
+                for script_result in script_set.scriptresult_set.all()
+            ],
+            [
+                (script1, SCRIPT_STATUS.PENDING),
+                (script2, SCRIPT_STATUS.PENDING),
+            ],
         )
 
 

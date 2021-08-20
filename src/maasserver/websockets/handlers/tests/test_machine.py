@@ -114,6 +114,7 @@ from metadataserver.enum import (
     SCRIPT_STATUS_FAILED,
     SCRIPT_TYPE,
 )
+from metadataserver.models.nodekey import NodeKey
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
@@ -2415,6 +2416,33 @@ class TestMachineHandler(MAASServerTestCase):
             }
         )
         self.assertThat(mock_start_commissioning, MockCalledOnceWith(user))
+
+    def test_create_creates_deployed_node(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        hostname = factory.make_name("hostname")
+        description = factory.make_name("description")
+        zone = factory.make_Zone()
+
+        mock_start_commissioning = self.patch(
+            node_model, "start_commissioning"
+        )
+
+        created_node = handler.create(
+            {
+                "hostname": hostname,
+                "description": description,
+                "zone": {"name": zone.name},
+                "deployed": True,
+            }
+        )
+        # the commissioning process is not started
+        mock_start_commissioning.assert_not_called()
+        self.assertEqual(created_node["status"], "Deployed")
+        node = Node.objects.get(system_id=created_node["system_id"])
+        self.assertIsNotNone(node.current_commissioning_script_set)
+        self.assertTrue(NodeKey.objects.filter(node=node).exists())
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
 
     def test_update_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()

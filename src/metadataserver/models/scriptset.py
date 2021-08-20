@@ -227,6 +227,25 @@ class ScriptSetManager(Manager):
         self._clean_old(node, RESULT_TYPE.INSTALLATION, script_set)
         return script_set
 
+    def create_deployed_machine_script_set(self, machine):
+        """Setup ScriptSet for a brown-field deployment.
+
+        Built-in scripts with deploy-info tag are queued up.
+        """
+        scripts = list(
+            Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING,
+                default=True,
+                tags__contains=["deploy-info"],
+            )
+        )
+        script_set = machine.scriptset_set.create(
+            requested_scripts=[script.name for script in scripts]
+        )
+        for script in scripts:
+            script_set.add_pending_script(script)
+        return script_set
+
     def _find_scripts(self, script_qs, hw_pairs, modaliases):
         for script in script_qs:
             # If a script is not for specific hardware, it is always included
@@ -444,13 +463,10 @@ class ScriptSet(CleanSave, Model):
     def add_pending_script(self, script, script_input=None):
         """Create and add a new ScriptResult for the given Script.
 
-        Creates a new ScriptResult for the given script and assoicates it with
+        Creates a new ScriptResult for the given script and associates it with
         this ScriptSet. Raises a ValidationError if ParametersForm validation
         fails.
         """
-        # Avoid circular dependencies.
-        from metadataserver.models import ScriptResult
-
         if script_input is None:
             script_input = {}
         form = ParametersForm(
@@ -461,8 +477,7 @@ class ScriptSet(CleanSave, Model):
         if not form.is_valid():
             raise ValidationError(form.errors)
         for param in form.cleaned_data["input"]:
-            ScriptResult.objects.create(
-                script_set=self,
+            self.scriptresult_set.create(
                 status=SCRIPT_STATUS.PENDING,
                 script=script,
                 script_name=script.name,

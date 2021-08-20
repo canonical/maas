@@ -71,10 +71,7 @@ from maasserver.forms import (
     MachineForm,
 )
 from maasserver.forms.clone import CloneForm
-from maasserver.forms.ephemeral import (
-    CommissionForm,
-    CreateScriptsForDeployedForm,
-)
+from maasserver.forms.ephemeral import CommissionForm
 from maasserver.forms.filesystem import (
     MountNonStorageFilesystemForm,
     UnmountNonStorageFilesystemForm,
@@ -1968,6 +1965,10 @@ class MachinesHandler(NodesHandler, PowersMixin):
         time out. Machines created by administrators will be commissioned
         unless set to false.
 
+        @param (boolean) "deployed" [required=false,formatting=true] Request
+        the newly created machine to be created with status set to
+        DEPLOYED.
+
         @param (int) "enable_ssh" [required=false]  Whether to enable SSH for
         the commissioning environment using the user's SSH key(s). '1' == True,
         '0' == False.
@@ -2011,21 +2012,14 @@ class MachinesHandler(NodesHandler, PowersMixin):
             request.data, "deployed", default=False, validator=StringBool
         )
         machine = create_machine(request)
-        if request.user.is_superuser:
-            if deployed:
-                form = CreateScriptsForDeployedForm(
-                    instance=machine,
-                    data=request.data,
-                )
-                form.save()
-            elif commission:
-                form = CommissionForm(
-                    instance=machine, user=request.user, data=request.data
-                )
-                # Silently ignore errors to prevent 500 errors. The commissioning
-                # callbacks have their own logging. This fixes LP:1600328.
-                if form.is_valid():
-                    machine = form.save()
+        if request.user.is_superuser and commission and not deployed:
+            form = CommissionForm(
+                instance=machine, user=request.user, data=request.data
+            )
+            # Silently ignore errors to prevent 500 errors. The commissioning
+            # callbacks have their own logging. This fixes LP:1600328.
+            if form.is_valid():
+                machine = form.save()
 
         return machine
 

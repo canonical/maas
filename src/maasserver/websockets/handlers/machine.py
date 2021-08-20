@@ -22,6 +22,7 @@ from maasserver.enum import (
 from maasserver.exceptions import NodeActionError, NodeStateViolation
 from maasserver.forms import (
     AddPartitionForm,
+    AdminMachineForm,
     AdminMachineWithMACAddressesForm,
     CreateBcacheForm,
     CreateCacheSetForm,
@@ -246,6 +247,10 @@ class MachineHandler(NodeHandler):
         edit_permission = NodePermission.admin
         delete_permission = NodePermission.admin
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._deployed = False
+
     def get_queryset(self, for_list=False):
         """Return `QuerySet` for devices only viewable by `user`."""
         return Machine.objects.get_nodes(
@@ -391,6 +396,8 @@ class MachineHandler(NodeHandler):
 
     def get_form_class(self, action):
         """Return the form class used for `action`."""
+        if action == "create" and self._deployed:
+            return AdminMachineForm
         if action in ("create", "update"):
             return AdminMachineWithMACAddressesForm
         else:
@@ -408,6 +415,7 @@ class MachineHandler(NodeHandler):
         new_params["description"] = params.get("description")
         new_params["power_type"] = params.get("power_type")
         new_params["power_parameters"] = params.get("power_parameters")
+        new_params["deployed"] = params.get("deployed")
         if "zone" in params:
             new_params["zone"] = params["zone"]["name"]
         if params.get("pool"):
@@ -427,18 +435,18 @@ class MachineHandler(NodeHandler):
         return super().preprocess_form(action, new_params)
 
     def create(self, params):
-        """Create the object from params."""
+        self._deployed = bool(params.get("deployed", False))
         data = super().create(params)
-        node_obj = Node.objects.get(system_id=data["system_id"])
+        if not self._deployed:
+            machine = Node.objects.get(system_id=data["system_id"])
+            # Start the commissioning process right away, which has the
+            # desired side effect of initializing the node's power state.
+            d = machine.start_commissioning(self.user)
+            # Silently ignore errors to prevent tracebacks. The commissioning
+            # callbacks have their own logging. This fixes LP1600328.
+            d.addErrback(lambda _: None)
 
-        # Start the commissioning process right away, which has the
-        # desired side effect of initializing the node's power state.
-        d = node_obj.start_commissioning(self.user)
-        # Silently ignore errors to prevent tracebacks. The commissioning
-        # callbacks have their own logging. This fixes LP1600328.
-        d.addErrback(lambda _: None)
-
-        return self.full_dehydrate(node_obj)
+        return data
 
     def update(self, params):
         """Update the object from params."""

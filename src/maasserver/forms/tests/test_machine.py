@@ -24,6 +24,7 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
 )
 from maasserver.testing.testcase import MAASServerTestCase
+from metadataserver.models import NodeKey
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
@@ -409,11 +410,9 @@ class TestAdminMachineForm(MAASServerTestCase):
 
     def test_AdminMachineForm_new_machine_deployed(self):
         hostname = factory.make_string()
-        arch = make_usable_architecture(self)
         form = AdminMachineForm(
             data={
                 "hostname": hostname,
-                "architecture": arch,
                 "deployed": True,
             },
         )
@@ -518,3 +517,25 @@ class TestAdminMachineForm(MAASServerTestCase):
                 ]
             },
         )
+
+    def test_AdminMachineForm_creates_scriptset_for_deployed(self):
+        hostname = factory.make_string()
+        form = AdminMachineForm(
+            data={
+                "hostname": hostname,
+                "deployed": True,
+            },
+        )
+        machine = form.save()
+        self.assertIsNotNone(machine.current_commissioning_script_set)
+
+    def test_AdminMachineForm_creates_node_token_for_deployed(self):
+        hostname = factory.make_string()
+        form = AdminMachineForm(
+            data={
+                "hostname": hostname,
+                "deployed": True,
+            },
+        )
+        machine = form.save()
+        self.assertTrue(NodeKey.objects.filter(node=machine).exists())

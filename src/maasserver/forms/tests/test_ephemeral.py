@@ -12,16 +12,11 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
 )
-from maasserver.forms.ephemeral import (
-    CommissionForm,
-    CreateScriptsForDeployedForm,
-    TestForm,
-)
+from maasserver.forms.ephemeral import CommissionForm, TestForm
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from metadataserver.enum import SCRIPT_STATUS, SCRIPT_TYPE
-from metadataserver.models import NodeKey
+from metadataserver.enum import SCRIPT_TYPE
 
 
 class TestTestForm(MAASServerTestCase):
@@ -988,54 +983,3 @@ class TestCommissionForm(MAASServerTestCase):
                 script_input={},
             ),
         )
-
-
-class TestCreateScriptsForDeployedForm(MAASServerTestCase):
-    def test_create_scripts(self):
-        script1 = factory.make_Script(
-            script_type=SCRIPT_TYPE.COMMISSIONING,
-            default=True,
-            tags=["foo", "deploy-info"],
-        )
-        script2 = factory.make_Script(
-            script_type=SCRIPT_TYPE.COMMISSIONING,
-            default=True,
-            tags=["bar", "deploy-info"],
-        )
-        # other scripts that are not matched
-        factory.make_Script(  # not for commissioning
-            script_type=SCRIPT_TYPE.TESTING,
-            default=True,
-            tags=["bar", "deploy-info"],
-        )
-        factory.make_Script(  # not a builtin script
-            script_type=SCRIPT_TYPE.COMMISSIONING,
-            default=False,
-            tags=["deploy-info"],
-        )
-        factory.make_Script(  # no deploy-info tag
-            script_type=SCRIPT_TYPE.COMMISSIONING,
-            default=True,
-            tags=["foo"],
-        )
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        form = CreateScriptsForDeployedForm(instance=node, data={})
-        self.assertTrue(form.is_valid())
-        script_set = form.save()
-        self.assertEqual(script_set.node, node)
-        script_results = list(script_set.scriptresult_set.order_by("id"))
-        self.assertEqual(
-            [script_result.script for script_result in script_results],
-            [script1, script2],
-        )
-        for script_result in script_results:
-            self.assertEqual(script_result.status, SCRIPT_STATUS.PENDING)
-        self.assertIs(node.current_commissioning_script_set, script_set)
-
-    def test_create_node_token(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.assertFalse(NodeKey.objects.filter(node=node).exists())
-        form = CreateScriptsForDeployedForm(instance=node, data={})
-        self.assertTrue(form.is_valid())
-        form.save()
-        self.assertTrue(NodeKey.objects.filter(node=node).exists())
