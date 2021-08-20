@@ -5,8 +5,10 @@
 
 
 from contextlib import contextmanager, suppress
+import os
 import re
-from typing import Optional
+from tempfile import mkstemp
+from typing import Optional, Tuple
 from urllib.parse import urlparse
 import uuid
 
@@ -750,6 +752,7 @@ class LXDPodDriver(PodDriver):
         self, pod_id: int, context: dict, project: Optional[str] = None
     ):
         """Return a context manager with a PyLXD client."""
+        cert_paths = self._get_cert_paths(context)
         if not project:
             project = context.get("project", "default")
         endpoint = self.get_url(context)
@@ -757,7 +760,7 @@ class LXDPodDriver(PodDriver):
             client = Client(
                 endpoint=endpoint,
                 project=project,
-                cert=get_maas_cert_tuple(),
+                cert=cert_paths or get_maas_cert_tuple(),
                 verify=False,
             )
             if not client.trusted:
@@ -776,6 +779,27 @@ class LXDPodDriver(PodDriver):
                 f"Pod {pod_id}: Failed to connect to the LXD REST API."
             )
         yield client
+        if cert_paths:
+            for path in cert_paths:
+                os.unlink(path)
+
+    def _get_cert_paths(self, context: dict) -> Optional[Tuple[str]]:
+        """Return a 2-tuple with paths for temporary files containing cert and key.
+
+        If no certificate or key are provided, None is returned.
+        """
+        cert = context.get("certificate")
+        key = context.get("key")
+        if not cert or not key:
+            return None
+
+        def write_temp(content) -> str:
+            fileno, path = mkstemp()
+            os.write(fileno, bytes(content, "ascii"))
+            os.close(fileno)
+            return path
+
+        return write_temp(cert), write_temp(key)
 
 
 def _parse_cpu_cores(cpu_limits):

@@ -1,7 +1,7 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from os.path import join
+from os.path import exists, join
 import random
 from unittest.mock import ANY, Mock, PropertyMock, sentinel
 
@@ -108,8 +108,8 @@ class TestLXDPodDriver(MAASTestCase):
         get_machine = self.patch(driver, "_get_machine")
         return get_machine.return_value.__enter__.return_value
 
-    def make_parameters_context(self):
-        return {
+    def make_parameters_context(self, extra=None):
+        params = {
             "power_address": "".join(
                 [
                     factory.make_name("power_address"),
@@ -120,6 +120,9 @@ class TestLXDPodDriver(MAASTestCase):
             "password": factory.make_name("password"),
             "project": factory.make_name("project"),
         }
+        if not extra:
+            extra = {}
+        return {**params, **extra}
 
     def test_missing_packages(self):
         driver = lxd_module.LXDPodDriver()
@@ -175,6 +178,32 @@ class TestLXDPodDriver(MAASTestCase):
             client.authenticate.assert_called_once_with(context["password"])
             self.assertEqual(client, returned_client)
 
+    def test_get_client_with_certificate_and_key(self):
+        context = self.make_parameters_context(
+            {"key": "KEY", "certificate": "CERT"}
+        )
+        Client = self.patch(lxd_module, "Client")
+        client = Client.return_value
+        client.has_api_extension.return_value = True
+        client.trusted = False
+        driver = lxd_module.LXDPodDriver()
+        endpoint = driver.get_url(context)
+        with driver._get_client(None, context):
+            Client.assert_called_once_with(
+                endpoint=endpoint,
+                project=context["project"],
+                cert=ANY,
+                verify=False,
+            )
+            cert_path, key_path = Client.mock_calls[0].kwargs["cert"]
+            with open(cert_path) as fd:
+                self.assertEqual("CERT", fd.read())
+            with open(key_path) as fd:
+                self.assertEqual("KEY", fd.read())
+        # the files are removed after the client is done
+        self.assertFalse(exists(cert_path))
+        self.assertFalse(exists(key_path))
+
     def test_get_client_default_project(self):
         context = self.make_parameters_context()
         context.pop("project")
@@ -216,8 +245,7 @@ class TestLXDPodDriver(MAASTestCase):
             self.assertEqual(client, returned_client)
 
     def test_get_client_raises_error_when_not_trusted_and_no_password(self):
-        context = self.make_parameters_context()
-        context["password"] = None
+        context = self.make_parameters_context({"password": None})
         pod_id = factory.make_name("pod_id")
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
