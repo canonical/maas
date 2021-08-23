@@ -6,6 +6,7 @@
 
 from contextlib import contextmanager, suppress
 import os
+from pathlib import Path
 import re
 from tempfile import mkstemp
 from typing import Optional, Tuple
@@ -144,7 +145,7 @@ def get_lxd_machine_definition(request, include_profile=False):
 
 
 class LXDPodError(Exception):
-    """Failure communicating to LXD. """
+    """Failure communicating to LXD."""
 
 
 class LXDPodDriver(PodDriver):
@@ -752,28 +753,54 @@ class LXDPodDriver(PodDriver):
         self, pod_id: int, context: dict, project: Optional[str] = None
     ):
         """Return a context manager with a PyLXD client."""
-        cert_paths = self._get_cert_paths(context)
+
+        def Error(message):
+            return LXDPodError(f"VM Host {pod_id}: {message}")
+
+        endpoint = self.get_url(context)
         if not project:
             project = context.get("project", "default")
-        endpoint = self.get_url(context)
-        try:
+
+        password = context.get("password")
+        cert_paths = self._get_cert_paths(context)
+        maas_certs = get_maas_cert_tuple()
+        if not cert_paths and not maas_certs:
+            raise Error("No certificates avilable")
+
+        def client_with_certs(cert):
             client = Client(
                 endpoint=endpoint,
                 project=project,
-                cert=cert_paths or get_maas_cert_tuple(),
+                cert=cert,
                 verify=False,
             )
+            if not client.trusted and password:
+                try:
+                    client.authenticate(password)
+                except LXDAPIException as e:
+                    raise Error(f"Password authentication failed: {e}")
+            return client
+
+        try:
+            if cert_paths:
+                client = client_with_certs(cert_paths)
+                if not client.trusted and maas_certs:
+                    with suppress(LXDAPIException):
+                        # Try to trust the certificate using the controller
+                        # certs. If this fails, ignore the error as the trusted
+                        # status for the original client is checked later.
+                        client_with_certs(maas_certs).certificates.create(
+                            "", Path(cert_paths[0]).read_bytes()
+                        )
+                        # create a new client since the certs are now trusted
+                        client = client_with_certs(cert_paths)
+            else:
+                client = client_with_certs(maas_certs)
+
             if not client.trusted:
-                password = context.get("password")
-                if password:
-                    try:
-                        client.authenticate(password)
-                    except LXDAPIException as e:
-                        raise LXDPodError(f"Authentication failed: {e}")
-                else:
-                    raise LXDPodError(
-                        f"Pod {pod_id}: Certificate is not trusted and no password was given."
-                    )
+                raise Error(
+                    "Certificate is not trusted and no password was given"
+                )
         except ClientConnectionFailed:
             raise LXDPodError(
                 f"Pod {pod_id}: Failed to connect to the LXD REST API."
