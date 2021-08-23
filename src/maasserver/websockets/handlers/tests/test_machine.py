@@ -71,6 +71,7 @@ from maasserver.storage_layouts import (
     get_applied_storage_layout_for_node,
     get_storage_layout_choices,
     VMFS6StorageLayout,
+    VMFS7StorageLayout,
 )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -825,7 +826,7 @@ class TestMachineHandler(MAASServerTestCase):
         handler.dehydrate(node, data)
         self.assertEqual(data["pod"], {"id": pod.id, "name": pod.name})
 
-    def test_dehydrate_with_vmfs_layout_sets_reserved(self):
+    def test_dehydrate_with_vmfs6_layout_sets_reserved(self):
         owner = factory.make_User()
         node = factory.make_Node(with_boot_disk=False)
         node.boot_disk = factory.make_PhysicalBlockDevice(
@@ -838,6 +839,38 @@ class TestMachineHandler(MAASServerTestCase):
             if disk["id"] == node.boot_disk.id:
                 for partition in disk["partitions"]:
                     if partition["name"].endswith("-part3"):
+                        self.assertEqual(
+                            "VMFS extent for datastore1", partition["used_for"]
+                        )
+                    else:
+                        self.assertEqual(
+                            "VMware ESXi OS partition", partition["used_for"]
+                        )
+                        self.assertDictEqual(
+                            {
+                                "id": -1,
+                                "label": "RESERVED",
+                                "mount_point": "RESERVED",
+                                "mount_options": None,
+                                "fstype": None,
+                                "is_format_fstype": False,
+                            },
+                            partition["filesystem"],
+                        )
+
+    def test_dehydrate_with_vmfs7_layout_sets_reserved(self):
+        owner = factory.make_User()
+        node = factory.make_Node(with_boot_disk=False)
+        node.boot_disk = factory.make_PhysicalBlockDevice(
+            node=node, size=LARGE_BLOCK_DEVICE
+        )
+        layout = VMFS7StorageLayout(node)
+        layout.configure()
+        handler = MachineHandler(owner, {}, None)
+        for disk in handler.dehydrate(node, {})["disks"]:
+            if disk["id"] == node.boot_disk.id:
+                for partition in disk["partitions"]:
+                    if partition["name"].endswith("-part8"):
                         self.assertEqual(
                             "VMFS extent for datastore1", partition["used_for"]
                         )

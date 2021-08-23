@@ -393,12 +393,17 @@ class NodeHandler(TimestampedModelHandler):
                 # partition. VMware ESXi does not directly mount the partitions
                 # used. As MAAS can't model that inject a place holder so the
                 # UI knows that these partitions are in use.
-                if detected_layout == "vmfs6":
+                datastore_partition_for_layout = {
+                    "vmfs6": "-part3",
+                    "vmfs7": "-part8",
+                }.get(detected_layout)
+                if datastore_partition_for_layout is not None:
                     for disk in data["disks"]:
                         if disk["id"] == layout_bd.id:
                             for partition in disk["partitions"]:
-                                if partition["name"].endswith("-part3"):
-                                    # Partition 3 is for the default datastore.
+                                if partition["name"].endswith(
+                                    datastore_partition_for_layout
+                                ):
                                     # This partition may be modified by the
                                     # user.
                                     continue
