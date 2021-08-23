@@ -44,7 +44,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node_device.id for node_device in node.node_devices.all()],
             [node_device["id"] for node_device in parsed_results],
         )
@@ -56,7 +56,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 node_device.id
                 for node_device in self.node.node_devices.filter(bus=bus)
@@ -74,7 +74,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 node_device.id
                 for node_device in self.node.node_devices.filter(
@@ -97,7 +97,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertEqual(
+        self.assertCountEqual(
             [node_device.id for node_device in node_devices],
             [node_device["id"] for node_device in parsed_results],
         )
@@ -115,7 +115,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node_device.id for node_device in node_devices],
             [node_device["id"] for node_device in parsed_results],
         )
@@ -133,7 +133,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertEqual(
+        self.assertCountEqual(
             [node_device.id for node_device in node_devices],
             [node_device["id"] for node_device in parsed_results],
         )
@@ -151,7 +151,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertEqual(
+        self.assertCountEqual(
             [node_device.id for node_device in node_devices],
             [node_device["id"] for node_device in parsed_results],
         )
@@ -172,7 +172,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertEqual(
+        self.assertCountEqual(
             [node_device.id for node_device in node_devices],
             [node_device["id"] for node_device in parsed_results],
         )

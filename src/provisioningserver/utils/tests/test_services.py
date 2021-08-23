@@ -16,7 +16,6 @@ from unittest.mock import ANY, call, Mock
 from uuid import uuid1
 
 from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -36,14 +35,6 @@ from twisted.python import threadable
 from twisted.python.failure import Failure
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    DocTestMatches,
-    HasLength,
-    IsFiredDeferred,
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver import refresh as refresh_module
@@ -368,8 +359,8 @@ class TestNetworksMonitoringService(MAASTestCase):
         yield service._do_action()
         self.assertEqual(1, len(service.interfaces))
         [thread] = threads
-        self.assertThat(thread, IsInstance(threading.Thread))
-        self.assertThat(thread, Not(Equals(threadable.ioThread)))
+        self.assertIsInstance(thread, threading.Thread)
+        self.assertNotEqual(thread, threadable.ioThread)
 
     @inlineCallbacks
     def test_getInterfaces_called_to_get_configuration(self):
@@ -381,7 +372,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         }
         getInterfaces.return_value = succeed(my_interfaces)
         yield service._do_action()
-        self.assertThat(service.interfaces, Equals([my_interfaces]))
+        self.assertEqual(service.interfaces, [my_interfaces])
 
     @inlineCallbacks
     def test_logs_errors(self):
@@ -394,11 +385,9 @@ class TestNetworksMonitoringService(MAASTestCase):
             )
             get_interfaces.side_effect = Exception(error_message)
             yield service._do_action()
-        self.assertThat(
-            logger.output,
-            DocTestMatches(
+        self.assertTrue(
+            logger.output.startswith(
                 "Failed to update and/or record network interface configuration"
-                "..."
             ),
         )
 
@@ -518,16 +507,14 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         service = self.makeService()
         service.running = 1
-        self.assertThat(service.interfaces, HasLength(0))
+        self.assertEqual(service.interfaces, [])
         yield service._do_action()
-        self.assertThat(service.interfaces, Equals([my_interfaces1]))
+        self.assertEqual(service.interfaces, [my_interfaces1])
         self.fake_refresher.reset()
         yield service._do_action()
-        self.assertThat(
-            service.interfaces, Equals([my_interfaces1, my_interfaces2])
-        )
+        self.assertEqual(service.interfaces, [my_interfaces1, my_interfaces2])
 
-        self.assertThat(get_interfaces, MockCallsMatch(call(), call()))
+        get_interfaces.assert_has_calls(calls=[call(), call()])
 
     @inlineCallbacks
     def test_recordInterfaces_not_called_when_interfaces_not_changed(self):
@@ -537,13 +524,13 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         service = self.makeService()
         service.running = 1
-        self.assertThat(service.interfaces, HasLength(0))
+        self.assertEqual(service.interfaces, [])
         yield service._do_action()
-        self.assertThat(service.interfaces, Equals([{}]))
+        self.assertEqual(service.interfaces, [{}])
         yield service._do_action()
-        self.assertThat(service.interfaces, Equals([{}]))
+        self.assertEqual(service.interfaces, [{}])
 
-        self.assertThat(get_interfaces, MockCallsMatch(call(), call()))
+        get_interfaces.assert_has_calls(calls=[call(), call()])
 
     @inlineCallbacks
     def test_recordInterfaces_called_after_failure(self):
@@ -608,7 +595,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         self.assertFalse(lock.is_locked())
 
         # Interfaces were recorded.
-        self.assertThat(service.interfaces, Not(Equals([])))
+        self.assertNotEqual(service.interfaces, [])
 
     @inlineCallbacks
     def test_does_not_update_if_cannot_assume_sole_responsibility(self):
@@ -625,7 +612,7 @@ class TestNetworksMonitoringService(MAASTestCase):
             yield service._do_action()
 
         # Interfaces were NOT recorded.
-        self.assertThat(service.interfaces, Equals([]))
+        self.assertEqual(service.interfaces, [])
 
     @inlineCallbacks
     def test_attempts_to_assume_sole_responsibility_on_each_iteration(self):
@@ -640,11 +627,11 @@ class TestNetworksMonitoringService(MAASTestCase):
             yield service._do_action()
 
         # Interfaces have not been recorded yet.
-        self.assertThat(service.interfaces, Equals([]))
+        self.assertEqual(service.interfaces, [])
         # Iterate once more and ...
         yield service._do_action()
         # ... interfaces ARE recorded.
-        self.assertThat(service.interfaces, Not(Equals([])))
+        self.assertNotEqual(service.interfaces, [])
 
 
 class TestJSONPerLineProtocol(MAASTestCase):
@@ -666,28 +653,28 @@ class TestJSONPerLineProtocol(MAASTestCase):
         # Send an empty JSON dictionary using 3 separate writes.
         proto.outReceived(b"{")
         # No callback yet...
-        self.expectThat(callback, MockCallsMatch())
+        callback.assert_not_called()
         proto.outReceived(b"}")
         # Still no callback...
-        self.expectThat(callback, MockCallsMatch())
+        callback.assert_not_called()
         proto.outReceived(b"\n")
         # After a newline, we expect the JSON to be parsed and the callback
         # to receive an empty Python dictionary (which corresponds to the JSON
         # that was sent.)
-        self.expectThat(callback, MockCallsMatch(call([{}])))
+        callback.assert_called_once_with([{}])
 
     def test_ignores_interspersed_zero_length_writes(self):
         callback = Mock()
         proto = JSONPerLineProtocol(callback=callback)
         proto.connectionMade()
         proto.outReceived(b"")
-        self.expectThat(callback, MockCallsMatch())
+        callback.assert_not_called()
         proto.outReceived(b"{}\n")
-        self.expectThat(callback, MockCallsMatch(call([{}])))
+        callback.assert_called_once_with([{}])
         proto.outReceived(b"")
-        self.expectThat(callback, MockCallsMatch(call([{}])))
+        callback.assert_called_once_with([{}])
         proto.outReceived(b"{}\n")
-        self.expectThat(callback, MockCallsMatch(call([{}]), call([{}])))
+        callback.assert_has_calls(calls=[call([{}]), call([{}])])
 
     def test_logs_non_json_output(self):
         callback = Mock()
@@ -695,9 +682,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
         proto.connectionMade()
         with TwistedLoggerFixture() as logger:
             proto.outReceived(b"{\n")
-        self.assertThat(
-            logger.output, DocTestMatches("Failed to parse JSON: ...")
-        )
+        self.assertTrue(logger.output.startswith("Failed to parse JSON: "))
 
     def test_logs_stderr(self):
         message = factory.make_name("message")
@@ -706,7 +691,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
         proto.connectionMade()
         with TwistedLoggerFixture() as logger:
             proto.errReceived((message + "\n").encode("ascii"))
-        self.assertThat(logger.output, Equals(message))
+        self.assertEqual(logger.output, message)
 
     def test_logs_only_full_lines_from_stderr(self):
         message = factory.make_name("message")
@@ -715,7 +700,7 @@ class TestJSONPerLineProtocol(MAASTestCase):
         proto.connectionMade()
         with TwistedLoggerFixture() as logger:
             proto.errReceived(message.encode("ascii"))
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual(logger.output, "")
 
     def test_logs_stderr_at_process_end(self):
         message = factory.make_name("message")
@@ -724,9 +709,9 @@ class TestJSONPerLineProtocol(MAASTestCase):
         proto.connectionMade()
         with TwistedLoggerFixture() as logger:
             proto.errReceived(message.encode("ascii"))
-            self.assertThat(logger.output, Equals(""))
+            self.assertEqual(logger.output, "")
             proto.processEnded(Failure(ProcessDone(0)))
-        self.assertThat(logger.output, Equals(message))
+        self.assertEqual(logger.output, message)
 
     @inlineCallbacks
     def test_propagates_errors_from_command(self):
@@ -749,9 +734,7 @@ class TestProtocolForObserveARP(MAASTestCase):
         proto = ProtocolForObserveARP(ifname, callback=callback)
         proto.makeConnection(Mock(pid=None))
         proto.outReceived(b"{}\n")
-        self.expectThat(
-            callback, MockCallsMatch(call([{"interface": ifname}]))
-        )
+        callback.assert_called_once_with([{"interface": ifname}])
 
 
 class TestProtocolForObserveBeacons(MAASTestCase):
@@ -765,9 +748,7 @@ class TestProtocolForObserveBeacons(MAASTestCase):
         proto = ProtocolForObserveBeacons(ifname, callback=callback)
         proto.makeConnection(Mock(pid=None))
         proto.outReceived(b"{}\n")
-        self.expectThat(
-            callback, MockCallsMatch(call([{"interface": ifname}]))
-        )
+        callback.assert_called_once_with([{"interface": ifname}])
 
 
 class MockProcessProtocolService(ProcessProtocolService):
@@ -792,9 +773,9 @@ class FalseProcessProtocolService(MockProcessProtocolService):
         return [b"/bin/false"]
 
 
-class SleepProcessProtocolService(MockProcessProtocolService):
+class ForeverProcessProtocolService(MockProcessProtocolService):
     def getProcessParameters(self):
-        return [b"/bin/sleep", b"7"]
+        return [b"/bin/cat"]
 
 
 class EchoProcessProtocolService(MockProcessProtocolService):
@@ -826,20 +807,20 @@ class TestProcessProtocolService(MAASTestCase):
 
     @inlineCallbacks
     def test_starts_and_stops_process(self):
-        service = SleepProcessProtocolService()
+        service = ForeverProcessProtocolService()
         with TwistedLoggerFixture() as logger:
             service.startService()
-            self.assertThat(service._protocol.done, Not(IsFiredDeferred()))
+            self.assertIsInstance(service._protocol.done, Deferred)
+            self.assertFalse(service._protocol.done.called)
             yield service.stopService()
             result = yield service._protocol.done
-            self.assertThat(result, Is(None))
-        self.assertThat(
+            self.assertIsNone(result)
+        self.assertEqual(
+            """\
+ForeverProcessProtocolService started.
+---
+ForeverProcessProtocolService was terminated.""",
             logger.output,
-            DocTestMatches(
-                "SleepProcessProtocolService started.\n"
-                "-...-\n"
-                "SleepProcessProtocolService ..."
-            ),
         )
         with ExpectedException(ProcessExitedAlready):
             service._process.signalProcess("INT")
@@ -853,9 +834,9 @@ class TestProcessProtocolService(MAASTestCase):
             service.startService()
             yield service._protocol.done
             yield service.stopService()
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            Equals(
+            (
                 "TrueProcessProtocolService started.\n"
                 "---\n"
                 "TrueProcessProtocolService ended normally."
@@ -866,16 +847,16 @@ class TestProcessProtocolService(MAASTestCase):
     def test_handles_terminated_process_exit(self):
         # During service stop the spawned process can be terminated with a
         # signal. This is logged with a slightly different error message.
-        service = SleepProcessProtocolService()
+        service = ForeverProcessProtocolService()
         with TwistedLoggerFixture() as logger:
             service.startService()
             yield service.stopService()
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            Equals(
-                "SleepProcessProtocolService started.\n"
+            (
+                "ForeverProcessProtocolService started.\n"
                 "---\n"
-                "SleepProcessProtocolService was terminated."
+                "ForeverProcessProtocolService was terminated."
             ),
         )
 
@@ -887,17 +868,17 @@ class TestProcessProtocolService(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             service.startService()
             result = yield service._protocol.done
-            self.assertThat(result, Is(None))
+            self.assertIsNone(result)
             yield service.stopService()
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            DocTestMatches(
+            (
                 "FalseProcessProtocolService started.\n"
                 "---\n"
                 "FalseProcessProtocolService failed.\n"
                 "Traceback (most recent call last):\n"
-                "...: A process has ended with a probable error "
-                "condition: process ended with exit code 1."
+                "Failure: twisted.internet.error.ProcessTerminated: A process has ended with a probable error "
+                "condition: process ended with exit code 1.\n"
             ),
         )
 
@@ -907,9 +888,9 @@ class TestProcessProtocolService(MAASTestCase):
         service.startService()
         # Wait for the protocol to finish. (the echo process will stop)
         result = yield service._protocol.done
-        self.assertThat(service._callback, MockCalledOnceWith([{}]))
+        service._callback.assert_called_once_with([{}])
         yield service.stopService()
-        self.assertThat(result, Is(None))
+        self.assertIsNone(result)
 
 
 class TestNeighbourDiscoveryService(MAASTestCase):
@@ -921,10 +902,10 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         ifname = factory.make_name("eth")
         service = NeighbourDiscoveryService(ifname, Mock())
         args = service.getProcessParameters()
-        self.assertThat(args, HasLength(3))
+        self.assertEqual(len(args), 3)
         self.assertTrue(args[0].endswith(b"maas-common"))
-        self.assertTrue(args[1], Equals(b"observe-arp"))
-        self.assertTrue(args[2], Equals(ifname.encode("utf-8")))
+        self.assertEqual(args[1], b"observe-arp")
+        self.assertEqual(args[2], ifname.encode("utf-8"))
 
     @inlineCallbacks
     def test_restarts_process_after_finishing(self):
@@ -941,7 +922,8 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         interval = service.step
         service.clock.advance(interval)
         # The Deferred should have been recreated.
-        self.assertThat(service._protocol.done, Not(IsFiredDeferred()))
+        self.assertIsInstance(service._protocol.done, Deferred)
+        self.assertFalse(service._protocol.done.called)
         yield service._protocol.done
         service.stopService()
 
@@ -958,13 +940,12 @@ class TestNeighbourDiscoveryService(MAASTestCase):
         )
         protocol.transport.closeStdin()
         yield protocol.done
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            Equals(
-                "observe-arp[%s]: Lines written to stderr are logged\n"
+            (
+                f"observe-arp[{ifname}]: Lines written to stderr are logged\n"
                 "---\n"
-                "observe-arp[%s]: with a prefix, with no exceptions."
-                % (ifname, ifname)
+                f"observe-arp[{ifname}]: with a prefix, with no exceptions."
             ),
         )
 
@@ -978,10 +959,10 @@ class TestBeaconingService(MAASTestCase):
         ifname = factory.make_name("eth")
         service = BeaconingService(ifname, Mock())
         args = service.getProcessParameters()
-        self.assertThat(args, HasLength(3))
+        self.assertEqual(len(args), 3)
         self.assertTrue(args[0].endswith(b"maas-common"))
-        self.assertTrue(args[1], Equals(b"observe-beacons"))
-        self.assertTrue(args[2], Equals(ifname.encode("utf-8")))
+        self.assertEqual(args[1], b"observe-beacons")
+        self.assertEqual(args[2], ifname.encode("utf-8"))
 
     @inlineCallbacks
     def test_restarts_process_after_finishing(self):
@@ -998,7 +979,8 @@ class TestBeaconingService(MAASTestCase):
         interval = service.step
         service.clock.advance(interval)
         # The Deferred should have been recreated.
-        self.assertThat(service._protocol.done, Not(IsFiredDeferred()))
+        self.assertIsInstance(service._protocol.done, Deferred)
+        self.assertFalse(service._protocol.done.called)
         yield service._protocol.done
         service.stopService()
 
@@ -1015,13 +997,12 @@ class TestBeaconingService(MAASTestCase):
         )
         protocol.transport.closeStdin()
         yield protocol.done
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            Equals(
-                "observe-beacons[%s]: Lines written to stderr are logged\n"
+            (
+                f"observe-beacons[{ifname}]: Lines written to stderr are logged\n"
                 "---\n"
-                "observe-beacons[%s]: with a prefix, with no exceptions."
-                % (ifname, ifname)
+                f"observe-beacons[{ifname}]: with a prefix, with no exceptions."
             ),
         )
 
@@ -1034,9 +1015,9 @@ class TestMDNSResolverService(MAASTestCase):
     def test_returns_expected_arguments(self):
         service = MDNSResolverService(Mock())
         args = service.getProcessParameters()
-        self.assertThat(args, HasLength(2))
+        self.assertEqual(len(args), 2)
         self.assertTrue(args[0].endswith(b"maas-common"))
-        self.assertTrue(args[1], Equals(b"observe-mdns"))
+        self.assertEqual(args[1], b"observe-mdns")
 
     @inlineCallbacks
     def test_protocol_selectively_logs_stderr(self):
@@ -1051,9 +1032,9 @@ class TestMDNSResolverService(MAASTestCase):
         )
         protocol.transport.closeStdin()
         yield protocol.done
-        self.assertThat(
+        self.assertEqual(
             logger.output,
-            Equals(
+            (
                 "observe-mdns: Lines written to stderr are logged\n"
                 "---\n"
                 "observe-mdns: with a prefix, with one exception:"
@@ -1108,7 +1089,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test_creates_listen_port_when_run_with_IReactorMulticast(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(reactor, port=0)
-        self.assertThat(protocol.listen_port, Not(Is(None)))
+        self.assertIsNotNone(protocol.listen_port)
         # This tests that the post gets closed properly; otherwise the test
         # suite will complain about things left in the reactor.
         yield protocol.stopProtocol()
@@ -1116,10 +1097,10 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
     def test_skips_creating_listen_port_when_run_with_fake_reactor(self):
         # Note: Always use a random port for testing. (port=0)
         protocol = BeaconingSocketProtocol(Clock(), port=0)
-        self.assertThat(protocol.listen_port, Is(None))
+        self.assertIsNone(protocol.listen_port)
         # No listen port, so stopProtocol() shouldn't return a Deferred.
         result = protocol.stopProtocol()
-        self.assertThat(result, Is(None))
+        self.assertIsNone(result)
 
     @inlineCallbacks
     def test_sends_and_receives_unicast_beacons(self):
@@ -1133,7 +1114,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             interface="::",
             debug=True,
         )
-        self.assertThat(protocol.listen_port, Not(Is(None)))
+        self.assertIsNotNone(protocol.listen_port)
         listen_port = protocol.listen_port._realPortNumber
         self.write_secret()
         beacon = create_beacon_payload("solicitation", {})
@@ -1150,24 +1131,22 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield wait_for_rx_packets(protocol, 2)
         # Grab the beacon we know we transmitted and then received.
         received = protocol.rx_queue.pop(rx_uuid, None)
-        self.assertThat(transmitted, Equals(beacon))
-        self.assertThat(received[0].json["payload"]["uuid"], Equals(rx_uuid))
+        self.assertEqual(transmitted, beacon)
+        self.assertEqual(received[0].json["payload"]["uuid"], rx_uuid)
         # Grab the subsequent packets from the queues.
         transmitted = protocol.tx_queue.popitem()[1]
         received = protocol.rx_queue.popitem()[1]
         # We should have received a second packet to ack the first beacon.
-        self.assertThat(received[0].json["payload"]["acks"], Equals(rx_uuid))
+        self.assertEqual(received[0].json["payload"]["acks"], rx_uuid)
         # We should have transmitted an advertisement in response to the
         # solicitation.
-        self.assertThat(transmitted.type, Equals("advertisement"))
+        self.assertEqual(transmitted.type, "advertisement")
         # This tests that the post gets closed properly; otherwise the test
         # suite will complain about things left in the reactor.
         yield protocol.stopProtocol()
         # In debug mode, the logger should have printed each packet.
-        self.assertThat(
-            logger.output,
-            DocTestMatches("...Beacon received:...Own beacon received:..."),
-        )
+        self.assertIn("Beacon received:", logger.output)
+        self.assertIn("Own beacon received:", logger.output)
 
     @inlineCallbacks
     def test_send_multicast_beacon_sets_ipv4_source(self):
@@ -1180,7 +1159,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             interface="::",
             debug=False,
         )
-        self.assertThat(protocol.listen_port, Not(Is(None)))
+        self.assertIsNotNone(protocol.listen_port)
         listen_port = protocol.listen_port._realPortNumber
         self.write_secret()
         beacon = create_beacon_payload("advertisement", {})
@@ -1219,7 +1198,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
             interface="::",
             debug=False,
         )
-        self.assertThat(protocol.listen_port, Not(Is(None)))
+        self.assertIsNotNone(protocol.listen_port)
         listen_port = protocol.listen_port._realPortNumber
         self.write_secret()
         beacon = create_beacon_payload("advertisement", {})
@@ -1259,7 +1238,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         protocol.beaconReceived(fake_rx_beacon)
         # Should only have created one hint.
         hint = protocol.topology_hints[uuid].pop()
-        self.assertThat(hint.hint, Equals("rx_own_beacon_on_other_interface"))
+        self.assertEqual(hint.hint, "rx_own_beacon_on_other_interface")
         yield protocol.stopProtocol()
 
     @inlineCallbacks
@@ -1290,7 +1269,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         protocol.beaconReceived(fake_rx_beacon)
         # Should only have created one hint.
         hint = protocol.topology_hints[uuid].pop()
-        self.assertThat(hint.hint, Equals("rx_own_beacon_on_tx_interface"))
+        self.assertEqual(hint.hint, "rx_own_beacon_on_tx_interface")
         yield protocol.stopProtocol()
 
     @inlineCallbacks
@@ -1350,7 +1329,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
                 related_mac=None,
             ),
         }
-        self.assertThat(hints, Equals(expected_hints))
+        self.assertEqual(hints, expected_hints)
         yield protocol.stopProtocol()
 
     @inlineCallbacks
@@ -1395,7 +1374,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
                 related_mac=tx_mac,
             )
         }
-        self.assertThat(hints, Equals(expected_hints))
+        self.assertEqual(hints, expected_hints)
         yield protocol.stopProtocol()
 
     @inlineCallbacks
@@ -1441,7 +1420,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
                 related_mac=tx_mac,
             )
         }
-        self.assertThat(hints, Equals(expected_hints))
+        self.assertEqual(hints, expected_hints)
         yield protocol.stopProtocol()
 
     @inlineCallbacks
@@ -1487,7 +1466,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
                 related_mac=tx_mac,
             )
         ]
-        self.assertThat(all_hints, Equals(expected_hints))
+        self.assertEqual(all_hints, expected_hints)
         yield protocol.stopProtocol()
 
     @inlineCallbacks
@@ -1508,9 +1487,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         self.patch(protocol, "send_beacon")
         yield protocol.queueMulticastBeaconing(solicitation=True)
         clock.advance(0)
-        self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, "solicitation")
-        )
+        send_mcast_mock.assert_called_once_with({}, "solicitation")
 
     @inlineCallbacks
     def test_multicasts_at_most_once_per_five_seconds(self):
@@ -1543,18 +1520,14 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         ]
         yield protocol.queueMulticastBeaconing()
         clock.advance(0)
-        self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, "advertisement")
-        )
+        send_mcast_mock.assert_called_once_with({}, "advertisement")
         send_mcast_mock.reset_mock()
         yield protocol.queueMulticastBeaconing()
         yield protocol.queueMulticastBeaconing(solicitation=True)
         clock.advance(4.9)
-        self.assertThat(send_mcast_mock, MockNotCalled())
+        send_mcast_mock.assert_not_called()
         clock.advance(0.1)
-        self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, "solicitation")
-        )
+        send_mcast_mock.assert_called_once_with({}, "solicitation")
 
     @inlineCallbacks
     def test_multiple_beacon_requests_coalesced(self):
@@ -1575,9 +1548,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.queueMulticastBeaconing()
         yield protocol.queueMulticastBeaconing()
         clock.advance(5)
-        self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, "advertisement")
-        )
+        send_mcast_mock.assert_called_once_with({}, "advertisement")
 
     @inlineCallbacks
     def test_solicitation_wins_when_multiple_requests_queued(self):
@@ -1598,9 +1569,7 @@ class TestBeaconingSocketProtocol(SharedSecretTestCase):
         yield protocol.queueMulticastBeaconing()
         yield protocol.queueMulticastBeaconing(solicitation=True)
         clock.advance(5)
-        self.assertThat(
-            send_mcast_mock, MockCalledOnceWith({}, "solicitation")
-        )
+        send_mcast_mock.assert_called_once_with({}, "solicitation")
 
     def test_send_multicast_beacons(self):
         interfaces = {
