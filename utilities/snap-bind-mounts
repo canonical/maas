@@ -10,13 +10,20 @@ example, if the local installed snap is 2.9.2-9165-g.c3e7848d1, checkout
 c3e7848d1. Otherwise, the file you change might depend on something that
 isn't in the snap.
 
-It uses 'git ls-files -m' to determine which files have been modified.
+It gets the revision the snap is based on by looking at its version, and
+then it will get all files that have been changed since that commit.
+
+It considers files both that have been committed, and files that are in
+the staging area, and files that have been modified but not added to the
+staging area yet.
 """
 
 import argparse
 from pathlib import Path
 import subprocess
 import sys
+
+import yaml
 
 GIT_BASE_PATHS = [
     Path("src/maasserver"),
@@ -39,6 +46,16 @@ def get_snap_base_path():
     return Path("/snap/maas/current/lib/python3.8/site-packages").resolve()
 
 
+def get_installed_revision():
+    snap_meta = Path("/snap/maas/current/meta/snap.yaml")
+    if not snap_meta.exists():
+        return
+    with snap_meta.open() as meta_fh:
+        metadata = yaml.safe_load(meta_fh)
+    version = metadata["version"]
+    return version.rsplit(".", 1)[-1]
+
+
 def get_active_mounts(base_path):
     mounts = []
     for mount_line in Path("/proc/mounts").read_text().splitlines():
@@ -49,15 +66,27 @@ def get_active_mounts(base_path):
 
 
 def get_modified_files():
+    parent_commit = get_installed_revision()
+    command = ["git", "diff", "--name-only", parent_commit]
+
     proc = subprocess.run(
-        ["git", "ls-files", "-m"], text=True, stdout=subprocess.PIPE
+        command, text=True, stdout=subprocess.PIPE, check=True
     )
-    modified_files = []
-    for modified_file in [Path(path) for path in proc.stdout.splitlines()]:
+    modified_files = set(Path(path) for path in proc.stdout.splitlines())
+
+    return sorted(modified_files)
+
+
+def get_files_to_mount(modified_files):
+    files_to_mount = []
+    for modified_file in modified_files:
         for base_path in GIT_BASE_PATHS:
+            if "tests" in modified_file.parts[:-1]:
+                # Unittests are not in the snap.
+                continue
             if is_relative_to(modified_file, base_path):
-                modified_files.append(modified_file)
-    return modified_files
+                files_to_mount.append(modified_file)
+    return files_to_mount
 
 
 def unmount(target):
@@ -95,7 +124,7 @@ def revert_mounts():
 
 def apply_mounts():
     snap_base_path = get_snap_base_path()
-    local_files = get_modified_files()
+    local_files = get_files_to_mount(get_modified_files())
     active_mounts = get_active_mounts(snap_base_path)
     for active_mount in active_mounts:
         local_file = Path("src") / active_mount.relative_to(snap_base_path)
@@ -107,6 +136,12 @@ def apply_mounts():
             # Unmount the old mount, so that it won't reference an older
             # version of the file.
             unmount(snap_path)
+        if not snap_path.parent.exists():
+            print(
+                f"Ignoring {local_file} since parent directory doesn't exist "
+                "in snap."
+            )
+            continue
         mount(local_file, snap_path)
     print("Restarting MAAS...")
     subprocess.run(["sudo", "snap", "restart", "maas"], check=True)
@@ -126,6 +161,8 @@ def main():
     )
     subparsers.add_parser("status", help="Show active bind mounts")
     args = parser.parse_args()
+    if get_installed_revision() is None:
+        return "The 'maas' snap isn't installed. Please install it."
     if args.command is None:
         args.command = "status"
     if args.command == "status":
