@@ -39,6 +39,8 @@
 /node_modules
 /parts
 /prime
+/release.macaroon
+/release.lp
 /services/*/supervise
 /snap/.snapcraft
 /src/maasui/build

@@ -1,0 +1,666 @@
+#!/usr/bin/python3
+"""Show the current progress of the release process.
+
+You should use this script when releasing a new version of MAAS. The
+idea is that it will show you where you are in the release process, and
+tell you what to do next.
+
+It's still a work in progress. It tells you the status of various
+release tasks, but it doesn't do a good job at telling you what needs to
+be done.
+
+Please improve this script as you do a release, so that the next release
+will go smoother.
+"""
+from abc import ABC, abstractmethod
+import argparse
+from configparser import ConfigParser
+import glob
+from pathlib import Path
+import subprocess
+from urllib.parse import urlparse
+
+from launchpadlib.launchpad import Launchpad
+from lazr.restfulclient.errors import NotFound
+from pymacaroons import Macaroon
+import requests
+
+MAAS_SNAP_ID = "shY22YTZ3RhJJDOj0MfmShTNZTEb1Jiq"
+BUILD_ARCHS = ["amd64", "arm64", "ppc64el", "s390x"]
+
+
+def get_macaroon_refresh_help():
+    """Get help on refreshing the macaroon that can be copied&pasted."""
+    return (
+        "  Please refresh it:\n"
+        "    rm -f release.macaroon\n"
+        "    snapcraft export-login --snaps maas,maas-test-db \\\n"
+        "        --acls package_release,package_access release.macaroon"
+    )
+
+
+def get_macaroon_auth_error(res, snap_name):
+    if res.status_code in [200, 404]:
+        return None
+    error_message = res.text
+    if res.status_code in [401, 403]:
+        result = res.json()
+        for error in result.get("error_list", []):
+            if error.get("code") == "macaroon-needs-refresh":
+                error_message = (
+                    f"Macaroon has expired.\n{get_macaroon_refresh_help()}"
+                )
+                break
+            if error.get("code") == "macaroon-permission-required":
+                missing_permission = error["extra"]["permission"]
+                error_message = (
+                    f"Macaroon doesn't have {missing_permission} "
+                    f"for {snap_name}.\n"
+                    f"{get_macaroon_refresh_help()}"
+                )
+                break
+    return error_message
+
+
+def get_git_short_rev(commit):
+    proc = subprocess.run(
+        ["git", "rev-parse", "--short", commit],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return proc.stdout.strip()
+
+
+def get_tag_commit(tag_name):
+    proc = subprocess.run(
+        ["git", "rev-list", "-n", "1", f"tags/{tag_name}"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return proc.stdout.strip()
+
+
+def get_remote_branches_containing(commit):
+    proc = subprocess.run(
+        ["git", "branch", "-r", "--contains", commit],
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    return [
+        branch.strip().split("/", 1) for branch in proc.stdout.splitlines()
+    ]
+
+
+def get_official_maas_remote():
+    proc = subprocess.run(
+        ["git", "remote"], stdout=subprocess.PIPE, text=True, check=True
+    )
+    for remote in proc.stdout.splitlines():
+        proc = subprocess.run(
+            ["git", "remote", "get-url", remote],
+            stdout=subprocess.PIPE,
+            text=True,
+            check=True,
+        )
+        remote_url = urlparse(proc.stdout.strip())
+        if remote_url.path == "/maas":
+            return remote
+
+
+def get_snap_release_channel(version):
+    major_version = get_major_version(version)
+    version_grade = get_version_grade(version)
+    if version_grade == "final":
+        return f"{major_version}/stable"
+    elif version_grade == "rc":
+        return f"{major_version}/candidate"
+    elif version_grade == "beta":
+        return f"{major_version}/beta"
+    else:
+        raise RuntimeError(f"Unknown version grade: {version_grade}")
+
+
+def get_major_version(version):
+    return version.rsplit(".", 1)[0]
+
+
+def get_version_grade(version):
+    if "-" not in version:
+        return "final"
+    version_suffix = version.split("-")[1]
+    if version_suffix.startswith("beta"):
+        return "beta"
+    elif version_suffix.startswith("rc"):
+        return "rc"
+    else:
+        raise RuntimeError(f"Unknown version suffix: {version_suffix}")
+
+
+class ReleaseStep(ABC):
+    def __init__(self, preparer):
+        self.preparer = preparer
+
+    @property
+    @abstractmethod
+    def title(self):
+        """A one-line title of the release step."""
+
+    @abstractmethod
+    def check(self):
+        """Return whether the step has already been performed.
+
+        It returns a tuple of (succeeded, message), where result is a
+        boolean indicating whether the check succeeded, and message is a
+        multi-line message to be displayed.
+        """
+
+
+class NoUncommittedChanges(ReleaseStep):
+    @property
+    def title(self):
+        return "No uncommitted changes"
+
+    def check(self):
+        proc = subprocess.run(
+            ["git", "diff-index", "--quiet", "HEAD"],
+        )
+        if proc.returncode == 0:
+            return True, None
+        else:
+            return False, "Commit and push all changes before releasing."
+
+
+class CommitInRemoteBranch(ReleaseStep):
+    @property
+    def title(self):
+        return "Release commit in remote branch"
+
+    def check(self):
+        release_branch_name = self.preparer.major_version
+        if "beta" in self.preparer.version or "alpha" in self.preparer.version:
+            # alpha and beta releases are released from master
+            release_branch_name = "master"
+        official_maas_remote = get_official_maas_remote()
+        remote_branches = get_remote_branches_containing("HEAD")
+        for remote, branch_name in remote_branches:
+            if (
+                remote == official_maas_remote
+                and branch_name == release_branch_name
+            ):
+                return True, None
+        else:
+            error_message = (
+                "Current HEAD is not in "
+                f"{official_maas_remote}/{release_branch_name}"
+            )
+            return False, error_message
+
+
+class MAASVersion(ReleaseStep):
+    @property
+    def title(self):
+        return "MAAS version set in branch"
+
+    def check(self):
+        setup_version = get_branch_setup_version()
+        if setup_version != self.preparer.python_version:
+            error_message = (
+                f"setup.cfg has {setup_version}, run "
+                "utilities/release-prepare"
+            )
+            return False, error_message
+        proc = subprocess.run(
+            ["dpkg-parsechangelog", "-S", "version"],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        no_epoch_version = proc.stdout.split(":", 1)[-1]
+        no_ubuntu_version = no_epoch_version.split("-", 1)[0]
+        package_version = no_ubuntu_version.replace("~", "-")
+
+        if package_version != self.preparer.version:
+            error_message = (
+                f"changelog has {package_version}, run "
+                "utilities/release-prepare"
+            )
+            return False, error_message
+
+        return True, None
+
+
+class SnapTrack(ReleaseStep):
+    def __init__(self, preparer, snap_name):
+        super().__init__(preparer)
+        self.snap_name = snap_name
+
+    @property
+    def title(self):
+        return f"{self.snap_name} {self.preparer.major_version} snap track"
+
+    def check(self):
+        request_data = {
+            "name": self.snap_name,
+            "track": self.preparer.major_version,
+        }
+        # Note that while the API call is called snap-track-update, it will
+        # give you the state of the track if "pattern" isn't sent.
+        res = requests.post(
+            "https://dashboard.snapcraft.io/dev/api/snap-track-update/",
+            json=request_data,
+            headers={
+                "Authorization": self.preparer.snapstore_auth,
+                "Accept": "application/json",
+            },
+        )
+        auth_error = get_macaroon_auth_error(res, self.snap_name)
+        return res.status_code == 200, auth_error
+
+
+class MAASPPA(ReleaseStep):
+    def __init__(self, preparer, ppa_type):
+        super().__init__(preparer)
+        assert ppa_type in ["stable", "candidate", "release-preparation"]
+        self.ppa_type = ppa_type
+        self.ppa_name = f"{self.preparer.major_version}"
+        self.ppa_owner = self.preparer.lp.people["maas"]
+        if ppa_type == "candidate":
+            self.ppa_name += "-next"
+        elif ppa_type == "release-preparation":
+            self.ppa_name = "maas-" + self.ppa_name + "-next"
+            self.ppa_owner = self.preparer.lp.me
+        ubuntu = self.preparer.lp.distributions["ubuntu"]
+        self.current_series = ubuntu.getSeries(name_or_version="focal")
+
+    @property
+    def title(self):
+        return (
+            f"MAAS {self.ppa_type} PPA ({self.ppa_owner.name}/{self.ppa_name})"
+        )
+
+    def check(self):
+        try:
+            ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
+        except NotFound:
+            return False, "PPA couldn't be found."
+        else:
+            ppa_archs = set(processor.name for processor in ppa.processors)
+            missing_archs = sorted(set(BUILD_ARCHS).difference(ppa_archs))
+            if missing_archs:
+                return False, (
+                    f"Missing build architectures: {', '.join(missing_archs)}"
+                )
+
+            return True, None
+
+    def _check_packages_copied(self, source_ppa, target_ppa):
+        target_packages = list(
+            (package.source_package_name, package.source_package_version)
+            for package in target_ppa.getPublishedSources(
+                status="Published", distro_series=self.current_series
+            )
+        )
+        for package in source_ppa.getPublishedSources(
+            status="Published", distro_series=self.current_series
+        ):
+            name, version = (
+                package.source_package_name,
+                package.source_package_version,
+            )
+            if (name, version) not in target_packages:
+                return False, f"{name} {version} has not been copied"
+        return True, None
+
+
+class MAASPackagePublished(MAASPPA):
+    def __init__(self, preparer):
+        super().__init__(preparer, "release-preparation")
+
+    @property
+    def title(self):
+        return f"MAAS package published in ({self.ppa_owner.name}/{self.ppa_name})"
+
+    def check(self):
+        try:
+            ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
+        except NotFound:
+            return False, "PPA couldn't be found."
+        else:
+            sources = list(
+                ppa.getPublishedSources(
+                    source_name="maas",
+                    status="Published",
+                    distro_series=self.current_series,
+                )
+            )
+            if not sources:
+                return False, (
+                    "Source package hasn't been published or uploaded yet."
+                )
+            [package] = sources
+            if not self._check_version(package.source_package_version):
+                return False, (
+                    "Currently published source version is "
+                    + package.source_package_version
+                )
+            binaries = list(
+                ppa.getPublishedBinaries(
+                    binary_name="maas",
+                    exact_match=True,
+                    status="Published",
+                )
+            )
+            if not binaries:
+                return False, "Binary packages haven't been published yet."
+            published_architectures = set()
+            for binary in binaries:
+                arch = binary.distro_arch_series_link.split("/")[-1]
+                if self._check_version(binary.binary_package_version):
+                    published_architectures.add(arch)
+
+            non_published_architectures = sorted(
+                set(BUILD_ARCHS).difference(published_architectures)
+            )
+            if non_published_architectures:
+                return False, (
+                    "Binary package hasn't been published for: "
+                    f"{non_published_architectures}"
+                )
+
+            return True, None
+
+    def _check_version(self, package_version):
+        expected_package_version = self.preparer.version.replace("-", "~")
+        if ":" in package_version:
+            package_version = package_version.split(":", 1)[-1]
+        version_parts = package_version.split("-")
+        return (
+            version_parts[0] == expected_package_version
+            and version_parts[2] == f"g.{self.preparer.git_short_rev}"
+        )
+
+
+class PackagesCopiedFromDeps(MAASPPA):
+    def __init__(self, preparer):
+        super().__init__(preparer, "release-preparation")
+
+    @property
+    def title(self):
+        return "Packages copied from ppa:maas-committers/latest-deps"
+
+    def check(self):
+        try:
+            source_ppa = self.preparer.lp.people[
+                "maas-committers"
+            ].getPPAByName(name="latest-deps")
+            target_ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
+        except NotFound:
+            return False, "PPA couldn't be found."
+        else:
+            return self._check_packages_copied(source_ppa, target_ppa)
+
+
+class PackagesCopiedToReleasePPA(MAASPPA):
+    @property
+    def title(self):
+        return f"Packages copied to ppa:{self.ppa_owner.name}/{self.ppa_name}"
+
+    def check(self):
+        try:
+            source_ppa = self.preparer.lp.me.getPPAByName(
+                name="maas-" + self.ppa_name
+            )
+            target_ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
+        except NotFound:
+            return False, "PPA couldn't be found."
+        else:
+            return self._check_packages_copied(source_ppa, target_ppa)
+
+
+def macaroon_auth(conf):
+    """Format a macaroon and its associated discharge.
+
+    :return: A string suitable to use in an Authorization header.
+
+    """
+    root_macaroon_raw = conf.get("macaroon")
+    unbound_raw = conf.get("unbound_discharge")
+
+    root_macaroon = Macaroon.deserialize(root_macaroon_raw)
+    unbound = Macaroon.deserialize(unbound_raw)
+    bound = root_macaroon.prepare_for_request(unbound)
+    discharge_macaroon_raw = bound.serialize()
+    auth = "Macaroon root={}, discharge={}".format(
+        root_macaroon_raw, discharge_macaroon_raw
+    )
+    return auth
+
+
+class PackageBuilt(ReleaseStep):
+    @property
+    def title(self):
+        return "MAAS source package is built"
+
+    def check(self):
+        short_rev = self.preparer.git_short_rev
+        package_version = self.preparer.version.replace("-", "~")
+        tar_gzs = glob.glob(
+            f"build_pkg/maas_{package_version}-*-g.{short_rev}.orig.tar.gz"
+        )
+        if len(tar_gzs) == 0:
+            return False, (
+                "No orig.tar.gz could be found for the current revision"
+            )
+        [orig_tgz] = tar_gzs
+        return True, None
+
+
+class SnapsUploaded(ReleaseStep):
+
+    snap_name = "maas"
+
+    @property
+    def title(self):
+        return "Snaps have been built and uploaded to the store."
+
+    def _get_revisisions(self):
+        # XXX: This considers only the last 500 uploaded revisions. That's fine
+        #     if you're currently working on the release, but it will
+        #     fail if you check back later. We should probably make the
+        #     different checks less fine grained. There's no need to
+        #     check if the snap has been uploaded, if the snap is
+        #     already released to a channel.
+        res = requests.get(
+            f"https://dashboard.snapcraft.io/dev/api/snaps/{MAAS_SNAP_ID}/"
+            + "history",
+            headers={
+                "Authorization": self.preparer.snapstore_auth,
+                "Accept": "application/json",
+            },
+        )
+        auth_error = get_macaroon_auth_error(res, self.snap_name)
+        if auth_error:
+            return None, auth_error
+        revision_map = {arch: [] for arch in BUILD_ARCHS}
+        for revision in res.json():
+            version = revision["version"]
+            if not version.startswith(self.preparer.version.replace("-", "~")):
+                continue
+            if not version.endswith(self.preparer.git_short_rev):
+                continue
+            revision_map[revision["arch"]].append(revision)
+        return revision_map, None
+
+    def check(self):
+        revision_map, error_message = self._get_revisisions()
+        if revision_map is None:
+            return False, error_message
+
+        missing_archs = sorted(
+            arch for arch, revision in revision_map.items() if not revision
+        )
+        if missing_archs:
+            return False, f"Missing builds for: {', '.join(missing_archs)}"
+
+        # XXX: print out which revisions were found
+        return True, None
+
+
+class SnapsInChannel(SnapsUploaded):
+
+    snap_name = "maas"
+
+    def __init__(self, preparer, channel):
+        super().__init__(preparer)
+        self.channel = channel
+
+    @property
+    def title(self):
+        return f"Snaps have been released to {self.channel}."
+
+    def check(self):
+        revision_map, error_message = self._get_revisisions()
+        if revision_map is None:
+            return False, error_message
+        released_archs = set()
+        for arch, revisions in revision_map.items():
+            for revision in revisions:
+                for channel in revision["channels"]:
+                    if channel == self.channel:
+                        released_archs.add(arch)
+                        break
+
+        missing_archs = sorted(set(BUILD_ARCHS).difference(released_archs))
+        if missing_archs:
+            return False, (f"Missing releases for: {', '.join(missing_archs)}")
+        return True, None
+
+
+class ReleaseTagged(ReleaseStep):
+    @property
+    def title(self):
+        return "Release has been tagged."
+
+    def check(self):
+        tag_name = self.preparer.version
+        tagged_revision = get_git_short_rev(get_tag_commit(tag_name))
+        if tagged_revision == get_git_short_rev(tag_name):
+            return False, f"The {tag_name} isn't an annotated tag"
+        if not tagged_revision:
+            return False, "Release hasn't been tagged yet."
+
+        if tagged_revision != self.preparer.git_short_rev:
+            return False, (
+                f"{tag_name} points to {tagged_revision} instead of "
+                f"{self.preparer.git_short_rev}"
+            )
+
+        official_maas_remote = get_official_maas_remote()
+        remote_branches = get_remote_branches_containing(tag_name)
+        remotes = [remote for remote, _ in remote_branches]
+        if official_maas_remote not in remotes:
+            return False, (
+                f"{tag_name} tag is not pushed to {official_maas_remote}"
+            )
+
+        return True, None
+
+
+class ReleasePreparer:
+    def __init__(self, version, snapstore_auth, lp):
+        self.version = version
+        self.python_version = (
+            version.replace("-alpha", "a")
+            .replace("-beta", "b")
+            .replace("-rc", "rc")
+        )
+        self.major_version = get_major_version(version)
+        self.snapstore_auth = snapstore_auth
+        self.lp = lp
+        self.git_short_rev = get_git_short_rev("HEAD")
+
+    def run(self, args):
+        all_good = True
+        for step in self.steps:
+            print(step.title, end=": ")
+            success, message = step.check()
+            if not success:
+                all_good = False
+                print("\N{large red circle}")
+            else:
+                print("\N{check mark}")
+            if message:
+                for line in message.splitlines():
+                    print("  " + str(line))
+
+        print()
+        if all_good:
+            print("All checks PASSED!")
+        else:
+            print("Some checks FAILED, proceed with caution")
+
+
+def create_parser():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("version", help="The version of MAAS to be released")
+    return parser
+
+
+def get_branch_setup_version():
+    config = ConfigParser()
+    config.read("setup.cfg")
+    try:
+        return config["metadata"]["version"]
+    except KeyError:
+        # In 2.9 and earlier, the version is in setup.py.
+        for line in Path("setup.py").read_text().splitlines():
+            if "=" not in line:
+                continue
+            key, value = line.strip().split("=", 1)
+            if key == "version":
+                # value should look like '"2.9.3",'
+                return value[1:-2]
+
+
+def main():
+    parser = create_parser()
+    args = parser.parse_args()
+    config = ConfigParser()
+    config.read("release.macaroon")
+    preparer = ReleasePreparer(
+        args.version,
+        macaroon_auth(config["login.ubuntu.com"]),
+        Launchpad.login_with(
+            "MAAS Releaser",
+            "production",
+            version="devel",
+            credentials_file="release.lp",
+        ),
+    )
+    preparer.steps = [
+        MAASVersion(preparer),
+        NoUncommittedChanges(preparer),
+        CommitInRemoteBranch(preparer),
+        SnapTrack(preparer, "maas"),
+        SnapTrack(preparer, "maas-test-db"),
+        MAASPPA(preparer, "stable"),
+        MAASPPA(preparer, "candidate"),
+        MAASPPA(preparer, "release-preparation"),
+        PackageBuilt(preparer),
+        MAASPackagePublished(preparer),
+        SnapsUploaded(preparer),
+        SnapsInChannel(
+            preparer,
+            get_snap_release_channel(preparer.version) + "/release-prep",
+        ),
+        PackagesCopiedFromDeps(preparer),
+        PackagesCopiedToReleasePPA(preparer, "candidate"),
+        SnapsInChannel(preparer, get_snap_release_channel(preparer.version)),
+        ReleaseTagged(preparer),
+    ]
+    return preparer.run(args)
+
+
+if __name__ == "__main__":
+    main()
