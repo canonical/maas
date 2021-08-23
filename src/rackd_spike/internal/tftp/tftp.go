@@ -214,6 +214,12 @@ func (f *Forwarder) sendReadOnlyErr(peer *net.UDPAddr) error {
 	return nil
 }
 
+func writePeerToData(peer *net.UDPAddr, data []byte) []byte {
+	ip := peer.IP.String() // store as string, as it's easier for python to parse
+	ipLen := len(ip)
+	return append([]byte{ipLen}, append(ip, data...))
+}
+
 func (f *Forwarder) transaction(ctx context.Context, peer *net.UDPAddr, buf []byte) error {
 	f.Lock() // Lock forwarder for duration of transaction
 	defer f.Unlock()
@@ -238,6 +244,11 @@ func (f *Forwarder) transaction(ctx context.Context, peer *net.UDPAddr, buf []by
 			return nil
 		default:
 			if currPkt.OpCode == OpRRQ {
+				currPkt.Data = writePeerToData(peer, currPkt.Data)
+				currBuf, err = encodePkt(currPkt)
+				if err != nil {
+					return err
+				}
 				_, err = f.client.Write(currBuf)
 				if err != nil {
 					return err
@@ -291,6 +302,11 @@ func (f *Forwarder) transaction(ctx context.Context, peer *net.UDPAddr, buf []by
 				continue
 			}
 			if currPkt.OpCode == OpAck || currPkt.OpCode == OpOAck {
+				currPkt.Data = writePeerToData(peer, currPkt.Data)
+				currBuf, err = encodePkt(currPkt)
+				if err != nil {
+					return err
+				}
 				_, err = f.client.Write(currBuf)
 				if err != nil {
 					return err
@@ -313,6 +329,11 @@ func (f *Forwarder) transaction(ctx context.Context, peer *net.UDPAddr, buf []by
 			}
 			// Error
 			if lastWriter == f.upstreamAddr {
+				currPkt.Data = writePeerToData(peer, currPkt.Data)
+				currBuf, err = encodePkt(currPkt)
+				if err != nil {
+					return err
+				}
 				_, err = f.client.Write(currBuf)
 				if err != nil {
 					return err

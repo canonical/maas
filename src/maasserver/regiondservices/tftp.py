@@ -1,6 +1,7 @@
 from functools import partial
 
 from django.core.exceptions import ObjectDoesNotExist
+from netaddr import AddrConversionError, IPAddress
 from tftp.backend import FilesystemSynchronousBackend
 from tftp.errors import BackendError, FileNotFound
 from twisted.internet import reactor
@@ -36,6 +37,7 @@ from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rackdservices import tftp as rack_tftp
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.utils import network, tftp, typed
+from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.tftp import TFTPPath
 from provisioningserver.utils.twisted import deferred, synchronous
 from provisioningserver.utils.url import splithost
@@ -271,6 +273,19 @@ def get_servers(system_id):
     return servers
 
 
+def get_machine_ip_from_payload(datagram):
+    orig = datagram.copy()
+    try:
+        machine_ip_len = int(datagram[0])
+        datagram = datagram[1:]
+        machine_ip = IPAddress(str(datagram[:machine_ip_len]))
+        if machine_ip is None:
+            raise AddrConversionError()
+        return (machine_ip, datagram[machine_ip_len:])
+    except AddrConversionError:
+        return (None, orig)
+
+
 class RegionTFTPBackend(FilesystemSynchronousBackend):
     def __init__(self, base_path):
         """
@@ -481,7 +496,36 @@ class RegionTFTPBackend(FilesystemSynchronousBackend):
         return d
 
 
+class ProxiedTFTP(rack_tftp.TransferTimeTrackingTFTP):
+    @inlineCallbacks
+    def _startSession(self, datagram, addr, mode):
+        (origin_ip, datagram) = get_machine_ip_from_payload(datagram)
+        if origin_ip is not None:
+            # changes the remote IP for the session object, but not the transport, so the server will respond back to the proxy
+            # while thinking it's talking to the machine
+            addr = origin_ip
+        return super()._startSession(datagram, addr, mode)
+
+
 class RegionTFTPService(rack_tftp.TFTPService):
     def __init__(self, resource_root, port):
         super(RegionTFTPService, self).__init__(resource_root, port, None)
         self.backend = RegionTFTPBackend(resource_root)
+
+    def updateServers(self):
+        addrs_established = set(service.name for service in self.getServers())
+        addrs_desired = set(get_all_interface_addresses())
+
+        for address in addrs_desired - addrs_established:
+            if not IPAddress(address).is_link_local():
+                tftp_service = rack_tftp.UDPServer(
+                    self.port,
+                    ProxiedTFTP(self.backend),
+                    interface=address,
+                )
+                tftp_service.setName(address)
+                tftp_service.setServiceParent(self)
+
+        for address in addrs_established - addrs_desired:
+            tftp_service = self.getServiceNamed(address)
+            tftp_service.disownServiceParent()
