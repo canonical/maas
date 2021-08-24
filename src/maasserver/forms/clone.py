@@ -13,7 +13,6 @@ from maasserver.enum import NODE_STATUS
 from maasserver.fields import NodeChoiceField
 from maasserver.models import Machine
 from maasserver.permissions import NodePermission
-from maasserver.utils.forms import set_form_error
 
 
 class CloneForm(forms.Form):
@@ -73,7 +72,7 @@ class CloneForm(forms.Form):
         if not source:
             # Django should be placing this automatically, but it does not
             # occur. So we force the setting of this error here.
-            set_form_error(self, "source", "This field is required.")
+            self.add_error("source", "This field is required.")
         destinations = self.cleaned_data.get("destinations")
         destination_field = self.fields["destinations"]
         item_invalid = destination_field.error_messages["item_invalid"]
@@ -90,7 +89,7 @@ class CloneForm(forms.Form):
                         code="item_invalid",
                         params={"nth": index},
                     )
-                    set_form_error(self, "destinations", error)
+                    self.add_error("destinations", error)
                 else:
                     if storage:
                         try:
@@ -102,7 +101,7 @@ class CloneForm(forms.Form):
                                 code="item_invalid",
                                 params={"nth": index},
                             )
-                            set_form_error(self, "destinations", error)
+                            self.add_error("destinations", error)
                     if interfaces:
                         try:
                             dest._get_interface_mapping_between_nodes(source)
@@ -113,7 +112,7 @@ class CloneForm(forms.Form):
                                 code="item_invalid",
                                 params={"nth": index},
                             )
-                            set_form_error(self, "destinations", error)
+                            self.add_error("destinations", error)
         if not storage and not interfaces:
             self.add_error(
                 "__all__",

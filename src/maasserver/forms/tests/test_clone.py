@@ -87,6 +87,42 @@ class TestCloneForm(MAASServerTestCase):
             form.errors,
         )
 
+    def test_multiple_errors(self):
+        user = factory.make_admin()
+        source = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024 ** 3, name="sda"
+        )
+        destination = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination, size=4 * 1024 ** 3, name="sda"
+        )
+        form = CloneForm(
+            user,
+            data={
+                "source": source.system_id,
+                "destinations": [source.system_id, destination.system_id],
+                "storage": True,
+            },
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            {
+                "destinations": [
+                    "Machine 1 in the array did not validate: "
+                    "Source machine cannot be a destination machine.",
+                    "Machine 2 in the array did not validate: "
+                    "destination boot disk(sda) is smaller than "
+                    "source boot disk(sda)",
+                ]
+            },
+            form.errors,
+        )
+
     def test_source_destination_missing_nic(self):
         user = factory.make_admin()
         source = factory.make_Machine(with_boot_disk=False)

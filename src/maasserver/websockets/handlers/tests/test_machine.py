@@ -3735,6 +3735,62 @@ class TestMachineHandler(MAASServerTestCase):
             },
         )
 
+    def test_action_clone_errors_storage(self):
+        user = factory.make_admin()
+        request = HttpRequest()
+        request.user = user
+        source = factory.make_Machine(with_boot_disk=False)
+        factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024 ** 3, name="sda"
+        )
+        destination1 = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination1, size=1024 ** 3, name="sda"
+        )
+        destination2 = factory.make_Machine(
+            status=NODE_STATUS.FAILED_TESTING,
+            with_boot_disk=False,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination2, size=1024 ** 3, name="sda"
+        )
+
+        handler = MachineHandler(user, {}, request)
+        exc = self.assertRaises(
+            NodeActionError,
+            handler.action,
+            {
+                "system_id": source.system_id,
+                "action": "clone",
+                "extra": {
+                    "storage": True,
+                    "interfaces": False,
+                    "destinations": [
+                        destination1.system_id,
+                        destination2.system_id,
+                    ],
+                },
+            },
+        )
+        (errors,) = exc.args
+        self.assertEqual(
+            json.loads(errors),
+            {
+                "destinations": [
+                    {
+                        "message": "Machine 1 in the array did not validate: destination boot disk(sda) is smaller than source boot disk(sda)",
+                        "code": "item_invalid",
+                    },
+                    {
+                        "message": "Machine 2 in the array did not validate: destination boot disk(sda) is smaller than source boot disk(sda)",
+                        "code": "item_invalid",
+                    },
+                ],
+            },
+        )
+
     def test_create_physical_creates_interface(self):
         user = factory.make_admin()
         node = factory.make_Node(interface=False)
