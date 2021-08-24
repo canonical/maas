@@ -12,13 +12,13 @@ from maascli import main
 from maascli.config import ProfileConfig
 from maascli.testing.config import make_configs
 from maascli.utils import handler_command_name
-from maastesting import root
+from maastesting import dev_root
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
 
 
 def locate_maascli():
-    return os.path.join(root, "bin", "maas")
+    return os.path.join(dev_root, "bin", "maas")
 
 
 class TestMAASCli(MAASTestCase):

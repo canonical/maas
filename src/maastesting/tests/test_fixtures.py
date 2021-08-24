@@ -14,8 +14,8 @@ from fixtures import EnvironmentVariable
 from testtools.matchers import Equals, Is, Not, PathExists, SamePath
 from testtools.testcase import ExpectedException
 
+from maastesting import dev_root
 from maastesting import fixtures as fixtures_module
-from maastesting import root
 from maastesting.factory import factory
 from maastesting.fixtures import (
     CaptureStandardIO,
@@ -34,17 +34,17 @@ class TestImportErrorFixture(MAASTestCase):
     """Tests for :class:`TestImportErrorFixture`."""
 
     def test_import_non_targeted_module_successfull(self):
-        self.useFixture(ImportErrorFixture("maastesting", "root"))
+        self.useFixture(ImportErrorFixture("maastesting", "dev_root"))
         from maastesting import bindir  # noqa
 
     def test_import_targeted_module_unsuccessfull(self):
-        self.useFixture(ImportErrorFixture("maastesting", "root"))
+        self.useFixture(ImportErrorFixture("maastesting", "dev_root"))
         with ExpectedException(ImportError):
-            from maastesting import root  # noqa
+            from maastesting import dev_root  # noqa
 
     def test_import_restores_original__import__(self):
         __real_import = builtins.__import__
-        with ImportErrorFixture("maastesting", "root"):
+        with ImportErrorFixture("maastesting", "dev_root"):
             self.assertNotEqual(
                 __real_import,
                 builtins.__import__,
@@ -257,7 +257,7 @@ class TestMAASRootFixture(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.skel = os.path.join(root, "run-skel")
+        self.skel = os.path.join(dev_root, "run-skel")
         self.useFixture(EnvironmentVariable("MAAS_ROOT", "/"))
 
     def test_creates_populates_and_removes_new_directory(self):
@@ -277,7 +277,7 @@ class TestMAASRootFixture(MAASTestCase):
         self.assertThat(os.environ["MAAS_ROOT"], Not(SamePath(self.skel)))
 
     def test_breaks_when_MAAS_ROOT_is_not_a_directory(self):
-        self.patch(fixtures_module, "root", self.make_file())
+        self.patch(fixtures_module, "dev_root", self.make_file())
         fixture = MAASRootFixture()
         error = self.assertRaises(NotADirectoryError, fixture._setUp)
         self.assertThat(

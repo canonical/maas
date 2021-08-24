@@ -14,7 +14,7 @@ from testtools.content import Content, UTF8_TEXT
 from testtools.matchers import HasLength, Not
 
 from maasserver.testing.config import RegionConfigurationFixture
-from maastesting import root
+from maastesting import dev_root
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 
@@ -88,7 +88,7 @@ class TestDBUpgrade(MAASTestCase):
     def execute_dbupgrade(self):
         env = os.environ.copy()
         env["MAAS_PREVENT_MIGRATIONS"] = "0"
-        mra = os.path.join(root, "bin", "maas-region")
+        mra = os.path.join(dev_root, "bin", "maas-region")
         cmd = [
             mra,
             "dbupgrade",

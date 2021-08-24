@@ -15,7 +15,7 @@ from maasserver.third_party_drivers import (
     match_aliases_to_driver,
     populate_kernel_opts,
 )
-from maastesting import root
+from maastesting import dev_root
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
 )
@@ -137,7 +137,7 @@ class TestDriversConfig(MAASServerTestCase):
         self.assertEqual({"drivers": []}, observed)
 
     def test_load_from_yaml(self):
-        filename = os.path.join(root, "etc", "maas", "drivers.yaml")
+        filename = os.path.join(dev_root, "etc", "maas", "drivers.yaml")
         for entry in DriversConfig.load(filename)["drivers"]:
             self.assertItemsEqual(
                 [

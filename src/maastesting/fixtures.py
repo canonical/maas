@@ -16,7 +16,7 @@ import fixtures
 from fixtures import EnvironmentVariable
 from testtools.monkey import MonkeyPatcher
 
-from maastesting import root
+from maastesting import dev_root
 
 
 class ImportErrorFixture(fixtures.Fixture):
@@ -282,7 +282,7 @@ class MAASRootFixture(fixtures.Fixture):
     """
 
     def _setUp(self):
-        skel = Path(root).joinpath("run-skel")
+        skel = Path(dev_root).joinpath("run-skel")
         if skel.is_dir():
             self.path = self.useFixture(TempDirectory()).join("run")
             # Work only in `run`; reference the old $MAAS_ROOT.

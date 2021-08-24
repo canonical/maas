@@ -11,7 +11,7 @@ from unittest.mock import sentinel
 from testtools.matchers import Equals, IsInstance, MatchesDict
 from twisted.internet import defer, reactor
 
-from maastesting import root
+from maastesting import dev_root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.rackdservices import lease_socket_service
@@ -61,7 +61,7 @@ class TestDHCPNotify(MAASTestCase):
 
         call_and_check(
             [
-                "%s/scripts/maas-dhcp-helper" % root,
+                f"{dev_root}/scripts/maas-dhcp-helper",
                 "notify",
                 "--action",
                 action,

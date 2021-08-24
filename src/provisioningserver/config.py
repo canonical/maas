@@ -808,7 +808,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
 def is_dev_environment():
     """Is this the development environment, or production?"""
     try:
-        from maastesting import root  # noqa
+        from maastesting import dev_root  # noqa
     except Exception:
         return False
     else:

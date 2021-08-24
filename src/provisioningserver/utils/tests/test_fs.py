@@ -39,7 +39,7 @@ from twisted import internet
 from twisted.internet.task import Clock
 from twisted.python import lockfile
 
-from maastesting import root
+from maastesting import dev_root
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.matchers import (
@@ -433,7 +433,8 @@ class TestGetMAASProvisionCommand(MAASTestCase):
         self.patch(provisioningserver.config, "is_dev_environment")
         provisioningserver.config.is_dev_environment.return_value = True
         self.assertEqual(
-            root.rstrip("/") + "/bin/maas-common", get_maas_common_command()
+            dev_root.rstrip("/") + "/bin/maas-common",
+            get_maas_common_command(),
         )
 
 
@@ -454,7 +455,7 @@ class TestGetLibraryScriptPath(MAASTestCase):
         provisioningserver.config.is_dev_environment.return_value = True
         script_name = factory.make_name("script")
         self.assertEqual(
-            root.rstrip("/") + "/scripts/" + script_name,
+            dev_root.rstrip("/") + "/scripts/" + script_name,
             get_library_script_path(script_name),
         )
 
@@ -587,7 +588,7 @@ class TestSudoDeleteFile(MAASTestCase):
 
 def load_script(filename):
     """Load the Python script at `filename` into a new module."""
-    modname = os.path.relpath(filename, root).replace(os.sep, ".")
+    modname = os.path.relpath(filename, dev_root).replace(os.sep, ".")
     module = types.ModuleType(modname)
     with tokenize.open(filename) as fd:
         code = compile(fd.read(), filename, "exec", dont_inherit=True)
@@ -600,7 +601,7 @@ class TestSudoWriteFileScript(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.script_path = os.path.join(root, "scripts/maas-write-file")
+        self.script_path = os.path.join(dev_root, "scripts/maas-write-file")
         self.script = load_script(self.script_path)
         self.script.atomic_write = create_autospec(self.script.atomic_write)
 
@@ -667,7 +668,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        self.script_path = os.path.join(root, "scripts/maas-delete-file")
+        self.script_path = os.path.join(dev_root, "scripts/maas-delete-file")
         self.script = load_script(self.script_path)
         self.script.atomic_delete = create_autospec(self.script.atomic_delete)
 

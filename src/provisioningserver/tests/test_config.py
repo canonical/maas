@@ -721,7 +721,7 @@ class TestConfig(MAASTestCase):
     """Tests for `maasserver.config`."""
 
     def test_is_dev_environment_returns_false(self):
-        self.useFixture(ImportErrorFixture("maastesting", "root"))
+        self.useFixture(ImportErrorFixture("maastesting", "dev_root"))
         self.assertFalse(is_dev_environment())
 
     def test_is_dev_environment_returns_true(self):

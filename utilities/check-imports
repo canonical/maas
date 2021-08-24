@@ -360,7 +360,7 @@ checks = [
     ),
     (
         RackControllerConfig | RackControllerUtilsFS,
-        RackControllerRule | Allow("maastesting.root"),
+        RackControllerRule | Allow("maastesting.dev_root"),
     ),
     (
         RackControllerUtilsInit,

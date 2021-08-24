@@ -39,9 +39,9 @@ def get_maas_common_command():
     from provisioningserver.config import is_dev_environment
 
     if is_dev_environment():
-        from maastesting import root
+        from maastesting import dev_root
 
-        return os.path.join(root, "bin/maas-common")
+        return os.path.join(dev_root, "bin/maas-common")
     elif snap.running_in_snap():
         # there's no maas-common in the snap as maas-rack is always present
         return os.path.join(
@@ -70,15 +70,15 @@ def get_library_script_path(name):
     hence the term "library script".
 
     In production mode this will return ``/usr/lib/maas/$name``, but in
-    development mode it will return ``$root/scripts/$name``.
+    development mode it will return ``$dev_root/scripts/$name``.
     """
     # Avoid circular imports.
     from provisioningserver.config import is_dev_environment
 
     if is_dev_environment():
-        from maastesting import root
+        from maastesting import dev_root
 
-        return os.path.join(root, "scripts", name)
+        return os.path.join(dev_root, "scripts", name)
     else:
         return os.path.join(get_path("/usr/lib/maas"), name)
 
@@ -291,9 +291,9 @@ def _with_dev_python(*command):
     from provisioningserver.config import is_dev_environment
 
     if is_dev_environment():
-        from maastesting import root
+        from maastesting import dev_root
 
-        interpreter = os.path.join(root, "bin", "py")
+        interpreter = os.path.join(dev_root, "bin", "py")
         command = interpreter, *command
     return command
 
