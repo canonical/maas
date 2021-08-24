@@ -177,6 +177,7 @@ from maasserver.utils.osystems import (
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.maas_certificates import generate_certificate
 from provisioningserver.utils.network import make_network
 
 maaslog = get_maas_logger()
@@ -368,13 +369,25 @@ class WithPowerTypeMixin:
             for param in form.data.keys()
             if (
                 param.startswith(params_field_name)
-                and not param == "%s_%s" % (params_field_name, SKIP_CHECK_NAME)
+                and not param == f"{params_field_name}_{SKIP_CHECK_NAME}"
             )
         }
-        if type_changed or len(initial_parameters) > 0:
-            machine.set_power_config(
-                power_type, form.cleaned_data.get(params_field_name)
-            )
+
+        power_parameters = form.cleaned_data.get(params_field_name)
+
+        should_generate_cert = (
+            power_type == "lxd"
+            and not power_parameters.get("certificate")
+            and not power_parameters.get("key")
+        )
+        if should_generate_cert:
+            maas_name = Config.objects.get_config("maas_name")
+            cert = generate_certificate(maas_name)
+            power_parameters["certificate"] = cert.certificate_pem()
+            power_parameters["key"] = cert.private_key_pem()
+
+        if type_changed or initial_parameters:
+            machine.set_power_config(power_type, power_parameters)
 
     def clean(self):
         cleaned_data = super().clean()

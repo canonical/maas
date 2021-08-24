@@ -175,6 +175,17 @@ class LXDPodDriver(PodDriver):
             required=False,
             field_type="password",
         ),
+        make_setting_field(
+            "certificate",
+            "LXD certificate (optional)",
+            required=False,
+        ),
+        make_setting_field(
+            "key",
+            "LXD private key (optional)",
+            required=False,
+            field_type="password",
+        ),
     ]
     ip_extractor = make_ip_extractor(
         "power_address", IP_EXTRACTOR_PATTERNS.URL

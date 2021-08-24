@@ -19,7 +19,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
-class MachineWithMACAddressesFormTest(MAASServerTestCase):
+class TestMachineWithMACAddressesForm(MAASServerTestCase):
     def get_QueryDict(self, params):
         query_dict = QueryDict("", mutable=True)
         for k, v in params.items():

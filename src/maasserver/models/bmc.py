@@ -10,6 +10,7 @@ import re
 from statistics import mean
 
 from django.contrib.postgres.fields import ArrayField, JSONField
+from django.contrib.postgres.indexes import HashIndex
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
 from django.db import transaction
@@ -141,6 +142,14 @@ class BMC(CleanSave, TimestampedModel):
     :ivar objects: The :class:`BMCManager`.
     """
 
+    class Meta(DefaultMeta):
+        # power_type and power_parameters have indexes in addition of the
+        # combined unique one as the unique one uses MD5 hash of the content
+        # and would not be used for queries looking for exact content. Here we
+        # use a HASH index to get around the size limitation on the content of
+        # the indexed object
+        indexes = (HashIndex(fields=("power_parameters",)),)
+
     objects = Manager()
 
     bmcs = BMCManager()
@@ -161,7 +170,9 @@ class BMC(CleanSave, TimestampedModel):
     # The possible choices for this field depend on the power types advertised
     # by the rack controllers.  This needs to be populated on the fly, in
     # forms.py, each time the form to edit a node is instantiated.
-    power_type = CharField(max_length=10, null=False, blank=True, default="")
+    power_type = CharField(
+        max_length=10, null=False, blank=True, default="", db_index=True
+    )
 
     # JSON-encoded set of parameters for power control, limited to 32kiB when
     # encoded as JSON. These apply to all Nodes controlled by this BMC.

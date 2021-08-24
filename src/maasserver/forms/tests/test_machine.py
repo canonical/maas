@@ -9,10 +9,12 @@ from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.enum import NODE_STATUS
 from maasserver.forms import (
     AdminMachineForm,
+    AdminMachineWithMACAddressesForm,
     BLANK_CHOICE,
     MachineForm,
     pick_default_architecture,
 )
+from maasserver.models import Config
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -25,6 +27,7 @@ from maasserver.testing.osystems import (
 )
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import NodeKey
+from provisioningserver.maas_certificates import Certificate
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
@@ -539,3 +542,32 @@ class TestAdminMachineForm(MAASServerTestCase):
         )
         machine = form.save()
         self.assertTrue(NodeKey.objects.filter(node=machine).exists())
+
+
+class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
+    def test_generate_certs_for_lxd_power_type(self):
+        hostname = factory.make_string()
+        form = AdminMachineWithMACAddressesForm(
+            data={
+                "architecture": make_usable_architecture(self),
+                "hostname": hostname,
+                "mac_addresses": [factory.make_mac_address()],
+                "power_type": "lxd",
+                "power_parameters": {
+                    "power_address": "1.2.3.4",
+                    "instance_name": hostname,
+                },
+            },
+        )
+        self.assertTrue(form.is_valid())
+        machine = form.save()
+        power_params = machine.bmc.power_parameters
+        self.assertIn("certificate", power_params)
+        self.assertIn("key", power_params)
+        cert = Certificate.from_pem(
+            power_params["certificate"] + power_params["key"]
+        )
+        self.assertEqual(cert.cn(), Config.objects.get_config("maas_name"))
+        # cert/key are not per-instance parameters
+        self.assertNotIn("certificate", machine.instance_power_parameters)
+        self.assertNotIn("key", machine.instance_power_parameters)
