@@ -76,6 +76,12 @@ LXD_BYTE_SUFFIXES = {
     "EiB": 1024 ** 6,
 }
 
+LXD_REQUIRED_EXTENSIONS = frozenset(
+    ("projects", "virtual-machines", "custom_block_volumes")
+)
+
+LXD_MIN_VERSION = "4.16"
+
 
 def convert_lxd_byte_suffixes(value, divisor=None):
     """Takes the value and converts to a proper integer
@@ -237,10 +243,7 @@ class LXDPodDriver(PodDriver):
     def discover_projects(self, pod_id: int, context: dict):
         """Discover the list of projects in a pod."""
         client = self._get_client(pod_id, context)
-        if not client.has_api_extension("projects"):
-            raise LXDPodError(
-                "Please upgrade your LXD host to 3.6+ for projects support."
-            )
+        self._check_required_extensions(client)
         return [
             {"name": project.name, "description": project.description}
             for project in client.projects.all()
@@ -251,11 +254,7 @@ class LXDPodDriver(PodDriver):
         """Discover all Pod host resources."""
         # Connect to the Pod and make sure it is valid.
         client = self._get_client(pod_id, context)
-        if not client.has_api_extension("virtual-machines"):
-            raise LXDPodError(
-                "Please upgrade your LXD host to 3.19+ for virtual machine support."
-            )
-
+        self._check_required_extensions(client)
         self._ensure_project(client)
 
         # get MACs for host interfaces. "unknown" interfaces are considered too
@@ -401,6 +400,16 @@ class LXDPodDriver(PodDriver):
         self._delete_machine_volumes(client, pod_id, devices)
         # Hints are updated on the region for LXDPodDriver.
         return DiscoveredPodHints()
+
+    def _check_required_extensions(self, client):
+        """Raise an error if the LXD server doesn't support all required features."""
+        all_extensions = set(client.host_info["api_extensions"])
+        missing_extensions = sorted(LXD_REQUIRED_EXTENSIONS - all_extensions)
+        if missing_extensions:
+            raise LXDPodError(
+                f"Please upgrade your LXD host to {LXD_MIN_VERSION} or higher "
+                f"to support the following extensions: {','.join(missing_extensions)}"
+            )
 
     def _get_machine_disks(
         self, requested_disks, storage_pools, default_storage_pool

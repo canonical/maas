@@ -149,7 +149,9 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_parameters_context()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = True
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.trusted = False
         driver = lxd_module.LXDPodDriver()
         endpoint = driver.get_url(context)
@@ -173,7 +175,9 @@ class TestLXDPodDriver(MAASTestCase):
         context.pop("project")
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = True
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.trusted = False
         driver = lxd_module.LXDPodDriver()
         endpoint = driver.get_url(context)
@@ -196,7 +200,9 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_parameters_context()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = True
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.trusted = False
         driver = lxd_module.LXDPodDriver()
         endpoint = driver.get_url(context)
@@ -314,18 +320,22 @@ class TestLXDPodDriver(MAASTestCase):
             yield driver.power_query(pod_id, context)
 
     @inlineCallbacks
-    def test_discover_requires_client_to_have_vm_support(self):
+    def test_discover_checks_required_extensions(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = False
-        error_msg = "Please upgrade your LXD host to *."
+        client.host_info = {
+            "api_extensions": sorted(
+                lxd_module.LXD_REQUIRED_EXTENSIONS - {"projects"}
+            ),
+        }
+        error_msg = (
+            "Please upgrade your LXD host to 4.16 or higher "
+            "to support the following extensions: projects"
+        )
         with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.discover(None, context)
-        self.assertThat(
-            client.has_api_extension, MockCalledOnceWith("virtual-machines")
-        )
 
     @inlineCallbacks
     def test_discover(self):
@@ -333,15 +343,15 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = True
         name = factory.make_name("hostname")
         client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
             "environment": {
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": name,
                 "server_version": "1.2.3",
-            }
+            },
         }
         mac_address = factory.make_mac_address()
         lxd_net1 = Mock(type="physical")
@@ -381,15 +391,15 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = True
         name = factory.make_name("hostname")
         client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
             "environment": {
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": name,
                 "server_version": "1.2.3",
-            }
+            },
         }
         mac_address = factory.make_mac_address()
         lxd_network = Mock(type="unknown")
@@ -405,14 +415,14 @@ class TestLXDPodDriver(MAASTestCase):
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
         client.project = project_name
-        client.has_api_extension.return_value = True
         client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
             "environment": {
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": factory.make_name("hostname"),
                 "server_version": "1.2.3",
-            }
+            },
         }
         client.projects.exists.return_value = True
         driver = lxd_module.LXDPodDriver()
@@ -426,16 +436,16 @@ class TestLXDPodDriver(MAASTestCase):
         project_name = context["project"]
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.project = project_name
-        client.has_api_extension.return_value = True
         client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
             "environment": {
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": factory.make_name("hostname"),
                 "server_version": "1.2.3",
-            }
+            },
         }
+        client.project = project_name
         client.projects.exists.return_value = False
         driver = lxd_module.LXDPodDriver()
         yield driver.discover(None, context)
@@ -451,18 +461,22 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_discover_projects_requires_projects_support(self):
+    def test_discover_projects_checks_required_extensions(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = False
-        error_msg = "Please upgrade your LXD host to *."
+        client.host_info = {
+            "api_extensions": sorted(
+                lxd_module.LXD_REQUIRED_EXTENSIONS - {"virtual-machines"}
+            ),
+        }
+        error_msg = (
+            "Please upgrade your LXD host to 4.16 or higher "
+            "to support the following extensions: virtual-machines"
+        )
         with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.discover_projects(None, context)
-        self.assertThat(
-            client.has_api_extension, MockCalledOnceWith("projects")
-        )
 
     @inlineCallbacks
     def test_discover_projects(self):
@@ -470,15 +484,15 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(lxd_module, "Client")
         client = Client.return_value
-        client.has_api_extension.return_value = True
         name = factory.make_name("hostname")
         client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
             "environment": {
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
                 "server_name": name,
                 "server_version": "1.2.3",
-            }
+            },
         }
         proj1 = Mock()
         proj1.name = "proj1"
@@ -922,9 +936,6 @@ class TestLXDPodDriver(MAASTestCase):
         client = Client.return_value
         client.resources = {
             factory.make_name("rkey"): factory.make_name("rvalue")
-        }
-        client.host_info = {
-            factory.make_name("hkey"): factory.make_name("hvalue")
         }
 
         def mock_iface(name, mac):
