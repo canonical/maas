@@ -46,6 +46,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_TYPE,
+    PARTITION_TABLE_TYPE,
     POWER_STATE,
 )
 from maasserver.exceptions import NodeActionError, NodeStateViolation
@@ -3780,16 +3781,95 @@ class TestMachineHandler(MAASServerTestCase):
             {
                 "destinations": [
                     {
-                        "message": "Machine 1 in the array did not validate: destination boot disk(sda) is smaller than source boot disk(sda)",
-                        "code": "item_invalid",
+                        "message": f"{destination1} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
+                        "code": "storage",
                     },
                     {
-                        "message": "Machine 2 in the array did not validate: destination boot disk(sda) is smaller than source boot disk(sda)",
-                        "code": "item_invalid",
+                        "message": f"{destination2} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
+                        "code": "storage",
                     },
                 ],
             },
         )
+
+    def test_clone_where_possible(self):
+        user = factory.make_admin()
+        request = HttpRequest()
+        request.user = user
+        source = factory.make_Machine(with_boot_disk=False)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024 ** 3, name="sda"
+        )
+        partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.MBR, block_device=boot_disk
+        )
+        efi_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
+            size=512 * 1024 ** 2,
+            bootable=True,
+        )
+        root_partition = factory.make_Partition(
+            partition_table=partition_table,
+            uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
+            size=2 * 1024 ** 3,
+            bootable=False,
+        )
+        destination1 = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination1, size=1024 ** 3, name="sda"
+        )
+        destination2 = factory.make_Machine(
+            status=NODE_STATUS.FAILED_TESTING,
+            with_boot_disk=False,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination2, size=8 * 1024 ** 3, name="sda"
+        )
+
+        handler = MachineHandler(user, {}, request)
+        exc = self.assertRaises(
+            NodeActionError,
+            handler.action,
+            {
+                "system_id": source.system_id,
+                "action": "clone",
+                "extra": {
+                    "storage": True,
+                    "interfaces": False,
+                    "destinations": [
+                        destination1.system_id,
+                        destination2.system_id,
+                    ],
+                },
+            },
+        )
+        (errors,) = exc.args
+        self.assertEqual(
+            json.loads(errors),
+            {
+                "destinations": [
+                    {
+                        "message": f"{destination1} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
+                        "code": "storage",
+                    },
+                ],
+            },
+        )
+        partition_table = (
+            destination2.blockdevice_set.first().get_partitiontable()
+        )
+        self.assertIsNotNone(partition_table)
+        partitions = partition_table.partitions
+        maybe_efi, maybe_root, *rest = partitions.all()
+        self.assertEqual(rest, [])
+        self.assertEqual(maybe_efi.size, efi_partition.size)
+        self.assertTrue(maybe_efi.bootable)
+
+        self.assertEqual(maybe_root.size, root_partition.size)
+        self.assertFalse(maybe_root.bootable)
 
     def test_create_physical_creates_interface(self):
         user = factory.make_admin()

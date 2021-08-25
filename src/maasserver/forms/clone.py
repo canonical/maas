@@ -31,7 +31,10 @@ class CloneForm(forms.Form):
         label="Destinations",
         min_length=1,
         error_messages={
-            "item_invalid": "Machine %(nth)s in the array did not validate:"
+            "item_invalid": "Machine %(nth)s is invalid:",
+            "is-source": "Source machine %(machine)s cannot be a destination machine.",
+            "storage": "%(machine)s is invalid:",
+            "networking": "%(machine)s is invalid:",
         },
         help_text="The destinations to clone to.",
     )
@@ -75,19 +78,18 @@ class CloneForm(forms.Form):
             self.add_error("source", "This field is required.")
         destinations = self.cleaned_data.get("destinations")
         destination_field = self.fields["destinations"]
-        item_invalid = destination_field.error_messages["item_invalid"]
         storage = self.cleaned_data.get("storage", False)
         interfaces = self.cleaned_data.get("interfaces", False)
         if source and destinations:
-            for index, dest in enumerate(destinations, 1):
+            for dest in destinations:
                 if source == dest:
-                    error = prefix_validation_error(
-                        ValidationError(
-                            "Source machine cannot be a destination machine."
-                        ),
-                        prefix=item_invalid,
-                        code="item_invalid",
-                        params={"nth": index},
+                    error = ValidationError(
+                        destination_field.error_messages["is-source"],
+                        code="is-source",
+                        params={
+                            "machine": str(dest),
+                            "system_id": dest.system_id,
+                        },
                     )
                     self.add_error("destinations", error)
                 else:
@@ -97,9 +99,14 @@ class CloneForm(forms.Form):
                         except ValidationError as exc:
                             error = prefix_validation_error(
                                 exc,
-                                prefix=item_invalid,
-                                code="item_invalid",
-                                params={"nth": index},
+                                prefix=destination_field.error_messages[
+                                    "storage"
+                                ],
+                                code="storage",
+                                params={
+                                    "machine": str(dest),
+                                    "system_id": dest.system_id,
+                                },
                             )
                             self.add_error("destinations", error)
                     if interfaces:
@@ -108,9 +115,14 @@ class CloneForm(forms.Form):
                         except ValidationError as exc:
                             error = prefix_validation_error(
                                 exc,
-                                prefix=item_invalid,
-                                code="item_invalid",
-                                params={"nth": index},
+                                prefix=destination_field.error_messages[
+                                    "networking"
+                                ],
+                                code="networking",
+                                params={
+                                    "machine": str(dest),
+                                    "system_id": dest.system_id,
+                                },
                             )
                             self.add_error("destinations", error)
         if not storage and not interfaces:
@@ -123,11 +135,28 @@ class CloneForm(forms.Form):
             )
         return cleaned_data
 
+    def strip_failed_destinations(self):
+        """Remove destinations that have errors."""
+        if "destinations" not in self.cleaned_data:
+            submitted_destinations = self.data.get("destinations")
+            # Don't try and manipulate empty submission
+            if not submitted_destinations:
+                return
+            errors = self.errors.as_data()
+            bogus_system_ids = {
+                error.params["system_id"] for error in errors["destinations"]
+            }
+            return [
+                dest
+                for dest in submitted_destinations
+                if dest not in bogus_system_ids
+            ]
+
     def save(self):
         """Clone the storage and/or interfaces configuration to the
         destinations."""
         source = self.cleaned_data.get("source")
-        destinations = self.cleaned_data.get("destinations")
+        destinations = self.cleaned_data.get("destinations", [])
         storage = self.cleaned_data.get("storage", False)
         interfaces = self.cleaned_data.get("interfaces", False)
         for dest in destinations:

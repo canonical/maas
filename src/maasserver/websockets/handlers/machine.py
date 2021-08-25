@@ -949,7 +949,7 @@ class MachineHandler(NodeHandler):
         action = actions.get(action_name)
         if action is None:
             raise NodeActionError(
-                "%s action is not available for this node." % action_name
+                f"{action_name} action is not available for this node."
             )
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)

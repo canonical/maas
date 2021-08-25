@@ -45,14 +45,13 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "destinations": [
-                    "Machine 1 in the array did not validate: "
-                    "Source machine cannot be a destination machine."
+                    f"Source machine {source} cannot be a destination machine.",
                 ]
             },
             form.errors,
         )
 
-    def test_source_destination_smaller_storage(self):
+    def test_destination_smaller_storage(self):
         user = factory.make_admin()
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
@@ -79,7 +78,7 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "destinations": [
-                    "Machine 1 in the array did not validate: "
+                    f"{destination} is invalid: "
                     "destination boot disk(sda) is smaller than "
                     "source boot disk(sda)"
                 ]
@@ -113,9 +112,8 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "destinations": [
-                    "Machine 1 in the array did not validate: "
-                    "Source machine cannot be a destination machine.",
-                    "Machine 2 in the array did not validate: "
+                    f"Source machine {source} cannot be a destination machine.",
+                    f"{destination} is invalid: "
                     "destination boot disk(sda) is smaller than "
                     "source boot disk(sda)",
                 ]
@@ -123,7 +121,7 @@ class TestCloneForm(MAASServerTestCase):
             form.errors,
         )
 
-    def test_source_destination_missing_nic(self):
+    def test_destination_missing_nic(self):
         user = factory.make_admin()
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_Interface(node=source, name="eth0")
@@ -146,7 +144,7 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "destinations": [
-                    "Machine 1 in the array did not validate: "
+                    f"{destination} is invalid: "
                     "destination node physical interfaces do not match "
                     "the source nodes physical interfaces: eth0"
                 ]
@@ -184,9 +182,7 @@ class TestCloneForm(MAASServerTestCase):
         self.assertEqual(
             {
                 "destinations": [
-                    "Machine 1 in the array did not validate: "
-                    "Select a valid choice. %s is not one of the available "
-                    "choices." % destination.system_id
+                    f"Machine 1 is invalid: Select a valid choice. {destination.system_id} is not one of the available choices."
                 ]
             },
             form.errors,

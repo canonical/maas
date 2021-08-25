@@ -969,18 +969,45 @@ class Clone(NodeAction):
     def get_node_action_audit_description(self, action):
         return self.audit_description % action.node.hostname
 
-    def _execute(self, destinations=None, storage=False, interfaces=False):
-        source = self.node
+    def _execute(
+        self,
+        destinations=None,
+        storage=False,
+        interfaces=False,
+        _error_data=None,
+    ):
         data = {
-            "source": source,
+            "source": self.node,
             "destinations": destinations,
             "storage": storage,
             "interfaces": interfaces,
         }
         form = CloneForm(self.user, data=data)
+        if form.has_error("destinations", "storage") or form.has_error(
+            "destinations", "network"
+        ):
+            # Try again with all the bad destinations removed
+            new_destinations = form.strip_failed_destinations()
+            if new_destinations:
+                return self._execute(
+                    destinations=new_destinations,
+                    storage=storage,
+                    interfaces=interfaces,
+                    _error_data=form.errors,
+                )
         if not form.is_valid():
             raise NodeActionError(form.errors.as_json())
-        form.save()
+        try:
+            form.save()
+        except ValidationError as exc:
+            raise NodeActionError(exc.errors.as_json())
+        if _error_data:
+            for name, error_list in _error_data.items():
+                if name in form.errors:
+                    form.errors[name].extend(error_list)
+                else:
+                    form.errors[name] = error_list
+            raise NodeActionError(form.errors.as_json())
 
 
 ACTION_CLASSES = (
