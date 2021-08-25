@@ -589,17 +589,22 @@ class TestPodHandler(MAASTransactionServerTestCase):
             "password": "secret",
         }
         mock_discover_pod_projects = self.patch(pod, "discover_pod_projects")
-        mock_discover_pod_projects.return_value = succeed(None)
-        mock_get_best_discovered_result = self.patch(
-            pod, "get_best_discovered_result"
+        mock_discover_pod_projects.return_value = succeed(
+            (
+                {
+                    "my-rack": [
+                        DiscoveredPodProject(
+                            name="foo", description="Project foo"
+                        ),
+                        DiscoveredPodProject(
+                            name="bar", description="Project bar"
+                        ),
+                    ]
+                },
+                None,
+            )
         )
-        mock_get_best_discovered_result.return_value = succeed(
-            [
-                DiscoveredPodProject(name="foo", description="Project foo"),
-                DiscoveredPodProject(name="bar", description="Project bar"),
-            ]
-        )
-        projects = yield handler.get_projects(params)
+        projects = yield handler.execute("get_projects", params)
         self.assertEqual(
             projects,
             [
@@ -615,7 +620,6 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 "password": "secret",
             },
         )
-        mock_get_best_discovered_result.assert_called_once()
 
     @wait_for_reactor
     @inlineCallbacks

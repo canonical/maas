@@ -9,7 +9,6 @@ from functools import partial
 
 import attr
 from django.http import HttpRequest
-from twisted.internet.defer import inlineCallbacks, returnValue
 
 from maasserver.clusterrpc.pods import (
     discover_pod_projects,
@@ -160,14 +159,12 @@ class PodHandler(TimestampedModelHandler):
             get_vm_host_resources(obj, detailed=not for_list)
         )
 
-    @asynchronous
-    @inlineCallbacks
-    def get_projects(self, params):
+    async def get_projects(self, params):
         """Return projects from the specified pod."""
         pod_type = params.pop("type")
-        results = yield discover_pod_projects(pod_type, params)
-        projects = yield get_best_discovered_result(results)
-        returnValue([attr.asdict(project) for project in projects])
+        results = await discover_pod_projects(pod_type, params)
+        projects = get_best_discovered_result(results)
+        return [attr.asdict(project) for project in projects]
 
     @asynchronous
     def create(self, params):

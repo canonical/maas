@@ -10,6 +10,7 @@ __all__ = [
     "Handler",
 ]
 
+import asyncio
 from functools import wraps
 from operator import attrgetter
 
@@ -17,6 +18,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import Model
 from django.utils.encoding import is_protected_type
+from twisted.internet.defer import ensureDeferred
 
 from maasserver import concurrency
 from maasserver.permissions import NodePermission
@@ -376,7 +378,9 @@ class Handler(metaclass=HandlerMetaclass):
                 # Handler methods are predominantly transactional and thus
                 # blocking/synchronous. Genuinely non-blocking/asynchronous
                 # methods must out themselves explicitly.
-                if IAsynchronous.providedBy(method):
+                if IAsynchronous.providedBy(
+                    method
+                ) or asyncio.iscoroutinefunction(method):
                     # Running in the io thread so clear RBAC now.
                     rbac.clear()
 
@@ -385,7 +389,7 @@ class Handler(metaclass=HandlerMetaclass):
                         deferToDatabase,
                         transactional(self.user.refresh_from_db),
                     )
-                    d.addCallback(lambda _: method(params))
+                    d.addCallback(lambda _: ensureDeferred(method(params)))
                     return d
                 else:
 

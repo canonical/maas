@@ -11,6 +11,7 @@ from django.db.models.query import QuerySet
 from django.http import HttpRequest
 from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
 from testtools.testcase import ExpectedException
+from twisted.internet.defer import succeed
 
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
 from maasserver.models.node import Device, Node
@@ -874,7 +875,18 @@ class TestHandlerTransaction(
         # An asynchronous method -- decorated with @asynchronous -- is called
         # directly, not in a thread.
         handler = self.make_nodes_handler()
-        handler.get = asynchronous(lambda params: sentinel.thing)
+        handler.get = asynchronous(lambda params: succeed(sentinel.thing))
         params = {"system_id": factory.make_name("system_id")}
         result = handler.execute("get", params).wait(30)
-        self.assertThat(result, Is(sentinel.thing))
+        self.assertIs(result, sentinel.thing)
+
+    def test_execute_calls_coroutine_method_with_params(self):
+        # An asyncio coroutine method is called directly, not in a thread.
+        async def my_get(params):
+            return sentinel.thing
+
+        handler = self.make_nodes_handler()
+        handler.get = my_get
+        params = {"system_id": factory.make_name("system_id")}
+        result = handler.execute("get", params).wait(30)
+        self.assertIs(result, sentinel.thing)
