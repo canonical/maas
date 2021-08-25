@@ -177,13 +177,14 @@ def generate_kvm_pod_configuration(node):
             key=LXD_PASSWORD_METADATA_KEY,
             defaults={"value": password},
         )
-        # when installing LXD, make sure no deb packages conflict with the snap
-        # installation. If the snap is not already installed (as in bionic, install
-        # 4.0 which is enough for features required by MAAS). If it's already
-        # installed (as in focal), just keep the existing version.
+        # When installing LXD, ensure no deb packages are installed, since they
+        # would conflict with the snap. Also, ensure that the snap version is
+        # the latest, since MAAS requires features not present in the one
+        # installed by default in Focal.
         yield "runcmd", [
             "apt autoremove --purge --yes lxd lxd-client lxcfs",
-            "snap install lxd --channel=4.0",
+            "snap install lxd --channel=latest",
+            "snap refresh lxd --channel=latest",
             f'lxd init --auto --network-address=[::] --trust-password="{password}"',
         ]
 
