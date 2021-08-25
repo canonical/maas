@@ -36,11 +36,14 @@ from maasserver.forms.pods import (
     get_known_host_interfaces,
     PodForm,
 )
-from maasserver.models import StaticIPAddress
-from maasserver.models.bmc import Pod
-from maasserver.models.node import Machine
-from maasserver.models.resourcepool import ResourcePool
-from maasserver.models.zone import Zone
+from maasserver.models import (
+    Config,
+    Machine,
+    Pod,
+    ResourcePool,
+    StaticIPAddress,
+    Zone,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -68,6 +71,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
+from provisioningserver.maas_certificates import Certificate
 
 wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
 
@@ -324,6 +328,43 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod = form.save()
         self.assertEqual(pool.id, pod.pool.id)
         self.assertThat(mock_post_commit_do, MockCalledOnce())
+
+    def test_creates_lxd_with_generated_certificate(self):
+        self.patch(pods_module, "post_commit_do")
+        self.fake_pod_discovery()
+        data = {
+            "type": "lxd",
+            "power_address": "1.2.3.4",
+            "password": "secret",
+        }
+        form = PodForm(data=data, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        vmhost = form.save()
+        cert = Certificate.from_pem(
+            vmhost.power_parameters["certificate"]
+            + vmhost.power_parameters["key"]
+        )
+        self.assertEqual(cert.cn(), Config.objects.get_config("maas_name"))
+
+    def test_creates_lxd_with_generated_certificate_with_name_in_cn(self):
+        self.patch(pods_module, "post_commit_do")
+        self.fake_pod_discovery()
+        data = {
+            "name": "lxd-server",
+            "type": "lxd",
+            "power_address": "1.2.3.4",
+            "password": "secret",
+        }
+        form = PodForm(data=data, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        vmhost = form.save()
+        cert = Certificate.from_pem(
+            vmhost.power_parameters["certificate"]
+            + vmhost.power_parameters["key"]
+        )
+        self.assertEqual(
+            cert.cn(), "lxd-server@" + Config.objects.get_config("maas_name")
+        )
 
     @wait_for_reactor
     @inlineCallbacks

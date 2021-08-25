@@ -44,6 +44,7 @@ from maasserver.forms import MAASModelForm
 from maasserver.models import (
     BMC,
     BMCRoutableRackControllerRelationship,
+    Config,
     Domain,
     Event,
     Interface,
@@ -82,6 +83,7 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.maas_certificates import generate_certificate
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
 
@@ -272,22 +274,34 @@ class PodForm(MAASModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
+        power_type = self.cleaned_data.get("type")
         if not self.drivers:
             set_form_error(
                 self,
                 "type",
                 "No rack controllers are connected, unable to validate.",
             )
-        elif (
-            not self.is_new
-            and self.instance.power_type != self.cleaned_data.get("type")
-        ):
+        elif not self.is_new and self.instance.power_type != power_type:
             set_form_error(
                 self,
                 "type",
                 "Cannot change the type of a pod. Delete and re-create the "
                 "pod with a different type.",
             )
+
+        should_generate_cert = (
+            power_type == "lxd"
+            and not cleaned_data.get("certificate")
+            and not cleaned_data.get("key")
+        )
+        if should_generate_cert:
+            maas_name = Config.objects.get_config("maas_name")
+            pod_name = cleaned_data.get("name")
+            cn = f"{pod_name}@{maas_name}" if pod_name else maas_name
+            cert = generate_certificate(cn)
+            cleaned_data["certificate"] = cert.certificate_pem()
+            cleaned_data["key"] = cert.private_key_pem()
+
         return cleaned_data
 
     def save(self, *args, **kwargs):
