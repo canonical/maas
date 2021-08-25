@@ -431,7 +431,7 @@ class TestAdminMachineForm(MAASServerTestCase):
     def test_AdminMachineForm_changes_power_parameters_with_skip_check(self):
         node = factory.make_Node(interface=True)
         hostname = factory.make_string()
-        power_type = factory.pick_power_type()
+        power_type = factory.pick_power_type(but_not=["lxd"])
         power_parameters_field = factory.make_string()
         arch = make_usable_architecture(self)
         form = AdminMachineForm(
