@@ -106,7 +106,15 @@ class TestLXDPodDriver(MAASTestCase):
 
         def make_client(trusted):
             client = MagicMock(trusted=trusted)
-            client.has_api_extension.return_value = True
+            client.host_info = {
+                "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+                "environment": {
+                    "architectures": ["x86_64", "i686"],
+                    "kernel_architecture": "x86_64",
+                    "server_name": "lxd-server",
+                    "server_version": "4.1",
+                },
+            }
             if fail_trusting:
                 mock_response = Mock(status_code=403)
                 mock_response.json.return_value = {"error": "auth failed"}
@@ -435,32 +443,23 @@ class TestLXDPodDriver(MAASTestCase):
             yield driver.power_query(pod_id, context)
 
     @inlineCallbacks
-    def test_discover_requires_client_to_have_vm_support(self):
+    def test_discover_checks_required_extensions(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         _, client = self.mock_client()
-        client.has_api_extension.return_value = False
-        error_msg = "Please upgrade your LXD host to *."
+        client.host_info["api_extensions"].remove("projects")
+        error_msg = (
+            "Please upgrade your LXD host to 4.16 or higher "
+            "to support the following extensions: projects"
+        )
         with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.discover(None, context)
-        self.assertThat(
-            client.has_api_extension, MockCalledOnceWith("virtual-machines")
-        )
 
     @inlineCallbacks
     def test_discover(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         _, client = self.mock_client()
-        name = factory.make_name("hostname")
-        client.host_info = {
-            "environment": {
-                "architectures": ["x86_64", "i686"],
-                "kernel_architecture": "x86_64",
-                "server_name": name,
-                "server_version": "1.2.3",
-            }
-        }
         mac_address = factory.make_mac_address()
         lxd_net1 = Mock(type="physical")
         lxd_net1.state.return_value = Mock(hwaddr=mac_address)
@@ -470,8 +469,8 @@ class TestLXDPodDriver(MAASTestCase):
         client.networks.all.return_value = [lxd_net1, lxd_net2]
         discovered_pod = yield driver.discover(None, context)
         self.assertItemsEqual(["amd64/generic"], discovered_pod.architectures)
-        self.assertEqual(name, discovered_pod.name)
-        self.assertEqual(discovered_pod.version, "1.2.3")
+        self.assertEqual("lxd-server", discovered_pod.name)
+        self.assertEqual(discovered_pod.version, "4.1")
         self.assertItemsEqual([mac_address], discovered_pod.mac_addresses)
         self.assertEqual(-1, discovered_pod.cores)
         self.assertEqual(-1, discovered_pod.cpu_speed)
@@ -498,15 +497,6 @@ class TestLXDPodDriver(MAASTestCase):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         _, client = self.mock_client()
-        name = factory.make_name("hostname")
-        client.host_info = {
-            "environment": {
-                "architectures": ["x86_64", "i686"],
-                "kernel_architecture": "x86_64",
-                "server_name": name,
-                "server_version": "1.2.3",
-            }
-        }
         mac_address = factory.make_mac_address()
         lxd_network = Mock(type="unknown")
         lxd_network.state.return_value = Mock(hwaddr=mac_address)
@@ -520,14 +510,6 @@ class TestLXDPodDriver(MAASTestCase):
         project_name = context["project"]
         _, client = self.mock_client()
         client.project = project_name
-        client.host_info = {
-            "environment": {
-                "architectures": ["x86_64", "i686"],
-                "kernel_architecture": "x86_64",
-                "server_name": factory.make_name("hostname"),
-                "server_version": "1.2.3",
-            }
-        }
         client.projects.exists.return_value = True
         driver = lxd_module.LXDPodDriver()
         yield driver.discover(None, context)
@@ -540,15 +522,6 @@ class TestLXDPodDriver(MAASTestCase):
         project_name = context["project"]
         _, client = self.mock_client()
         client.project = project_name
-        client.has_api_extension.return_value = True
-        client.host_info = {
-            "environment": {
-                "architectures": ["x86_64", "i686"],
-                "kernel_architecture": "x86_64",
-                "server_name": factory.make_name("hostname"),
-                "server_version": "1.2.3",
-            }
-        }
         client.projects.exists.return_value = False
         driver = lxd_module.LXDPodDriver()
         yield driver.discover(None, context)
@@ -564,32 +537,23 @@ class TestLXDPodDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_discover_projects_requires_projects_support(self):
+    def test_discover_projects_checks_required_extensions(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         _, client = self.mock_client()
-        client.has_api_extension.return_value = False
-        error_msg = "Please upgrade your LXD host to *."
+        client.host_info["api_extensions"].remove("virtual-machines")
+        error_msg = (
+            "Please upgrade your LXD host to 4.16 or higher "
+            "to support the following extensions: virtual-machines"
+        )
         with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield driver.discover_projects(None, context)
-        self.assertThat(
-            client.has_api_extension, MockCalledOnceWith("projects")
-        )
 
     @inlineCallbacks
     def test_discover_projects(self):
         context = self.make_parameters_context()
         driver = lxd_module.LXDPodDriver()
         _, client = self.mock_client()
-        name = factory.make_name("hostname")
-        client.host_info = {
-            "environment": {
-                "architectures": ["x86_64", "i686"],
-                "kernel_architecture": "x86_64",
-                "server_name": name,
-                "server_version": "1.2.3",
-            }
-        }
         proj1 = Mock()
         proj1.name = "proj1"
         proj1.description = "Project 1"
@@ -1025,9 +989,6 @@ class TestLXDPodDriver(MAASTestCase):
         _, client = self.mock_client()
         client.resources = {
             factory.make_name("rkey"): factory.make_name("rvalue")
-        }
-        client.host_info = {
-            factory.make_name("hkey"): factory.make_name("hvalue")
         }
 
         def mock_iface(name, mac):
