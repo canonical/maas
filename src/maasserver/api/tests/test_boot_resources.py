@@ -365,7 +365,9 @@ class TestBootResourcesAPI(APITestCase.ForUser):
     def test_POST_validates_boot_resource(self):
         self.become_admin()
 
-        params = {"name": factory.make_name("name")}
+        params = {
+            "name": factory.make_name("name"),
+        }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 

@@ -2394,7 +2394,14 @@ class BootResourceForm(MAASModelForm):
 
     class Meta:
         model = BootResource
-        fields = ("name", "title", "architecture", "filetype", "content")
+        fields = (
+            "name",
+            "title",
+            "architecture",
+            "filetype",
+            "content",
+            "base_image",
+        )
 
     title = forms.CharField(label="Title", required=False)
 
@@ -2408,6 +2415,8 @@ class BootResourceForm(MAASModelForm):
     content = forms.FileField(label="File", allow_empty_file=False)
 
     keep_old = forms.BooleanField(required=False)
+
+    base_image = forms.CharField(label="Base Image", required=False)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -2435,29 +2444,11 @@ class BootResourceForm(MAASModelForm):
             error_messages={"invalid_choice": invalid_arch_message},
         )
 
-    def clean_name(self):
-        """Clean the name field.
+    def _get_supported_osystems(self):
+        return [os_name for os_name, _ in OperatingSystemRegistry]
 
-        The 'custom/' is reserved for custom uploaded images and should not
-        be present in the name field when uploaded. This allows users to
-        provide 'custom/' where it will be removed and the image will be marked
-        uploaded. Without this the image would be uploaded as Generated for
-        a custom OS which is an invalid boot resource.
-        """
-        supported_osystems = [
-            os_name for os_name, _ in OperatingSystemRegistry
-        ]
-        name = self.cleaned_data["name"]
-        if "/" in name:
-            osystem, release = name.split("/")
-            if osystem == "custom":
-                name = release
-            elif osystem not in supported_osystems:
-                raise ValidationError(
-                    "Unsupport operating system %s, supported operating "
-                    "systems: %s" % (osystem, supported_osystems)
-                )
-
+    def _get_reserved_names(self):
+        supported_osystems = self._get_supported_osystems()
         # Prevent the user from uploading any osystem/release or system name
         # already used in the SimpleStreams.
         reserved_names = [
@@ -2471,11 +2462,82 @@ class BootResourceForm(MAASModelForm):
         ]
         # Reserve base operating system names
         reserved_names += supported_osystems
+        return reserved_names
+
+    def clean_name(self):
+        """Clean the name field.
+
+        The 'custom/' is reserved for custom uploaded images and should not
+        be present in the name field when uploaded. This allows users to
+        provide 'custom/' where it will be removed and the image will be marked
+        uploaded. Without this the image would be uploaded as Generated for
+        a custom OS which is an invalid boot resource.
+        """
+        supported_osystems = self._get_supported_osystems()
+        name = self.cleaned_data["name"]
+        if "/" in name:
+            osystem, release = name.split("/")
+            if osystem == "custom":
+                name = release
+            elif osystem not in supported_osystems:
+                raise ValidationError(
+                    "Unsupport operating system %s, supported operating "
+                    "systems: %s" % (osystem, supported_osystems)
+                )
+
+        reserved_names = self._get_reserved_names()
 
         # Reserve CentOS version names for future MAAS use.
         if name in reserved_names or re.search(r"^centos\d\d?$", name):
             raise ValidationError("%s is a reserved name" % name)
         return name
+
+    def _get_base_image_info(self):
+        base_osystem, base_release = self.cleaned_data["base_image"].split(
+            "/"
+        )  # will raise exception if name other than <os>/<release>
+        return (base_osystem.lower(), base_release.lower())
+
+    def clean_base_image(self):
+        """Clean the base image field
+
+        When using custom images, a base image is required in order for MAAS to
+        identify what operating system the image is built on top of for deployment
+        in order to minimize possible incompatibilities during install and post-deployment
+        """
+        if not self.data.get("name", "").startswith("custom/"):
+            return ""
+
+        try:
+            base_osystem, base_version = self._get_base_image_info()
+        except ValueError:
+            raise ValidationError(
+                "custom images require a valid base image name"
+            )
+        else:
+            if base_osystem not in ("ubuntu", "centos", "rhel"):
+                raise ValidationError(
+                    "custom images require a valid non-custom OS type base image"
+                )
+            if base_version is None:
+                raise ValidationError(
+                    "custom images require a valid base image version to be set"
+                )
+
+        supported_base_images = {
+            os_name: os for os_name, os in OperatingSystemRegistry
+        }
+        if not (
+            base_osystem in supported_base_images
+            and supported_base_images[base_osystem].is_release_supported(
+                base_version
+            )
+        ):
+            raise ValidationError(
+                "please select a valid base image OS and version"
+            )
+
+        return "/".join([base_osystem, base_version])
 
     def get_existing_resource(self, resource):
         """Return existing resource if avaliable.

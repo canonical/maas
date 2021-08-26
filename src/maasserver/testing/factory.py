@@ -140,6 +140,7 @@ from metadataserver.enum import (
 from metadataserver.fields import Bin
 from metadataserver.models import Script, ScriptResult, ScriptSet
 from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import inet_ntop
 
@@ -2312,6 +2313,13 @@ class Factory(maastesting.factory.Factory):
             total_size=size,
             content=largeobject,
         )
+
+    def make_base_image_name(self, osystem=None, release=None):
+        if osystem is None:
+            osystem = "ubuntu"
+        if release is None:
+            release = OperatingSystemRegistry[osystem].get_default_release()
+        return "%s/%s" % (osystem, release)
 
     def make_BootResource(
         self,

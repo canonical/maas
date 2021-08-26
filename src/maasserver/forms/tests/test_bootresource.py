@@ -62,6 +62,7 @@ class TestBootResourceForm(MAASServerTestCase):
             "title": title,
             "architecture": architecture,
             "filetype": upload_type,
+            "base_image": factory.make_base_image_name(),
         }
         form = BootResourceForm(data=data, files={"content": uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
@@ -178,6 +179,40 @@ class TestBootResourceForm(MAASServerTestCase):
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
+        }
+        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        self.assertFalse(form.is_valid())
+
+    def test_validates_custom_image_base_os(self):
+        name = "custom/%s" % factory.make_name("name")
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode("utf-8")
+        upload_name = factory.make_name("filename")
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            "name": name,
+            "title": factory.make_name("title"),
+            "architecture": make_usable_architecture(self),
+            "filetype": upload_type,
+            "base_image": factory.make_base_image_name(),
+        }
+        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        self.assertTrue(form.is_valid())
+
+    def test_invalidates_nonexistent_custom_image_base_os(self):
+        name = "custom/%s" % factory.make_name("name")
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode("utf-8")
+        upload_name = factory.make_name("filename")
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            "name": name,
+            "title": factory.make_name("title"),
+            "architecture": make_usable_architecture(self),
+            "filetype": upload_type,
+            "base_image": factory.make_name("invalid"),
         }
         form = BootResourceForm(data=data, files={"content": uploaded_file})
         self.assertFalse(form.is_valid())
@@ -326,7 +361,8 @@ class TestBootResourceForm(MAASServerTestCase):
         form = BootResourceForm(data={})
         self.assertFalse(form.is_valid(), form.errors)
         self.assertItemsEqual(
-            ["name", "architecture", "filetype", "content"], form.errors.keys()
+            ["name", "architecture", "filetype", "content"],
+            form.errors.keys(),
         )
 
     def test_removes_old_bootresourcefiles(self):

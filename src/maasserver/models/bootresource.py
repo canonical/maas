@@ -474,6 +474,8 @@ class BootResource(CleanSave, TimestampedModel):
 
     name = CharField(max_length=255, blank=False)
 
+    base_image = CharField(max_length=255, blank=True)
+
     architecture = CharField(
         max_length=255, blank=False, validators=[validate_architecture]
     )
