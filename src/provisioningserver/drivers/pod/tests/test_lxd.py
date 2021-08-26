@@ -2,9 +2,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from os.path import exists, join
+from pathlib import Path
 import random
+from shutil import rmtree
 from unittest.mock import ANY, call, MagicMock, Mock, PropertyMock, sentinel
 
+from fixtures import EnvironmentVariable, TempDir
 from pylxd.exceptions import LXDAPIException
 from testtools.matchers import Equals, IsInstance, MatchesAll, MatchesStructure
 from testtools.testcase import ExpectedException
@@ -13,7 +16,7 @@ from twisted.internet.defer import inlineCallbacks
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver import maas_certificates
+from provisioningserver.certificates import get_maas_cert_tuple
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachineBlockDevice,
@@ -28,7 +31,6 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.drivers.pod import lxd as lxd_module
-from provisioningserver.maas_certificates import get_maas_cert_tuple
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils import (
@@ -92,9 +94,12 @@ class TestLXDPodDriver(MAASTestCase):
 
     def setUp(self):
         super().setUp()
-        # Generating the cert tuple can be slow and aren't necessary
-        # for the tests.
-        self.patch(maas_certificates, "generate_certificate_if_needed")
+        tempdir = Path(self.useFixture(TempDir()).path)
+        self.useFixture(EnvironmentVariable("MAAS_ROOT", str(tempdir)))
+        self.certs_dir = tempdir / "etc/maas/certificates"
+        self.certs_dir.mkdir(parents=True)
+        (self.certs_dir / "maas.crt").touch()
+        (self.certs_dir / "maas.key").touch()
 
     def mock_get_client(self, driver):
         get_client = self.patch(driver, "_get_client")
@@ -205,6 +210,18 @@ class TestLXDPodDriver(MAASTestCase):
                 ),
             )
             self.assertIs(client, returned_client)
+
+    def test_get_client_no_certificates_no_password(self):
+        rmtree(self.certs_dir)
+        pod_id = factory.make_name("pod_id")
+        context = self.make_parameters_context()
+        del context["password"]
+        driver = lxd_module.LXDPodDriver()
+        Client, client = self.mock_client()
+        error_msg = f"VM Host {pod_id}: No certificates available"
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            with driver._get_client(pod_id, context):
+                self.fail("should not get here")
 
     def test_get_client_with_certificate_and_key(self):
         context = self.make_parameters_context(

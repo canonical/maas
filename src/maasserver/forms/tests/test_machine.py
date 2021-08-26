@@ -27,7 +27,7 @@ from maasserver.testing.osystems import (
 )
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import NodeKey
-from provisioningserver.maas_certificates import Certificate
+from provisioningserver.certificates import Certificate
 from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,

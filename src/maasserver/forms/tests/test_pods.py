@@ -57,6 +57,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
 )
+from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachine,
@@ -71,7 +72,6 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
-from provisioningserver.maas_certificates import Certificate
 
 wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
 

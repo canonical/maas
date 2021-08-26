@@ -34,9 +34,9 @@ from metadataserver.vendor_data import (
     LXD_CERTIFICATE_METADATA_KEY,
     VIRSH_PASSWORD_METADATA_KEY,
 )
+from provisioningserver.certificates import Certificate
 from provisioningserver.events import EVENT_STATUS_MESSAGES
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.maas_certificates import Certificate
 from provisioningserver.utils.twisted import deferred
 
 log = LegacyLogger()

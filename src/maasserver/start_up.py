@@ -8,7 +8,6 @@ import logging
 
 from django.db import connection
 from django.db.utils import DatabaseError
-from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import locks, security
@@ -25,7 +24,6 @@ from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
     get_psycopg2_exception,
-    post_commit_do,
     transactional,
     with_connection,
 )
@@ -33,7 +31,6 @@ from maasserver.utils.threads import deferToDatabase
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.maas_certificates import generate_certificate_if_needed
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from provisioningserver.utils.version import get_running_version
 
@@ -157,6 +154,3 @@ def inner_start_up(master=False):
 
         # Update deprecation notifications if needed
         sync_deprecation_notifications()
-
-        # Create a certificate for the region.
-        post_commit_do(reactor.callLater, 0, generate_certificate_if_needed)

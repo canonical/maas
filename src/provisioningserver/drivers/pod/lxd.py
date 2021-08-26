@@ -17,6 +17,7 @@ from pylxd import Client
 from pylxd.exceptions import ClientConnectionFailed, LXDAPIException, NotFound
 import urllib3
 
+from provisioningserver.certificates import get_maas_cert_tuple
 from provisioningserver.drivers import (
     IP_EXTRACTOR_PATTERNS,
     make_ip_extractor,
@@ -36,7 +37,6 @@ from provisioningserver.drivers.pod import (
     RequestedMachine,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.maas_certificates import get_maas_cert_tuple
 from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils import (
@@ -790,7 +790,7 @@ class LXDPodDriver(PodDriver):
         cert_paths = self._get_cert_paths(context)
         maas_certs = get_maas_cert_tuple()
         if not cert_paths and not maas_certs:
-            raise Error("No certificates avilable")
+            raise Error("No certificates available")
 
         def client_with_certs(cert):
             client = Client(

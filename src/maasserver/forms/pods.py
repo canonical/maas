@@ -71,6 +71,7 @@ from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.models import NodeKey
+from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -83,7 +84,6 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.maas_certificates import generate_certificate
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
 

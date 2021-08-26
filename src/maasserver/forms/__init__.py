@@ -174,10 +174,10 @@ from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_min_hwe_kernel,
 )
+from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.maas_certificates import generate_certificate
 from provisioningserver.utils.network import make_network
 
 maaslog = get_maas_logger()

@@ -53,8 +53,8 @@ from metadataserver.api_twisted import (
 )
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from metadataserver.models import NodeKey
+from provisioningserver.certificates import generate_certificate
 from provisioningserver.events import EVENT_STATUS_MESSAGES
-from provisioningserver.maas_certificates import generate_certificate
 
 wait_for_reactor = wait_for(30)
 

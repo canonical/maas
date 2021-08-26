@@ -16,7 +16,6 @@ from zope.interface import implementer
 
 from provisioningserver import logger, settings
 from provisioningserver.config import ClusterConfiguration, is_dev_environment
-from provisioningserver.maas_certificates import generate_certificate_if_needed
 from provisioningserver.monkey import (
     add_patches_to_twisted,
     add_patches_to_txtftp,
@@ -277,7 +276,5 @@ class ProvisioningServiceMaker:
                 tftp_root, tftp_port, clock=clock
             ):
                 service.setServiceParent(services)
-
-            reactor.callInThread(generate_certificate_if_needed)
 
         return services

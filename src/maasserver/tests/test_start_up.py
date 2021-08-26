@@ -8,7 +8,6 @@ import random
 from unittest.mock import call
 
 from testtools.matchers import HasLength, Is, Not
-from twisted.internet import reactor
 
 from maasserver import eventloop, locks, start_up
 from maasserver.models.config import Config
@@ -22,7 +21,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maasserver.utils.orm import post_commit_hooks, reload_object
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -94,7 +93,6 @@ class TestInnerStartUp(MAASServerTestCase):
         super().setUp()
         self.useFixture(MAASIDFixture(None))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
-        self.patch_autospec(start_up, "post_commit_do")
         self.patch(ipaddr, "get_ip_addr").return_value = {}
         # Disable boot source cache signals.
         self.addCleanup(bootsources.signals.enable)
@@ -177,29 +175,6 @@ class TestInnerStartUp(MAASServerTestCase):
             "http://default.example.com/",
             Config.objects.get_config("maas_url"),
         )
-
-    def test_generates_certificate_if_master(self):
-        with post_commit_hooks:
-            start_up.inner_start_up(master=True)
-        region = RegionController.objects.first()
-        self.assertThat(
-            start_up.post_commit_do,
-            MockCallsMatch(
-                call(
-                    reactor.callLater,
-                    0,
-                    start_up.generate_certificate_if_needed,
-                ),
-            ),
-        )
-        region = reload_object(region)
-        self.assertIsNotNone(region)
-        self.assertIsNotNone(region.current_commissioning_script_set)
-
-    def test_does_not_call_if_not_master(self):
-        with post_commit_hooks:
-            start_up.inner_start_up(master=False)
-        self.assertThat(start_up.post_commit_do, MockNotCalled())
 
     def test_doesnt_call_dns_kms_setting_changed_if_not_master(self):
         with post_commit_hooks:
