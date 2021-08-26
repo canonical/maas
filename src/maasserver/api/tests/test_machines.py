@@ -227,6 +227,25 @@ class TestMachinesAPI(APITestCase.ForUser):
             NODE_STATUS.NEW, Node.objects.get(system_id=system_id).status
         )
 
+    def test_POST_when_logged_in_creates_deployed_machine(self):
+        self.become_admin()
+        response = self.client.post(
+            reverse("machines_handler"),
+            {
+                "deployed": True,
+                "hostname": factory.make_name("host"),
+                "architecture": make_usable_architecture(self),
+                "mac_addresses": [factory.make_mac_address()],
+            },
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        system_id = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )["system_id"]
+        node = Node.objects.get(system_id=system_id)
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
+        self.assertEqual(self.user, node.owner)
+
     def test_POST_new_when_no_RPC_to_rack_defaults_empty_power(self):
         # Test for bug 1305061, if there is no cluster RPC connection
         # then make sure that power_type is defaulted to the empty

@@ -128,6 +128,11 @@ from provisioningserver.tags import merge_details_cleanly
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
 
+class FakeRequest:
+    def __init__(self, user):
+        self.user = user
+
+
 class TestMachineHandler(MAASServerTestCase):
 
     maxDiff = None
@@ -2453,7 +2458,7 @@ class TestMachineHandler(MAASServerTestCase):
 
     def test_create_creates_deployed_node(self):
         user = factory.make_admin()
-        handler = MachineHandler(user, {}, None)
+        handler = MachineHandler(user, {}, FakeRequest(user))
         hostname = factory.make_name("hostname")
         description = factory.make_name("description")
         zone = factory.make_Zone()
@@ -2477,6 +2482,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertIsNotNone(node.current_commissioning_script_set)
         self.assertTrue(NodeKey.objects.filter(node=node).exists())
         self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        self.assertEqual(user, node.owner)
 
     def test_update_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()

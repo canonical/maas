@@ -1192,6 +1192,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         from metadataserver.models.scriptset import ScriptSet
 
         machine.status = NODE_STATUS.DEPLOYED
+        machine.owner = self.request.user
         # Foreign relations need to have an id to relate to, have to
         # save here
         machine.save()

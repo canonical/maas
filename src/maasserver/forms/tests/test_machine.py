@@ -35,6 +35,11 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.testing.os import make_osystem
 
 
+class FakeRequest:
+    def __init__(self, user):
+        self.user = user
+
+
 class TestMachineForm(MAASServerTestCase):
     def test_contains_limited_set_of_fields(self):
         form = MachineForm()
@@ -413,7 +418,9 @@ class TestAdminMachineForm(MAASServerTestCase):
 
     def test_AdminMachineForm_new_machine_deployed(self):
         hostname = factory.make_string()
+        user = factory.make_admin()
         form = AdminMachineForm(
+            request=FakeRequest(user),
             data={
                 "hostname": hostname,
                 "deployed": True,
@@ -422,6 +429,25 @@ class TestAdminMachineForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
         node = form.save()
         self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        self.assertEqual(user, node.owner)
+
+    def test_AdminMachineForm_new_machine_no_deployed_no_owner(self):
+        hostname = factory.make_string()
+        user = factory.make_admin()
+        form = AdminMachineForm(
+            request=FakeRequest(user),
+            data={
+                "hostname": hostname,
+                "architecture": make_usable_architecture(self),
+                "power_type": "ipmi",
+                "power_parameters_field": factory.make_string(),
+                "power_parameters_skip_check": "true",
+            },
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        node = form.save()
+        self.assertEqual(node.status, NODE_STATUS.NEW)
+        self.assertIsNone(node.owner)
 
     def test_AdminMachineForm_populates_power_type_initial(self):
         node = factory.make_Node()
@@ -523,7 +549,9 @@ class TestAdminMachineForm(MAASServerTestCase):
 
     def test_AdminMachineForm_creates_scriptset_for_deployed(self):
         hostname = factory.make_string()
+        user = factory.make_admin()
         form = AdminMachineForm(
+            request=FakeRequest(user),
             data={
                 "hostname": hostname,
                 "deployed": True,
@@ -534,7 +562,9 @@ class TestAdminMachineForm(MAASServerTestCase):
 
     def test_AdminMachineForm_creates_node_token_for_deployed(self):
         hostname = factory.make_string()
+        user = factory.make_admin()
         form = AdminMachineForm(
+            request=FakeRequest(user),
             data={
                 "hostname": hostname,
                 "deployed": True,

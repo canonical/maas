@@ -91,6 +91,7 @@ log = LegacyLogger()
 class MachineHandler(NodeHandler):
     class Meta(NodeHandler.Meta):
         abstract = False
+        form_requires_request = True
         queryset = (
             node_prefetch(Machine.objects.all())
             .prefetch_related(
