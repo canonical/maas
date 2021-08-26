@@ -56,6 +56,21 @@ maaslog = get_maas_logger("drivers.pod.lxd")
 
 LXD_MAAS_PROFILE = "maas"
 
+# Configuration for LXD project created by MAAS itself
+#
+# By default don't enable per-project images and storage, since those require
+# setting up at least one storage pool so that VMs can be created.  Users can
+# change those settings later without affecting MAAS functionality.
+LXD_MAAS_PROJECT_CONFIG = {
+    "description": "Project managed by MAAS",
+    "config": {
+        "features.images": "false",
+        "features.profiles": "true",
+        "features.storage.volumes": "false",
+    },
+}
+
+
 # LXD status codes
 LXD_VM_POWER_STATE = {101: "on", 102: "off", 103: "on", 110: "off"}
 
@@ -518,19 +533,9 @@ class LXDPodDriver(PodDriver):
         """Ensure the project that the client is configured with exists."""
         if client.projects.exists(client.project):
             return
-
-        # When creating a project, by default don't enable per-project images
-        # and storage. Enabling those setting up at least one storage pool so
-        # that VMs can be created. Users can change those settings later
-        # without affecting MAAS functionality.
         client.projects.create(
             name=client.project,
-            description="Project managed by MAAS",
-            config={
-                "features.images": "false",
-                "features.profiles": "true",
-                "features.storage.volumes": "false",
-            },
+            **LXD_MAAS_PROJECT_CONFIG,
         )
 
     def _get_usable_storage_pool(

@@ -54,6 +54,7 @@ from metadataserver.api_twisted import (
 from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from metadataserver.models import NodeKey
 from provisioningserver.events import EVENT_STATUS_MESSAGES
+from provisioningserver.maas_certificates import generate_certificate
 
 wait_for_reactor = wait_for(30)
 
@@ -1087,7 +1088,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         super().setUp()
         self.mock_PodForm = self.patch(api_twisted_module, "PodForm")
 
-    def test_marks_failed_if_no_password_install_kvm(self):
+    def test_marks_failed_if_no_creds_install_kvm(self):
         node = factory.make_Node(
             interface=True,
             status=NODE_STATUS.DEPLOYING,
@@ -1098,7 +1099,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         self.assertEqual(node.status, NODE_STATUS.FAILED_DEPLOYMENT)
         self.assertEqual(
             node.error_description,
-            "Failed to deploy VM host: Password not found.",
+            "Failed to deploy VM host: Credentials not found.",
         )
 
     def test_marks_failed_if_no_password_register_vmhost(self):
@@ -1112,7 +1113,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         self.assertEqual(node.status, NODE_STATUS.FAILED_DEPLOYMENT)
         self.assertEqual(
             node.error_description,
-            "Failed to deploy VM host: Password not found.",
+            "Failed to deploy VM host: Credentials not found.",
         )
 
     def test_creates_vmhost_register_vmhost(self):
@@ -1122,8 +1123,11 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             register_vmhost=True,
         )
         ip = factory.make_StaticIPAddress(interface=node.boot_interface)
+        cert = generate_certificate("maas")
         password_meta = NodeMetadata.objects.create(
-            node=node, key="lxd_password", value="xyz123"
+            node=node,
+            key="lxd_certificate",
+            value=cert.certificate_pem() + cert.private_key_pem(),
         )
         addr = ip.ip
         if IPAddress(addr).version == 6:
@@ -1134,7 +1138,8 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             data={
                 "type": "lxd",
                 "name": node.hostname,
-                "password": password_meta.value,
+                "certificate": cert.certificate_pem(),
+                "key": cert.private_key_pem(),
                 "power_address": addr,
                 "project": "maas",
                 "zone": node.zone.name,
@@ -1183,8 +1188,11 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         virsh_password_meta = NodeMetadata.objects.create(
             node=node, key="virsh_password", value="xyz123"
         )
-        lxd_password_meta = NodeMetadata.objects.create(
-            node=node, key="lxd_password", value="abc789"
+        cert = generate_certificate("maas")
+        lxd_cert_meta = NodeMetadata.objects.create(
+            node=node,
+            key="lxd_certificate",
+            value=cert.certificate_pem() + cert.private_key_pem(),
         )
         addr = ip.ip
         if IPAddress(addr).version == 6:
@@ -1208,7 +1216,8 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
                     data={
                         "type": "lxd",
                         "name": f"{node.hostname}-lxd",
-                        "password": lxd_password_meta.value,
+                        "certificate": cert.certificate_pem(),
+                        "key": cert.private_key_pem(),
                         "power_address": addr,
                         "project": "maas",
                         "zone": node.zone.name,
@@ -1220,7 +1229,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             any_order=True,
         )
         self.assertIsNone(reload_object(virsh_password_meta))
-        self.assertIsNone(reload_object(lxd_password_meta))
+        self.assertIsNone(reload_object(lxd_cert_meta))
 
     def test_marks_failed_if_is_valid_returns_false(self):
         mock_pod_form = Mock()
@@ -1235,7 +1244,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
         NodeMetadata.objects.create(
-            node=node, key="lxd_password", value="xyz123"
+            node=node, key="virsh_password", value="xyz123"
         )
         _create_vmhost_for_deployment(node)
         self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
@@ -1258,7 +1267,7 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
         NodeMetadata.objects.create(
-            node=node, key="lxd_password", value="xyz123"
+            node=node, key="virsh_password", value="xyz123"
         )
         _create_vmhost_for_deployment(node)
         self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
@@ -1281,6 +1290,6 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         )
         factory.make_StaticIPAddress(interface=node.boot_interface)
         NodeMetadata.objects.create(
-            node=node, key="lxd_password", value="xyz123"
+            node=node, key="virsh_password", value="xyz123"
         )
         self.assertRaises(DatabaseError, _create_vmhost_for_deployment, node)

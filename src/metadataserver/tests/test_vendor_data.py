@@ -36,6 +36,7 @@ from metadataserver.vendor_data import (
     generate_system_info,
     get_vendor_data,
 )
+from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 
 
 class TestGetVendorData(MAASServerTestCase):
@@ -380,8 +381,8 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
         self.assertEqual(password_meta.value, password)
 
     def test_yields_configuration_when_machine_register_vmhost_true(self):
-        password = "123secure"
-        self.patch(vendor_data, "_generate_password").return_value = password
+        cert = vendor_data.generate_certificate("maas")
+        self.patch(vendor_data, "generate_certificate").return_value = cert
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING,
             osystem="ubuntu",
@@ -393,19 +394,38 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
             config,
             [
                 (
+                    "write_files",
+                    [
+                        {
+                            "content": cert.certificate_pem(),
+                            "path": "/root/lxd.crt",
+                        },
+                        {
+                            "content": yaml.safe_dump(LXD_MAAS_PROJECT_CONFIG),
+                            "path": "/root/maas-project.yaml",
+                        },
+                    ],
+                ),
+                (
                     "runcmd",
                     [
                         "apt autoremove --purge --yes lxd lxd-client lxcfs",
                         "snap install lxd --channel=latest",
                         "snap refresh lxd --channel=latest",
-                        f'lxd init --auto --network-address=[::] --trust-password="{password}"',
+                        "lxd init --auto --network-address=[::]",
+                        "lxc project create maas",
+                        "sh -c 'lxc project edit maas </root/maas-project.yaml'",
+                        "lxc config trust add /root/lxd.crt --restricted --projects maas",
+                        "rm /root/lxd.crt /root/maas-project.yaml",
                     ],
                 ),
             ],
         )
-        password_meta = NodeMetadata.objects.first()
-        self.assertEqual(password_meta.key, "lxd_password")
-        self.assertEqual(password_meta.value, password)
+        creds_meta = NodeMetadata.objects.first()
+        self.assertEqual(creds_meta.key, "lxd_certificate")
+        self.assertEqual(
+            creds_meta.value, cert.certificate_pem() + cert.private_key_pem()
+        )
 
     def test_includes_smt_off_for_install_kvm_on_ppc64(self):
         password = "123secure"

@@ -21,10 +21,12 @@ from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.server_address import get_maas_facing_server_host
+from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
+from provisioningserver.maas_certificates import generate_certificate
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
 
-LXD_PASSWORD_METADATA_KEY = "lxd_password"
+LXD_CERTIFICATE_METADATA_KEY = "lxd_certificate"
 VIRSH_PASSWORD_METADATA_KEY = "virsh_password"
 
 
@@ -171,12 +173,27 @@ def generate_kvm_pod_configuration(node):
     arch, _ = node.split_arch()
 
     if node.register_vmhost:
-        password = _generate_password()
+        cert = generate_certificate(Config.objects.get_config("maas_name"))
+        cert_pem = cert.certificate_pem() + cert.private_key_pem()
         NodeMetadata.objects.update_or_create(
             node=node,
-            key=LXD_PASSWORD_METADATA_KEY,
-            defaults={"value": password},
+            key=LXD_CERTIFICATE_METADATA_KEY,
+            defaults={"value": cert_pem},
         )
+        # write out the LXD cert on node to add it to the trust after setup
+        maas_project = "maas"
+        project_conf_file = "/root/maas-project.yaml"
+        cert_file = "/root/lxd.crt"
+        yield "write_files", [
+            {
+                "content": cert.certificate_pem(),
+                "path": cert_file,
+            },
+            {
+                "content": yaml.safe_dump(LXD_MAAS_PROJECT_CONFIG),
+                "path": project_conf_file,
+            },
+        ]
         # When installing LXD, ensure no deb packages are installed, since they
         # would conflict with the snap. Also, ensure that the snap version is
         # the latest, since MAAS requires features not present in the one
@@ -185,7 +202,11 @@ def generate_kvm_pod_configuration(node):
             "apt autoremove --purge --yes lxd lxd-client lxcfs",
             "snap install lxd --channel=latest",
             "snap refresh lxd --channel=latest",
-            f'lxd init --auto --network-address=[::] --trust-password="{password}"',
+            "lxd init --auto --network-address=[::]",
+            f"lxc project create {maas_project}",
+            f"sh -c 'lxc project edit {maas_project} <{project_conf_file}'",
+            f"lxc config trust add {cert_file} --restricted --projects {maas_project}",
+            f"rm {cert_file} {project_conf_file}",
         ]
 
     if node.install_kvm:

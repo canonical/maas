@@ -31,11 +31,12 @@ from metadataserver.api import add_event_to_node_event_log, process_file
 from metadataserver.enum import SCRIPT_STATUS
 from metadataserver.models import NodeKey
 from metadataserver.vendor_data import (
-    LXD_PASSWORD_METADATA_KEY,
+    LXD_CERTIFICATE_METADATA_KEY,
     VIRSH_PASSWORD_METADATA_KEY,
 )
 from provisioningserver.events import EVENT_STATUS_MESSAGES
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.maas_certificates import Certificate
 from provisioningserver.utils.twisted import deferred
 
 log = LegacyLogger()
@@ -182,23 +183,26 @@ POD_CREATION_ERROR = (
 
 
 def _create_vmhost_for_deployment(node):
-    passwords_meta = list(
+    creds_meta = list(
         NodeMetadata.objects.filter(
             node=node,
-            key__in=(LXD_PASSWORD_METADATA_KEY, VIRSH_PASSWORD_METADATA_KEY),
+            key__in=(
+                LXD_CERTIFICATE_METADATA_KEY,
+                VIRSH_PASSWORD_METADATA_KEY,
+            ),
         )
     )
-    if not passwords_meta:
+    if not creds_meta:
         node.mark_failed(
-            comment="Failed to deploy VM host: Password not found.",
+            comment="Failed to deploy VM host: Credentials not found.",
             commit=False,
         )
         return
 
-    for password_meta in passwords_meta:
-        is_lxd = password_meta.key == LXD_PASSWORD_METADATA_KEY
-        password = password_meta.value
-        password_meta.delete()
+    for cred_meta in creds_meta:
+        is_lxd = cred_meta.key == LXD_CERTIFICATE_METADATA_KEY
+        secret = cred_meta.value
+        cred_meta.delete()
 
         # XXX: Should find the best IP to communicate with, given what the rack
         # controller can access, or use the boot interface IP address.
@@ -206,8 +210,8 @@ def _create_vmhost_for_deployment(node):
         if ":" in ip:
             ip = f"[{ip}]"
         name = node.hostname
-        if len(passwords_meta) > 1:
-            # make pod names unique
+        if len(creds_meta) > 1:
+            # make VM host names unique
             name += "-lxd" if is_lxd else "-virsh"
 
         form_data = {
@@ -216,11 +220,13 @@ def _create_vmhost_for_deployment(node):
             "pool": node.pool.name,
         }
         if is_lxd:
+            certificate = Certificate.from_pem(secret)
             form_data.update(
                 {
                     "type": "lxd",
                     "power_address": ip,
-                    "password": password,
+                    "certificate": certificate.certificate_pem(),
+                    "key": certificate.private_key_pem(),
                     "project": "maas",
                 }
             )
@@ -229,7 +235,7 @@ def _create_vmhost_for_deployment(node):
                 {
                     "type": "virsh",
                     "power_address": f"qemu+ssh://virsh@{ip}/system",
-                    "power_pass": password,
+                    "power_pass": secret,
                 }
             )
         pod_form = PodForm(data=form_data, user=node.owner)
