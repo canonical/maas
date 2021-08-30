@@ -74,7 +74,6 @@ from maasserver.enum import (
 from maasserver.exceptions import (
     IPAddressCheckFailed,
     NodeStateViolation,
-    PodProblem,
     PowerProblem,
     StaticIPAddressExhaustion,
 )
@@ -6088,16 +6087,20 @@ class TestDecomposeMachineTransactional(
         interface = transactional(reload_object)(interface)
         self.assertIsNone(interface)
 
-    def test_errors_raised_up(self):
+    def test_delete_doesnt_fail_removal(self):
+        mock_log_warning = self.patch(node_module.maaslog, "warning")
         pod, machine, hints, client = self.create_pod_machine_and_hints(
             creation_type=NODE_CREATION_TYPE.MANUAL
         )
-        client.return_value = defer.fail(PodActionFail())
-        with ExpectedException(PodProblem):
-            with post_commit_hooks:
-                machine.delete()
-        machine = transactional(reload_object)(machine)
-        self.assertIsNotNone(machine)
+        client.return_value = defer.fail(PodActionFail("bang!"))
+        with post_commit_hooks:
+            machine.delete()
+        mock_log_warning.assert_called_with(
+            f"{machine.hostname}: Failure decomposing machine: "
+            "Unable to decompose machine because: bang!"
+        )
+        # the machine is still deleted
+        self.assertIsNone(transactional(reload_object)(machine))
 
     def test_release_deletes_dynamic_machine(self):
         owner = transactional(factory.make_User)()
