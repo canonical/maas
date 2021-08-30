@@ -212,6 +212,8 @@ class LXDPodDriver(PodDriver):
         "power_address", IP_EXTRACTOR_PATTERNS.URL
     )
 
+    _pylxd_client_class = Client
+
     def detect_missing_packages(self):
         # python3-pylxd is a required package
         # for maas and is installed by default.
@@ -793,7 +795,7 @@ class LXDPodDriver(PodDriver):
             raise Error("No certificates available")
 
         def client_with_certs(cert):
-            client = Client(
+            client = self._pylxd_client_class(
                 endpoint=endpoint,
                 project=project,
                 cert=cert,
