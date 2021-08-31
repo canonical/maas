@@ -282,24 +282,24 @@ class LXDPodDriver(PodDriver):
     @threadDeferred
     def discover(self, pod_id: int, context: dict):
         """Discover all Pod host resources."""
-        # Connect to the Pod and make sure it is valid.
-        with self._get_client(pod_id, context) as client:
+        # Allow the certificate not to be trusted (in which case an empty
+        # DiscoveredPod is returned) when creating a new VM host, at which
+        # point certs might not yet be trusted.
+        allow_untrusted = pod_id is None
+        with self._get_client(
+            pod_id, context, allow_untrusted=allow_untrusted
+        ) as client:
             return self._discover(client, pod_id, context)
 
     def _discover(self, client: Client, pod_id: int, context: dict):
         self._check_required_extensions(client)
-        self._ensure_project(client)
 
-        # get MACs for host interfaces. "unknown" interfaces are considered too
-        # to match ethernets in containers
-        networks_state = [
-            net.state()
-            for net in client.networks.all()
-            if net.type in ("unknown", "physical")
-        ]
-        mac_addresses = list(
-            {state.hwaddr for state in networks_state if state.hwaddr}
-        )
+        if not client.trusted:
+            # return empty information as the client is not authenticated and
+            # gathering other info requires auth.
+            return DiscoveredPod()
+
+        self._ensure_project(client)
 
         environment = client.host_info["environment"]
         # After the region creates the Pod object it will sync LXD commissioning
@@ -318,7 +318,6 @@ class LXDPodDriver(PodDriver):
             ],
             name=environment["server_name"],
             version=environment["server_version"],
-            mac_addresses=mac_addresses,
             capabilities=[
                 Capabilities.COMPOSABLE,
                 Capabilities.DYNAMIC_LOCAL_STORAGE,
@@ -327,15 +326,23 @@ class LXDPodDriver(PodDriver):
             ],
         )
 
-        # Check that we have at least one storage pool.
-        # If not, user should be warned that they need to create one.
+        # Discover networks. "unknown" interfaces are considered too to match
+        # ethernets in containers.
+        networks_state = [
+            net.state()
+            for net in client.networks.all()
+            if net.type in ("unknown", "physical")
+        ]
+        discovered_pod.mac_addresses = list(
+            {state.hwaddr for state in networks_state if state.hwaddr}
+        )
+
+        # Discover storage pools.
         storage_pools = client.storage_pools.all()
         if not storage_pools:
             raise LXDPodError(
                 "No storage pools exists.  Please create a storage pool in LXD."
             )
-
-        # Discover Storage Pools.
         pools = []
         local_storage = 0
         for storage_pool in storage_pools:
@@ -347,9 +354,8 @@ class LXDPodDriver(PodDriver):
         discovered_pod.storage_pools = pools
         discovered_pod.local_storage = local_storage
 
-        host_cpu_speed = lxd_cpu_speed(client.resources)
-
         # Discover VMs.
+        host_cpu_speed = lxd_cpu_speed(client.resources)
         projects = [project.name for project in client.projects.all()]
         machines = []
         for project in projects:
@@ -366,7 +372,6 @@ class LXDPodDriver(PodDriver):
                     machines.append(discovered_machine)
         discovered_pod.machines = machines
 
-        # Return the DiscoveredPod.
         return discovered_pod
 
     @threadDeferred
@@ -777,7 +782,11 @@ class LXDPodDriver(PodDriver):
     @typed
     @contextmanager
     def _get_client(
-        self, pod_id: int, context: dict, project: Optional[str] = None
+        self,
+        pod_id: int,
+        context: dict,
+        project: Optional[str] = None,
+        allow_untrusted: bool = False,
     ):
         """Return a context manager with a PyLXD client."""
 
@@ -824,7 +833,7 @@ class LXDPodDriver(PodDriver):
             else:
                 client = client_with_certs(maas_certs)
 
-            if not client.trusted:
+            if not client.trusted and not allow_untrusted:
                 raise Error(
                     "Certificate is not trusted and no password was given"
                 )

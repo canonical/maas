@@ -266,7 +266,9 @@ class DiscoveredPodHints:
 class DiscoveredPod:
     """Discovered pod information."""
 
-    architectures = attr.ib(converter=converter_list(str))
+    architectures = attr.ib(
+        converter=converter_list(str), default=attr.Factory(list)
+    )
     name = attr.ib(converter=converter_obj(str, optional=True), default=None)
     version = attr.ib(converter=converter_obj(str, optional=True), default="")
     cores = attr.ib(converter=int, default=-1)

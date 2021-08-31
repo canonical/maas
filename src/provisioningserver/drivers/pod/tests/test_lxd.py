@@ -97,6 +97,7 @@ class FakeClient:
     verify: bool
 
     _PROXIES = (
+        "host_info",
         "certificates",
         "networks",
         "profiles",
@@ -109,6 +110,7 @@ class FakeClient:
     def __post_init__(self):
         self.trusted = False
         self._fail_auth = False
+        self.host_info = self.fake_lxd.host_info
 
     def authenticate(self, password):
         if self._fail_auth:
@@ -116,7 +118,6 @@ class FakeClient:
             response.json.return_value = {"error": "auth failed"}
             raise LXDAPIException(response)
 
-        self.host_info = self.fake_lxd.host_info
         self.trusted = True
 
     def __getattr__(self, name):
@@ -324,6 +325,16 @@ class TestLXDPodDriver(MAASTestCase):
             "", b"CERT"
         )
 
+    def test_get_client_allow_untrusted(self):
+        context = self.make_context(with_password=False)
+        self.fake_lxd.add_client_behavior(trusted=False)
+        # no exception is raised
+        with self.driver._get_client(
+            None, context, allow_untrusted=True
+        ) as client:
+            self.assertFalse(client.trusted)
+            self.assertIsNotNone(client.cert)
+
     def test_get_client_default_project(self):
         context = self.make_context()
         del context["project"]
@@ -495,6 +506,26 @@ class TestLXDPodDriver(MAASTestCase):
         )
         with ExpectedException(lxd_module.LXDPodError, error_msg):
             yield self.driver.discover_projects(None, self.make_context())
+
+    @inlineCallbacks
+    def test_discover_new_vmhost_untrusted_cert(self):
+        context = self.make_context(with_password=False)
+        self.fake_lxd.add_client_behavior(trusted=False)
+        discovered_pod = yield self.driver.discover(None, context)
+        self.assertIsNone(discovered_pod.name)
+        self.assertEqual(discovered_pod.version, "")
+        self.assertEqual(discovered_pod.cores, -1)
+        self.assertEqual(discovered_pod.cpu_speed, -1)
+        self.assertEqual(discovered_pod.memory, -1)
+
+    @inlineCallbacks
+    def test_discover_existing_vmhost_untrusted_cert(self):
+        context = self.make_context(with_password=False)
+        self.fake_lxd.add_client_behavior(trusted=False)
+        pod_id = factory.make_name("pod_id")
+        error_msg = f"VM Host {pod_id}: Certificate is not trusted and no password was given"
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            yield self.driver.discover(pod_id, context)
 
     @inlineCallbacks
     def test_discover_projects(self):
