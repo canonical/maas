@@ -8,17 +8,22 @@ from unittest.mock import MagicMock
 from crochet import wait_for
 from testtools.matchers import Equals
 from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.internet.threads import deferToThread
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import pods
 from maasserver.forms.pods import PodForm
 from maasserver.models import Pod, PodStoragePool
 from maasserver.models.virtualmachine import MB, VirtualMachineInterface
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets.handlers import pod
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
@@ -28,6 +33,7 @@ from provisioningserver.drivers.pod import (
     DiscoveredPodProject,
     InterfaceAttachType,
 )
+from provisioningserver.rpc.cluster import DiscoverPodProjects
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -577,9 +583,35 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertEqual(result["resources"]["numa"], [])
         self.assertEqual(result["resources"]["vms"], [])
 
+    def get_rack_rpc_protocol(self, rack_controller, *commands):
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        return fixture.makeCluster(rack_controller, *commands)
+
     @wait_for_reactor
     @inlineCallbacks
-    def test_get_projects(self):
+    def test_get_projects_with_password(self):
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = yield deferToThread(
+            self.get_rack_rpc_protocol, rack_controller, DiscoverPodProjects
+        )
+        protocol.DiscoverPodProjects.return_value = succeed(
+            {
+                "projects": [
+                    DiscoveredPodProject(
+                        name="foo",
+                        description="Project foo",
+                    ),
+                    DiscoveredPodProject(
+                        name="bar",
+                        description="Project bar",
+                    ),
+                ]
+            }
+        )
+
         user = yield deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
         params = {
@@ -587,23 +619,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
             "power_address": "1.2.3.4",
             "project": "p1",
             "password": "secret",
+            "certificate": "mycert",
+            "key": "mykey",
         }
-        mock_discover_pod_projects = self.patch(pod, "discover_pod_projects")
-        mock_discover_pod_projects.return_value = succeed(
-            (
-                {
-                    "my-rack": [
-                        DiscoveredPodProject(
-                            name="foo", description="Project foo"
-                        ),
-                        DiscoveredPodProject(
-                            name="bar", description="Project bar"
-                        ),
-                    ]
-                },
-                None,
-            )
-        )
         projects = yield handler.execute("get_projects", params)
         self.assertEqual(
             projects,
@@ -612,12 +630,65 @@ class TestPodHandler(MAASTransactionServerTestCase):
                 {"name": "bar", "description": "Project bar"},
             ],
         )
-        mock_discover_pod_projects.assert_called_once_with(
-            "lxd",
-            {
+        protocol.DiscoverPodProjects.assert_called_once_with(
+            protocol,
+            type="lxd",
+            context={
                 "power_address": "1.2.3.4",
                 "project": "p1",
                 "password": "secret",
+                "certificate": "mycert",
+                "key": "mykey",
+            },
+        )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_projects_without_password(self):
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+        protocol = yield deferToThread(
+            self.get_rack_rpc_protocol, rack_controller, DiscoverPodProjects
+        )
+        protocol.DiscoverPodProjects.return_value = succeed(
+            {
+                "projects": [
+                    DiscoveredPodProject(
+                        name="foo",
+                        description="Project foo",
+                    ),
+                    DiscoveredPodProject(
+                        name="bar",
+                        description="Project bar",
+                    ),
+                ]
+            }
+        )
+
+        user = yield deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        params = {
+            "type": "lxd",
+            "power_address": "1.2.3.4",
+            "project": "p1",
+            "certificate": "mycert",
+            "key": "mykey",
+        }
+        projects = yield handler.execute("get_projects", params)
+        self.assertEqual(
+            projects,
+            [
+                {"name": "foo", "description": "Project foo"},
+                {"name": "bar", "description": "Project bar"},
+            ],
+        )
+        protocol.DiscoverPodProjects.assert_called_once_with(
+            protocol,
+            type="lxd",
+            context={
+                "power_address": "1.2.3.4",
+                "project": "p1",
+                "certificate": "mycert",
+                "key": "mykey",
             },
         )
 
