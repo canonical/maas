@@ -365,3 +365,31 @@ class TestGeneralHandler(MAASServerTestCase):
             ],
             handler.known_boot_architectures({}),
         )
+
+    def test_generate_certificate_no_name(self):
+        Config.objects.set_config("maas_name", "mymaas")
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.generate_client_certificate({})
+        self.assertEqual(result["CN"], "mymaas")
+        self.assertTrue(
+            result["certificate"].startswith("-----BEGIN CERTIFICATE-----"),
+            result["certificate"],
+        )
+        self.assertTrue(
+            result["private_key"].startswith("-----BEGIN PRIVATE KEY-----"),
+            result["private_key"],
+        )
+
+    def test_generate_certificate_with_name(self):
+        Config.objects.set_config("maas_name", "mymaas")
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.generate_client_certificate({"object_name": "mypod"})
+        self.assertEqual(result["CN"], "mypod@mymaas")
+        self.assertTrue(
+            result["certificate"].startswith("-----BEGIN CERTIFICATE-----"),
+            result["certificate"],
+        )
+        self.assertTrue(
+            result["private_key"].startswith("-----BEGIN PRIVATE KEY-----"),
+            result["private_key"],
+        )

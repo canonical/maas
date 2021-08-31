@@ -25,6 +25,7 @@ from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.permissions import NodePermission
+from maasserver.utils.certificates import get_maas_client_cn
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
@@ -35,6 +36,7 @@ from maasserver.utils.osystems import (
 )
 from maasserver.websockets.base import Handler
 from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.certificates import generate_certificate
 
 
 class GeneralHandler(Handler):
@@ -47,6 +49,7 @@ class GeneralHandler(Handler):
             "components_to_disable",
             "default_min_hwe_kernel",
             "device_actions",
+            "generate_client_certificate",
             "hwe_kernels",
             "known_architectures",
             "known_boot_architectures",
@@ -236,3 +239,22 @@ class GeneralHandler(Handler):
             for _, boot_method in BootMethodRegistry
             if boot_method.arch_octet or boot_method.user_class
         ]
+
+    def generate_client_certificate(self, params):
+        """Generate a client X509 client certificate.
+
+        This can be used for something like a LXD VM host. The
+        certificate is not stored in the DB, so that caller is
+        responsible for keeping track of it and pass it around.
+
+        If object_name is passed, the certificate's CN will be
+        $objectname@$maas_name. If not, the CN will be $maas_name.
+        """
+        cert = generate_certificate(
+            get_maas_client_cn(params.get("object_name"))
+        )
+        return {
+            "CN": cert.cn(),
+            "certificate": cert.certificate_pem(),
+            "private_key": cert.private_key_pem(),
+        }

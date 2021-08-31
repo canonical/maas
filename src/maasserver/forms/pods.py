@@ -44,7 +44,6 @@ from maasserver.forms import MAASModelForm
 from maasserver.models import (
     BMC,
     BMCRoutableRackControllerRelationship,
-    Config,
     Domain,
     Event,
     Interface,
@@ -66,6 +65,7 @@ from maasserver.node_constraint_filter_forms import (
 )
 from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils import absolute_reverse
+from maasserver.utils.certificates import get_maas_client_cn
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import post_commit_do, transactional
@@ -295,10 +295,8 @@ class PodForm(MAASModelForm):
             and not cleaned_data.get("key")
         )
         if should_generate_cert:
-            maas_name = Config.objects.get_config("maas_name")
             pod_name = cleaned_data.get("name")
-            cn = f"{pod_name}@{maas_name}" if pod_name else maas_name
-            cert = generate_certificate(cn)
+            cert = generate_certificate(get_maas_client_cn(pod_name))
             cleaned_data["certificate"] = cert.certificate_pem()
             cleaned_data["key"] = cert.private_key_pem()
 
