@@ -19,7 +19,6 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import security
-from provisioningserver.path import get_maas_data_path
 from provisioningserver.security import (
     fernet_decrypt_psk,
     fernet_encrypt_psk,
@@ -33,11 +32,9 @@ class SharedSecretTestCase(MAASTestCase):
         get_secret = self.patch(security, "get_shared_secret_filesystem_path")
         # Ensure each test uses a different filename for the shared secret,
         # so that tests cannot interfere with each other.
-        get_secret.return_value = Path(
-            get_maas_data_path("secret-%s" % factory.make_string(16))
-        )
-        # Extremely unlikely, but just in case.
-        self.delete_secret()
+        secret_dir = Path(self.make_dir())
+        get_secret.return_value = secret_dir / "secret"
+        self.patch(security, "_fernet_psk", value=None)
         self.addCleanup(
             setattr,
             security,
@@ -47,16 +44,6 @@ class SharedSecretTestCase(MAASTestCase):
         # The default high iteration count would make the tests very slow.
         security.DEFAULT_ITERATION_COUNT = 2
         super().setUp()
-
-    def tearDown(self):
-        self.delete_secret()
-        super().tearDown()
-
-    def delete_secret(self):
-        security._fernet_psk = None
-        secret_file = security.get_shared_secret_filesystem_path()
-        if secret_file.exists():
-            secret_file.unlink()
 
     def write_secret(self):
         secret = factory.make_bytes()
