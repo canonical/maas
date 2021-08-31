@@ -1486,6 +1486,15 @@ class Pod(BMC):
         interfaces, and/or block devices that do not match the
         `discovered_pod` values will be removed.
         """
+        if self.power_type == "lxd" and "password" in self.power_parameters:
+            # ensure LXD trust_password is removed if it's there
+            #
+            # XXX copy and replace the whole attribute as the CleanSave base
+            # class tracks which attributes to update on save via __setattr__,
+            # so changing the value of the dict doesn't cause it to be updated.
+            power_params = self.power_parameters.copy()
+            del power_params["password"]
+            self.power_parameters = power_params
         self.version = discovered_pod.version
         self.architectures = discovered_pod.architectures
         if not self.name and discovered_pod.name:

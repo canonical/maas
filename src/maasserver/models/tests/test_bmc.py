@@ -1,8 +1,6 @@
 # Copyright 2016-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver models."""
-
 
 import random
 from statistics import mean
@@ -957,6 +955,19 @@ class TestPod(MAASServerTestCase):
                 ),
             ),
         )
+
+    def test_sync_lxd_host_removes_trust_password(self):
+        discovered = self.make_discovered_pod()
+        pod = Pod(
+            power_type="lxd",
+            power_parameters={
+                "power_address": "https://10.0.0.1:8443",
+                "password": "sekret",
+            },
+        )
+        self.patch(pod, "sync_machines")
+        pod.sync(discovered, factory.make_User())
+        self.assertNotIn("password", pod.power_parameters)
 
     def test_sync_pod_creates_new_machines_connected_to_default_vlan(self):
         discovered = self.make_discovered_pod()
