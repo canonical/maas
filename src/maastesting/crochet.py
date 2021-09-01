@@ -3,10 +3,14 @@
 
 """Support for testing with `crochet`."""
 
+from asyncio import iscoroutinefunction
+from functools import wraps
 
 import crochet
 from testtools.content import Content, UTF8_TEXT
 from testtools.matchers import Equals
+from twisted.internet.defer import ensureDeferred
+import wrapt
 
 
 class EventualResultCatchingMixin:
@@ -104,3 +108,41 @@ class EventualResultCatchingMixin:
             Equals(0),
             "Unfired and/or unhandled EventualResult(s); see test details.",
         )
+
+
+def wait_for(timeout):
+    """Backport of wait_for from Crochet 2.0.
+
+    This allows async def definitions to be used.
+    """
+
+    def decorator(function):
+        def wrapper(function, _, args, kwargs):
+            @crochet.run_in_reactor
+            def run():
+                if iscoroutinefunction(function):
+                    return ensureDeferred(function(*args, **kwargs))
+                else:
+                    return function(*args, **kwargs)
+
+            eventual_result = run()
+            try:
+                return eventual_result.wait(timeout)
+            except TimeoutError:
+                eventual_result.cancel()
+                raise
+
+        if iscoroutinefunction(function):
+            # Create a non-async wrapper with same signature.
+            @wraps(function)
+            def non_async_wrapper():
+                pass
+
+        else:
+            # Just use default behavior of looking at underlying object.
+            non_async_wrapper = None
+
+        wrapper = wrapt.decorator(wrapper, adapter=non_async_wrapper)
+        return wrapper(function)
+
+    return decorator

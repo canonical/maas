@@ -310,6 +310,7 @@ TestHelpersRule = Rule(
     Allow("django|django.**"),
     Allow("netaddr|netaddr.**"),
     Allow("twisted.**"),
+    Allow("wrapt"),
     Allow(StandardLibraries),
     Allow(TestingLibraries),
 )

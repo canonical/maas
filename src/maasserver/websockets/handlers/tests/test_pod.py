@@ -5,9 +5,8 @@
 import random
 from unittest.mock import MagicMock
 
-from crochet import wait_for
 from testtools.matchers import Equals
-from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.internet.defer import succeed
 from twisted.internet.threads import deferToThread
 
 from maasserver.enum import INTERFACE_TYPE
@@ -25,6 +24,7 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -591,10 +591,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
         return fixture.makeCluster(rack_controller, *commands)
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_get_projects_with_password(self):
-        rack_controller = yield deferToDatabase(factory.make_RackController)
-        protocol = yield deferToThread(
+    async def test_get_projects_with_password(self):
+        rack_controller = await deferToDatabase(factory.make_RackController)
+        protocol = await deferToThread(
             self.get_rack_rpc_protocol, rack_controller, DiscoverPodProjects
         )
         protocol.DiscoverPodProjects.return_value = succeed(
@@ -612,7 +611,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             }
         )
 
-        user = yield deferToDatabase(factory.make_admin)
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
         params = {
             "type": "lxd",
@@ -622,7 +621,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             "certificate": "mycert",
             "key": "mykey",
         }
-        projects = yield handler.execute("get_projects", params)
+        projects = await handler.execute("get_projects", params)
         self.assertEqual(
             projects,
             [
@@ -643,10 +642,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
         )
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_get_projects_without_password(self):
-        rack_controller = yield deferToDatabase(factory.make_RackController)
-        protocol = yield deferToThread(
+    async def test_get_projects_without_password(self):
+        rack_controller = await deferToDatabase(factory.make_RackController)
+        protocol = await deferToThread(
             self.get_rack_rpc_protocol, rack_controller, DiscoverPodProjects
         )
         protocol.DiscoverPodProjects.return_value = succeed(
@@ -664,7 +662,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             }
         )
 
-        user = yield deferToDatabase(factory.make_admin)
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
         params = {
             "type": "lxd",
@@ -673,7 +671,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
             "certificate": "mycert",
             "key": "mykey",
         }
-        projects = yield handler.execute("get_projects", params)
+        projects = await handler.execute("get_projects", params)
         self.assertEqual(
             projects,
             [
@@ -693,19 +691,18 @@ class TestPodHandler(MAASTransactionServerTestCase):
         )
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_refresh(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_refresh(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        pod = yield deferToDatabase(self.make_pod_with_hints)
+        pod = await deferToDatabase(self.make_pod_with_hints)
         mock_discover_and_sync_pod = self.patch(
             PodForm, "discover_and_sync_pod"
         )
         mock_discover_and_sync_pod.return_value = succeed(pod)
-        expected_data = yield deferToDatabase(
+        expected_data = await deferToDatabase(
             handler.full_dehydrate, pod, for_list=False
         )
-        observed_data = yield handler.refresh({"id": pod.id})
+        observed_data = await handler.refresh({"id": pod.id})
         self.assertThat(mock_discover_and_sync_pod, MockCalledOnceWith())
         self.assertItemsEqual(expected_data.keys(), observed_data.keys())
         for key in expected_data:
@@ -713,73 +710,68 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertEqual(expected_data, observed_data)
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_delete(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_delete(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        pod = yield deferToDatabase(self.make_pod_with_hints)
-        yield handler.delete({"id": pod.id})
-        expected_pod = yield deferToDatabase(reload_object, pod)
+        pod = await deferToDatabase(self.make_pod_with_hints)
+        await handler.delete({"id": pod.id})
+        expected_pod = await deferToDatabase(reload_object, pod)
         self.assertIsNone(expected_pod)
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_delete_decompose(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_delete_decompose(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        pod = yield deferToDatabase(self.make_pod_with_hints)
+        pod = await deferToDatabase(self.make_pod_with_hints)
         mock_async_delete = self.patch(Pod, "async_delete")
-        yield deferToDatabase(factory.make_Machine, bmc=pod)
-        yield handler.delete({"id": pod.id, "decompose": True})
+        mock_async_delete.return_value = succeed(None)
+        await deferToDatabase(factory.make_Machine, bmc=pod)
+        await handler.delete({"id": pod.id, "decompose": True})
         mock_async_delete.assert_called_once_with(decompose=True)
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_create(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_create(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        zone = yield deferToDatabase(factory.make_Zone)
+        zone = await deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
         pod_info["zone"] = zone.id
-        yield deferToDatabase(self.fake_pod_discovery)
-        created_pod = yield handler.create(pod_info)
+        await deferToDatabase(self.fake_pod_discovery)
+        created_pod = await handler.create(pod_info)
         self.assertIsNotNone(created_pod["id"])
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_create_with_pool(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_create_with_pool(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        pool = yield deferToDatabase(factory.make_ResourcePool)
+        pool = await deferToDatabase(factory.make_ResourcePool)
         pod_info = self.make_pod_info()
         pod_info["pool"] = pool.id
-        yield deferToDatabase(self.fake_pod_discovery)
-        created_pod = yield handler.create(pod_info)
+        await deferToDatabase(self.fake_pod_discovery)
+        created_pod = await handler.create(pod_info)
         self.assertEqual(pool.id, created_pod["pool"])
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_update(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_update(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        zone = yield deferToDatabase(factory.make_Zone)
+        zone = await deferToDatabase(factory.make_Zone)
         pod_info = self.make_pod_info()
         pod_info["zone"] = zone.id
-        pod = yield deferToDatabase(
+        pod = await deferToDatabase(
             factory.make_Pod, pod_type=pod_info["type"]
         )
         pod_info["id"] = pod.id
         pod_info["name"] = factory.make_name("pod")
-        yield deferToDatabase(self.fake_pod_discovery)
-        updated_pod = yield handler.update(pod_info)
+        await deferToDatabase(self.fake_pod_discovery)
+        updated_pod = await handler.update(pod_info)
         self.assertEqual(pod_info["name"], updated_pod["name"])
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_compose(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_compose(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        pod = yield deferToDatabase(self.make_pod_with_hints)
+        pod = await deferToDatabase(self.make_pod_with_hints)
 
         # Mock the RPC client.
         client = MagicMock()
@@ -787,21 +779,20 @@ class TestPodHandler(MAASTransactionServerTestCase):
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
-        node = yield deferToDatabase(factory.make_Node)
+        node = await deferToDatabase(factory.make_Node)
         mock_compose_machine = self.patch(ComposeMachineForm, "compose")
         mock_compose_machine.return_value = succeed(node)
 
-        observed_data = yield handler.compose(
+        observed_data = await handler.compose(
             {"id": pod.id, "skip_commissioning": True}
         )
         self.assertEqual(pod.id, observed_data["id"])
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_compose_hugepages(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_compose_hugepages(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        pod = yield deferToDatabase(self.make_pod_with_hints)
+        pod = await deferToDatabase(self.make_pod_with_hints)
 
         # Mock the RPC client.
         client = MagicMock()
@@ -809,7 +800,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
-        node = yield deferToDatabase(factory.make_Node)
+        node = await deferToDatabase(factory.make_Node)
 
         orig_init = ComposeMachineForm.__init__
 
@@ -820,7 +811,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.patch(ComposeMachineForm, "__init__", wrapped_init)
         mock_compose_machine = self.patch(ComposeMachineForm, "compose")
         mock_compose_machine.return_value = succeed(node)
-        yield handler.compose(
+        await handler.compose(
             {
                 "id": pod.id,
                 "skip_commissioning": True,
@@ -830,11 +821,10 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertTrue(self.form.get_value_for("hugepages_backed"))
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_compose_pinned_cores(self):
-        user = yield deferToDatabase(factory.make_admin)
+    async def test_compose_pinned_cores(self):
+        user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
-        pod = yield deferToDatabase(self.make_pod_with_hints)
+        pod = await deferToDatabase(self.make_pod_with_hints)
 
         # Mock the RPC client.
         client = MagicMock()
@@ -842,7 +832,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         mock_getClient.return_value = succeed(client)
 
         # Mock the result of the composed machine.
-        node = yield deferToDatabase(factory.make_Node)
+        node = await deferToDatabase(factory.make_Node)
 
         orig_init = ComposeMachineForm.__init__
 
@@ -853,7 +843,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.patch(ComposeMachineForm, "__init__", wrapped_init)
         mock_compose_machine = self.patch(ComposeMachineForm, "compose")
         mock_compose_machine.return_value = succeed(node)
-        yield handler.compose(
+        await handler.compose(
             {
                 "id": pod.id,
                 "skip_commissioning": True,

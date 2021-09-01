@@ -5,7 +5,6 @@
 
 
 import dataclasses
-from functools import partial
 
 import attr
 from django.http import HttpRequest
@@ -33,7 +32,6 @@ from maasserver.websockets.handlers.timestampedmodel import (
 )
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils.twisted import asynchronous
 
 log = LegacyLogger()
 
@@ -166,8 +164,7 @@ class PodHandler(TimestampedModelHandler):
         projects = get_best_discovered_result(results)
         return [attr.asdict(project) for project in projects]
 
-    @asynchronous
-    def create(self, params):
+    async def create(self, params):
         """Create a pod."""
 
         @transactional
@@ -192,13 +189,11 @@ class PodHandler(TimestampedModelHandler):
         def render_obj(obj):
             return self.full_dehydrate(obj)
 
-        d = deferToDatabase(get_form, params)
-        d.addCallback(lambda form: form.save())
-        d.addCallback(partial(deferToDatabase, render_obj))
-        return d
+        form = await deferToDatabase(get_form, params)
+        pod = await form.save()
+        return await deferToDatabase(render_obj, pod)
 
-    @asynchronous
-    def update(self, params):
+    async def update(self, params):
         """Update a pod."""
 
         @transactional
@@ -227,13 +222,11 @@ class PodHandler(TimestampedModelHandler):
         def render_obj(obj):
             return self.full_dehydrate(obj)
 
-        d = deferToDatabase(get_form, params)
-        d.addCallback(lambda form: form.save())
-        d.addCallback(partial(deferToDatabase, render_obj))
-        return d
+        form = await deferToDatabase(get_form, params)
+        pod = await form.save()
+        return await deferToDatabase(render_obj, pod)
 
-    @asynchronous
-    def delete(self, params):
+    async def delete(self, params):
         """Delete the object."""
 
         @transactional
@@ -247,12 +240,10 @@ class PodHandler(TimestampedModelHandler):
             return obj
 
         decompose = params.get("decompose", False)
-        d = deferToDatabase(get_object, params)
-        d.addCallback(lambda pod: pod.async_delete(decompose=decompose))
-        return d
+        pod = await deferToDatabase(get_object, params)
+        return await pod.async_delete(decompose=decompose)
 
-    @asynchronous
-    def refresh(self, params):
+    async def refresh(self, params):
         """Refresh a specific Pod.
 
         Performs pod discovery and updates all discovered information and
@@ -280,14 +271,12 @@ class PodHandler(TimestampedModelHandler):
         def render_obj(obj):
             return self.full_dehydrate(obj)
 
-        d = deferToDatabase(transactional(self.get_object), params)
-        d.addCallback(partial(deferToDatabase, get_form), params)
-        d.addCallback(lambda form: form.discover_and_sync_pod())
-        d.addCallback(partial(deferToDatabase, render_obj))
-        return d
+        pod = await deferToDatabase(transactional(self.get_object), params)
+        form = await deferToDatabase(get_form, pod, params)
+        pod = await form.discover_and_sync_pod()
+        return await deferToDatabase(render_obj, pod)
 
-    @asynchronous
-    def compose(self, params):
+    async def compose(self, params):
         """Compose a machine in a Pod."""
 
         @transactional
@@ -300,13 +289,6 @@ class PodHandler(TimestampedModelHandler):
                 raise HandlerPermissionError()
             return obj
 
-        def composable(obj):
-            if Capabilities.COMPOSABLE not in obj.capabilities:
-                raise HandlerValidationError(
-                    "Pod does not support composability."
-                )
-            return obj
-
         @transactional
         def get_form(obj, params):
             request = HttpRequest()
@@ -314,31 +296,21 @@ class PodHandler(TimestampedModelHandler):
             form = ComposeMachineForm(pod=obj, data=params, request=request)
             if not form.is_valid():
                 raise HandlerValidationError(form.errors)
-            return form, obj
-
-        def wrap_errors(failure):
-            log.err(failure, "Failed to compose machine.")
-            raise PodProblem(
-                "Pod unable to compose machine: %s" % str(failure.value)
-            )
-
-        def compose(result, params):
-            form, obj = result
-            d = form.compose(
-                skip_commissioning=params.get("skip_commissioning", False)
-            )
-            d.addCallback(lambda machine: (machine, obj))
-            d.addErrback(wrap_errors)
-            return d
+            return form
 
         @transactional
-        def render_obj(result):
-            _, obj = result
+        def render_obj(obj):
             return self.full_dehydrate(reload_object(obj))
 
-        d = deferToDatabase(get_object, params)
-        d.addCallback(composable)
-        d.addCallback(partial(deferToDatabase, get_form), params)
-        d.addCallback(compose, params)
-        d.addCallback(partial(deferToDatabase, render_obj))
-        return d
+        pod = await deferToDatabase(get_object, params)
+        if Capabilities.COMPOSABLE not in pod.capabilities:
+            raise HandlerValidationError("Pod does not support composability.")
+        form = await deferToDatabase(get_form, pod, params)
+        try:
+            await form.compose(
+                skip_commissioning=params.get("skip_commissioning", False)
+            )
+        except Exception as error:
+            log.err(error, "Failed to compose machine.")
+            raise PodProblem("Pod unable to compose machine: %s" % str(error))
+        return await deferToDatabase(render_obj, pod)
