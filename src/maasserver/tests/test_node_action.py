@@ -1860,6 +1860,41 @@ class TestCloneAction(MAASServerTestCase):
             audit_event.description, f"Cloning from '{source.hostname}'."
         )
 
+    def test_clone_errors_include_system_id(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = user
+        source = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024 ** 3, name="sda"
+        )
+        destination = factory.make_Machine(
+            status=NODE_STATUS.READY, with_boot_disk=False
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination, size=4 * 1024 ** 3, name="sda"
+        )
+        action = Clone(source, user, request)
+        exception = self.assertRaises(
+            NodeActionError,
+            action.execute,
+            destinations=[destination.system_id],
+            storage=True,
+        )
+        (error,) = exception.args
+        self.assertEqual(
+            json.loads(error)["destinations"],
+            [
+                {
+                    "code": "storage",
+                    "message": f"{destination} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
+                    "system_id": destination.system_id,
+                }
+            ],
+        )
+
 
 class TestActionsErrorHandling(MAASServerTestCase):
     """Tests for error handling in actions.

@@ -15,6 +15,7 @@ order as they do in `ACTION_CLASSES`.
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import OrderedDict
+import json
 
 from crochet import TimeoutError
 from django.core.exceptions import ValidationError
@@ -969,6 +970,25 @@ class Clone(NodeAction):
     def get_node_action_audit_description(self, action):
         return self.audit_description % action.node.hostname
 
+    def _format_field_errors_as_json(self, field_errors):
+        rich_json_data = []
+        base_data = field_errors.as_data()
+        field_json = field_errors.get_json_data()
+        for error, error_json in zip(base_data, field_json):
+            # Annotate base JSON data with specifics
+            if error.params and "system_id" in error.params:
+                error_json["system_id"] = error.params["system_id"]
+            rich_json_data.append(error_json)
+        return rich_json_data
+
+    def _format_errors_as_json(self, error_dict):
+        return json.dumps(
+            {
+                field: self._format_field_errors_as_json(error)
+                for field, error in error_dict.items()
+            }
+        )
+
     def _execute(
         self,
         destinations=None,
@@ -996,18 +1016,18 @@ class Clone(NodeAction):
                     _error_data=form.errors,
                 )
         if not form.is_valid():
-            raise NodeActionError(form.errors.as_json())
+            raise NodeActionError(self._format_errors_as_json(form.errors))
         try:
             form.save()
         except ValidationError as exc:
-            raise NodeActionError(exc.errors.as_json())
+            raise NodeActionError(self._format_errors_as_json(exc.errors))
         if _error_data:
             for name, error_list in _error_data.items():
                 if name in form.errors:
                     form.errors[name].extend(error_list)
                 else:
                     form.errors[name] = error_list
-            raise NodeActionError(form.errors.as_json())
+            raise NodeActionError(self._format_errors_as_json(form.errors))
 
 
 ACTION_CLASSES = (

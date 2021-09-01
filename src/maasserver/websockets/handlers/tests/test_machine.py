@@ -3705,7 +3705,7 @@ class TestMachineHandler(MAASServerTestCase):
             node.distro_series, Equals(osystem["releases"][0]["name"])
         )
 
-    def test_action_clone_errors_bundled(self):
+    def test_clone_errors_bundled(self):
         user = factory.make_admin()
         node = factory.make_Node()
 
@@ -3742,7 +3742,7 @@ class TestMachineHandler(MAASServerTestCase):
             },
         )
 
-    def test_action_clone_errors_storage(self):
+    def test_clone_errors_storage(self):
         user = factory.make_admin()
         request = HttpRequest()
         request.user = user
@@ -3789,10 +3789,12 @@ class TestMachineHandler(MAASServerTestCase):
                     {
                         "message": f"{destination1} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
                         "code": "storage",
+                        "system_id": destination1.system_id,
                     },
                     {
                         "message": f"{destination2} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
                         "code": "storage",
+                        "system_id": destination2.system_id,
                     },
                 ],
             },
@@ -3860,6 +3862,7 @@ class TestMachineHandler(MAASServerTestCase):
                     {
                         "message": f"{destination1} is invalid: destination boot disk(sda) is smaller than source boot disk(sda)",
                         "code": "storage",
+                        "system_id": destination1.system_id,
                     },
                 ],
             },
