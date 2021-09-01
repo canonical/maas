@@ -2623,6 +2623,8 @@ class BootResourceForm(MAASModelForm):
         resource.extra = {"subarches": resource.architecture.split("/")[1]}
         if "title" in self.cleaned_data:
             resource.extra["title"] = self.cleaned_data["title"]
+        if self.cleaned_data.get("base_image"):
+            resource.base_image = self.cleaned_data["base_image"]
 
         resource.save()
         resource_set = self.create_resource_set(resource, "uploaded")

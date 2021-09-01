@@ -200,6 +200,24 @@ class TestBootResourceForm(MAASServerTestCase):
         form = BootResourceForm(data=data, files={"content": uploaded_file})
         self.assertTrue(form.is_valid())
 
+    def test_saved_bootresource_saves_base_image(self):
+        name = "custom/%s" % factory.make_name("name")
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode("utf-8")
+        upload_name = factory.make_name("filename")
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            "name": name,
+            "title": factory.make_name("title"),
+            "architecture": make_usable_architecture(self),
+            "filetype": upload_type,
+            "base_image": factory.make_base_image_name(),
+        }
+        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        image = form.save()
+        self.assertEqual(image.base_image, data["base_image"])
+
     def test_invalidates_nonexistent_custom_image_base_os(self):
         name = "custom/%s" % factory.make_name("name")
         upload_type, filetype = self.pick_filetype()
