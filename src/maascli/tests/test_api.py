@@ -1,16 +1,13 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maascli.api`."""
-
-
 from base64 import b64encode
-from functools import partial
 import http.client
 import json
 import sys
 from textwrap import dedent
 from unittest.mock import Mock, sentinel
+from urllib.parse import parse_qs, urlparse
 
 import httplib2
 import pytest
@@ -673,36 +670,59 @@ class TestPayloadPreparation:
             encode_multipart_message.assert_called_once_with(sentinel.message)
 
 
-class TestPayloadPreparationWithFiles(MAASTestCase):
+class TestPayloadPreparationWithFiles:
     """Tests for `maascli.api.Action.prepare_payload` involving files."""
 
-    def test_files_are_included(self):
+    def make_data(self, tmpdir, binary=True):
         parameter = factory.make_name("param")
-        contents = factory.make_bytes()
-        filename = self.make_file(contents=contents)
+        payload_file = tmpdir / "payload.file"
+        if binary:
+            contents = factory.make_bytes()
+            payload_file.write_binary(contents)
+        else:
+            contents = factory.make_string()
+            payload_file.write_text(contents, "ascii")
         # Writing the parameter as "parameter@=filename" on the
         # command-line causes name_value_pair() to return a `name,
         # opener` tuple, where `opener` is a callable that returns an
         # open file handle.
-        data = [(parameter, partial(open, filename, "rb"))]
+        data = [(parameter, payload_file.open)]
+        return parameter, contents, data
+
+    @pytest.mark.parametrize("op", [None, "action"])
+    def test_files_are_included_post(self, tmpdir, op):
+        parameter, contents, data = self.make_data(tmpdir)
         uri, body, headers = api.Action.prepare_payload(
-            op=None, method="POST", uri="http://localhost", data=data
+            op=op, method="POST", uri="http://localhost", data=data
         )
 
-        expected_body_template = """\
-            --...
-            Content-Transfer-Encoding: base64
-            Content-Disposition: form-data; ...name="%s"; ...name="%s"
-            MIME-Version: 1.0
-            Content-Type: application/octet-stream
+        query = parse_qs(urlparse(uri).query)
+        if op:
+            assert query["op"] == [op]
+        else:
+            assert query == {}
 
-            %s
-            --...--
-            """
-        expected_body = expected_body_template % (
-            parameter,
-            parameter,
+        content_lines = [
+            "Content-Type: application/octet-stream",
+            "MIME-Version: 1.0",
+            "Content-Transfer-Encoding: base64",
+            f'Content-Disposition: form-data; name="{parameter}"',
             b64encode(contents).decode("ascii"),
+        ]
+        for line in content_lines:
+            assert line + "\r\n" in body
+
+    @pytest.mark.parametrize("op", [None, "action"])
+    def test_files_are_included_get(self, tmpdir, op):
+        parameter, contents, data = self.make_data(tmpdir, binary=False)
+        uri, body, headers = api.Action.prepare_payload(
+            op=op, method="GET", uri="http://localhost", data=data
         )
 
-        self.assertDocTestMatches(expected_body, body)
+        assert body is None
+
+        query = parse_qs(urlparse(uri).query)
+        if op:
+            assert query["op"] == [op]
+
+        assert query[parameter] == [contents]
