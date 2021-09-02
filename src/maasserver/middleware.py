@@ -121,24 +121,21 @@ class ExternalComponentsMiddleware:
 
         If any rack controllers are disconnected, add a persistent error.
         """
-        controllers = RackController.objects.all()
         connected_ids = {client.ident for client in getAllClients()}
-        disconnected_controllers = {
-            controller
-            for controller in controllers
-            if controller.system_id not in connected_ids
-        }
-        if len(disconnected_controllers) == 0:
+        n_disconnected_controllers = RackController.objects.exclude(
+            system_id__in=connected_ids
+        ).count()
+        if n_disconnected_controllers == 0:
             discard_persistent_error(COMPONENT.RACK_CONTROLLERS)
         else:
-            if len(disconnected_controllers) == 1:
+            if n_disconnected_controllers == 1:
                 message = (
                     "One rack controller is not yet connected to the region"
                 )
             else:
                 message = (
                     "%d rack controllers are not yet connected to the region"
-                    % len(disconnected_controllers)
+                    % n_disconnected_controllers
                 )
             message = (
                 '%s. Visit the <a href="/MAAS/l/controllers">'
