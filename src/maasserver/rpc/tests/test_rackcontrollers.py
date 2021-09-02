@@ -192,7 +192,7 @@ class TestRegisterRackController(MAASServerTestCase):
         rack_registered = register(system_id=node.system_id)
         self.assertEqual(rack_registered.node_type, NODE_TYPE.RACK_CONTROLLER)
         reload_object(node)
-        self.assertTrue(node.as_rack_controller()._was_probably_machine())
+        self.assertFalse(node.should_be_dynamically_deleted())
 
     def test_logs_converting_existing_node(self):
         logger = self.useFixture(FakeLogger("maas"))
@@ -232,7 +232,7 @@ class TestRegisterRackController(MAASServerTestCase):
         self.assertNotEqual(
             existing_machine.system_id, rack_controller.system_id
         )
-        self.assertFalse(rack_controller._was_probably_machine())
+        self.assertTrue(rack_controller.should_be_dynamically_deleted())
 
     def test_always_has_current_commissioning_script_set(self):
         load_builtin_scripts()

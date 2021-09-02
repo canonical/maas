@@ -10287,15 +10287,17 @@ class TestNode_Delete_With_Transactional_Events(MAASTransactionServerTestCase):
 
 
 class TestController(MAASServerTestCase):
-    def test_was_probably_machine_true(self):
+    def test_should_be_dynamically_deleted_false(self):
         rack = factory.make_RackController(status=NODE_STATUS.DEPLOYED)
         rack.bmc = factory.make_BMC()
         rack.save()
-        self.assertTrue(rack._was_probably_machine())
+        self.assertFalse(rack.should_be_dynamically_deleted())
 
-    def test_was_probably_machine_false(self):
-        self.assertFalse(
-            factory.make_RackController(dynamic=True)._was_probably_machine()
+    def test_should_be_dynamically_deleted_true(self):
+        self.assertTrue(
+            factory.make_RackController(
+                dynamic=True
+            ).should_be_dynamically_deleted()
         )
 
 

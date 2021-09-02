@@ -1676,6 +1676,13 @@ class Pod(BMC):
                 machine.bmc = None
                 machine.delete()
 
+            pod_node = self.hints.nodes.first()
+            if (
+                pod_node is not None
+                and not pod_node.is_controller
+                and pod_node.should_be_dynamically_deleted()
+            ):
+                pod_node.delete()
             # Update bmc types for any matches.  Only delete the BMC
             # when no controllers are using the same BMC.
             from maasserver.models.node import RackController

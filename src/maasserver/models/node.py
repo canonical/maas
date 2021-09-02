@@ -6225,6 +6225,22 @@ class Node(CleanSave, TimestampedModel):
             Q(hints__nodes__in=[self]) | Q(ip_address__ip__in=our_static_ips)
         ).distinct()
 
+    def should_be_dynamically_deleted(self):
+        """Best guess if the node was dynamically created.
+
+        MAAS doesn't track node transitions so we have to look at
+        breadcrumbs.
+
+        When a machine is created dynamically, it has the dynamic flag,
+        and doesn't have a BMC. If that's still true, it probably was a machine.
+
+        If the machine was dynamically created and later had the BMC
+        set, it's ok  that this method returns False. Given that the BMC
+        was set, it probably means that the user wants to keep this
+        machine anyway.
+        """
+        return self.dynamic and self.bmc_id is None
+
 
 # Piston serializes objects based on the object class.
 # Here we define a proxy class so that we can specialize how devices are
@@ -6262,16 +6278,6 @@ class Controller(Node):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-    def _was_probably_machine(self):
-        """Best guess if a rack was a machine.
-
-        MAAS doesn't track node transitions so we have to look at
-        breadcrumbs. The first is the status. Only machines can have their
-        status changed to something other than NEW and a rack controller should
-        only be installable when the machine is in a deployed state.  Second a
-        machine must have power information."""
-        return not (self.dynamic and self.bmc_id is None)
 
     def report_neighbours(self, neighbours):
         """Update the neighbour table for this controller.
@@ -6611,7 +6617,7 @@ class RackController(Controller):
         if self.node_type == NODE_TYPE.REGION_AND_RACK_CONTROLLER:
             self.node_type = NODE_TYPE.REGION_CONTROLLER
             self.save()
-        elif self._was_probably_machine():
+        elif not self.should_be_dynamically_deleted():
             self.node_type = NODE_TYPE.MACHINE
             self.save()
         else:
@@ -6768,7 +6774,7 @@ class RegionController(Controller):
             # transition a REGION_AND_RACK_CONTROLLER to a REGION_CONTROLLER.
             self.node_type = NODE_TYPE.RACK_CONTROLLER
             self.save()
-        elif self._was_probably_machine():
+        elif not self.should_be_dynamically_deleted():
             self.node_type = NODE_TYPE.MACHINE
             self.save()
         else:

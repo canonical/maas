@@ -6,7 +6,6 @@ import random
 from statistics import mean
 from unittest.mock import call, Mock, sentinel
 
-from crochet import wait_for
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models.deletion import ProtectedError
 from django.http import Http404
@@ -41,7 +40,7 @@ from maasserver.models.bmc import (
 from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.interface import Interface
-from maasserver.models.node import Machine
+from maasserver.models.node import Controller, Machine, Node
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podstoragepool import PodStoragePool
 from maasserver.models.resourcepool import ResourcePool
@@ -60,6 +59,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
@@ -733,7 +733,7 @@ class TestPodManager(MAASServerTestCase):
         )
 
 
-class TestPod(MAASServerTestCase):
+class PodTestMixin:
     def make_discovered_block_device(
         self,
         model=None,
@@ -829,7 +829,11 @@ class TestPod(MAASServerTestCase):
         )
 
     def make_discovered_pod(
-        self, name=None, machines=None, storage_pools=None
+        self,
+        name=None,
+        machines=None,
+        storage_pools=None,
+        mac_addresses=None,
     ):
         if name is None:
             name = petname.Generate(2, "-")
@@ -842,6 +846,8 @@ class TestPod(MAASServerTestCase):
             storage_pools = [
                 self.make_discovered_storage_pool() for _ in range(3)
             ]
+        if mac_addresses is None:
+            mac_addresses = []
         return DiscoveredPod(
             architectures=["amd64/generic"],
             name=name,
@@ -858,8 +864,11 @@ class TestPod(MAASServerTestCase):
             ),
             storage_pools=storage_pools,
             machines=machines,
+            mac_addresses=mac_addresses,
         )
 
+
+class TestPod(MAASServerTestCase, PodTestMixin):
     def test_create_with_pool(self):
         pool = ResourcePool.objects.get_default_resource_pool()
         pod = Pod(power_type="virsh", power_parameters={}, pool=pool)
@@ -2816,7 +2825,7 @@ class TestPod(MAASServerTestCase):
         self.assertEqual(host_interface, vm_interface.host_interface)
 
 
-class TestPodDelete(MAASTransactionServerTestCase):
+class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
     def test_delete_is_not_allowed(self):
         pod = factory.make_Pod()
         self.assertRaises(AttributeError, pod.delete)
@@ -2894,6 +2903,98 @@ class TestPodDelete(MAASTransactionServerTestCase):
         self.assertIsNone(machine1)
         self.assertIsNone(machine2)
         self.assertIsNone(pod)
+
+    @wait_for_reactor
+    async def test_deletes_dynamically_created_machine(self):
+        discovered = self.make_discovered_pod(
+            mac_addresses=[factory.make_mac_address()]
+        )
+        # Create a subset of the discovered pod's tags
+        # to make sure no duplicates are added on sync.
+        pod = await deferToDatabase(factory.make_Pod)
+        admin = await deferToDatabase(factory.make_admin)
+        self.patch(pod, "sync_machines")
+        await deferToDatabase(pod.sync, discovered, admin)
+        dynamically_created_system_id = await deferToDatabase(
+            lambda: pod.hints.nodes.first().system_id
+        )
+        await pod.async_delete(decompose=True)
+        pod_node_count = await deferToDatabase(
+            lambda: Node.objects.filter(
+                system_id=dynamically_created_system_id
+            ).count()
+        )
+        self.assertEqual(0, pod_node_count)
+
+    @wait_for_reactor
+    async def test_doesnt_delete_dynamically_created_machine_if_modified(self):
+        discovered = self.make_discovered_pod(
+            mac_addresses=[factory.make_mac_address()]
+        )
+        # Create a subset of the discovered pod's tags
+        # to make sure no duplicates are added on sync.
+        pod = await deferToDatabase(factory.make_Pod)
+        admin = await deferToDatabase(factory.make_admin)
+        self.patch(pod, "sync_machines")
+        await deferToDatabase(pod.sync, discovered, admin)
+        dynamically_created_system_id = await deferToDatabase(
+            lambda: pod.hints.nodes.first().system_id
+        )
+        await deferToDatabase(
+            lambda: Node.objects.filter(
+                system_id=dynamically_created_system_id
+            ).update(bmc=factory.make_BMC())
+        )
+        await pod.async_delete(decompose=True)
+        pod_node_count = await deferToDatabase(
+            lambda: Node.objects.filter(
+                system_id=dynamically_created_system_id
+            ).count()
+        )
+        self.assertEqual(1, pod_node_count)
+
+    @wait_for_reactor
+    async def test_doesnt_delete_non_dynamically_created_machine(self):
+        machine = await deferToDatabase(
+            lambda: factory.make_Machine_with_Interface_on_Subnet()
+        )
+        machine_mac = await deferToDatabase(
+            lambda: str(machine.interface_set.first().mac_address)
+        )
+        discovered = self.make_discovered_pod(mac_addresses=[machine_mac])
+        # Create a subset of the discovered pod's tags
+        # to make sure no duplicates are added on sync.
+        pod = await deferToDatabase(factory.make_Pod)
+        admin = await deferToDatabase(factory.make_admin)
+        self.patch(pod, "sync_machines")
+        await deferToDatabase(pod.sync, discovered, admin)
+        await pod.async_delete(decompose=True)
+        pod_node_count = await deferToDatabase(
+            lambda: Node.objects.filter(
+                system_id=machine.system_id,
+            ).count()
+        )
+        self.assertEqual(1, pod_node_count)
+
+    @wait_for_reactor
+    async def test_dont_deletes_dynamically_created_controllers(self):
+        controller = await deferToDatabase(lambda: factory.make_Controller())
+        controller_mac = await deferToDatabase(
+            lambda: str(controller.interface_set.first().mac_address)
+        )
+        self.assertTrue(controller.should_be_dynamically_deleted())
+        discovered = self.make_discovered_pod(mac_addresses=[controller_mac])
+        pod = await deferToDatabase(factory.make_Pod)
+        admin = await deferToDatabase(factory.make_admin)
+        self.patch(pod, "sync_machines")
+        await deferToDatabase(pod.sync, discovered, admin)
+        await pod.async_delete(decompose=True)
+        controller_count = await deferToDatabase(
+            lambda: Controller.objects.filter(
+                system_id=controller.system_id
+            ).count()
+        )
+        self.assertEqual(1, controller_count)
 
     @wait_for_reactor
     @inlineCallbacks
