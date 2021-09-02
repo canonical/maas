@@ -183,7 +183,7 @@ class TestControllerHandler(MAASServerTestCase):
         # test for lp:1927292
         user = factory.make_admin()
         handler = ControllerHandler(user, {}, None)
-        controller = factory.make_RackController(power_type="manual")
+        controller = factory.make_RackController()
         data = handler.get({"system_id": controller.system_id})
         updated = handler.update(data)
         self.assertIn("vlans_ha", updated)

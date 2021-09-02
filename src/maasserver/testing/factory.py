@@ -322,21 +322,6 @@ class Factory(maastesting.factory.Factory):
             )
         return reload_object(device)
 
-    def make_RegionController(
-        self, hostname=None, status=NODE_STATUS.DEPLOYED, owner=None, zone=None
-    ):
-        if hostname is None:
-            hostname = self.make_string(20)
-        if owner is None:
-            owner = get_worker_user()
-        if zone is None:
-            zone = self.make_Zone()
-        region = RegionController(
-            hostname=hostname, status=status, owner=owner, zone=zone
-        )
-        region.save()
-        return region
-
     # PIDs for use with make_RegionControllerProcess. Note that the simpler
     # cycle(range(...)) is not used because it gradually consumes all memory.
     _rcp_pids = chain.from_iterable(repeat(range(PID_MAX)))
@@ -596,27 +581,55 @@ class Factory(maastesting.factory.Factory):
         machine = self.make_Node(*args, node_type=NODE_TYPE.MACHINE, **kwargs)
         return machine.as_machine()
 
-    def make_RackController(
+    def make_Controller(
         self,
+        controller_type=None,
+        hostname=None,
         last_image_sync=undefined,
         owner=None,
+        zone=None,
         dynamic=True,
         status=NODE_STATUS.DEPLOYED,
-        **kwargs,
+        subnet=None,
+        vlan=None,
+        ifname=None,
+        interface=None,
+        url="",
+        bmc=None,
+        managing_process=None,
     ):
+        if controller_type is None:
+            controller_type = random.choice(
+                [
+                    NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                ]
+            )
+        if hostname is None:
+            hostname = self.make_string(prefix="controller")
         if owner is None:
             owner = get_worker_user()
+        if zone is None:
+            zone = self.make_Zone()
 
         node = self.make_Node_with_Interface_on_Subnet(
-            node_type=NODE_TYPE.RACK_CONTROLLER,
+            node_type=controller_type,
+            hostname=hostname,
             owner=owner,
             dynamic=dynamic,
             status=status,
             with_dhcp_rack_primary=False,
             with_dhcp_rack_secondary=False,
-            **kwargs,
+            subnet=subnet,
+            vlan=vlan,
+            ifname=ifname,
+            interface=interface,
+            url=url,
+            managing_process=managing_process,
+            zone=zone,
         )
-        node.bmc = None
+        node.bmc = bmc
         if last_image_sync is undefined:
             node.last_image_sync = timezone.now() - timedelta(
                 minutes=random.randint(1, 15)
@@ -624,13 +637,24 @@ class Factory(maastesting.factory.Factory):
         else:
             node.last_image_sync = last_image_sync
         node.save()
-        return node.as_rack_controller()
+        return node
+
+    def make_RegionController(self, *args, **kwargs):
+        return self.make_Controller(
+            *args, controller_type=NODE_TYPE.REGION_CONTROLLER, **kwargs
+        ).as_region_controller()
+
+    def make_RackController(self, *args, **kwargs):
+        return self.make_Controller(
+            *args, controller_type=NODE_TYPE.RACK_CONTROLLER, **kwargs
+        ).as_rack_controller()
 
     def make_RegionRackController(self, *args, **kwargs):
-        region_rack = self.make_RackController(*args, **kwargs)
-        region_rack.node_type = NODE_TYPE.REGION_AND_RACK_CONTROLLER
-        region_rack.save()
-        return region_rack
+        return self.make_Controller(
+            *args,
+            controller_type=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            **kwargs,
+        ).as_rack_controller()
 
     def make_BMC(
         self, power_type=None, power_parameters=None, ip_address=None, **kwargs

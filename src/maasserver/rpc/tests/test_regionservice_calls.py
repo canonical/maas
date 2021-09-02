@@ -528,9 +528,7 @@ class TestRegionProtocol_ListNodePowerParameters(
     @wait_for_reactor
     @inlineCallbacks
     def test_returns_correct_arguments(self):
-        rack = yield deferToDatabase(
-            self.create_rack_controller, power_type=""
-        )
+        rack = yield deferToDatabase(self.create_rack_controller)
 
         nodes = []
         for _ in range(3):

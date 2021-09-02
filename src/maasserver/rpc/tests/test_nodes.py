@@ -370,7 +370,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         )
 
     def test_returns_only_accessible_nodes(self):
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
         # Accessible nodes.
         node_ids = [
             self.make_Node(bmc_connected_to=rack).system_id for _ in range(3)
@@ -386,7 +386,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         self.assertEqual(sorted(node_ids), sorted(system_ids))
 
     def test_returns_unchecked_nodes_first(self):
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
         datetime_10_minutes_ago = now() - timedelta(minutes=10)
         nodes = [
             self.make_Node(
@@ -406,7 +406,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         self.assertEqual(node_unchecked.system_id, system_ids[0])
 
     def test_excludes_recently_checked_nodes(self):
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
 
         node_unchecked = self.make_Node(bmc_connected_to=rack)
         node_unchecked.power_state_queried = None
@@ -431,7 +431,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         )
 
     def test_excludes_broken_nodes(self):
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
         node_queryable = self.make_Node(bmc_connected_to=rack)
 
         self.make_Node(status=NODE_STATUS.BROKEN, bmc_connected_to=rack)
@@ -447,7 +447,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         self.assertItemsEqual([node_queryable.system_id], system_ids)
 
     def test_excludes_no_power_type(self):
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
         node_queryable = self.make_Node(bmc_connected_to=rack)
 
         factory.make_Device(power_type="")
@@ -462,7 +462,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         self.assertItemsEqual([node_queryable.system_id], system_ids)
 
     def test_returns_checked_nodes_in_last_checked_order(self):
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
         nodes = [self.make_Node(bmc_connected_to=rack) for _ in range(5)]
 
         power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
@@ -479,7 +479,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         # Configure the rack controller subnet to be very large so it
         # can hold that many BMC connected to the interface for the rack
         # controller.
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
         rack_interface = rack.get_boot_interface()
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv6_network(slash=8))
@@ -515,7 +515,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
     def test_limited_to_10_nodes_at_a_time_by_default(self):
         # Configure the rack controller subnet to be large enough.
-        rack = factory.make_RackController(power_type="")
+        rack = factory.make_RackController()
         rack_interface = rack.get_boot_interface()
         subnet = factory.make_Subnet(
             cidr=str(factory.make_ipv6_network(slash=8))

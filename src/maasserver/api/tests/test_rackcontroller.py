@@ -43,9 +43,7 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
 
     def test_PUT_updates_rack_controller(self):
         self.become_admin()
-        rack = factory.make_RackController(
-            owner=self.user, power_type="manual"
-        )
+        rack = factory.make_RackController(owner=self.user)
         zone = factory.make_zone()
         new_description = factory.make_name("description")
         response = self.client.put(
