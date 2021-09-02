@@ -118,7 +118,7 @@ class BootResourcesCreateAction(Action):
         """Return the size and sha256 of the content."""
         size = 0
         sha256 = hashlib.sha256()
-        with content() as fd:
+        with content("rb") as fd:
             while True:
                 buf = fd.read(CHUNK_SIZE)
                 length = len(buf)
@@ -164,7 +164,7 @@ class BootResourcesCreateAction(Action):
 
     def upload_content(self, upload_uri, content, insecure=False):
         """Upload the content in chunks."""
-        with content() as fd:
+        with content("rb") as fd:
             while True:
                 buf = fd.read(CHUNK_SIZE)
                 length = len(buf)
