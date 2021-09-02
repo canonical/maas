@@ -1,3 +1,9 @@
+maas (1:2.9.3~beta2-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.9.3 beta2.
+
+ -- Adam Collard <adam.collard@canonical.com>  Thu, 02 Sep 2021 08:56:18 +0000
+
 maas (1:2.9.3~beta1-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.9.3 beta1.
