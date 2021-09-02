@@ -4,14 +4,21 @@
 """X509 certificates."""
 
 from datetime import datetime, timedelta
+import os
 from pathlib import Path
 import random
-from typing import NamedTuple, Optional, Union
+import secrets
+from tempfile import mkstemp
+from typing import NamedTuple, Optional, Tuple, Union
 
 from OpenSSL import crypto
 
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.snap import running_in_snap, SnapPaths
+
+
+class CertificateError(Exception):
+    """Error handling certificates and keys."""
 
 
 class Certificate(NamedTuple):
@@ -28,8 +35,18 @@ class Certificate(NamedTuple):
         key.
 
         """
-        key = crypto.load_privatekey(crypto.FILETYPE_PEM, material)
-        cert = crypto.load_certificate(crypto.FILETYPE_PEM, material)
+
+        def no_passphrase(fileno):
+            raise CertificateError("Private key can't have a passphrase")
+
+        try:
+            key = crypto.load_privatekey(
+                crypto.FILETYPE_PEM, material, passphrase=no_passphrase
+            )
+            cert = crypto.load_certificate(crypto.FILETYPE_PEM, material)
+        except crypto.Error:
+            raise CertificateError("Invalid PEM material")
+        cls._check_key_match(key, cert)
         return cls(key, cert)
 
     def cn(self) -> str:
@@ -64,6 +81,28 @@ class Certificate(NamedTuple):
     def cert_hash(self) -> str:
         """Return the SHA-256 digest for the certificate."""
         return self.cert.digest("sha256").decode("ascii")
+
+    def tempfiles(self) -> Tuple[str, str]:
+        """Return a 2-tuple with paths for tempfiles containing cert and key."""
+
+        def write_temp(content: str) -> str:
+            fileno, path = mkstemp()
+            os.write(fileno, bytes(content, "ascii"))
+            os.close(fileno)
+            return path
+
+        return write_temp(self.certificate_pem()), write_temp(
+            self.private_key_pem()
+        )
+
+    @staticmethod
+    def _check_key_match(key, cert):
+        data = secrets.token_bytes()
+        signature = crypto.sign(key, data, "sha512")
+        try:
+            crypto.verify(cert, signature, data, "sha512")
+        except crypto.Error:
+            raise CertificateError("Private and public keys don't match")
 
 
 def generate_certificate(

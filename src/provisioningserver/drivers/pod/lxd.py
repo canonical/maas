@@ -8,7 +8,6 @@ from contextlib import contextmanager, suppress
 import os
 from pathlib import Path
 import re
-from tempfile import mkstemp
 from typing import Optional, Tuple
 from urllib.parse import urlparse
 import uuid
@@ -17,7 +16,11 @@ from pylxd import Client
 from pylxd.exceptions import ClientConnectionFailed, LXDAPIException, NotFound
 import urllib3
 
-from provisioningserver.certificates import get_maas_cert_tuple
+from provisioningserver.certificates import (
+    Certificate,
+    CertificateError,
+    get_maas_cert_tuple,
+)
 from provisioningserver.drivers import (
     IP_EXTRACTOR_PATTERNS,
     make_ip_extractor,
@@ -798,7 +801,10 @@ class LXDPodDriver(PodDriver):
             project = context.get("project", "default")
 
         password = context.get("password")
-        cert_paths = self._get_cert_paths(context)
+        try:
+            cert_paths = self._get_cert_paths(context)
+        except CertificateError as e:
+            raise Error(str(e))
         maas_certs = get_maas_cert_tuple()
         if not cert_paths and not maas_certs:
             raise Error("No certificates available")
@@ -846,23 +852,20 @@ class LXDPodDriver(PodDriver):
             for path in cert_paths:
                 os.unlink(path)
 
-    def _get_cert_paths(self, context: dict) -> Optional[Tuple[str]]:
+    def _get_cert_paths(self, context: dict) -> Optional[Tuple[str, str]]:
         """Return a 2-tuple with paths for temporary files containing cert and key.
 
         If no certificate or key are provided, None is returned.
+
+        If invalid material is passed, an error is raised.
         """
         cert = context.get("certificate")
         key = context.get("key")
         if not cert or not key:
             return None
 
-        def write_temp(content) -> str:
-            fileno, path = mkstemp()
-            os.write(fileno, bytes(content, "ascii"))
-            os.close(fileno)
-            return path
-
-        return write_temp(cert), write_temp(key)
+        cert = Certificate.from_pem(cert + "\n" + key)
+        return cert.tempfiles()
 
 
 def _parse_cpu_cores(cpu_limits):

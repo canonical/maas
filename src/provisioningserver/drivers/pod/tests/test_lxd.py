@@ -15,6 +15,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
+from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachineBlockDevice,
@@ -185,6 +186,9 @@ class FakeLXD:
         self._client_behaviors.append(behaviors)
 
 
+SAMPLE_CERT = generate_certificate("maas")
+
+
 class TestLXDPodDriver(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -218,8 +222,8 @@ class TestLXDPodDriver(MAASTestCase):
             "project": factory.make_name("project"),
         }
         if with_cert:
-            params["certificate"] = factory.make_string()
-            params["key"] = factory.make_string()
+            params["certificate"] = SAMPLE_CERT.certificate_pem()
+            params["key"] = SAMPLE_CERT.private_key_pem()
         if with_password:
             params["password"] = factory.make_name("password")
         if not extra:
@@ -284,12 +288,19 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertFalse(exists(client.cert[0]))
         self.assertFalse(exists(client.cert[1]))
 
+    def test_get_client_with_invalid_certificate_or_key(self):
+        context = self.make_context(
+            extra={"certificate": "random", "key": "stuff"}
+        )
+        pod_id = factory.make_name("pod_id")
+        error_msg = f"VM Host {pod_id}: Invalid PEM material"
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            with self.driver._get_client(pod_id, context):
+                self.fail("should not get here")
+
     def test_get_client_with_certificate_and_key_trust_provided(self):
         maas_certs = self.make_maas_certs()
-        context = self.make_context(
-            with_password=False,
-            extra={"certificate": "CERT", "key": "KEY"},
-        )
+        context = self.make_context(with_password=False)
         self.fake_lxd.add_client_behavior()
         self.fake_lxd.add_client_behavior(trusted=True)
         self.fake_lxd.add_client_behavior(trusted=True)
@@ -300,15 +311,12 @@ class TestLXDPodDriver(MAASTestCase):
         client_with_builtin_certs = self.fake_lxd.clients[1]
         self.assertEqual(client_with_builtin_certs.cert, maas_certs)
         client_with_builtin_certs.certificates.create.assert_called_with(
-            "", b"CERT"
+            "", SAMPLE_CERT.certificate_pem().encode("ascii")
         )
 
     def test_get_client_with_certificate_and_key_untrusted(self):
         maas_certs = self.make_maas_certs()
-        context = self.make_context(
-            with_password=False,
-            extra={"key": "KEY", "certificate": "CERT"},
-        )
+        context = self.make_context(with_password=False)
         self.fake_lxd.add_client_behavior()
         self.fake_lxd.add_client_behavior(trusted=True)
         self.fake_lxd.add_client_behavior(trusted=False)
@@ -322,7 +330,7 @@ class TestLXDPodDriver(MAASTestCase):
         # the builtin cert is used to try to trust the provided one
         client_with_builtin_certs = self.fake_lxd.clients[1]
         client_with_builtin_certs.certificates.create.assert_called_with(
-            "", b"CERT"
+            "", SAMPLE_CERT.certificate_pem().encode("ascii")
         )
 
     def test_get_client_allow_untrusted(self):
