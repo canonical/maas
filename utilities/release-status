@@ -18,6 +18,7 @@ from configparser import ConfigParser
 import glob
 from pathlib import Path
 import subprocess
+import sys
 from urllib.parse import urlparse
 
 from launchpadlib.launchpad import Launchpad
@@ -222,7 +223,7 @@ class MAASVersion(ReleaseStep):
 
         if package_version != self.preparer.version:
             error_message = (
-                f"changelog has {package_version}, run "
+                f"changelog has {package_version} (expected {self.preparer.version}), run "
                 "utilities/release-prepare"
             )
             return False, error_message
@@ -283,7 +284,10 @@ class MAASPPA(ReleaseStep):
         try:
             ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
         except NotFound:
-            return False, "PPA couldn't be found."
+            return (
+                False,
+                f"ppa:{self.ppa_owner.name}/{self.ppa_name} couldn't be found.",
+            )
         else:
             ppa_archs = set(processor.name for processor in ppa.processors)
             missing_archs = sorted(set(BUILD_ARCHS).difference(ppa_archs))
@@ -325,7 +329,10 @@ class MAASPackagePublished(MAASPPA):
         try:
             ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
         except NotFound:
-            return False, "PPA couldn't be found."
+            return (
+                False,
+                f"ppa:{self.ppa_owner.name}/{self.ppa_name} couldn't be found.",
+            )
         else:
             sources = list(
                 ppa.getPublishedSources(
@@ -340,9 +347,9 @@ class MAASPackagePublished(MAASPPA):
                 )
             [package] = sources
             if not self._check_version(package.source_package_version):
+                expected = self.preparer.version.replace("-", "~")
                 return False, (
-                    "Currently published source version is "
-                    + package.source_package_version
+                    f"Currently published source version is {package.source_package_version}. Expected {expected}"
                 )
             binaries = list(
                 ppa.getPublishedBinaries(
@@ -394,9 +401,15 @@ class PackagesCopiedFromDeps(MAASPPA):
             source_ppa = self.preparer.lp.people[
                 "maas-committers"
             ].getPPAByName(name="latest-deps")
+        except NotFound:
+            return False, "ppa:maas-committers/latest-deps couldn't be found."
+        try:
             target_ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
         except NotFound:
-            return False, "PPA couldn't be found."
+            return (
+                False,
+                f"ppa:{self.ppa_owner.name}/{self.ppa_name} couldn't be found.",
+            )
         else:
             return self._check_packages_copied(source_ppa, target_ppa)
 
@@ -411,9 +424,18 @@ class PackagesCopiedToReleasePPA(MAASPPA):
             source_ppa = self.preparer.lp.me.getPPAByName(
                 name="maas-" + self.ppa_name
             )
+        except NotFound:
+            return (
+                False,
+                f"ppa:{self.preparer.lp.me.name}/maas-{self.ppa_name} couldn't be found.",
+            )
+        try:
             target_ppa = self.ppa_owner.getPPAByName(name=self.ppa_name)
         except NotFound:
-            return False, "PPA couldn't be found."
+            return (
+                False,
+                f"ppa:{self.ppa_owner.name}/{self.ppa_name} couldn't be found.",
+            )
         else:
             return self._check_packages_copied(source_ppa, target_ppa)
 
@@ -517,7 +539,7 @@ class SnapsInChannel(SnapsUploaded):
 
     @property
     def title(self):
-        return f"Snaps have been released to {self.channel}."
+        return f"Snaps have been released to {self.channel}"
 
     def check(self):
         revision_map, error_message = self._get_revisisions()
@@ -540,7 +562,7 @@ class SnapsInChannel(SnapsUploaded):
 class ReleaseTagged(ReleaseStep):
     @property
     def title(self):
-        return "Release has been tagged."
+        return "Release has been tagged"
 
     def check(self):
         tag_name = self.preparer.version
@@ -598,7 +620,7 @@ class ReleasePreparer:
         if all_good:
             print("All checks PASSED!")
         else:
-            print("Some checks FAILED, proceed with caution")
+            return "Some checks FAILED, proceed with caution"
 
 
 def create_parser():
@@ -663,4 +685,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
