@@ -1652,7 +1652,7 @@ class TestNode(MAASServerTestCase):
         self.assertRaises(UnknownPowerType, node.get_effective_power_type)
 
     def test_get_effective_power_type_reads_node_field(self):
-        power_types = list(get_driver_types().keys())  # Python3 proof.
+        power_types = list(get_driver_types())
         nodes = [
             factory.make_Node(power_type=power_type)
             for power_type in power_types

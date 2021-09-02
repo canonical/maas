@@ -234,11 +234,7 @@ class Factory(maastesting.factory.Factory):
             but_not = list(but_not)
         but_not.append("")
         return random.choice(
-            [
-                choice
-                for choice in list(get_driver_types().keys())
-                if choice not in but_not
-            ]
+            [choice for choice in get_driver_types() if choice not in but_not]
         )
 
     def pick_commissioning_release(self, osystem):

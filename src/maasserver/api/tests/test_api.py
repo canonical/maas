@@ -171,9 +171,7 @@ class TestStoreNodeParameters(APITestCase.ForUser):
             "No rack controllers connected to validate the power_type.",
             str(error),
         )
-        self.assertThat(
-            mock_get_driver_types, MockCalledOnceWith(ignore_errors=True)
-        )
+        mock_get_driver_types.assert_called_once()
 
     def test_power_type_not_given(self):
         # When power_type is not specified, nothing happens.

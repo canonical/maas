@@ -247,8 +247,8 @@ class WithPowerTypeMixin:
         # form deals with an API call which does not change the value of
         # field) or invalid: get the machine's current 'power_type'
         # value or the default value if this form is not linked to a machine.
-        driver_types = get_driver_types(ignore_errors=True)
-        if len(driver_types) == 0:
+        driver_types = get_driver_types()
+        if not driver_types:
             return ""
 
         if value not in driver_types:
@@ -332,8 +332,8 @@ class WithPowerTypeMixin:
         # prevent saving the form as we can't validate the power
         # parameters and type.
         if not skip_check:
-            driver_types = get_driver_types(ignore_errors=True)
-            if len(driver_types) == 0:
+            driver_types = get_driver_types()
+            if not driver_types:
                 set_form_error(
                     form,
                     type_field_name,

@@ -1,11 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for power parameters."""
-
-
-from unittest.mock import sentinel
-
 from django import forms
 import jsonschema
 
@@ -24,7 +19,6 @@ from maasserver.fields import MACAddressFormField
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers import make_setting_field
 
@@ -486,15 +480,3 @@ class TestPowerTypes(MAASTestCase):
         ]
         expected = {"namevalue": "descvalue", "namevalue2": "descvalue2"}
         self.assertEqual(expected, get_driver_types())
-
-    def test_get_power_driver_types_passes_args_through(self):
-        mocked = self.patch(driver_parameters, "get_all_power_types")
-        mocked.return_value = []
-        get_driver_types(sentinel.nodegroup, sentinel.ignore_errors)
-        self.assertThat(
-            mocked,
-            MockCalledOnceWith(
-                controllers=sentinel.nodegroup,
-                ignore_errors=sentinel.ignore_errors,
-            ),
-        )

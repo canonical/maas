@@ -218,36 +218,21 @@ def get_driver_choices():
 
     :return: list of (name, description) tuples
     """
-    return [
-        (name, description)
-        for name, description in get_driver_types(ignore_errors=True).items()
-    ]
+    return list(get_driver_types().items())
 
 
-def get_driver_types(controllers=None, ignore_errors=False):
+def get_driver_types():
     """Return the choice of mechanism to control a node's power.
-
-    :param controllers: Restrict to power types on the supplied
-        :class:`RackController`s.
-    :param ignore_errors: If comms errors are encountered talking to any
-        clusters, ignore and carry on. This means partial data may be
-        returned if other clusters are operational.
-
-    :raises: :class:`ClusterUnavailable` if ignore_errors is False and a
-        cluster controller is unavailable.
 
     :return: Dictionary mapping power type to its description.
     """
-    types = dict()
-    params = get_all_power_types(
-        controllers=controllers, ignore_errors=ignore_errors
-    )
-    for power_type in params:
-        types[power_type["name"]] = power_type["description"]
-    return types
+    return {
+        power_type["name"]: power_type["description"]
+        for power_type in get_all_power_types()
+    }
 
 
-def get_all_power_types(controllers=None, ignore_errors=True):
+def get_all_power_types():
     """Query the PowerDriverRegistry and obtain all known power driver types.
 
     :return: a list of power types matching the schema

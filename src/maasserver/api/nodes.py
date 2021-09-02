@@ -178,7 +178,7 @@ def store_node_power_parameters(node, request):
     if node.power_type == "redfish":
         power_type = node.power_type
 
-    power_types = list(get_driver_types(ignore_errors=True))
+    power_types = list(get_driver_types())
     if not power_types:
         raise ClusterUnavailable(
             "No rack controllers connected to validate the power_type."

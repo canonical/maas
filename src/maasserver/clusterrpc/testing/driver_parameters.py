@@ -32,7 +32,7 @@ class StaticDriverTypesFixture(Fixture):
         )
 
         @wraps(driver_parameters.get_all_power_types)
-        def get_all_power_types(controllers=None, ignore_errors=True):
+        def get_all_power_types():
             # Callers can mutate this, so deep copy.
             return deepcopy(power_types)
 
