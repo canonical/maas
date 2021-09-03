@@ -1,7 +1,9 @@
+from io import BytesIO
 import json
 import os
 from pathlib import Path
 from unittest.mock import ANY, call, MagicMock
+from urllib.error import HTTPError
 
 import yaml
 
@@ -322,6 +324,15 @@ class TestMain(MAASTestCase):
         mock_geturl.return_value = mock_result
         return mock_geturl
 
+    def make_http_error(self, code, reason, details):
+        return HTTPError(
+            "http://example.com",
+            code,
+            reason,
+            {},
+            BytesIO(details.encode("utf8")),
+        )
+
     def test_register_machine(self):
         token_info = {
             "token_key": "tk",
@@ -360,7 +371,7 @@ class TestMain(MAASTestCase):
             any_order=True,
         )
         mock_node.assert_called_once()
-        creds_yaml = yaml.load(
+        creds_yaml = yaml.safe_load(
             (Path(tempdir) / "myhost-creds.yaml").read_text()
         )
         info = creds_yaml["reporting"]["maas"]
@@ -409,7 +420,81 @@ class TestMain(MAASTestCase):
             any_order=True,
         )
         mock_node.assert_not_called()
-        mock_write_token.assert_called_once_with("myhost", ANY, Path("."))
+        token = {
+            "endpoint": "http://mymaas.example.com:5240/MAAS/metadata/status/abcde",
+            **token_info,
+        }
+        mock_write_token.assert_called_once_with(
+            token, path=Path("myhost-creds.yaml")
+        )
+
+    def test_get_machine_token(self):
+        token_info = {
+            "token_key": "tk",
+            "token_secret": "ts",
+            "consumer_key": "ck",
+        }
+        mock_write_token = self.patch(maas_run_scripts, "write_token")
+        mock_geturl = self.mock_geturl([token_info])
+        main(
+            [
+                "get-machine-token",
+                "http://mymaas.example.com:5240/MAAS",
+                "foo:bar:baz",
+                "abcde",
+                "creds.yaml",
+            ]
+        )
+        mock_geturl.assert_called_with(
+            "http://mymaas.example.com:5240/MAAS/api/2.0/machines/abcde/?op=get_token",
+            credentials=Credentials.from_string("foo:bar:baz"),
+            retry=False,
+        )
+        token = {
+            "endpoint": "http://mymaas.example.com:5240/MAAS/metadata/status/abcde",
+            **token_info,
+        }
+        mock_write_token.assert_called_once_with(
+            token, path=Path("creds.yaml")
+        )
+
+    def test_get_machine_token_machine_not_found(self):
+        mock_exit = self.patch(maas_run_scripts.sys, "exit")
+        self.patch(
+            maas_run_scripts, "geturl"
+        ).side_effect = self.make_http_error(
+            404,
+            "Not found",
+            "Machine not found",
+        )
+        main(
+            [
+                "get-machine-token",
+                "http://mymaas.example.com:5240/MAAS",
+                "foo:bar:baz",
+                "abcde",
+                "creds.yaml",
+            ]
+        )
+        mock_exit.assert_called_with(
+            "Failed getting machine credentials: Not found: Machine not found"
+        )
+
+    def test_get_machine_token_token_not_found(self):
+        mock_exit = self.patch(maas_run_scripts.sys, "exit")
+        self.mock_geturl([None])
+        main(
+            [
+                "get-machine-token",
+                "http://mymaas.example.com:5240/MAAS",
+                "foo:bar:baz",
+                "abcde",
+                "creds.yaml",
+            ]
+        )
+        mock_exit.assert_called_with(
+            "Failed getting machine credentials: Credentials not found"
+        )
 
 
 class TestWriteToken(MAASTestCase):
@@ -422,6 +507,6 @@ class TestWriteToken(MAASTestCase):
         }
         path = write_token("myhost", token_info, basedir=tempdir)
         self.assertEqual(
-            yaml.load(path),
+            yaml.safe_load(path),
             {"reporting": {"maas": token_info}},
         )

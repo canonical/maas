@@ -41,6 +41,10 @@ from snippets.maas_api_helper import (
 # {% endcomment %}
 
 
+class ExitError(Exception):
+    """Exception that causes the app to fail with the specified error message."""
+
+
 class ScriptsDir:
     def __init__(self, base_path=None):
         if base_path is None:
@@ -187,8 +191,25 @@ def oauth_token(string):
         raise argparse.ArgumentTypeError(str(e))
 
 
+TOKEN_FORMAT = "'consumer-key:token-key:token-secret[:consumer_secret]'"
+
+
+def add_maas_admin_args(parser):
+    """Add arguments for interacting with MAAS as admin."""
+    parser.add_argument(
+        "maas_url",
+        help="MAAS URL",
+    )
+    parser.add_argument(
+        "admin_token",
+        type=oauth_token,
+        help="Admin user OAuth token, in the {form} form".format(
+            form=TOKEN_FORMAT
+        ),
+    )
+
+
 def parse_args(args):
-    token_format = "'consumer-key:token-key:token-secret[:consumer_secret]'"
     parser = argparse.ArgumentParser(
         description="run MAAS commissioning scripts and report back results"
     )
@@ -205,21 +226,26 @@ def parse_args(args):
     )
     subparsers.required = True
 
+    get_machine_token = subparsers.add_parser(
+        "get-machine-token",
+        help="get authentication token for an existing machine from MAAS",
+    )
+    add_maas_admin_args(get_machine_token)
+    get_machine_token.add_argument(
+        "system_id",
+        help="system ID for the machine to get credentials for",
+    )
+    get_machine_token.add_argument(
+        "token_file",
+        help="path for the file to write the token to",
+        type=argparse.FileType("w"),
+    )
+
     register_machine = subparsers.add_parser(
         "register-machine",
         help="register the current machine in MAAS and report scripts results",
     )
-    register_machine.add_argument(
-        "maas_url",
-        help="MAAS URL",
-    )
-    register_machine.add_argument(
-        "admin_token",
-        type=oauth_token,
-        help="Admin user OAuth token, in the {form} form".format(
-            form=token_format
-        ),
-    )
+    add_maas_admin_args(register_machine)
     register_machine.add_argument(
         "--hostname",
         help="machine hostname (by default, use the current hostname)",
@@ -244,7 +270,7 @@ def parse_args(args):
         "--machine-token",
         type=oauth_token,
         help="Machine OAuth token, in the {form} form".format(
-            form=token_format
+            form=TOKEN_FORMAT
         ),
     )
     report_results.add_argument(
@@ -289,7 +315,7 @@ def fetch_scripts(maas_url, metadata_url, dirs, credentials):
         metadata_url + "maas-scripts", credentials=credentials, retry=False
     )
     if res.status == http.client.NO_CONTENT:
-        sys.exit("No script returned")
+        raise ExitError("No script returned")
 
     with tarfile.open(mode="r|*", fileobj=BytesIO(res.read())) as tar:
         tar.extractall(str(dirs.scripts))
@@ -303,22 +329,48 @@ def fetch_scripts(maas_url, metadata_url, dirs, credentials):
     ]
 
 
-def write_token(hostname, credentials, basedir):
-    """Write the OAuth token for a machine to file."""
-    path = basedir / (hostname + "-creds.yaml")
-    path.write_text(
-        yaml.dump(
-            {"reporting": {"maas": credentials}},
-            default_flow_style=False,
+def get_machine_token(maas_url, admin_token, system_id):
+    """Return a dict with machine token and MAAS URL."""
+    try:
+        response = geturl(
+            maas_url + "/api/2.0/machines/" + system_id + "/?op=get_token",
+            credentials=admin_token,
+            retry=False,
         )
+    except urllib.error.HTTPError as e:
+        raise ExitError(
+            "Failed getting machine credentials: {reason}: {details}".format(
+                reason=e.reason, details=e.read().decode("utf8")
+            )
+        )
+    creds = json.loads(response.read().decode("utf8"))
+    if creds is None:
+        raise ExitError(
+            "Failed getting machine credentials: Credentials not found"
+        )
+    creds["endpoint"] = maas_url + "/metadata/status/" + system_id
+    return creds
+
+
+def write_token(credentials, path=None):
+    """Write the OAuth token for a machine.
+
+    If a path is not provided, the yaml is printed out.
+    """
+    content = yaml.dump(
+        {"reporting": {"maas": credentials}},
+        default_flow_style=False,
     )
-    return path
+    if path:
+        path.write_text(content)
+    else:
+        print(content)
 
 
 def action_report_results(ns):
     config = get_config(ns)
     if not config.metadata_url:
-        sys.exit("No MAAS URL set")
+        raise ExitError("No MAAS URL set")
 
     dirs = ScriptsDir()
     dirs.ensure()
@@ -374,7 +426,6 @@ def action_register_machine(ns):
         hostname = platform.node().split(".")[0]
 
     maas_url = ns.maas_url.rstrip("/")
-    machines_url = maas_url + "/api/2.0/machines/"
     data, headers = encode_multipart_data(
         {
             b"hostname": hostname.encode("utf8"),
@@ -383,14 +434,14 @@ def action_register_machine(ns):
     )
     try:
         response = geturl(
-            machines_url,
+            maas_url + "/api/2.0/machines/",
             data=data,
             headers=headers,
             credentials=ns.admin_token,
             retry=False,
         )
     except urllib.error.HTTPError as e:
-        sys.exit(
+        raise ExitError(
             "Machine creation failed: {reason}: {details}".format(
                 reason=e.reason, details=e.read().decode("utf8")
             )
@@ -403,25 +454,22 @@ def action_register_machine(ns):
             system_id=system_id,
         )
     )
-    try:
-        response = geturl(
-            machines_url + system_id + "/?op=get_token",
-            credentials=ns.admin_token,
-            retry=False,
-        )
-    except urllib.error.HTTPError as e:
-        sys.exit(
-            "Failed getting machine credentials: {reason}: {details}".format(
-                reason=e.reason, details=e.read().decode("utf8")
-            )
-        )
-    creds = json.loads(response.read().decode("utf8"))
-    creds["endpoint"] = maas_url + "/metadata/status/" + system_id
-    creds_path = write_token(hostname, creds, Path(ns.base_dir))
+
+    creds = get_machine_token(maas_url, ns.admin_token, system_id)
+    creds_path = Path(ns.base_dir) / (hostname + "-creds.yaml")
+    write_token(creds, path=creds_path)
     print("Machine token written to {path}".format(path=creds_path))
 
 
+def action_get_machine_token(ns):
+    maas_url = ns.maas_url.rstrip("/")
+    creds = get_machine_token(maas_url, ns.admin_token, ns.system_id)
+    path = Path(ns.token_file.name) if ns.token_file.seekable() else None
+    write_token(creds, path=path)
+
+
 ACTIONS = {
+    "get-machine-token": action_get_machine_token,
     "register-machine": action_register_machine,
     "report-results": action_report_results,
 }
@@ -430,7 +478,10 @@ ACTIONS = {
 def main(args):
     ns = parse_args(args)
     action = ACTIONS[ns.action]
-    return action(ns)
+    try:
+        return action(ns)
+    except ExitError as e:
+        sys.exit(str(e))
 
 
 if __name__ == "__main__":
