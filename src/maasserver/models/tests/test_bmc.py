@@ -2554,17 +2554,19 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         factory.make_usable_boot_resource(architecture="amd64/generic")
         pod = factory.make_Pod()
         mac_addresses = [factory.make_mac_address() for _ in range(3)]
+        sync_user = factory.make_User()
         pod.sync(
             DiscoveredPod(
                 architectures=["amd64/generic"], mac_addresses=mac_addresses
             ),
-            factory.make_User(),
+            sync_user,
         )
         self.assertEqual(1, pod.hints.nodes.count())
         node = pod.hints.nodes.first()
         self.assertEqual(pod.name, node.hostname)
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertEqual(NODE_TYPE.MACHINE, node.node_type)
+        self.assertEqual(sync_user, node.owner)
         self.assertItemsEqual(
             mac_addresses,
             [str(iface.mac_address) for iface in node.interface_set.all()],

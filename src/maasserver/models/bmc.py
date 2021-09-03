@@ -1527,6 +1527,7 @@ class Pod(BMC):
                     architecture=self.architectures[0],
                     dynamic=True,
                     status=NODE_STATUS.DEPLOYED,
+                    owner=commissioning_user,
                 )
                 for mac_address in discovered_pod.mac_addresses:
                     node.add_physical_interface(mac_address)
