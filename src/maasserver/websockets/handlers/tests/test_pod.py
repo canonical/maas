@@ -23,9 +23,11 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
+from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPod,
@@ -34,6 +36,8 @@ from provisioningserver.drivers.pod import (
     InterfaceAttachType,
 )
 from provisioningserver.rpc.cluster import DiscoverPodProjects
+
+SAMPLE_CERTIFICATE = generate_certificate("maas")
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -531,6 +535,36 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
         self.assertThat(result["boot_vlans"], Equals([]))
 
+    def test_get_with_certificate_metadata(self):
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            parameters={
+                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
+                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            },
+        )
+        handler = PodHandler(factory.make_User(), {}, None)
+        result = handler.get({"id": pod.id})
+        self.assertEqual(
+            result["certificate-metadata"],
+            {
+                "CN": SAMPLE_CERTIFICATE.cn(),
+                "fingerprint": SAMPLE_CERTIFICATE.cert_hash(),
+                "expiration": SAMPLE_CERTIFICATE.expiration().strftime(
+                    DATETIME_FORMAT
+                ),
+            },
+        )
+
+    def test_get_no_certificate(self):
+        pod = self.make_pod_with_hints(
+            pod_type="virsh",
+            parameters={},
+        )
+        handler = PodHandler(factory.make_User(), {}, None)
+        result = handler.get({"id": pod.id})
+        self.assertNotIn("certificate-metadata", result)
+
     def test_get_as_standard_user(self):
         user = factory.make_User()
         handler = PodHandler(user, {}, None)
@@ -582,6 +616,18 @@ class TestPodHandler(MAASTransactionServerTestCase):
         result = handler.full_dehydrate(pod, for_list=True)
         self.assertEqual(result["resources"]["numa"], [])
         self.assertEqual(result["resources"]["vms"], [])
+
+    def test_full_dehydrate_for_list_no_cert_metadata(self):
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            parameters={
+                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
+                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            },
+        )
+        handler = PodHandler(factory.make_User(), {}, None)
+        result = handler.full_dehydrate(pod, for_list=True)
+        self.assertNotIn("certificate-metadata", result)
 
     def get_rack_rpc_protocol(self, rack_controller, *commands):
         self.useFixture(RegionEventLoopFixture("rpc"))

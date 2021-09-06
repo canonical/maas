@@ -24,12 +24,14 @@ from maasserver.rbac import rbac
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
+    dehydrate_datetime,
     HandlerPermissionError,
     HandlerValidationError,
 )
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
+from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import Capabilities
 from provisioningserver.logger import LegacyLogger
 
@@ -132,6 +134,17 @@ class PodHandler(TimestampedModelHandler):
             else:
                 data["attached_vlans"] = []
                 data["boot_vlans"] = []
+
+            # include certificate info if present
+            certificate = obj.power_parameters.get("certificate")
+            key = obj.power_parameters.get("key")
+            if certificate and key:
+                cert = Certificate.from_pem(certificate + key)
+                data["certificate-metadata"] = {
+                    "CN": cert.cn(),
+                    "expiration": dehydrate_datetime(cert.expiration()),
+                    "fingerprint": cert.cert_hash(),
+                }
 
         if self.user.has_perm(PodPermission.compose, obj):
             data["permissions"].append("compose")

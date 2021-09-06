@@ -34,7 +34,7 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     list_release_choices,
 )
-from maasserver.websockets.base import Handler
+from maasserver.websockets.base import dehydrate_datetime, Handler
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.certificates import generate_certificate
 
@@ -256,5 +256,7 @@ class GeneralHandler(Handler):
         return {
             "CN": cert.cn(),
             "certificate": cert.certificate_pem(),
+            "expiration": dehydrate_datetime(cert.expiration()),
+            "fingerprint": cert.cert_hash(),
             "private_key": cert.private_key_pem(),
         }
