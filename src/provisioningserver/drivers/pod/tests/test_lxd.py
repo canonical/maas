@@ -39,6 +39,23 @@ from provisioningserver.utils import (
 from provisioningserver.utils.network import generate_mac_address
 
 
+class FakeErrorResponse:
+    def __init__(self, error, status_code=500):
+        self.status_code = status_code
+        self._error = error
+
+    def json(self):
+        return {"error": self._error}
+
+
+class FakeNetworkState:
+    def __init__(self, hwaddr):
+        self.hwaddr = hwaddr
+
+    def __iter__(self):
+        yield ("hwaddr", self.hwaddr)
+
+
 def make_requested_machine(num_disks=1, known_host_interfaces=None, **kwargs):
     if known_host_interfaces is None:
         known_host_interfaces = [
@@ -115,9 +132,7 @@ class FakeClient:
 
     def authenticate(self, password):
         if self._fail_auth:
-            response = Mock(status_code=403)
-            response.json.return_value = {"error": "auth failed"}
-            raise LXDAPIException(response)
+            raise LXDAPIException(FakeErrorResponse("auth failed", 403))
 
         self.trusted = True
 
@@ -440,10 +455,12 @@ class TestLXDPodDriver(MAASTestCase):
     def test_discover(self):
         mac_address = factory.make_mac_address()
         lxd_net1 = Mock(type="physical")
-        lxd_net1.state.return_value = Mock(hwaddr=mac_address)
+        lxd_net1.state.return_value = FakeNetworkState(mac_address)
         # virtual interfaces are excluded
         lxd_net2 = Mock(type="bridge")
-        lxd_net2.state.return_value = Mock(hwaddr=factory.make_mac_address())
+        lxd_net2.state.return_value = FakeNetworkState(
+            factory.make_mac_address()
+        )
         self.fake_lxd.networks.all.return_value = [lxd_net1, lxd_net2]
         discovered_pod = yield self.driver.discover(None, self.make_context())
         self.assertEqual(["amd64/generic"], discovered_pod.architectures)
@@ -474,7 +491,7 @@ class TestLXDPodDriver(MAASTestCase):
     def test_discover_includes_unknown_type_interfaces(self):
         mac_address = factory.make_mac_address()
         network = Mock(type="unknown")
-        network.state.return_value = Mock(hwaddr=mac_address)
+        network.state.return_value = FakeNetworkState(mac_address)
         self.fake_lxd.networks.all.return_value = [network]
         discovered_pod = yield self.driver.discover(None, self.make_context())
         self.assertEqual(discovered_pod.mac_addresses, [mac_address])
@@ -960,7 +977,7 @@ class TestLXDPodDriver(MAASTestCase):
     def test_get_commissioning_data(self):
         def mock_iface(name, mac):
             iface = Mock()
-            iface.state.return_value = {"hwaddr": mac}
+            iface.state.return_value = FakeNetworkState(mac)
             iface.configure_mock(name=name)
             return iface
 
@@ -985,6 +1002,79 @@ class TestLXDPodDriver(MAASTestCase):
             },
             commissioning_data,
         )
+
+    @inlineCallbacks
+    def test_get_commissioning_data_not_found(self):
+        def mock_iface(name, mac, error=None):
+            def state():
+                if error is not None:
+                    raise error
+                return FakeNetworkState(mac)
+
+            iface = Mock()
+            iface.state.side_effect = state
+            iface.configure_mock(name=name)
+            return iface
+
+        self.fake_lxd.networks.all.return_value = [
+            mock_iface(
+                "eth0",
+                "aa:bb:cc:dd:ee:ff",
+                error=NotFound("Not found"),
+            ),
+            mock_iface(
+                "eth1",
+                "ff:ee:dd:cc:bb:aa",
+                error=LXDAPIException(
+                    FakeErrorResponse('Network interface "eth1" not found')
+                ),
+            ),
+            mock_iface("eth2", "ee:dd:cc:bb:aa:ff"),
+        ]
+        commissioning_data = yield self.driver.get_commissioning_data(
+            1, self.make_context()
+        )
+
+        self.assertEqual(
+            {
+                LXD_OUTPUT_NAME: {
+                    **self.fake_lxd.host_info,
+                    "resources": self.fake_lxd.resources,
+                    "networks": {
+                        "eth2": {"hwaddr": "ee:dd:cc:bb:aa:ff"},
+                    },
+                }
+            },
+            commissioning_data,
+        )
+
+    @inlineCallbacks
+    def test_get_commissioning_data_api_error(self):
+        def mock_iface(name, mac, error=None):
+            def state():
+                if error is not None:
+                    raise error
+                return FakeNetworkState(mac)
+
+            iface = Mock()
+            iface.state.side_effect = state
+            iface.configure_mock(name=name)
+            return iface
+
+        self.fake_lxd.networks.all.return_value = [
+            mock_iface(
+                "eth1",
+                "aa:bb:cc:dd:ee:ff",
+                error=LXDAPIException(FakeErrorResponse("Some error")),
+            ),
+            mock_iface("eth1", "ff:ee:dd:cc:bb:aa"),
+        ]
+        try:
+            yield self.driver.get_commissioning_data(1, self.make_context())
+        except LXDAPIException as error:
+            self.assertEqual("Some error", str(error))
+        else:
+            raise AssertionError("LXDAPIException wasn't raised.")
 
     def test_get_usable_storage_pool(self):
         pools = [

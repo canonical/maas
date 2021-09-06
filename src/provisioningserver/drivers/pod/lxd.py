@@ -168,6 +168,28 @@ def get_lxd_machine_definition(request, include_profile=False):
     }
 
 
+def _get_lxd_network_states(client):
+    networks = {}
+    for net in client.networks.all():
+        try:
+            state = net.state()
+        except NotFound:
+            # Some interfaces might have gone away since we
+            # listed them. This happens when VM restarts or
+            # stops, for example.
+            continue
+        except LXDAPIException as api_error:
+            # Need to catch LXDAPIException due to
+            # https://github.com/lxc/lxd/issues/9191
+            if str(api_error).endswith("not found"):
+                continue
+            else:
+                raise
+        else:
+            networks[net.name] = dict(state)
+    return networks
+
+
 class LXDPodError(Exception):
     """Failure communicating to LXD."""
 
@@ -387,10 +409,7 @@ class LXDPodDriver(PodDriver):
                 # /1.0/resources
                 "resources": client.resources,
                 # /1.0/networks/<network>/state
-                "networks": {
-                    net.name: dict(net.state())
-                    for net in client.networks.all()
-                },
+                "networks": _get_lxd_network_states(client),
             }
         return {LXD_OUTPUT_NAME: resources}
 
