@@ -883,7 +883,7 @@ class LXDPodDriver(PodDriver):
         if not cert or not key:
             return None
 
-        cert = Certificate.from_pem(cert + "\n" + key)
+        cert = Certificate.from_pem(cert, key)
         return cert.tempfiles()
 
 

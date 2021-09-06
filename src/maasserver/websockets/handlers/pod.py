@@ -139,7 +139,7 @@ class PodHandler(TimestampedModelHandler):
             certificate = obj.power_parameters.get("certificate")
             key = obj.power_parameters.get("key")
             if certificate and key:
-                cert = Certificate.from_pem(certificate + key)
+                cert = Certificate.from_pem(certificate, key)
                 data["certificate-metadata"] = {
                     "CN": cert.cn(),
                     "expiration": dehydrate_datetime(cert.expiration()),

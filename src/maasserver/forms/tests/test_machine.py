@@ -595,7 +595,7 @@ class TestAdminMachineWithMACAddressForm(MAASServerTestCase):
         self.assertIn("certificate", power_params)
         self.assertIn("key", power_params)
         cert = Certificate.from_pem(
-            power_params["certificate"] + power_params["key"]
+            power_params["certificate"], power_params["key"]
         )
         self.assertEqual(cert.cn(), Config.objects.get_config("maas_name"))
         # cert/key are not per-instance parameters

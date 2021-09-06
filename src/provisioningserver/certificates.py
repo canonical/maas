@@ -9,7 +9,7 @@ from pathlib import Path
 import random
 import secrets
 from tempfile import mkstemp
-from typing import NamedTuple, Optional, Tuple, Union
+from typing import NamedTuple, Optional, Tuple
 
 from OpenSSL import crypto
 
@@ -28,13 +28,13 @@ class Certificate(NamedTuple):
     cert: crypto.X509
 
     @classmethod
-    def from_pem(cls, material: Union[bytes, str]):
+    def from_pem(cls, *materials: str):
         """Return a Certificate from PEM encoded material.
 
-        The material is expected to contain both the certificate and private
-        key.
-
+        The `materials` items are concatened and they are expected to contain a
+        certificate and its private key.
         """
+        material = "\n".join(materials)
 
         def no_passphrase(fileno):
             raise CertificateError("Private key can't have a passphrase")

@@ -71,20 +71,27 @@ class TestCertificate(MAASTestCase):
             )
         )
 
-    def test_from_pem_string(self):
-        material = (
+    def test_from_pem_single_material(self):
+        cert = Certificate.from_pem(
             SAMPLE_CERT.certificate_pem() + SAMPLE_CERT.private_key_pem()
         )
-        cert = Certificate.from_pem(material)
         self.assertEqual(SAMPLE_CERT.certificate_pem(), cert.certificate_pem())
         self.assertEqual(SAMPLE_CERT.private_key_pem(), cert.private_key_pem())
 
-    def test_from_pem_bytes(self):
-        material = bytes(
-            SAMPLE_CERT.certificate_pem() + SAMPLE_CERT.private_key_pem(),
-            "ascii",
+    def test_from_pem_multiple_material(self):
+        cert = Certificate.from_pem(
+            SAMPLE_CERT.certificate_pem(), SAMPLE_CERT.private_key_pem()
         )
-        cert = Certificate.from_pem(material)
+        self.assertEqual(SAMPLE_CERT.certificate_pem(), cert.certificate_pem())
+        self.assertEqual(SAMPLE_CERT.private_key_pem(), cert.private_key_pem())
+
+    def test_from_pem_multiple_material_adds_newlines(self):
+        # material entries are joined with a newline since each PEM material
+        # must start on a new line to be valid
+        cert = Certificate.from_pem(
+            SAMPLE_CERT.certificate_pem().strip(),
+            SAMPLE_CERT.private_key_pem().strip(),
+        )
         self.assertEqual(SAMPLE_CERT.certificate_pem(), cert.certificate_pem())
         self.assertEqual(SAMPLE_CERT.private_key_pem(), cert.private_key_pem())
 
@@ -104,7 +111,8 @@ class TestCertificate(MAASTestCase):
         error = self.assertRaises(
             CertificateError,
             Certificate.from_pem,
-            SAMPLE_CERT.certificate_pem() + encrypted_privatekey_pem,
+            SAMPLE_CERT.certificate_pem(),
+            encrypted_privatekey_pem,
         )
         self.assertEqual(str(error), "Private key can't have a passphrase")
 
