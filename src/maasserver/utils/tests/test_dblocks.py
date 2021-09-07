@@ -98,21 +98,16 @@ class TestDatabaseLock(MAASTransactionServerTestCase):
         objid = random_objid()
         lock = self.make_lock(objid)
 
-        # Take an exclusive lock on the database cluster to prevent this
-        # section from running concurrently with any other thusly delimited
-        # section. Note that `self.databases` is the test resource for the
-        # database(s), which then has a reference to the cluster resource.
-        with self.databases.cluster.lock.exclusive:
-            locks_held_before = get_locks()
-            with lock:
-                locks_held = get_locks()
-            locks_held_after = get_locks()
+        locks_held_before = get_locks()
+        with lock:
+            locks_held = get_locks()
+        locks_held_after = get_locks()
 
         locks_obtained = locks_held - locks_held_before
-        self.assertEqual({objid}, locks_obtained)
+        self.assertIn(objid, locks_obtained)
 
         locks_released = locks_held - locks_held_after
-        self.assertEqual({objid}, locks_released)
+        self.assertIn(objid, locks_released)
 
     @transaction.atomic
     def test_is_locked(self):
@@ -275,25 +270,21 @@ class TestDatabaseXactLock(MAASTransactionServerTestCase):
         objid = random_objid()
         lock = self.make_lock(objid)
 
-        # Take an exclusive lock on the database cluster to prevent this
-        # section from running concurrently with any other thusly delimited
-        # section.
-        with self.databases.cluster.lock.exclusive:
-            with transaction.atomic():
-                locks_held_before = get_locks()
-                with lock:
-                    locks_held = get_locks()
-                locks_held_after = get_locks()
-            locks_held_after_txn = get_locks()
+        with transaction.atomic():
+            locks_held_before = get_locks()
+            with lock:
+                locks_held = get_locks()
+            locks_held_after = get_locks()
+        locks_held_after_txn = get_locks()
 
         locks_obtained = locks_held - locks_held_before
-        self.assertEqual({objid}, locks_obtained)
+        self.assertIn(objid, locks_obtained)
 
         locks_released = locks_held - locks_held_after
-        self.assertEqual(set(), locks_released)
+        self.assertNotIn(objid, locks_released)
 
         locks_released_with_txn = locks_held - locks_held_after_txn
-        self.assertEqual({objid}, locks_released_with_txn)
+        self.assertIn(objid, locks_released_with_txn)
 
     def test_is_locked(self):
         objid = random_objid()
