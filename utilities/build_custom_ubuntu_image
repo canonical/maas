@@ -6,12 +6,13 @@ set -e
 set -o pipefail
 
 PWD="$(pwd)"
+WORK_DIR="$(mktemp -d ./tmp-XXXX)"
 OS="${OS:-ubuntu}"
 OS_VERSION="${OS_VERSION:-20.04.2}"
 IMAGE_TYPE="${IMAGE_TYPE:-live-server}"
 OS_ARCH="${OS_ARCH:-amd64}"
 BASE_IMAGE_FILE="${BASE_IMAGE_FILE:-${OS}-${OS_VERSION}-${IMAGE_TYPE}-${OS_ARCH}.iso}"
-BASE_IMAGE_PATH="${BASE_IMAGE_PATH:-${PWD}/tmp/${BASE_IMAGE_FILE}}"
+BASE_IMAGE_PATH="${BASE_IMAGE_PATH:-/tmp/${BASE_IMAGE_FILE}}"
 BASE_IMAGE_URL="${BASE_IMAGE_URL:-https://releases.ubuntu.com/${OS_VERSION}/${BASE_IMAGE_FILE}}"
 BASE_IMAGE_CHECKSUM="${BASE_IMAGE_CHECKSUM:-d1f2bf834bbe9bb43faf16f9be992a6f3935e65be0edece1dee2aa6eb1767423}"
 OUTPUT_FILE="custom-${OS}-${OS_VERSION}-${OS_ARCH}.img"
@@ -22,7 +23,7 @@ pull_image () {
     if [ "${DOWNLOAD_BASE_IMAGE}" -eq "1" ]; then
         echo "Downloading Base Ubuntu Image..."
         curl -L -o "${BASE_IMAGE_PATH}" "${BASE_IMAGE_URL}"
-        echo "${BASE_IMAGE_CHECKSUM}  ./tmp/${BASE_IMAGE_FILE}" | shasum -c
+        echo "${BASE_IMAGE_CHECKSUM}  /tmp/${BASE_IMAGE_FILE}" | shasum -c
     fi
 }
 
@@ -48,6 +49,17 @@ autoinstall:
         hostname: ubuntu-server
         password: "$(mkpasswd --method=SHA-512 --rounds=4096)"
         username: ubuntu
+    ssh:
+        install-server: true
+    storage:
+        swap:
+            size: 0
+        layout:
+            name: lvm
+    late-commands:
+        - mkdir -p /target/curtin
+        - touch /target/curtin/curtin-hooks
+        - chmod 750 /target/curtin/curtin-hooks
 EOF
 
     touch meta-data
@@ -65,7 +77,7 @@ build () {
     echo "running build VM"
     kvm -no-reboot -m 2048\
         -nographic\
-        -drive file="${OUTPUT_DIR}/tmp_image.img",format=raw,cache=none,if=virtio\
+        -drive file="${OUTPUT_DIR}/${OUTPUT_FILE}",format=raw,cache=none,if=virtio\
         -cdrom "${BASE_IMAGE_PATH}"\
         -kernel "/mnt/${OS}-${OS_VERSION}/casper/vmlinuz"\
         -initrd "/mnt/${OS}-${OS_VERSION}/casper/initrd"\
@@ -76,7 +88,7 @@ teardown () {
     echo "tearing down workspace"
     kill %1
     umount "/mnt/${OS}-${OS_VERSION}"
-    rm -rf ./tmp/www/
+    rm -rf "${WORK_DIR}"
 }
 
 main () {
@@ -85,7 +97,7 @@ main () {
         exit 1
     fi
 
-    WORK_DIR=$(mktemp -d ./tmp-XXXX)
+    trap teardown EXIT
     pull_image
     mount_resources
     mkdir -p "${WORK_DIR}/www/"
@@ -95,7 +107,6 @@ main () {
     cd ..
     create_output_file
     build
-    teardown
     echo "created image can be found at: ${OUTPUT_DIR}/${OUTPUT_FILE}"
 }
 
