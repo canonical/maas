@@ -98,8 +98,6 @@ class PodHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
-        if self.user.is_superuser:
-            data.update(obj.power_parameters)
         data.update(
             {
                 "type": obj.power_type,
@@ -116,6 +114,8 @@ class PodHandler(TimestampedModelHandler):
                 "resources": self.dehydrate_resources(obj, for_list=for_list),
             }
         )
+        if self.user.is_superuser:
+            data["power_parameters"] = obj.power_parameters
         if not for_list:
             if obj.host:
                 data["attached_vlans"] = list(
@@ -140,7 +140,7 @@ class PodHandler(TimestampedModelHandler):
             key = obj.power_parameters.get("key")
             if certificate and key:
                 cert = Certificate.from_pem(certificate, key)
-                data["certificate-metadata"] = {
+                data["certificate"] = {
                     "CN": cert.cn(),
                     "expiration": dehydrate_datetime(cert.expiration()),
                     "fingerprint": cert.cert_hash(),

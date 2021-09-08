@@ -135,7 +135,16 @@ class TestPodHandler(MAASTransactionServerTestCase):
     def test_get(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)
-        pod = self.make_pod_with_hints()
+        power_params = {
+            "power_address": "1.2.3.4",
+            "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
+            "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            "project": "maas",
+        }
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            parameters=power_params,
+        )
         # Create machines to test owners_count
         factory.make_Node()
         factory.make_Node(bmc=pod)
@@ -146,13 +155,14 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertItemsEqual(expected_data.keys(), result.keys())
         for key in expected_data:
             self.assertEqual(expected_data[key], result[key], key)
-        self.assertThat(result, Equals(expected_data))
-        self.assertThat(result["host"], Equals(None))
-        self.assertThat(result["attached_vlans"], Equals([]))
-        self.assertThat(result["boot_vlans"], Equals([]))
-        self.assertThat(
-            result["storage_pools"], Equals(expected_data["storage_pools"])
+        self.assertEqual(result, expected_data)
+        self.assertIsNone(result["host"])
+        self.assertEqual(result["attached_vlans"], [])
+        self.assertEqual(result["boot_vlans"], [])
+        self.assertEqual(
+            result["storage_pools"], expected_data["storage_pools"]
         )
+        self.assertEqual(result["power_parameters"], power_params)
 
     def test_get_with_pod_host(self):
         admin = factory.make_admin()
@@ -535,7 +545,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(result["attached_vlans"], Equals([subnet.vlan_id]))
         self.assertThat(result["boot_vlans"], Equals([]))
 
-    def test_get_with_certificate_metadata(self):
+    def test_get_with_certificate_info(self):
         pod = self.make_pod_with_hints(
             pod_type="lxd",
             parameters={
@@ -546,7 +556,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         handler = PodHandler(factory.make_User(), {}, None)
         result = handler.get({"id": pod.id})
         self.assertEqual(
-            result["certificate-metadata"],
+            result["certificate"],
             {
                 "CN": SAMPLE_CERTIFICATE.cn(),
                 "fingerprint": SAMPLE_CERTIFICATE.cert_hash(),
