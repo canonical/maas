@@ -228,11 +228,20 @@ def get_boot_config_for_machine(machine, configs, purpose):
         # the commissioning ephemeral environment.
         precise = True if series == "precise" else False
         if purpose == "xinstall" and (osystem != "ubuntu" or precise):
-            # Use only the commissioning osystem and series, for operating
-            # systems other than Ubuntu. As Ubuntu supports HWE kernels,
-            # and needs to use that kernel to perform the installation.
-            osystem = configs["commissioning_osystem"]
-            series = configs["commissioning_distro_series"]
+            install_image = None
+            if osystem == "custom":
+                install_image = BootResource.objects.get(name=series)
+                if install_image.base_image is not None:
+                    # if the operating system is a custom ubuntu image,
+                    # use the base image to install
+                    osystem, series = install_image.base_image.split("/")
+
+            if install_image is None or osystem != "ubuntu":
+                # Use only the commissioning osystem and series, for operating
+                # systems other than Ubuntu. As Ubuntu supports HWE kernels,
+                # and needs to use that kernel to perform the installation.
+                osystem = configs["commissioning_osystem"]
+                series = configs["commissioning_distro_series"]
 
     # Pre MAAS-1.9 the subarchitecture defined any kernel the machine
     # needed to be able to boot. This could be a hardware enablement

@@ -174,6 +174,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
                 "subarchitecture": factory.make_name("subarchitecture"),
                 "release": factory.make_name("release"),
                 "purpose": factory.make_name("purpose"),
+                "base_image": factory.make_base_image_name(),
             }
         ]
 

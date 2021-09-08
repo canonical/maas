@@ -2350,6 +2350,7 @@ class Factory(maastesting.factory.Factory):
         kflavor=None,
         bootloader_type=None,
         rolling=False,
+        base_image="",
     ):
         if rtype is None:
             rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
@@ -2377,6 +2378,7 @@ class Factory(maastesting.factory.Factory):
             bootloader_type=bootloader_type,
             extra=extra,
             rolling=rolling,
+            base_image=base_image,
         )
 
     def make_BootResourceSet(self, resource, version=None, label=None):

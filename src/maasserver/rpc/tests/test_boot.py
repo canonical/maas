@@ -13,6 +13,7 @@ from maasserver import server_address
 from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
+    BOOT_RESOURCE_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -1312,6 +1313,40 @@ class TestGetConfig(MAASServerTestCase):
             rack_controller.system_id, local_ip, remote_ip, mac=mac
         )
         self.assertEqual(distro_series, observed_config["release"])
+
+    def test_returns_base_image_for_custom_ubuntu_image_xinstall(self):
+        self.patch(boot_module, "get_boot_filenames").return_value = (
+            None,
+            None,
+            None,
+        )
+        rack_controller = factory.make_RackController()
+        local_ip = factory.make_ip_address()
+        remote_ip = factory.make_ip_address()
+        image_name = factory.make_name("custom-image")
+        base_image_series = random.choice(
+            ["trusty", "vivid", "wily", "xenial"]
+        )
+        custom_image = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name=image_name,
+            kflavor="generic",
+            base_image="ubuntu/%s" % base_image_series,
+        )
+        node = self.make_node(
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=image_name,
+            primary_rack=rack_controller,
+        )
+        mac = node.get_boot_interface().mac_address
+        self.patch_autospec(boot_module, "event_log_pxe_request")
+        observed_config = get_config(
+            rack_controller.system_id, local_ip, remote_ip, mac=mac
+        )
+        expected_osystem, expected_series = custom_image.base_image.split("/")
+        self.assertEqual(observed_config["osystem"], expected_osystem)
+        self.assertEqual(observed_config["release"], expected_series)
 
     # XXX: roaksoax LP: #1739761 - Deploying precise is now done using
     # the commissioning ephemeral environment.

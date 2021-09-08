@@ -196,6 +196,9 @@ class BootResourcesHandler(OperationsHandler):
         ``ddtgz``, ``ddtbz``, ``ddtxz``, ``ddtar``, ``ddbz2``, ``ddgz``,
         ``ddxz``, ``ddraw``)
 
+        @param (string) "base_image" [required=false] The Base OS image a
+        custom image is built on top of. Only required for custom image.
+
         @param (string) "content" [required=false] Image content. Note: this is
         not a normal parameter, but an ``application/octet-stream`` file
         upload.
