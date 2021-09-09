@@ -1,3 +1,9 @@
+maas (2.8.7-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 2.8.7.
+
+ -- Bill Wear <bill.wear@canonical.com>  Thu, 09 Sep 2021 19:48:01 +0000
+
 maas (2.8.6-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.8.6.
