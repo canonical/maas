@@ -2353,7 +2353,10 @@ class Factory(maastesting.factory.Factory):
         base_image="",
     ):
         if rtype is None:
-            rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
+            if base_image:
+                rtype = BOOT_RESOURCE_TYPE.UPLOADED
+            else:
+                rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
         if name is None:
             if rtype == BOOT_RESOURCE_TYPE.UPLOADED:
                 name = self.make_name("name")
@@ -2443,6 +2446,7 @@ class Factory(maastesting.factory.Factory):
         bootloader_type=None,
         rolling=False,
         filename=None,
+        base_image="",
     ):
         resource = self.make_BootResource(
             rtype=rtype,
@@ -2452,6 +2456,7 @@ class Factory(maastesting.factory.Factory):
             kflavor=kflavor,
             bootloader_type=bootloader_type,
             rolling=rolling,
+            base_image=base_image,
         )
         resource_set = self.make_BootResourceSet(
             resource, version=version, label=label

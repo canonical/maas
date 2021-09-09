@@ -11,6 +11,8 @@ from twisted.application.internet import TimerService
 
 from maasserver.models import Config
 from maasserver.stats import (
+    get_custom_images_deployed_stats,
+    get_custom_images_uploaded_stats,
     get_maas_stats,
     get_machines_by_architecture,
     get_subnets_utilisation_stats,
@@ -110,6 +112,17 @@ STATS_DEFINITIONS = [
         "maas_machine_arches",
         "Number of machines per architecture",
         ["arches"],
+    ),
+    MetricDefinition(
+        "Gauge",
+        "maas_custom_static_images_uploaded",
+        "Number of custom static OS images uploaded to MAAS",
+        ["base_image"],
+    ),
+    MetricDefinition(
+        "Gauge",
+        "maas_custom_static_images_deployed",
+        "Number of custom static OS images deployed",
     ),
 ]
 
@@ -227,6 +240,22 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
                     value=stats["{}_{}".format(addr_type, status)],
                     labels={"cidr": cidr, "status": status},
                 )
+
+    for custom_image in get_custom_images_uploaded_stats():
+        metrics.update(
+            "maas_custom_static_images_uploaded",
+            "set",
+            value=custom_image.get("count", 0),
+            labels={
+                "base_image": custom_image["base_image"],
+                "file_type": custom_image["filetype"],
+            },
+        )
+    metrics.update(
+        "maas_custom_static_images_deployed",
+        "set",
+        value=get_custom_images_deployed_stats(),
+    )
 
     return metrics
 

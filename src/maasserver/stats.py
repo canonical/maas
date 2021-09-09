@@ -14,7 +14,7 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 import json
 
-from django.db.models import Count
+from django.db.models import Count, F
 import requests
 from twisted.application.internet import TimerService
 
@@ -25,6 +25,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models import (
+    BootResourceFile,
     Config,
     Fabric,
     Machine,
@@ -204,6 +205,26 @@ def get_workload_annotations_stats():
         unique_keys=Count("key", distinct=True),
         unique_values=Count("value", distinct=True),
     )
+
+
+def get_custom_images_uploaded_stats():
+    return (
+        BootResourceFile.objects.exclude(
+            resource_set__resource__base_image="",
+        )
+        .values(
+            "filetype",
+        )
+        .distinct()
+        .annotate(
+            count=Count("resource_set__resource__base_image"),
+            base_image=F("resource_set__resource__base_image"),
+        )
+    )
+
+
+def get_custom_images_deployed_stats():
+    return Machine.objects.filter(osystem="custom").count()
 
 
 def get_maas_stats():

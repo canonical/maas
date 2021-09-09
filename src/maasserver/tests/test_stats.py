@@ -14,8 +14,18 @@ from twisted.internet.defer import fail
 
 from maasserver import stats
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE, NODE_STATUS
-from maasserver.models import Config, Fabric, OwnerData, Space, Subnet, VLAN
+from maasserver.models import (
+    BootResourceFile,
+    Config,
+    Fabric,
+    OwnerData,
+    Space,
+    Subnet,
+    VLAN,
+)
 from maasserver.stats import (
+    get_custom_images_deployed_stats,
+    get_custom_images_uploaded_stats,
     get_maas_stats,
     get_machine_stats,
     get_machines_by_architecture,
@@ -400,6 +410,38 @@ class TestMAASStats(MAASServerTestCase):
         mock = self.patch(requests_module, "get")
         make_maas_user_agent_request()
         self.assertThat(mock, MockCalledOnce())
+
+    def test_get_custom_static_images_uploaded_stats(self):
+        for _ in range(0, 2):
+            factory.make_usable_boot_resource(
+                name="custom/%s" % factory.make_name("name"),
+                base_image="ubuntu/focal",
+            ),
+        factory.make_usable_boot_resource(
+            name="custom/%s" % factory.make_name("name"),
+            base_image="ubuntu/bionic",
+        ),
+        stats = get_custom_images_uploaded_stats()
+        total = 0
+        for stat in stats:
+            total += stat["count"]
+        expected_total = (
+            BootResourceFile.objects.exclude(
+                resource_set__resource__base_image__isnull=True,
+                resource_set__resource__base_image="",
+            )
+            .distinct()
+            .count()
+        )
+        self.assertEqual(total, expected_total)
+
+    def test_get_custom_static_images_deployed_stats(self):
+        for _ in range(0, 2):
+            machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+            machine.osystem = "custom"
+            machine.distro_series = factory.make_name("name")
+            machine.save()
+        self.assertEqual(get_custom_images_deployed_stats(), 2)
 
 
 class TestGetSubnetsUtilisationStats(MAASServerTestCase):

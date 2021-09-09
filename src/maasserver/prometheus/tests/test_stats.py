@@ -81,6 +81,8 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_kvm_overcommit_cores",
             "maas_kvm_overcommit_memory",
             "maas_machine_arches",
+            "maas_custom_static_images_uploaded",
+            "maas_custom_static_images_deployed",
         )
         for metric in metrics:
             self.assertIn("TYPE {} gauge".format(metric), content)
@@ -113,6 +115,8 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_kvm_overcommit_cores",
             "maas_kvm_overcommit_memory",
             "maas_machine_arches",
+            "maas_custom_static_images_uploaded",
+            "maas_custom_static_images_deployed",
         )
         for metric in metrics:
             for line in content.splitlines():
