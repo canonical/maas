@@ -187,14 +187,15 @@ def compose_curtin_cloud_config(request, node):
     return [yaml.safe_dump(config)]
 
 
-def compose_curtin_archive_config(request, node):
+def compose_curtin_archive_config(request, node, base_osystem=None):
     """Return the curtin preseed for configuring a node's apt sources.
 
     If a node's deployed OS is Ubuntu (or a Custom Ubuntu), we pass this
     configuration along, provided that repositories are only available
     for Ubuntu.
     """
-    if node.osystem in ["ubuntu", "custom"]:
+    base_osystem = base_osystem or node.get_osystem()
+    if base_osystem in ["ubuntu", "custom"]:
         archives = get_archive_config(request, node)
         return [yaml.safe_dump(archives)]
     return []
@@ -209,6 +210,10 @@ def compose_curtin_swap_preseed(node):
     If a node's swap space is unconfigured but swap has been configured on a
     block device or partition, this will suppress the creation of a swap file.
     """
+    if node.get_osystem() == "custom":
+        # Leave the decision up to Curtin.
+        return []
+
     if node.swap_size is None:
         swap_filesystems = Filesystem.objects.filter_by_node(node).filter(
             fstype=FILESYSTEM_TYPE.SWAP
@@ -232,6 +237,9 @@ def compose_curtin_kernel_preseed(node):
     The BootResourceFile table contains a mapping between hwe kernels and
     Ubuntu package names. If this mapping is missing we fall back to letting
     Curtin figure out which kernel should be installed"""
+    if node.get_osystem() == "custom":
+        return []
+
     kpackage = BootResource.objects.get_kpackage_for_node(node)
     if kpackage:
         kernel_config = {"kernel": {"package": kpackage, "mapping": {}}}
@@ -283,33 +291,7 @@ def get_network_yaml_settings(osystem, release):
     return NETWORK_YAML_DEFAULT_SETTINGS
 
 
-def get_curtin_yaml_config(request, node):
-    """Return the curtin configration for the node."""
-    osystem = node.get_osystem()
-    release = node.get_distro_series()
-
-    main_config = get_curtin_config(request, node)
-    cloud_config = compose_curtin_cloud_config(request, node)
-    archive_config = compose_curtin_archive_config(request, node)
-    reporter_config = compose_curtin_maas_reporter(request, node)
-    swap_config = compose_curtin_swap_preseed(node)
-    kernel_config = compose_curtin_kernel_preseed(node)
-    verbose_config = compose_curtin_verbose_preseed()
-    network_yaml_settings = get_network_yaml_settings(osystem, release)
-    network_config = compose_curtin_network_config(
-        node,
-        version=network_yaml_settings.version,
-        source_routing=network_yaml_settings.source_routing,
-    )
-
-    if osystem not in ["ubuntu", "ubuntu-core", "centos", "rhel", "windows"]:
-        maaslog.warning(
-            "%s: Custom network configuration is not supported on '%s' "
-            "('%s'). It is only supported on Ubuntu, Ubuntu-Core, CentOS, "
-            "RHEL, and Windows. Please verify that this image supports custom "
-            "network configuration." % (node.hostname, osystem, release)
-        )
-
+def compose_curtin_storage_preseed(node, osystem):
     if curtin_supports_custom_storage():
         if osystem in ["windows", "ubuntu-core", "esxi"]:
             # Windows, ubuntu-core, and ESXi do not support custom storage.
@@ -319,6 +301,9 @@ def get_curtin_yaml_config(request, node):
             # This also requires Curtin support. See (LP:1640301). If Curtin
             # doesn't support it, the storage config is not passed for
             # backwards compatibility.
+            supports_custom_storage = curtin_supports_custom_storage_for_dd()
+        elif osystem == "ubuntu" and node.get_osystem() == "custom":
+            # Custom ubuntu uses raw images
             supports_custom_storage = curtin_supports_custom_storage_for_dd()
         elif osystem != "ubuntu":
             # CentOS/RHEL storage is now natively supported by Curtin. Other
@@ -337,9 +322,37 @@ def get_curtin_yaml_config(request, node):
     else:
         storage_config = []
         maaslog.warning(
-            "%s: cannot deploy '%s' ('%s') with custom storage config; "
-            "missing support from Curtin. Default to flat storage layout."
+            "%s: cannot deploy '%s' ('%s') with custom storage config;. "
             % (node.hostname, node.osystem, node.distro_series)
+        )
+
+    return storage_config
+
+
+def get_curtin_yaml_config(request, node):
+    """Return the curtin configration for the node."""
+    osystem, series = get_base_osystem_series(node)
+    main_config = get_curtin_config(request, node, osystem, series)
+    cloud_config = compose_curtin_cloud_config(request, node)
+    archive_config = compose_curtin_archive_config(request, node, osystem)
+    reporter_config = compose_curtin_maas_reporter(request, node)
+    swap_config = compose_curtin_swap_preseed(node)
+    kernel_config = compose_curtin_kernel_preseed(node)
+    verbose_config = compose_curtin_verbose_preseed()
+    network_yaml_settings = get_network_yaml_settings(osystem, series)
+    network_config = compose_curtin_network_config(
+        node,
+        version=network_yaml_settings.version,
+        source_routing=network_yaml_settings.source_routing,
+    )
+    storage_config = compose_curtin_storage_preseed(node, osystem)
+
+    if osystem not in ["ubuntu", "ubuntu-core", "centos", "rhel", "windows"]:
+        maaslog.warning(
+            "%s: Custom network configuration is not supported on '%s' "
+            "('%s'). It is only supported on Ubuntu, Ubuntu-Core, CentOS, "
+            "RHEL, and Windows. Please verify that this image supports custom "
+            "network configuration." % (node.hostname, osystem, series)
         )
 
     return (
@@ -353,6 +366,34 @@ def get_curtin_yaml_config(request, node):
         + cloud_config
         + [main_config]
     )
+
+
+def get_base_osystem_series(node):
+    """Return the base OS and series for this node."""
+    osystem = node.get_osystem()
+    release = node.get_distro_series()
+
+    if osystem == "custom":
+        arch, subarch = node.split_arch()
+        resource = BootResource.objects.get_resource_for(
+            osystem, arch, subarch, release
+        )
+        maaslog.info("got bootres {}".format(resource))
+        if resource is not None:
+            osystem, release = resource.split_base_image()
+        else:
+            maaslog.warning(
+                "%s: cannot deploy '%s' ('%s'); cannot identify base image compatible with %s/%s."
+                % (
+                    node.hostname,
+                    node.osystem,
+                    node.distro_series,
+                    arch,
+                    subarch,
+                )
+            )
+
+    return (osystem, release)
 
 
 def get_curtin_merged_config(request, node):
@@ -379,10 +420,10 @@ def get_curtin_userdata(request, node):
     )
 
 
-def get_curtin_image(node):
+def get_curtin_image(node, osystem=None, series=None):
     """Return boot image that supports 'xinstall' for the given node."""
-    osystem = node.get_osystem()
-    series = node.get_distro_series()
+    osystem = osystem or node.get_osystem()
+    series = series or node.get_distro_series()
     arch, subarch = node.split_arch()
     rack_controller = node.get_boot_rack_controller()
     try:
@@ -428,7 +469,7 @@ def get_curtin_installer_url(node):
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
     # Per etc/services cluster is opening port 5248 to serve images via HTTP
-    image = get_curtin_image(node)
+    image = get_curtin_image(node, osystem, series)
     if image["xinstall_type"] == "squashfs":
         # XXX: roaksoax LP: #1739761 - Since the switch to squashfs (and drop
         # of iscsi), precise is no longer deployable. To address a squashfs
@@ -458,7 +499,7 @@ def get_curtin_installer_url(node):
     return url_prepend + url
 
 
-def get_curtin_config(request, node):
+def get_curtin_config(request, node, base_osystem=None, base_series=None):
     """Return the curtin configuration to be used by curtin.pack_install.
 
     :param node: The node for which to generate the configuration.
@@ -466,12 +507,16 @@ def get_curtin_config(request, node):
     """
     osystem = node.get_osystem()
     series = node.get_distro_series()
+    base_osystem = base_osystem or osystem
+    base_series = base_series or series
     template = load_preseed_template(node, "curtin_userdata", osystem, series)
     rack_controller = node.get_boot_rack_controller()
     context = get_preseed_context(
-        request, osystem, series, rack_controller=rack_controller
+        request, base_osystem, base_series, rack_controller=rack_controller
     )
-    context.update(get_node_preseed_context(request, node, osystem, series))
+    context.update(
+        get_node_preseed_context(request, node, base_osystem, base_series)
+    )
     context.update(get_curtin_context(request, node))
     deprecated_context_variables = [
         "main_archive_hostname",
@@ -510,7 +555,7 @@ def get_curtin_config(request, node):
         )
     # Precise does not support cloud-init performing the reboot, so curtin
     # must have this statement.
-    if node.distro_series == "precise":
+    if base_series == "precise":
         config["power_state"] = {"mode": "reboot"}
     # Ensure we always set debconf_selections for grub to ensure it doesn't
     # overwrite the config sent by MAAS. See LP: #1642298
@@ -522,7 +567,7 @@ def get_curtin_config(request, node):
     if "s390x" in node.architecture:
         command = {"maas_00": "chreipl node /dev/" + node.get_boot_disk().name}
         config["late_commands"].update(command)
-    if node.osystem in ["centos", "rhel"] and context["http_proxy"]:
+    if base_osystem in ["centos", "rhel"] and context["http_proxy"]:
         # The echo command must be one argument so direction works.
         config["late_commands"].update(
             {

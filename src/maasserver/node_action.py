@@ -43,7 +43,7 @@ from maasserver.forms.clone import CloneForm
 from maasserver.models import Config, ResourcePool, Tag, Zone
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
-from maasserver.preseed import get_curtin_config
+from maasserver.preseed import get_base_osystem_series, get_curtin_config
 from maasserver.utils.orm import post_commit_do
 from maasserver.utils.osystems import (
     validate_hwe_kernel,
@@ -556,7 +556,8 @@ class Deploy(NodeAction):
             request.META["SERVER_NAME"] = "localhost"
             request.META["SERVER_PORT"] = 5248
         try:
-            get_curtin_config(request, self.node)
+            base_osystem, base_series = get_base_osystem_series(self.node)
+            get_curtin_config(request, self.node, base_osystem, base_series)
         except Exception as e:
             raise NodeActionError("Failed to retrieve curtin config: %s" % e)
 

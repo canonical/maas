@@ -5,37 +5,46 @@
 set -e
 set -o pipefail
 
+trap teardown EXIT
+
 PWD="$(pwd)"
 WORK_DIR="$(mktemp -d ./tmp-XXXX)"
+
 OS="${OS:-ubuntu}"
-OS_VERSION="${OS_VERSION:-20.04.2}"
+OS_VERSION="${OS_VERSION:-20.04}"
+OS_REV="${OS_REV:-.3}"
 IMAGE_TYPE="${IMAGE_TYPE:-live-server}"
 OS_ARCH="${OS_ARCH:-amd64}"
-BASE_IMAGE_FILE="${BASE_IMAGE_FILE:-${OS}-${OS_VERSION}-${IMAGE_TYPE}-${OS_ARCH}.iso}"
-BASE_IMAGE_PATH="${BASE_IMAGE_PATH:-/tmp/${BASE_IMAGE_FILE}}"
-BASE_IMAGE_URL="${BASE_IMAGE_URL:-https://releases.ubuntu.com/${OS_VERSION}/${BASE_IMAGE_FILE}}"
-BASE_IMAGE_CHECKSUM="${BASE_IMAGE_CHECKSUM:-d1f2bf834bbe9bb43faf16f9be992a6f3935e65be0edece1dee2aa6eb1767423}"
-OUTPUT_FILE="custom-${OS}-${OS_VERSION}-${OS_ARCH}.img"
 OUTPUT_DIR=/tmp
 DISK_SIZE="4G"
 
+CACHE_DIR="${CACHE_DIR:-${PWD}/cache}"
+BASE_IMAGE_FILE="${BASE_IMAGE_FILE:-${OS}-${OS_VERSION}${OS_REV}-${IMAGE_TYPE}-${OS_ARCH}.iso}"
+BASE_IMAGE_PATH="${BASE_IMAGE_PATH:-${BASE_IMAGE_FILE}}"
+BASE_IMAGE_URL="${BASE_IMAGE_URL:-https://releases.ubuntu.com/${OS_VERSION}/${BASE_IMAGE_FILE}}"
+BASE_IMAGE_CHECKSUM="http://releases.ubuntu.com/${OS_VERSION}/SHA256SUMS"
+OUTPUT_FILE="custom-${OS}-${OS_VERSION}-${OS_ARCH}.img"
+
 pull_image () {
-    if [ "${DOWNLOAD_BASE_IMAGE}" -eq "1" ]; then
+    if [ ! -f "${CACHE_DIR}/${BASE_IMAGE_PATH}" ]; then
         echo "Downloading Base Ubuntu Image..."
+        mkdir -p "${CACHE_DIR}"
+        pushd "${CACHE_DIR}"
         curl -L -o "${BASE_IMAGE_PATH}" "${BASE_IMAGE_URL}"
-        echo "${BASE_IMAGE_CHECKSUM}  /tmp/${BASE_IMAGE_FILE}" | shasum -c
+        curl "${BASE_IMAGE_CHECKSUM}" | shasum -c --ignore-missing
+        popd
     fi
 }
 
 mount_resources () {
-    echo "mounting boot resources"
-    mkdir -p "/mnt/${OS}-${OS_VERSION}"
-    mount -r "${BASE_IMAGE_PATH}" "/mnt/${OS}-${OS_VERSION}"
+    echo "mounting boot resources in"
+    mkdir -p "${WORK_DIR}/mnt/${OS}-${OS_VERSION}"
+    mount -r "${CACHE_DIR}/${BASE_IMAGE_PATH}" "${WORK_DIR}/mnt/${OS}-${OS_VERSION}"
 }
 
 create_user_data () {
     echo "writing user-data"
-    cat > user-data <<EOF
+    cat > "${WORK_DIR}/user-data" <<EOF
 #cloud-config
 autoinstall:
     version: 1
@@ -62,13 +71,14 @@ autoinstall:
         - chmod 750 /target/curtin/curtin-hooks
 EOF
 
-    touch meta-data
+    touch "${WORK_DIR}/meta-data"
+    # you can add other files you need during the installation here
+    cloud-localds "${WORK_DIR}/seeds.iso" "${WORK_DIR}/user-data" "${WORK_DIR}/meta-data"
 }
 
 create_output_file () {
-    if [ ! -e "${OUTPUT_DIR}/${OUTPUT_FILE}" ]; then
-        echo "creating output image file"
-
+    echo "creating output image file"
+    if [ ! -f "${OUTPUT_DIR}/${OUTPUT_FILE}" ]; then
         truncate -s "${DISK_SIZE}" "${OUTPUT_DIR}/${OUTPUT_FILE}"
     fi
 }
@@ -78,16 +88,16 @@ build () {
     kvm -no-reboot -m 2048\
         -nographic\
         -drive file="${OUTPUT_DIR}/${OUTPUT_FILE}",format=raw,cache=none,if=virtio\
-        -cdrom "${BASE_IMAGE_PATH}"\
-        -kernel "/mnt/${OS}-${OS_VERSION}/casper/vmlinuz"\
-        -initrd "/mnt/${OS}-${OS_VERSION}/casper/initrd"\
-        -append 'console=ttyS0 autoinstall ds=nocloud-net;s=http://_gateway:3003/'
+        -drive file="${WORK_DIR}/seeds.iso",format=raw,cache=none,if=virtio\
+        -cdrom "${CACHE_DIR}/${BASE_IMAGE_PATH}"\
+        -kernel "${WORK_DIR}/mnt/${OS}-${OS_VERSION}/casper/vmlinuz"\
+        -initrd "${WORK_DIR}/mnt/${OS}-${OS_VERSION}/casper/initrd"\
+        -append 'console=ttyS0 autoinstall'
 }
 
 teardown () {
     echo "tearing down workspace"
-    kill %1
-    umount "/mnt/${OS}-${OS_VERSION}"
+    [ -d "${WORK_DIR}/mnt/${OS}-${OS_VERSION}" ] && umount "${WORK_DIR}/mnt/${OS}-${OS_VERSION}"
     rm -rf "${WORK_DIR}"
 }
 
@@ -97,14 +107,9 @@ main () {
         exit 1
     fi
 
-    trap teardown EXIT
     pull_image
     mount_resources
-    mkdir -p "${WORK_DIR}/www/"
-    cd "${WORK_DIR}/www/"
     create_user_data
-    python3 -m http.server 3003 &
-    cd ..
     create_output_file
     build
     echo "created image can be found at: ${OUTPUT_DIR}/${OUTPUT_FILE}"

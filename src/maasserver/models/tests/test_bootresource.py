@@ -344,6 +344,34 @@ class TestBootResourceManager(MAASServerTestCase):
             ),
         )
 
+    def test_get_resource_for_returns_custom_resource(self):
+        [
+            factory.make_BootResource(
+                rtype=random.choice(RTYPE_REQUIRING_OS_SERIES_NAME)
+            )
+            for _ in range(2)
+        ]
+        custom = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name=factory.make_name(),
+            base_image=factory.make_name("ubuntu", "/"),
+        )
+        subarches = [factory.make_name("subarch") for _ in range(3)]
+        subarch = random.choice(subarches)
+        extra = custom.extra.copy()
+        extra["subarches"] = ",".join(subarches)
+        custom.extra = extra
+        custom.save()
+        osystem = "custom"
+        series = custom.name
+        arch, _ = custom.split_arch()
+        self.assertEqual(
+            custom,
+            BootResource.objects.get_resource_for(
+                osystem, arch, subarch, series
+            ),
+        )
+
 
 class TestGetAvailableCommissioningResources(MAASServerTestCase):
     def setUp(self):

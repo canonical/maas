@@ -171,9 +171,15 @@ class BootResourceManager(Manager):
     def get_resource_for(self, osystem, architecture, subarchitecture, series):
         """Return resource that support the given osystem, architecture,
         subarchitecture, and series."""
-        name = "%s/%s" % (osystem, series)
+        if osystem != "custom":
+            name = "%s/%s" % (osystem, series)
+            rtype = RTYPE_REQUIRING_OS_SERIES_NAME
+        else:
+            name = series
+            rtype = (BOOT_RESOURCE_TYPE.UPLOADED,)
+
         resources = BootResource.objects.filter(
-            rtype__in=RTYPE_REQUIRING_OS_SERIES_NAME,
+            rtype__in=rtype,
             name=name,
             architecture__startswith=architecture,
         )
@@ -495,10 +501,11 @@ class BootResource(CleanSave, TimestampedModel):
     extra = JSONObjectField(blank=True, default="", editable=False)
 
     def __str__(self):
-        return "<BootResource name=%s, arch=%s, kflavor=%s>" % (
+        return "<BootResource name=%s, arch=%s, kflavor=%s, base=%s>" % (
             self.name,
             self.architecture,
             self.kflavor,
+            self.base_image,
         )
 
     @property
@@ -573,6 +580,9 @@ class BootResource(CleanSave, TimestampedModel):
 
     def split_arch(self):
         return self.architecture.split("/")
+
+    def split_base_image(self):
+        return self.base_image.split("/")
 
     def get_next_version_name(self):
         """Return the version a `BootResourceSet` should use when adding to
