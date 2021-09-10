@@ -564,7 +564,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         )
         config = get_vendor_data(node, None)
         self.assertThat(mock_get_configs, MockNotCalled())
-        self.assertNotIn(config, "write_files")
+        self.assertNotIn("write_files", config)
 
     def test_returns_nothing_if_no_values_set(self):
         node = factory.make_Node(
@@ -574,7 +574,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         )
         node.nodemetadata_set.create(key="vcenter_registration", value="True")
         config = get_vendor_data(node, None)
-        self.assertNotIn(config, "write_files")
+        self.assertNotIn("write_files", config)
 
     def test_returns_vcenter_yaml(self):
         node = factory.make_Node(
@@ -650,7 +650,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
         for key, value in vcenter.items():
             Config.objects.set_config(key, value)
         config = get_vendor_data(node, None)
-        self.assertNotIn(config, "write_files")
+        self.assertNotIn("write_files", config)
 
     def test_returns_nothing_if_no_user(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING, osystem="esxi")
@@ -658,7 +658,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
             key = "vcenter_%s" % i
             Config.objects.set_config(key, factory.make_name(key))
         config = get_vendor_data(node, None)
-        self.assertNotIn(config, "write_files")
+        self.assertNotIn("write_files", config)
 
     def test_returns_nothing_if_user(self):
         node = factory.make_Node(
@@ -670,7 +670,7 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
             key = "vcenter_%s" % i
             Config.objects.set_config(key, factory.make_name(key))
         config = get_vendor_data(node, None)
-        self.assertNotIn(config, "write_files")
+        self.assertNotIn("write_files", config)
 
     def test_returns_nothing_if_vcenter_registration_not_set(self):
         node = factory.make_Node(
@@ -682,4 +682,4 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
             key = "vcenter_%s" % i
             Config.objects.set_config(key, factory.make_name(key))
         config = get_vendor_data(node, None)
-        self.assertNotIn(config, "write_files")
+        self.assertNotIn("write_files", config)

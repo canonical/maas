@@ -121,7 +121,19 @@ class MAASTestCase(
                 return MAASRunTest
 
     def setUp(self):
-        self.assertEqual = super(testtools.TestCase, self).assertEqual
+        unittest_case = super(testtools.TestCase, self)
+        self.assertEqual = unittest_case.assertEqual
+        self.assertNotEqual = unittest_case.assertNotEqual
+
+        self.assertIn = unittest_case.assertIn
+        self.assertNotIn = unittest_case.assertNotIn
+
+        self.assertIs = unittest_case.assertIs
+        self.assertIsNot = unittest_case.assertIsNot
+
+        self.assertIsNone = unittest_case.assertIsNone
+        self.assertIsNotNone = unittest_case.assertIsNotNone
+
         # Every test gets a pristine MAAS_ROOT, when it is defined.
         if "MAAS_ROOT" in os.environ:
             self.useFixture(MAASRootFixture())
