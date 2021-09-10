@@ -160,7 +160,7 @@ class MACAddressField(Field):
     def to_python(self, value):
         return MAC(value)
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         return MAC(value)
 
     def get_prep_value(self, value):
@@ -305,7 +305,7 @@ class JSONObjectField(Field):
         else:
             return None
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         return self.to_python(value)
 
     def get_db_prep_value(self, value, connection=None, prepared=False):
@@ -530,7 +530,7 @@ class CIDRField(Field):
             return None
         return self.parse_cidr(value)
 
-    def from_db_value(self, value, expression, connection, context):
+    def from_db_value(self, value, expression, connection):
         if value is None:
             return value
         return self.parse_cidr(value)
