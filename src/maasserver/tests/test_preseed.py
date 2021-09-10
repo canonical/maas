@@ -55,6 +55,7 @@ from maasserver.preseed import (
     get_curtin_installer_url,
     get_curtin_merged_config,
     get_curtin_userdata,
+    get_custom_image_dependency_validation,
     get_enlist_preseed,
     get_netloc_and_path,
     get_network_yaml_settings,
@@ -315,6 +316,92 @@ class TestGetPreseedTemplate(MAASServerTestCase):
         self.assertEqual(
             (template_path, template_content),
             get_preseed_template([template_filename]),
+        )
+
+
+class TestGetCustomImageDependencyValidation(MAASServerTestCase):
+    """Tests for 'get_custom_image_dependency_validation"""
+
+    def test_get_custom_image_dependency_validation_for_custom_ubuntu(self):
+        boot_resource = factory.make_BootResource(
+            name="custom/%s" % factory.make_name("ubuntu"),
+            base_image="ubuntu/focal",
+            architecture="amd64/generic",
+        )
+        base_osystem, _ = boot_resource.split_base_image()
+        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine.osystem, machine.distro_series = boot_resource.name.split("/")
+        machine.architecture = boot_resource.architecture
+        machine.save()
+        validation = get_custom_image_dependency_validation(
+            machine, base_osystem
+        )
+        expected = {
+            "98-validate-custom-image-has-cloud-init": [
+                "curtin",
+                "in-target",
+                "--",
+                "bash",
+                "-c",
+                "'dpkg-query ${} cloud-init || (echo \"cloud-init not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+            ],
+            "99-validate-custom-image-has-netplan.io": [
+                "curtin",
+                "in-target",
+                "--",
+                "bash",
+                "-c",
+                "'dpkg-query ${} netplan.io || (echo \"netplan.io not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+            ],
+        }
+        for k in expected:
+            self.assertCountEqual(validation[k], expected[k])
+
+    def test_get_custom_image_dependency_validation_for_custom_centos(self):
+        boot_resource = factory.make_BootResource(
+            name="custom/%s" % factory.make_name("centos7"),
+            base_image="centos/centos7",
+            architecture="amd64/generic",
+        )
+        base_osystem, _ = boot_resource.split_base_image()
+        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine.osystem, machine.distro_series = boot_resource.name.split("/")
+        machine.architecture = boot_resource.architecture
+        machine.save()
+        validation = get_custom_image_dependency_validation(
+            machine, base_osystem
+        )
+        expected = {
+            "98-validate-custom-image-has-cloud-init": [
+                "curtin",
+                "in-target",
+                "--",
+                "bash",
+                "-c",
+                "'dnf list cloud-init || (echo \"cloud-init not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+            ],
+            "99-validate-custom-image-has-netplan.io": [
+                "curtin",
+                "in-target",
+                "--",
+                "bash",
+                "-c",
+                "'dnf list netplan.io || (echo \"netplan.io not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+            ],
+        }
+        for k in expected:
+            self.assertCountEqual(validation[k], expected[k])
+
+    def test_get_custom_image_dependency_validation_for_non_custom(self):
+        boot_resource = factory.make_BootResource(
+            name="ubuntu/focal", architecture="amd64/generic"
+        )
+        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
+        machine.osystem, machine.distro_series = boot_resource.name.split("/")
+        machine.architecture = boot_resource.architecture
+        machine.save()
+        self.assertIsNone(
+            get_custom_image_dependency_validation(machine, boot_resource.name)
         )
 
 
@@ -1356,6 +1443,50 @@ class TestCurtinUtilities(
         self.configure_get_boot_images_for_node(node, "xinstall")
         config = get_curtin_config(make_HttpRequest(), node)
         self.assertThat(config, Contains("proxy="))
+
+    def test_get_curtin_config_custom_osystem_will_validate_dependencies(self):
+        boot_resource = factory.make_BootResource(
+            name="custom/%s" % factory.make_name("name"),
+            base_image="ubuntu/focal",
+            architecture="amd64/generic",
+        )
+        osystem, release = boot_resource.name.split("/")
+        node = factory.make_Node_with_Interface_on_Subnet(
+            primary_rack=self.rpc_rack_controller,
+            osystem=osystem,
+            distro_series=release,
+            architecture=boot_resource.architecture,
+        )
+        expected = {
+            "98-validate-custom-image-has-cloud-init": [
+                "curtin",
+                "in-target",
+                "--",
+                "bash",
+                "-c",
+                "'dpkg-query ${} cloud-init || (echo \"cloud-init not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+            ],
+            "99-validate-custom-image-has-netplan.io": [
+                "curtin",
+                "in-target",
+                "--",
+                "bash",
+                "-c",
+                "'dpkg-query ${} netplan.io || (echo \"netplan.io not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+            ],
+        }
+        self.configure_get_boot_images_for_node(node, "xinstall")
+        base_osystem, base_release = boot_resource.split_base_image()
+        config = get_curtin_config(
+            make_HttpRequest(),
+            node,
+            base_osystem=base_osystem,
+            base_series=base_release,
+        )
+        yaml_config = yaml.safe_load(config)
+        self.assertIsNotNone(yaml_config.get("late_commands"))
+        for k in expected:
+            self.assertCountEqual(yaml_config["late_commands"][k], expected[k])
 
     def make_fastpath_node(self, main_arch=None):
         """Return a `Node`, with FPI enabled, and the given main architecture.

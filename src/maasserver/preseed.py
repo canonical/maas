@@ -564,6 +564,9 @@ def get_curtin_config(request, node, base_osystem=None, base_series=None):
         config["debconf_selections"].update(grub2_debconf)
     else:
         config["debconf_selections"] = grub2_debconf
+
+    if config.get("late_commands") is None:
+        config["late_commands"] = {}
     if "s390x" in node.architecture:
         command = {"maas_00": "chreipl node /dev/" + node.get_boot_disk().name}
         config["late_commands"].update(command)
@@ -583,7 +586,48 @@ def get_curtin_config(request, node, base_osystem=None, base_series=None):
             }
         )
 
+    custom_validation = get_custom_image_dependency_validation(
+        node, base_osystem
+    )
+    if custom_validation is not None:
+        config["late_commands"].update(custom_validation)
+
     return yaml.safe_dump(config)
+
+
+def get_custom_image_dependency_validation(node, base_osystem):
+    if node.get_osystem() != "custom":
+        return None
+
+    cmd = {}
+    err_msg = "not detected, MAAS will not be able to configure this machine properly"
+
+    deps = ["cloud-init", "netplan.io"]
+    for i, dep in enumerate(deps):
+        in_target = None
+        if base_osystem == "ubuntu":
+            in_target = "'dpkg-query ${{}} {dep} || (echo \"{dep} {err_msg}\" && exit 1)'".format(
+                dep=dep, err_msg=err_msg
+            )
+        if base_osystem == "centos":
+            in_target = "'dnf list {dep} || (echo \"{dep} {err_msg}\" && exit 1)'".format(
+                dep=dep, err_msg=err_msg
+            )
+
+        if in_target is not None:
+            cmd[
+                "{priority}-validate-custom-image-has-{dep}".format(
+                    priority=98 + i, dep=dep
+                )
+            ] = [
+                "curtin",
+                "in-target",
+                "--",
+                "bash",
+                "-c",
+                in_target,
+            ]
+    return cmd
 
 
 def get_curtin_context(request, node):
