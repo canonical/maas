@@ -792,6 +792,27 @@ class TestValidateHweKernel(MAASServerTestCase):
             MockCalledOnceWith("ubuntu/xenial", arch, "generic"),
         )
 
+    def test_validate_hwe_kern_uses_base_image_for_lookup_with_custom_images(
+        self,
+    ):
+        factory.make_usable_boot_resource(
+            name="ubuntu/bionic",
+            architecture="amd64/ga-18.04",
+            kflavor="generic",
+        )
+        custom_resource = factory.make_BootResource(
+            name=factory.make_name("name"),
+            base_image="ubuntu/bionic",
+            architecture="amd64/generic",
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+        )
+        osystem = "custom"
+        series = custom_resource.name
+        kernel = validate_hwe_kernel(
+            None, None, custom_resource.architecture, osystem, series
+        )
+        self.assertEqual("ga-18.04", kernel)
+
 
 class TestValidateMinHweKernel(MAASServerTestCase):
     def test_validates_kernel(self):

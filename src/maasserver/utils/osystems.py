@@ -521,6 +521,17 @@ def validate_hwe_kernel(
         if "ephemeral" in purposes:
             return hwe_kernel
 
+    arch, subarch = architecture.split("/")
+
+    # if we're deploying a custom image, we'll want to fetch info for the base image
+    # for the purpose of booting the ephemeral OS installer
+    if osystem == "custom" and distro_series:
+        boot_resource = BootResource.objects.get_resource_for(
+            osystem, arch, subarch, distro_series
+        )
+        if boot_resource is not None:
+            osystem, distro_series = boot_resource.split_base_image()
+
     # If we're not deploying Ubuntu we are just setting the kernel to be used
     # during deployment
     if osystem != "ubuntu":
@@ -532,8 +543,6 @@ def validate_hwe_kernel(
             distro_series = Config.objects.get_config(
                 "commissioning_distro_series"
             )
-
-    arch, subarch = architecture.split("/")
 
     if subarch != "generic" and (
         (hwe_kernel and validate_kernel_str(hwe_kernel))
