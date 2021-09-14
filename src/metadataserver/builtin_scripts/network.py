@@ -1,3 +1,4 @@
+from django.db.models.expressions import RawSQL
 from netaddr import IPAddress, IPNetwork
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
@@ -265,10 +266,6 @@ def update_physical_links(node, interface, links, new_vlan, update_fields):
     if interface.vlan != linked_vlan:
         interface.vlan = linked_vlan
         update_fields.add("vlan")
-    if new_vlan is not None and linked_vlan.id != new_vlan.id:
-        # Create a new VLAN for this interface and it was not used as
-        # a link re-assigned the VLAN this interface is connected to.
-        new_vlan.fabric.delete()
 
 
 def guess_vlan_from_hints(node, ifname, hints):
@@ -551,6 +548,33 @@ def update_links(
         vlan = fabric.get_default_vlan()
         interface.vlan = vlan
         interface.save()
+
+    def get_or_create_subnet(ip_network, vlan):
+        """Get or create the subnet for the IPNetwork.
+
+        If created it will be added to the VLAN on the interface.
+        """
+        if (ip_network.version, ip_network.prefixlen) in ((4, 32), (6, 128)):
+            # if this network has a full netmask, look for the smallest
+            # existing subnet which contains it.
+            subnet = (
+                Subnet.objects.annotate(
+                    contains_net=RawSQL("cidr >>= %s", [str(ip_network)])
+                )
+                .filter(contains_net=True)
+                .order_by("-cidr")
+                .first()
+            )
+            if subnet:
+                return subnet
+
+        cidr = str(ip_network.cidr)
+        subnet, _ = Subnet.objects.get_or_create(
+            cidr=cidr,
+            defaults={"name": cidr, "vlan": vlan},
+        )
+        return subnet
+
     for link in links:
         if link.get("mode") == "dhcp":
             dhcp_address = get_alloc_type_from_ip_addresses(
@@ -569,30 +593,16 @@ def update_links(
                 # IP address.
                 ip_network = IPNetwork(f"{link['address']}/{link['netmask']}")
                 ip_addr = str(ip_network.ip)
-
-                # Get or create the subnet for this link. If created if
-                # will be added to the VLAN on the interface.
-                subnet, _ = Subnet.objects.get_or_create(
-                    cidr=str(ip_network.cidr),
-                    defaults={"name": str(ip_network.cidr), "vlan": vlan},
-                )
+                subnet = get_or_create_subnet(ip_network, vlan)
 
                 # Make sure that the subnet is on the same VLAN as the
                 # interface.
                 if force_vlan and subnet.vlan_id != interface.vlan_id:
                     maaslog.error(
-                        "Unable to update IP address '%s' assigned to "
-                        "interface '%s' on controller '%s'. "
-                        "Subnet '%s' for IP address is not on "
-                        "VLAN '%s.%d'."
-                        % (
-                            ip_addr,
-                            interface.name,
-                            node.hostname,
-                            subnet.name,
-                            subnet.vlan.fabric.name,
-                            subnet.vlan.vid,
-                        )
+                        f"Unable to update IP address '{ip_addr}' assigned "
+                        f"to interface '{interface.name}' on controller '{node.hostname}'. "
+                        f"Subnet '{subnet.name}' for IP address is not on "
+                        f"VLAN '{subnet.vlan.fabric.name}.{subnet.vlan.vid}'."
                     )
                     continue
 
@@ -609,29 +619,16 @@ def update_links(
         else:
             ip_network = IPNetwork(f"{link['address']}/{link['netmask']}")
             ip_addr = str(ip_network.ip)
-
-            # Get or create the subnet for this link. If created if will
-            # be added to the VLAN on the interface.
-            subnet, _ = Subnet.objects.get_or_create(
-                cidr=str(ip_network.cidr),
-                defaults={"name": str(ip_network.cidr), "vlan": vlan},
-            )
+            subnet = get_or_create_subnet(ip_network, vlan)
 
             # Make sure that the subnet is on the same VLAN as the
             # interface.
             if force_vlan and subnet.vlan_id != interface.vlan_id:
                 maaslog.error(
-                    "Unable to update IP address '%s' assigned to "
-                    "interface '%s' on controller '%s'. Subnet '%s' "
-                    "for IP address is not on VLAN '%s.%d'."
-                    % (
-                        ip_addr,
-                        interface.name,
-                        node.hostname,
-                        subnet.name,
-                        subnet.vlan.fabric.name,
-                        subnet.vlan.vid,
-                    )
+                    f"Unable to update IP address '{str(ip_network)}' assigned "
+                    f"to interface '{interface.name}' on controller '{node.hostname}'. "
+                    f"Subnet '{subnet.name}' for IP address is not on "
+                    f"VLAN '{subnet.vlan.fabric.name}.{subnet.vlan.vid}'."
                 )
                 continue
 

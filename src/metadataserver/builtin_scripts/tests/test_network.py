@@ -109,9 +109,9 @@ class LXDNetworkPort:
         default_factory=lambda: ["10000baseT/Full"]
     )
     supported_ports: List[str] = dataclasses.field(
-        default_factory=lambda: ["fibre"]
+        default_factory=lambda: ["fiber"]
     )
-    port_type: str = "fibre"
+    port_type: str = "fiber"
     transceiver_type: str = "internal"
     auto_negotiation: bool = True
     link_detected: bool = True
@@ -699,6 +699,73 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
                 (IPADDRESS_TYPE.AUTO, None, subnet),
                 (IPADDRESS_TYPE.DISCOVERED, ip1, subnet),
                 (IPADDRESS_TYPE.DISCOVERED, ip2, subnet),
+            ],
+            [
+                (address.alloc_type, address.ip, address.subnet)
+                for address in eth0_addresses
+            ],
+        )
+
+    def test_link_ip_with_full_netmask_wider_subnet(self):
+        controller = self.create_empty_controller()
+        net4 = factory.make_ipv4_network(slash=24)
+        net6 = factory.make_ipv6_network(slash=64)
+        subnet4 = factory.make_Subnet(cidr=str(net4.cidr))
+        subnet6 = factory.make_Subnet(cidr=str(net6.cidr))
+        # pick IPs in each network
+        ip4 = net4[10]
+        ip6 = net6[10]
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        # record the addresses with a full netmask
+        eth0.addresses = [
+            LXDAddress(str(ip4), 32),
+            LXDAddress(str(ip6), 128),
+        ]
+        self.update_interfaces(controller, data)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        eth0_addresses = list(eth0.ip_addresses.all())
+        self.assertEqual(
+            [
+                (IPADDRESS_TYPE.STICKY, str(ip4), subnet4),
+                (IPADDRESS_TYPE.STICKY, str(ip6), subnet6),
+            ],
+            [
+                (address.alloc_type, address.ip, address.subnet)
+                for address in eth0_addresses
+            ],
+        )
+
+    def test_link_ip_with_full_netmask_no_wider_subnet(self):
+        controller = self.create_empty_controller()
+        net4 = factory.make_ipv4_network(slash=24)
+        net6 = factory.make_ipv6_network(slash=64)
+        # pick IPs in each network
+        ip4 = net4[10]
+        ip6 = net6[10]
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(
+            "eth0",
+            mac_address="11:11:11:11:11:11",
+        )
+        # record the addresses with a full netmask
+        eth0.addresses = [
+            LXDAddress(str(ip4), 32),
+            LXDAddress(str(ip6), 128),
+        ]
+        self.update_interfaces(controller, data)
+        eth0 = Interface.objects.get(name="eth0", node=controller)
+        eth0_addresses = list(eth0.ip_addresses.all())
+        # subnets with full netmask are created
+        subnet4 = Subnet.objects.get(cidr=f"{ip4}/32")
+        subnet6 = Subnet.objects.get(cidr=f"{ip6}/128")
+        self.assertEqual(
+            [
+                (IPADDRESS_TYPE.STICKY, str(ip4), subnet4),
+                (IPADDRESS_TYPE.STICKY, str(ip6), subnet6),
             ],
             [
                 (address.alloc_type, address.ip, address.subnet)
