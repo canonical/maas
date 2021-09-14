@@ -94,7 +94,7 @@ class TestFunctions(MAASTestCase):
             "James-BOND-007": "James-BOND-007",
         }
         observed = {name_in: utils.safe_name(name_in) for name_in in expected}
-        self.assertItemsEqual(expected.items(), observed.items())
+        assert expected == observed
 
     def test_safe_name_non_ASCII(self):
         # safe_name will not break if passed a string with non-ASCII
@@ -119,7 +119,7 @@ class TestFunctions(MAASTestCase):
             name_in: utils.handler_command_name(name_in)
             for name_in in expected
         }
-        self.assertItemsEqual(expected.items(), observed.items())
+        assert expected == observed
 
     def test_handler_command_name_non_ASCII(self):
         # handler_command_name will not break if passed a string with
