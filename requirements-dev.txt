@@ -20,7 +20,6 @@ testresources==2.0.1
 testscenarios==0.5.0
 testtools==2.4.0
 traceback2==1.4.0
-unittest2==1.1.0
 # Explicit versions for PACKAGED dependencies. This is where a TEST
 # dependency itself depends on an INSTALL/RUNTIME dependency which is, by
 # force, provided by a system package.

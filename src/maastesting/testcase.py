@@ -134,6 +134,9 @@ class MAASTestCase(
         self.assertIsNone = unittest_case.assertIsNone
         self.assertIsNotNone = unittest_case.assertIsNotNone
 
+        # TODO: Deprecate this, callers should update to assertCountEqual
+        self.assertItemsEqual = unittest_case.assertCountEqual
+
         # Every test gets a pristine MAAS_ROOT, when it is defined.
         if "MAAS_ROOT" in os.environ:
             self.useFixture(MAASRootFixture())
@@ -211,16 +214,6 @@ class MAASTestCase(
         cleaned up at the end of the test.
         """
         return factory.make_file(self.make_dir(), name, contents)
-
-    @wraps(testtools.TestCase.assertItemsEqual)
-    def assertItemsEqual(self, expected_seq, actual_seq, msg=None):
-        """Override testtools' version to prevent use of mappings."""
-        self.assertThat(
-            (expected_seq, actual_seq),
-            AllMatch(Not(IsInstance(Mapping))),
-            "Mappings cannot be compared with assertItemsEqual",
-        )
-        return super().assertItemsEqual(expected_seq, actual_seq, msg)
 
     @wraps(testtools.TestCase.assertSequenceEqual)
     def assertSequenceEqual(self, seq1, seq2, msg=None, seq_type=None):

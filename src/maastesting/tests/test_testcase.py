@@ -104,19 +104,6 @@ class TestTestCase(MAASTestCase):
         self.assertRaises(TypeError, self.method_to_be_patched, 8)
         self.assertRaises(TypeError, self.method_to_be_patched, b=9)
 
-    def test_assertItemsEqual_rejects_mappings(self):
-        self.assertRaises(AssertionError, self.assertItemsEqual, {}, [])
-        self.assertRaises(AssertionError, self.assertItemsEqual, [], {})
-        self.assertRaises(AssertionError, self.assertItemsEqual, {}, {})
-        self.assertItemsEqual([], [])
-
-    def test_assertItemsEqual_forwards_message(self):
-        message = factory.make_name("message")
-        error = self.assertRaises(
-            AssertionError, self.assertItemsEqual, [1], [2], message
-        )
-        self.assertThat(str(error), Contains(message))
-
     def test_assertSequenceEqual_rejects_mappings(self):
         self.assertRaises(AssertionError, self.assertSequenceEqual, {}, [])
         self.assertRaises(AssertionError, self.assertSequenceEqual, [], {})
