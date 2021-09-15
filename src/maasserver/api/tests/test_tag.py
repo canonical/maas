@@ -53,7 +53,7 @@ class TestTagAPI(APITestCase.ForUser):
         tag = factory.make_Tag()
         response = self.client.delete(self.get_tag_uri(tag))
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertItemsEqual([tag], Tag.objects.filter(id=tag.id))
+        self.assertCountEqual([tag], Tag.objects.filter(id=tag.id))
 
     def test_DELETE_removes_tag(self):
         self.become_admin()
@@ -149,7 +149,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [machine.system_id, device.system_id],
             [r["system_id"] for r in parsed_result],
         )
@@ -229,7 +229,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [machine.system_id], [r["system_id"] for r in parsed_result]
         )
 
@@ -302,7 +302,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [device.system_id], [r["system_id"] for r in parsed_result]
         )
 
@@ -368,7 +368,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [rack.system_id], [r["system_id"] for r in parsed_result]
         )
 
@@ -435,7 +435,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([], parsed_result)
+        self.assertEqual([], parsed_result)
 
     def test_GET_region_controllers_returns_region_controllers(self):
         self.become_admin()
@@ -458,7 +458,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [region.system_id], [r["system_id"] for r in parsed_result]
         )
 
@@ -530,7 +530,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([], parsed_result)
+        self.assertEqual([], parsed_result)
 
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_User()
@@ -556,7 +556,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node1.system_id, node2.system_id],
             [r["system_id"] for r in parsed_result],
         )
@@ -566,7 +566,7 @@ class TestTagAPI(APITestCase.ForUser):
         node = factory.make_Node()
         tag = factory.make_Tag(definition="//child")
         node.tags.add(tag)
-        self.assertItemsEqual([tag.name], node.tag_names())
+        self.assertEqual([tag.name], node.tag_names())
         response = self.client.put(
             self.get_tag_uri(tag),
             {"name": "bad tag", "definition": "invalid::tag"},
@@ -575,7 +575,7 @@ class TestTagAPI(APITestCase.ForUser):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         # The tag should not be modified
         tag = reload_object(tag)
-        self.assertItemsEqual([tag.name], node.tag_names())
+        self.assertEqual([tag.name], node.tag_names())
         self.assertEqual("//child", tag.definition)
 
     def test_POST_update_nodes_unknown_tag(self):
@@ -592,7 +592,7 @@ class TestTagAPI(APITestCase.ForUser):
         node_first = factory.make_Node()
         node_second = factory.make_Node()
         node_first.tags.add(tag)
-        self.assertItemsEqual([node_first], tag.node_set.all())
+        self.assertCountEqual([node_first], tag.node_set.all())
         response = self.client.post(
             self.get_tag_uri(tag),
             {
@@ -605,7 +605,7 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([node_second], tag.node_set.all())
+        self.assertCountEqual([node_second], tag.node_set.all())
         self.assertEqual({"added": 1, "removed": 1}, parsed_result)
 
     def test_POST_update_nodes_ignores_unknown_nodes(self):
@@ -613,7 +613,7 @@ class TestTagAPI(APITestCase.ForUser):
         self.become_admin()
         unknown_add_system_id = generate_node_system_id()
         unknown_remove_system_id = generate_node_system_id()
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())
         response = self.client.post(
             self.get_tag_uri(tag),
             {
@@ -626,14 +626,14 @@ class TestTagAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())
         self.assertEqual({"added": 0, "removed": 0}, parsed_result)
 
     def test_POST_update_nodes_doesnt_require_add_or_remove(self):
         tag = factory.make_Tag()
         node = factory.make_Node()
         self.become_admin()
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())
         response = self.client.post(
             self.get_tag_uri(tag),
             {"op": "update_nodes", "add": [node.system_id]},
@@ -661,7 +661,7 @@ class TestTagAPI(APITestCase.ForUser):
             {"op": "update_nodes", "add": [node.system_id]},
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_allows_rack_controller(self):
         tag = factory.make_Tag()
@@ -690,7 +690,7 @@ class TestTagAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         self.assertEqual({"added": 1, "removed": 0}, parsed_result)
-        self.assertItemsEqual([node], tag.node_set.all())
+        self.assertCountEqual([node], tag.node_set.all())
 
     def test_POST_update_nodes_refuses_unidentified_rack_controller(self):
         tag = factory.make_Tag()
@@ -703,7 +703,7 @@ class TestTagAPI(APITestCase.ForUser):
             {"op": "update_nodes", "add": [node.system_id]},
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_refuses_non_rack_controller(self):
         tag = factory.make_Tag()
@@ -722,7 +722,7 @@ class TestTagAPI(APITestCase.ForUser):
             },
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_refuses_no_token(self):
         tag = factory.make_Tag()
@@ -742,7 +742,7 @@ class TestTagAPI(APITestCase.ForUser):
             },
         )
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())
 
     def test_POST_update_nodes_ignores_incorrect_definition(self):
         tag = factory.make_Tag()
@@ -762,8 +762,8 @@ class TestTagAPI(APITestCase.ForUser):
             },
         )
         self.assertEqual(http.client.CONFLICT, response.status_code)
-        self.assertItemsEqual([], tag.node_set.all())
-        self.assertItemsEqual([], node.tags.all())
+        self.assertCountEqual([], tag.node_set.all())
+        self.assertCountEqual([], node.tags.all())
 
     def test_POST_rebuild_rebuilds_node_mapping(self):
         populate_nodes = self.patch_autospec(Tag, "populate_nodes")
@@ -783,7 +783,7 @@ class TestTagAPI(APITestCase.ForUser):
         tag = factory.make_Tag(definition="")
         node = factory.make_Node()
         node.tags.add(tag)
-        self.assertItemsEqual([node], tag.node_set.all())
+        self.assertCountEqual([node], tag.node_set.all())
         self.become_admin()
         response = self.client.post(self.get_tag_uri(tag), {"op": "rebuild"})
         self.assertEqual(http.client.OK, response.status_code)
@@ -791,7 +791,7 @@ class TestTagAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         self.assertEqual({"rebuilding": tag.name}, parsed_result)
-        self.assertItemsEqual([node], tag.node_set.all())
+        self.assertCountEqual([node], tag.node_set.all())
 
     def test_POST_rebuild_unknown_404(self):
         self.become_admin()
@@ -812,7 +812,7 @@ class TestTagsAPI(APITestCase.ForUser):
 
     def test_GET_list_without_tags_returns_empty_list(self):
         response = self.client.get(reverse("tags_handler"))
-        self.assertItemsEqual(
+        self.assertEqual(
             [], json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         )
 

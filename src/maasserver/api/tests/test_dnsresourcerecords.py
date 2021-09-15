@@ -50,7 +50,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_with_domain(self):
         for _ in range(3):
@@ -69,7 +69,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_with_name(self):
         for _ in range(3):
@@ -86,7 +86,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_with_type(self):
         for _ in range(3):
@@ -106,7 +106,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create_by_name_domain_id(self):
         self.become_admin()

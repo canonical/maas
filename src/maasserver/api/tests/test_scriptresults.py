@@ -61,7 +61,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             script_set_ids, [result["id"] for result in parsed_results]
         )
         for script_set in parsed_results:
@@ -91,7 +91,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [script_set.id for script_set in script_sets],
             [parsed_result["id"] for parsed_result in parsed_results],
         )
@@ -120,7 +120,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [script.id for script in scripts],
             [
                 parsed_result["script_id"]
@@ -147,7 +147,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             script_set_ids, [result["id"] for result in parsed_results]
         )
         for script_set in parsed_results:
@@ -191,7 +191,7 @@ class TestNodeScriptResultsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             script_set_ids, [result["id"] for result in parsed_results]
         )
         for script_set in parsed_results:
@@ -525,7 +525,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_result = json_load_bytes(response.content)
         results = parsed_result.pop("results")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [script.id for script in scripts],
             [result["script_id"] for result in results],
         )
@@ -1100,7 +1100,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set), {"op": "download"}
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             re.findall(r"(name-\w+ - /dev/[\w-]+)", response.content.decode()),
             [
                 "%s - /dev/%s"
@@ -1132,7 +1132,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
             self.get_script_result_uri(script_set), {"op": "download"}
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             re.findall(r"(name-\w+ - [\w-]+)", response.content.decode()),
             [
                 "%s - %s" % (script_result.name, script_result.interface.name)

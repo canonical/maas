@@ -30,11 +30,9 @@ class TestZonesAPI(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        zones = Zone.objects.filter(name=name)
-        self.assertItemsEqual(
-            [(name, description)],
-            [(zone.name, zone.description) for zone in zones],
-        )
+        zone = Zone.objects.get(name=name)
+        self.assertEqual(name, zone.name)
+        self.assertEqual(description, zone.description)
 
     def test_new_requires_admin(self):
         name = factory.make_name("name")
@@ -57,7 +55,7 @@ class TestZonesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 (
                     zone.name,

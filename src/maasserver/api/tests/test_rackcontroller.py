@@ -101,8 +101,8 @@ class TestRackControllerAPI(APITransactionTestCase.ForUser):
             response.status_code,
             explain_unexpected_response(http.client.OK, response),
         )
-        self.assertItemsEqual(
-            ["connected", "images", "status"],
+        self.assertEqual(
+            {"connected", "images", "status"},
             json_load_bytes(response.content).keys(),
         )
 
@@ -211,8 +211,9 @@ class TestRackControllersAPI(APITestCase.ForUser):
         factory.make_RackController(owner=self.user)
         response = self.client.get(reverse("rackcontrollers_handler"))
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [
+
+        self.assertEqual(
+            {
                 "system_id",
                 "hostname",
                 "description",
@@ -258,8 +259,8 @@ class TestRackControllersAPI(APITestCase.ForUser):
                 "tag_names",
                 "interface_test_status",
                 "interface_test_status_name",
-            ],
-            list(parsed_result[0]),
+            },
+            parsed_result[0].keys(),
         )
 
     def test_POST_import_boot_images_import_to_rack_controllers(self):

@@ -170,7 +170,7 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
     def test_DELETE_deletes_script(self):
         script = factory.make_Script(script_type=SCRIPT_TYPE.COMMISSIONING)
         self.client.delete(self.get_url(script.name))
-        self.assertItemsEqual([], Script.objects.filter(name=script.name))
+        self.assertCountEqual([], Script.objects.filter(name=script.name))
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertEqual(
@@ -250,8 +250,8 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
             + node.current_installation_script_set.scriptresult_set.count(),
             len(parsed_results),
         )
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "created",
                 "updated",
                 "id",
@@ -261,7 +261,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
                 "node",
                 "data",
                 "resource_uri",
-            ],
+            },
             parsed_result.keys(),
         )
         self.assertEqual(script_result.id, parsed_result["id"])
@@ -292,7 +292,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         response = self.client.get(url)
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 script_result.stdout.decode("utf-8")
                 for script_result in chain(
@@ -319,7 +319,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         response = self.client.get(url, {"system_id": [node.system_id]})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 script_result.stdout.decode("utf-8")
                 for script_result in chain(
@@ -346,7 +346,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         response = self.client.get(url, {"system_id": [node.system_id]})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 b64encode(script_result.output).decode()
                 for script_result in chain(
@@ -379,7 +379,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         response = self.client.get(url, {"system_id": [node.system_id]})
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             {script_result.id for script_result in script_results},
             {parsed_result["id"] for parsed_result in parsed_results},
         )
@@ -429,7 +429,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         response = self.client.get(url)
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             {script_result.id for script_result in script_results},
             {parsed_result["id"] for parsed_result in parsed_results},
         )
@@ -458,7 +458,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
         response = self.client.get(url)
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             {script_result.id for script_result in expected_results},
             {parsed_result["id"] for parsed_result in parsed_results},
         )

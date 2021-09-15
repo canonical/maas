@@ -201,7 +201,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         query = RequestFixture({"id": [matching_id]}, "id")
         node_list = nodes_module.filtered_nodes_list_from_request(query)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_id], extract_system_ids_from_nodes(node_list)
         )
 
@@ -213,7 +213,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         query = RequestFixture({"id": [nonexistent_id]}, "id")
         node_list = nodes_module.filtered_nodes_list_from_request(query)
 
-        self.assertItemsEqual([], extract_system_ids_from_nodes(node_list))
+        self.assertEqual([], extract_system_ids_from_nodes(node_list))
 
     def test_node_list_with_ids_orders_by_id(self):
         # Even when ids are passed to "list," nodes are returned in id
@@ -229,7 +229,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
             node.system_id
             for node in sorted(all_nodes, key=lambda node: node.id)
         ]
-        self.assertSequenceEqual(
+        self.assertCountEqual(
             sorted_system_ids, extract_system_ids_from_nodes(node_list)
         )
 
@@ -242,7 +242,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         query = RequestFixture({"id": [existing_id, nonexistent_id]}, "id")
         node_list = nodes_module.filtered_nodes_list_from_request(query)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [existing_id], extract_system_ids_from_nodes(node_list)
         )
 
@@ -256,7 +256,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         query = RequestFixture({"hostname": [matching_hostname]}, "hostname")
         node_list = nodes_module.filtered_nodes_list_from_request(query)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_system_id], extract_system_ids_from_nodes(node_list)
         )
 
@@ -272,7 +272,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
         query = RequestFixture({"mac_address": [matching_mac]}, "mac_address")
         node_list = nodes_module.filtered_nodes_list_from_request(query)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_system_id], extract_system_ids_from_nodes(node_list)
         )
 
@@ -428,7 +428,7 @@ class TestNodesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node1.system_id, node2.system_id],
             extract_system_ids(parsed_result),
         )
@@ -447,13 +447,13 @@ class TestNodesAPI(APITestCase.ForUser):
             response.content.decode(settings.DEFAULT_CHARSET)
         )
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertItemsEqual(system_ids, extract_system_ids(parsed_result))
+        self.assertCountEqual(system_ids, extract_system_ids(parsed_result))
 
     def test_GET_without_nodes_returns_empty_list(self):
         # If there are no nodes to list, the "list" op still works but
         # returns an empty list.
         response = self.client.get(reverse("nodes_handler"))
-        self.assertItemsEqual(
+        self.assertEqual(
             [], json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         )
 
@@ -480,7 +480,7 @@ class TestNodesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([matching_id], extract_system_ids(parsed_result))
+        self.assertEqual([matching_id], extract_system_ids(parsed_result))
 
     def test_GET_list_with_nonexistent_id_returns_empty_list(self):
         # Trying to list a nonexistent node id returns a list containing
@@ -490,7 +490,7 @@ class TestNodesAPI(APITestCase.ForUser):
         response = self.client.get(
             reverse("nodes_handler"), {"id": [nonexistent_id]}
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [], json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         )
 
@@ -517,7 +517,7 @@ class TestNodesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([existing_id], extract_system_ids(parsed_result))
+        self.assertEqual([existing_id], extract_system_ids(parsed_result))
 
     def test_GET_with_hostname_returns_matching_nodes(self):
         # The list operation takes optional "hostname" parameters. Only nodes
@@ -531,7 +531,7 @@ class TestNodesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_system_id], extract_system_ids(parsed_result)
         )
 
@@ -549,7 +549,7 @@ class TestNodesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_system_id], extract_system_ids(parsed_result)
         )
 
@@ -636,7 +636,7 @@ class TestNodesAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         disable_ipv4 = [node.get("disable_ipv4") for node in parsed_result]
-        self.assertItemsEqual([False, False], disable_ipv4)
+        self.assertEqual([False, False], disable_ipv4)
 
     def test_GET_shows_all_types(self):
         machines = [
@@ -657,7 +657,7 @@ class TestNodesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node.system_id for node in machines + devices + rack_controllers],
             extract_system_ids(parsed_result),
             "Node listing doesn't contain all node types.",

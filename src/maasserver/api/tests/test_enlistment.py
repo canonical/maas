@@ -184,7 +184,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
             },
         )
         diane = get_one(Machine.objects.filter(hostname="diane"))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             ["aa:bb:cc:dd:ee:ff", "22:bb:cc:dd:ee:ff"],
             [interface.mac_address for interface in diane.interface_set.all()],
         )
@@ -259,8 +259,8 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
 
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
         self.assertIn("application/json", response["Content-Type"])
-        self.assertItemsEqual(
-            ["architecture"], parsed_result.keys(), response.content
+        self.assertEqual(
+            {"architecture"}, parsed_result.keys(), response.content
         )
 
     def test_POST_create_creates_machine_with_domain(self):
@@ -391,8 +391,8 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
         )
         parsed_result = json_load_bytes(response.content)
         # Limited fields on machine.
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "system_id",
                 "hostname",
                 "domain",
@@ -407,24 +407,24 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
                 "status_name",
                 "node_type",
                 "resource_uri",
-            ],
-            list(parsed_result),
+            },
+            parsed_result.keys(),
         )
         # Limited fields on domain.
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "id",
                 "name",
                 "ttl",
                 "is_default",
                 "authoritative",
                 "resource_record_count",
-            ],
-            list(parsed_result["domain"]),
+            },
+            parsed_result["domain"].keys(),
         )
         # Limited fields on zone.
-        self.assertItemsEqual(
-            ["id", "name", "description"], list(parsed_result["zone"])
+        self.assertEqual(
+            {"id", "name", "description"}, parsed_result["zone"].keys()
         )
 
     def test_POST_create_returns_machine_with_matching_power_parameters(self):
@@ -680,8 +680,8 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
             },
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "hostname",
                 "description",
                 "hardware_uuid",
@@ -754,8 +754,8 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 "interface_test_status_name",
                 "virtualmachine_id",
                 "workload_annotations",
-            ],
-            list(parsed_result),
+            },
+            parsed_result.keys(),
         )
 
 
@@ -901,8 +901,8 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
             },
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "hostname",
                 "description",
                 "hardware_uuid",
@@ -975,8 +975,8 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 "interface_test_status_name",
                 "virtualmachine_id",
                 "workload_annotations",
-            ],
-            list(parsed_result),
+            },
+            parsed_result.keys(),
         )
 
     def test_POST_accept_all(self):

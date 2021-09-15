@@ -88,7 +88,7 @@ class TestResourcePoolsAPIWithRBAC(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertItemsEqual([], result)
+        self.assertEqual([], result)
 
     def test_GET_returns_viewable(self):
         pools = [factory.make_ResourcePool() for _ in range(3)]

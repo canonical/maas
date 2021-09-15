@@ -55,8 +55,8 @@ class TestBootSourceAPI(APITestCase.ForUser):
             "keyring_data"
         ].encode("utf-8")
         # All the fields are present.
-        self.assertItemsEqual(
-            DISPLAYED_BOOTSOURCE_FIELDS, returned_boot_source.keys()
+        self.assertEqual(
+            set(DISPLAYED_BOOTSOURCE_FIELDS), returned_boot_source.keys()
         )
         # Remove created and updated that is handled by django.
         del returned_boot_source["created"]
@@ -133,7 +133,7 @@ class TestBootSourcesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [boot_source.id for boot_source in sources],
             [boot_source.get("id") for boot_source in parsed_result],
         )

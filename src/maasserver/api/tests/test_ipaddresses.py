@@ -535,7 +535,7 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
         )
         self.assertEqual(self.user, staticipaddress.user)
         dnsrr = DNSResource.objects.get(name=hostname, domain=domain)
-        self.assertItemsEqual(dnsrr.ip_addresses.all(), [staticipaddress])
+        self.assertCountEqual(dnsrr.ip_addresses.all(), [staticipaddress])
 
     def test_POST_reserve_with_MAC_links_MAC_to_ip_address(self):
         subnet = factory.make_Subnet()

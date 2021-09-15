@@ -61,8 +61,8 @@ class TestBcacheCacheSetsAPI(APITestCase.ForUser):
             cache_set["name"]
             for cache_set in json_load_bytes(response.content)
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
-        self.assertItemsEqual(expected_names, result_names)
+        self.assertCountEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_names, result_names)
 
     def test_create(self):
         mock_create_audit_event = self.patch(

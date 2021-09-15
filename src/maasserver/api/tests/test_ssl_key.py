@@ -42,7 +42,7 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
             reverse("sslkey_handler", args=[keys[0].id]),
             reverse("sslkey_handler", args=[keys[1].id]),
         ]
-        self.assertItemsEqual(expected_result, parsed_result)
+        self.assertCountEqual(expected_result, parsed_result)
 
     def test_list_sorts_output(self):
         _, keys = factory.make_user_with_ssl_keys(n_keys=2, user=self.user)
@@ -72,7 +72,7 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
             reverse("sslkey_handler", args=[keys[0].id]),
             reverse("sslkey_handler", args=[keys[1].id]),
         ]
-        self.assertItemsEqual(expected_result, parsed_result)
+        self.assertCountEqual(expected_result, parsed_result)
 
     def test_list_only_shows_user_keys_for_admin(self):
         # other user
@@ -89,7 +89,7 @@ class TestSSLKeyHandlers(APITestCase.ForUser):
             reverse("sslkey_handler", args=[keys[0].id]),
             reverse("sslkey_handler", args=[keys[1].id]),
         ]
-        self.assertItemsEqual(expected_result, parsed_result)
+        self.assertCountEqual(expected_result, parsed_result)
 
     def test_get_by_id_works(self):
         _, keys = factory.make_user_with_ssl_keys(n_keys=1, user=self.user)

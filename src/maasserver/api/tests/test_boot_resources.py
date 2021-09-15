@@ -133,7 +133,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [resource.id for resource in resources],
             [resource.get("id") for resource in parsed_result],
         )
@@ -152,7 +152,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [resource.id for resource in resources],
             [resource.get("id") for resource in parsed_result],
         )
@@ -171,7 +171,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [resource.id for resource in resources],
             [resource.get("id") for resource in parsed_result],
         )
@@ -190,7 +190,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [resource.id for resource in resources],
             [resource.get("id") for resource in parsed_result],
         )

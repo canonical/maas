@@ -31,7 +31,7 @@ from maastesting.testcase import MAASTestCase
 
 class TestEmitterOnlyJSON(MAASTestCase):
     def test_emitters(self):
-        self.assertItemsEqual(Emitter.EMITTERS.keys(), ["json"])
+        self.assertEqual(Emitter.EMITTERS.keys(), {"json"})
 
 
 class StubHandler:

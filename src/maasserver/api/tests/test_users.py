@@ -331,8 +331,8 @@ class TestUser(APITestCase.ForUser):
         returned_user = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
-            ["username", "email", "resource_uri", "is_superuser", "is_local"],
+        self.assertEqual(
+            {"username", "email", "resource_uri", "is_superuser", "is_local"},
             returned_user.keys(),
         )
 
@@ -372,7 +372,7 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(
             http.client.NOT_FOUND, response.status_code, response.status_code
         )
-        self.assertItemsEqual([], User.objects.filter(username=nonuser))
+        self.assertCountEqual([], User.objects.filter(username=nonuser))
 
     def test_DELETE_requires_admin_privileges(self):
         user = factory.make_User()
@@ -422,7 +422,7 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.status_code
         )
-        self.assertItemsEqual([], User.objects.filter(username=user.username))
+        self.assertCountEqual([], User.objects.filter(username=user.username))
 
     def test_DELETE_deletes_admin(self):
         self.become_admin()
@@ -433,7 +433,7 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.status_code
         )
-        self.assertItemsEqual([], User.objects.filter(username=user.username))
+        self.assertCountEqual([], User.objects.filter(username=user.username))
 
     def test_DELETE_user_with_node_fails(self):
         self.become_admin()
@@ -459,7 +459,7 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.status_code
         )
-        self.assertItemsEqual([], User.objects.filter(username=user.username))
+        self.assertCountEqual([], User.objects.filter(username=user.username))
         self.assertEqual(Node.objects.get(owner=new_owner), node)
 
     def test_DELETE_user_with_staticaddress_fails(self):
@@ -504,7 +504,7 @@ class TestUser(APITestCase.ForUser):
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.status_code
         )
-        self.assertItemsEqual([], User.objects.filter(username=user.username))
+        self.assertCountEqual([], User.objects.filter(username=user.username))
         self.assertEqual(
             StaticIPAddress.objects.get(user=new_owner), ip_address
         )

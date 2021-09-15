@@ -307,7 +307,7 @@ class TestDHCPSnippetsAPI(APITestCase.ForUser):
             dhcp_snippet["id"]
             for dhcp_snippet in json.loads(response.content.decode())
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create(self):
         self.patch(dhcpsnippet, "validate_dhcp_config").return_value = {}

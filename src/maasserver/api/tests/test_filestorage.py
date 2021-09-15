@@ -105,7 +105,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase.ForUser):
             None, filename, factory.make_file_upload()
         )
         self.assertEqual(http.client.CREATED, response.status_code)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [filename],
             FileStorage.objects.filter(filename=filename).values_list(
                 "filename", flat=True
@@ -128,7 +128,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase.ForUser):
             fileObj=factory.make_file_upload(content=b""),
         )
         self.assertEqual(http.client.CREATED, response.status_code)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [filename],
             FileStorage.objects.filter(filename=filename).values_list(
                 "filename", flat=True
@@ -250,7 +250,7 @@ class FileStorageAPITest(FileStorageAPITestMixin, APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         parsed_results = json_load_bytes(response.content)
         filenames = [result["filename"] for result in parsed_results]
-        self.assertItemsEqual(filenames_with_prefix, filenames)
+        self.assertCountEqual(filenames_with_prefix, filenames)
 
     def test_list_files_does_not_include_file_content(self):
         factory.make_FileStorage(

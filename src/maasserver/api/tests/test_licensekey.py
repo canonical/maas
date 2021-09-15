@@ -183,7 +183,7 @@ class TestLicenseKeysAPI(APITestCase.ForUser):
         self.assertEqual(1, len(parsed_result))
         [returned_network] = parsed_result
         fields = {"osystem", "distro_series", "license_key"}
-        self.assertItemsEqual(
+        self.assertEqual(
             fields.union({"resource_uri"}), returned_network.keys()
         )
         expected_values = {

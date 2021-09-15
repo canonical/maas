@@ -50,7 +50,7 @@ class TestSubnetsAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create(self):
         self.become_admin()

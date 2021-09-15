@@ -103,7 +103,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
         self.assertThat(results, HasLength(3))
         expected_ids = [discovery.discovery_id for discovery in discoveries]
         result_ids = [discovery["discovery_id"] for discovery in results]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_sorts_by_last_seen(self):
         rack = factory.make_RackController()
@@ -614,7 +614,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
         )
         # Check `controllers` separately because its order may vary.
         controllers = self.call_racks_sync_mock.call_args[1]["controllers"]
-        self.assertItemsEqual(self.started, controllers)
+        self.assertCountEqual(self.started, controllers)
 
     def test_calls_racks_synchronously_with_force_ping(self):
         scan_all_rack_networks(ping=True)

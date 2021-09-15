@@ -73,7 +73,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         result_ids = [
             bcache["id"] for bcache in json_load_bytes(response.content)
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create_403_if_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -151,8 +151,8 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         )
         parsed_device = json_load_bytes(response.content)
         self.assertEqual(backing_size, parsed_device["virtual_device"]["size"])
-        self.assertItemsEqual("bcache0", parsed_device["name"])
-        self.assertItemsEqual(uuid, parsed_device["uuid"])
+        self.assertEqual("bcache0", parsed_device["name"])
+        self.assertEqual(uuid, parsed_device["uuid"])
         self.assertThat(
             mock_create_audit_event,
             MockCalledOnceWith(

@@ -186,9 +186,7 @@ class TestEventsAPI(APITestCase.ForUser):
             {"op": "query", "id": [first_node.system_id], "level": "DEBUG"},
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [first_event.id], extract_event_ids(parsed_result)
-        )
+        self.assertEqual([first_event.id], extract_event_ids(parsed_result))
         self.assertEqual(1, parsed_result["count"])
 
     def test_GET_query_with_nonexistent_id_returns_empty_list(self):
@@ -245,7 +243,7 @@ class TestEventsAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [event.id for event in existing_events],
             extract_event_ids(parsed_result),
         )
@@ -267,9 +265,7 @@ class TestEventsAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [first_event.id], extract_event_ids(parsed_result)
-        )
+        self.assertEqual([first_event.id], extract_event_ids(parsed_result))
         self.assertEqual(1, parsed_result["count"])
 
     def test_GET_query_with_macs_returns_matching_nodes(self):
@@ -287,9 +283,7 @@ class TestEventsAPI(APITestCase.ForUser):
             {"op": "query", "mac_address": [first_node_mac], "level": "DEBUG"},
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [first_event.id], extract_event_ids(parsed_result)
-        )
+        self.assertEqual([first_event.id], extract_event_ids(parsed_result))
         self.assertEqual(1, parsed_result["count"])
 
     def test_GET_query_with_invalid_macs_returns_sensible_error(self):
@@ -599,7 +593,7 @@ class TestEventsAPI(APITestCase.ForUser):
             self.assertEqual(http.client.OK, response.status_code)
             parsed_result = json_load_bytes(response.content)
             # Events of the same or higher level are returned.
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 (event.id for event in chain.from_iterable(events[: idx + 1])),
                 extract_event_ids(parsed_result),
             )
@@ -661,9 +655,7 @@ class TestEventsAPI(APITestCase.ForUser):
             {"op": "query", "level": "DEBUG", "owner": user2.username},
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [expected_event.id], extract_event_ids(parsed_result)
-        )
+        self.assertEqual([expected_event.id], extract_event_ids(parsed_result))
         self.assertEqual(1, parsed_result["count"])
 
     def test_GET_query_with_owner_after_delete_returns_matching_events(self):
@@ -682,9 +674,7 @@ class TestEventsAPI(APITestCase.ForUser):
             {"op": "query", "level": "DEBUG", "owner": user2_username},
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [expected_event.id], extract_event_ids(parsed_result)
-        )
+        self.assertEqual([expected_event.id], extract_event_ids(parsed_result))
         self.assertEqual(1, parsed_result["count"])
 
     def make_nodes_in_group_with_events(self, number_nodes=2, number_events=2):

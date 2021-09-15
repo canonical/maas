@@ -61,7 +61,7 @@ class TestFabricsAPI(APITestCase.ForUser):
         result_ids = [
             fabric["id"] for fabric in json_load_bytes(response.content)
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_has_constant_number_of_queries(self):
         # Patch middleware so it does not affect query counting.
@@ -146,7 +146,7 @@ class TestFabricAPI(APITestCase.ForUser):
                 }
             ),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [vlan.id for vlan in fabric.vlan_set.all()],
             [vlan["id"] for vlan in parsed_fabric["vlans"]],
         )

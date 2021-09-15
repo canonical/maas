@@ -114,7 +114,7 @@ class TestRaidsAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create_403_when_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -230,11 +230,11 @@ class TestRaidsAPI(APITestCase.ForUser):
         self.assertEqual(
             (10 * PART_SIZE) - RAID_SUPERBLOCK_OVERHEAD, parsed_device["size"]
         )
-        self.assertItemsEqual(uuid4, parsed_device["uuid"])
-        self.assertItemsEqual(block_devices, parsed_block_devices)
-        self.assertItemsEqual(partitions, parsed_partitions)
-        self.assertItemsEqual([], parsed_block_device_spares)
-        self.assertItemsEqual([], parsed_partition_spares)
+        self.assertEqual(uuid4, parsed_device["uuid"])
+        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(partitions, parsed_partitions)
+        self.assertEqual([], parsed_block_device_spares)
+        self.assertEqual([], parsed_partition_spares)
 
     def test_create_raid_0_with_a_spare_fails(self):
         """Checks it's not possible to create a RAID 0 using 4 raw
@@ -322,11 +322,11 @@ class TestRaidsAPI(APITestCase.ForUser):
         self.assertEqual(
             PART_SIZE - RAID_SUPERBLOCK_OVERHEAD, parsed_device["size"]
         )
-        self.assertItemsEqual(uuid4, parsed_device["uuid"])
-        self.assertItemsEqual(block_devices, parsed_block_devices)
-        self.assertItemsEqual(partitions, parsed_partitions)
-        self.assertItemsEqual([], parsed_block_device_spares)
-        self.assertItemsEqual([], parsed_partition_spares)
+        self.assertEqual(uuid4, parsed_device["uuid"])
+        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(partitions, parsed_partitions)
+        self.assertEqual([], parsed_block_device_spares)
+        self.assertEqual([], parsed_partition_spares)
 
     def test_create_raid_1_with_spares(self):
         """Checks it's possible to create a RAID 1 using with 4 raw devices, 4
@@ -378,11 +378,11 @@ class TestRaidsAPI(APITestCase.ForUser):
         self.assertEqual(
             PART_SIZE - RAID_SUPERBLOCK_OVERHEAD, parsed_device["size"]
         )
-        self.assertItemsEqual(uuid4, parsed_device["uuid"])
-        self.assertItemsEqual(block_devices, parsed_block_devices)
-        self.assertItemsEqual(partitions, parsed_partitions)
-        self.assertItemsEqual(spare_devices, parsed_block_device_spares)
-        self.assertItemsEqual(spare_partitions, parsed_partition_spares)
+        self.assertEqual(uuid4, parsed_device["uuid"])
+        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(partitions, parsed_partitions)
+        self.assertEqual(spare_devices, parsed_block_device_spares)
+        self.assertEqual(spare_partitions, parsed_partition_spares)
 
     def test_create_raid_5(self):
         """Checks it's possible to create a RAID 5 using 4 raw 10TB
@@ -438,10 +438,10 @@ class TestRaidsAPI(APITestCase.ForUser):
             (7 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
             parsed_device["size"],
         )
-        self.assertItemsEqual(block_devices, parsed_block_devices)
-        self.assertItemsEqual(partitions, parsed_partitions)
-        self.assertItemsEqual(spare_devices, parsed_block_device_spares)
-        self.assertItemsEqual(spare_partitions, parsed_partition_spares)
+        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(partitions, parsed_partitions)
+        self.assertEqual(spare_devices, parsed_block_device_spares)
+        self.assertEqual(spare_partitions, parsed_partition_spares)
 
     def test_create_raid_6(self):
         """Checks it's possible to create a RAID 6 using 4 raw
@@ -498,10 +498,10 @@ class TestRaidsAPI(APITestCase.ForUser):
             (6 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
             parsed_device["size"],
         )
-        self.assertItemsEqual(block_devices, parsed_block_devices)
-        self.assertItemsEqual(partitions, parsed_partitions)
-        self.assertItemsEqual(spare_devices, parsed_block_device_spares)
-        self.assertItemsEqual(spare_partitions, parsed_partition_spares)
+        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(partitions, parsed_partitions)
+        self.assertEqual(spare_devices, parsed_block_device_spares)
+        self.assertEqual(spare_partitions, parsed_partition_spares)
 
     def test_create_raid_10(self):
         """Checks it's possible to create a RAID 10 using 4 raw
@@ -558,10 +558,10 @@ class TestRaidsAPI(APITestCase.ForUser):
             (4 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
             parsed_device["size"],
         )
-        self.assertItemsEqual(block_devices, parsed_block_devices)
-        self.assertItemsEqual(partitions, parsed_partitions)
-        self.assertItemsEqual(spare_devices, parsed_block_device_spares)
-        self.assertItemsEqual(spare_partitions, parsed_partition_spares)
+        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(partitions, parsed_partitions)
+        self.assertEqual(spare_devices, parsed_block_device_spares)
+        self.assertEqual(spare_partitions, parsed_partition_spares)
 
     def test_create_raid_5_with_2_elements_fails(self):
         self.become_admin()
@@ -917,10 +917,10 @@ class TestRaidAPI(APITestCase.ForUser):
                 }
             ),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_device_ids + partitions_ids, parsed_device_ids
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             spare_block_device_ids + spare_partitions_ids,
             parsed_spare_device_ids,
         )

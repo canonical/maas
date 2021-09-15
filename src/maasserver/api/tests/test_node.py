@@ -388,7 +388,7 @@ class TestNodeAPI(APITestCase.ForUser):
         response = self.client.delete(self.get_node_uri(node))
 
         self.assertEqual(204, response.status_code)
-        self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
+        self.assertCountEqual([], Node.objects.filter(system_id=system_id))
 
     def test_DELETE_deletes_node_fails_if_not_admin(self):
         # Only superusers can delete nodes.
@@ -929,9 +929,9 @@ class TestPowerMixin(APITestCase.ForUser):
         node = reload_object(node)
         testing_script_set = node.current_testing_script_set
         self.assertTrue(node.enable_ssh)
-        self.assertItemsEqual(
+        self.assertEqual(
             set(expected_testing_scripts),
-            [script_result.name for script_result in testing_script_set],
+            {script_result.name for script_result in testing_script_set},
         )
 
     def test_POST_test_tests_machine_errors_on_no_scripts_found(self):

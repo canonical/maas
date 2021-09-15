@@ -64,7 +64,7 @@ class TestSpacesAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_undefined_space(self):
         factory.make_VLAN(space=None)
@@ -81,7 +81,7 @@ class TestSpacesAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertEqual(expected_ids, result_ids)
 
     def test_read_with_no_undefined_space(self):
         factory.make_VLAN()
@@ -101,7 +101,7 @@ class TestSpacesAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create(self):
         self.become_admin()
@@ -164,7 +164,7 @@ class TestSpaceAPI(APITestCase.ForUser):
             ),
         )
         parsed_subnets = [subnet["id"] for subnet in parsed_space["subnets"]]
-        self.assertItemsEqual(subnet_ids, parsed_subnets)
+        self.assertCountEqual(subnet_ids, parsed_subnets)
 
     def test_read_undefined(self):
         for _ in range(3):
@@ -184,7 +184,7 @@ class TestSpaceAPI(APITestCase.ForUser):
             ContainsDict({"id": Equals(-1), "name": Equals(Space.UNDEFINED)}),
         )
         parsed_vlans = [vlan["id"] for vlan in parsed_space["vlans"]]
-        self.assertItemsEqual(vlan_ids, parsed_vlans)
+        self.assertCountEqual(vlan_ids, parsed_vlans)
 
     def test_includes_vlan_objects(self):
         space = factory.make_Space()

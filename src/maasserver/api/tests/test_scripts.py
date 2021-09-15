@@ -148,7 +148,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [script.id for script in scripts],
             [parsed_result["id"] for parsed_result in parsed_results],
         )
@@ -168,7 +168,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [script.id], [result["id"] for result in parsed_results]
         )
 
@@ -187,7 +187,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [script.id], [result["id"] for result in parsed_results]
         )
 
@@ -206,7 +206,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             [script.id for script in scripts],
             [parsed_result["id"] for parsed_result in parsed_results],
         )
@@ -291,7 +291,7 @@ class TestScriptAPI(APITestCase.ForUser):
             },
             parsed_result,
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [rev.id for rev in script.script.previous_versions()],
             [rev["id"] for rev in history],
         )
@@ -347,7 +347,7 @@ class TestScriptAPI(APITestCase.ForUser):
             },
             parsed_result,
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [rev.id for rev in script.script.previous_versions()],
             [rev["id"] for rev in history],
         )

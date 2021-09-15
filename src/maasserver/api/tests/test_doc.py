@@ -314,7 +314,7 @@ class TestDescribingAPI(MAASTestCase):
         self.assertEqual(ExampleHandler.__doc__, observed["doc"])
         self.assertEqual(ExampleHandler.__name__, observed["name"])
         self.assertEqual(("p_foo", "p_bar"), observed["params"])
-        self.assertItemsEqual(expected_actions, observed["actions"])
+        self.assertCountEqual(expected_actions, observed["actions"])
 
     def test_describe_handler_with_maas_handler(self):
         # Ensure that describe_handler() yields something sensible with a

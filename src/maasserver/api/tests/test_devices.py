@@ -28,7 +28,7 @@ class DeviceOwnerDataTest(APITestCase.ForUser):
             http.client.OK.value, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertEqual(
             [owner_data],
             [device.get("owner_data") for device in parsed_result],
         )
@@ -150,8 +150,8 @@ class TestDevicesAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "address_ttl",
                 "hostname",
                 "description",
@@ -169,8 +169,8 @@ class TestDevicesAPI(APITestCase.ForUser):
                 "resource_uri",
                 "workload_annotations",
                 "zone",
-            ],
-            list(parsed_result),
+            },
+            parsed_result.keys(),
         )
 
     def create_devices(self, owner, nb=3):
@@ -189,7 +189,7 @@ class TestDevicesAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [device.system_id for device in devices],
             [device.get("system_id") for device in parsed_result],
         )
@@ -214,7 +214,7 @@ class TestDevicesAPI(APITestCase.ForUser):
             reverse("devices_handler"), {"id": [matching_id]}
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_id],
             [device.get("system_id") for device in parsed_result],
         )
@@ -229,7 +229,7 @@ class TestDevicesAPI(APITestCase.ForUser):
             reverse("devices_handler"), {"mac_address": [matching_mac]}
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_device.system_id],
             [device.get("system_id") for device in parsed_result],
         )
@@ -238,8 +238,8 @@ class TestDevicesAPI(APITestCase.ForUser):
         self.create_devices(owner=self.user)
         response = self.client.get(reverse("devices_handler"))
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "address_ttl",
                 "hostname",
                 "description",
@@ -257,8 +257,8 @@ class TestDevicesAPI(APITestCase.ForUser):
                 "resource_uri",
                 "workload_annotations",
                 "zone",
-            ],
-            list(parsed_result[0]),
+            },
+            parsed_result[0].keys(),
         )
 
     def test_create_no_permission(self):

@@ -133,8 +133,8 @@ class TestRegionControllersAPI(APITestCase.ForUser):
         factory.make_RegionController()
         response = self.client.get(reverse("regioncontrollers_handler"))
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "system_id",
                 "hostname",
                 "description",
@@ -179,6 +179,6 @@ class TestRegionControllersAPI(APITestCase.ForUser):
                 "tag_names",
                 "interface_test_status",
                 "interface_test_status_name",
-            ],
-            list(parsed_result[0]),
+            },
+            parsed_result[0].keys(),
         )

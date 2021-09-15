@@ -62,8 +62,8 @@ class TestBootSourceSelectionAPI(APITestCase.ForUser):
         # The other fields are the boot source selection's fields.
         del returned_boot_source_selection["resource_uri"]
         # All the fields are present.
-        self.assertItemsEqual(
-            DISPLAYED_BOOTSOURCESELECTION_FIELDS,
+        self.assertEqual(
+            set(DISPLAYED_BOOTSOURCESELECTION_FIELDS),
             returned_boot_source_selection.keys(),
         )
         self.assertThat(
@@ -164,7 +164,7 @@ class TestBootSourceSelectionsAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [selection.id for selection in selections],
             [selection.get("id") for selection in parsed_result],
         )

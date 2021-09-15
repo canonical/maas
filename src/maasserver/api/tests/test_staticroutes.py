@@ -43,7 +43,7 @@ class TestStaticRoutesAPI(APITestCase.ForUser):
         result_ids = [
             route["id"] for route in json_load_bytes(response.content)
         ]
-        self.assertItemsEqual(routes, result_ids)
+        self.assertCountEqual(routes, result_ids)
 
     def test_create(self):
         self.become_admin()

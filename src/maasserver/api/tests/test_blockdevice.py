@@ -96,7 +96,7 @@ class TestBlockDevices(APITestCase.ForUser):
             d.id for d in physical_block_devices + [virtual_block_device]
         ]
         result_device_ids = [d["id"] for d in devices]
-        self.assertItemsEqual(expected_device_ids, result_device_ids)
+        self.assertCountEqual(expected_device_ids, result_device_ids)
         # Validate that every one has a resource_uri.
         for d in devices:
             self.expectThat(

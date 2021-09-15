@@ -51,8 +51,8 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             self.get_package_repository_uri(package_repository),
         )
         del parsed_package_repository["resource_uri"]
-        self.assertItemsEqual(
-            DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
+        self.assertEqual(
+            set(DISPLAYED_PACKAGE_REPOSITORY_FIELDS),
             parsed_package_repository.keys(),
         )
 
@@ -71,8 +71,8 @@ class TestPackageRepositoryAPI(APITestCase.ForUser):
             self.get_package_repository_uri(package_repository),
         )
         del parsed_package_repository["resource_uri"]
-        self.assertItemsEqual(
-            DISPLAYED_PACKAGE_REPOSITORY_FIELDS,
+        self.assertEqual(
+            set(DISPLAYED_PACKAGE_REPOSITORY_FIELDS),
             parsed_package_repository.keys(),
         )
 
@@ -328,7 +328,7 @@ class TestPackageRepositoriesAPI(APITestCase.ForUser):
             package_repository["id"]
             for package_repository in json.loads(response.content.decode())
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create(self):
         self.become_admin()

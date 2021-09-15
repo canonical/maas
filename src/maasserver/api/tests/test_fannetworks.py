@@ -50,7 +50,7 @@ class TestFanNetworksAPI(APITestCase.ForUser):
             fannetwork["id"]
             for fannetwork in json_load_bytes(response.content)
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create(self):
         self.become_admin()

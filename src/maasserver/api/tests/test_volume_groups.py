@@ -85,7 +85,7 @@ class TestVolumeGroups(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_create_raises_403_if_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -127,8 +127,8 @@ class TestVolumeGroups(APITestCase.ForUser):
         self.assertEqual(
             http.client.BAD_REQUEST, response.status_code, response.content
         )
-        self.assertItemsEqual(
-            ["name"],
+        self.assertEqual(
+            {"name"},
             json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET)
             ).keys(),
@@ -178,7 +178,7 @@ class TestVolumeGroups(APITestCase.ForUser):
             parsed_volume_group,
             ContainsDict({"uuid": Equals(vguuid), "name": Equals(name)}),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_device_ids + partition_ids, parsed_device_ids
         )
 
@@ -277,10 +277,10 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
                 }
             ),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_device_ids + partitions_ids, parsed_device_ids
         )
-        self.assertItemsEqual(logical_volume_ids, parsed_logical_volume_ids)
+        self.assertCountEqual(logical_volume_ids, parsed_logical_volume_ids)
 
     def test_read_404_when_not_volume_group(self):
         not_volume_group = factory.make_FilesystemGroup(

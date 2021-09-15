@@ -48,7 +48,7 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
         response = self.client.get(self.get_vmfs_uri(node))
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [vmfs.id for vmfs in vmfs_datastores],
             [result["id"] for result in parsed_results],
         )
@@ -129,7 +129,7 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
         # VMFS should be using the 5 devices we listed above.
         self.assertEqual(5, len(parsed_results["devices"]))
         # VMFS should be using all the block devices we created.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [bd.id for bd in block_devices] + [block_device.id],
             set([result["device_id"] for result in parsed_results["devices"]]),
         )
@@ -244,7 +244,7 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
 
         self.assertEqual(new_name, vmfs.name)
         self.assertEqual(new_uuid, vmfs.uuid)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partition_ids,
             [fs.get_parent().id for fs in vmfs.filesystems.all()],
         )

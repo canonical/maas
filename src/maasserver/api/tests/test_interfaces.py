@@ -108,7 +108,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
         )
         expected_ids = [nic.id for nic in [bond] + parents + children]
         result_ids = [nic["id"] for nic in json_load_bytes(response.content)]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
 
     def test_read_physical_includes_numa_node(self):
         numa_node = factory.make_NUMANode()
@@ -433,7 +433,7 @@ class TestInterfacesAPI(APITestCase.ForUser):
                     }
                 ),
             )
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [parent_1_iface.name, parent_2_iface.name],
                 parsed_interface["parents"],
             )
@@ -793,7 +793,7 @@ class TestInterfacesAPIForControllers(APITestCase.ForUser):
         output_content = json_load_bytes(response.content)
         expected_ids = [nic.id for nic in node.interface_set.all()]
         result_ids = [nic["id"] for nic in output_content]
-        self.assertItemsEqual(expected_ids, result_ids)
+        self.assertCountEqual(expected_ids, result_ids)
         for nic in output_content:
             self.assertThat(nic, Contains("links"))
 

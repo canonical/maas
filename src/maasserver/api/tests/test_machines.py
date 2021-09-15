@@ -86,7 +86,7 @@ class MachineHostnameTest(APITestCase.ForUserAndAdmin):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [fqdn], [machine.get("fqdn") for machine in parsed_result]
         )
 
@@ -367,7 +367,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         script_set = ScriptSet.objects.get(
             id=parsed_result["current_testing_result_id"]
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [test_script.name],
             [script_result.name for script_result in script_set],
         )
@@ -417,7 +417,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
 
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [machine1.system_id, machine2.system_id],
             extract_system_ids(parsed_result),
         )
@@ -562,7 +562,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         # If there are no machines to list, the "read" op still works but
         # returns an empty list.
         response = self.client.get(reverse("machines_handler"))
-        self.assertItemsEqual(
+        self.assertEqual(
             [], json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         )
 
@@ -589,7 +589,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([matching_id], extract_system_ids(parsed_result))
+        self.assertEqual([matching_id], extract_system_ids(parsed_result))
 
     def test_GET_with_nonexistent_id_returns_empty_list(self):
         # Trying to list a nonexistent machine id returns a list containing
@@ -599,7 +599,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         response = self.client.get(
             reverse("machines_handler"), {"id": [nonexistent_id]}
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [], json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         )
 
@@ -626,7 +626,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual([existing_id], extract_system_ids(parsed_result))
+        self.assertEqual([existing_id], extract_system_ids(parsed_result))
 
     def test_GET_with_hostname_returns_matching_machines(self):
         # The read operation takes optional "hostname" parameters. Only
@@ -640,7 +640,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_system_id], extract_system_ids(parsed_result)
         )
 
@@ -658,7 +658,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [matching_system_id], extract_system_ids(parsed_result)
         )
 
@@ -805,7 +805,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [machine.system_id], extract_system_ids(parsed_result)
         )
 
@@ -827,7 +827,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         parsed_result = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             required_machine_ids, extract_system_ids(parsed_result)
         )
 
@@ -930,7 +930,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             reverse("machines_handler"), {"op": "allocate"}
         )
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertItemsEqual([deploy_pod], passed_pods)
+        self.assertEqual([deploy_pod], passed_pods)
 
     def test_POST_allocate_returns_a_composed_machine_no_constraints(self):
         # The "allocate" operation returns a composed machine.
@@ -1844,7 +1844,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(machine_tag_names, response_json["tag_names"])
+        self.assertCountEqual(machine_tag_names, response_json["tag_names"])
 
     def test_POST_allocate_does_not_compose_machine_by_tags(self):
         pod = factory.make_Pod()
@@ -1895,7 +1895,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(
             partially_tagged_machine.system_id, response_json["system_id"]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             machine_tag_names[:-1], response_json["tag_names"]
         )
 
@@ -1974,7 +1974,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(machine_tag_names, response_json["tag_names"])
+        self.assertCountEqual(machine_tag_names, response_json["tag_names"])
 
     def test_POST_allocate_allocates_machine_by_tags_space_separated(self):
         machine = factory.make_Node(
@@ -1991,7 +1991,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(machine_tag_names, response_json["tag_names"])
+        self.assertCountEqual(machine_tag_names, response_json["tag_names"])
 
     def test_POST_allocate_allocates_machine_by_tags_comma_space_delim(self):
         machine = factory.make_Node(
@@ -2008,7 +2008,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(machine_tag_names, response_json["tag_names"])
+        self.assertCountEqual(machine_tag_names, response_json["tag_names"])
 
     def test_POST_allocate_allocates_machine_by_tags_mixed_input(self):
         machine = factory.make_Node(
@@ -2025,7 +2025,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         response_json = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertItemsEqual(machine_tag_names, response_json["tag_names"])
+        self.assertCountEqual(machine_tag_names, response_json["tag_names"])
 
     def test_POST_allocate_allocates_machine_by_storage(self):
         """Storage label is returned alongside machine data"""
@@ -2498,7 +2498,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [machine.system_id for machine in acceptable_machines],
             accepted_ids,
         )
@@ -2551,7 +2551,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             "Unknown machine(s): ",
             response.content.decode(settings.DEFAULT_CHARSET),
         )
-        self.assertItemsEqual(machine_ids, returned_ids)
+        self.assertCountEqual(machine_ids, returned_ids)
 
     def test_POST_release_forbidden_if_user_cannot_edit_machine(self):
         # Create a bunch of machines, owned by the logged in user
@@ -2633,7 +2633,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             "Machine(s) cannot be released in their current state:",
             response.content.decode(settings.DEFAULT_CHARSET),
         )
-        self.assertItemsEqual(expected, returned)
+        self.assertCountEqual(expected, returned)
 
     def test_POST_release_returns_modified_machines(self):
         owner = self.user
@@ -2658,7 +2658,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertEqual(http.client.OK, response.status_code)
         # The first machine is READY, so shouldn't be touched.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [machine.system_id for machine in machines[1:]], parsed_result
         )
 

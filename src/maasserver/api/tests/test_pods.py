@@ -111,7 +111,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
         parsed_result = json_load_bytes(response.content)
 
         self.assertEqual(http.client.OK, response.status_code)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [pod.id for pod in pods], [pod.get("id") for pod in parsed_result]
         )
 
@@ -121,7 +121,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
             factory.make_PodStoragePool(pod=pod)
         response = self.client.get(reverse("pods_handler"))
         parsed_result = json_load_bytes(response.content)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 "id",
                 "name",
@@ -144,7 +144,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
             ],
             list(parsed_result[0]),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 "cores",
                 "memory",
@@ -152,7 +152,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
             ],
             list(parsed_result[0]["total"]),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 "cores",
                 "memory",
@@ -160,7 +160,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
             ],
             list(parsed_result[0]["used"]),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 "cores",
                 "memory",
@@ -168,7 +168,7 @@ class TestPodsAPIUser(PodAPITestForUser, PodMixin):
             ],
             list(parsed_result[0]["available"]),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 "id",
                 "name",
@@ -403,7 +403,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
         self.assertIsNotNone(Tag.objects.get(name="pod-console-logging"))
         self.assertEqual(new_name, pod.name)
         self.assertEqual(new_pool, pod.pool)
-        self.assertItemsEqual(new_tags, pod.tags)
+        self.assertCountEqual(new_tags, pod.tags)
         self.assertEqual(new_power_parameters, pod.power_parameters)
         self.assertEqual(new_zone, pod.zone)
 
@@ -528,9 +528,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
             http.client.OK, response.status_code, response.content
         )
         parsed_machine = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            parsed_machine.keys(), ["resource_uri", "system_id"]
-        )
+        self.assertEqual(parsed_machine.keys(), {"resource_uri", "system_id"})
         machine = Machine.objects.get(system_id=parsed_machine["system_id"])
         self.assertEqual(machine.pool, pod.pool)
 
@@ -561,9 +559,7 @@ class TestPodAPIAdmin(PodAPITestForAdmin, PodMixin):
             http.client.OK, response.status_code, response.content
         )
         parsed_machine = json_load_bytes(response.content)
-        self.assertItemsEqual(
-            parsed_machine.keys(), ["resource_uri", "system_id"]
-        )
+        self.assertEqual(parsed_machine.keys(), {"resource_uri", "system_id"})
         machine = Machine.objects.get(system_id=parsed_machine["system_id"])
         self.assertEqual(machine.pool, pool)
 

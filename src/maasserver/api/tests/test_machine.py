@@ -318,7 +318,7 @@ class TestMachineAPI(APITestCase.ForUser):
             device["name"]
             for device in parsed_result["physicalblockdevice_set"]
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [device.name for device in devices], parsed_devices
         )
 
@@ -1342,7 +1342,7 @@ class TestMachineAPI(APITestCase.ForUser):
             [http.client.OK] * len(owned_machines),
             [response.status_code for response in responses],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [NODE_STATUS.RELEASING] * len(owned_machines),
             [
                 machine.status
@@ -1452,7 +1452,7 @@ class TestMachineAPI(APITestCase.ForUser):
             [http.client.CONFLICT] * len(unreleasable_statuses),
             [response.status_code for response in responses],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             unreleasable_statuses,
             [machine.status for machine in reload_objects(Node, machines)],
         )
@@ -1791,11 +1791,11 @@ class TestMachineAPI(APITestCase.ForUser):
         testing_script_set = machine.current_testing_script_set
         self.assertTrue(machine.enable_ssh)
         self.assertTrue(machine.skip_networking)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(expected_commissioning_scripts),
             [script_result.name for script_result in commissioning_script_set],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(expected_testing_scripts),
             [script_result.name for script_result in testing_script_set],
         )
@@ -2492,7 +2492,7 @@ class TestMachineAPI(APITestCase.ForUser):
         response = self.client.delete(self.get_machine_uri(machine))
 
         self.assertEqual(204, response.status_code)
-        self.assertItemsEqual([], Machine.objects.filter(system_id=system_id))
+        self.assertCountEqual([], Machine.objects.filter(system_id=system_id))
 
     def test_DELETE_rejects_other_node_types(self):
         node = factory.make_Node_with_Interface_on_Subnet(
