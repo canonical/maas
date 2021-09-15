@@ -104,7 +104,7 @@ class TestGetHostsFromSources(MAASTestCase):
             # with brackets.
             if ":" in host:
                 hosts.add("[%s]" % host)
-        self.assertItemsEqual(hosts, get_hosts_from_sources(sources))
+        self.assertCountEqual(hosts, get_hosts_from_sources(sources))
 
 
 class TestFixSourcesForCluster(MAASTestCase):
@@ -227,7 +227,7 @@ class TestRunImport(MAASTestCase):
         sources, _ = make_sources()
         fake = self.patch_boot_resources_function()
         _run_import(sources=sources, maas_url=maas_url)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             fake.env["no_proxy"].split(","),
             [
                 "localhost",

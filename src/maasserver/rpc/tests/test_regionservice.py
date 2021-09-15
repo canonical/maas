@@ -912,7 +912,7 @@ class TestRegionService(MAASTestCase):
         conns_for_uuid.update({c1, c2})
 
         def check_choice(choices):
-            self.assertItemsEqual(choices, conns_for_uuid)
+            self.assertCountEqual(choices, conns_for_uuid)
             return chosen
 
         self.patch(random, "choice", check_choice)

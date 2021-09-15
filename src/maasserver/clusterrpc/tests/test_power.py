@@ -227,8 +227,8 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
         )
 
         self.assertEqual(pick_best_power_state(power_states), power_state)
-        self.assertItemsEqual(successful_rack_ids, success_racks)
-        self.assertItemsEqual(error_rack_ids + failed_rack_ids, failed_racks)
+        self.assertCountEqual(successful_rack_ids, success_racks)
+        self.assertCountEqual(error_rack_ids + failed_rack_ids, failed_racks)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -250,8 +250,8 @@ class TestPowerQueryAll(MAASTransactionServerTestCase):
         )
 
         self.assertEqual(POWER_STATE.UNKNOWN, power_state)
-        self.assertItemsEqual([], success_racks)
-        self.assertItemsEqual([rack_id], failed_racks)
+        self.assertEqual(set(), success_racks)
+        self.assertEqual({rack_id}, failed_racks)
 
 
 class TestSetBootOrder(MAASTransactionServerTestCase):

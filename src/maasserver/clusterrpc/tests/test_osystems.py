@@ -89,8 +89,8 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             callRemote.return_value = succeed(example)
 
-        self.assertItemsEqual(
-            example["osystems"], gen_all_known_operating_systems()
+        self.assertEqual(
+            example["osystems"], list(gen_all_known_operating_systems())
         )
 
     def test_ignores_failures_when_talking_to_clusters(self):
@@ -114,8 +114,9 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         # The only OS information to get through is that from the first. The
         # failures arising from communicating with the other clusters have all
         # been suppressed.
-        self.assertItemsEqual(
-            [{"name": clients[0].ident}], gen_all_known_operating_systems()
+        self.assertEqual(
+            [{"name": clients[0].ident}],
+            list(gen_all_known_operating_systems()),
         )
 
     def test_fixes_custom_osystem_release_titles(self):
@@ -145,9 +146,9 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         releases_with_titles = [
             {"name": release, "title": release.upper()} for release in releases
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             [{"name": "custom", "releases": releases_with_titles}],
-            gen_all_known_operating_systems(),
+            list(gen_all_known_operating_systems()),
         )
 
 

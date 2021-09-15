@@ -13,14 +13,7 @@ from unittest.mock import sentinel
 
 from django.core.exceptions import ValidationError
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    GreaterThan,
-    HasLength,
-    Is,
-    LessThan,
-    Not,
-)
+from testtools.matchers import Equals, GreaterThan, HasLength, LessThan
 
 from maasserver import ntp
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS, NODE_TYPE, POWER_STATE
@@ -91,8 +84,8 @@ class TestCreateNode(MAASTransactionServerTestCase):
         # Node will not have an auto-generated name because migrations are
         # not ran in the testing environment.
         # self.expectThat(node.hostname, Contains("-"))
-        self.expectThat(node.id, Not(Is(None)))
-        self.assertItemsEqual(
+        self.assertIsNotNone(node.id)
+        self.assertCountEqual(
             mac_addresses,
             [nic.mac_address for nic in node.interface_set.all()],
         )
@@ -117,8 +110,8 @@ class TestCreateNode(MAASTransactionServerTestCase):
                 node.hostname,
             ),
         )
-        self.expectThat(node.id, Not(Is(None)))
-        self.assertItemsEqual(
+        self.assertIsNotNone(node.id)
+        self.assertCountEqual(
             mac_addresses,
             [nic.mac_address for nic in node.interface_set.all()],
         )
@@ -168,8 +161,8 @@ class TestCreateNode(MAASTransactionServerTestCase):
                 node.hostname,
             ),
         )
-        self.expectThat(node.id, Not(Is(None)))
-        self.assertItemsEqual(
+        self.assertIsNotNone(node.id)
+        self.assertCountEqual(
             mac_addresses,
             [nic.mac_address for nic in node.interface_set.all()],
         )
@@ -425,7 +418,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             {node_unchecked.system_id, node_checked_long_ago.system_id},
             system_ids,
         )
@@ -444,7 +437,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
-        self.assertItemsEqual([node_queryable.system_id], system_ids)
+        self.assertEqual([node_queryable.system_id], system_ids)
 
     def test_excludes_no_power_type(self):
         rack = factory.make_RackController()
@@ -459,7 +452,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
 
-        self.assertItemsEqual([node_queryable.system_id], system_ids)
+        self.assertEqual([node_queryable.system_id], system_ids)
 
     def test_returns_checked_nodes_in_last_checked_order(self):
         rack = factory.make_RackController()

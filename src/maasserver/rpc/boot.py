@@ -151,7 +151,7 @@ def merge_kparams_with_extra(kparams, extra_kernel_opts):
     This section will merge the kparams with the extra opts. Our goal is to
     start with what is in kparams and then look to extra_opts for anything
     to add to or override settings in kparams. Anything in extra_opts, which
-    can be set through tabs, takes precedence so we use that to start with.
+    can be set through tags, takes precedence so we use that to start with.
     """
     final_params = ""
     if extra_kernel_opts is not None and extra_kernel_opts != "":

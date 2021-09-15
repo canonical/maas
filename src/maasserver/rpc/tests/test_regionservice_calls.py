@@ -563,7 +563,7 @@ class TestRegionProtocol_ListNodePowerParameters(
         )
 
         self.maxDiff = None
-        self.assertItemsEqual(nodes, response["nodes"])
+        self.assertCountEqual(nodes, response["nodes"])
 
     @wait_for_reactor
     def test_raises_exception_if_nodegroup_doesnt_exist(self):

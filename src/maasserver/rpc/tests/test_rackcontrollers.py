@@ -59,7 +59,7 @@ class TestHandleUpgrade(MAASServerTestCase):
         vlan = reload_object(vlan)
         self.assertEqual(rack.system_id, vlan.primary_rack.system_id)
         self.assertTrue(vlan.dhcp_on)
-        self.assertItemsEqual([], NodeGroupToRackController.objects.all())
+        self.assertCountEqual([], NodeGroupToRackController.objects.all())
 
     def test_logs_migration(self):
         logger = self.useFixture(FakeLogger("maas"))

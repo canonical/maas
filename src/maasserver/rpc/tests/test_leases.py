@@ -281,7 +281,7 @@ class TestUpdateLease(MAASServerTestCase):
                 updated=datetime.fromtimestamp(kwargs["timestamp"]),
             ),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [boot_interface.id], sip.interface_set.values_list("id", flat=True)
         )
         self.assertEqual(
@@ -364,7 +364,7 @@ class TestUpdateLease(MAASServerTestCase):
                 updated=datetime.fromtimestamp(kwargs["timestamp"]),
             ),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [boot_interface.id, bond_interface.id],
             sip.interface_set.values_list("id", flat=True),
         )
@@ -393,7 +393,7 @@ class TestUpdateLease(MAASServerTestCase):
             "DISCOVERED IP address shold have been created without an "
             "IP address.",
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [boot_interface.id], sip.interface_set.values_list("id", flat=True)
         )
 
@@ -421,7 +421,7 @@ class TestUpdateLease(MAASServerTestCase):
             "DISCOVERED IP address shold have been created without an "
             "IP address.",
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [boot_interface.id], sip.interface_set.values_list("id", flat=True)
         )
 

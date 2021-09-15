@@ -175,7 +175,7 @@ class TestGetBootImagesTxn(MAASTransactionServerTestCase):
         for param in params:
             make_image_dir(param, self.tftp_root)
             test_tftppath.make_osystem(self, param["osystem"], purposes)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 make_image(param, purpose)
                 for param in params
@@ -213,7 +213,7 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
         for param in params:
             make_image_dir(param, self.tftp_root)
             test_tftppath.make_osystem(self, param["osystem"], purposes)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 make_image(param, purpose)
                 for param in params
@@ -243,7 +243,7 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
                 callRemote.return_value = succeed({"images": available_images})
 
         expected_images = images if self.all else available_images
-        self.assertItemsEqual(expected_images, self.get())
+        self.assertCountEqual(expected_images, self.get())
 
     def test_ignores_failures_when_talking_to_clusters(self):
         factory.make_RackController()
@@ -263,7 +263,7 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
                 # All clients but the first raise an exception.
                 callRemote.side_effect = ZeroDivisionError()
 
-        self.assertItemsEqual(images, self.get())
+        self.assertCountEqual(images, self.get())
 
     def test_returns_empty_list_when_all_clusters_fail(self):
         factory.make_RackController()
@@ -276,7 +276,7 @@ class TestGetAvailableBootImages(MAASTransactionServerTestCase):
             callRemote = self.patch(client._conn, "callRemote")
             callRemote.side_effect = ZeroDivisionError()
 
-        self.assertItemsEqual([], self.get())
+        self.assertEqual([], self.get())
 
 
 class TestGetBootImagesFor(MAASTransactionServerTestCase):
@@ -304,7 +304,7 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
         params = self.make_boot_images()
         param = params.pop()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             self.make_rpc_boot_images(param),
             get_boot_images_for(
                 rack,
@@ -339,7 +339,7 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
         resource.save()
 
         subarch = subarches.pop()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             self.make_rpc_boot_images(param),
             get_boot_images_for(
                 rack,

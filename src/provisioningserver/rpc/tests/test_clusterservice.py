@@ -286,7 +286,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         response = yield call_responder(Cluster(), cluster.ListBootImages, {})
 
         self.assertThat(response, KeysEqual("images"))
-        self.assertItemsEqual(expected_images, response["images"])
+        self.assertCountEqual(expected_images, response["images"])
 
 
 class TestClusterProtocol_ImportBootImages(MAASTestCase):
@@ -430,13 +430,12 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
 
     @inlineCallbacks
     def test_describe_power_types_returns_jsonized_schema(self):
-
         response = yield call_responder(
             Cluster(), cluster.DescribePowerTypes, {}
         )
 
         self.assertThat(response, KeysEqual("power_types"))
-        self.assertItemsEqual(
+        self.assertEqual(
             PowerDriverRegistry.get_schema(detect_missing_packages=False),
             response["power_types"],
         )
@@ -934,7 +933,7 @@ class TestClusterClientService(MAASTestCase):
             call("host1:pid=2002", ("::ffff:1.1.1.1", 3333)),
             call("host2:pid=3003", ("::ffff:2.2.2.2", 5555)),
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             _make_connection_expected, _make_connection.call_args_list
         )
         self.assertEqual(
@@ -1312,7 +1311,7 @@ class TestClusterClientService(MAASTestCase):
         c2 = DummyConnection()
         service.connections[uuid2] = c2
         clients = service.getAllClients()
-        self.assertItemsEqual(clients, {common.Client(c1), common.Client(c2)})
+        self.assertEqual(clients, [common.Client(c1), common.Client(c2)])
 
     def test_getAllClients_when_there_are_no_connections(self):
         service = ClusterClientService(Clock())

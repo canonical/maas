@@ -51,8 +51,8 @@ class TestCallClusters(MAASServerTestCase):
         # call_clusters returns with nothing because we patched out
         # asynchronous.gather, but we're interested in the side-effect:
         # getClientFor has been called for the accepted nodegroup.
-        self.assertItemsEqual([], utils.call_clusters(sentinel.command))
-        self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))
+        self.assertEqual([], list(utils.call_clusters(sentinel.command)))
+        getClientFor.assert_called_once_with(rack.system_id)
 
     def test_with_successful_callbacks(self):
         rack = factory.make_RackController()
@@ -207,10 +207,10 @@ class TestCallRacksSynchronously(MAASServerTestCase):
         # call_clusters returns with nothing because we patched out
         # asynchronous.gather, but we're interested in the side-effect:
         # getClientFor has been called for the accepted nodegroup.
-        self.assertItemsEqual(
-            [], call_racks_synchronously(sentinel.command).results
+        self.assertEqual(
+            [], list(call_racks_synchronously(sentinel.command).results)
         )
-        self.assertThat(getClientFor, MockCalledOnceWith(rack.system_id))
+        getClientFor.assert_called_once_with(rack.system_id)
 
 
 class TestGetErrorMessageForException(MAASServerTestCase):

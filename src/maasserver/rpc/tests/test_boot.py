@@ -51,19 +51,19 @@ def get_config(*args, **kwargs):
 
 class TestKparamsMerge(MAASServerTestCase):
     def test_simple_merge(self):
-        expected_state = "a=b b=c"
+        expected_state = "b=c a=b"
         calculated_state = merge_kparams_with_extra("a=b", "b=c")
-        self.assertItemsEqual(expected_state, calculated_state)
+        self.assertEqual(expected_state, calculated_state)
 
     def test_override_merge(self):
-        expected_state = "a=b b=d"
+        expected_state = "b=d a=b"
         calculated_state = merge_kparams_with_extra("a=b b=c", "b=d")
-        self.assertItemsEqual(expected_state, calculated_state)
+        self.assertEqual(expected_state, calculated_state)
 
     def test_override_with_add_merge(self):
-        expected_state = "a=b b=d c=e"
+        expected_state = "b=d c=e a=b"
         calculated_state = merge_kparams_with_extra("a=b b=c", "b=d c=e")
-        self.assertItemsEqual(expected_state, calculated_state)
+        self.assertEqual(expected_state, calculated_state)
 
 
 class TestGetConfig(MAASServerTestCase):
@@ -1476,7 +1476,7 @@ class TestGetBootFilenames(MAASServerTestCase):
         )
 
     def test_returns_all_none_when_not_found(self):
-        self.assertItemsEqual(
+        self.assertEqual(
             (None, None, None),
             get_boot_filenames(
                 factory.make_name("arch"),
@@ -1487,7 +1487,7 @@ class TestGetBootFilenames(MAASServerTestCase):
         )
 
     def test_returns_all_none_when_not_found_and_generic(self):
-        self.assertItemsEqual(
+        self.assertEqual(
             (None, None, None),
             get_boot_filenames(
                 factory.make_name("arch"),
