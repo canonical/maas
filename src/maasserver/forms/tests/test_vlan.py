@@ -39,7 +39,7 @@ class TestVLANForm(MAASServerTestCase):
         relay_vlan = factory.make_VLAN()
         factory.make_VLAN(relay_vlan=relay_vlan)
         form = VLANForm(fabric=fabric, data={})
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [fabric.get_default_vlan(), relay_vlan],
             form.fields["relay_vlan"].queryset,
         )
@@ -48,13 +48,13 @@ class TestVLANForm(MAASServerTestCase):
         fabric = Fabric.objects.get_default_fabric()
         relay_vlan = fabric.get_default_vlan()
         form = VLANForm(instance=relay_vlan, data={})
-        self.assertItemsEqual([], form.fields["relay_vlan"].queryset)
+        self.assertCountEqual([], form.fields["relay_vlan"].queryset)
 
     def test_no_relay_vlans_allowed_when_dhcp_on(self):
         vlan = factory.make_VLAN(dhcp_on=True)
         factory.make_VLAN()
         form = VLANForm(instance=vlan, data={})
-        self.assertItemsEqual([], form.fields["relay_vlan"].queryset)
+        self.assertCountEqual([], form.fields["relay_vlan"].queryset)
 
     def test_creates_vlan(self):
         fabric = factory.make_Fabric()

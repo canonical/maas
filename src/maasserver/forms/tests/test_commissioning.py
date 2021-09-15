@@ -50,7 +50,7 @@ class TestCommissioningFormForm(MAASServerTestCase):
         )
         Config.objects.set_config("commissioning_distro_series", release)
         form = CommissioningForm()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 ("", "--- No minimum kernel ---"),
                 (kernel, "%s (%s)" % (release, kernel)),

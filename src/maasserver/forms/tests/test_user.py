@@ -108,7 +108,7 @@ class TestNewUserCreationForm(MAASServerTestCase):
         }
         form = NewUserCreationForm(params)
         form.save(commit=False)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [], User.objects.filter(username=params["username"])
         )
 

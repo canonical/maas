@@ -40,11 +40,11 @@ class TestCreateCacheSetForm(MAASServerTestCase):
             bd.id for bd in bds if bd.get_partitiontable() is None
         ] + [bd.name for bd in bds if bd.get_partitiontable() is None]
         form = CreateCacheSetForm(node=node, data={})
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_devices,
             [k for (k, v) in form.fields["cache_device"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partition_choices,
             [k for (k, v) in form.fields["cache_partition"].choices],
         )
@@ -134,11 +134,11 @@ class TestUpdateCacheSetForm(MAASServerTestCase):
         form = UpdateCacheSetForm(cache_set=cache_set, data={})
         # Should allow all devices and partitions, including the one currently
         # in use on the cache set.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_device_choices,
             [k for (k, v) in form.fields["cache_device"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partition_choices,
             [k for (k, v) in form.fields["cache_partition"].choices],
         )

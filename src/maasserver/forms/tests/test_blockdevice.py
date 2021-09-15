@@ -34,7 +34,7 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
             block_device=factory.make_BlockDevice(), data={}
         )
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(["fstype"], form.errors.keys())
+        self.assertEqual({"fstype"}, form.errors.keys())
 
     def test_is_not_valid_if_block_device_has_partition_table(self):
         fstype = factory.pick_filesystem_type()
@@ -292,7 +292,7 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice()
         form = UpdatePhysicalBlockDeviceForm(instance=block_device, data={})
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertItemsEqual([], form.errors.keys())
+        self.assertEqual(set(), form.errors.keys())
 
     def test_updates_physical_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -388,7 +388,7 @@ class TestUpdateDeployedPhysicalBlockDeviceForm(MAASServerTestCase):
             instance=block_device, data={}
         )
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertItemsEqual([], form.errors.keys())
+        self.assertEqual(set(), form.errors.keys())
 
     def test_updates_deployed_physical_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
@@ -425,7 +425,7 @@ class TestUpdateVirtualBlockDeviceForm(MAASServerTestCase):
         block_device = factory.make_VirtualBlockDevice()
         form = UpdateVirtualBlockDeviceForm(instance=block_device, data={})
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertItemsEqual([], form.errors.keys())
+        self.assertEqual(set(), form.errors.keys())
 
     def test_updates_virtual_block_device(self):
         block_device = factory.make_VirtualBlockDevice()

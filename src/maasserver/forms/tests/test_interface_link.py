@@ -39,7 +39,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface.vlan = None
         interface.save()
         form = InterfaceLinkForm(instance=interface, data={})
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(Subnet.objects.all()), list(form.fields["subnet"].queryset)
         )
 
@@ -47,7 +47,7 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         subnets = [factory.make_Subnet(vlan=interface.vlan) for _ in range(3)]
         form = InterfaceLinkForm(instance=interface, data={})
-        self.assertItemsEqual(subnets, form.fields["subnet"].queryset)
+        self.assertCountEqual(subnets, form.fields["subnet"].queryset)
 
     def test_AUTO_requires_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -673,7 +673,7 @@ class TestInterfaceSetDefaultGatwayForm(MAASServerTestCase):
         link_ids = [link.id for link in links]
         form = InterfaceSetDefaultGatwayForm(instance=interface, data={})
         choice_ids = [choice[0] for choice in form.fields["link_id"].choices]
-        self.assertItemsEqual(link_ids, choice_ids)
+        self.assertCountEqual(link_ids, choice_ids)
 
     def test_sets_gateway_links_works_on_dhcp_with_gateway_ip(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

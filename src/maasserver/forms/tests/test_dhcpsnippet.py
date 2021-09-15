@@ -26,12 +26,12 @@ class TestDHCPSnippetForm(MAASServerTestCase):
     def test_create_dhcp_snippet_requies_name(self):
         form = DHCPSnippetForm(data={"value": factory.make_string()})
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual([], VersionedTextFile.objects.all())
+        self.assertCountEqual([], VersionedTextFile.objects.all())
 
     def test_create_dhcp_snippet_requires_value(self):
         form = DHCPSnippetForm(data={"name": factory.make_name("name")})
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual([], VersionedTextFile.objects.all())
+        self.assertCountEqual([], VersionedTextFile.objects.all())
 
     def test_creates_dhcp_snippet(self):
         name = factory.make_name("name")
@@ -236,8 +236,8 @@ class TestDHCPSnippetForm(MAASServerTestCase):
             }
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual([], DHCPSnippet.objects.all())
-        self.assertItemsEqual([], VersionedTextFile.objects.all())
+        self.assertCountEqual([], DHCPSnippet.objects.all())
+        self.assertCountEqual([], VersionedTextFile.objects.all())
 
     def test_updates_name(self):
         dhcp_snippet = factory.make_DHCPSnippet()
@@ -420,5 +420,5 @@ class TestDHCPSnippetForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertEqual({"value": [dhcpd_error["error"]]}, form.errors)
-        self.assertItemsEqual([], VersionedTextFile.objects.all())
-        self.assertItemsEqual([], DHCPSnippet.objects.all())
+        self.assertCountEqual([], VersionedTextFile.objects.all())
+        self.assertCountEqual([], DHCPSnippet.objects.all())

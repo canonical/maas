@@ -120,7 +120,7 @@ class TestFormatPartitionForm(MAASServerTestCase):
     def test_requires_fields(self):
         form = FormatPartitionForm(partition=factory.make_Partition(), data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(["fstype"], form.errors.keys())
+        self.assertEqual({"fstype"}, form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
         fstype = factory.pick_filesystem_type()

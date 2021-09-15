@@ -70,7 +70,7 @@ class TestMountFilesystemForm(MAASServerTestCase):
         form = MountFilesystemForm(filesystem, data={})
         self.assertTrue(filesystem.uses_mount_point)
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(["mount_point"], form.errors.keys())
+        self.assertEqual({"mount_point"}, form.errors.keys())
 
     def test_ignores_mount_point_when_fs_does_not_use_mount_point(self):
         substrate = self.make_substrate()

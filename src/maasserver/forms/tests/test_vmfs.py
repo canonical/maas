@@ -33,7 +33,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         node = make_Node_with_VMFS_layout()
         form = CreateVMFSForm(node, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(["name"], form.errors.keys())
+        self.assertEqual({"name"}, form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
         node = make_Node_with_VMFS_layout()
@@ -137,7 +137,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         form = CreateVMFSForm(node, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         vmfs = form.save()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_device_ids,
             [
                 fs.get_parent().partition_table.block_device.id
@@ -160,7 +160,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         form = CreateVMFSForm(node, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         vmfs = form.save()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [block_device.id for block_device in block_devices],
             [
                 fs.get_parent().partition_table.block_device.id
@@ -186,7 +186,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         form = CreateVMFSForm(node, data=data)
         self.assertTrue(form.is_valid(), form._errors)
         vmfs = form.save()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partition_ids,
             [fs.get_parent().id for fs in vmfs.filesystems.all()],
         )
@@ -216,7 +216,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
             filesystem.partition
             for filesystem in volume_group.filesystems.all()
         ]
-        self.assertItemsEqual(partitions, partitions_in_vg)
+        self.assertCountEqual(partitions, partitions_in_vg)
 
 
 class TestUpdateVMFSForm(MAASServerTestCase):

@@ -21,8 +21,8 @@ class TestDeviceForm(MAASServerTestCase):
     def test_contains_limited_set_of_fields(self):
         form = DeviceForm()
 
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "hostname",
                 "description",
                 "domain",
@@ -30,8 +30,8 @@ class TestDeviceForm(MAASServerTestCase):
                 "disable_ipv4",
                 "swap_size",
                 "zone",
-            ],
-            list(form.fields),
+            },
+            form.fields.keys(),
         )
 
     def test_changes_device_parent(self):

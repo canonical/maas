@@ -18,9 +18,9 @@ class TestNodeForm(MAASServerTestCase):
     def test_contains_limited_set_of_fields(self):
         form = NodeForm()
 
-        self.assertItemsEqual(
-            ["hostname", "domain", "disable_ipv4", "swap_size"],
-            list(form.fields),
+        self.assertEqual(
+            {"hostname", "domain", "disable_ipv4", "swap_size"},
+            form.fields.keys(),
         )
 
     def test_accepts_hostname(self):
@@ -96,8 +96,8 @@ class TestAdminNodeForm(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         form = AdminNodeForm(instance=node)
 
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "hostname",
                 "description",
                 "domain",
@@ -107,8 +107,8 @@ class TestAdminNodeForm(MAASServerTestCase):
                 "memory",
                 "zone",
                 "pool",
-            ],
-            list(form.fields),
+            },
+            form.fields.keys(),
         )
 
     def test_initialises_zone(self):

@@ -378,8 +378,8 @@ class TestBootResourceForm(MAASServerTestCase):
     def test_requires_fields(self):
         form = BootResourceForm(data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(
-            ["name", "architecture", "filetype", "content"],
+        self.assertEqual(
+            {"name", "architecture", "filetype", "content"},
             form.errors.keys(),
         )
 

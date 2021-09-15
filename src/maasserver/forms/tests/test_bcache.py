@@ -51,15 +51,15 @@ class TestCreateBcacheForm(MAASServerTestCase):
             bd.id for bd in bds if bd.get_partitiontable() is None
         ] + [bd.name for bd in bds if bd.get_partitiontable() is None]
         form = CreateBcacheForm(node=node, data={})
-        self.assertItemsEqual(
+        self.assertCountEqual(
             cache_set_choices,
             [k for (k, v) in form.fields["cache_set"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_devices,
             [k for (k, v) in form.fields["backing_device"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partition_choices,
             [k for (k, v) in form.fields["backing_partition"].choices],
         )
@@ -271,15 +271,15 @@ class TestUpdateBcacheForm(MAASServerTestCase):
         form = UpdateBcacheForm(bcache=bcache, data={})
         # Should allow all devices and partitions, including the ones currently
         # allocated for bcache.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             cache_set_choices,
             [k for (k, v) in form.fields["cache_set"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_device_choices,
             [k for (k, v) in form.fields["backing_device"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partition_choices,
             [k for (k, v) in form.fields["backing_partition"].choices],
         )

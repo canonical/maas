@@ -168,8 +168,8 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_contains_limited_set_of_fields(self):
         form = PodForm()
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "name",
                 "tags",
                 "type",
@@ -179,8 +179,8 @@ class TestPodForm(MAASTransactionServerTestCase):
                 "memory_over_commit_ratio",
                 "default_storage_pool",
                 "default_macvlan_mode",
-            ],
-            list(form.fields),
+            },
+            form.fields.keys(),
         )
 
     def test_creates_pod_with_discovered_information(self):
@@ -206,8 +206,8 @@ class TestPodForm(MAASTransactionServerTestCase):
             for relation in pod.routable_rack_relationships.all()
             if not relation.routable
         ]
-        self.assertItemsEqual(routable_racks, discovered_racks)
-        self.assertItemsEqual(not_routable_racks, failed_racks)
+        self.assertCountEqual(routable_racks, discovered_racks)
+        self.assertCountEqual(not_routable_racks, failed_racks)
 
     def test_creates_pod_with_only_required(self):
         (
@@ -291,7 +291,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertItemsEqual(tags, pod.tags)
+        self.assertCountEqual(tags, pod.tags)
 
     def test_creates_pod_with_zone(self):
         self.fake_pod_discovery()
@@ -398,8 +398,8 @@ class TestPodForm(MAASTransactionServerTestCase):
                 for relation in pod.routable_rack_relationships.all()
                 if not relation.routable
             ]
-            self.assertItemsEqual(routable_racks, discovered_racks)
-            self.assertItemsEqual(not_routable_racks, failed_racks)
+            self.assertCountEqual(routable_racks, discovered_racks)
+            self.assertCountEqual(not_routable_racks, failed_racks)
 
         yield deferToDatabase(validate_rack_routes)
 
@@ -422,7 +422,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             yield form.save()
 
         def validate_no_pods():
-            self.assertItemsEqual([], Pod.objects.all())
+            self.assertEqual([], list(Pod.objects.all()))
 
         yield deferToDatabase(validate_no_pods)
 
@@ -533,8 +533,8 @@ class TestPodForm(MAASTransactionServerTestCase):
             for relation in pod.routable_rack_relationships.all()
             if not relation.routable
         ]
-        self.assertItemsEqual(routable_racks, discovered_racks)
-        self.assertItemsEqual(not_routable_racks, failed_racks)
+        self.assertCountEqual(routable_racks, discovered_racks)
+        self.assertCountEqual(not_routable_racks, failed_racks)
 
     def test_updates_default_storage_pool(self):
         discovered_pod, _, _ = self.fake_pod_discovery()
@@ -637,8 +637,8 @@ class TestPodForm(MAASTransactionServerTestCase):
                 for relation in pod.routable_rack_relationships.all()
                 if not relation.routable
             ]
-            self.assertItemsEqual(routable_racks, discovered_racks)
-            self.assertItemsEqual(not_routable_racks, failed_racks)
+            self.assertCountEqual(routable_racks, discovered_racks)
+            self.assertCountEqual(not_routable_racks, failed_racks)
 
         yield deferToDatabase(validate_rack_routes)
 
@@ -2509,7 +2509,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan
         )
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2530,7 +2530,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2556,7 +2556,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         interfaces = get_known_host_interfaces(
             factory.make_Pod(host=node, pod_type="lxd")
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2582,7 +2582,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         interfaces = get_known_host_interfaces(
             factory.make_Pod(host=node, pod_type="virsh")
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2615,7 +2615,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         interfaces = get_known_host_interfaces(
             factory.make_Pod(host=node, pod_type="lxd")
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2655,7 +2655,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         interfaces = get_known_host_interfaces(
             factory.make_Pod(host=node, pod_type="virsh")
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2684,7 +2684,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, link_connected=False
         )
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2715,7 +2715,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(
@@ -2747,7 +2747,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             interfaces,
             [
                 KnownHostInterface(

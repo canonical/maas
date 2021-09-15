@@ -59,9 +59,9 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(domain.id, dnsresource.domain.id)
         actual_ips = dnsresource.ip_addresses.all()
         actual = {str(ip.ip) for ip in actual_ips}
-        self.assertItemsEqual(set(ips), actual)
+        self.assertCountEqual(set(ips), actual)
         actual_users = {ip.user_id for ip in actual_ips}
-        self.assertItemsEqual({request.user.id}, actual_users)
+        self.assertEqual({request.user.id}, actual_users)
 
     def test_accepts_mix_of_id_and_ipaddress(self):
         name = factory.make_name("dnsresource")
@@ -82,7 +82,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         actual = {ip.id for ip in dnsresource.ip_addresses.all()}
-        self.assertItemsEqual(set(ip.id for ip in ips), actual)
+        self.assertCountEqual(set(ip.id for ip in ips), actual)
 
     def test_does_not_require_ip_addresses(self):
         name = factory.make_name("dnsresource")
@@ -146,7 +146,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         form.save()
         self.assertEqual(new_name, reload_object(dnsresource).name)
         self.assertEqual(new_ttl, reload_object(dnsresource).address_ttl)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             new_sip_ids,
             [ip.id for ip in reload_object(dnsresource).ip_addresses.all()],
         )
@@ -165,7 +165,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
         self.assertEqual(new_name, reload_object(dnsresource).name)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             new_sip_ids,
             [ip.id for ip in reload_object(dnsresource).ip_addresses.all()],
         )

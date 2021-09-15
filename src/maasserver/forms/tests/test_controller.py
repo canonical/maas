@@ -14,15 +14,15 @@ class TestControllerForm(MAASServerTestCase):
     def test_Contains_limited_set_of_fields(self):
         form = ControllerForm()
 
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "description",
                 "zone",
                 "domain",
                 "power_type",
                 "power_parameters",
-            ],
-            list(form.fields),
+            },
+            form.fields.keys(),
         )
 
     def test_populates_power_type_choices(self):

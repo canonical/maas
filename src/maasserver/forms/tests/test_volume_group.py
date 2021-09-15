@@ -28,7 +28,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
         node = factory.make_Node()
         form = CreateVolumeGroupForm(node, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(["name"], form.errors.keys())
+        self.assertEqual({"name"}, form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
         node = factory.make_Node()
@@ -142,7 +142,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
             filesystem.block_device.actual_instance
             for filesystem in volume_group.filesystems.all()
         ]
-        self.assertItemsEqual(block_devices, block_devices_in_vg)
+        self.assertCountEqual(block_devices, block_devices_in_vg)
 
     def test_creates_volume_group_with_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -179,7 +179,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
             filesystem.block_device.actual_instance
             for filesystem in volume_group.filesystems.all()
         ]
-        self.assertItemsEqual(block_devices, block_devices_in_vg)
+        self.assertCountEqual(block_devices, block_devices_in_vg)
 
     def test_creates_volume_group_with_partitions(self):
         node = factory.make_Node()
@@ -203,7 +203,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
             filesystem.partition
             for filesystem in volume_group.filesystems.all()
         ]
-        self.assertItemsEqual(partitions, partitions_in_vg)
+        self.assertCountEqual(partitions, partitions_in_vg)
 
     def test_creates_volume_group_with_partitions_by_name(self):
         node = factory.make_Node()
@@ -227,7 +227,7 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
             filesystem.partition
             for filesystem in volume_group.filesystems.all()
         ]
-        self.assertItemsEqual(partitions, partitions_in_vg)
+        self.assertCountEqual(partitions, partitions_in_vg)
 
     def test_creates_volume_group_with_block_devices_and_partitions(self):
         node = factory.make_Node()
@@ -265,8 +265,8 @@ class TestCreateVolumeGroupForm(MAASServerTestCase):
             for filesystem in volume_group.filesystems.all()
             if filesystem.partition is not None
         ]
-        self.assertItemsEqual(block_devices, block_devices_in_vg)
-        self.assertItemsEqual(partitions, partitions_in_vg)
+        self.assertCountEqual(block_devices, block_devices_in_vg)
+        self.assertCountEqual(partitions, partitions_in_vg)
 
 
 class TestUpdateVolumeGroupForm(MAASServerTestCase):
@@ -450,7 +450,7 @@ class TestCreateLogicalVolumeForm(MAASServerTestCase):
         volume_group = factory.make_VolumeGroup()
         form = CreateLogicalVolumeForm(volume_group, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(["name", "size"], form.errors.keys())
+        self.assertEqual({"name", "size"}, form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
         volume_group = factory.make_VolumeGroup()

@@ -44,8 +44,8 @@ class TestMachineForm(MAASServerTestCase):
     def test_contains_limited_set_of_fields(self):
         form = MachineForm()
 
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "hostname",
                 "domain",
                 "architecture",
@@ -59,8 +59,8 @@ class TestMachineForm(MAASServerTestCase):
                 "install_rackd",
                 "ephemeral_deploy",
                 "commission",
-            ],
-            list(form.fields),
+            },
+            form.fields.keys(),
         )
 
     def test_accepts_usable_architecture(self):
@@ -79,7 +79,7 @@ class TestMachineForm(MAASServerTestCase):
             }
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["architecture"], form._errors.keys())
+        self.assertEqual({"architecture"}, form._errors.keys())
 
     def test_starts_with_default_architecture(self):
         arches = sorted([factory.make_name("arch") for _ in range(5)])
@@ -146,7 +146,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["osystem"], form._errors.keys())
+        self.assertEqual({"osystem"}, form._errors.keys())
 
     def test_starts_with_default_osystem(self):
         user = factory.make_User()
@@ -190,7 +190,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["distro_series"], form._errors.keys())
+        self.assertEqual({"distro_series"}, form._errors.keys())
 
     def test_set_distro_series_accepts_short_distro_series(self):
         user = factory.make_User()
@@ -252,7 +252,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["distro_series"], form._errors.keys())
+        self.assertEqual({"distro_series"}, form._errors.keys())
 
     def test_rejects_when_validate_license_key_returns_False(self):
         user = factory.make_User()
@@ -277,7 +277,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["license_key"], form._errors.keys())
+        self.assertEqual({"license_key"}, form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_returns_False(self):
         user = factory.make_User()
@@ -301,7 +301,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["license_key"], form._errors.keys())
+        self.assertEqual({"license_key"}, form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_no_connection(self):
         user = factory.make_User()
@@ -325,7 +325,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["license_key"], form._errors.keys())
+        self.assertEqual({"license_key"}, form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_timeout(self):
         user = factory.make_User()
@@ -349,7 +349,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["license_key"], form._errors.keys())
+        self.assertEqual({"license_key"}, form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_no_os(self):
         user = factory.make_User()
@@ -373,7 +373,7 @@ class TestMachineForm(MAASServerTestCase):
             instance=node,
         )
         self.assertFalse(form.is_valid())
-        self.assertItemsEqual(["license_key"], form._errors.keys())
+        self.assertEqual({"license_key"}, form._errors.keys())
 
 
 class TestAdminMachineForm(MAASServerTestCase):
@@ -383,8 +383,8 @@ class TestAdminMachineForm(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         form = AdminMachineForm(instance=node)
 
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "hostname",
                 "description",
                 "domain",
@@ -405,8 +405,8 @@ class TestAdminMachineForm(MAASServerTestCase):
                 "power_type",
                 "pool",
                 "commission",
-            ],
-            list(form.fields),
+            },
+            form.fields.keys(),
         )
 
     def test_AdminMachineForm_populates_power_type_choices(self):

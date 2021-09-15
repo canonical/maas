@@ -197,7 +197,7 @@ class TestMachineWithMACAddressesForm(MAASServerTestCase):
 
         self.assertIsNotNone(node.id)  # The node is persisted.
         self.assertEqual(NODE_STATUS.NEW, node.status)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             macs, [nic.mac_address for nic in node.interface_set.all()]
         )
 

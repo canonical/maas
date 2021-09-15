@@ -21,7 +21,7 @@ class TestInstanceListField(MAASServerTestCase):
         [factory.make_Node() for _ in range(3)]
         field = InstanceListField(model_class=Node, field_name="system_id")
         input_data = [node.system_id for node in nodes]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             input_data, [node.system_id for node in field.clean(input_data)]
         )
 
@@ -31,7 +31,7 @@ class TestInstanceListField(MAASServerTestCase):
         [factory.make_Node() for _ in range(3)]
         field = InstanceListField(model_class=Node, field_name="system_id")
         input_data = [node.system_id for node in nodes] * 2
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(input_data),
             [node.system_id for node in field.clean(input_data)],
         )

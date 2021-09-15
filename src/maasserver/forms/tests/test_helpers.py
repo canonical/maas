@@ -56,7 +56,7 @@ class TestHelpers(MAASServerTestCase):
         for arch, subarch in arches:
             self.make_usable_boot_resource(arch=arch, subarch=subarch)
         expected = ["%s/%s" % (arch, subarch) for arch, subarch in arches]
-        self.assertItemsEqual(expected, list_all_usable_architectures())
+        self.assertCountEqual(expected, list_all_usable_architectures())
 
     def test_list_all_usable_architectures_sorts_output(self):
         arches = [

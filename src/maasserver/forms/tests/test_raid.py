@@ -77,19 +77,19 @@ class TestCreateRaidForm(MAASServerTestCase):
             part.name for part in partitions
         ]
         form = CreateRaidForm(node=node, data={})
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_devices_choices,
             [k for (k, v) in form.fields["block_devices"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partitions_choices,
             [k for (k, v) in form.fields["partitions"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_devices_choices,
             [k for (k, v) in form.fields["spare_devices"].choices],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partitions_choices,
             [k for (k, v) in form.fields["spare_partitions"].choices],
         )
@@ -127,14 +127,14 @@ class TestCreateRaidForm(MAASServerTestCase):
             raid.get_size(),
         )
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_devices,
             [
                 fs.block_device.id
                 for fs in raid.filesystems.exclude(block_device=None)
             ],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partitions,
             [
                 fs.partition.id
@@ -179,14 +179,14 @@ class TestCreateRaidForm(MAASServerTestCase):
             raid.get_size(),
         )
         self.assertEqual(FILESYSTEM_GROUP_TYPE.RAID_6, raid.group_type)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             block_devices_ids,
             [
                 fs.block_device.id
                 for fs in raid.filesystems.exclude(block_device=None)
             ],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partition_ids,
             [
                 fs.partition.id

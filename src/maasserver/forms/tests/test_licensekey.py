@@ -103,8 +103,8 @@ class TestLicenseKeyForm(MAASServerTestCase):
     def test_requires_all_fields(self):
         form = LicenseKeyForm(data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertItemsEqual(
-            ["osystem", "distro_series", "license_key"], form.errors.keys()
+        self.assertEqual(
+            {"osystem", "distro_series", "license_key"}, form.errors.keys()
         )
 
     def test_errors_on_not_unique(self):
@@ -178,4 +178,4 @@ class TestLicenseKeyForm(MAASServerTestCase):
             for release in releases
         ]
         form = LicenseKeyForm()
-        self.assertItemsEqual(choices, form.fields["distro_series"].choices)
+        self.assertCountEqual(choices, form.fields["distro_series"].choices)
