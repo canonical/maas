@@ -23,6 +23,7 @@ from maasserver.permissions import PodPermission
 from maasserver.rbac import rbac
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
+from maasserver.vmhost import discover_and_sync_vmhost
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerPermissionError,
@@ -264,7 +265,7 @@ class PodHandler(TimestampedModelHandler):
         """
 
         @transactional
-        def get_form(obj, params):
+        def get_object(params):
             # Clear rbac cache before check (this is in its own thread).
             rbac.clear()
 
@@ -272,21 +273,14 @@ class PodHandler(TimestampedModelHandler):
             if not self.user.has_perm(self._meta.edit_permission, obj):
                 raise HandlerPermissionError()
 
-            request = HttpRequest()
-            request.user = self.user
-            return PodForm(
-                instance=obj,
-                data=self.preprocess_form("refresh", params),
-                request=request,
-            )
+            return obj
 
         @transactional
         def render_obj(obj):
             return self.full_dehydrate(obj)
 
         pod = await deferToDatabase(transactional(self.get_object), params)
-        form = await deferToDatabase(get_form, pod, params)
-        pod = await form.discover_and_sync_pod()
+        pod = await discover_and_sync_vmhost(pod, self.user)
         return await deferToDatabase(render_obj, pod)
 
     async def compose(self, params):

@@ -11,7 +11,6 @@ __all__ = [
 ]
 
 from functools import partial
-from urllib.parse import urlparse
 
 import crochet
 from django import forms
@@ -32,26 +31,18 @@ from maasserver.clusterrpc import driver_parameters
 from maasserver.clusterrpc.driver_parameters import (
     get_driver_parameters_from_json,
 )
-from maasserver.clusterrpc.pods import (
-    compose_machine,
-    discover_pod,
-    get_best_discovered_result,
-    send_pod_commissioning_results,
-)
+from maasserver.clusterrpc.pods import compose_machine
 from maasserver.enum import BMC_TYPE, INTERFACE_TYPE
 from maasserver.exceptions import PodProblem
 from maasserver.forms import MAASModelForm
 from maasserver.models import (
     BMC,
-    BMCRoutableRackControllerRelationship,
     Domain,
-    Event,
     Interface,
     Machine,
     Node,
     Pod,
     PodStoragePool,
-    RackController,
     ResourcePool,
     Tag,
     Zone,
@@ -64,13 +55,15 @@ from maasserver.node_constraint_filter_forms import (
     storage_validator,
 )
 from maasserver.rpc import getClientFromIdentifiers
-from maasserver.utils import absolute_reverse
 from maasserver.utils.certificates import get_maas_client_cn
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
-from metadataserver.models import NodeKey
+from maasserver.vmhost import (
+    discover_and_sync_vmhost,
+    request_commissioning_results,
+)
 from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
@@ -82,13 +75,8 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
-from provisioningserver.events import EVENT_TYPES
-from provisioningserver.logger import LegacyLogger
 from provisioningserver.utils.network import get_ifname_for_label
 from provisioningserver.utils.twisted import asynchronous
-
-log = LegacyLogger()
-
 
 DEFAULT_COMPOSED_CORES = 1
 # Size is in MB
@@ -105,42 +93,6 @@ def make_unique_hostname():
             continue
         else:
             return hostname
-
-
-@inlineCallbacks
-def request_commissioning_results(pod):
-    """Request commissioning results from machines associated with the Pod."""
-    nodes = yield deferToDatabase(lambda: list(pod.hints.nodes.all()))
-    # libvirt Pods don't create machines for the host.
-    if not nodes:
-        return pod
-    client_identifiers = yield deferToDatabase(pod.get_client_identifiers)
-    client = yield getClientFromIdentifiers(client_identifiers)
-    for node in nodes:
-        token = yield deferToDatabase(NodeKey.objects.get_token_for_node, node)
-        try:
-            yield send_pod_commissioning_results(
-                client,
-                pod.id,
-                pod.name,
-                pod.power_type,
-                node.system_id,
-                pod.power_parameters,
-                token.consumer.key,
-                token.key,
-                token.secret,
-                urlparse(
-                    absolute_reverse("metadata-version", args=["latest"])
-                ),
-            )
-        except PodProblem as e:
-            yield deferToDatabase(
-                Event.objects.create_node_event,
-                node,
-                EVENT_TYPES.NODE_COMMISSIONING_EVENT_FAILED,
-                event_description=str(e),
-            )
-    return pod
 
 
 class PodForm(MAASModelForm):
@@ -357,6 +309,10 @@ class PodForm(MAASModelForm):
             if param_name in self.cleaned_data
         }
 
+        def discover_and_sync():
+            user = self.request.user if self.request else self.user
+            return discover_and_sync_vmhost(self.instance, user)
+
         if isInIOThread():
             # Running in twisted reactor, do the work inside the reactor.
             d = deferToDatabase(
@@ -365,7 +321,7 @@ class PodForm(MAASModelForm):
                 power_parameters,
             )
             d.addCallback(partial(deferToDatabase, transactional(update_obj)))
-            d.addCallback(lambda _: self.discover_and_sync_pod())
+            d.addCallback(lambda _: discover_and_sync())
             return d
         else:
             # Perform the actions inside the executing thread.
@@ -373,112 +329,7 @@ class PodForm(MAASModelForm):
             if existing_obj is not None:
                 self.instance = existing_obj
             self.instance = update_obj(self.instance)
-            return self.discover_and_sync_pod()
-
-    def discover_and_sync_pod(self):
-        """Discover and sync the pod information."""
-
-        def update_db(result):
-            discovered_pod, discovered = result
-
-            if self.request is not None:
-                user = self.request.user
-            else:
-                user = self.user
-            # If this is a new instance it will be stored in the database
-            # at the end of sync.
-            self.instance.sync(discovered_pod, user)
-
-            # Save which rack controllers can route and which cannot.
-            discovered_rack_ids = [
-                rack_id for rack_id, _ in discovered[0].items()
-            ]
-            for rack_controller in RackController.objects.all():
-                routable = rack_controller.system_id in discovered_rack_ids
-                bmc_route_model = BMCRoutableRackControllerRelationship
-                relation, created = bmc_route_model.objects.get_or_create(
-                    bmc=self.instance.as_bmc(),
-                    rack_controller=rack_controller,
-                    defaults={"routable": routable},
-                )
-                if not created and relation.routable != routable:
-                    relation.routable = routable
-                    relation.save()
-            return self.instance
-
-        if isInIOThread():
-            # Running in twisted reactor, do the work inside the reactor.
-            d = discover_pod(
-                self.instance.power_type,
-                self.instance.power_parameters,
-                pod_id=self.instance.id,
-                name=self.instance.name,
-            )
-            d.addCallback(
-                lambda discovered: (
-                    get_best_discovered_result(discovered),
-                    discovered,
-                )
-            )
-
-            def catch_no_racks(result):
-                discovered_pod, discovered = result
-                if discovered_pod is None:
-                    raise PodProblem(
-                        "Unable to start the pod discovery process. "
-                        "No rack controllers connected."
-                    )
-                return discovered_pod, discovered
-
-            def wrap_errors(failure):
-                if failure.check(PodProblem):
-                    return failure
-                else:
-                    log.err(failure, "Failed to discover pod.")
-                    raise PodProblem(str(failure.value))
-
-            d.addCallback(catch_no_racks)
-            d.addCallback(partial(deferToDatabase, transactional(update_db)))
-            d.addCallback(request_commissioning_results)
-            d.addErrback(wrap_errors)
-            return d
-        else:
-            # Perform the actions inside the executing thread.
-            try:
-                discovered = discover_pod(
-                    self.instance.power_type,
-                    self.instance.power_parameters,
-                    pod_id=self.instance.id,
-                    name=self.instance.name,
-                )
-            except Exception as exc:
-                raise PodProblem(str(exc)) from exc
-
-            # Use the first discovered pod object. All other objects are
-            # ignored. The other rack controllers that also provided a result
-            # can route to the pod.
-            try:
-                discovered_pod = get_best_discovered_result(discovered)
-            except Exception as error:
-                raise PodProblem(str(error))
-            if discovered_pod is None:
-                raise PodProblem(
-                    "Unable to start the pod discovery process. "
-                    "No rack controllers connected."
-                )
-            update_db((discovered_pod, discovered))
-            # The data isn't committed to the database until the transaction is
-            # complete. The commissioning results must be sent after the
-            # transaction completes so the metadata server can process the
-            # data.
-            post_commit_do(
-                reactor.callLater,
-                0,
-                request_commissioning_results,
-                self.instance,
-            )
-            # Run commissioning request here
-            return self.instance
+            return discover_and_sync()
 
 
 def interface_supports_sriov(interface):

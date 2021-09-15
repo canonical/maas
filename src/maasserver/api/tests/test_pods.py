@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 from django.urls import reverse
 from twisted.internet.defer import succeed
 
+from maasserver import vmhost
 from maasserver.forms import pods
 from maasserver.models.bmc import Pod
 from maasserver.models.node import Machine
@@ -85,7 +86,7 @@ class PodMixin:
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
-        self.patch(pods, "discover_pod").return_value = (
+        self.patch(vmhost, "discover_pod").return_value = (
             {
                 discovered_rack_1.system_id: discovered_pod,
                 discovered_rack_2.system_id: discovered_pod,
@@ -236,7 +237,7 @@ class TestPodsAPIAdmin(PodAPITestForAdmin, PodMixin):
 
     def test_create_proper_return_on_exception(self):
         failed_rack = factory.make_RackController()
-        self.patch(pods, "discover_pod").return_value = (
+        self.patch(vmhost, "discover_pod").return_value = (
             {},
             {failed_rack.system_id: factory.make_exception()},
         )

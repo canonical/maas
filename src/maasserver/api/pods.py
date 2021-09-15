@@ -16,6 +16,7 @@ from maasserver.forms.pods import ComposeMachineForm, DeletePodForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.permissions import PodPermission
+from maasserver.vmhost import discover_and_sync_vmhost
 from provisioningserver.drivers.pod import Capabilities
 
 # Pod fields exposed on the API.
@@ -213,9 +214,7 @@ class VmHostHandler(OperationsHandler):
             This method is reserved for admin users.
         """
         pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
-        form = PodForm(data=request.data, instance=pod, request=request)
-        pod = form.discover_and_sync_pod()
-        return pod
+        return discover_and_sync_vmhost(pod, request.user)
 
     @admin_method
     @operation(idempotent=True)

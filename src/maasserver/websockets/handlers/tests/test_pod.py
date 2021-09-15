@@ -9,9 +9,9 @@ from testtools.matchers import Equals
 from twisted.internet.defer import succeed
 from twisted.internet.threads import deferToThread
 
+from maasserver import vmhost
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.forms import pods
-from maasserver.forms.pods import PodForm
 from maasserver.models import Pod, PodStoragePool
 from maasserver.models.virtualmachine import MB, VirtualMachineInterface
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
@@ -24,9 +24,9 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import DATETIME_FORMAT
+from maasserver.websockets.handlers import pod as pod_module
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.crochet import wait_for
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -80,7 +80,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
-        self.patch(pods, "discover_pod").return_value = succeed(
+        self.patch(vmhost, "discover_pod").return_value = succeed(
             (
                 {
                     discovered_rack_1.system_id: discovered_pod,
@@ -749,15 +749,13 @@ class TestPodHandler(MAASTransactionServerTestCase):
         user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
         pod = await deferToDatabase(self.make_pod_with_hints)
-        mock_discover_and_sync_pod = self.patch(
-            PodForm, "discover_and_sync_pod"
-        )
-        mock_discover_and_sync_pod.return_value = succeed(pod)
+        self.patch(
+            pod_module, "discover_and_sync_vmhost"
+        ).return_value = succeed(pod)
         expected_data = await deferToDatabase(
             handler.full_dehydrate, pod, for_list=False
         )
         observed_data = await handler.refresh({"id": pod.id})
-        self.assertThat(mock_discover_and_sync_pod, MockCalledOnceWith())
         self.assertEqual(expected_data.keys(), observed_data.keys())
         for key in expected_data:
             self.assertEqual(expected_data[key], observed_data[key], key)

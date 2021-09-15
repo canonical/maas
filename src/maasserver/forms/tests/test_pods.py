@@ -1,8 +1,6 @@
 # Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for pod forms."""
-
 
 import random
 from unittest.mock import ANY, call, MagicMock
@@ -24,6 +22,7 @@ from testtools.matchers import (
 )
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 
+from maasserver import vmhost as vmhost_module
 from maasserver.enum import BMC_TYPE, INTERFACE_TYPE, NODE_STATUS
 from maasserver.exceptions import PodProblem, StaticIPAddressUnavailable
 from maasserver.forms import pods as pods_module
@@ -153,7 +152,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         discovered_rack_1 = factory.make_RackController()
         discovered_rack_2 = factory.make_RackController()
         failed_rack = factory.make_RackController()
-        self.patch(pods_module, "discover_pod").return_value = (
+        self.patch(vmhost_module, "post_commit_do")
+        self.patch(vmhost_module, "discover_pod").return_value = (
             {
                 discovered_rack_1.system_id: discovered_pod,
                 discovered_rack_2.system_id: discovered_pod,
@@ -184,7 +184,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
 
     def test_creates_pod_with_discovered_information(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         (
             discovered_pod,
             discovered_racks,
@@ -209,10 +208,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_only_required(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         (
             discovered_pod,
             discovered_racks,
@@ -242,10 +239,8 @@ class TestPodForm(MAASTransactionServerTestCase):
                 ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
             ),
         )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_name(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_name = factory.make_name("pod")
@@ -254,10 +249,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(pod_name, pod.name)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_power_parameters(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_info["power_pass"] = factory.make_name("pass")
@@ -270,10 +263,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(
             pod_info["power_pass"], pod.power_parameters["power_pass"]
         )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_overcommit(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_info["cpu_over_commit_ratio"] = random.randint(0, 10)
@@ -287,10 +278,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(
             pod_info["memory_over_commit_ratio"], pod.memory_over_commit_ratio
         )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_tags(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         tags = [
@@ -303,10 +292,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertItemsEqual(tags, pod.tags)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_zone(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         zone = factory.make_Zone()
@@ -315,10 +302,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(zone.id, pod.zone.id)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_pod_with_pool(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pool = factory.make_ResourcePool()
@@ -327,10 +312,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(pool.id, pod.pool.id)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_creates_lxd_with_generated_certificate(self):
-        self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         data = {
             "type": "lxd",
@@ -347,7 +330,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(cert.cn(), Config.objects.get_config("maas_name"))
 
     def test_creates_lxd_with_generated_certificate_with_name_in_cn(self):
-        self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         data = {
             "name": "lxd-server",
@@ -372,8 +354,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery
         )
-        pods_module.discover_pod.return_value = succeed(
-            pods_module.discover_pod.return_value
+        vmhost_module.discover_pod.return_value = succeed(
+            vmhost_module.discover_pod.return_value
         )
         zone = yield deferToDatabase(factory.make_Zone)
         pod_info = yield deferToDatabase(self.make_pod_info)
@@ -427,7 +409,9 @@ class TestPodForm(MAASTransactionServerTestCase):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery
         )
-        pods_module.discover_pod.return_value = fail(factory.make_exception())
+        vmhost_module.discover_pod.return_value = fail(
+            factory.make_exception()
+        )
         pod_info = yield deferToDatabase(self.make_pod_info)
         form = yield deferToDatabase(
             PodForm, data=pod_info, request=self.request
@@ -443,7 +427,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         yield deferToDatabase(validate_no_pods)
 
     def test_prevents_duplicate_pod(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         form = PodForm(data=pod_info, request=self.request)
@@ -452,10 +435,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         new_form = PodForm(data=pod_info)
         self.assertTrue(new_form.is_valid(), form._errors)
         self.assertRaises(ValidationError, new_form.save)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_takes_over_bmc_with_pod(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         bmc = factory.make_BMC(
@@ -470,10 +451,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod = form.save()
         self.assertEqual(bmc.id, pod.id)
         self.assertEqual(BMC_TYPE.POD, reload_object(bmc).bmc_type)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_existing_pod_minimal(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         self.fake_pod_discovery()
         zone = factory.make_Zone()
         pool = factory.make_ResourcePool()
@@ -504,10 +483,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
         self.assertEqual(memory_over_commit, pod.memory_over_commit_ratio)
         self.assertEqual(power_parameters, pod.power_parameters)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_existing_pod(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         (
             discovered_pod,
             discovered_racks,
@@ -558,10 +535,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         ]
         self.assertItemsEqual(routable_racks, discovered_racks)
         self.assertItemsEqual(not_routable_racks, failed_racks)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_default_storage_pool(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         default_storage_pool = random.choice(discovered_pod.storage_pools)
         pod = factory.make_Pod(pod_type="virsh")
@@ -584,10 +559,8 @@ class TestPodForm(MAASTransactionServerTestCase):
                 )
             ),
         )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_updates_default_macvlan_mode(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
         discovered_pod, _, _ = self.fake_pod_discovery()
         default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
         pod = factory.make_Pod(pod_type="virsh")
@@ -605,7 +578,6 @@ class TestPodForm(MAASTransactionServerTestCase):
                 default_macvlan_mode=Equals(default_macvlan_mode)
             ),
         )
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     @wait_for_reactor
     @inlineCallbacks
@@ -613,8 +585,8 @@ class TestPodForm(MAASTransactionServerTestCase):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery
         )
-        pods_module.discover_pod.return_value = succeed(
-            pods_module.discover_pod.return_value
+        vmhost_module.discover_pod.return_value = succeed(
+            vmhost_module.discover_pod.return_value
         )
         zone = yield deferToDatabase(factory.make_Zone)
         pool = yield deferToDatabase(factory.make_ResourcePool)
@@ -674,8 +646,8 @@ class TestPodForm(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_updates_default_storage_pool_in_twisted(self):
         discovered_pod, _, _ = yield deferToDatabase(self.fake_pod_discovery)
-        pods_module.discover_pod.return_value = succeed(
-            pods_module.discover_pod.return_value
+        vmhost_module.discover_pod.return_value = succeed(
+            vmhost_module.discover_pod.return_value
         )
         default_storage_pool = random.choice(discovered_pod.storage_pools)
         pod = yield deferToDatabase(factory.make_Pod, pod_type="virsh")
@@ -705,8 +677,8 @@ class TestPodForm(MAASTransactionServerTestCase):
     @inlineCallbacks
     def test_updates_default_macvlan_mode_in_twisted(self):
         discovered_pod, _, _ = yield deferToDatabase(self.fake_pod_discovery)
-        pods_module.discover_pod.return_value = succeed(
-            pods_module.discover_pod.return_value
+        vmhost_module.discover_pod.return_value = succeed(
+            vmhost_module.discover_pod.return_value
         )
         default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
         pod = yield deferToDatabase(factory.make_Pod, pod_type="virsh")
@@ -727,106 +699,6 @@ class TestPodForm(MAASTransactionServerTestCase):
             ),
         )
 
-    def test_discover_and_sync_existing_pod(self):
-        mock_post_commit_do = self.patch(pods_module, "post_commit_do")
-        (
-            discovered_pod,
-            discovered_racks,
-            failed_racks,
-        ) = self.fake_pod_discovery()
-        zone = factory.make_Zone()
-        pod_info = self.make_pod_info()
-        power_parameters = {"power_address": pod_info["power_address"]}
-        orig_pod = factory.make_Pod(
-            zone=zone, pod_type=pod_info["type"], parameters=power_parameters
-        )
-        form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
-        pod = form.discover_and_sync_pod()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                id=Equals(orig_pod.id),
-                bmc_type=Equals(BMC_TYPE.POD),
-                architectures=Equals(["amd64/generic"]),
-                name=Equals(orig_pod.name),
-                cores=Equals(discovered_pod.cores),
-                memory=Equals(discovered_pod.memory),
-                cpu_speed=Equals(discovered_pod.cpu_speed),
-                zone=Equals(zone),
-                power_type=Equals(pod_info["type"]),
-                power_parameters=Equals(power_parameters),
-                ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
-            ),
-        )
-        routable_racks = [
-            relation.rack_controller
-            for relation in pod.routable_rack_relationships.all()
-            if relation.routable
-        ]
-        not_routable_racks = [
-            relation.rack_controller
-            for relation in pod.routable_rack_relationships.all()
-            if not relation.routable
-        ]
-        self.assertItemsEqual(routable_racks, discovered_racks)
-        self.assertItemsEqual(not_routable_racks, failed_racks)
-        self.assertThat(mock_post_commit_do, MockCalledOnce())
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_discover_and_sync_existing_pod_in_twisted(self):
-        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
-            self.fake_pod_discovery
-        )
-        pods_module.discover_pod.return_value = succeed(
-            pods_module.discover_pod.return_value
-        )
-        zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = yield deferToDatabase(self.make_pod_info)
-        power_parameters = {"power_address": pod_info["power_address"]}
-        orig_pod = yield deferToDatabase(
-            factory.make_Pod,
-            zone=zone,
-            pod_type=pod_info["type"],
-            parameters=power_parameters,
-        )
-        form = yield deferToDatabase(
-            PodForm, data=pod_info, request=self.request, instance=orig_pod
-        )
-        pod = yield form.discover_and_sync_pod()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                id=Equals(orig_pod.id),
-                bmc_type=Equals(BMC_TYPE.POD),
-                architectures=Equals(["amd64/generic"]),
-                name=Equals(orig_pod.name),
-                cores=Equals(discovered_pod.cores),
-                memory=Equals(discovered_pod.memory),
-                cpu_speed=Equals(discovered_pod.cpu_speed),
-                zone=Equals(zone),
-                power_type=Equals(pod_info["type"]),
-                power_parameters=Equals(power_parameters),
-                ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
-            ),
-        )
-
-        def validate_rack_routes():
-            routable_racks = [
-                relation.rack_controller
-                for relation in pod.routable_rack_relationships.all()
-                if relation.routable
-            ]
-            not_routable_racks = [
-                relation.rack_controller
-                for relation in pod.routable_rack_relationships.all()
-                if not relation.routable
-            ]
-            self.assertItemsEqual(routable_racks, discovered_racks)
-            self.assertItemsEqual(not_routable_racks, failed_racks)
-
-        yield deferToDatabase(validate_rack_routes)
-
     def test_raises_unable_to_discover_because_no_racks(self):
         self.patch(pods_module, "discover_pod").return_value = ({}, {})
         pod_info = self.make_pod_info()
@@ -834,7 +706,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         error = self.assertRaises(PodProblem, form.save)
         self.assertEqual(
-            "Unable to start the pod discovery process. "
+            "Unable to start the VM host discovery process. "
             "No rack controllers connected.",
             str(error),
         )
@@ -853,7 +725,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         def validate_error(failure):
             self.assertIsInstance(failure.value, PodProblem)
             self.assertEqual(
-                "Unable to start the pod discovery process. "
+                "Unable to start the VM host discovery process. "
                 "No rack controllers connected.",
                 str(failure.value),
             )
@@ -865,7 +737,7 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_raises_exception_from_rack_controller(self):
         failed_rack = factory.make_RackController()
         exc = factory.make_exception()
-        self.patch(pods_module, "discover_pod").return_value = (
+        self.patch(vmhost_module, "discover_pod").return_value = (
             {},
             {failed_rack.system_id: exc},
         )
@@ -880,7 +752,7 @@ class TestPodForm(MAASTransactionServerTestCase):
     def test_raises_exception_from_rack_controller_in_twisted(self):
         failed_rack = yield deferToDatabase(factory.make_RackController)
         exc = factory.make_exception()
-        self.patch(pods_module, "discover_pod").return_value = succeed(
+        self.patch(vmhost_module, "discover_pod").return_value = succeed(
             ({}, {failed_rack.system_id: exc})
         )
         pod_info = yield deferToDatabase(self.make_pod_info)
