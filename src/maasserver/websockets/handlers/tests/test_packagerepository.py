@@ -51,7 +51,7 @@ class TestPackageRepositoryHandler(MAASServerTestCase):
         expected_package_repositories = [
             self.dehydrate(factory.make_PackageRepository()) for _ in range(3)
         ]
-        self.assertItemsEqual(expected_package_repositories, handler.list({}))
+        self.assertCountEqual(expected_package_repositories, handler.list({}))
 
     def test_create_is_admin_only(self):
         user = factory.make_User()

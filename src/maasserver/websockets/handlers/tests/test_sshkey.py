@@ -63,7 +63,7 @@ class TestSSHKeyHandler(MAASServerTestCase):
         expected_sshkeys = [
             self.dehydrate_sshkey(sshkey) for sshkey in SSHKey.objects.all()
         ]
-        self.assertItemsEqual(expected_sshkeys, handler.list({}))
+        self.assertCountEqual(expected_sshkeys, handler.list({}))
 
     def test_create(self):
         user = factory.make_User()

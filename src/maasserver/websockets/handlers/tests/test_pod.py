@@ -152,7 +152,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         factory.make_Node(bmc=pod, owner=factory.make_User())
         expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
-        self.assertItemsEqual(expected_data.keys(), result.keys())
+        self.assertEqual(expected_data.keys(), result.keys())
         for key in expected_data:
             self.assertEqual(expected_data[key], result[key], key)
         self.assertEqual(result, expected_data)
@@ -538,7 +538,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod = self.make_pod_with_hints(ip_address=ip)
         expected_data = handler.full_dehydrate(pod)
         result = handler.get({"id": pod.id})
-        self.assertItemsEqual(expected_data.keys(), result.keys())
+        self.assertEqual(expected_data.keys(), result.keys())
         for key in expected_data:
             self.assertEqual(expected_data[key], result[key], key)
         self.assertThat(result, Equals(expected_data))
@@ -588,9 +588,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         handler = PodHandler(admin, {}, None)
         pod = self.make_pod_with_hints()
         result = handler.full_dehydrate(pod)
-        self.assertItemsEqual(
-            ["edit", "delete", "compose"], result["permissions"]
-        )
+        self.assertEqual(["edit", "delete", "compose"], result["permissions"])
 
     def test_list(self):
         admin = factory.make_admin()
@@ -760,7 +758,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         )
         observed_data = await handler.refresh({"id": pod.id})
         self.assertThat(mock_discover_and_sync_pod, MockCalledOnceWith())
-        self.assertItemsEqual(expected_data.keys(), observed_data.keys())
+        self.assertEqual(expected_data.keys(), observed_data.keys())
         for key in expected_data:
             self.assertEqual(expected_data[key], observed_data[key], key)
         self.assertEqual(expected_data, observed_data)

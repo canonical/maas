@@ -47,4 +47,4 @@ class TestServiceHandler(MAASServerTestCase):
             for service in Service.objects.all()
         ]
         self.assertGreater(len(expected_services), 0)
-        self.assertItemsEqual(expected_services, handler.list({}))
+        self.assertCountEqual(expected_services, handler.list({}))

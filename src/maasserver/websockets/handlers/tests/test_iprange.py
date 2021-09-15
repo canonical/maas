@@ -47,7 +47,7 @@ class TestIPRangeHandler(MAASServerTestCase):
             self.dehydrate_iprange(iprange, for_list=True)
             for iprange in IPRange.objects.all()
         ]
-        self.assertItemsEqual(expected_ipranges, handler.list({}))
+        self.assertCountEqual(expected_ipranges, handler.list({}))
 
     def test_create(self):
         user = factory.make_User()

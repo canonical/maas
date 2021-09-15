@@ -128,7 +128,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         # Other script_results.
         for _ in range(3):
             factory.make_ScriptResult()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             self.dehydrate_script_results(script_results, handler),
             handler.list({"system_id": node.system_id}),
         )
@@ -160,7 +160,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         expected_output = [
             self.dehydrate_script_result(script_result, handler)
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             expected_output,
             handler.list(
                 {
@@ -196,7 +196,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         expected_output = [
             self.dehydrate_script_result(script_result, handler)
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             expected_output,
             handler.list(
                 {
@@ -227,7 +227,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         expected_output = [
             self.dehydrate_script_result(script_result, handler)
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             expected_output,
             handler.list(
                 {
@@ -256,7 +256,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         expected_output = [
             self.dehydrate_script_result(script_result, handler)
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             expected_output,
             handler.list(
                 {"system_id": node.system_id, "interface_id": interface.id}
@@ -279,7 +279,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         expected_output = [
             self.dehydrate_script_result(script_result, handler)
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             expected_output,
             handler.list({"system_id": node.system_id, "has_surfaced": True}),
         )
@@ -320,7 +320,7 @@ class TestNodeResultHandler(MAASServerTestCase):
             for _ in range(3)
         ]
         handler.list({"system_id": node.system_id})
-        self.assertItemsEqual(pks, handler.cache["loaded_pks"])
+        self.assertCountEqual(pks, handler.cache["loaded_pks"])
 
     def test_list_redacts_password_parameter(self):
         user = factory.make_User()

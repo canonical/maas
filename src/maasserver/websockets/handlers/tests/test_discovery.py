@@ -70,7 +70,7 @@ class TestDiscoveryHandler(MAASServerTestCase):
             self.dehydrate_discovery(discovery, for_list=True)
             for discovery in Discovery.objects.all()
         ]
-        self.assertItemsEqual(expected_discoveries, handler.list({}))
+        self.assertCountEqual(expected_discoveries, handler.list({}))
 
     def test_list_orders_by_creation_date(self):
         user = factory.make_User()

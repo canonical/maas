@@ -88,7 +88,7 @@ class TestVLANHandler(MAASServerTestCase):
             self.dehydrate_vlan(vlan, for_list=True)
             for vlan in VLAN.objects.all()
         ]
-        self.assertItemsEqual(expected_vlans, handler.list({}))
+        self.assertCountEqual(expected_vlans, handler.list({}))
 
     def test_create(self):
         admin = factory.make_admin()

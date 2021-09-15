@@ -128,7 +128,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_hwe_kernels(self):
         expected_output = self.make_boot_sources()
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertItemsEqual(
+        self.assertEqual(
             sorted(expected_output, key=lambda choice: choice[0]),
             sorted(handler.hwe_kernels({}), key=lambda choice: choice[0]),
         )
@@ -136,7 +136,7 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_hwe_min_kernels(self):
         expected_output = self.make_boot_sources()
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertItemsEqual(
+        self.assertEqual(
             sorted(expected_output, key=lambda choice: choice[0]),
             sorted(handler.min_hwe_kernels({}), key=lambda choice: choice[0]),
         )
@@ -170,12 +170,12 @@ class TestGeneralHandler(MAASServerTestCase):
         actions_expected = self.dehydrate_actions(
             ACTIONS_DICT, NODE_TYPE.MACHINE
         )
-        self.assertItemsEqual(actions_expected, handler.machine_actions({}))
+        self.assertCountEqual(actions_expected, handler.machine_actions({}))
 
     def test_machine_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertItemsEqual(
-            [
+        self.assertCountEqual(
+            {
                 "release",
                 "mark-broken",
                 "on",
@@ -192,28 +192,28 @@ class TestGeneralHandler(MAASServerTestCase):
                 "test",
                 "override-failed-testing",
                 "unlock",
-            ],
+            },
             [action["name"] for action in handler.machine_actions({})],
         )
 
     def test_device_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {}, None)
-        self.assertItemsEqual(
-            ["set-zone", "delete"],
+        self.assertCountEqual(
+            {"set-zone", "delete"},
             [action["name"] for action in handler.device_actions({})],
         )
 
     def test_device_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertItemsEqual(
-            ["set-zone", "delete"],
+        self.assertCountEqual(
+            {"set-zone", "delete"},
             [action["name"] for action in handler.device_actions({})],
         )
 
     def test_region_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {}, None)
-        self.assertItemsEqual(
-            ["set-zone", "delete"],
+        self.assertCountEqual(
+            {"set-zone", "delete"},
             [
                 action["name"]
                 for action in handler.region_controller_actions({})
@@ -226,7 +226,7 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {}, None)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 "delete",
                 "import-images",
@@ -245,7 +245,7 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_region_and_rack_controller_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin(), {}, None)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             ["set-zone", "delete", "import-images"],
             [
                 action["name"]

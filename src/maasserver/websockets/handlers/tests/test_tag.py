@@ -35,4 +35,4 @@ class TestTagHandler(MAASServerTestCase):
         handler = TagHandler(user, {}, None)
         factory.make_Tag()
         expected_tags = [self.dehydrate_tag(tag) for tag in Tag.objects.all()]
-        self.assertItemsEqual(expected_tags, handler.list({}))
+        self.assertCountEqual(expected_tags, handler.list({}))

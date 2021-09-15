@@ -84,7 +84,7 @@ class TestZoneHandler(MAASServerTestCase):
         expected_zones = [
             self.dehydrate_zone(zone) for zone in Zone.objects.all()
         ]
-        self.assertItemsEqual(expected_zones, handler.list({}))
+        self.assertCountEqual(expected_zones, handler.list({}))
 
 
 class TestZoneHandlerDelete(MAASServerTestCase):

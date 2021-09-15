@@ -51,7 +51,7 @@ class TestSpaceHandler(MAASServerTestCase):
         expected_spaces = [
             self.dehydrate_space(space) for space in Space.objects.all()
         ]
-        self.assertItemsEqual(expected_spaces, handler.list({}))
+        self.assertCountEqual(expected_spaces, handler.list({}))
 
     def test_list_constant_queries(self):
         user = factory.make_User()

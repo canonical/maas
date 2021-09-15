@@ -152,7 +152,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         mock_authenticate.return_value = defer.succeed(user)
         protocol.connectionMade()
         self.addCleanup(lambda: protocol.connectionLost(""))
-        self.assertItemsEqual([protocol], factory.clients)
+        self.assertEqual([protocol], factory.clients)
 
     def test_connectionMade_doesnt_add_self_to_factory_if_auth_fails(self):
         protocol, factory = self.make_protocol()
@@ -189,12 +189,12 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         mock_authenticate.return_value = defer.succeed(None)
         protocol.connectionMade()
         protocol.connectionLost("")
-        self.assertItemsEqual([], factory.clients)
+        self.assertEqual([], factory.clients)
 
     def test_connectionLost_succeeds_if_client_hasnt_been_recorded(self):
         protocol, factory = self.make_protocol()
         self.assertIsNone(protocol.connectionLost(""))
-        self.assertItemsEqual([], factory.clients)
+        self.assertEqual([], factory.clients)
 
     def test_loseConnection_writes_to_log(self):
         protocol, factory = self.make_protocol()
@@ -765,7 +765,7 @@ class MakeProtocolFactoryMixin:
         return protocol, factory
 
 
-ALL_NOTIFIERS = (
+ALL_NOTIFIERS = {
     "config",
     "controller",
     "device",
@@ -794,9 +794,9 @@ ALL_NOTIFIERS = (
     "user",
     "vlan",
     "zone",
-)
+}
 
-ALL_HANDLERS = (
+ALL_HANDLERS = {
     "bootresource",
     "config",
     "controller",
@@ -827,13 +827,13 @@ ALL_HANDLERS = (
     "user",
     "vlan",
     "zone",
-)
+}
 
 
 class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
     def test_loads_all_handlers(self):
         factory = self.make_factory()
-        self.assertItemsEqual(ALL_HANDLERS, factory.handlers.keys())
+        self.assertEqual(ALL_HANDLERS, factory.handlers.keys())
 
     def test_get_SessionEngine_calls_import_module_with_SESSION_ENGINE(self):
         getModule = self.patch_autospec(protocol_module, "getModule")
@@ -897,7 +897,7 @@ class TestWebSocketFactory(MAASTestCase, MakeProtocolFactoryMixin):
 
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = self.make_factory()
-        self.assertItemsEqual(ALL_NOTIFIERS, factory.listener.listeners.keys())
+        self.assertEqual(ALL_NOTIFIERS, factory.listener.listeners.keys())
 
 
 class TestWebSocketFactoryTransactional(

@@ -19,9 +19,7 @@ class TestTimeStampedModelHandler(MAASTestCase):
 
     def test_adds_created_and_updated_to_non_changeable(self):
         handler = TimestampedModelHandler(None, {}, None)
-        self.assertItemsEqual(
-            ["created", "updated"], handler._meta.non_changeable
-        )
+        self.assertEqual(["created", "updated"], handler._meta.non_changeable)
 
     def test_doesnt_overwrite_other_non_changeable_fields(self):
         class TestHandler(TimestampedModelHandler):
@@ -29,7 +27,7 @@ class TestTimeStampedModelHandler(MAASTestCase):
                 non_changeable = ["other", "extra"]
 
         handler = TestHandler(None, {}, None)
-        self.assertItemsEqual(
+        self.assertEqual(
             ["other", "extra", "created", "updated"],
             handler._meta.non_changeable,
         )

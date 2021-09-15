@@ -297,7 +297,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {}, None)
         device = self.make_device_with_ip_address(owner=owner)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
             handler.list({}),
         )
@@ -312,7 +312,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device_with_parent = self.make_device_with_ip_address(owner=owner)
         device_with_parent.parent = node
         device_with_parent.save()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
             handler.list({}),
         )
@@ -324,7 +324,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = self.make_device_with_ip_address(owner=owner)
         # Create a node.
         factory.make_Node(owner=owner)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
             handler.list({}),
         )
@@ -386,7 +386,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # Create another device not ownered by user.
         self.make_device_with_ip_address()
         handler = DeviceHandler(user, {}, None)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [self.dehydrate_device(device, user, for_list=True)],
             handler.list({}),
         )
@@ -1085,7 +1085,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.assertEqual(updated_node["hostname"], new_hostname)
         self.assertEqual(updated_node["description"], new_description)
         self.assertEqual(updated_node["zone"]["id"], new_zone.id)
-        self.assertItemsEqual(updated_node["tags"], new_tags)
+        self.assertCountEqual(updated_node["tags"], new_tags)
 
     @transactional
     def test_update_updates_node_non_admin_update_own(self):
@@ -1104,7 +1104,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         updated_node = handler.update(node_data)
         self.assertEqual(updated_node["hostname"], new_hostname)
         self.assertEqual(updated_node["zone"]["id"], new_zone.id)
-        self.assertItemsEqual(updated_node["tags"], new_tags)
+        self.assertCountEqual(updated_node["tags"], new_tags)
 
     @transactional
     def test_update_updates_node_non_admin_not_update_own(self):

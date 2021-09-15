@@ -50,7 +50,7 @@ class TestSSLKeyHandler(MAASServerTestCase):
         expected_sslkeys = [
             self.dehydrate_sslkey(sslkey) for sslkey in SSLKey.objects.all()
         ]
-        self.assertItemsEqual(expected_sslkeys, handler.list({}))
+        self.assertCountEqual(expected_sslkeys, handler.list({}))
 
     def test_create(self):
         user = factory.make_User()

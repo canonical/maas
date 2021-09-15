@@ -125,7 +125,7 @@ class TestUserHandler(MAASServerTestCase):
             self.dehydrate_user(user, for_self=(user == admin))
             for user in User.objects.exclude(username__in=SYSTEM_USERS)
         ]
-        self.assertItemsEqual(expected_users, handler.list({}))
+        self.assertCountEqual(expected_users, handler.list({}))
 
     def test_list_num_queries_is_the_expected_number(self):
         # Prevent RBAC from making a query.
@@ -159,7 +159,7 @@ class TestUserHandler(MAASServerTestCase):
         # Other users
         for _ in range(3):
             factory.make_User()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [self.dehydrate_user(user, for_self=True)], handler.list({})
         )
 
@@ -256,7 +256,7 @@ class TestUserHandler(MAASServerTestCase):
 
         handler.delete({"id": user.id})
 
-        self.assertItemsEqual([], User.objects.filter(id=user.id))
+        self.assertCountEqual([], User.objects.filter(id=user.id))
 
     def test_delete_as_admin_event_log(self):
         admin_user = factory.make_admin()

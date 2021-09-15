@@ -60,7 +60,7 @@ class TestFabricHandler(MAASServerTestCase):
         expected_fabrics = [
             self.dehydrate_fabric(fabric) for fabric in Fabric.objects.all()
         ]
-        self.assertItemsEqual(expected_fabrics, handler.list({}))
+        self.assertCountEqual(expected_fabrics, handler.list({}))
 
     def test_list_constant_queries(self):
         user = factory.make_User()

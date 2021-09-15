@@ -51,7 +51,7 @@ class TestTokenHandler(MAASServerTestCase):
         expected_tokens = [
             self.dehydrate_token(token) for token in get_auth_tokens(user)
         ]
-        self.assertItemsEqual(expected_tokens, handler.list({}))
+        self.assertCountEqual(expected_tokens, handler.list({}))
 
     def test_create_no_name(self):
         user = factory.make_User()

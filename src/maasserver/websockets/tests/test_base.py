@@ -455,25 +455,25 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
     def test_list(self):
         output = [{"hostname": factory.make_Node().hostname} for _ in range(3)]
         handler = self.make_nodes_handler(fields=["hostname"])
-        self.assertItemsEqual(output, handler.list({}))
+        self.assertCountEqual(output, handler.list({}))
 
     def test_list_start(self):
         nodes = [factory.make_Node() for _ in range(6)]
         output = [{"hostname": node.hostname} for node in nodes[3:]]
         handler = self.make_nodes_handler(fields=["hostname"])
-        self.assertItemsEqual(output, handler.list({"start": nodes[2].id}))
+        self.assertCountEqual(output, handler.list({"start": nodes[2].id}))
 
     def test_list_limit(self):
         nodes = [factory.make_Node() for _ in range(6)]
         output = [{"hostname": node.hostname} for node in nodes[:3]]
         handler = self.make_nodes_handler(fields=["hostname"])
-        self.assertItemsEqual(output, handler.list({"limit": 3}))
+        self.assertCountEqual(output, handler.list({"limit": 3}))
 
     def test_list_start_and_limit(self):
         nodes = [factory.make_Node() for _ in range(9)]
         output = [{"hostname": node.hostname} for node in nodes[3:6]]
         handler = self.make_nodes_handler(fields=["hostname"])
-        self.assertItemsEqual(
+        self.assertCountEqual(
             output, handler.list({"start": nodes[2].id, "limit": 3})
         )
 
@@ -481,7 +481,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         pks = [factory.make_Node().system_id for _ in range(3)]
         handler = self.make_nodes_handler(fields=["hostname"])
         handler.list({})
-        self.assertItemsEqual(pks, handler.cache["loaded_pks"])
+        self.assertCountEqual(pks, handler.cache["loaded_pks"])
 
     def test_list_unions_the_loaded_pks(self):
         nodes = [factory.make_Node() for _ in range(3)]
@@ -494,7 +494,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         # ordered by id. This is because system_id is no longer guaranteed to
         # sort from oldest node to newest.
         handler.list({"start": nodes[0].id})
-        self.assertItemsEqual(pks, handler.cache["loaded_pks"])
+        self.assertCountEqual(pks, handler.cache["loaded_pks"])
 
     def test_get(self):
         node = factory.make_Node()

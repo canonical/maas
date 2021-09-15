@@ -48,7 +48,7 @@ class TestStaticRouteHandler(MAASServerTestCase):
             self.dehydrate_staticroute(staticroute, for_list=True)
             for staticroute in StaticRoute.objects.all()
         ]
-        self.assertItemsEqual(expected_staticroutes, handler.list({}))
+        self.assertCountEqual(expected_staticroutes, handler.list({}))
 
     def test_create(self):
         user = factory.make_admin()

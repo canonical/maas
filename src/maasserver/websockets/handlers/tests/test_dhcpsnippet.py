@@ -95,7 +95,7 @@ class TestDHCPSnippetHandler(MAASServerTestCase):
             self.dehydrate_dhcp_snippet(factory.make_DHCPSnippet())
             for _ in range(3)
         ]
-        self.assertItemsEqual(expected_dhcp_snippets, handler.list({}))
+        self.assertCountEqual(expected_dhcp_snippets, handler.list({}))
 
     def test_create_is_admin_only(self):
         user = factory.make_User()

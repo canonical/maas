@@ -163,7 +163,7 @@ class TestConfigHandler(MAASServerTestCase):
         handler = ConfigHandler(user, {}, None)
         configs = handler.list({})
         config_keys = {obj["name"] for obj in configs}
-        self.assertItemsEqual(config_keys, handler.cache["loaded_pks"])
+        self.assertCountEqual(config_keys, handler.cache["loaded_pks"])
 
     def test_update_as_non_admin_asserts(self):
         user = factory.make_User()

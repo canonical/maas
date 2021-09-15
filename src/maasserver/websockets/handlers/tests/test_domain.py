@@ -124,7 +124,7 @@ class TestDomainHandler(MAASServerTestCase):
             self.dehydrate_domain(domain, for_list=True)
             for domain in Domain.objects.all()
         ]
-        self.assertItemsEqual(expected_domains, handler.list({}))
+        self.assertCountEqual(expected_domains, handler.list({}))
 
     def test_prevents_unauthorized_creation(self):
         user = factory.make_User()

@@ -96,7 +96,7 @@ class TestSubnetHandler(MAASServerTestCase):
             self.dehydrate_subnet(subnet, for_list=True)
             for subnet in Subnet.objects.all()
         ]
-        self.assertItemsEqual(expected_subnets, handler.list({}))
+        self.assertCountEqual(expected_subnets, handler.list({}))
 
     def test_list_uses_consistent_queries(self):
         user = factory.make_User()

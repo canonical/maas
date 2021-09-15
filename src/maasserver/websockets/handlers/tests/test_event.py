@@ -87,7 +87,7 @@ class TestEventHandler(MAASServerTestCase):
         # Other events.
         for _ in range(3):
             factory.make_Event()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             self.dehydrate_events(events),
             handler.list({"node_id": node.id, "user_id": user.id}),
         )
@@ -112,7 +112,7 @@ class TestEventHandler(MAASServerTestCase):
         events = [factory.make_Event(node=node) for _ in range(3)]
         # Event older than 30 days.
         self.make_event_in_the_past(user, node, 31)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             self.dehydrate_events(events), handler.list({"node_id": node.id})
         )
 
@@ -127,7 +127,7 @@ class TestEventHandler(MAASServerTestCase):
         ]
         for _ in range(3):
             self.make_event_in_the_past(user, node, maxdays + 1)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             self.dehydrate_events(events),
             handler.list({"node_id": node.id, "max_days": maxdays}),
         )
@@ -142,7 +142,7 @@ class TestEventHandler(MAASServerTestCase):
             )
         )
         expected_output = self.dehydrate_events(events[3:])
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_output,
             handler.list({"node_id": node.id, "start": events[2].id}),
         )
@@ -157,7 +157,7 @@ class TestEventHandler(MAASServerTestCase):
             )
         )
         expected_output = self.dehydrate_events(events[:3])
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_output, handler.list({"node_id": node.id, "limit": 3})
         )
 
@@ -171,7 +171,7 @@ class TestEventHandler(MAASServerTestCase):
             )
         )
         expected_output = self.dehydrate_events(events[3:6])
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_output,
             handler.list(
                 {"node_id": node.id, "start": events[2].id, "limit": 3}

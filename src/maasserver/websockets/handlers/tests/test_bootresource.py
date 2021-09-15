@@ -159,7 +159,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.patch_get_os_info_from_boot_sources(sources, releases=releases)
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": release,
@@ -192,7 +192,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.patch_get_os_info_from_boot_sources(sources, releases=releases)
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": release,
@@ -223,7 +223,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.patch_get_os_info_from_boot_sources(sources, arches=arches)
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": arch,
@@ -253,7 +253,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         self.patch_get_os_info_from_boot_sources(sources, arches=arches)
         response = handler.poll({})
         json_obj = json.loads(response)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": arch,
@@ -339,7 +339,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         json_ids = [
             json_resource["id"] for json_resource in json_obj["resources"]
         ]
-        self.assertItemsEqual(resource_ids, json_ids)
+        self.assertCountEqual(resource_ids, json_ids)
 
     def test_returns_resources_datetime_format(self):
         owner = factory.make_admin()
@@ -892,7 +892,7 @@ class TestBootResourceSaveUbuntu(
 
         selections = BootSourceSelection.objects.filter(boot_source=source)
         self.assertThat(selections, HasLength(len(releases)))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             releases, [selection.release for selection in selections]
         )
 
@@ -913,7 +913,7 @@ class TestBootResourceSaveUbuntu(
         self.patch_import_resources()
         handler.save_ubuntu({"url": source.url, "osystems": osystems})
         selections = BootSourceSelection.objects.filter(boot_source=source)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "osystem": selection.os,
@@ -1030,7 +1030,7 @@ class TestBootResourceSaveUbuntuCore(MAASTransactionServerTestCase):
             )
         )
         self.assertIsNotNone(selection)
-        self.assertItemsEqual(arches, selection.arches)
+        self.assertCountEqual(arches, selection.arches)
 
     def test_calls_stop_and_import_resources(self):
         owner = factory.make_admin()
@@ -1127,7 +1127,7 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             )
         )
         self.assertIsNotNone(selection)
-        self.assertItemsEqual(arches, selection.arches)
+        self.assertCountEqual(arches, selection.arches)
 
     def test_calls_stop_and_import_resources(self):
         owner = factory.make_admin()
@@ -1263,7 +1263,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         observed = json.loads(
             handler.fetch({"url": url, "keyring_data": keyring_data})
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": release,
@@ -1275,7 +1275,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             ],
             observed["releases"],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": arch,
@@ -1312,7 +1312,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         observed = json.loads(
             handler.fetch({"url": url, "keyring_data": keyring_data})
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": release,
@@ -1323,7 +1323,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             ],
             observed["releases"],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": arch,
@@ -1359,7 +1359,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         observed = json.loads(
             handler.fetch({"url": url, "keyring_data": keyring_data})
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": release,
@@ -1370,7 +1370,7 @@ class TestBootResourceFetch(MAASServerTestCase):
             ],
             observed["releases"],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": arch,
@@ -1419,7 +1419,7 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
             labels=["*"],
         )
         handler.delete_image({"id": resources[0].id})
-        self.assertItemsEqual([], reload_objects(BootResource, resources))
+        self.assertCountEqual([], reload_objects(BootResource, resources))
         self.assertIsNone(reload_object(selection))
 
     def test_deletes_generated_image(self):
