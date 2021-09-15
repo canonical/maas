@@ -2130,7 +2130,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual("bond0", bond0.name)
         self.assertTrue(bond0.enabled)
         self.assertEqual(bond0_untagged, bond0.vlan)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [parent.name for parent in bond0.parents.all()],
             ["eth0", "eth1"],
         )
@@ -2138,7 +2138,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             (address.alloc_type, address.ip, address.subnet)
             for address in bond0.ip_addresses.all()
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, bond0_ip, bond0_subnet)],
             bond0_addresses,
         )
@@ -2156,7 +2156,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             (address.alloc_type, address.ip, address.subnet)
             for address in bond0_vlan_nic.ip_addresses.all()
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, bond0_vlan_ip, bond0_vlan_subnet)],
             bond0_vlan_nic_addresses,
         )
@@ -2211,7 +2211,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual("br0", br0.name)
         self.assertTrue(br0.enabled)
         self.assertEqual(br0_untagged, br0.vlan)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [parent.name for parent in br0.parents.all()],
             ["eth0", "eth1"],
         )
@@ -2219,7 +2219,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             (address.alloc_type, address.ip, address.subnet)
             for address in br0.ip_addresses.all()
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, br0_ip, br0_subnet)], br0_addresses
         )
         br0_vlan_nic = VLANInterface.objects.get(
@@ -2236,7 +2236,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             (address.alloc_type, address.ip, address.subnet)
             for address in br0_vlan_nic.ip_addresses.all()
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, br0_vlan_ip, br0_vlan_subnet)],
             br0_vlan_nic_addresses,
         )
@@ -2371,7 +2371,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             (address.alloc_type, address.ip, address.subnet)
             for address in br0.ip_addresses.all()
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, br0_ip, br0_subnet)], br0_addresses
         )
         br0_nic = BridgeInterface.objects.get(
@@ -2503,7 +2503,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             (address.alloc_type, address.ip)
             for address in eth0.ip_addresses.all()
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, "10.0.0.2")],
             eth0_addresses,
         )
@@ -2594,7 +2594,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         ]
         self.update_interfaces(controller, data)
         eth0 = Interface.objects.get(name="eth0", node=controller)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             eth0.ip_addresses.values_list("ip", "subnet__cidr"),
             [
                 ("192.168.0.1", "192.168.0.0/24"),

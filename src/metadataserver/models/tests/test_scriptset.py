@@ -158,7 +158,7 @@ class TestScriptSetManager(MAASServerTestCase):
 
         expected_scripts = list(NODE_INFO_SCRIPTS)
         expected_scripts += [script.name for script in custom_scripts]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_scripts,
             [script_result.name for script_result in script_set],
         )
@@ -187,7 +187,7 @@ class TestScriptSetManager(MAASServerTestCase):
             for script_name, data in NODE_INFO_SCRIPTS.items()
             if data["run_on_controller"]
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_scripts,
             [script_result.name for script_result in script_set],
         )
@@ -208,7 +208,7 @@ class TestScriptSetManager(MAASServerTestCase):
 
         script_set = ScriptSet.objects.create_commissioning_script_set(node)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_scripts,
             [script_result.name for script_result in script_set],
         )
@@ -225,7 +225,7 @@ class TestScriptSetManager(MAASServerTestCase):
             node, scripts="none"
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(NODE_INFO_SCRIPTS),
             [script_result.name for script_result in script_set],
         )
@@ -268,7 +268,7 @@ class TestScriptSetManager(MAASServerTestCase):
                 node, script.tags
             )
 
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 expected_scripts,
                 [script_result.name for script_result in script_set],
             )
@@ -314,7 +314,7 @@ class TestScriptSetManager(MAASServerTestCase):
                 node, [other_script.name]
             )
 
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 expected_scripts,
                 [script_result.name for script_result in script_set],
             )
@@ -343,7 +343,7 @@ class TestScriptSetManager(MAASServerTestCase):
 
         script_set = ScriptSet.objects.create_commissioning_script_set(node)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_scripts,
             [script_result.name for script_result in script_set],
         )
@@ -380,7 +380,7 @@ class TestScriptSetManager(MAASServerTestCase):
                 script_selected_by_id.id,
             ],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(expected_scripts),
             [script_result.name for script_result in script_set],
         )
@@ -608,7 +608,7 @@ class TestScriptSetManager(MAASServerTestCase):
             node, [script.name], {script.name: {"storage": "all"}}
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [bd.name for bd in node.physicalblockdevice_set],
             [
                 script_result.parameters["storage"]["value"]["name"]
@@ -649,7 +649,7 @@ class TestScriptSetManager(MAASServerTestCase):
 
         script_set = ScriptSet.objects.create_testing_script_set(node)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_scripts,
             [script_result.name for script_result in script_set],
         )
@@ -688,7 +688,7 @@ class TestScriptSetManager(MAASServerTestCase):
             ],
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(expected_scripts),
             [script_result.name for script_result in script_set],
         )
@@ -892,7 +892,7 @@ class TestScriptSetManager(MAASServerTestCase):
             node, [script.name], {script.name: {"storage": "all"}}
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [bd.name for bd in node.physicalblockdevice_set],
             [
                 script_result.parameters["storage"]["value"]["name"]
@@ -921,7 +921,7 @@ class TestScriptSetManager(MAASServerTestCase):
         node = factory.make_Node()
 
         script_set = ScriptSet.objects.create_installation_script_set(node)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [CURTIN_INSTALL_LOG],
             [script_result.name for script_result in script_set],
         )
@@ -1043,7 +1043,7 @@ class TestScriptSetManager(MAASServerTestCase):
         )
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         script_set = ScriptSet.objects.create_deployed_machine_script_set(node)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 (script_result.script, script_result.status)
                 for script_result in script_set.scriptresult_set.all()
@@ -1241,7 +1241,7 @@ class TestScriptSet(MAASServerTestCase):
 
         script_set.select_for_hardware_scripts()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(NODE_INFO_SCRIPTS),
             [script_result.name for script_result in script_set],
         )
@@ -1277,7 +1277,7 @@ class TestScriptSet(MAASServerTestCase):
             ]
             script_set.select_for_hardware_scripts()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(NODE_INFO_SCRIPTS) + [script.name],
             [script_result.name for script_result in script_set],
         )
@@ -1295,7 +1295,7 @@ class TestScriptSet(MAASServerTestCase):
 
         script_set.select_for_hardware_scripts()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(NODE_INFO_SCRIPTS) + [script.name],
             [script_result.name for script_result in script_set],
         )
@@ -1318,7 +1318,7 @@ class TestScriptSet(MAASServerTestCase):
 
         script_set.select_for_hardware_scripts()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             list(NODE_INFO_SCRIPTS) + [script.name],
             [script_result.name for script_result in script_set],
         )
@@ -1630,7 +1630,7 @@ class TestScriptSet(MAASServerTestCase):
         script_set.regenerate()
 
         self.assertIsNone(reload_object(pending_storage_script_result))
-        self.assertItemsEqual([], list(script_set))
+        self.assertEqual([], list(script_set))
         expected_msg = (
             "Removing Script %s from ScriptSet due to regeneration "
             "error - {'runtime': ['Must be an int']}"

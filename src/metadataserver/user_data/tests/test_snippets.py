@@ -52,21 +52,19 @@ class TestSnippets(MAASTestCase):
         snippets_dir = self.make_dir()
         factory.make_file(snippets_dir, "snippet")
         factory.make_file(snippets_dir, ".backup.pyc")
-        self.assertItemsEqual(["snippet"], list_snippets(snippets_dir))
+        self.assertEqual(["snippet"], list_snippets(snippets_dir))
 
     def test_get_snippet_context(self):
         contents = factory.make_string()
         snippets_dir = self.make_dir()
         factory.make_file(snippets_dir, "snippet.py", contents=contents)
         snippets = get_snippet_context(snippets_dir=snippets_dir)
-        self.assertItemsEqual(
-            ["base_user_data_sh", "snippet_py"], snippets.keys()
-        )
+        self.assertEqual({"base_user_data_sh", "snippet_py"}, snippets.keys())
         self.assertEqual(contents, snippets["snippet_py"])
 
     def test_get_snippet_always_contains_base_user_data(self):
         snippets_dir = self.make_dir()
-        self.assertItemsEqual(
-            ["base_user_data_sh"],
+        self.assertEqual(
+            {"base_user_data_sh"},
             get_snippet_context(snippets_dir=snippets_dir).keys(),
         )

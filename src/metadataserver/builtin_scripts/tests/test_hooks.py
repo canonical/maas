@@ -1458,7 +1458,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, make_lxd_output_json(), 0)
         self.assertThat(mock_set_initial_net_config, MockNotCalled())
         # Verify network device information was collected
-        self.assertItemsEqual(
+        self.assertEqual(
             ["Intel Corporation", "Intel Corporation", "Intel Corporation"],
             [iface.vendor for iface in node.interface_set.all()],
         )
@@ -1630,7 +1630,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, json.dumps(data).encode(), 0)
 
         self.assertEqual(32158, node.memory)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [32158, 0], [numa.memory for numa in node.numanode_set.all()]
         )
 
@@ -2276,7 +2276,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         for index, device in enumerate(devices):
             created_names.append(device.name)
             self.assertEqual(device.numa_node, numa_nodes[index])
-        self.assertItemsEqual(device_names, created_names)
+        self.assertCountEqual(device_names, created_names)
 
     def test_does_nothing_if_skip_storage(self):
         node = factory.make_Node(skip_storage=True)
@@ -2303,7 +2303,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             device.name
             for device in PhysicalBlockDevice.objects.filter(node=node)
         ]
-        self.assertItemsEqual(device_names, created_names)
+        self.assertCountEqual(device_names, created_names)
 
     def test_skips_read_only_and_cdroms(self):
         node = factory.make_Node()
@@ -2317,7 +2317,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             device.name
             for device in PhysicalBlockDevice.objects.filter(node=node)
         ]
-        self.assertItemsEqual([], created_names)
+        self.assertCountEqual([], created_names)
 
     def test_handles_renamed_block_device(self):
         node = factory.make_Node()
@@ -2335,7 +2335,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             device.name
             for device in PhysicalBlockDevice.objects.filter(node=node)
         ]
-        self.assertItemsEqual(device_names, created_names)
+        self.assertCountEqual(device_names, created_names)
 
     def test_handles_new_block_device_in_front(self):
         # First simulate a node being commissioned with two disks. For
@@ -2378,7 +2378,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             (device.name, device.serial)
             for device in PhysicalBlockDevice.objects.filter(node=node)
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 ("sdx", NEW_NAMES["storage"]["disks"][0]["serial"]),
                 ("sdy", NEW_NAMES["storage"]["disks"][1]["serial"]),
@@ -2403,7 +2403,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             device.id
             for device in PhysicalBlockDevice.objects.filter(node=node)
         ]
-        self.assertItemsEqual(created_ids_two, created_ids_one)
+        self.assertCountEqual(created_ids_two, created_ids_one)
 
     def test_doesnt_reset_boot_disk(self):
         node = factory.make_Node()
@@ -3257,8 +3257,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
         # Ensure the MAC object moved over to node2.
-        self.assertItemsEqual([], Interface.objects.filter(node=node1))
-        self.assertItemsEqual([], Interface.objects.filter(node=node1))
+        self.assertCountEqual([], Interface.objects.filter(node=node1))
 
     def test_reassign_interfaces(self):
         """Test whether we can assign interfaces previously connected to a
@@ -3284,11 +3283,10 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
         # Now make sure all the objects moved to the second node.
-        self.assertItemsEqual([], Interface.objects.filter(node=node1))
-        self.assertItemsEqual([], Interface.objects.filter(node=node1))
+        self.assertCountEqual([], Interface.objects.filter(node=node1))
 
         # ... and ensure that the interface was deleted.
-        self.assertItemsEqual([], Interface.objects.filter(id=interface_id))
+        self.assertCountEqual([], Interface.objects.filter(id=interface_id))
 
     def test_deletes_virtual_interfaces_with_shared_mac(self):
         # Note: since this VLANInterface will be linked to the default VLAN

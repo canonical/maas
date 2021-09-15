@@ -233,7 +233,7 @@ class TestDetectMegaRAIDConfig(MAASTestCase):
             ]
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             scsi_bus_nums,
             smartctl.detect_megaraid_config(factory.make_name("blockdevice")),
         )
@@ -274,8 +274,8 @@ class TestCheckSMARTSupport(MAASTestCase):
             "Product: %s\n"
             "SMART support is: Available\n" % factory.make_name("product")
         )
-        self.assertItemsEqual(
-            [None, []],
+        self.assertEqual(
+            (None, []),
             smartctl.check_SMART_support(factory.make_name("blockdevice")),
         )
 
@@ -284,8 +284,8 @@ class TestCheckSMARTSupport(MAASTestCase):
         mock_run_smartctl.return_value = (
             "SMART overall-health self-assessment test result: "
         )
-        self.assertItemsEqual(
-            [None, []],
+        self.assertEqual(
+            (None, []),
             smartctl.check_SMART_support(factory.make_name("blockdevice")),
         )
 
@@ -296,8 +296,8 @@ class TestCheckSMARTSupport(MAASTestCase):
         )
         scsi_ids = [random.randint(0, 127) for _ in range(3)]
         self.patch(smartctl, "detect_megaraid_config").return_value = scsi_ids
-        self.assertItemsEqual(
-            ["megaraid", scsi_ids],
+        self.assertEqual(
+            ("megaraid", scsi_ids),
             smartctl.check_SMART_support(factory.make_name("blockdevice")),
         )
 

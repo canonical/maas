@@ -411,4 +411,4 @@ class TestScript(MAASServerTestCase):
         for hw_type, hw_type_label in HARDWARE_TYPE_CHOICES:
             script.hardware_type = hw_type
             script.save()
-            self.assertItemsEqual([hw_type_label.lower()], script.tags)
+            self.assertEqual([hw_type_label.lower()], script.tags)

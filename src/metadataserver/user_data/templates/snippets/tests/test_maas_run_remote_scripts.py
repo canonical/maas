@@ -1622,7 +1622,7 @@ class TestParseParameters(MAASTestCase):
         ).encode()
         maas_run_remote_scripts._block_devices = None
 
-        self.assertItemsEqual(expected_blockdevs, get_block_devices())
+        self.assertCountEqual(expected_blockdevs, get_block_devices())
         self.assertTrue(mock_get_storage_model_from_udev.called)
 
     def test_get_block_devices_cached(self):
@@ -1630,7 +1630,7 @@ class TestParseParameters(MAASTestCase):
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
         maas_run_remote_scripts._block_devices = block_devices
 
-        self.assertItemsEqual(block_devices, get_block_devices())
+        self.assertCountEqual(block_devices, get_block_devices())
         self.assertThat(mock_check_output, MockNotCalled())
 
     def test_get_block_devices_cached_error(self):
@@ -1882,7 +1882,7 @@ class TestParseParameters(MAASTestCase):
             if param["type"] == "interface"
         }
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 os.path.join(scripts_dir, script["path"]),
                 "--runtime=%s" % script["parameters"]["runtime"]["value"],
@@ -1961,7 +1961,7 @@ class TestParseParameters(MAASTestCase):
             if param["type"] == "interface"
         }
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 os.path.join(scripts_dir, script["path"]),
                 "--foo",

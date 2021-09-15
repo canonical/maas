@@ -809,7 +809,7 @@ class TestMetadataCommon(MAASServerTestCase):
         url = reverse(view_name, args=["latest", ""])
         response = client.get(url)
         self.assertIn("text/plain", response["Content-Type"])
-        self.assertItemsEqual(
+        self.assertCountEqual(
             MetaDataHandler.subfields,
             [
                 field.decode(settings.DEFAULT_CHARSET)
@@ -2080,12 +2080,12 @@ class TestMAASScripts(MAASServerTestCase):
         )
         self.assertEqual("application/x-tar", response["Content-Type"])
         tar = tarfile.open(mode="r", fileobj=BytesIO(response.content))
-        commissioning_scripts = [
+        commissioning_scripts = {
             name.split("/", 1)[-1]
             for name in tar.getnames()
             if name.startswith("commissioning/")
-        ]
-        self.assertCountEqual(NODE_INFO_SCRIPTS.keys(), commissioning_scripts)
+        }
+        self.assertEqual(NODE_INFO_SCRIPTS.keys(), commissioning_scripts)
 
         end_time = ceil(time.time())
 
@@ -3587,9 +3587,9 @@ class TestNewAPI(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.OK))
         node = reload_object(node)
         self.assertIsNotNone(node.current_commissioning_script_set)
-        self.assertItemsEqual(
+        self.assertEqual(
             NODE_INFO_SCRIPTS.keys(),
-            [script.name for script in node.current_commissioning_script_set],
+            {script.name for script in node.current_commissioning_script_set},
         )
         self.assertIsNone(node.current_testing_script_set)
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)

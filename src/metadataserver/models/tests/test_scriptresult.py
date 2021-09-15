@@ -850,7 +850,7 @@ class TestScriptResult(MAASServerTestCase):
         # Script result from another node
         factory.make_ScriptResult(script=script)
         script_result = script_results[-1]
-        self.assertItemsEqual(script_results, script_result.history)
+        self.assertCountEqual(script_results, script_result.history)
 
     def test_history_without_script(self):
         script_name = factory.make_name("script_name")
@@ -864,7 +864,7 @@ class TestScriptResult(MAASServerTestCase):
         # Script result from another node
         factory.make_ScriptResult(script_name=script_name)
         script_result = script_results[-1]
-        self.assertItemsEqual(script_results, script_result.history)
+        self.assertCountEqual(script_results, script_result.history)
 
     def test_history_query_count(self):
         script_name = factory.make_name("script_name")
@@ -908,7 +908,7 @@ class TestScriptResult(MAASServerTestCase):
         # Script from another node
         factory.make_ScriptResult(script=script)
         script_result = script_results[-1]
-        self.assertItemsEqual(script_results, script_result.history)
+        self.assertCountEqual(script_results, script_result.history)
 
     def test_not_suppressed_by_default(self):
         script_result = factory.make_ScriptResult()

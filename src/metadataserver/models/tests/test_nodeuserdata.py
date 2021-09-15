@@ -35,12 +35,12 @@ class TestNodeUserDataManager(MAASServerTestCase):
         node = factory.make_Node()
         NodeUserData.objects.set_user_data(node, b"original")
         NodeUserData.objects.set_user_data(node, None)
-        self.assertItemsEqual([], NodeUserData.objects.filter(node=node))
+        self.assertCountEqual([], NodeUserData.objects.filter(node=node))
 
     def test_set_user_data_to_None_when_none_exists_does_nothing(self):
         node = factory.make_Node()
         NodeUserData.objects.set_user_data(node, None)
-        self.assertItemsEqual([], NodeUserData.objects.filter(node=node))
+        self.assertCountEqual([], NodeUserData.objects.filter(node=node))
 
     def test_get_user_data_retrieves_data(self):
         node = factory.make_Node()

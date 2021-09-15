@@ -467,7 +467,7 @@ class TestStatusWorkerService(MAASServerTestCase):
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status
         )
         # Check last node event.
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "'curtin' Commissioning",
                 "Commissioning failed, cloud-init reported a failure (refer "
