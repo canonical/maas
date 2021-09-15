@@ -2928,8 +2928,6 @@ class Node(CleanSave, TimestampedModel):
             and bmc.bmc_type == BMC_TYPE.POD
             and Capabilities.COMPOSABLE in bmc.capabilities
         ):
-            from maasserver.forms.pods import request_commissioning_results
-
             pod = bmc.as_pod()
 
             client_idents = pod.get_client_identifiers()
@@ -2978,7 +2976,6 @@ class Node(CleanSave, TimestampedModel):
                     deferToDatabase(_save, self.id, pod.id, result)
                 )
             )
-            d.addCallback(lambda _: request_commissioning_results(pod))
         else:
             maaslog.info("%s: Deleting node", self.hostname)
 
