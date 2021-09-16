@@ -96,7 +96,7 @@ class VersionedTextFileTest(MAASServerTestCase):
             textfile = textfile.update(factory.make_string())
             textfile_ids.append(textfile.id)
         self.assertEqual(textfile, textfile.revert(0))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             textfile_ids, [f.id for f in textfile.previous_versions()]
         )
 

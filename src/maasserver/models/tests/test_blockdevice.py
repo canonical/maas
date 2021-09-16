@@ -217,7 +217,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         ]
         for _ in range(3):
             factory.make_BlockDevice(tags=other_tags)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             devices_with_tags, BlockDevice.objects.filter_by_tags([tags[0]])
         )
 
@@ -229,7 +229,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         ]
         for _ in range(3):
             factory.make_BlockDevice(tags=other_tags)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             devices_with_tags, BlockDevice.objects.filter_by_tags(tags)
         )
 
@@ -237,7 +237,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         tags = [factory.make_name("tag") for _ in range(3)]
         for _ in range(3):
             factory.make_BlockDevice(tags=tags)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [], BlockDevice.objects.filter_by_tags([factory.make_name("tag")])
         )
 
@@ -254,7 +254,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
             for tag in tags:
                 yield tag
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             devices_with_tags,
             BlockDevice.objects.filter_by_tags(tag_generator()),
         )
@@ -282,7 +282,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
             factory.make_Filesystem(
                 block_device=factory.make_BlockDevice(node=node)
             )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             free_devices,
             BlockDevice.objects.get_free_block_devices_for_node(node),
         )
@@ -314,7 +314,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
                 filesystem_group
             )
         )
-        self.assertItemsEqual(block_devices, block_devices_in_filesystem_group)
+        self.assertCountEqual(block_devices, block_devices_in_filesystem_group)
         self.assertNotIn(
             block_device_with_partitions, block_devices_in_filesystem_group
         )
@@ -390,21 +390,21 @@ class TestBlockDevice(MAASServerTestCase):
         block_device = BlockDevice()
         tag = factory.make_name("tag")
         block_device.add_tag(tag)
-        self.assertItemsEqual([tag], block_device.tags)
+        self.assertEqual([tag], block_device.tags)
 
     def test_add_tag_doesnt_duplicate(self):
         block_device = BlockDevice()
         tag = factory.make_name("tag")
         block_device.add_tag(tag)
         block_device.add_tag(tag)
-        self.assertItemsEqual([tag], block_device.tags)
+        self.assertEqual([tag], block_device.tags)
 
     def test_remove_tag_deletes_tag(self):
         block_device = BlockDevice()
         tag = factory.make_name("tag")
         block_device.add_tag(tag)
         block_device.remove_tag(tag)
-        self.assertItemsEqual([], block_device.tags)
+        self.assertEqual([], block_device.tags)
 
     def test_remove_tag_doesnt_error_on_missing_tag(self):
         block_device = BlockDevice()

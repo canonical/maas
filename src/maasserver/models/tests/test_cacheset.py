@@ -29,7 +29,7 @@ class TestCacheSetManager(MAASServerTestCase):
     def test_get_cache_sets_for_node(self):
         node = factory.make_Node()
         cache_sets = [factory.make_CacheSet(node=node) for _ in range(3)]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             cache_sets, CacheSet.objects.get_cache_sets_for_node(node)
         )
 

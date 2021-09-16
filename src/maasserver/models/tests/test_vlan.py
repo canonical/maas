@@ -29,7 +29,7 @@ class TestVLANManager(MAASServerTestCase):
         vlan = factory.make_VLAN()
         factory.make_VLAN()
         vid = vlan.vid
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers("%s" % vid), [vlan]
         )
 
@@ -37,7 +37,7 @@ class TestVLANManager(MAASServerTestCase):
         factory.make_VLAN()
         vlan = factory.make_VLAN(name="infinite-improbability")
         factory.make_VLAN()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers("infinite-improbability"), [vlan]
         )
 
@@ -45,7 +45,7 @@ class TestVLANManager(MAASServerTestCase):
         factory.make_VLAN()
         vlan = factory.make_VLAN(name="infinite-improbability")
         factory.make_VLAN()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers("name:infinite-improbability"),
             [vlan],
         )
@@ -55,7 +55,7 @@ class TestVLANManager(MAASServerTestCase):
         vlan = factory.make_VLAN()
         vid = vlan.vid
         factory.make_VLAN()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers("vid:%d" % vid), [vlan]
         )
 
@@ -64,7 +64,7 @@ class TestVLANManager(MAASServerTestCase):
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
         factory.make_VLAN()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers("space:%s" % space.name), [vlan]
         )
 
@@ -73,7 +73,7 @@ class TestVLANManager(MAASServerTestCase):
         space = factory.make_Space()
         vlan = factory.make_VLAN(space=space)
         factory.make_VLAN()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers("space:%s" % space.id), [vlan]
         )
 
@@ -82,7 +82,7 @@ class TestVLANManager(MAASServerTestCase):
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         factory.make_VLAN()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers("subnet:%s" % subnet.id), [vlan]
         )
 
@@ -92,7 +92,7 @@ class TestVLANManager(MAASServerTestCase):
         factory.make_VLAN()
         vlan = factory.make_VLAN(fabric=fabric)
         factory.make_VLAN()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             VLAN.objects.filter_by_specifiers(
                 "fabric:%s,vid:%d" % (fabric.name, vlan.vid)
             ),
@@ -160,7 +160,7 @@ class TestVLAN(MAASServerTestCase):
             INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent]
         )
         vlan.delete()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [], VLANInterface.objects.filter(id=interface.id)
         )
 
@@ -175,7 +175,7 @@ class TestVLAN(MAASServerTestCase):
         reconnected_interfaces = PhysicalInterface.objects.filter(
             id=interface.id
         )
-        self.assertItemsEqual([interface], reconnected_interfaces)
+        self.assertCountEqual([interface], reconnected_interfaces)
         reconnected_interface = reconnected_interfaces[0]
         self.assertEqual(reconnected_interface.vlan, fabric.get_default_vlan())
 
@@ -222,7 +222,7 @@ class TestVLAN(MAASServerTestCase):
     def test_connected_rack_controllers(self):
         vlan = factory.make_VLAN()
         racks = [factory.make_RackController(vlan=vlan) for _ in range(3)]
-        self.assertItemsEqual(racks, vlan.connected_rack_controllers())
+        self.assertCountEqual(racks, vlan.connected_rack_controllers())
 
 
 class TestVLANVidValidation(MAASServerTestCase):

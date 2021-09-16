@@ -124,7 +124,7 @@ class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
     def test_user_returns_all(self):
         user = factory.make_User()
         factory.make_ResourcePool()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             ResourcePool.objects.all(),
             ResourcePool.objects.get_resource_pools(user),
         )
@@ -136,7 +136,7 @@ class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
         factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
         self.rbac_store.allow(user.username, pool, "view")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [pool], ResourcePool.objects.get_resource_pools(user)
         )
 
@@ -147,6 +147,6 @@ class TestResourcePoolManagerGetResourcePools(MAASServerTestCase):
         factory.make_ResourcePool()
         self.rbac_store.add_pool(pool)
         self.rbac_store.allow(user.username, pool, "view-all")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [pool], ResourcePool.objects.get_resource_pools(user)
         )

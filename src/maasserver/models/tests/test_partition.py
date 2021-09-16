@@ -59,7 +59,7 @@ class TestPartitionManager(MAASServerTestCase):
                     size=MIN_PARTITION_SIZE
                 )
             )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             free_partitions,
             Partition.objects.get_free_partitions_for_node(node),
         )
@@ -86,7 +86,7 @@ class TestPartitionManager(MAASServerTestCase):
                 filesystem_group
             )
         )
-        self.assertItemsEqual([partition], partitions_in_filesystem_group)
+        self.assertCountEqual([partition], partitions_in_filesystem_group)
 
     def test_get_partition_by_id_or_name_returns_valid_with_id(self):
         partition = factory.make_Partition()
@@ -181,7 +181,7 @@ class TestPartitionManager(MAASServerTestCase):
         ]
         for _ in range(3):
             factory.make_Partition(tags=other_tags)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partitions_with_tags, Partition.objects.filter_by_tags([tags[0]])
         )
 
@@ -193,7 +193,7 @@ class TestPartitionManager(MAASServerTestCase):
         ]
         for _ in range(3):
             factory.make_Partition(tags=other_tags)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             partitions_with_tags, Partition.objects.filter_by_tags(tags)
         )
 
@@ -201,7 +201,7 @@ class TestPartitionManager(MAASServerTestCase):
         tags = [factory.make_name("tag") for _ in range(3)]
         for _ in range(3):
             factory.make_Partition(tags=tags)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [], Partition.objects.filter_by_tags([factory.make_name("tag")])
         )
 
@@ -218,7 +218,7 @@ class TestPartitionManager(MAASServerTestCase):
             for tag in tags:
                 yield tag
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             devices_with_tags,
             Partition.objects.filter_by_tags(tag_generator()),
         )
@@ -478,7 +478,7 @@ class TestPartition(MAASServerTestCase):
         layout = VMFS6StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [1, 2, 3, 5, 6, 7, 8, 9],
             [part.get_partition_number() for part in pt.partitions.all()],
         )
@@ -491,7 +491,7 @@ class TestPartition(MAASServerTestCase):
         layout = VMFS7StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [1, 5, 6, 7, 8],
             [part.get_partition_number() for part in pt.partitions.all()],
         )
@@ -694,18 +694,18 @@ class TestPartition(MAASServerTestCase):
         partition = Partition()
         tag = factory.make_name("tag")
         partition.add_tag(tag)
-        self.assertItemsEqual([tag], partition.tags)
+        self.assertEqual([tag], partition.tags)
 
     def test_add_tag_doesnt_duplicate(self):
         partition = Partition()
         tag = factory.make_name("tag")
         partition.add_tag(tag)
         partition.add_tag(tag)
-        self.assertItemsEqual([tag], partition.tags)
+        self.assertEqual([tag], partition.tags)
 
     def test_remove_tag_deletes_tag(self):
         partition = Partition()
         tag = factory.make_name("tag")
         partition.add_tag(tag)
         partition.remove_tag(tag)
-        self.assertItemsEqual([], partition.tags)
+        self.assertEqual([], partition.tags)

@@ -55,7 +55,7 @@ class TestKeySource(MAASServerTestCase):
             mock_get_protocol_keys, MockCalledOnceWith(protocol, auth_id)
         )
         self.expectThat(SSHKey.objects.count(), Equals(2))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             returned_sshkeys, SSHKey.objects.filter(keysource=keysource)
         )
 

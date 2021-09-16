@@ -42,7 +42,7 @@ class TestFilesystemManager(MAASServerTestCase):
         filesystem_on_bd = factory.make_Filesystem(block_device=block_device)
         filesystem_on_partition = factory.make_Filesystem(partition=partition)
         filesystem_on_node = factory.make_Filesystem(node=node)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 root_fs,
                 filesystem_on_bd,
@@ -129,7 +129,7 @@ class TestFilesystem(MAASServerTestCase):
             level=FILESYSTEM_GROUP_TYPE.RAID_1, partitions=partitions
         )
         fs = factory.make_Filesystem(block_device=fs_group.virtual_device)
-        self.assertItemsEqual(fs.get_physical_block_devices(), block_devices)
+        self.assertCountEqual(fs.get_physical_block_devices(), block_devices)
 
     def test_get_size_returns_partition_size(self):
         partition = factory.make_Partition()

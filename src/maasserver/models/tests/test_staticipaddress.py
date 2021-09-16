@@ -72,7 +72,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         ip_v6 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [ip_v4],
             StaticIPAddress.objects.filter_by_ip_family(IPADDRESS_FAMILY.IPv4),
         )
@@ -90,7 +90,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         ip_v6 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [ip_v6],
             StaticIPAddress.objects.filter_by_ip_family(IPADDRESS_FAMILY.IPv6),
         )
@@ -108,7 +108,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         ip_v6 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [ip_v4],
             StaticIPAddress.objects.filter_by_subnet_cidr_family(
                 IPADDRESS_FAMILY.IPv4
@@ -128,7 +128,7 @@ class TestStaticIPAddressManager(MAASServerTestCase):
         ip_v6 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [ip_v6],
             StaticIPAddress.objects.filter_by_subnet_cidr_family(
                 IPADDRESS_FAMILY.IPv6

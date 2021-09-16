@@ -80,7 +80,7 @@ class TestInterfaceManager(MAASServerTestCase):
         physical = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         bond = factory.make_Interface(INTERFACE_TYPE.BOND, parents=[physical])
         vlan = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[bond])
-        self.assertItemsEqual([physical, bond, vlan], Interface.objects.all())
+        self.assertCountEqual([physical, bond, vlan], Interface.objects.all())
 
     def test_get_interface_or_404_returns_interface(self):
         node = factory.make_Node()
@@ -393,38 +393,38 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             ip="2001:db8::1", interface=iface3, subnet=subnet2
         )
         # First try with the '/prefixlen' string appended.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("%s/24" % ip1.ip), [iface1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("%s/64" % ip3.ip), [iface3]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["%s/24" % ip1.ip, "%s/64" % ip3.ip]
             ),
             [iface1, iface3],
         )
         # Next, try plain old IP addresses.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("%s" % ip1.ip), [iface1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("%s" % ip3.ip), [iface3]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["%s" % ip1.ip, "%s" % ip3.ip]
             ),
             [iface1, iface3],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(iface1.name), [iface1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(iface2.name), [iface2]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(iface3.name), [iface3]
         )
 
@@ -435,14 +435,14 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         vlan2 = factory.make_VLAN(vid=2, fabric=fabric2)
         iface1 = factory.make_Interface(vlan=vlan1)
         iface2 = factory.make_Interface(vlan=vlan2)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("fabric_class:10g"),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("fabric_class:1g"), [iface2]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["fabric_class:1g", "fabric_class:10g"]
             ),
@@ -456,13 +456,13 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         vlan2 = factory.make_VLAN(vid=2, fabric=fabric2)
         iface1 = factory.make_Interface(vlan=vlan1)
         iface2 = factory.make_Interface(vlan=vlan2)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("fabric:fabric1"), [iface1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("fabric:fabric2"), [iface2]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["fabric:fabric1", "fabric:fabric2"]
             ),
@@ -472,15 +472,15 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_matches_interface_id(self):
         iface1 = factory.make_Interface()
         iface2 = factory.make_Interface()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("id:%s" % iface1.id),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("id:%s" % iface2.id),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["id:%s" % iface1.id, "id:%s" % iface2.id]
             ),
@@ -503,15 +503,15 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         iface2 = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[parent2]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("vid:%s" % vlan1.vid),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("vid:%s" % vlan2.vid),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["vid:%s" % vlan1.vid, "vid:%s" % vlan2.vid]
             ),
@@ -534,15 +534,15 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         iface2 = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan2, parents=[parent2]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("vlan:%s" % vlan1.vid),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("vlan:%s" % vlan2.vid),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["vlan:%s" % vlan1.vid, "vlan:%s" % vlan2.vid]
             ),
@@ -560,19 +560,19 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         )
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 "subnet:cidr:%s" % subnet1.cidr
             ),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 "subnet:cidr:%s" % subnet2.cidr
             ),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 [
                     "subnet:cidr:%s" % subnet1.cidr,
@@ -593,19 +593,19 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         )
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 "subnet_cidr:%s" % subnet1.cidr
             ),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 "subnet_cidr:%s" % subnet2.cidr
             ),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 [
                     "subnet_cidr:%s" % subnet1.cidr,
@@ -630,15 +630,15 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         )
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("space:%s" % space1.name),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("space:%s" % space2.name),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["space:%s" % space1.name, "space:%s" % space2.name]
             ),
@@ -660,15 +660,15 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         )
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("space:%s" % space1.name),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("space:%s" % space2.name),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["space:%s" % space1.name, "space:%s" % space2.name]
             ),
@@ -689,17 +689,17 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         )
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("space:%s" % space1.name),
             [iface1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 "space:%s" % Space.UNDEFINED
             ),
             [iface2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers(
                 ["space:%s" % space1.name, "space:%s" % Space.UNDEFINED]
             ),
@@ -715,16 +715,16 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             iftype=INTERFACE_TYPE.VLAN, parents=[physical]
         )
         unknown = factory.make_Interface(iftype=INTERFACE_TYPE.UNKNOWN)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("type:physical"), [physical]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("type:vlan"), [vlan]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("type:bond"), [bond]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("type:unknown"), [unknown]
         )
 
@@ -745,10 +745,10 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             subnet=subnet2,
             interface=iface2,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("ip:10.0.0.1"), [iface1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Interface.objects.filter_by_specifiers("ip:10.0.1.1"), [iface2]
         )
 
@@ -777,7 +777,7 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
             subnet=subnet3,
             interface=iface3,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [iface1, iface2],
             Interface.objects.filter_by_specifiers("mode:unconfigured"),
         )
@@ -800,17 +800,17 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         nodes1, map1 = Interface.objects.get_matching_node_map(
             "space:%s" % space1.name
         )
-        self.assertItemsEqual(nodes1, [node1.id])
+        self.assertCountEqual(nodes1, [node1.id])
         self.assertEqual(map1, {node1.id: [iface1.id]})
         nodes2, map2 = Interface.objects.get_matching_node_map(
             "space:%s" % space2.name
         )
-        self.assertItemsEqual(nodes2, [node2.id])
+        self.assertEqual(nodes2, {node2.id})
         self.assertEqual(map2, {node2.id: [iface2.id]})
         nodes3, map3 = Interface.objects.get_matching_node_map(
             ["space:%s" % space1.name, "space:%s" % space2.name]
         )
-        self.assertItemsEqual(nodes3, [node1.id, node2.id])
+        self.assertEqual(nodes3, {node1.id, node2.id})
         self.assertEqual(map3, {node1.id: [iface1.id], node2.id: [iface2.id]})
 
     def test_get_matching_node_map_with_multiple_interfaces(self):
@@ -833,18 +833,18 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         nodes1, map1 = Interface.objects.get_matching_node_map(
             "space:%s" % space1.name
         )
-        self.assertItemsEqual(nodes1, {node1.id})
+        self.assertEqual(nodes1, {node1.id})
         map1[node1.id].sort()
         self.assertEqual(map1, {node1.id: sorted([iface1.id, iface3.id])})
         nodes2, map2 = Interface.objects.get_matching_node_map(
             "space:%s" % space2.name
         )
-        self.assertItemsEqual(nodes2, {node2.id})
+        self.assertEqual(nodes2, {node2.id})
         self.assertEqual(map2, {node2.id: [iface2.id]})
         nodes3, map3 = Interface.objects.get_matching_node_map(
             ["space:%s" % space1.name, "space:%s" % space2.name]
         )
-        self.assertItemsEqual(nodes3, {node1.id, node2.id})
+        self.assertEqual(nodes3, {node1.id, node2.id})
         map3[node1.id].sort()
         self.assertEqual(
             map3,
@@ -860,9 +860,9 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         )
         # Other interface with subset of tags.
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=tags[1:])
-        nodes, map = Interface.objects.get_matching_node_map(tags_specifier)
-        self.assertItemsEqual(nodes, [node.id])
-        self.assertEqual(map, {node.id: [interface.id]})
+        nodes, map_ = Interface.objects.get_matching_node_map(tags_specifier)
+        self.assertEqual(nodes, {node.id})
+        self.assertEqual(map_, {node.id: [interface.id]})
 
     def test_get_matching_node_map_by_tag(self):
         tags = [factory.make_name("tag")]
@@ -870,11 +870,11 @@ class TestInterfaceQueriesMixin(MAASServerTestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node=node, tags=tags
         )
-        nodes, map = Interface.objects.get_matching_node_map(
+        nodes, map_ = Interface.objects.get_matching_node_map(
             "tag:%s" % random.choice(tags)
         )
-        self.assertItemsEqual(nodes, [node.id])
-        self.assertEqual(map, {node.id: [interface.id]})
+        self.assertEqual(nodes, {node.id})
+        self.assertEqual(map_, {node.id: [interface.id]})
 
 
 class TestAllInterfacesParentsFirst(MAASServerTestCase):
@@ -1294,20 +1294,20 @@ class InterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[])
         tag = factory.make_name("tag")
         interface.add_tag(tag)
-        self.assertItemsEqual([tag], interface.tags)
+        self.assertEqual([tag], interface.tags)
 
     def test_add_tag_doesnt_duplicate(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[])
         tag = factory.make_name("tag")
         interface.add_tag(tag)
         interface.add_tag(tag)
-        self.assertItemsEqual([tag], interface.tags)
+        self.assertEqual([tag], interface.tags)
 
     def test_remove_tag_deletes_tag(self):
         tag = factory.make_name("tag")
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[tag])
         interface.remove_tag(tag)
-        self.assertItemsEqual([], interface.tags)
+        self.assertEqual([], interface.tags)
 
     def test_remove_tag_doesnt_error_on_missing_tag(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, tags=[])
@@ -1536,7 +1536,7 @@ class TestPhysicalInterface(MAASServerTestCase):
         factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent]
         )
-        self.assertItemsEqual([parent], PhysicalInterface.objects.all())
+        self.assertCountEqual([parent], PhysicalInterface.objects.all())
 
     def test_serialize(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -1795,7 +1795,7 @@ class VLANInterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.VLAN, vlan=vlan, parents=[parent]
         )
-        self.assertItemsEqual([interface], VLANInterface.objects.all())
+        self.assertCountEqual([interface], VLANInterface.objects.all())
 
     def test_get_node_returns_parent_node(self):
         node = factory.make_Node()
@@ -1963,7 +1963,7 @@ class BondInterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[parent1, parent2]
         )
-        self.assertItemsEqual([interface], BondInterface.objects.all())
+        self.assertCountEqual([interface], BondInterface.objects.all())
 
     def test_get_node_returns_parent_node(self):
         node = factory.make_Node()
@@ -1972,7 +1972,7 @@ class BondInterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.BOND, parents=[parent1, parent2]
         )
-        self.assertItemsEqual([interface], BondInterface.objects.all())
+        self.assertCountEqual([interface], BondInterface.objects.all())
         self.assertEqual(node, interface.get_node())
 
     def test_removed_if_underlying_interfaces_gets_removed(self):
@@ -2116,7 +2116,7 @@ class BridgeInterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent1, parent2]
         )
-        self.assertItemsEqual([interface], BridgeInterface.objects.all())
+        self.assertCountEqual([interface], BridgeInterface.objects.all())
 
     def test_get_node_returns_parent_node(self):
         node = factory.make_Node()
@@ -2125,7 +2125,7 @@ class BridgeInterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE, parents=[parent1, parent2]
         )
-        self.assertItemsEqual([interface], BridgeInterface.objects.all())
+        self.assertCountEqual([interface], BridgeInterface.objects.all())
         self.assertEqual(node, interface.get_node())
 
     def test_removed_if_underlying_interfaces_gets_removed(self):
@@ -2259,7 +2259,7 @@ class BridgeInterfaceTest(MAASServerTestCase):
 class UnknownInterfaceTest(MAASServerTestCase):
     def test_manager_returns_unknown_interfaces(self):
         unknown = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
-        self.assertItemsEqual([unknown], UnknownInterface.objects.all())
+        self.assertCountEqual([unknown], UnknownInterface.objects.all())
 
     def test_get_node_returns_None(self):
         interface = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
@@ -2901,7 +2901,7 @@ class TestEnsureLinkUp(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.AUTO, interface=interface
         )
         interface.ensure_link_up()
-        self.assertItemsEqual([], reload_objects(StaticIPAddress, link_ups))
+        self.assertCountEqual([], reload_objects(StaticIPAddress, link_ups))
 
     def test_creates_link_up_to_discovered_subnet_on_same_vlan(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -3495,7 +3495,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             len(assigned_addresses),
             "Should have 3 AUTO IP addresses with an IP address assigned.",
         )
-        self.assertItemsEqual(assigned_addresses, observed)
+        self.assertEqual(assigned_addresses, observed)
 
     def test_keeps_ip_address_ids_consistent(self):
         auto_ip_ids = []
@@ -3525,11 +3525,9 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             len(assigned_addresses),
             "Should have 3 AUTO IP addresses with an IP address assigned.",
         )
-        self.assertItemsEqual(assigned_addresses, observed)
+        self.assertEqual(assigned_addresses, observed)
         # Make sure the IDs didn't change upon allocation.
-        self.assertItemsEqual(
-            auto_ip_ids, (ip.id for ip in assigned_addresses)
-        )
+        self.assertEqual(auto_ip_ids, [ip.id for ip in assigned_addresses])
 
     def test_claims_all_missing_assigned_auto_ip_addresses(self):
         with transaction.atomic():
@@ -3722,7 +3720,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             "Should have 3 AUTO IP addresses with an IP address assigned "
             "and temp_expires_on set.",
         )
-        self.assertItemsEqual(assigned_addresses, observed)
+        self.assertCountEqual(assigned_addresses, observed)
 
 
 class TestCreateAcquiredBridge(MAASServerTestCase):
@@ -3846,7 +3844,7 @@ class TestReleaseAutoIPs(MAASServerTestCase):
             len(releases_addresses),
             "Should have 3 AUTO IP addresses with no IP address assigned.",
         )
-        self.assertItemsEqual(releases_addresses, observed)
+        self.assertCountEqual(releases_addresses, observed)
 
     def test_clears_only_auto_ips_with_ips(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

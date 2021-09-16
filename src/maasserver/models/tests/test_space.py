@@ -84,7 +84,7 @@ class TestSpaceManager(MAASServerTestCase):
         space = factory.make_Space()
         factory.make_Space()
         id = space.id
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Space.objects.filter_by_specifiers("%s" % id), [space]
         )
 
@@ -93,7 +93,7 @@ class TestSpaceManager(MAASServerTestCase):
         space = factory.make_Space()
         factory.make_Space()
         id = space.id
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Space.objects.filter_by_specifiers("space-%s" % id), [space]
         )
 
@@ -101,7 +101,7 @@ class TestSpaceManager(MAASServerTestCase):
         factory.make_Space()
         space = factory.make_Space(name="infinite-improbability")
         factory.make_Space()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Space.objects.filter_by_specifiers("infinite-improbability"),
             [space],
         )
@@ -110,7 +110,7 @@ class TestSpaceManager(MAASServerTestCase):
         factory.make_Space()
         space = factory.make_Space(name="infinite-improbability")
         factory.make_Space()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Space.objects.filter_by_specifiers("name:infinite-improbability"),
             [space],
         )
@@ -120,7 +120,7 @@ class TestSpaceManager(MAASServerTestCase):
         space = factory.make_Space()
         subnet = factory.make_Subnet(space=space)
         factory.make_Space()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Space.objects.filter_by_specifiers("subnet:%s" % subnet.id),
             [space],
         )
@@ -199,7 +199,7 @@ class SpaceTest(MAASServerTestCase):
         name = factory.make_name("name")
         space = factory.make_Space(name=name)
         space.delete()
-        self.assertItemsEqual([], Space.objects.filter(name=name))
+        self.assertCountEqual([], Space.objects.filter(name=name))
 
     def test_sets_null_if_contains_vlan(self):
         space = factory.make_Space()

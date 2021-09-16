@@ -166,7 +166,7 @@ class TestBootResourceManager(MAASServerTestCase):
             factory.make_usable_boot_resource(architecture=arch)
         usable_arches = BootResource.objects.get_usable_architectures()
         self.assertIsInstance(usable_arches, list)
-        self.assertItemsEqual(arches, usable_arches)
+        self.assertCountEqual(arches, usable_arches)
 
     def test_get_usable_architectures_combines_subarches(self):
         arches = set()
@@ -182,7 +182,7 @@ class TestBootResourceManager(MAASServerTestCase):
             )
         usable_arches = BootResource.objects.get_usable_architectures()
         self.assertIsInstance(usable_arches, list)
-        self.assertItemsEqual(arches, usable_arches)
+        self.assertCountEqual(arches, usable_arches)
 
     def test_get_usable_hwe_kernel_doesnt_include_all_subarches(self):
         factory.make_usable_boot_resource(
@@ -232,7 +232,7 @@ class TestBootResourceManager(MAASServerTestCase):
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series
         )
-        self.assertItemsEqual([resource], commissionables)
+        self.assertEqual([resource], list(commissionables))
 
     def test_get_commissionable_resource_returns_only_for_os_series(self):
         os = factory.make_name("os")
@@ -245,7 +245,7 @@ class TestBootResourceManager(MAASServerTestCase):
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series
         )
-        self.assertItemsEqual([resource], commissionables)
+        self.assertCountEqual([resource], commissionables)
 
     def test_get_commissionable_resource_returns_sorted_by_architecture(self):
         os = factory.make_name("os")
@@ -487,7 +487,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             subarchitecture=subarch,
             label=label,
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [resource],
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
@@ -507,7 +507,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             subarchitecture=subarch,
             label="*",
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [resource],
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
@@ -525,7 +525,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             subarchitecture=subarch,
             label="*",
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [resource],
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
@@ -586,7 +586,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             )
             for purpose in purposes
         ]
-        self.assertItemsEqual(
+        self.assertEqual(
             [resource],
             BootResource.objects.get_resources_matching_boot_images(images),
         )
@@ -623,7 +623,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
                     for purpose in purposes
                 ]
             )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             resources,
             BootResource.objects.get_resources_matching_boot_images(images),
         )
@@ -642,7 +642,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             subarchitecture=subarch,
             label=label,
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [resource],
             BootResource.objects.get_resources_matching_boot_images([image]),
         )
@@ -660,7 +660,7 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             subarchitecture=subarch,
             label=label,
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [resource],
             BootResource.objects.get_resources_matching_boot_images([image]),
         )

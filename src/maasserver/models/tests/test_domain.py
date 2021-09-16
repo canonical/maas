@@ -113,7 +113,7 @@ class TestDomainManager(MAASServerTestCase):
         domain = factory.make_Domain()
         factory.make_Domain()
         id = domain.id
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Domain.objects.filter_by_specifiers("%s" % id), [domain]
         )
 
@@ -122,7 +122,7 @@ class TestDomainManager(MAASServerTestCase):
         name = factory.make_name("domain-")
         domain = factory.make_Domain(name=name)
         factory.make_Domain()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Domain.objects.filter_by_specifiers(name), [domain]
         )
 
@@ -131,7 +131,7 @@ class TestDomainManager(MAASServerTestCase):
         name = factory.make_name("domain-")
         domain = factory.make_Domain(name=name)
         factory.make_Domain()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Domain.objects.filter_by_specifiers("name:%s" % name), [domain]
         )
 
@@ -142,7 +142,7 @@ class TestDomainManager(MAASServerTestCase):
         factory.make_Domain(name=name2, authoritative=True)
         fwd_ip = factory.make_ip_address()
         factory.make_ForwardDNSServer(ip_address=fwd_ip, domains=[domain1])
-        self.assertItemsEqual(Domain.objects.get_forward_domains(), [domain1])
+        self.assertCountEqual(Domain.objects.get_forward_domains(), [domain1])
 
 
 class DomainTest(MAASServerTestCase):
@@ -188,7 +188,7 @@ class DomainTest(MAASServerTestCase):
         name = factory.make_name("name")
         domain = factory.make_Domain(name=name)
         domain.delete()
-        self.assertItemsEqual([], Domain.objects.filter(name=name))
+        self.assertCountEqual([], Domain.objects.filter(name=name))
 
     def test_validate_authority_raises_exception_when_both_authoritative_and_has_forward_dns_servers(
         self,
@@ -367,7 +367,7 @@ class DomainTest(MAASServerTestCase):
         dnsrr_from_db = DNSResource.objects.get(id=dnsrr.id)
         self.assertEqual("@", dnsrr_from_db.name)
         self.assertEqual(child, dnsrr_from_db.domain)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [], DNSResource.objects.filter(name=c_name, domain=parent)
         )
 
@@ -456,10 +456,10 @@ class TestRenderRRData(MAASServerTestCase):
         factory.make_DNSResource(name=node.hostname, domain=domain)
         expected = self.render_rrdata(domain, for_list=True)
         actual = domain.render_json_for_related_rrdata(for_list=True)
-        self.assertItemsEqual(expected, actual)
+        self.assertCountEqual(expected, actual)
         expected = self.render_rrdata(domain, for_list=False)
         actual = domain.render_json_for_related_rrdata(for_list=False)
-        self.assertItemsEqual(expected, actual)
+        self.assertCountEqual(expected, actual)
 
     def test_render_json_for_related_rrdata_includes_user_id(self):
         domain = factory.make_Domain()

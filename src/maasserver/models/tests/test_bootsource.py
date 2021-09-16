@@ -115,7 +115,7 @@ class TestBootSource(MAASServerTestCase):
                 arch=arch,
             )
             bootloaders.append(bootloader_type)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 selection["release"]
                 for selection in boot_source.to_dict()["selections"]

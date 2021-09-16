@@ -332,7 +332,7 @@ class SSHKeyManagerTest(MAASServerTestCase):
     def test_get_keys_for_user_no_keys(self):
         user = factory.make_User()
         keys = SSHKey.objects.get_keys_for_user(user)
-        self.assertItemsEqual([], keys)
+        self.assertCountEqual([], keys)
 
     def test_get_keys_for_user_with_keys(self):
         user1, created_keys = factory.make_user_with_keys(
@@ -341,4 +341,4 @@ class SSHKeyManagerTest(MAASServerTestCase):
         # user2
         factory.make_user_with_keys(n_keys=2)
         keys = SSHKey.objects.get_keys_for_user(user1)
-        self.assertItemsEqual([key.key for key in created_keys], keys)
+        self.assertCountEqual([key.key for key in created_keys], keys)

@@ -31,7 +31,7 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [],
             VirtualBlockDevice.objects.filter(
                 filesystem_group=filesystem_group
@@ -214,7 +214,7 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         logical_volume = reload_object(logical_volume)
         sdb = factory.make_PhysicalBlockDevice(node=node)
         factory.make_CacheSet(block_device=sdb, node=node)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [fs.block_device_id for fs in volume_group.filesystems.all()],
             [parent.id for parent in logical_volume.get_parents()],
         )

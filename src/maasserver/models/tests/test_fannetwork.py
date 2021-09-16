@@ -82,7 +82,7 @@ class TestFanNetwork(MAASServerTestCase):
     def test_can_delete_fannetwork(self):
         fannetwork = factory.make_FanNetwork()
         fannetwork.delete()
-        self.assertItemsEqual([], FanNetwork.objects.filter(id=fannetwork.id))
+        self.assertCountEqual([], FanNetwork.objects.filter(id=fannetwork.id))
 
     def test_cannot_create_ipv6_fannetwork(self):
         with ExpectedException(ValidationError):

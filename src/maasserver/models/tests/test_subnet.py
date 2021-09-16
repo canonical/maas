@@ -134,14 +134,14 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_takes_single_item(self):
         subnet1 = factory.make_Subnet(name="subnet1")
         factory.make_Subnet(name="subnet2")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("subnet1"), [subnet1]
         )
 
     def test_filter_by_specifiers_takes_multiple_items(self):
         subnet1 = factory.make_Subnet(name="subnet1")
         subnet2 = factory.make_Subnet(name="subnet2")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(["subnet1", "subnet2"]),
             [subnet1, subnet2],
         )
@@ -149,7 +149,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_takes_multiple_cidr_or_name(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         subnet2 = factory.make_Subnet(name="subnet2")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(["8.8.8.8/24", "subnet2"]),
             [subnet1, subnet2],
         )
@@ -157,7 +157,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_empty_filter_matches_all(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         subnet2 = factory.make_Subnet(name="subnet2")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers([]), [subnet1, subnet2]
         )
 
@@ -165,7 +165,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         subnet2 = factory.make_Subnet(name="subnet2")
         factory.make_Subnet(name="subnet3")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["name:subnet1", "name:subnet2"]
             ),
@@ -178,7 +178,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         )
         subnet2 = factory.make_Subnet(name="subnet2", space=RANDOM)
         factory.make_Subnet(name="subnet3", space=RANDOM_OR_NONE)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 [
                     "space:%s" % subnet1.space.name,
@@ -193,7 +193,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         subnet2 = factory.make_Subnet(name="subnet2", vid=2)
         subnet3 = factory.make_Subnet(name="subnet3", vid=3)
         factory.make_Subnet(name="subnet4", vid=4)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["vlan:vid:0b1", "vlan:vid:0x2", "vlan:vid:3"]
             ),
@@ -209,7 +209,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         subnet2 = factory.make_Subnet(name="subnet2", vid=2)
         subnet3 = factory.make_Subnet(name="subnet3", vid=3)
         factory.make_Subnet(name="subnet4", vid=4)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["vid:UNTAGGED", "vid:0x2", "vid:3"]
             ),
@@ -229,7 +229,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_works_with_chained_filter(self):
         factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         subnet2 = factory.make_Subnet(name="subnet2")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.exclude(name="subnet1").filter_by_specifiers(
                 ["8.8.8.8/24", "subnet2"]
             ),
@@ -239,13 +239,13 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_ip_filter_matches_specific_ip(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         subnet2 = factory.make_Subnet(name="subnet2", cidr="7.7.7.0/24")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("ip:8.8.8.8"), [subnet1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("ip:7.7.7.7"), [subnet2]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("ip:1.1.1.1"), []
         )
 
@@ -260,10 +260,10 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_ip_filter_matches_specific_cidr(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         subnet2 = factory.make_Subnet(name="subnet2", cidr="2001:db8::/64")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("cidr:8.8.8.0/24"), [subnet1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("cidr:2001:db8::/64"),
             [subnet2],
         )
@@ -280,7 +280,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="8.8.8.0/24")
         factory.make_Subnet(name="subnet2", cidr="7.7.7.0/24")
         subnet3 = factory.make_Subnet(name="subnet3", cidr="6.6.6.0/24")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["ip:8.8.8.8", "name:subnet3"]
             ),
@@ -290,13 +290,13 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
     def test_filter_by_specifiers_ip_filter_matches_specific_ipv6(self):
         subnet1 = factory.make_Subnet(name="subnet1", cidr="2001:db8::/64")
         subnet2 = factory.make_Subnet(name="subnet2", cidr="2001:db8:1::/64")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("ip:2001:db8::5"), [subnet1]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("ip:2001:db8:1::5"), [subnet2]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("ip:1.1.1.1"), []
         )
 
@@ -306,11 +306,11 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         vlan2 = factory.make_VLAN(space=None)
         subnet1 = factory.make_Subnet(vlan=vlan1, space=None)
         subnet2 = factory.make_Subnet(vlan=vlan2, space=None)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("space:%s" % space1.name),
             [subnet1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("space:%s" % Space.UNDEFINED),
             [subnet2],
         )
@@ -322,15 +322,15 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         iface2 = node2.get_boot_interface()
         subnet1 = iface1.ip_addresses.first().subnet
         subnet2 = iface2.ip_addresses.first().subnet
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("interface:id:%s" % iface1.id),
             [subnet1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers("interface:id:%s" % iface2.id),
             [subnet2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["interface:id:%s" % iface1.id, "interface:id:%s" % iface2.id]
             ),
@@ -343,13 +343,13 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         subnet1 = iface1.ip_addresses.first().subnet
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["interface:id:%s" % iface1.id, "!interface:id:%s" % iface2.id]
             ),
             [subnet1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 [
                     "interface:id:%s" % iface1.id,
@@ -365,13 +365,13 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         subnet2 = iface2.ip_addresses.first().subnet
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["!interface:id:%s" % iface1.id, "interface:id:%s" % iface2.id]
             ),
             [subnet2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 [
                     "not_interface:id:%s" % iface1.id,
@@ -387,7 +387,7 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         iface1 = node1.get_boot_interface()
         iface2 = node2.get_boot_interface()
         # Try to filter by two mutually exclusive conditions.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 ["interface:id:%s" % iface1.id, "&interface:id:%s" % iface2.id]
             ),
@@ -403,19 +403,19 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
         iface2 = node2.get_boot_interface()
         subnet1 = iface1.ip_addresses.first().subnet
         subnet2 = iface2.ip_addresses.first().subnet
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 "interface:subnet:id:%s" % subnet1.id
             ),
             [subnet1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 "interface:subnet:id:%s" % subnet2.id
             ),
             [subnet2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 [
                     "interface:subnet:id:%s" % subnet1.id,
@@ -424,19 +424,19 @@ class TestSubnetQueriesMixin(MAASServerTestCase):
             ),
             [subnet1, subnet2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 "interface:subnet:interface:subnet:id:%s" % subnet1.id
             ),
             [subnet1],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 "interface:subnet:interface:subnet:id:%s" % subnet2.id
             ),
             [subnet2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Subnet.objects.filter_by_specifiers(
                 [
                     "interface:subnet:interface:subnet:id:%s" % subnet1.id,

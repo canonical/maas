@@ -141,16 +141,13 @@ class TestTagPopulateNodesLater(MAASServerTestCase):
         nodes = [factory.make_Node() for _ in range(3)]
         tag.node_set.add(*nodes)
         tag._populate_nodes_later()
-        self.assertItemsEqual(nodes, tag.node_set.all())
-        self.assertThat(
-            post_commit_do,
-            MockCalledOnceWith(
-                reactor.callLater,
-                0,
-                deferToDatabase,
-                populate_tags.populate_tags,
-                tag,
-            ),
+        self.assertCountEqual(nodes, tag.node_set.all())
+        post_commit_do.assert_called_once_with(
+            reactor.callLater,
+            0,
+            deferToDatabase,
+            populate_tags.populate_tags,
+            tag,
         )
 
     def test_later_is_the_default(self):
@@ -195,4 +192,4 @@ class TestTagPopulateNodesNow(MAASServerTestCase):
         nodes = [factory.make_Node() for _ in range(3)]
         tag.node_set.add(*nodes)
         tag._populate_nodes_now()
-        self.assertItemsEqual([], tag.node_set.all())
+        self.assertCountEqual([], tag.node_set.all())

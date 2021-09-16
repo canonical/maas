@@ -324,9 +324,9 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
                 factory.make_ScriptResult(script=script, script_set=script_set)
             )
 
-        self.assertItemsEqual(
+        self.assertEqual(
             sorted(latest_script_results, key=lambda x: x.name),
-            node.get_latest_script_results,
+            list(node.get_latest_script_results),
         )
 
     def test_get_latest_script_results_storage(self):
@@ -346,7 +346,7 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             )
             script_results.append(script_result)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             sorted([script_result.id for script_result in script_results]),
             sorted(
                 [
@@ -373,7 +373,7 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             )
             script_results.append(script_result)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             sorted([script_result.id for script_result in script_results]),
             sorted(
                 [
@@ -403,9 +403,9 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             if script.script_type == SCRIPT_TYPE.COMMISSIONING:
                 latest_script_results.append(script_result)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             sorted(latest_script_results, key=lambda x: x.name),
-            node.get_latest_commissioning_script_results,
+            list(node.get_latest_commissioning_script_results),
         )
 
     def test_get_latest_testing_script_results(self):
@@ -428,9 +428,9 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             if script.script_type == SCRIPT_TYPE.TESTING:
                 latest_script_results.append(script_result)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             sorted(latest_script_results, key=lambda x: x.name),
-            node.get_latest_testing_script_results,
+            list(node.get_latest_testing_script_results),
         )
 
     def test_get_latest_installation_script_results(self):
@@ -452,7 +452,7 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             )
         ]
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             latest_script_results, node.get_latest_installation_script_results
         )
 
@@ -470,7 +470,7 @@ class TestNodeManager(MAASServerTestCase):
             factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
             for _ in range(3)
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             machines + devices + rack_controllers, Node.objects.all()
         )
 
@@ -496,13 +496,13 @@ class TestMachineManager(MAASServerTestCase):
             factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
             for _ in range(3)
         ]
-        self.assertItemsEqual(machines, Machine.objects.all())
+        self.assertCountEqual(machines, Machine.objects.all())
 
     def test_get_available_machines_finds_available_machines(self):
         user = factory.make_User()
         machine1 = self.make_machine(None)
         machine2 = self.make_machine(None)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [machine1, machine2],
             Machine.objects.get_available_machines_for_acquisition(user),
         )
@@ -550,7 +550,7 @@ class TestControllerManager(MAASServerTestCase):
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ):
                 racks_and_regions.add(factory.make_Node(node_type=node_type))
-        self.assertItemsEqual(racks_and_regions, Controller.objects.all())
+        self.assertCountEqual(racks_and_regions, Controller.objects.all())
 
 
 class TestRackControllerManager(MAASServerTestCase):
@@ -576,7 +576,7 @@ class TestRackControllerManager(MAASServerTestCase):
             factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
             for _ in range(3)
         ]
-        self.assertItemsEqual(rack_controllers, RackController.objects.all())
+        self.assertCountEqual(rack_controllers, RackController.objects.all())
 
     def test_get_running_controller(self):
         rack = factory.make_RackController()
@@ -596,7 +596,7 @@ class TestRackControllerManager(MAASServerTestCase):
         url = factory.pick_ip_in_Subnet(accessible_subnet)
         mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
         mock_getaddr_info.return_value = (("", "", "", "", (url,)),)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             accessible_racks,
             RackController.objects.filter_by_url_accessible(url, False),
         )
@@ -617,11 +617,11 @@ class TestRackControllerManager(MAASServerTestCase):
         ip = factory.pick_ip_in_Subnet(accessible_subnet)
         mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
         mock_getaddr_info.return_value = (("", "", "", "", (ip,)),)
-        self.assertItemsEqual(
-            (accessible_rack,),
+        self.assertEqual(
+            [accessible_rack],
             RackController.objects.filter_by_url_accessible(url, False),
         )
-        self.assertThat(mock_getaddr_info, MockCalledOnceWith(hostname, None))
+        mock_getaddr_info.assert_called_once_with(hostname, None)
 
     def test_filter_by_url_accessible_parses_host_port(self):
         hostname = factory.make_hostname()
@@ -632,11 +632,11 @@ class TestRackControllerManager(MAASServerTestCase):
         ip = factory.pick_ip_in_Subnet(accessible_subnet)
         mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
         mock_getaddr_info.return_value = (("", "", "", "", (ip,)),)
-        self.assertItemsEqual(
-            (accessible_rack,),
+        self.assertEqual(
+            [accessible_rack],
             RackController.objects.filter_by_url_accessible(url, False),
         )
-        self.assertThat(mock_getaddr_info, MockCalledOnceWith(hostname, None))
+        mock_getaddr_info.assert_called_once_with(hostname, None)
 
     def test_filter_by_url_accessible_parses_host_user_pass(self):
         hostname = factory.make_hostname()
@@ -651,11 +651,11 @@ class TestRackControllerManager(MAASServerTestCase):
         ip = factory.pick_ip_in_Subnet(accessible_subnet)
         mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
         mock_getaddr_info.return_value = (("", "", "", "", (ip,)),)
-        self.assertItemsEqual(
-            (accessible_rack,),
+        self.assertEqual(
+            [accessible_rack],
             RackController.objects.filter_by_url_accessible(url, False),
         )
-        self.assertThat(mock_getaddr_info, MockCalledOnceWith(hostname, None))
+        mock_getaddr_info.assert_called_once_with(hostname, None)
 
     def test_filter_by_url_finds_self_with_loopback(self):
         rack = self.make_rack_controller_with_ip()
@@ -683,7 +683,7 @@ class TestRackControllerManager(MAASServerTestCase):
         mock_getaddr_info.return_value = (("", "", "", "", (ip,)),)
         mock_getallclients = self.patch(node_module, "getAllClients")
         mock_getallclients.return_value = connections
-        self.assertItemsEqual(
+        self.assertCountEqual(
             accessible_racks,
             RackController.objects.filter_by_url_accessible(ip, True),
         )
@@ -725,7 +725,7 @@ class TestRegionControllerManager(MAASServerTestCase):
         # Create region controllers.
         regions = [factory.make_RegionController() for _ in range(3)]
         # Only the region controllers are found.
-        self.assertItemsEqual(regions, RegionController.objects.all())
+        self.assertCountEqual(regions, RegionController.objects.all())
 
     def test_get_running_controller_finds_controller_via_maas_id(self):
         region = factory.make_RegionController()
@@ -962,7 +962,7 @@ class TestDeviceManager(MAASServerTestCase):
             factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
             for _ in range(3)
         ]
-        self.assertItemsEqual(devices, Device.objects.all())
+        self.assertCountEqual(devices, Device.objects.all())
 
     def test_empty_architecture_accepted_for_type_device(self):
         device = factory.make_Device(architecture="")
@@ -1296,7 +1296,7 @@ class TestNode(MAASServerTestCase):
         device = factory.make_PhysicalBlockDevice(node=node)
         factory.make_BlockDevice(node=node)
         factory.make_PhysicalBlockDevice()
-        self.assertItemsEqual([device], node.physicalblockdevice_set.all())
+        self.assertCountEqual([device], node.physicalblockdevice_set.all())
 
     def test_storage_returns_size_of_physical_blockdevices_in_mb(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -1628,7 +1628,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         system_id = node.system_id
         node.delete()
-        self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
+        self.assertCountEqual([], Node.objects.filter(system_id=system_id))
 
     def test_set_random_hostname_set_hostname(self):
         node = factory.make_Node()
@@ -2885,7 +2885,7 @@ class TestNode(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.DISCOVERED,
             interface=interfaces[2],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [ip.ip for ip in ip_addresses], node.dynamic_ip_addresses()
         )
 
@@ -2900,7 +2900,7 @@ class TestNode(MAASServerTestCase):
         # Create another node with a static IP address.
         other_node = factory.make_Node(interface=True)
         factory.make_StaticIPAddress(interface=other_node.get_boot_interface())
-        self.assertItemsEqual([ip1.ip, ip2.ip], node.static_ip_addresses())
+        self.assertCountEqual([ip1.ip, ip2.ip], node.static_ip_addresses())
 
     def test_ip_addresses_returns_static_ip_addresses_if_allocated(self):
         # If both static and dynamic IP addresses are present, the static
@@ -2910,7 +2910,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(interface=True)
         interface = node.get_boot_interface()
         ip = factory.make_StaticIPAddress(interface=interface)
-        self.assertItemsEqual([ip.ip], node.ip_addresses())
+        self.assertCountEqual([ip.ip], node.ip_addresses())
 
     def test_ip_addresses_returns_dynamic_ip_if_no_static_ip(self):
         node = factory.make_Node()
@@ -2918,7 +2918,7 @@ class TestNode(MAASServerTestCase):
         ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, interface=interface
         )
-        self.assertItemsEqual([ip.ip], node.ip_addresses())
+        self.assertCountEqual([ip.ip], node.ip_addresses())
 
     def test_ip_addresses_includes_static_ipv4_addresses_by_default(self):
         node = factory.make_Node()
@@ -2928,7 +2928,7 @@ class TestNode(MAASServerTestCase):
             ipv4_address,
             ipv6_address,
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [ipv4_address, ipv6_address], node.ip_addresses()
         )
 
@@ -2940,7 +2940,7 @@ class TestNode(MAASServerTestCase):
             ipv4_address,
             ipv6_address,
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [ipv4_address, ipv6_address], node.ip_addresses()
         )
 
@@ -2955,7 +2955,7 @@ class TestNode(MAASServerTestCase):
         )
         vlan_bond = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[bond])
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [phy1, phy2, phy3, vlan, bond, vlan_bond], node.interface_set.all()
         )
 
@@ -2966,7 +2966,7 @@ class TestNode(MAASServerTestCase):
         phy = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         vlan = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[phy])
 
-        self.assertItemsEqual([phy, vlan], node.interface_set.all())
+        self.assertCountEqual([phy, vlan], node.interface_set.all())
 
     def test_get_interface_names_returns_interface_name(self):
         node = factory.make_Node()
@@ -3565,11 +3565,11 @@ class TestNode(MAASServerTestCase):
         commissioning_script_set = node.current_commissioning_script_set
         testing_script_set = node.current_testing_script_set
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(expected_commissioning_scripts),
             [script_result.name for script_result in commissioning_script_set],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(expected_testing_scripts),
             [script_result.name for script_result in testing_script_set],
         )
@@ -4139,7 +4139,7 @@ class TestNode(MAASServerTestCase):
         node = reload_object(node)
         testing_script_set = node.current_testing_script_set
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set(expected_testing_scripts),
             [script_result.name for script_result in testing_script_set],
         )
@@ -4968,7 +4968,7 @@ class TestNode(MAASServerTestCase):
         node.boot_interface = interfaces[boot_interface_index]
         node.save()
         del interfaces[boot_interface_index]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [interface.mac_address for interface in interfaces],
             node.get_extra_macs(),
         )
@@ -4979,7 +4979,7 @@ class TestNode(MAASServerTestCase):
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
             for _ in range(3)
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [interface.mac_address for interface in interfaces[1:]],
             node.get_extra_macs(),
         )
@@ -5558,7 +5558,7 @@ class TestNode(MAASServerTestCase):
         factory.make_FilesystemGroup(
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "This node cannot be deployed because the selected deployment "
                 "OS, %s, does not support Bcache." % osystem
@@ -5573,7 +5573,7 @@ class TestNode(MAASServerTestCase):
         factory.make_Filesystem(
             block_device=bd, fstype=FILESYSTEM_TYPE.ZFSROOT
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "This node cannot be deployed because the selected deployment "
                 "OS, %s, does not support ZFS." % osystem
@@ -5588,7 +5588,7 @@ class TestNode(MAASServerTestCase):
         )
         bd = factory.make_BlockDevice(node=node)
         factory.make_Filesystem(block_device=bd, fstype=FILESYSTEM_TYPE.BTRFS)
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "This node cannot be deployed because the selected deployment "
                 "OS release, %s %s, does not support BTRFS."
@@ -6306,20 +6306,20 @@ class NodeManagerTest(MAASServerTestCase):
         nodes = [factory.make_Node() for counter in range(5)]
         ids = [node.system_id for node in nodes]
         selection = slice(1, 3)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             nodes[selection],
             Node.objects.filter_by_ids(Node.objects.all(), ids[selection]),
         )
 
     def test_filter_by_ids_with_empty_list_returns_empty(self):
         factory.make_Node()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [], Node.objects.filter_by_ids(Node.objects.all(), [])
         )
 
     def test_filter_by_ids_without_ids_returns_full(self):
         node = factory.make_Node()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node], Node.objects.filter_by_ids(Node.objects.all(), None)
         )
 
@@ -6334,7 +6334,7 @@ class NodeManagerTest(MAASServerTestCase):
         user = factory.make_User()
         visible_nodes = [self.make_node(owner) for owner in [None, user]]
         self.make_node(factory.make_User())
-        self.assertItemsEqual(
+        self.assertCountEqual(
             visible_nodes, Node.objects.get_nodes(user, NodePermission.view)
         )
 
@@ -6342,7 +6342,7 @@ class NodeManagerTest(MAASServerTestCase):
         admin = factory.make_admin()
         owners = [None, factory.make_User(), factory.make_admin(), admin]
         nodes = [self.make_node(owner) for owner in owners]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             nodes, Node.objects.get_nodes(admin, NodePermission.view)
         )
 
@@ -6351,7 +6351,7 @@ class NodeManagerTest(MAASServerTestCase):
         nodes = [self.make_node(user) for counter in range(5)]
         ids = [node.system_id for node in nodes]
         wanted_slice = slice(0, 3)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             nodes[wanted_slice],
             Node.objects.get_nodes(
                 user, NodePermission.view, ids=ids[wanted_slice]
@@ -6365,7 +6365,7 @@ class NodeManagerTest(MAASServerTestCase):
         # Node that we'll exclude from from_nodes:
         factory.make_Node()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [wanted_node],
             Node.objects.get_nodes(
                 admin,
@@ -6383,7 +6383,7 @@ class NodeManagerTest(MAASServerTestCase):
         # Node that will be ignored on account of belonging to someone else:
         invisible_node = factory.make_Node(owner=factory.make_User())
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [matching_node],
             Node.objects.get_nodes(
                 user,
@@ -6399,7 +6399,7 @@ class NodeManagerTest(MAASServerTestCase):
         visible_node = self.make_node(user)
         unowned = self.make_node(None)
         self.make_node(factory.make_User())
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [visible_node, unowned],
             Node.objects.get_nodes(user, NodePermission.edit),
         )
@@ -6408,14 +6408,14 @@ class NodeManagerTest(MAASServerTestCase):
         admin = factory.make_admin()
         owners = [None, factory.make_User(), factory.make_admin(), admin]
         nodes = [self.make_node(owner) for owner in owners]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             nodes, Node.objects.get_nodes(admin, NodePermission.edit)
         )
 
     def test_get_nodes_with_admin_perm_returns_empty_list_for_user(self):
         user = factory.make_User()
         [self.make_node(user) for counter in range(5)]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [], Node.objects.get_nodes(user, NodePermission.admin)
         )
 
@@ -6425,7 +6425,7 @@ class NodeManagerTest(MAASServerTestCase):
         nodes.append(factory.make_RackController())
         nodes.append(factory.make_RegionController())
         nodes.append(factory.make_RegionRackController())
-        self.assertItemsEqual(
+        self.assertCountEqual(
             nodes,
             Node.objects.get_nodes(factory.make_admin(), NodePermission.admin),
         )
@@ -6450,14 +6450,14 @@ class NodeManagerTest(MAASServerTestCase):
         observed = Node.objects.get_nodes(
             user=None, perm=NodePermission.edit, ids=[node.system_id]
         )
-        self.assertItemsEqual([], observed)
+        self.assertCountEqual([], observed)
 
     def test_get_nodes_only_returns_managed_nodes(self):
         user = factory.make_User()
         machine = self.make_node(user)
         for _ in range(3):
             self.make_node(user, node_type=NODE_TYPE.DEVICE)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [machine],
             Machine.objects.get_nodes(
                 user=user,
@@ -6476,11 +6476,11 @@ class NodeManagerTest(MAASServerTestCase):
             factory.make_RegionController(),
             factory.make_RegionRackController(),
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             admin_visible_nodes,
             Node.objects.get_nodes(factory.make_admin(), NodePermission.admin),
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             user_visible_nodes,
             Node.objects.get_nodes(user, NodePermission.view),
         )
@@ -6498,7 +6498,7 @@ class NodeManagerTest(MAASServerTestCase):
         iface = node.get_boot_interface()
         ip = iface.ip_addresses.first()
         space = ip.subnet.space
-        self.assertItemsEqual([node], Node.objects.filter_by_spaces([space]))
+        self.assertCountEqual([node], Node.objects.filter_by_spaces([space]))
 
     def test_filter_nodes_by_not_spaces(self):
         factory.make_Space()
@@ -6513,7 +6513,7 @@ class NodeManagerTest(MAASServerTestCase):
         iface = node.get_boot_interface()
         ip = iface.ip_addresses.first()
         space = ip.subnet.space
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [extra_node], Node.objects.exclude_spaces([space])
         )
 
@@ -6528,7 +6528,7 @@ class NodeManagerTest(MAASServerTestCase):
         )
         iface = node.get_boot_interface()
         fabric = iface.vlan.fabric
-        self.assertItemsEqual([node], Node.objects.filter_by_fabrics([fabric]))
+        self.assertCountEqual([node], Node.objects.filter_by_fabrics([fabric]))
 
     def test_filter_nodes_by_not_fabrics(self):
         fabric = factory.make_Fabric()
@@ -6540,7 +6540,7 @@ class NodeManagerTest(MAASServerTestCase):
         )
         iface = node.get_boot_interface()
         fabric = iface.vlan.fabric
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [extra_node], Node.objects.exclude_fabrics([fabric])
         )
 
@@ -6553,7 +6553,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, fabric=fabric2
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node1], Node.objects.filter_by_fabric_classes(["10g"])
         )
 
@@ -6566,7 +6566,7 @@ class NodeManagerTest(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, fabric=fabric2
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node2], Node.objects.exclude_fabric_classes(["10g"])
         )
 
@@ -6579,7 +6579,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, vlan=vlan2
         )
-        self.assertItemsEqual([node1], Node.objects.filter_by_vids([1]))
+        self.assertCountEqual([node1], Node.objects.filter_by_vids([1]))
 
     def test_filter_nodes_by_not_vids(self):
         vlan1 = factory.make_VLAN(vid=1)
@@ -6590,7 +6590,7 @@ class NodeManagerTest(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, vlan=vlan2
         )
-        self.assertItemsEqual([node2], Node.objects.exclude_vids([1]))
+        self.assertCountEqual([node2], Node.objects.exclude_vids([1]))
 
     def test_filter_nodes_by_subnet(self):
         subnet1 = factory.make_Subnet()
@@ -6601,7 +6601,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, subnet=subnet2
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node1], Node.objects.filter_by_subnets([subnet1])
         )
 
@@ -6614,7 +6614,7 @@ class NodeManagerTest(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, subnet=subnet2
         )
-        self.assertItemsEqual([node2], Node.objects.exclude_subnets([subnet1]))
+        self.assertCountEqual([node2], Node.objects.exclude_subnets([subnet1]))
 
     def test_filter_nodes_by_subnet_cidr(self):
         subnet1 = factory.make_Subnet(cidr="192.168.1.0/24")
@@ -6625,7 +6625,7 @@ class NodeManagerTest(MAASServerTestCase):
         factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, subnet=subnet2
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node1], Node.objects.filter_by_subnet_cidrs(["192.168.1.0/24"])
         )
 
@@ -6638,7 +6638,7 @@ class NodeManagerTest(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, subnet=subnet2
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node2], Node.objects.exclude_subnet_cidrs(["192.168.1.0/24"])
         )
 
@@ -6652,7 +6652,7 @@ class NodeManagerTest(MAASServerTestCase):
         node2 = factory.make_Node_with_Interface_on_Subnet(
             with_dhcp_rack_primary=False, subnet=subnet2, fabric=fabric1
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node2],
             Node.objects.filter_by_fabrics([fabric1]).exclude_subnet_cidrs(
                 ["192.168.1.0/24"]
@@ -7080,7 +7080,7 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         # Create other nodes.
         [factory.make_Node() for _ in range(3)]
         children = [factory.make_Node(parent=parent) for _ in range(3)]
-        self.assertItemsEqual(parent.children.all(), children)
+        self.assertCountEqual(parent.children.all(), children)
 
     def test_children_get_deleted_when_parent_is_deleted(self):
         parent = factory.make_Node()
@@ -7088,7 +7088,7 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         [factory.make_Node(parent=parent) for _ in range(3)]
         other_nodes = [factory.make_Node() for _ in range(3)]
         parent.delete()
-        self.assertItemsEqual(other_nodes, Node.objects.all())
+        self.assertCountEqual(other_nodes, Node.objects.all())
 
     def test_children_get_deleted_when_parent_is_released(self):
         self.patch(Node, "_stop")
@@ -7100,8 +7100,8 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         other_nodes = [factory.make_Node() for _ in range(3)]
         with post_commit_hooks:
             parent.release()
-        self.assertItemsEqual([], parent.children.all())
-        self.assertItemsEqual(other_nodes + [parent], Node.objects.all())
+        self.assertCountEqual([], parent.children.all())
+        self.assertCountEqual(other_nodes + [parent], Node.objects.all())
 
 
 class TestNodeNetworking(MAASTransactionServerTestCase):
@@ -7211,7 +7211,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         observed_interfaces = [
             call[0][0] for call in mock_claim_auto_ips.call_args_list
         ]
-        self.assertItemsEqual(interfaces, observed_interfaces)
+        self.assertCountEqual(interfaces, observed_interfaces)
 
     def test_claim_auto_ips_calls_claim_auto_ips_on_new_added_interface(self):
         node = factory.make_Node()
@@ -7235,7 +7235,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         observed_interfaces = [
             call[0][0] for call in mock_claim_auto_ips.call_args_list
         ]
-        self.assertItemsEqual(interfaces, observed_interfaces)
+        self.assertCountEqual(interfaces, observed_interfaces)
 
     def test_release_interface_config_calls_release_auto_ips_on_all(self):
         node = factory.make_Node()
@@ -7252,7 +7252,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         observed_interfaces = [
             call[0][0] for call in mock_release_auto_ips.call_args_list
         ]
-        self.assertItemsEqual(interfaces, observed_interfaces)
+        self.assertCountEqual(interfaces, observed_interfaces)
 
     def test_release_interface_config_handles_acquired_bridge(self):
         node = factory.make_Node()
@@ -7346,8 +7346,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
             call[1]["clearing_config"]
             for call in mock_unlink_ip_address.call_args_list
         )
-        self.assertItemsEqual([nic0, nic1], observed_interfaces)
-        self.assertItemsEqual(
+        self.assertCountEqual([nic0, nic1], observed_interfaces)
+        self.assertCountEqual(
             [dhcp_ip, static_ip, auto_ip], observed_ip_address
         )
         self.assertEqual(set([True]), clearing_config)
@@ -7518,7 +7518,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         observed_interfaces = set(
             call[0][0] for call in mock_ensure_link_up.call_args_list
         )
-        self.assertItemsEqual(enabled_interfaces, observed_interfaces)
+        self.assertCountEqual(enabled_interfaces, observed_interfaces)
 
     def test_set_initial_networking_configuration_no_multiple_auto_ips(self):
         node = factory.make_Node_with_Interface_on_Subnet()
@@ -8340,7 +8340,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         for _ in range(3):
             rack_ip, _ = self.make_RackController_routable_to_node(node)
             rack_ips.append(rack_ip)
-        self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
+        self.assertCountEqual(node.get_default_dns_servers(), rack_ips)
 
     def test_uses_other_routeable_rack_controllers_ipv6(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8350,7 +8350,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         for _ in range(3):
             rack_ip, _ = self.make_RackController_routable_to_node(node)
             rack_ips.append(rack_ip)
-        self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
+        self.assertCountEqual(node.get_default_dns_servers(), rack_ips)
 
     def test_uses_subnet_ipv4_gateway_with_other_routeable_racks(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8360,7 +8360,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         for _ in range(3):
             rack_ip, _ = self.make_RackController_routable_to_node(node)
             rack_ips.append(rack_ip)
-        self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
+        self.assertCountEqual(node.get_default_dns_servers(), rack_ips)
 
     def test_uses_subnet_ipv6_gateway_with_other_routeable_racks(self):
         rack_v4, rack_v6, node = self.make_Node_with_RackController(
@@ -8370,7 +8370,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         for _ in range(3):
             rack_ip, _ = self.make_RackController_routable_to_node(node)
             rack_ips.append(rack_ip)
-        self.assertItemsEqual(node.get_default_dns_servers(), rack_ips)
+        self.assertCountEqual(node.get_default_dns_servers(), rack_ips)
 
     def test_ignores_dns_servers_on_unallowed_subnets(self):
         # Regression test for LP:1847537
@@ -8385,7 +8385,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv6=False, ipv4_subnet_dns=[ipv4_subnet_dns]
         )
         Subnet.objects.update(allow_dns=False)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             node.get_default_dns_servers(), [ipv4_subnet_dns]
         )
 
@@ -8396,7 +8396,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             ipv4=False, ipv6_subnet_dns=[ipv6_subnet_dns]
         )
         Subnet.objects.update(allow_dns=False)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             node.get_default_dns_servers(), [ipv6_subnet_dns]
         )
 
@@ -8418,7 +8418,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         resolve_hostname.side_effect = lambda hostname, version: set(
             map(IPAddress, rack_ips)
         )
-        self.assertItemsEqual(node.get_default_dns_servers(), [rack_v4])
+        self.assertCountEqual(node.get_default_dns_servers(), [rack_v4])
 
 
 class TestNode_Start(MAASTransactionServerTestCase):
@@ -9458,7 +9458,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
 
     def test_storage_layout_issues_none_non_vmfs_on_esxi(self):
         node = factory.make_Node(osystem="esxi", distro_series="6.7")
-        self.assertItemsEqual([], node.storage_layout_issues())
+        self.assertCountEqual([], node.storage_layout_issues())
 
     def test_storage_layout_issues_none_for_esxi_default(self):
         node = factory.make_Node(
@@ -9468,7 +9468,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
         layout = layout_class(node)
         layout.configure()
-        self.assertItemsEqual([], node.storage_layout_issues())
+        self.assertCountEqual([], node.storage_layout_issues())
 
     def test_storage_layout_issues_is_invalid_no_datastore_on_esxi(self):
         node = factory.make_Node(
@@ -9493,7 +9493,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
         layout = layout_class(node)
         layout.configure()
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "Mount the root '/' filesystem to be able to deploy this node.",
                 "This node cannot be deployed because the selected "
@@ -10743,13 +10743,13 @@ class TestRackController(MAASTransactionServerTestCase):
         rack = factory.make_RackController()
         factory.make_Service(rack)
         rack.delete()
-        self.assertItemsEqual([], Service.objects.all())
+        self.assertCountEqual([], Service.objects.all())
 
     def test_deletes_region_rack_rpc_connections(self):
         rack = factory.make_RackController()
         factory.make_RegionRackRPCConnection(rack_controller=rack)
         rack.delete()
-        self.assertItemsEqual([], RegionRackRPCConnection.objects.all())
+        self.assertCountEqual([], RegionRackRPCConnection.objects.all())
 
     def test_delete_converts_region_and_rack_to_region(self):
         region_and_rack = factory.make_Node(
@@ -10876,7 +10876,7 @@ class TestRackController(MAASTransactionServerTestCase):
         ).return_value = True
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
-        self.assertItemsEqual(self.expected_images, images["images"])
+        self.assertCountEqual(self.expected_images, images["images"])
         self.assertEqual("synced", images["status"])
         self.assertEqual("synced", rack_controller.get_image_sync_status())
 
@@ -10884,7 +10884,7 @@ class TestRackController(MAASTransactionServerTestCase):
         rack_controller = factory.make_RackController()
         images = rack_controller.list_boot_images()
         self.assertEqual(False, images["connected"])
-        self.assertItemsEqual([], images["images"])
+        self.assertCountEqual([], images["images"])
         self.assertEqual("unknown", images["status"])
         self.assertEqual("unknown", rack_controller.get_image_sync_status())
 
@@ -10895,7 +10895,7 @@ class TestRackController(MAASTransactionServerTestCase):
         ).side_effect = ConnectionClosed()
         images = rack_controller.list_boot_images()
         self.assertEqual(False, images["connected"])
-        self.assertItemsEqual([], images["images"])
+        self.assertCountEqual([], images["images"])
         self.assertEqual("unknown", images["status"])
         self.assertEqual("unknown", rack_controller.get_image_sync_status())
 
@@ -10911,7 +10911,7 @@ class TestRackController(MAASTransactionServerTestCase):
         images = rack_controller.list_boot_images()
         self.assertThat(fake_is_import_resources_running, MockCalledOnce())
         self.assertTrue(images["connected"])
-        self.assertItemsEqual(self.expected_images, images["images"])
+        self.assertCountEqual(self.expected_images, images["images"])
         self.assertEqual("region-importing", images["status"])
         self.assertEqual(
             "region-importing", rack_controller.get_image_sync_status()
@@ -10930,7 +10930,7 @@ class TestRackController(MAASTransactionServerTestCase):
         ).return_value = True
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
-        self.assertItemsEqual(self.expected_images, images["images"])
+        self.assertCountEqual(self.expected_images, images["images"])
         self.assertEqual("syncing", images["status"])
         self.assertEqual("syncing", rack_controller.get_image_sync_status())
 
@@ -10947,7 +10947,7 @@ class TestRackController(MAASTransactionServerTestCase):
         ).return_value = False
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
-        self.assertItemsEqual(self.expected_images, images["images"])
+        self.assertCountEqual(self.expected_images, images["images"])
         self.assertEqual("out-of-sync", images["status"])
         self.assertEqual(
             "out-of-sync", rack_controller.get_image_sync_status()
@@ -10964,7 +10964,7 @@ class TestRackController(MAASTransactionServerTestCase):
         ).return_value = True
         images = rack_controller.list_boot_images()
         self.assertTrue(images["connected"])
-        self.assertItemsEqual([], images["images"])
+        self.assertCountEqual([], images["images"])
         self.assertEqual("syncing", images["status"])
 
     def test_is_import_images_running(self):

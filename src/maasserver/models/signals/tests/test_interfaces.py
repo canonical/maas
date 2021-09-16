@@ -67,7 +67,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         interface.ensure_link_up()
         interface.enabled = False
         interface.save()
-        self.assertItemsEqual([], interface.ip_addresses.all())
+        self.assertCountEqual([], interface.ip_addresses.all())
 
     def test_disable_interface_removes_links_on_children(self):
         interface = factory.make_Interface(
@@ -79,7 +79,7 @@ class TestEnableAndDisableInterface(MAASServerTestCase):
         vlan_interface.ensure_link_up()
         interface.enabled = False
         interface.save()
-        self.assertItemsEqual([], vlan_interface.ip_addresses.all())
+        self.assertCountEqual([], vlan_interface.ip_addresses.all())
 
     def test_disable_interface_doesnt_remove_links_on_enabled_children(self):
         node = factory.make_Node()

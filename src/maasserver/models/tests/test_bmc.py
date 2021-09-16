@@ -163,7 +163,7 @@ class TestBMC(MAASServerTestCase):
                 % (factory.ip_to_url_format(discovered_ip.ip))
             },
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [discovered_ip, sticky_ip],
             StaticIPAddress.objects.filter(ip=discovered_ip.ip),
         )
@@ -467,7 +467,7 @@ class TestBMC(MAASServerTestCase):
             BMCRoutableRackControllerRelationship(
                 bmc=bmc, rack_controller=rack, routable=False
             ).save()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             routable_racks,
             bmc.get_usable_rack_controllers(with_connection=False),
         )
@@ -488,7 +488,7 @@ class TestBMC(MAASServerTestCase):
         client = Mock()
         client.ident = connected_rack.system_id
         self.patch(bmc_module, "getAllClients").return_value = [client]
-        self.assertItemsEqual(
+        self.assertEqual(
             [connected_rack],
             bmc.get_usable_rack_controllers(with_connection=True),
         )
@@ -531,7 +531,7 @@ class TestBMC(MAASServerTestCase):
     def test_get_usable_rack_controllers_returns_rack_controllers(self):
         rack_controller = factory.make_RackController()
         machine = factory.make_Node(bmc_connected_to=rack_controller)
-        self.assertItemsEqual(
+        self.assertEqual(
             [rack_controller],
             machine.bmc.get_usable_rack_controllers(with_connection=False),
         )
@@ -543,9 +543,7 @@ class TestBMC(MAASServerTestCase):
             bmc, "get_usable_rack_controllers"
         ).return_value = rack_controllers
         expected_system_ids = [rack.system_id for rack in rack_controllers]
-        self.assertItemsEqual(
-            expected_system_ids, bmc.get_client_identifiers()
-        )
+        self.assertEqual(expected_system_ids, bmc.get_client_identifiers())
 
     def test_is_accessible_calls_get_usable_rack_controllers(self):
         bmc = factory.make_BMC()
@@ -625,7 +623,7 @@ class TestPodManager(MAASServerTestCase):
     def test_get_pods_no_rbac_always_all(self):
         pods = [factory.make_Pod() for _ in range(3)]
         for perm in PodPermission:
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 pods, Pod.objects.get_pods(factory.make_User(), perm)
             )
 
@@ -645,7 +643,7 @@ class TestPodManager(MAASServerTestCase):
         for _ in range(3):
             factory.make_Pod()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [view, view_all], Pod.objects.get_pods(user, PodPermission.view)
         )
 
@@ -669,10 +667,10 @@ class TestPodManager(MAASServerTestCase):
         for _ in range(3):
             factory.make_Pod()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [admin_pod], Pod.objects.get_pods(user, PodPermission.edit)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [admin_pod], Pod.objects.get_pods(user, PodPermission.compose)
         )
 
@@ -696,7 +694,7 @@ class TestPodManager(MAASServerTestCase):
         for _ in range(3):
             factory.make_Pod()
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [deploy_pod, admin_pod],
             Pod.objects.get_pods(user, PodPermission.dynamic_compose),
         )
@@ -1243,14 +1241,14 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod.sync(
             DiscoveredPod(architectures=discovered_pod.architectures), user
         )
-        self.assertNotEquals(-1, pod.cores)
-        self.assertNotEquals(-1, pod.cpu_speed)
-        self.assertNotEquals(-1, pod.memory)
-        self.assertNotEquals(-1, pod.local_storage)
-        self.assertNotEquals(-1, pod.hints.cores)
-        self.assertNotEquals(-1, pod.hints.cpu_speed)
-        self.assertNotEquals(-1, pod.hints.memory)
-        self.assertNotEquals(-1, pod.hints.local_storage)
+        self.assertNotEqual(-1, pod.cores)
+        self.assertNotEqual(-1, pod.cpu_speed)
+        self.assertNotEqual(-1, pod.memory)
+        self.assertNotEqual(-1, pod.local_storage)
+        self.assertNotEqual(-1, pod.hints.cores)
+        self.assertNotEqual(-1, pod.hints.cpu_speed)
+        self.assertNotEqual(-1, pod.hints.memory)
+        self.assertNotEqual(-1, pod.hints.local_storage)
 
     def test_create_machine_ensures_unique_hostname(self):
         existing_machine = factory.make_Node()
@@ -1478,7 +1476,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         # Check that the interface names match the labels provided in the
         # constraints string.
-        self.assertItemsEqual(
+        self.assertEqual(
             ["maas0", "maas1", "maas2"],
             list(
                 machine.interface_set.order_by("id").values_list(
@@ -1783,7 +1781,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         # Check that the interface names use the ethX numbering, since the
         # provided constraints won't match the number of interfaces that were
         # returned.
-        self.assertItemsEqual(
+        self.assertEqual(
             ["eth0", "eth1", "eth2"],
             list(
                 machine.interface_set.order_by("id").values_list(
@@ -1807,7 +1805,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         machine = pod.create_machine(discovered_machine, factory.make_User())
         # Check that the interface names match the labels provided in the
         # constraints string.
-        self.assertItemsEqual(
+        self.assertEqual(
             ["eth0", "eth1", "eth2"],
             list(
                 machine.interface_set.order_by("id").values_list(
@@ -2523,7 +2521,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             factory.make_User(),
         )
         node = reload_object(node)
-        self.assertItemsEqual([node], pod.hints.nodes.all())
+        self.assertCountEqual([node], pod.hints.nodes.all())
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertIsNotNone(node.current_commissioning_script_set)
 
@@ -2544,7 +2542,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             factory.make_User(),
         )
         device = reload_object(device)
-        self.assertItemsEqual([device], pod.hints.nodes.all())
+        self.assertCountEqual([device], pod.hints.nodes.all())
         self.assertEqual(NODE_STATUS.DEPLOYED, device.status)
         self.assertEqual(NODE_TYPE.MACHINE, device.node_type)
         self.assertIsNotNone(device.current_commissioning_script_set)
@@ -2567,7 +2565,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertEqual(NODE_TYPE.MACHINE, node.node_type)
         self.assertEqual(sync_user, node.owner)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             mac_addresses,
             [str(iface.mac_address) for iface in node.interface_set.all()],
         )

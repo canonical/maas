@@ -85,7 +85,7 @@ class TestFabricManager(MAASServerTestCase):
         fabric = factory.make_Fabric()
         factory.make_Fabric()
         id = fabric.id
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Fabric.objects.filter_by_specifiers("%s" % id), [fabric]
         )
 
@@ -94,7 +94,7 @@ class TestFabricManager(MAASServerTestCase):
         fabric = factory.make_Fabric()
         factory.make_Fabric()
         id = fabric.id
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Fabric.objects.filter_by_specifiers("fabric-%s" % id), [fabric]
         )
 
@@ -102,7 +102,7 @@ class TestFabricManager(MAASServerTestCase):
         factory.make_Fabric()
         fabric = factory.make_Fabric(name="infinite-improbability")
         factory.make_Fabric()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Fabric.objects.filter_by_specifiers("infinite-improbability"),
             [fabric],
         )
@@ -111,7 +111,7 @@ class TestFabricManager(MAASServerTestCase):
         factory.make_Fabric()
         fabric = factory.make_Fabric(name="infinite-improbability")
         factory.make_Fabric()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Fabric.objects.filter_by_specifiers("name:infinite-improbability"),
             [fabric],
         )
@@ -120,7 +120,7 @@ class TestFabricManager(MAASServerTestCase):
         factory.make_Fabric(class_type="1 Gbps")
         fabric = factory.make_Fabric(class_type="400 Tbps")
         factory.make_Fabric(class_type="10 Gbps")
-        self.assertItemsEqual(
+        self.assertCountEqual(
             Fabric.objects.filter_by_specifiers("class:400 Tbps"), [fabric]
         )
 
@@ -218,7 +218,7 @@ class TestFabric(MAASServerTestCase):
     def test_can_delete_nonconnected_fabric(self):
         fabric = factory.make_Fabric()
         fabric.delete()
-        self.assertItemsEqual([], Fabric.objects.filter(id=fabric.id))
+        self.assertCountEqual([], Fabric.objects.filter(id=fabric.id))
 
     def test_cant_delete_fabric_if_connected_to_interfaces(self):
         fabric = factory.make_Fabric()
@@ -262,7 +262,7 @@ class TestFabric(MAASServerTestCase):
         fabric = factory.make_Fabric(name=name)
         fabric.vlan_set.all().delete()
         fabric.delete()
-        self.assertItemsEqual([], Fabric.objects.filter(id=fabric.id))
+        self.assertCountEqual([], Fabric.objects.filter(id=fabric.id))
 
     def test_save_accepts_default_vlan_in_fabric(self):
         fabric = factory.make_Fabric()

@@ -90,7 +90,7 @@ class TestDNSResourceManager(MAASServerTestCase):
         dnsresource = factory.make_DNSResource()
         factory.make_DNSResource()
         id = dnsresource.id
-        self.assertItemsEqual(
+        self.assertCountEqual(
             DNSResource.objects.filter_by_specifiers("%s" % id), [dnsresource]
         )
 
@@ -99,7 +99,7 @@ class TestDNSResourceManager(MAASServerTestCase):
         name = factory.make_name("dnsresource")
         dnsresource = factory.make_DNSResource(name=name)
         factory.make_DNSResource()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             DNSResource.objects.filter_by_specifiers(name), [dnsresource]
         )
 
@@ -108,7 +108,7 @@ class TestDNSResourceManager(MAASServerTestCase):
         name = factory.make_name("dnsresource")
         dnsresource = factory.make_DNSResource(name=name)
         factory.make_DNSResource()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             DNSResource.objects.filter_by_specifiers("name:%s" % name),
             [dnsresource],
         )
@@ -250,7 +250,7 @@ class DNSResourceTest(MAASServerTestCase):
         node.interface_set.first().ip_addresses.add(sip1)
         sip2 = factory.make_StaticIPAddress()
         dnsresource.ip_addresses.add(sip2)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             (sip1.get_ip(), sip2.get_ip()), dnsresource.get_addresses()
         )
 
