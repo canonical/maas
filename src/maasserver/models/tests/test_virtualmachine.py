@@ -341,6 +341,14 @@ class TestGetVMHostResources(MAASServerTestCase):
             ],
         )
 
+    def test_get_resources_interfaces_no_host(self):
+        # regression test for LP:1943573, create at least an interface not
+        # linked to any host to ensure it doesn't get picked up
+        factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
+        pod = factory.make_Pod(pod_type="virsh")
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(resources.interfaces, [])
+
     def test_get_resources_interfaces_no_vm_link(self):
         node = factory.make_Node()
         iface = factory.make_Interface(

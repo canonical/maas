@@ -459,43 +459,48 @@ def _get_global_vm_host_resources(pod):
     )
 
     host_interfaces = {}
-    interfaces = (
-        Interface.objects.filter(node=pod.host)
-        .values("id", "name", "sriov_max_vf")
-        .annotate(
-            numa_index=F("numa_node__index"),
-            allocated=Count("virtualmachineinterface"),
-            tracked=ExpressionWrapper(
-                Q(virtualmachineinterface__vm__project=pod.tracked_project),
-                output_field=BooleanField(),
-            ),
-            sriov_attached=ExpressionWrapper(
-                Q(
-                    virtualmachineinterface__attachment_type=InterfaceAttachType.SRIOV
+    if pod.host:
+        interfaces = (
+            Interface.objects.filter(node=pod.host)
+            .values("id", "name", "sriov_max_vf")
+            .annotate(
+                numa_index=F("numa_node__index"),
+                allocated=Count("virtualmachineinterface"),
+                tracked=ExpressionWrapper(
+                    Q(
+                        virtualmachineinterface__vm__project=pod.tracked_project
+                    ),
+                    output_field=BooleanField(),
                 ),
-                output_field=BooleanField(),
-            ),
-        )
-    )
-    for entry in interfaces:
-        interface = host_interfaces.get(entry["id"])
-        if not interface:
-            interface = VMHostNetworkInterface(
-                id=entry["id"],
-                name=entry["name"],
-                numa_index=entry["numa_index"],
-                virtual_functions=VMHostResource(free=entry["sriov_max_vf"]),
+                sriov_attached=ExpressionWrapper(
+                    Q(
+                        virtualmachineinterface__attachment_type=InterfaceAttachType.SRIOV
+                    ),
+                    output_field=BooleanField(),
+                ),
             )
-            host_interfaces[entry["id"]] = interface
-        if not entry["sriov_attached"]:
-            continue
-        vfs = interface.virtual_functions
-        allocated = entry["allocated"]
-        if entry["tracked"]:
-            vfs.allocated_tracked += allocated
-        else:
-            vfs.allocated_other += allocated
-        vfs.free -= allocated
+        )
+        for entry in interfaces:
+            interface = host_interfaces.get(entry["id"])
+            if not interface:
+                interface = VMHostNetworkInterface(
+                    id=entry["id"],
+                    name=entry["name"],
+                    numa_index=entry["numa_index"],
+                    virtual_functions=VMHostResource(
+                        free=entry["sriov_max_vf"]
+                    ),
+                )
+                host_interfaces[entry["id"]] = interface
+            if not entry["sriov_attached"]:
+                continue
+            vfs = interface.virtual_functions
+            allocated = entry["allocated"]
+            if entry["tracked"]:
+                vfs.allocated_tracked += allocated
+            else:
+                vfs.allocated_other += allocated
+            vfs.free -= allocated
     resources.interfaces = list(host_interfaces.values())
 
     return resources
