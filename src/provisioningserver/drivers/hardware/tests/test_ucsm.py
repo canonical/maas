@@ -1,9 +1,6 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for ``provisioningserver.drivers.hardware.ucsm``."""
-
-
 from io import StringIO
 from itertools import permutations
 import random
@@ -86,8 +83,6 @@ def make_server(power_state=None):
 
 
 class TestUCSMXMLAPIError(MAASTestCase):
-    """Tests for ``UCSM_XML_API_Error``."""
-
     def test_includes_code_and_msg(self):
         def raise_error():
             raise UCSM_XML_API_Error("bad", 4224)
@@ -99,8 +94,6 @@ class TestUCSMXMLAPIError(MAASTestCase):
 
 
 class TestMakeRequestData(MAASTestCase):
-    """Tests for ``make_request_data``."""
-
     def test_no_children(self):
         fields = {"hello": "there"}
         request_data = make_request_data("foo", fields)
@@ -115,7 +108,7 @@ class TestMakeRequestData(MAASTestCase):
         request_data = make_request_data("foo", fields, children)
         root = XML(request_data)
         self.assertEqual("foo", root.tag)
-        self.assertItemsEqual(children_tags, (e.tag for e in root))
+        self.assertEqual(children_tags, [e.tag for e in root])
 
     def test_no_fields(self):
         request_data = make_request_data("foo")
@@ -124,8 +117,6 @@ class TestMakeRequestData(MAASTestCase):
 
 
 class TestParseResonse(MAASTestCase):
-    """Tests for ``parse_response``."""
-
     def test_no_error(self):
         xml = "<foo/>"
         response = parse_response(xml)
@@ -137,8 +128,6 @@ class TestParseResonse(MAASTestCase):
 
 
 class TestLogin(MAASTestCase):
-    """"Tests for ``UCSM_XML_API.login``."""
-
     def test_login_assigns_cookie(self):
         cookie = "chocolate chip"
         api, mock = make_api_patch_call(self)
@@ -156,8 +145,6 @@ class TestLogin(MAASTestCase):
 
 
 class TestLogout(MAASTestCase):
-    """"Tests for ``UCSM_XML_API.logout``."""
-
     def test_logout_clears_cookie(self):
         api = make_api()
         self.patch(api, "_call")
@@ -173,8 +160,6 @@ class TestLogout(MAASTestCase):
 
 
 class TestConfigResolveClass(MAASTestCase):
-    """"Tests for ``UCSM_XML_API.config_resolve_class``."""
-
     def test_no_filters(self):
         class_id = make_class()
         api, mock = make_api_patch_call(self)
@@ -200,8 +185,6 @@ class TestConfigResolveClass(MAASTestCase):
 
 
 class TestConfigResolveChildren(MAASTestCase):
-    """"Tests for ``UCSM_XML_API.config_resolve_children``."""
-
     def test_parameters(self):
         dn = make_dn()
         class_id = make_class()
@@ -229,8 +212,6 @@ class TestConfigResolveChildren(MAASTestCase):
 
 
 class TestConfigConfMo(MAASTestCase):
-    """"Tests for ``UCSM_XML_API.config_conf_mo``."""
-
     def test_parameters(self):
         dn = make_dn()
         config_items = [Element("hi")]
@@ -243,8 +224,6 @@ class TestConfigConfMo(MAASTestCase):
 
 
 class TestCall(MAASTestCase):
-    """"Tests for ``UCSM_XML_API._call``."""
-
     def test_call(self):
         name = "method"
         fields = {1: 2}
@@ -267,8 +246,6 @@ class TestCall(MAASTestCase):
 
 
 class TestSendRequest(MAASTestCase):
-    """"Tests for ``UCSM_XML_API._send_request``."""
-
     def test_send_request(self):
         request_data = "foo"
         api = make_api()
@@ -283,8 +260,6 @@ class TestSendRequest(MAASTestCase):
 
 
 class TestConfigResolveDn(MAASTestCase):
-    """Tests for ``UCSM_XML_API.config_resolve_dn``."""
-
     def test_parameters(self):
         api, mock = make_api_patch_call(self)
         test_dn = make_dn()
@@ -294,8 +269,6 @@ class TestConfigResolveDn(MAASTestCase):
 
 
 class TestGetServers(MAASTestCase):
-    """Tests for ``get_servers``."""
-
     def test_uses_uuid(self):
         uuid = factory.make_UUID()
         api = make_api()
@@ -322,8 +295,6 @@ class TestGetServers(MAASTestCase):
 
 
 class TestProbeLanBootOptions(MAASTestCase):
-    """Tests for ``probe_lan_boot_options``."""
-
     def test_returns_result(self):
         api = make_api()
         server = sentinel.server
@@ -350,8 +321,6 @@ class TestProbeLanBootOptions(MAASTestCase):
 
 
 class TestGetChildren(MAASTestCase):
-    """Tests for ``get_children``."""
-
     def test_returns_result(self):
         search_class = make_class()
         api = make_api()
@@ -374,8 +343,6 @@ class TestGetChildren(MAASTestCase):
 
 
 class TestGetMacs(MAASTestCase):
-    """Tests for ``get_macs``."""
-
     def test_gets_adaptors(self):
         adaptor = "adaptor"
         server = make_server()
@@ -402,8 +369,6 @@ class TestGetMacs(MAASTestCase):
 
 
 class TestProbeServers(MAASTestCase):
-    """Tests for ``probe_servers``."""
-
     def test_uses_api(self):
         api = make_api()
         mock = self.patch(ucsm, "get_servers")
@@ -441,8 +406,6 @@ class TestProbeServers(MAASTestCase):
 
 
 class TestGetServerPowerControl(MAASTestCase):
-    """Tests for ``get_server_power_control``."""
-
     def test_get_server_power_control(self):
         api = make_api()
         mock = self.patch(api, "config_resolve_children")
@@ -456,8 +419,6 @@ class TestGetServerPowerControl(MAASTestCase):
 
 
 class TestSetServerPowerControl(MAASTestCase):
-    """Tests for ``set_server_power_control``."""
-
     def test_set_server_power_control(self):
         api = make_api()
         power_dn = make_dn()
@@ -472,8 +433,6 @@ class TestSetServerPowerControl(MAASTestCase):
 
 
 class TestLoggedIn(MAASTestCase):
-    """Tests for ``logged_in``."""
-
     def test_logged_in(self):
         mock = self.patch(ucsm, "UCSM_XML_API")
         url = "url"
@@ -521,8 +480,6 @@ class TestInvalidGetPowerCommand(MAASTestCase):
 
 
 class TestPowerControlUCSM(MAASTestCase):
-    """Tests for ``power_control_ucsm``."""
-
     def test_power_control_ucsm(self):
         uuid = factory.make_UUID()
         api = Mock()
@@ -548,8 +505,6 @@ class TestPowerControlUCSM(MAASTestCase):
 
 
 class TestUCSMPowerState(MAASTestCase):
-    """Tests for `power_state_ucsm`."""
-
     def test_power_state_get_off(self):
         url = factory.make_name("url")
         username = factory.make_name("username")
@@ -594,7 +549,6 @@ class TestUCSMPowerState(MAASTestCase):
 
 
 class TestProbeAndEnlistUCSM(MAASTestCase):
-    """Tests for ``probe_and_enlist_ucsm``."""
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -640,8 +594,6 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
 
 
 class TestGetServiceProfile(MAASTestCase):
-    """Tests for ``get_service_profile.``"""
-
     def test_get_service_profile(self):
         test_dn = make_dn()
         server = Element("computeBlade", {"assignedToDn": test_dn})
@@ -676,7 +628,6 @@ def make_boot_order_scenarios(size):
 
 
 class TestGetFirstBooter(MAASTestCase):
-    """Tests for ``get_first_booter.``"""
 
     scenarios, minimum = make_boot_order_scenarios(3)
 
@@ -690,8 +641,6 @@ class TestGetFirstBooter(MAASTestCase):
 
 
 class TestsForStripRoKeys(MAASTestCase):
-    """Tests for ``strip_ro_keys.``"""
-
     def test_strip_ro_keys(self):
         attributes = {key: "DC" for key in RO_KEYS}
 
@@ -709,8 +658,6 @@ class TestsForStripRoKeys(MAASTestCase):
 
 
 class TestMakePolicyChange(MAASTestCase):
-    """Tests for ``make_policy_change``."""
-
     def test_lan_already_top_priority(self):
         boot_profile_response = make_fake_result(
             "configResolveChildren", "lsbootLan"
@@ -738,8 +685,6 @@ class TestMakePolicyChange(MAASTestCase):
 
 
 class TestSetLanBootDefault(MAASTestCase):
-    """Tets for ``set_lan_boot_default.``"""
-
     def test_no_change(self):
         api = make_api()
         server = make_server()

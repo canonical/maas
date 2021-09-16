@@ -81,14 +81,14 @@ class TestMoonshotIPMIPowerDriver(MAASTestCase):
         mock.return_value = False
         driver = moonshot_module.MoonshotIPMIPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["ipmitool"], missing)
+        self.assertEqual(["ipmitool"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = moonshot_module.MoonshotIPMIPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_issue_ipmitool_command_sets_pxe_boot(self):
         context = make_context()

@@ -151,7 +151,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         # there's nothing to check for, just confirm it returns []
         driver = RedfishPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_get_url_with_ip(self):
         driver = RedfishPowerDriver()

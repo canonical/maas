@@ -141,7 +141,7 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         proc_path = self.make_dir()
         self.make_init_process(proc_path)
         command = factory.make_name("command")
-        pids_running_command = set(random.randint(2, 999) for _ in range(3))
+        pids_running_command = [random.randint(2, 999) for _ in range(3)]
         for pid in pids_running_command:
             self.make_process(proc_path, pid, command=command)
         pids_not_running_command = set(
@@ -162,7 +162,7 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
             ps_module, "running_in_container"
         )
         mock_running_in_container.return_value = False
-        self.assertItemsEqual(
+        self.assertCountEqual(
             pids_running_command,
             get_running_pids_with_command(command, proc_path=proc_path),
         )
@@ -171,12 +171,12 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         proc_path = self.make_dir()
         self.make_init_process(proc_path)
         command = factory.make_name("command")
-        pids_running_command = set(random.randint(2, 999) for _ in range(3))
+        pids_running_command = [random.randint(2, 999) for _ in range(3)]
         for pid in pids_running_command:
             self.make_process(proc_path, pid, command=command)
             # Remove the comm file to test the exception handling.
             os.remove(os.path.join(proc_path, str(pid), "comm"))
-        self.assertItemsEqual(
+        self.assertEqual(
             [], get_running_pids_with_command(command, proc_path=proc_path)
         )
 
@@ -184,7 +184,7 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         proc_path = self.make_dir()
         self.make_init_process(proc_path, in_container=True)
         command = factory.make_name("command")
-        pids_running_command = set(random.randint(2, 999) for _ in range(3))
+        pids_running_command = [random.randint(2, 999) for _ in range(3)]
         for pid in pids_running_command:
             self.make_process(
                 proc_path, pid, in_container=True, command=command
@@ -203,7 +203,7 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
             ps_module, "running_in_container"
         )
         mock_running_in_container.return_value = True
-        self.assertItemsEqual(
+        self.assertCountEqual(
             pids_running_command,
             get_running_pids_with_command(command, proc_path=proc_path),
         )

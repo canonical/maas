@@ -25,7 +25,7 @@ class TestWindowsOS(MAASTestCase):
         subarch = factory.make_name("subarch")
         release = factory.make_name("release")
         label = factory.make_name("label")
-        self.assertItemsEqual(
+        self.assertEqual(
             [BOOT_IMAGE_PURPOSE.XINSTALL],
             osystem.get_boot_image_purposes(arch, subarch, release, label),
         )
@@ -112,16 +112,16 @@ class TestWindowsOS(MAASTestCase):
         node = self.make_node()
         token = self.make_token()
         url = factory.make_name("url")
-        required_keys = [
+        required_keys = {
             "maas_metadata_url",
             "maas_oauth_consumer_secret",
             "maas_oauth_consumer_key",
             "maas_oauth_token_key",
             "maas_oauth_token_secret",
             "hostname",
-        ]
+        }
         preseed = osystem.compose_preseed("default", node, token, url)
-        self.assertItemsEqual(required_keys, preseed.keys())
+        self.assertEqual(required_keys, preseed.keys())
 
     def test_compose_preseed_uses_only_hostname(self):
         osystem = WindowsOS()

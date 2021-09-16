@@ -231,7 +231,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             (10 * PART_SIZE) - RAID_SUPERBLOCK_OVERHEAD, parsed_device["size"]
         )
         self.assertEqual(uuid4, parsed_device["uuid"])
-        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(block_devices, parsed_block_devices)
         self.assertCountEqual(partitions, parsed_partitions)
         self.assertEqual([], parsed_block_device_spares)
         self.assertEqual([], parsed_partition_spares)
@@ -323,7 +323,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             PART_SIZE - RAID_SUPERBLOCK_OVERHEAD, parsed_device["size"]
         )
         self.assertEqual(uuid4, parsed_device["uuid"])
-        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(block_devices, parsed_block_devices)
         self.assertCountEqual(partitions, parsed_partitions)
         self.assertEqual([], parsed_block_device_spares)
         self.assertEqual([], parsed_partition_spares)
@@ -379,7 +379,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             PART_SIZE - RAID_SUPERBLOCK_OVERHEAD, parsed_device["size"]
         )
         self.assertEqual(uuid4, parsed_device["uuid"])
-        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(block_devices, parsed_block_devices)
         self.assertCountEqual(partitions, parsed_partitions)
         self.assertEqual(spare_devices, parsed_block_device_spares)
         self.assertEqual(spare_partitions, parsed_partition_spares)
@@ -438,7 +438,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             (7 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
             parsed_device["size"],
         )
-        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(block_devices, parsed_block_devices)
         self.assertCountEqual(partitions, parsed_partitions)
         self.assertEqual(spare_devices, parsed_block_device_spares)
         self.assertEqual(spare_partitions, parsed_partition_spares)
@@ -498,7 +498,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             (6 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
             parsed_device["size"],
         )
-        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(block_devices, parsed_block_devices)
         self.assertCountEqual(partitions, parsed_partitions)
         self.assertEqual(spare_devices, parsed_block_device_spares)
         self.assertEqual(spare_partitions, parsed_partition_spares)
@@ -558,7 +558,7 @@ class TestRaidsAPI(APITestCase.ForUser):
             (4 * large_partitions[0].size) - RAID_SUPERBLOCK_OVERHEAD,
             parsed_device["size"],
         )
-        self.assertEqual(block_devices, parsed_block_devices)
+        self.assertCountEqual(block_devices, parsed_block_devices)
         self.assertCountEqual(partitions, parsed_partitions)
         self.assertEqual(spare_devices, parsed_block_device_spares)
         self.assertEqual(spare_partitions, parsed_partition_spares)

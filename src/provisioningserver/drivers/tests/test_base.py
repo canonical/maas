@@ -400,7 +400,7 @@ class TestRegistries(MAASTestCase):
         self.useFixture(RegistryFixture())
 
     def test_architecture_registry(self):
-        self.assertItemsEqual([], ArchitectureRegistry)
+        self.assertEqual([], list(ArchitectureRegistry))
         ArchitectureRegistry.register_item("resource", sentinel.resource)
         self.assertIn(
             sentinel.resource, (item for name, item in ArchitectureRegistry)

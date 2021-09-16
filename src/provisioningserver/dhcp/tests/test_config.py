@@ -344,7 +344,7 @@ class TestGetConfig(MAASTestCase):
             )
             for server in server_line.split(", ")
         ]
-        self.assertItemsEqual(ntp_servers_expected, ntp_servers_observed)
+        self.assertCountEqual(ntp_servers_expected, ntp_servers_observed)
 
     def test_renders_without_ntp_servers_set(self):
         params = make_sample_params(self, ipv6=self.ipv6)
@@ -373,7 +373,7 @@ class TestGetConfig(MAASTestCase):
             )
             for server in server_line.split(", ")
         ]
-        self.assertItemsEqual(ntp_servers_expected, ntp_servers_observed)
+        self.assertCountEqual(ntp_servers_expected, ntp_servers_observed)
 
     def test_renders_router_ip_if_present(self):
         params = make_sample_params(self, ipv6=self.ipv6)

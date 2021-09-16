@@ -134,14 +134,14 @@ class TestIPMIPowerDriver(MAASTestCase):
         mock.return_value = False
         driver = ipmi_module.IPMIPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["freeipmi-tools"], missing)
+        self.assertEqual(["freeipmi-tools"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = ipmi_module.IPMIPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_finds_power_address_from_mac_address(self):
         context = make_context()

@@ -299,7 +299,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         upgrade_cluster.migrate_architectures_into_ubuntu_directory(
             self.current_dir
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             arches,
             list_subdirs(os.path.join(storage_dir, "current", "ubuntu")),
         )
@@ -330,7 +330,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         upgrade_cluster.migrate_architectures_into_ubuntu_directory(
             self.current_dir
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [move_arch],
             list_subdirs(os.path.join(storage_dir, "current", "ubuntu")),
         )
@@ -373,7 +373,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         upgrade_cluster.migrate_architectures_into_ubuntu_directory(
             self.current_dir
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [move_arch],
             list_subdirs(os.path.join(storage_dir, "current", "ubuntu")),
         )

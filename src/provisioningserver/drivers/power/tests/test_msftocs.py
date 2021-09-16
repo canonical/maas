@@ -53,7 +53,7 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         # there's nothing to check for, just confirm it returns []
         driver = MicrosoftOCSPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_extract_from_response_finds_element_content(self):
         driver = MicrosoftOCSPowerDriver()

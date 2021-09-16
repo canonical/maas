@@ -68,8 +68,8 @@ class TestSyslogServiceOnRack(MAASTestCase):
 
 class TestGlobalServiceMonitor(MAASTestCase):
     def test_includes_all_services(self):
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "http",
                 "dhcpd",
                 "dhcpd6",
@@ -77,6 +77,6 @@ class TestGlobalServiceMonitor(MAASTestCase):
                 "ntp_rack",
                 "proxy_rack",
                 "syslog_rack",
-            ],
+            },
             service_monitor._services.keys(),
         )

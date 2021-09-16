@@ -457,7 +457,7 @@ class TestRepoDumper(MAASTestCase):
             ),
             sentinel.contentsource,
         )
-        image_specs = [
+        image_specs = {
             make_image_spec(
                 os=item["os"],
                 release=item["release"],
@@ -466,8 +466,8 @@ class TestRepoDumper(MAASTestCase):
                 label=item["label"],
             )
             for subarch in subarches
-        ]
-        self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
+        }
+        self.assertEqual(image_specs, boot_images_dict.mapping.keys())
 
     def test_insert_item_sets_compat_item_specific_to_subarch(self):
         boot_images_dict = BootImageMapping()
@@ -624,7 +624,7 @@ class TestRepoDumper(MAASTestCase):
             ),
             sentinel.contentsource,
         )
-        image_specs = [
+        image_specs = {
             make_image_spec(
                 os=item["os"],
                 release="uefi",
@@ -634,8 +634,8 @@ class TestRepoDumper(MAASTestCase):
                 label=item["label"],
             )
             for subarch in item["subarches"].split(",")
-        ]
-        self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
+        }
+        self.assertEqual(image_specs, boot_images_dict.mapping.keys())
 
     def test_insert_item_validates(self):
         boot_images_dict = BootImageMapping()
@@ -654,7 +654,7 @@ class TestRepoDumper(MAASTestCase):
             ),
             sentinel.contentsource,
         )
-        self.assertItemsEqual([], list(boot_images_dict.mapping))
+        self.assertEqual(set(), boot_images_dict.mapping.keys())
 
     def test_insert_item_doesnt_validate_when_instructed(self):
         boot_images_dict = BootImageMapping()
@@ -673,7 +673,7 @@ class TestRepoDumper(MAASTestCase):
             ),
             sentinel.contentsource,
         )
-        image_specs = [
+        image_specs = {
             make_image_spec(
                 os=item["os"],
                 release=item["release"],
@@ -682,8 +682,8 @@ class TestRepoDumper(MAASTestCase):
                 label=item["label"],
             )
             for subarch in item["subarches"].split(",")
-        ]
-        self.assertItemsEqual(image_specs, list(boot_images_dict.mapping))
+        }
+        self.assertEqual(image_specs, boot_images_dict.mapping.keys())
 
     def test_sync_does_propagate_ioerror(self):
         io_error = factory.make_exception_type(bases=(IOError,))

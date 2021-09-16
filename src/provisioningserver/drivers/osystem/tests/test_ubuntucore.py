@@ -61,7 +61,7 @@ class TestUbuntuCoreOS(MAASTestCase):
 
     def test_get_xinstall_parameters_default(self):
         osystem = UbuntuCoreOS()
-        self.assertItemsEqual(
+        self.assertEqual(
             ("root-dd.xz", "dd-xz"),
             osystem.get_xinstall_parameters(
                 factory.make_name("arch"),

@@ -466,7 +466,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(["amd64/generic"], discovered_pod.architectures)
         self.assertEqual("lxd-server", discovered_pod.name)
         self.assertEqual(discovered_pod.version, "4.1")
-        self.assertItemsEqual([mac_address], discovered_pod.mac_addresses)
+        self.assertEqual([mac_address], discovered_pod.mac_addresses)
         self.assertEqual(-1, discovered_pod.cores)
         self.assertEqual(-1, discovered_pod.cpu_speed)
         self.assertEqual(-1, discovered_pod.memory)
@@ -474,7 +474,7 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertEqual(-1, discovered_pod.hints.cores)
         self.assertEqual(-1, discovered_pod.hints.cpu_speed)
         self.assertEqual(-1, discovered_pod.hints.local_storage)
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 Capabilities.COMPOSABLE,
                 Capabilities.DYNAMIC_LOCAL_STORAGE,

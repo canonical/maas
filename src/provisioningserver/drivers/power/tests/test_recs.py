@@ -45,7 +45,7 @@ class TestRECSPowerDriver(MAASTestCase):
         mock.return_value = True
         driver = RECSPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def make_context(self):
         ip = factory.make_name("power_address")
@@ -65,7 +65,7 @@ class TestRECSPowerDriver(MAASTestCase):
     def test_extract_recs_parameters_extracts_parameters(self):
         ip, port, username, password, node_id, context = self.make_context()
 
-        self.assertItemsEqual(
+        self.assertEqual(
             (ip, port, username, password, node_id),
             extract_recs_parameters(context),
         )

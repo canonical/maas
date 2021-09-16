@@ -665,7 +665,7 @@ class TestVirshSSH(MAASTestCase):
         expected = (("br0", "e1000"), ("br1", "e1000"))
         conn = self.configure_virshssh("")
         values = conn._get_column_values(SAMPLE_IFLIST, keys)
-        self.assertItemsEqual(values, expected)
+        self.assertEqual(values, expected)
 
     def test_get_key_value(self):
         key = "CPU model"
@@ -698,31 +698,31 @@ class TestVirshSSH(MAASTestCase):
         names = [factory.make_name("machine") for _ in range(3)]
         conn = self.configure_virshssh("\n".join(names))
         expected = conn.list_machines()
-        self.assertItemsEqual(names, expected)
+        self.assertEqual(names, expected)
 
     def test_list_machines_with_dom_prefix(self):
         prefix = "dom_prefix"
         names = [prefix + factory.make_name("machine") for _ in range(3)]
         conn = self.configure_virshssh("\n".join(names), dom_prefix=prefix)
         expected = conn.list_machines()
-        self.assertItemsEqual(names, expected)
+        self.assertEqual(names, expected)
 
     def test_list_pools(self):
         names = ["default", "ubuntu"]
         conn = self.configure_virshssh(SAMPLE_POOLLIST)
         expected = conn.list_pools()
-        self.assertItemsEqual(names, expected)
+        self.assertEqual(names, expected)
 
     def test_list_machine_block_devices(self):
-        block_devices = (
+        block_devices = [
             ("vda", "/var/lib/libvirt/images/example1.qcow2"),
             ("vdb", "/var/lib/libvirt/images/example2.qcow2"),
-        )
+        ]
         conn = self.configure_virshssh(SAMPLE_DOMBLKLIST)
         expected = conn.list_machine_block_devices(
             factory.make_name("machine")
         )
-        self.assertItemsEqual(block_devices, expected)
+        self.assertEqual(block_devices, expected)
 
     def test_get_machine_state(self):
         state = factory.make_name("state")
@@ -1086,13 +1086,13 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(architecture, discovered_machine.architecture)
         self.assertEqual(cores, discovered_machine.cores)
         self.assertEqual(memory, discovered_machine.memory)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             local_storage, [bd.size for bd in discovered_machine.block_devices]
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             device_tags, [bd.tags for bd in discovered_machine.block_devices]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             mac_addresses,
             [m.mac_address for m in discovered_machine.interfaces],
         )
@@ -1194,13 +1194,13 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(architecture, discovered_machine.architecture)
         self.assertEqual(cores, discovered_machine.cores)
         self.assertEqual(memory, discovered_machine.memory)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             local_storage, [bd.size for bd in discovered_machine.block_devices]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             device_tags, [bd.tags for bd in discovered_machine.block_devices]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             mac_addresses,
             [m.mac_address for m in discovered_machine.interfaces],
         )
@@ -2570,14 +2570,14 @@ class TestVirshPodDriver(MAASTestCase):
         mock.return_value = False
         driver = virsh.VirshPodDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["libvirt-clients"], missing)
+        self.assertEqual(["libvirt-clients"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = virsh.VirshPodDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def make_context(self):
         return {

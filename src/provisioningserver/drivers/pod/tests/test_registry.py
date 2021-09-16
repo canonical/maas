@@ -19,7 +19,7 @@ class TestPodDriverRegistry(MAASTestCase):
         self.useFixture(RegistryFixture())
 
     def test_registry(self):
-        self.assertItemsEqual([], PodDriverRegistry)
+        self.assertEqual([], list(PodDriverRegistry))
         PodDriverRegistry.register_item("driver", sentinel.driver)
         self.assertIn(
             sentinel.driver, (item for name, item in PodDriverRegistry)
@@ -30,7 +30,7 @@ class TestPodDriverRegistry(MAASTestCase):
         fake_driver_two = make_pod_driver_base()
         PodDriverRegistry.register_item(fake_driver_one.name, fake_driver_one)
         PodDriverRegistry.register_item(fake_driver_two.name, fake_driver_two)
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 {
                     "driver_type": "pod",

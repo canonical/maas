@@ -162,6 +162,6 @@ class TestMapProducts(MAASTestCase):
             resource["version_name"],
         )
         self.assertEqual([key], list(products_mapping.mapping))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [image1.subarch, image2.subarch], products_mapping.get(resource)
         )

@@ -14,7 +14,7 @@ class TestEnum(MAASTestCase):
             ONE = 1
             TWO = 2
 
-        self.assertItemsEqual(["ONE", "TWO"], map_enum(Enum).keys())
+        self.assertEqual({"ONE", "TWO"}, map_enum(Enum).keys())
 
     def test_map_enum_omits_private_or_special_methods(self):
         class Enum:
@@ -29,7 +29,7 @@ class TestEnum(MAASTestCase):
 
             VALUE = 9
 
-        self.assertItemsEqual(["VALUE"], map_enum(Enum).keys())
+        self.assertEqual({"VALUE"}, map_enum(Enum).keys())
 
     def test_map_enum_maps_values(self):
         class Enum:

@@ -35,12 +35,12 @@ class TestRegistry(MAASTestCase):
         from provisioningserver.drivers import Registry as Registry2
 
         Registry2.register_item("resource2", sentinel.resource2)
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 ("resource1", sentinel.resource1),
                 ("resource2", sentinel.resource2),
             ],
-            Registry2,
+            list(Registry2),
         )
 
     def test_getitem__(self):

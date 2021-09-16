@@ -29,14 +29,14 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         mock.return_value = False
         driver = seamicro_module.SeaMicroPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["ipmitool"], missing)
+        self.assertEqual(["ipmitool"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = seamicro_module.SeaMicroPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def make_context(self):
         ip = factory.make_name("power_address")
@@ -56,7 +56,7 @@ class TestSeaMicroPowerDriver(MAASTestCase):
         power_control = choice(["ipmi", "restapi", "restapi2"])
         context["power_control"] = power_control
 
-        self.assertItemsEqual(
+        self.assertEqual(
             (ip, username, password, server_id, power_control),
             extract_seamicro_parameters(context),
         )

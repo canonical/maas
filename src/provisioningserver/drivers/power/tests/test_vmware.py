@@ -23,14 +23,14 @@ class TestVMwarePowerDriver(MAASTestCase):
         mock.return_value = False
         driver = vmware_module.VMwarePowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["python3-pyvmomi"], missing)
+        self.assertEqual(["python3-pyvmomi"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(try_pyvmomi_import)
         mock.return_value = True
         driver = vmware_module.VMwarePowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def make_parameters(self, has_optional=True):
         system_id = factory.make_name("system_id")
@@ -78,7 +78,7 @@ class TestVMwarePowerDriver(MAASTestCase):
             context,
         ) = self.make_parameters()
 
-        self.assertItemsEqual(
+        self.assertEqual(
             (host, username, password, vm_name, uuid, None, None),
             extract_vmware_parameters(context),
         )
@@ -96,7 +96,7 @@ class TestVMwarePowerDriver(MAASTestCase):
             context,
         ) = self.make_parameters(has_optional=False)
 
-        self.assertItemsEqual(
+        self.assertEqual(
             (host, username, password, vm_name, uuid, port, protocol),
             extract_vmware_parameters(context),
         )

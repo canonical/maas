@@ -13,7 +13,7 @@ class TestManualPowerDriver(MAASTestCase):
     def test_no_missing_packages(self):
         driver = manual_module.ManualPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_power_on(self):
         driver = manual_module.ManualPowerDriver()

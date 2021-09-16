@@ -324,9 +324,8 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
                 factory.make_ScriptResult(script=script, script_set=script_set)
             )
 
-        self.assertEqual(
-            sorted(latest_script_results, key=lambda x: x.name),
-            list(node.get_latest_script_results),
+        self.assertCountEqual(
+            latest_script_results, node.get_latest_script_results
         )
 
     def test_get_latest_script_results_storage(self):
@@ -403,9 +402,8 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             if script.script_type == SCRIPT_TYPE.COMMISSIONING:
                 latest_script_results.append(script_result)
 
-        self.assertEqual(
-            sorted(latest_script_results, key=lambda x: x.name),
-            list(node.get_latest_commissioning_script_results),
+        self.assertCountEqual(
+            latest_script_results, node.get_latest_commissioning_script_results
         )
 
     def test_get_latest_testing_script_results(self):
@@ -428,9 +426,8 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             if script.script_type == SCRIPT_TYPE.TESTING:
                 latest_script_results.append(script_result)
 
-        self.assertEqual(
-            sorted(latest_script_results, key=lambda x: x.name),
-            list(node.get_latest_testing_script_results),
+        self.assertCountEqual(
+            latest_script_results, node.get_latest_testing_script_results
         )
 
     def test_get_latest_installation_script_results(self):

@@ -103,14 +103,14 @@ class TestAMTPowerDriver(MAASTestCase):
         mock.return_value = False
         driver = amt_module.AMTPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["wsmancli"], missing)
+        self.assertEqual(["wsmancli"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = amt_module.AMTPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_render_wsman_state_xml_renders_xml(self):
         amt_power_driver = AMTPowerDriver()

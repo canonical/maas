@@ -921,7 +921,7 @@ class TestTFTPService(MAASTestCase):
         )
         self.assertThat(tftp_service.getServers(), AllMatch(expected_server))
         # Only the interface used for each service differs.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [svc.kwargs for svc in tftp_service.getServers()],
             [{"interface": interface} for interface in interfaces],
         )

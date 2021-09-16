@@ -154,36 +154,39 @@ class TestFlatten(MAASTestCase):
         self.assertThat(flatten(()), IsInstance(Iterator))
 
     def test_returns_empty_when_nothing_provided(self):
-        self.assertItemsEqual([], flatten([]))
-        self.assertItemsEqual([], flatten(()))
-        self.assertItemsEqual([], flatten({}))
-        self.assertItemsEqual([], flatten(set()))
-        self.assertItemsEqual([], flatten(([], (), {}, set())))
-        self.assertItemsEqual([], flatten(([[]], ((),))))
+        self.assertEqual([], list(flatten([])))
+        self.assertEqual([], list(flatten(())))
+        self.assertEqual([], list(flatten({})))
+        self.assertEqual([], list(flatten(set())))
+        self.assertEqual([], list(flatten(([], (), {}, set()))))
+        self.assertEqual([], list(flatten(([[]], ((),)))))
 
     def test_flattens_list(self):
-        self.assertItemsEqual([1, 2, 3, "abc"], flatten([1, 2, 3, "abc"]))
+        self.assertEqual([1, 2, 3, "abc"], list(flatten([1, 2, 3, "abc"])))
 
     def test_flattens_nested_lists(self):
-        self.assertItemsEqual([1, 2, 3, "abc"], flatten([[[1, 2, 3, "abc"]]]))
+        self.assertEqual([1, 2, 3, "abc"], list(flatten([[[1, 2, 3, "abc"]]])))
 
     def test_flattens_arbitrarily_nested_lists(self):
-        self.assertItemsEqual(
+        self.assertEqual(
             [1, "two", "three", 4, 5, 6],
-            flatten([[1], ["two", "three"], [4], [5, 6]]),
+            list(flatten([[1], ["two", "three"], [4], [5, 6]])),
         )
 
     def test_flattens_other_iterables(self):
-        self.assertItemsEqual(
-            [1, 2, 3.3, 4, 5, 6], flatten([1, 2, {3.3, 4, (5, 6)}])
+        self.assertEqual(
+            [1, 2, 3.3, 4, 5, 6], list(flatten([1, 2, {3.3, 4, (5, 6)}]))
         )
 
     def test_treats_string_like_objects_as_leaves(self):
         # Strings are iterable, but we know they cannot be flattened further.
-        self.assertItemsEqual(["abcdef"], flatten("abcdef"))
+        self.assertEqual(["abcdef"], list(flatten("abcdef")))
 
     def test_takes_star_args(self):
-        self.assertItemsEqual("abcdef", flatten("a", "b", "c", "d", "e", "f"))
+        self.assertEqual(
+            ["a", "b", "c", "d", "e", "f"],
+            list(flatten("a", "b", "c", "d", "e", "f")),
+        )
 
 
 class TestSudo(MAASTestCase):

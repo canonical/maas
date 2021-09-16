@@ -9,7 +9,6 @@ from unittest.mock import MagicMock, sentinel
 from testtools.matchers import IsInstance
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.events import Event, EventGroup
 
@@ -20,27 +19,27 @@ class TestEvent(MAASTestCase):
     def test_registerHandler(self):
         event = Event()
         event.registerHandler(sentinel.handler)
-        self.assertItemsEqual([sentinel.handler], event.handlers)
+        self.assertEqual({sentinel.handler}, event.handlers)
 
     def test_registerHandler_during_fire(self):
         event = Event()
         event.registerHandler(event.registerHandler)
         event.fire(sentinel.otherHandler)
-        self.assertItemsEqual(
-            [event.registerHandler, sentinel.otherHandler], event.handlers
+        self.assertEqual(
+            {event.registerHandler, sentinel.otherHandler}, event.handlers
         )
 
     def test_unregisterHandler(self):
         event = Event()
         event.registerHandler(sentinel.handler)
         event.unregisterHandler(sentinel.handler)
-        self.assertItemsEqual([], event.handlers)
+        self.assertEqual(set(), event.handlers)
 
     def test_unregisterHandler_during_fire(self):
         event = Event()
         event.registerHandler(event.unregisterHandler)
         event.fire(event.unregisterHandler)
-        self.assertItemsEqual([], event.handlers)
+        self.assertEqual(set(), event.handlers)
 
     def test_fire_calls_all_handlers(self):
         event = Event()
@@ -54,8 +53,8 @@ class TestEvent(MAASTestCase):
             for _ in range(3)
         }
         event.fire(*args, **kwargs)
-        self.assertThat(handler_one, MockCalledOnceWith(*args, **kwargs))
-        self.assertThat(handler_two, MockCalledOnceWith(*args, **kwargs))
+        handler_one.mock_called_once_with(*args, **kwargs)
+        handler_two.mock_called_once_with(*args, **kwargs)
 
 
 class TestEventGroup(MAASTestCase):

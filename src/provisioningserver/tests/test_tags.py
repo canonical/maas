@@ -484,7 +484,7 @@ class TestGenNodeDetails(MAASTestCase):
         get_details_for_nodes.side_effect = lambda *args: responses.pop(0)
         self.fake_merge_details()
         node_details = tags.gen_node_details(sentinel.client, batches)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [("s1", "merged:foo"), ("s2", "merged:bar"), ("s3", "merged:cob")],
             node_details,
         )

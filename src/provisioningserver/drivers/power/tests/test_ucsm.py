@@ -21,7 +21,7 @@ class TestUCSMPowerDriver(MAASTestCase):
         # there's nothing to check for, just confirm it returns []
         driver = ucsm_module.UCSMPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def make_parameters(self):
         system_id = factory.make_name("system_id")
@@ -48,7 +48,7 @@ class TestUCSMPowerDriver(MAASTestCase):
             context,
         ) = self.make_parameters()
 
-        self.assertItemsEqual(
+        self.assertEqual(
             (url, username, password, uuid), extract_ucsm_parameters(context)
         )
 

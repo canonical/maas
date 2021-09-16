@@ -214,7 +214,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REQUEST,
             )
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             arp.bindings(), [(IPAddress(pkt_sender_ip), EUI(pkt_sender_mac))]
         )
 
@@ -232,7 +232,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REPLY,
             )
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             arp.bindings(),
             [
                 (IPAddress(pkt_sender_ip), EUI(pkt_sender_mac)),
@@ -254,7 +254,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REQUEST,
             )
         )
-        self.assertItemsEqual(arp.bindings(), [])
+        self.assertCountEqual(arp.bindings(), [])
 
     def test_bindings__skips_null_source_ip_in_reply(self):
         pkt_sender_mac = "01:02:03:04:05:06"
@@ -270,7 +270,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REPLY,
             )
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             arp.bindings(), [(IPAddress(pkt_target_ip), EUI(pkt_target_mac))]
         )
 
@@ -288,7 +288,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REPLY,
             )
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             arp.bindings(), [(IPAddress(pkt_sender_ip), EUI(pkt_sender_mac))]
         )
 
@@ -306,7 +306,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REQUEST,
             )
         )
-        self.assertItemsEqual(arp.bindings(), [])
+        self.assertCountEqual(arp.bindings(), [])
 
     def test_bindings__skips_null_source_eui_in_reply(self):
         pkt_sender_mac = "00:00:00:00:00:00"
@@ -322,7 +322,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REPLY,
             )
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             arp.bindings(), [(IPAddress(pkt_target_ip), EUI(pkt_target_mac))]
         )
 
@@ -340,7 +340,7 @@ class TestARP(MAASTestCase):
                 op=ARP_OPERATION.REPLY,
             )
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             arp.bindings(), [(IPAddress(pkt_sender_ip), EUI(pkt_sender_mac))]
         )
 

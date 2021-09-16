@@ -42,7 +42,7 @@ class TestHMCPowerDriver(MAASTestCase):
         # there's nothing to check for, just confirm it returns []
         driver = hmc_module.HMCPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_run_hmc_command_returns_command_output(self):
         driver = HMCPowerDriver()

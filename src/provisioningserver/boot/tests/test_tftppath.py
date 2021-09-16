@@ -148,7 +148,7 @@ class TestTFTPPath(MAASTestCase):
         self.make_image_dir(params, self.tftproot)
         purposes = ["install", "commissioning", "xinstall"]
         make_osystem(self, params["osystem"], purposes)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [make_image(params, purpose) for purpose in purposes],
             list_boot_images(self.tftproot),
         )
@@ -159,7 +159,7 @@ class TestTFTPPath(MAASTestCase):
         for param in params:
             self.make_image_dir(param, self.tftproot)
             make_osystem(self, param["osystem"], purposes)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 make_image(param, purpose)
                 for param in params
@@ -178,7 +178,7 @@ class TestTFTPPath(MAASTestCase):
         make_osystem(self, params["osystem"], purposes)
         # The API requires "supported_subarches".
         expected_metadata = dict(supported_subarches=metadata["subarches"])
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 make_image(params, purpose, expected_metadata)
                 for purpose in purposes
@@ -190,7 +190,7 @@ class TestTFTPPath(MAASTestCase):
         params = [make_boot_image_storage_params() for counter in range(3)]
         for param in params:
             self.make_image_dir(param, self.tftproot)
-        self.assertItemsEqual([], list_boot_images(self.tftproot))
+        self.assertEqual([], list_boot_images(self.tftproot))
 
     def test_is_visible_subdir_ignores_regular_files(self):
         plain_file = self.make_file()
@@ -213,14 +213,14 @@ class TestTFTPPath(MAASTestCase):
         self.assertTrue(is_visible_subdir(base_dir, subdir))
 
     def test_list_subdirs_lists_empty_directory(self):
-        self.assertItemsEqual([], list_subdirs(self.make_dir()))
+        self.assertEqual([], list_subdirs(self.make_dir()))
 
     def test_list_subdirs_lists_subdirs(self):
         base_dir = self.make_dir()
         factory.make_file(base_dir, factory.make_name("plain-file"))
         subdir = factory.make_name("subdir")
         os.makedirs(os.path.join(base_dir, subdir))
-        self.assertItemsEqual([subdir], list_subdirs(base_dir))
+        self.assertEqual([subdir], list_subdirs(base_dir))
 
     def test_extend_path_finds_path_extensions(self):
         base_dir = self.make_dir()
@@ -229,7 +229,7 @@ class TestTFTPPath(MAASTestCase):
         ]
         for subdir in subdirs:
             os.makedirs(os.path.join(base_dir, subdir))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [[os.path.basename(base_dir), subdir] for subdir in subdirs],
             extend_path(
                 os.path.dirname(base_dir), [os.path.basename(base_dir)]
@@ -246,7 +246,7 @@ class TestTFTPPath(MAASTestCase):
         )
 
     def test_extend_path_stops_if_no_subdirs_found(self):
-        self.assertItemsEqual([], extend_path(self.make_dir(), []))
+        self.assertCountEqual([], extend_path(self.make_dir(), []))
 
     def test_drill_down_follows_directory_tree(self):
         base_dir = self.make_dir()
@@ -257,7 +257,7 @@ class TestTFTPPath(MAASTestCase):
         ]
         for subdir in subdirs:
             os.makedirs(os.path.join(base_dir, lower_dir, subdir))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [[lower_dir, subdir] for subdir in subdirs],
             drill_down(base_dir, [[lower_dir]]),
         )
@@ -270,7 +270,7 @@ class TestTFTPPath(MAASTestCase):
         relevant_subdir = factory.make_name("subdir")
         os.makedirs(os.path.join(base_dir, irrelevant_dir, irrelevant_subdir))
         os.makedirs(os.path.join(base_dir, relevant_dir, relevant_subdir))
-        self.assertEqual(
+        self.assertCountEqual(
             [[relevant_dir, relevant_subdir]],
             drill_down(base_dir, [[relevant_dir]]),
         )
@@ -391,7 +391,7 @@ class TestTFTPPath(MAASTestCase):
 
         params = extract_image_params(path, "")
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "osystem": osystem,
@@ -458,7 +458,7 @@ class TestTFTPPath(MAASTestCase):
 
         params = extract_image_params(path, maas_meta)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "osystem": osystem,
@@ -504,7 +504,7 @@ class TestTFTPPath(MAASTestCase):
 
         params = extract_image_params(path, "")
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "osystem": "bootloader",
@@ -537,7 +537,7 @@ class TestTFTPPath(MAASTestCase):
 
         params = extract_image_params(path, "")
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "osystem": osystem,
@@ -604,7 +604,7 @@ class TestTFTPPath(MAASTestCase):
 
         params = extract_image_params(path, maas_meta)
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "osystem": osystem,

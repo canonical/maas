@@ -41,14 +41,14 @@ class TestCleanup(MAASTestCase):
     def test_list_old_snapshots_returns_all(self):
         storage = self.make_dir()
         snapshots = [self.make_snapshot_dir(storage) for _ in range(3)]
-        self.assertItemsEqual(snapshots, cleanup.list_old_snapshots(storage))
+        self.assertCountEqual(snapshots, cleanup.list_old_snapshots(storage))
 
     def test_list_old_snapshots_returns_all_but_current_directory(self):
         storage = self.make_dir()
         snapshots = [self.make_snapshot_dir(storage) for _ in range(3)]
         current_snapshot = self.make_snapshot_dir(storage)
         os.symlink(current_snapshot, os.path.join(storage, "current"))
-        self.assertItemsEqual(snapshots, cleanup.list_old_snapshots(storage))
+        self.assertCountEqual(snapshots, cleanup.list_old_snapshots(storage))
 
     def test_cleanup_snapshots_removes_all_old_snapshots(self):
         storage = self.make_dir()
@@ -63,14 +63,14 @@ class TestCleanup(MAASTestCase):
 
     def test_list_unused_cache_files_returns_empty(self):
         storage = self.make_dir()
-        self.assertItemsEqual([], cleanup.list_unused_cache_files(storage))
+        self.assertEqual([], cleanup.list_unused_cache_files(storage))
 
     def test_list_unused_cache_files_returns_all_files_nlink_equal_one(self):
         storage = self.make_dir()
         cache_nlink_1 = [self.make_cache_file(storage) for _ in range(3)]
         for _ in range(3):
             self.make_cache_file(storage, link_count=randint(1, 3))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             cache_nlink_1, cleanup.list_unused_cache_files(storage)
         )
 
@@ -89,7 +89,7 @@ class TestCleanup(MAASTestCase):
             for filename in os.listdir(cache_dir)
             if os.path.isfile(os.path.join(cache_dir, filename))
         ]
-        self.assertItemsEqual(cache_nlink_greater_than_1, remaining_cache)
+        self.assertCountEqual(cache_nlink_greater_than_1, remaining_cache)
 
     def test_cleanup_snapshots_and_cache_calls(self):
         storage = self.make_dir()

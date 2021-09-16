@@ -252,7 +252,7 @@ class TestWebhookPowerDriver(MAASTestCase):
         self.assertThat(mock_readBody, MockNotCalled())
 
     def test_missing_packages(self):
-        self.assertItemsEqual([], self.webhook.detect_missing_packages())
+        self.assertEqual([], self.webhook.detect_missing_packages())
 
     def test_power_on(self):
         mock_webhook_request = self.patch(self.webhook, "_webhook_request")

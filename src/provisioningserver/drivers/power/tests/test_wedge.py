@@ -40,7 +40,7 @@ class TestWedgePowerDriver(MAASTestCase):
         # there's nothing to check for, just confirm it returns []
         driver = wedge_module.WedgePowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_run_wedge_command_returns_command_output(self):
         driver = WedgePowerDriver()

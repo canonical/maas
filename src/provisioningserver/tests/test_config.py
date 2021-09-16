@@ -446,7 +446,7 @@ class TestConfigurationFile(MAASTestCase):
             pass  # Write nothing to the file.
         config = ConfigurationFile(config_file)
         config.load()
-        self.assertItemsEqual(set(config), set())
+        self.assertEqual(set(config), set())
 
     def test_load_file_with_non_mapping_crashes(self):
         config_file = os.path.join(self.make_dir(), "config")

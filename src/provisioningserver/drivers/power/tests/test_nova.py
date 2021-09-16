@@ -19,14 +19,14 @@ class TestNovaPowerDriver(MAASTestCase):
         mock = self.patch(driver, "try_novaapi_import")
         mock.return_value = False
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["python3-novaclient"], missing)
+        self.assertEqual(["python3-novaclient"], missing)
 
     def test_no_missing_packages(self):
         driver = nova_module.NovaPowerDriver()
         mock = self.patch(driver, "try_novaapi_import")
         mock.return_value = True
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def make_parameters(self):
         system_id = factory.make_name("system_id")

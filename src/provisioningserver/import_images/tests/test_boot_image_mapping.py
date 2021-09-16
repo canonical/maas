@@ -24,13 +24,13 @@ class TestBootImageMapping(MAASTestCase):
     """Tests for `BootImageMapping`."""
 
     def test_initially_empty(self):
-        self.assertItemsEqual([], BootImageMapping().items())
+        self.assertCountEqual([], BootImageMapping().items())
 
     def test_items_returns_items(self):
         image = make_image_spec()
         resource = factory.make_name("resource")
         image_dict = set_resource(image_spec=image, resource=resource)
-        self.assertItemsEqual([(image, resource)], image_dict.items())
+        self.assertCountEqual([(image, resource)], image_dict.items())
 
     def test_is_empty_returns_True_if_empty(self):
         self.assertTrue(BootImageMapping().is_empty())
@@ -45,14 +45,14 @@ class TestBootImageMapping(MAASTestCase):
         image = make_image_spec()
         resource = factory.make_name("resource")
         image_dict.setdefault(image, resource)
-        self.assertItemsEqual([(image, resource)], image_dict.items())
+        self.assertCountEqual([(image, resource)], image_dict.items())
 
     def test_setdefault_leaves_set_item_unchanged(self):
         image = make_image_spec()
         old_resource = factory.make_name("resource")
         image_dict = set_resource(image_spec=image, resource=old_resource)
         image_dict.setdefault(image, factory.make_name("newresource"))
-        self.assertItemsEqual([(image, old_resource)], image_dict.items())
+        self.assertCountEqual([(image, old_resource)], image_dict.items())
 
     def test_set_overwrites_item(self):
         image_dict = BootImageMapping()
@@ -60,7 +60,7 @@ class TestBootImageMapping(MAASTestCase):
         resource = factory.make_name("resource")
         image_dict.setdefault(image, factory.make_name("resource"))
         image_dict.set(image, resource)
-        self.assertItemsEqual([(image, resource)], image_dict.items())
+        self.assertCountEqual([(image, resource)], image_dict.items())
 
     def test_dump_json_is_consistent(self):
         image = make_image_spec()

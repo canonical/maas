@@ -407,14 +407,14 @@ class TestMain(MAASTestCase):
         self.assertEqual(
             [label], list(meta_data[osystem][arch][subarch][kflavor][release])
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "content_id",
                 "kflavor",
                 "path",
                 "product_name",
-                "version_name",
                 "subarches",
+                "version_name",
             ],
             list(meta_data[osystem][arch][subarch][kflavor][release][label]),
         )

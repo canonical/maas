@@ -45,14 +45,14 @@ class TestDLIPowerDriver(MAASTestCase):
         mock.return_value = False
         driver = dli_module.DLIPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["wget"], missing)
+        self.assertEqual(["wget"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = dli_module.DLIPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_set_outlet_state_calls_wget(self):
         driver = dli_module.DLIPowerDriver()

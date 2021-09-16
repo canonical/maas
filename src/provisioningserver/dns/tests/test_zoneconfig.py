@@ -136,7 +136,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ]
         expect = [(n, t, ip) for n, t, ip in expected]
         actual = DNSForwardZoneConfig.get_A_mapping(combined_mapping, ns_ttl)
-        self.assertItemsEqual(expect, actual)
+        self.assertCountEqual(expect, actual)
 
     def test_get_aaaa_mapping_returns_ipv6_mapping(self):
         ttl = random.randint(10, 300)
@@ -163,7 +163,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
                 ipv4_mapping.items(), ipv6_mapping.items()
             )
         }
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 (n, info.ttl, ip)
                 for n, info in ipv6_mapping.items()
@@ -489,7 +489,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         # And that the zone names chosen for each element are correct.
         for net in range(len(expected)):
             for zi in range(len(expected[net][1])):
-                self.assertItemsEqual(
+                self.assertCountEqual(
                     expected[net][1][zi].zone_name,
                     results[net][1][zi].zone_name,
                 )
@@ -589,7 +589,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             "%s.%s" % (hostname, name): HostnameIPMapping(None, 30, {ip})
             for hostname, ip in hosts.items()
         }
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected, DNSReverseZoneConfig.get_PTR_mapping(mapping, network)
         )
 
@@ -617,7 +617,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             factory.make_string(): HostnameIPMapping(None, 30, ["192.70.0.2"]),
         }
         mapping.update(extra_mapping)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected, DNSReverseZoneConfig.get_PTR_mapping(mapping, network)
         )
 
@@ -756,7 +756,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             ("0-255", "$.1.168.192.in-addr.arpa.", "192-168-1-$.domain."),
             ("0-128", "$.2.168.192.in-addr.arpa.", "192-168-2-$.domain."),
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_directives,
             DNSReverseZoneConfig.get_GENERATE_directives(
                 ip_range,
@@ -826,7 +826,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             network, domain, DomainInfo(network, reverse)
         )
         self.expectThat(directives, HasLength(1))
-        self.assertItemsEqual(expected_generate_directives, directives)
+        self.assertCountEqual(expected_generate_directives, directives)
 
     def test_returns_single_entry_for_tiny_network(self):
         network = IPNetwork("%s/28" % factory.make_ipv4_address())
@@ -841,7 +841,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             network, domain, DomainInfo(network, reverse)
         )
         self.expectThat(directives, HasLength(1))
-        self.assertItemsEqual(expected_generate_directives, directives)
+        self.assertCountEqual(expected_generate_directives, directives)
 
     def test_returns_single_entry_for_weird_small_range(self):
         ip_range = IPRange("10.0.0.1", "10.0.0.255")
@@ -867,7 +867,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             network, domain, DomainInfo(network, reverse)
         )
         self.expectThat(directives, HasLength(256))
-        self.assertItemsEqual(expected_generate_directives, directives)
+        self.assertCountEqual(expected_generate_directives, directives)
 
     def test_ignores_network_larger_than_slash_16(self):
         network = IPNetwork("%s/15" % factory.make_ipv4_address())
@@ -939,7 +939,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
             ("0-255", "192-168-1-$", "192.168.1.$"),
             ("0-128", "192-168-2-$", "192.168.2.$"),
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_directives,
             DNSForwardZoneConfig.get_GENERATE_directives(ip_range),
         )
@@ -982,7 +982,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_directives = self.get_expected_generate_directives(network)
         directives = DNSForwardZoneConfig.get_GENERATE_directives(network)
         self.expectThat(directives, HasLength(1))
-        self.assertItemsEqual(expected_directives, directives)
+        self.assertCountEqual(expected_directives, directives)
 
     def test_returns_single_entry_for_tiny_network(self):
         network = IPNetwork("%s/31" % factory.make_ipv4_address())
@@ -990,7 +990,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_directives = self.get_expected_generate_directives(network)
         directives = DNSForwardZoneConfig.get_GENERATE_directives(network)
         self.assertEqual(1, len(expected_directives))
-        self.assertItemsEqual(expected_directives, directives)
+        self.assertCountEqual(expected_directives, directives)
 
     def test_returns_two_entries_for_slash_23_network(self):
         network = IPNetwork("%s/23" % factory.make_ipv4_address())
@@ -998,7 +998,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         expected_directives = self.get_expected_generate_directives(network)
         directives = DNSForwardZoneConfig.get_GENERATE_directives(network)
         self.assertEqual(2, len(expected_directives))
-        self.assertItemsEqual(expected_directives, directives)
+        self.assertCountEqual(expected_directives, directives)
 
     def test_dtrt_for_larger_networks(self):
         # For every other network size that we're not explicitly

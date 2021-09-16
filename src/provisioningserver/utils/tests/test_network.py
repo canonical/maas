@@ -519,7 +519,7 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
             for ipv4, ipv6 in ips
         }
         patch_interfaces(self, interfaces)
-        self.assertItemsEqual(v4_ips + v6_ips, get_all_interface_addresses())
+        self.assertCountEqual(v4_ips + v6_ips, get_all_interface_addresses())
 
 
 class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
@@ -1958,7 +1958,7 @@ class TestInterfaceChildren(MAASTestCase):
         eth0_children = list(
             interface_children("eth0", interfaces, children_map)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             eth0_children,
             [
                 ("eth0.100", {"parents": ["eth0"]}),
@@ -1968,7 +1968,7 @@ class TestInterfaceChildren(MAASTestCase):
         eth1_children = list(
             interface_children("eth1", interfaces, children_map)
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             eth1_children,
             [
                 ("eth1.100", {"parents": ["eth1"]}),
@@ -1997,7 +1997,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
             "eth0": {"parents": [], "type": "physical", "enabled": False},
             "eth1": {"parents": [], "type": "physical", "enabled": True},
         }
-        self.assertItemsEqual(
+        self.assertEqual(
             get_default_monitored_interfaces(interfaces), ["eth1"]
         )
 
@@ -2018,7 +2018,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
                 "enabled": False,
             },
         }
-        self.assertItemsEqual(
+        self.assertEqual(
             get_default_monitored_interfaces(interfaces), ["bond0"]
         )
 
@@ -2029,7 +2029,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
             "br0": {"parents": ["eth0"], "type": "bridge", "enabled": True},
             "virbr0": {"parents": [], "type": "bridge", "enabled": True},
         }
-        self.assertItemsEqual(
+        self.assertEqual(
             get_default_monitored_interfaces(interfaces),
             ["eth0", "eth1", "virbr0"],
         )
@@ -2039,7 +2039,7 @@ class TestGetDefaultMonitoredInterfaces(MAASTestCase):
             "eth0": {"parents": [], "type": "physical", "enabled": True},
             "eth0.100": {"parents": ["eth0"], "type": "vlan", "enabled": True},
         }
-        self.assertItemsEqual(
+        self.assertEqual(
             get_default_monitored_interfaces(interfaces), ["eth0"]
         )
 

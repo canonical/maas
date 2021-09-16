@@ -191,14 +191,14 @@ class TestVirshSSH(MAASTestCase):
         names = [factory.make_name("machine") for _ in range(3)]
         conn = self.configure_virshssh("\n".join(names))
         expected = conn.list()
-        self.assertItemsEqual(names, expected)
+        self.assertEqual(names, expected)
 
     def test_list_dom_prefix(self):
         prefix = "dom_prefix"
         names = [prefix + factory.make_name("machine") for _ in range(3)]
         conn = self.configure_virshssh("\n".join(names), dom_prefix=prefix)
         expected = conn.list()
-        self.assertItemsEqual(names, expected)
+        self.assertEqual(names, expected)
 
     def test_get_state(self):
         state = factory.make_name("state")

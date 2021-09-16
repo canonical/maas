@@ -55,7 +55,7 @@ class TestOperatingSystem(MAASTestCase):
     def test_format_release_choices(self):
         osystem = self.make_usable_osystem()
         releases = osystem.get_supported_releases()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [(release, release) for release in releases],
             osystem.format_release_choices(releases),
         )
@@ -72,7 +72,7 @@ class TestOperatingSystem(MAASTestCase):
         osystem = self.make_usable_osystem()
         images = self.configure_list_boot_images_for(osystem)
         releases = {image["release"] for image in images}
-        self.assertItemsEqual(releases, osystem.gen_supported_releases())
+        self.assertCountEqual(releases, osystem.gen_supported_releases())
 
     def test_get_xinstall_parameters(self):
         # The base OperatingSystems class should only look for root-tgz,
@@ -90,7 +90,7 @@ class TestOperatingSystem(MAASTestCase):
         for fname in ["squashfs", "root-tgz", "root-dd"]:
             factory.make_file(dir_path, fname)
         self.useFixture(ClusterConfigurationFixture(tftp_root=tmpdir))
-        self.assertItemsEqual(
+        self.assertEqual(
             ("root-tgz", "tgz"),
             osystem.get_xinstall_parameters(arch, subarch, release, label),
         )
@@ -265,7 +265,7 @@ class TestFindImage(MAASTestCase):
         if self.fname:
             factory.make_file(dir_path, self.fname)
         self.useFixture(ClusterConfigurationFixture(tftp_root=tmpdir))
-        self.assertItemsEqual(
+        self.assertEqual(
             self.expected,
             osystem._find_image(
                 arch,
@@ -286,7 +286,7 @@ class TestOperatingSystemRegistry(MAASTestCase):
         self.useFixture(RegistryFixture())
 
     def test_operating_system_registry(self):
-        self.assertItemsEqual([], OperatingSystemRegistry)
+        self.assertEqual([], list(OperatingSystemRegistry))
         OperatingSystemRegistry.register_item("resource", sentinel.resource)
         self.assertIn(
             sentinel.resource, (item for name, item in OperatingSystemRegistry)

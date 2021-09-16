@@ -162,7 +162,7 @@ class TestGetIPAddr(MAASTestCase):
         patch_get_ip_addr = self.patch(ipaddr_module, "get_ip_addr")
         patch_get_ip_addr.return_value = results
         observed = get_mac_addresses()
-        self.assertItemsEqual(mac_addresses, observed)
+        self.assertCountEqual(mac_addresses, observed)
 
     def test_get_mac_addresses_ignores_duplicates(self):
         mac_addresses = set()
@@ -174,7 +174,7 @@ class TestGetIPAddr(MAASTestCase):
         patch_get_ip_addr = self.patch(ipaddr_module, "get_ip_addr")
         patch_get_ip_addr.return_value = results
         observed = get_mac_addresses()
-        self.assertItemsEqual(mac_addresses, observed)
+        self.assertCountEqual(mac_addresses, observed)
 
 
 class TestUpdateInterfaceType(FakeSysProcTestCase):

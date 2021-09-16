@@ -56,7 +56,7 @@ class TestOpenBMCPowerDriver(MAASTestCase):
     def test_missing_packages(self):
         driver = OpenBMCPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def test_get_url_with_ip(self):
         driver = OpenBMCPowerDriver()

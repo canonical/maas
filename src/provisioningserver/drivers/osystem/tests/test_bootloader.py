@@ -22,7 +22,7 @@ class TestCustomOS(MAASTestCase):
 
     def test_get_boot_image_purposes(self):
         osystem = BootLoaderOS()
-        self.assertItemsEqual(
+        self.assertEqual(
             [BOOT_IMAGE_PURPOSE.BOOTLOADER],
             osystem.get_boot_image_purposes(
                 factory.make_name("arch"),

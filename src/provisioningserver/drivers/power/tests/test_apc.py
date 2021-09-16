@@ -30,14 +30,14 @@ class TestAPCPowerDriver(MAASTestCase):
         mock.return_value = False
         driver = apc_module.APCPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual(["snmp"], missing)
+        self.assertEqual(["snmp"], missing)
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)
         mock.return_value = True
         driver = apc_module.APCPowerDriver()
         missing = driver.detect_missing_packages()
-        self.assertItemsEqual([], missing)
+        self.assertEqual([], missing)
 
     def patch_run_command(self, stdout="", stderr="", returncode=0):
         mock_run_command = self.patch(apc_module.shell, "run_command")

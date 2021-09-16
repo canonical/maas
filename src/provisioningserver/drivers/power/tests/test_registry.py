@@ -22,7 +22,7 @@ class TestPowerDriverRegistry(MAASTestCase):
         self.useFixture(RegistryFixture())
 
     def test_registry(self):
-        self.assertItemsEqual([], PowerDriverRegistry)
+        self.assertEqual([], list(PowerDriverRegistry))
         PowerDriverRegistry.register_item("driver", sentinel.driver)
         self.assertIn(
             sentinel.driver, (item for name, item in PowerDriverRegistry)
@@ -41,7 +41,7 @@ class TestPowerDriverRegistry(MAASTestCase):
         PowerDriverRegistry.register_item(
             fake_pod_driver.name, fake_pod_driver
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 {
                     "driver_type": "power",
