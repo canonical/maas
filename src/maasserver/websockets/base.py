@@ -27,6 +27,7 @@ from maasserver.rbac import rbac
 from maasserver.utils.forms import get_QueryDict
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from provisioningserver.certificates import Certificate
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.utils.twisted import asynchronous, IAsynchronous
 
@@ -39,6 +40,15 @@ def dehydrate_datetime(datetime):
         return ""
     else:
         return datetime.strftime(DATETIME_FORMAT)
+
+
+def dehydrate_certificate(cert: Certificate):
+    """Return a dict with metadata for a Certificate."""
+    return {
+        "CN": cert.cn(),
+        "expiration": dehydrate_datetime(cert.expiration()),
+        "fingerprint": cert.cert_hash(),
+    }
 
 
 class HandlerError(Exception):

@@ -93,6 +93,7 @@ from maasserver.utils.orm import get_one, reload_object, transactional
 from maasserver.utils.osystems import make_hwe_kernel_ui_text
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
+    DATETIME_FORMAT,
     dehydrate_datetime,
     HandlerDoesNotExistError,
     HandlerError,
@@ -118,12 +119,15 @@ from metadataserver.enum import (
 )
 from metadataserver.models.nodekey import NodeKey
 from metadataserver.models.scriptset import get_status_from_qs
+from provisioningserver.certificates import generate_certificate
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
 )
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.tags import merge_details_cleanly
+
+SAMPLE_CERTIFICATE = generate_certificate("maas")
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 
@@ -685,6 +689,41 @@ class TestMachineHandler(MAASServerTestCase):
             queries_total,
             expected_query_count,
             "Number of queries has changed; make sure this is expected.",
+        )
+
+    def test_list_no_power_params_certificate(self):
+        factory.make_Node(
+            power_type="lxd",
+            power_parameters={
+                "power_address": "lxd.maas",
+                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
+                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            },
+        )
+        handler = MachineHandler(factory.make_User(), {}, None)
+        [node_info] = handler.list({})
+        self.assertNotIn("certificate", node_info)
+
+    def test_get_power_params_certificate(self):
+        node = factory.make_Node(
+            power_type="lxd",
+            power_parameters={
+                "power_address": "lxd.maas",
+                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
+                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            },
+        )
+        handler = MachineHandler(factory.make_User(), {}, None)
+        result = handler.get({"system_id": node.system_id})
+        self.assertEqual(
+            result["certificate"],
+            {
+                "CN": SAMPLE_CERTIFICATE.cn(),
+                "fingerprint": SAMPLE_CERTIFICATE.cert_hash(),
+                "expiration": SAMPLE_CERTIFICATE.expiration().strftime(
+                    DATETIME_FORMAT
+                ),
+            },
         )
 
     def test_get_num_queries_is_the_expected_number(self):

@@ -74,6 +74,7 @@ from maasserver.storage_layouts import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
+    dehydrate_certificate,
     HandlerDoesNotExistError,
     HandlerError,
     HandlerPermissionError,
@@ -81,6 +82,7 @@ from maasserver.websockets.base import (
 )
 from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
 from metadataserver.enum import HARDWARE_TYPE, RESULT_TYPE
+from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.utils.twisted import asynchronous
@@ -370,6 +372,13 @@ class MachineHandler(NodeHandler):
                 self.dehydrate_device(device) for device in obj.children.all()
             ]
             data["devices"] = sorted(devices, key=itemgetter("fqdn"))
+
+            # include certificate info if present
+            certificate = obj.power_parameters.get("certificate")
+            key = obj.power_parameters.get("key")
+            if certificate and key:
+                cert = Certificate.from_pem(certificate, key)
+                data["certificate"] = dehydrate_certificate(cert)
 
         return data
 

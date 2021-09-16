@@ -25,7 +25,7 @@ from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.vmhost import discover_and_sync_vmhost
 from maasserver.websockets.base import (
-    dehydrate_datetime,
+    dehydrate_certificate,
     HandlerPermissionError,
     HandlerValidationError,
 )
@@ -141,11 +141,7 @@ class PodHandler(TimestampedModelHandler):
             key = obj.power_parameters.get("key")
             if certificate and key:
                 cert = Certificate.from_pem(certificate, key)
-                data["certificate"] = {
-                    "CN": cert.cn(),
-                    "expiration": dehydrate_datetime(cert.expiration()),
-                    "fingerprint": cert.cert_hash(),
-                }
+                data["certificate"] = dehydrate_certificate(cert)
 
         if self.user.has_perm(PodPermission.compose, obj):
             data["permissions"].append("compose")
