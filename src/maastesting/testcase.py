@@ -134,9 +134,6 @@ class MAASTestCase(
         self.assertIsNone = unittest_case.assertIsNone
         self.assertIsNotNone = unittest_case.assertIsNotNone
 
-        # TODO: Deprecate this, callers should update to assertCountEqual
-        self.assertItemsEqual = unittest_case.assertCountEqual
-
         # Every test gets a pristine MAAS_ROOT, when it is defined.
         if "MAAS_ROOT" in os.environ:
             self.useFixture(MAASRootFixture())
