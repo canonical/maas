@@ -27,7 +27,7 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         error_message = factory.make_string()
         component = get_random_component()
         register_persistent_error(component, error_message)
-        self.assertItemsEqual([error_message], get_persistent_errors())
+        self.assertEqual([error_message], get_persistent_errors())
 
     def test_register_persistent_error_stores_last_error(self):
         error_message = factory.make_string()
@@ -35,14 +35,14 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         component = get_random_component()
         register_persistent_error(component, error_message)
         register_persistent_error(component, error_message2)
-        self.assertItemsEqual([error_message2], get_persistent_errors())
+        self.assertEqual([error_message2], get_persistent_errors())
 
     def test_discard_persistent_error_discards_error(self):
         error_message = factory.make_string()
         component = get_random_component()
         register_persistent_error(component, error_message)
         discard_persistent_error(component)
-        self.assertItemsEqual([], get_persistent_errors())
+        self.assertEqual([], get_persistent_errors())
 
     def test_discard_persistent_error_can_be_called_many_times(self):
         error_message = factory.make_string()
@@ -50,7 +50,7 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         register_persistent_error(component, error_message)
         discard_persistent_error(component)
         discard_persistent_error(component)
-        self.assertItemsEqual([], get_persistent_errors())
+        self.assertEqual([], get_persistent_errors())
 
     def get_persistent_errors_returns_text_for_error_codes(self):
         errors, components = [], []
@@ -60,7 +60,7 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
             register_persistent_error(component, error_message)
             errors.append(error_message)
             components.append(component)
-        self.assertItemsEqual(errors, get_persistent_errors())
+        self.assertEqual(errors, get_persistent_errors())
 
     def test_register_persistent_error_reuses_component_errors(self):
         """When registering a persistent error that already has an error

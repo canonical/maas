@@ -67,7 +67,7 @@ class TestHelpers(MAASServerTestCase):
             obj.save()
         hostnames[0] = "different"
         Node.objects.filter(id=objs[0].id).update(hostname=hostnames[0])
-        self.assertItemsEqual(
+        self.assertCountEqual(
             hostnames, [obj.hostname for obj in reload_objects(Node, objs)]
         )
 
@@ -77,7 +77,7 @@ class TestHelpers(MAASServerTestCase):
             obj.save()
         dead_obj = objs.pop(0)
         Node.objects.filter(id=dead_obj.id).delete()
-        self.assertItemsEqual(objs, reload_objects(Node, objs))
+        self.assertCountEqual(objs, reload_objects(Node, objs))
 
 
 class TestNoReceivers(MAASServerTestCase):
@@ -89,7 +89,7 @@ class TestNoReceivers(MAASServerTestCase):
         with NoReceivers(post_save):
             self.assertEqual([], post_save.receivers)
 
-        self.assertItemsEqual(old_values, post_save.receivers)
+        self.assertCountEqual(old_values, post_save.receivers)
 
     def test_clears_and_restores_many_signals(self):
         self.assertNotEqual(0, len(post_save.receivers))
@@ -101,8 +101,8 @@ class TestNoReceivers(MAASServerTestCase):
             self.assertEqual([], post_save.receivers)
             self.assertEqual([], pre_save.receivers)
 
-        self.assertItemsEqual(old_pre_values, pre_save.receivers)
-        self.assertItemsEqual(old_post_values, post_save.receivers)
+        self.assertCountEqual(old_pre_values, pre_save.receivers)
+        self.assertCountEqual(old_post_values, post_save.receivers)
 
     def test_leaves_some_other_signals_alone(self):
         self.assertNotEqual(0, len(post_save.receivers))
@@ -110,4 +110,4 @@ class TestNoReceivers(MAASServerTestCase):
         old_pre_values = pre_save.receivers
 
         with NoReceivers(post_save):
-            self.assertItemsEqual(old_pre_values, pre_save.receivers)
+            self.assertCountEqual(old_pre_values, pre_save.receivers)

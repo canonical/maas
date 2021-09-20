@@ -52,12 +52,12 @@ class TestFakeMethod(MAASTestCase):
     def test_extract_args_returns_just_call_args(self):
         stub = FakeMethod()
         stub(1, 2, 3, x=12)
-        self.assertItemsEqual([(1, 2, 3)], stub.extract_args())
+        self.assertEqual([(1, 2, 3)], stub.extract_args())
 
     def test_extract_kwargs_returns_just_call_kwargs(self):
         stub = FakeMethod()
         stub(1, 2, 3, x=12)
-        self.assertItemsEqual([{"x": 12}], stub.extract_kwargs())
+        self.assertEqual([{"x": 12}], stub.extract_kwargs())
 
 
 class TestMultiFakeMethod(MAASTestCase):

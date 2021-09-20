@@ -1166,7 +1166,7 @@ class TestMAASAuthorizationBackendForAdminRestricted(MAASServerTestCase):
 class TestNodeVisibility(MAASServerTestCase):
     def test_admin_sees_all_nodes(self):
         nodes = [make_allocated_node(), factory.make_Node()]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             nodes,
             Node.objects.get_nodes(factory.make_admin(), NodePermission.view),
         )
@@ -1176,7 +1176,7 @@ class TestNodeVisibility(MAASServerTestCase):
         own_node = make_allocated_node(owner=user)
         make_allocated_node()
         unowned_node = factory.make_Node()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [own_node, unowned_node],
             Node.objects.get_nodes(own_node.owner, NodePermission.view),
         )

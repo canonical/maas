@@ -158,11 +158,11 @@ class TestMAC(MAASServerTestCase):
     def test_different_macs_hash_differently(self):
         mac1 = factory.make_MAC()
         mac2 = factory.make_MAC()
-        self.assertItemsEqual(set([mac1, mac2]), [mac1, mac2])
+        self.assertCountEqual(set([mac1, mac2]), [mac1, mac2])
 
     def test_identical_macs_hash_identically(self):
         addr = factory.make_mac_address()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             set([MAC(addr), MAC(addr), MAC(MAC(addr)), addr]), [addr]
         )
 

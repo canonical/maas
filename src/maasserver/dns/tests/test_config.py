@@ -95,7 +95,7 @@ class TestDNSUtilities(MAASServerTestCase):
         fwd_zones = forward_domains_to_forwarded_zones(
             Domain.objects.get_forward_domains()
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             fwd_zones,
             [(name1, [fwd_srvr1.ip_address]), (name2, [fwd_srvr2.ip_address])],
         )
@@ -525,7 +525,7 @@ class TestGetTrustedAcls(MAASServerTestCase):
         expected = [subnet for subnet in subnets]
         # Note: This test was seen randomly failing because the networks were
         # in an unexpected order...
-        self.assertItemsEqual(expected, get_trusted_acls())
+        self.assertCountEqual(expected, get_trusted_acls())
 
 
 class TestGetTrustedNetworks(MAASServerTestCase):
@@ -554,7 +554,7 @@ class TestGetTrustedNetworks(MAASServerTestCase):
         expected = [str(subnet.cidr) for subnet in subnets]
         # Note: This test was seen randomly failing because the networks were
         # in an unexpected order...
-        self.assertItemsEqual(expected, get_trusted_networks())
+        self.assertCountEqual(expected, get_trusted_networks())
 
 
 class TestGetInternalDomain(MAASServerTestCase):

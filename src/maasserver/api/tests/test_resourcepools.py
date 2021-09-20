@@ -56,7 +56,7 @@ class TestResourcePoolsAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 (pool["name"], pool["description"], pool["resource_uri"])
                 for pool in result
@@ -101,7 +101,7 @@ class TestResourcePoolsAPIWithRBAC(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 (pool["name"], pool["description"], pool["resource_uri"])
                 for pool in result

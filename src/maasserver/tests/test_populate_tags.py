@@ -355,7 +355,7 @@ class TestPopulateTagsInRegion(MAASTransactionServerTestCase):
         # Execute the call ourselves in the real reactor.
         blockingCallFromThread(reactor, call.func, *call.args, **call.kw)
         # The tag's node set has been updated.
-        self.assertItemsEqual([node], tag.node_set.all())
+        self.assertCountEqual([node], tag.node_set.all())
 
 
 class TestPopulateTagsForSingleNode(MAASServerTestCase):
@@ -369,7 +369,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
             factory.make_Tag("baz", "/foo/bar", populate=False),
         ]
         populate_tags_for_single_node(tags, node)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             ["foo", "bar"], [tag.name for tag in node.tags.all()]
         )
 
@@ -406,7 +406,7 @@ class TestPopulateTagForMultipleNodes(MAASServerTestCase):
             make_lldp_result(node, b"<bar/>")
         tag = factory.make_Tag("bar", "//lldp:bar", populate=False)
         populate_tag_for_multiple_nodes(tag, nodes)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [node.hostname for node in nodes[0:2]],
             [node.hostname for node in Node.objects.filter(tags__name="bar")],
         )

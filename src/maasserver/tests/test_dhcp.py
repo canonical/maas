@@ -101,8 +101,8 @@ class TestSplitIPv4IPv6Subnets(MAASServerTestCase):
             subnets
         )
 
-        self.assertItemsEqual(ipv4_subnets, ipv4_result)
-        self.assertItemsEqual(ipv6_subnets, ipv6_result)
+        self.assertCountEqual(ipv4_subnets, ipv4_result)
+        self.assertCountEqual(ipv6_subnets, ipv6_result)
 
     def test_skips_unmanaged_subnets(self):
         ipv4_subnets = [
@@ -128,10 +128,10 @@ class TestSplitIPv4IPv6Subnets(MAASServerTestCase):
             subnets
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [s for s in ipv4_subnets if s.managed is True], ipv4_result
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [s for s in ipv6_subnets if s.managed is True], ipv6_result
         )
 
@@ -314,7 +314,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=subnet,
             interface=interface_two,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [interface_one, interface_two],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -372,7 +372,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=subnet,
             interface=interface_two,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [interface_one, interface_two],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -399,7 +399,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=subnet,
             interface=interface_two,
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [interface_one],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller, vlan, subnet.get_ipnetwork().version
@@ -533,7 +533,7 @@ class TestGetInterfacesWithIPOnVLAN(MAASServerTestCase):
             subnet=subnet,
             interface=interface_two,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [interface_one, interface_two],
             dhcp.get_interfaces_with_ip_on_vlan(
                 rack_controller,
@@ -1109,7 +1109,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
             alloc_type=IPADDRESS_TYPE.STICKY,
         )
         servers = get_default_dns_servers(r1, subnet, False)
-        self.assertItemsEqual(
+        self.assertCountEqual(
             servers[0:-1], [IPAddress(r1_address.ip), IPAddress(r2_address.ip)]
         )
         self.assertEqual(IPAddress("10.0.0.1"), servers[-1])
@@ -1681,7 +1681,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             default_domain,
             subnets_dhcp_snippets=dhcp_snippets,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": dhcp_snippet.name,
@@ -1742,7 +1742,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             default_domain,
             subnets_dhcp_snippets=dhcp_snippets,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": dhcp_snippet.name,
@@ -1753,7 +1753,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             ],
             config["dhcp_snippets"],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": dhcp_snippet.name,
@@ -1940,7 +1940,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 "dhcp_snippets": [],
             },
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_hosts,
             dhcp.make_hosts_for_subnets(
                 [subnet], node_dhcp_snippets + device_dhcp_snippets
@@ -1978,7 +1978,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 "dhcp_snippets": [],
             }
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_hosts,
             dhcp.make_hosts_for_subnets([subnet_one, subnet_two]),
         )
@@ -2036,7 +2036,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
             },
         ]
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected_hosts, dhcp.make_hosts_for_subnets([subnet])
         )
 
@@ -2310,7 +2310,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             ),
             observed_subnets,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts
         )
         self.assertEqual(primary_interface.name, observed_interface)
@@ -2465,7 +2465,7 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
             ),
             observed_subnets,
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             dhcp.make_hosts_for_subnets([ha_subnet]), observed_hosts
         )
         self.assertEqual(primary_interface.name, observed_interface)
@@ -2561,7 +2561,7 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 
     @synchronous
     def prepare_rpc(self, rack_controller):
-        """"Set up test case for speaking RPC to `rack_controller`."""
+        """Set up test case for speaking RPC to `rack_controller`."""
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
@@ -2877,7 +2877,7 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
     """Tests for `validate_dhcp_config`."""
 
     def prepare_rpc(self, rack_controller, return_value=None):
-        """"Set up test case for speaking RPC to `rack_controller`."""
+        """Set up test case for speaking RPC to `rack_controller`."""
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())
         fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
@@ -3242,7 +3242,7 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         subnet2 = factory.make_Subnet(
             vlan=vlan2_secondary, cidr="10.20.31.0/24"
         )
-        self.assertItemsEqual([rack1], dhcp.get_racks_by_subnet(subnet2))
+        self.assertCountEqual([rack1], dhcp.get_racks_by_subnet(subnet2))
 
     def test_get_racks_by_subnet_rack_primary(self):
         rack1 = factory.make_RackController()
@@ -3260,7 +3260,7 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             interface=interface,
         )
 
-        self.assertItemsEqual([rack1], dhcp.get_racks_by_subnet(subnet1))
+        self.assertCountEqual([rack1], dhcp.get_racks_by_subnet(subnet1))
 
     def test_returns_no_errors_when_valid(self):
         rack_controller, config = self.create_rack_controller()
@@ -3278,7 +3278,7 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         }
         self.prepare_rpc(rack_controller, [dhcpd_error])
 
-        self.assertItemsEqual([dhcpd_error], dhcp.validate_dhcp_config())
+        self.assertEqual([dhcpd_error], dhcp.validate_dhcp_config())
 
     def test_dedups_errors(self):
         rack_controller, config = self.create_rack_controller()
@@ -3290,7 +3290,7 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         }
         self.prepare_rpc(rack_controller, [dhcpd_error, dhcpd_error])
 
-        self.assertItemsEqual([dhcpd_error], dhcp.validate_dhcp_config())
+        self.assertEqual([dhcpd_error], dhcp.validate_dhcp_config())
 
     def test_rack_not_found_raises_validation_error(self):
         subnet = factory.make_Subnet()

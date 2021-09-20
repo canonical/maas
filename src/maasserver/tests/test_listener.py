@@ -522,7 +522,7 @@ class TestPostgresListenerService(MAASServerTestCase):
         self.patch(listener, "handleNotify")
 
         listener.doRead()
-        self.assertItemsEqual(listener.notifications, set(notifications))
+        self.assertCountEqual(listener.notifications, set(notifications))
 
     @wait_for_reactor
     @inlineCallbacks

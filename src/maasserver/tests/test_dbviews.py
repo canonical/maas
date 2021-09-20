@@ -67,7 +67,7 @@ class TestRoutablePairs(MAASServerTestCase):
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
-            self.assertItemsEqual(expected, cursor.fetchall())
+            self.assertCountEqual(expected, cursor.fetchall())
 
     def test_contains_routes_between_nodes_on_same_vlan(self):
         vlan = factory.make_VLAN()
@@ -96,7 +96,7 @@ class TestRoutablePairs(MAASServerTestCase):
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
-            self.assertItemsEqual(expected, cursor.fetchall())
+            self.assertCountEqual(expected, cursor.fetchall())
 
     def test_contains_routes_between_nodes_on_same_space(self):
         space = factory.make_Space()
@@ -121,7 +121,7 @@ class TestRoutablePairs(MAASServerTestCase):
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
-            self.assertItemsEqual(expected, cursor.fetchall())
+            self.assertCountEqual(expected, cursor.fetchall())
 
     def test_contains_routes_between_nodes_via_null_space(self):
         network1 = factory.make_ip4_or_6_network()
@@ -145,7 +145,7 @@ class TestRoutablePairs(MAASServerTestCase):
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
-            self.assertItemsEqual(expected, cursor.fetchall())
+            self.assertCountEqual(expected, cursor.fetchall())
 
     def test_does_not_contain_routes_between_nodes_on_differing_spaces(self):
         space1 = factory.make_Space()
@@ -167,7 +167,7 @@ class TestRoutablePairs(MAASServerTestCase):
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
-            self.assertItemsEqual(expected, cursor.fetchall())
+            self.assertCountEqual(expected, cursor.fetchall())
 
     def test_does_not_contain_routes_between_addrs_of_diff_network_fams(self):
         space = factory.make_Space()  # One space.
@@ -187,4 +187,4 @@ class TestRoutablePairs(MAASServerTestCase):
 
         with connection.cursor() as cursor:
             cursor.execute("SELECT * from maasserver_routable_pairs")
-            self.assertItemsEqual(expected, cursor.fetchall())
+            self.assertCountEqual(expected, cursor.fetchall())

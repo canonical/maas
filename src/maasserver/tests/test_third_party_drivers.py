@@ -139,8 +139,8 @@ class TestDriversConfig(MAASServerTestCase):
     def test_load_from_yaml(self):
         filename = os.path.join(dev_root, "etc", "maas", "drivers.yaml")
         for entry in DriversConfig.load(filename)["drivers"]:
-            self.assertItemsEqual(
-                [
+            self.assertEqual(
+                {
                     "blacklist",
                     "comment",
                     "key_binary",
@@ -149,6 +149,6 @@ class TestDriversConfig(MAASServerTestCase):
                     "repository",
                     "package",
                     "series",
-                ],
+                },
                 entry.keys(),
             )

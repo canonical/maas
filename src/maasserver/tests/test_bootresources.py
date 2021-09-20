@@ -258,7 +258,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         output = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
         # Product listing should be the same as all of the completed
         # boot resources in the database.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             products, output["index"]["maas:v2:download"]["products"]
         )
 
@@ -706,7 +706,7 @@ class TestBootResourceStore(MAASServerTestCase):
     def test_init_initializes_variables(self):
         _, resource_names = self.make_boot_resources()
         store = BootResourceStore()
-        self.assertItemsEqual(resource_names, store._resources_to_delete)
+        self.assertCountEqual(resource_names, store._resources_to_delete)
         self.assertEqual({}, store._content_to_finalize)
 
     def test_prevent_resource_deletion_removes_resource(self):
@@ -715,14 +715,14 @@ class TestBootResourceStore(MAASServerTestCase):
         resource = resources.pop()
         resource_names.pop()
         store.prevent_resource_deletion(resource)
-        self.assertItemsEqual(resource_names, store._resources_to_delete)
+        self.assertCountEqual(resource_names, store._resources_to_delete)
 
     def test_prevent_resource_deletion_doesnt_remove_unknown_resource(self):
         resources, resource_names = self.make_boot_resources()
         store = BootResourceStore()
         resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
         store.prevent_resource_deletion(resource)
-        self.assertItemsEqual(resource_names, store._resources_to_delete)
+        self.assertCountEqual(resource_names, store._resources_to_delete)
 
     def test_save_content_later_adds_to__content_to_finalize_var(self):
         _, _, rfile = make_boot_resource_group()
@@ -1465,7 +1465,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             factory.make_boot_resource_file_with_content(newest_set)
         store = BootResourceStore()
         store.resource_set_cleaner()
-        self.assertItemsEqual([newest_set], resource.sets.all())
+        self.assertCountEqual([newest_set], resource.sets.all())
         for resource_set in old_complete_sets:
             self.assertFalse(
                 BootResourceSet.objects.filter(id=resource_set.id).exists()

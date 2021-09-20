@@ -130,7 +130,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         v6_ip = factory.make_ipv6_address()
         self.patch_resolve_hostname([v4_ip, v6_ip])
         self.patch_get_maas_facing_server_host()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [IPAddress(v4_ip), IPAddress(v6_ip)],
             get_maas_facing_server_addresses(ipv4=True, ipv6=True),
         )
@@ -172,7 +172,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         ]
         self.patch_resolve_hostname([global_ipv6] + local_ipv6)
         self.patch_get_maas_facing_server_host()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [IPAddress(ip) for ip in local_ipv6] + [IPAddress(global_ipv6)],
             get_maas_facing_server_addresses(link_local=True),
         )

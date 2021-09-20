@@ -117,7 +117,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         self.patch_autospec(service_maker, "_configureThreads")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
-        expected_services = [
+        expected_services = {
             "database-tasks",
             "postgres-listener-worker",
             "rack-controller",
@@ -125,8 +125,8 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
             "status-worker",
             "web",
             "ipc-worker",
-        ]
-        self.assertItemsEqual(expected_services, service.namedServices.keys())
+        }
+        self.assertEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
             len(service.namedServices),
             len(service.services),
@@ -154,7 +154,7 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
         )
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
-        expected_services = [
+        expected_services = {
             "database-tasks",
             "postgres-listener-worker",
             "rack-controller",
@@ -164,8 +164,8 @@ class TestRegionWorkerServiceMaker(TestServiceMaker):
             "ipc-worker",
             "import-resources",
             "import-resources-progress",
-        ]
-        self.assertItemsEqual(expected_services, service.namedServices.keys())
+        }
+        self.assertEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
             len(service.namedServices),
             len(service.services),
@@ -241,7 +241,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
         self.patch_autospec(service_maker, "_configureThreads")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
-        expected_services = [
+        expected_services = {
             "region-controller",
             "nonce-cleanup",
             "dns-publication-cleanup",
@@ -259,8 +259,8 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             "version-check",
             "workers",
             "ipc-master",
-        ]
-        self.assertItemsEqual(expected_services, service.namedServices.keys())
+        }
+        self.assertEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
             len(service.namedServices),
             len(service.services),
@@ -355,7 +355,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
         self.patch_autospec(service_maker, "_configureThreads")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
-        expected_services = [
+        expected_services = {
             # Worker services.
             "database-tasks",
             "postgres-listener-worker",
@@ -384,8 +384,8 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             "syslog",
             # "workers",  Prevented in all-in-one.
             "ipc-master",
-        ]
-        self.assertItemsEqual(expected_services, service.namedServices.keys())
+        }
+        self.assertEqual(expected_services, service.namedServices.keys())
         self.assertEqual(
             len(service.namedServices),
             len(service.services),

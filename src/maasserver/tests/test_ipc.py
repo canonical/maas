@@ -507,6 +507,6 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
         rpc_connections = yield deferToDatabase(
             reload_connections, rpc_connections
         )
-        self.assertItemsEqual(rpc_connections, [])
+        self.assertEqual(rpc_connections, [])
 
         yield master.stopService()

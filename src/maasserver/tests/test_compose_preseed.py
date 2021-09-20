@@ -837,7 +837,7 @@ class TestComposePreseed(MAASServerTestCase):
         preseed = yaml.safe_load(
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "python3-yaml",
                 "python3-oauthlib",
@@ -1102,7 +1102,7 @@ class TestComposePreseed(MAASServerTestCase):
             },
             preseed["power_state"],
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "python3-yaml",
                 "python3-oauthlib",
@@ -1186,7 +1186,7 @@ class TestComposePreseed(MAASServerTestCase):
                 {"metadata_enlist_url": url, "syslog_host_port": url},
             )
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             set(
                 [
                     "#",

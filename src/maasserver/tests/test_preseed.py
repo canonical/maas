@@ -532,15 +532,15 @@ class TestPreseedContext(MAASServerTestCase):
 
     def test_get_preseed_context_contains_keys(self):
         context = get_preseed_context(make_HttpRequest())
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "osystem",
                 "release",
                 "server_host",
                 "server_url",
                 "syslog_host_port",
                 "http_proxy",
-            ],
+            },
             context.keys(),
         )
 
@@ -570,14 +570,14 @@ class TestNodeDeprecatedPreseedContext(
         )
         self.configure_get_boot_images_for_node(node, "install")
         context = get_node_deprecated_preseed_context()
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "main_archive_hostname",
                 "main_archive_directory",
                 "ports_archive_hostname",
                 "ports_archive_directory",
                 "enable_http_proxy",
-            ],
+            },
             context.keys(),
         )
 
@@ -594,8 +594,8 @@ class TestNodePreseedContext(
         self.configure_get_boot_images_for_node(node, "install")
         release = factory.make_string()
         context = get_node_preseed_context(make_HttpRequest(), node, release)
-        self.assertItemsEqual(
-            [
+        self.assertEqual(
+            {
                 "driver",
                 "driver_package",
                 "node",
@@ -604,7 +604,7 @@ class TestNodePreseedContext(
                 "preseed_data",
                 "third_party_drivers",
                 "license_key",
-            ],
+            },
             context.keys(),
         )
 
@@ -742,7 +742,7 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             request.build_absolute_uri("/MAAS/metadata/"),
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
-        self.assertItemsEqual(
+        self.assertEqual(
             [
                 "python3-yaml",
                 "python3-oauthlib",
@@ -761,7 +761,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         token = NodeKey.objects.get_token_for_node(node)
         request = make_HttpRequest()
         reporter = curtin_maas_reporter(request, node, True)
-        self.assertItemsEqual(["reporting", "install"], list(reporter.keys()))
+        self.assertEqual({"reporting", "install"}, reporter.keys())
         self.assertEqual(
             request.build_absolute_uri(
                 reverse("metadata-status", args=[node.system_id])
@@ -783,7 +783,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
             preseed_module.CURTIN_ERROR_TARFILE,
             reporter["install"]["error_tarfile"],
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 preseed_module.CURTIN_INSTALL_LOG,
                 preseed_module.CURTIN_ERROR_TARFILE,
@@ -821,11 +821,10 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         reporter = self.load_reporter(preseeds)
         self.assertIsInstance(reporter, dict)
         if curtin_supports_webhook_events():
-            self.assertItemsEqual(
-                ["reporting", "install"], list(reporter.keys())
-            )
+            self.assertEqual({"reporting", "install"}, reporter.keys())
+
         else:
-            self.assertItemsEqual(["reporter"], list(reporter.keys()))
+            self.assertEqual({"reporter"}, reporter.keys())
 
 
 class TestComposeCurtinCloudConfig(MAASServerTestCase):
@@ -834,19 +833,19 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             make_HttpRequest(), factory.make_Node_with_Interface_on_Subnet()
         )
         self.assertIsInstance(preseeds, list)
-        self.assertThat(preseeds, HasLength(1))
+        self.assertEqual(len(preseeds), 1)
 
     def test_get_curtin_cloud_config_includes_datasource_list(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         config = get_curtin_cloud_config(make_HttpRequest(), node)
-        self.assertItemsEqual(["cloudconfig"], list(config.keys()))
-        self.assertItemsEqual(
-            ["maas-datasource", "maas-cloud-config", "maas-reporting"],
-            list(config["cloudconfig"].keys()),
+        self.assertEqual({"cloudconfig"}, config.keys())
+        self.assertEqual(
+            {"maas-datasource", "maas-cloud-config", "maas-reporting"},
+            config["cloudconfig"].keys(),
         )
-        self.assertThat(
+        self.assertEqual(
             config["cloudconfig"]["maas-datasource"]["content"],
-            Equals("datasource_list: [ MAAS ]"),
+            "datasource_list: [ MAAS ]",
         )
 
     def test_get_curtin_cloud_config_includes_cloudconfig(self):
@@ -855,15 +854,15 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
         token = NodeKey.objects.get_token_for_node(node)
         request = make_HttpRequest()
         config = get_curtin_cloud_config(request, node)
-        self.assertItemsEqual(["cloudconfig"], list(config.keys()))
-        self.assertItemsEqual(
-            [
+        self.assertEqual({"cloudconfig"}, config.keys())
+        self.assertEqual(
+            {
                 "maas-datasource",
                 "maas-cloud-config",
                 "maas-ubuntu-sso",
                 "maas-reporting",
-            ],
-            list(config["cloudconfig"].keys()),
+            },
+            config["cloudconfig"].keys(),
         )
         ds_config = {
             "datasource": {
@@ -1720,7 +1719,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         )
         preseed = yaml.safe_load(userdata[0])
         # Assert that get_additional_repositories returns 2 PPAs.
-        self.assertItemsEqual(ppas, [ppa_first, ppa_second])
+        self.assertCountEqual(ppas, [ppa_first, ppa_second])
         # Clean up PPA name
         ppa_name = make_clean_repo_name(ppa_first)
         self.assertThat(
@@ -1868,7 +1867,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
             primary_rack=self.rpc_rack_controller
         )
         context = get_curtin_context(make_HttpRequest(), node)
-        self.assertItemsEqual(["curtin_preseed"], context.keys())
+        self.assertEqual({"curtin_preseed"}, context.keys())
         self.assertIn("cloud-init", context["curtin_preseed"])
 
     def test_get_curtin_image_calls_get_boot_images_for(self):

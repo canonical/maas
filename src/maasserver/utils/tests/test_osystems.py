@@ -53,7 +53,7 @@ class TestOsystems(MAASServerTestCase):
             rtype=BOOT_RESOURCE_TYPE.SYNCED, bootloader_type="uefi"
         )
 
-        self.assertItemsEqual(
+        self.assertCountEqual(
             [
                 {
                     "name": "custom",
@@ -188,7 +188,7 @@ class TestReleases(MAASServerTestCase):
         osystem = make_rpc_osystem(
             releases=releases + [release_without_license_key]
         )
-        self.assertItemsEqual(
+        self.assertCountEqual(
             releases,
             list_all_releases_requiring_keys([osystem])[osystem["name"]],
         )
@@ -233,7 +233,7 @@ class TestReleases(MAASServerTestCase):
             self.make_release_choice("custom", release)
             for release in list_all_usable_releases()["custom"]
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             choices,
             list_release_choices(
                 list_all_usable_releases(), include_default=False
@@ -249,7 +249,7 @@ class TestReleases(MAASServerTestCase):
         choices = [
             self.make_release_choice("custom", release) for release in releases
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             choices,
             list_release_choices(
                 list_all_usable_releases(), include_default=False
@@ -278,7 +278,7 @@ class TestReleases(MAASServerTestCase):
             self.make_release_choice("windows", release, include_asterisk=True)
             for release in releases
         ]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             choices,
             list_release_choices(
                 list_all_usable_releases(), include_default=False
@@ -365,7 +365,7 @@ class TestReleases(MAASServerTestCase):
         choices = [
             (release["name"], release["title"]) for release in comm_releases
         ]
-        self.assertItemsEqual(choices, list_commissioning_choices([osystem]))
+        self.assertCountEqual(choices, list_commissioning_choices([osystem]))
 
     def test_list_commissioning_choices_returns_sorted(self):
         comm_releases = [
@@ -928,7 +928,7 @@ class TestGetReleaseFromDB(MAASServerTestCase):
 
     def test_finds_by_version(self):
         release = self.make_boot_source_cache()
-        self.assertItemsEqual(
+        self.assertCountEqual(
             release["series"],
             get_release_from_db(release["version"])["series"],
         )

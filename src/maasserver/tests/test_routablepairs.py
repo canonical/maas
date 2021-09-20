@@ -20,7 +20,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
     """Tests for `maasserver.routablepairs.find_addresses_between_nodes`."""
 
     def test_yields_nothing_when_no_nodes_given(self):
-        self.assertItemsEqual([], find_addresses_between_nodes([], []))
+        self.assertEqual([], list(find_addresses_between_nodes([], [])))
 
     def test_rejects_unsaved_nodes_on_the_left(self):
         saved_node, unsaved_node = factory.make_Node(), Node()
@@ -51,8 +51,8 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         expected = [left + right]
 
         # A route from node1 to node2 is found.
-        self.assertItemsEqual(
-            expected, find_addresses_between_nodes([node1], [node2])
+        self.assertEqual(
+            expected, list(find_addresses_between_nodes([node1], [node2]))
         )
 
     def test_yields_routes_between_multiple_nodes_on_same_space(self):
@@ -73,7 +73,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         ]
 
         # A route from each node on the left is found to each on the right.
-        self.assertItemsEqual(
+        self.assertCountEqual(
             expected,
             find_addresses_between_nodes(
                 (node for node, _ in lefts), (node for node, _ in rights)
@@ -91,8 +91,8 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         expected = []
 
         # No routable addresses are found.
-        self.assertItemsEqual(
-            expected, find_addresses_between_nodes([node1], [node2])
+        self.assertEqual(
+            expected, list(find_addresses_between_nodes([node1], [node2]))
         )
 
     def test_does_not_contain_routes_between_addrs_of_diff_network_fams(self):
@@ -107,8 +107,8 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
         expected = []
 
         # No routable addresses are found.
-        self.assertItemsEqual(
-            expected, find_addresses_between_nodes([node1], [node2])
+        self.assertEqual(
+            expected, list(find_addresses_between_nodes([node1], [node2]))
         )
 
     def gen_disjoint_networks(self):
@@ -252,7 +252,7 @@ class TestFindAddressesBetweenNodes(MAASServerTestCase):
             (lambda route: route[0] == route[2]),  # Route is mutual.
             find_addresses_between_nodes(lefts, [origin, *rights]),
         )
-        self.assertItemsEqual(expected_mutual, observed_mutual)
+        self.assertCountEqual(expected_mutual, observed_mutual)
 
     def test_doesnt_include_matches_between_undefined_spaces(self):
         network1 = next(self.gen_disjoint_networks())

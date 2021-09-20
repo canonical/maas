@@ -50,7 +50,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
         ]
         mark_nodes_failed_after_expiring(current_time, 20)
         failed_statuses = [reload_object(node).status for node in nodes]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.values(), failed_statuses
         )
         # MAAS logs in the status_monitor that the timeout was detected. It
@@ -71,7 +71,7 @@ class TestMarkNodesFailedAfterExpiring(MAASServerTestCase):
         ]
         mark_nodes_failed_after_expiring(current_time, 20)
         failed_statuses = [reload_object(node).status for node in nodes]
-        self.assertItemsEqual(
+        self.assertCountEqual(
             NODE_FAILURE_MONITORED_STATUS_TRANSITIONS.keys(), failed_statuses
         )
         self.assertThat(maaslog, MockNotCalled())

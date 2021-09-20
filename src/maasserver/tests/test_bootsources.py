@@ -130,7 +130,7 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertItemsEqual(["focal"], by_release.keys())
+        self.assertEqual({"focal"}, by_release.keys())
         self.assertAttributes(
             by_release["focal"],
             {
@@ -187,7 +187,7 @@ class TestHelpers(MAASServerTestCase):
         )
         selections = BootSourceSelection.objects.filter(boot_source=source)
         by_release = {selection.release: selection for selection in selections}
-        self.assertItemsEqual(["focal"], by_release.keys())
+        self.assertEqual({"focal"}, by_release.keys())
         self.assertAttributes(
             by_release["focal"],
             {
@@ -206,14 +206,14 @@ class TestHelpers(MAASServerTestCase):
             "Should have returned False signaling that the "
             "sources where not added.",
         )
-        self.assertItemsEqual(sources, BootSource.objects.all())
+        self.assertCountEqual(sources, BootSource.objects.all())
 
     def test_get_boot_sources(self):
         sources = [
             factory.make_BootSource(keyring_data="data").to_dict()
             for _ in range(3)
         ]
-        self.assertItemsEqual(sources, get_boot_sources())
+        self.assertCountEqual(sources, get_boot_sources())
 
     def test_get_product_title_with_os_release_and_gadget_titles(self):
         os_title = factory.make_name("os_title")
@@ -477,7 +477,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             for cache in BootSourceCache.objects.filter(boot_source=source)
             if cache.os == os
         ]
-        self.assertItemsEqual(releases, cached_releases)
+        self.assertCountEqual(releases, cached_releases)
 
     def test_adds_release_codename_title_and_support_eol(self):
         source = factory.make_BootSource(keyring_data=b"1234")

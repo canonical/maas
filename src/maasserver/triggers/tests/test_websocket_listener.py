@@ -264,7 +264,7 @@ class TestNodeListener(
             results = yield DeferredList(
                 (dv.get(timeout=2) for dv in save_dvs)
             )
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 {("update", "%s" % node.system_id) for node in nodes},
                 {res for (suc, res) in results},
             )
@@ -2021,7 +2021,7 @@ class TestNodeInterfaceListener(
             )
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [
                     ("update", "%s" % node1.system_id),
                     ("update", "%s" % node2.system_id),
@@ -2129,7 +2129,7 @@ class TestDeviceWithParentInterfaceListener(
             )
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [
                     ("update", "%s" % parent1.system_id),
                     ("update", "%s" % parent2.system_id),
@@ -2160,7 +2160,7 @@ class TestFabricListener(
             results = yield DeferredList(
                 (dv.get(timeout=2) for dv in save_dvs)
             )
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [("create", "%s" % fabric.id), ("update", "%s" % fabric.id)],
                 [res for (suc, res) in results],
             )
@@ -2940,7 +2940,7 @@ class TestSpaceListener(
             results = yield DeferredList(
                 (dv.get(timeout=2) for dv in save_dvs)
             )
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [("create", "%s" % space.id), ("update", "%s" % space.id)],
                 [res for (suc, res) in results],
             )
@@ -3424,7 +3424,7 @@ class TestStaticIPAddressSubnetListener(
             )
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [
                     ("update", "%s" % old_subnet.id),
                     ("update", "%s" % new_subnet.id),
@@ -4555,7 +4555,7 @@ class TestIPRangeSubnetListener(
             )
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [
                     ("update", "%s" % old_subnet.id),
                     ("update", "%s" % new_subnet.id),
@@ -4839,7 +4839,7 @@ class TestNodePodListener(
             yield deferToDatabase(update_direct, node.system_id, new_pod.id)
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
-            self.assertItemsEqual(
+            self.assertCountEqual(
                 [("update", "%s" % old_pod.id), ("update", "%s" % new_pod.id)],
                 [dvs[0].value, dvs[1].value],
             )

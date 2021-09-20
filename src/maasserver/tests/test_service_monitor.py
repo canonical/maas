@@ -25,8 +25,8 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 
 class TestGlobalServiceMonitor(MAASTestCase):
     def test_includes_all_services(self):
-        self.assertItemsEqual(
-            ["bind9", "ntp_region", "proxy", "syslog_region"],
+        self.assertEqual(
+            {"bind9", "ntp_region", "proxy", "syslog_region"},
             service_monitor._services.keys(),
         )
 

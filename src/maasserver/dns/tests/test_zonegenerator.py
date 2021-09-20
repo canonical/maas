@@ -173,7 +173,7 @@ class TestGetDNSSearchPaths(MAASServerTestCase):
         )
         for _ in range(3):
             factory.make_Domain(authoritative=False)
-        self.assertItemsEqual(domain_names, get_dns_search_paths())
+        self.assertEqual(domain_names, get_dns_search_paths())
 
 
 class TestWarnLoopback(MAASServerTestCase):
@@ -274,7 +274,7 @@ class TestGetHostnameMapping(MAASServerTestCase):
             ),
         }
         actual = get_hostname_ip_mapping(Domain.objects.get_default_domain())
-        self.assertItemsEqual(expected_mapping.items(), actual.items())
+        self.assertEqual(expected_mapping, actual)
 
     def test_get_hostname_dnsdata_mapping_contains_node_and_non_node(self):
         node = factory.make_Node(interface=True)
@@ -295,7 +295,7 @@ class TestGetHostnameMapping(MAASServerTestCase):
             ),
         }
         actual = get_hostname_dnsdata_mapping(node.domain)
-        self.assertItemsEqual(expected_mapping.items(), actual.items())
+        self.assertEqual(expected_mapping, actual)
 
 
 def forward_zone(domain):

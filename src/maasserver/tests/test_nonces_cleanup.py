@@ -98,7 +98,7 @@ class TestUtilities(MAASServerTestCase):
             for _ in range(3)
         ]
         delete_old_nonces(checkpoint)
-        self.assertItemsEqual(new_nonces, Nonce.objects.all())
+        self.assertCountEqual(new_nonces, Nonce.objects.all())
 
     def test_find_checkpoint_nonce_returns_None_if_no_checkpoint(self):
         self.assertIsNone(find_checkpoint_nonce())

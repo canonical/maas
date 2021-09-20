@@ -74,7 +74,7 @@ class TestGatherScenarios(MAASTestCase):
         values = [self.getUniqueInteger(), self.getUniqueString()]
         calls = [self.wrap(lambda v=value: v) for value in values]
         results = list(asynchronous.gather(calls))
-        self.assertItemsEqual(values, results)
+        self.assertCountEqual(values, results)
 
     def test_gatherCallResults_returns_use_once_iterator(self):
         calls = []
@@ -98,7 +98,7 @@ class TestGatherScenarios(MAASTestCase):
         calls = [self.wrap(lambda v=value: v) for value in values]
         results = list(asynchronous.gatherCallResults(calls))
         expected_results = [(calls[0], values[0]), (calls[1], values[1])]
-        self.assertItemsEqual(expected_results, results)
+        self.assertCountEqual(expected_results, results)
 
 
 class TestUseOnceIterator(MAASTestCase):

@@ -336,9 +336,9 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         pools_two = self.rbac.get_resource_pool_ids("user", "view")["view"]
         self.rbac.clear_cache()
         pools_three = self.rbac.get_resource_pool_ids("user", "view")["view"]
-        self.assertItemsEqual([self.default_pool.id], pools_one)
-        self.assertItemsEqual([self.default_pool.id], pools_two)
-        self.assertItemsEqual([self.default_pool.id, new_pool.id], pools_three)
+        self.assertEqual([self.default_pool.id], pools_one)
+        self.assertEqual([self.default_pool.id], pools_two)
+        self.assertEqual([self.default_pool.id, new_pool.id], pools_three)
 
     def test_get_resource_pool_ids_ALL_RESOURCES_always_returns_all(self):
         self.store.allow("user", ALL_RESOURCES, "view")
@@ -347,9 +347,9 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         pools_two = self.rbac.get_resource_pool_ids("user", "view")["view"]
         self.rbac.clear_cache()
         pools_three = self.rbac.get_resource_pool_ids("user", "view")["view"]
-        self.assertItemsEqual([self.default_pool.id], pools_one)
-        self.assertItemsEqual([self.default_pool.id, new_pool.id], pools_two)
-        self.assertItemsEqual([self.default_pool.id, new_pool.id], pools_three)
+        self.assertEqual([self.default_pool.id], pools_one)
+        self.assertEqual([self.default_pool.id, new_pool.id], pools_two)
+        self.assertEqual([self.default_pool.id, new_pool.id], pools_three)
 
     def test_can_create_resource_pool_returns_True(self):
         self.store.allow("user", ALL_RESOURCES, "edit")

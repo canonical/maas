@@ -421,7 +421,6 @@ class TestRefresh(MAASTestCase):
         script_name = LXD_OUTPUT_NAME
         info_scripts = self.create_scripts_success(script_name)
         path = factory.make_name()
-        self.patch(os, "environ", {"SNAP": path})
 
         system_id = factory.make_name("system_id")
         consumer_key = factory.make_name("consumer_key")
@@ -429,7 +428,9 @@ class TestRefresh(MAASTestCase):
         token_secret = factory.make_name("token_secret")
         url = factory.make_url()
 
-        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
+        with patch.dict("os.environ", {"SNAP": path}), patch.dict(
+            refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True
+        ):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )

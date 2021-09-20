@@ -192,7 +192,7 @@ class TestRenamableFieldsForm(MAASServerTestCase):
     def test_rename_field_renames_field(self):
         form = TestRenamableForm()
         form.rename_field("field1", "new_field")
-        self.assertItemsEqual(form.fields.keys(), ["new_field", "field2"])
+        self.assertEqual(form.fields.keys(), {"new_field", "field2"})
 
     def test_rename_field_updates_mapping(self):
         form = TestRenamableForm()
@@ -218,7 +218,7 @@ class FilterConstraintsMixin:
         filtered_nodes, storage, interfaces = form.filter_nodes(
             Machine.objects.all()
         )
-        self.assertItemsEqual(nodes, filtered_nodes)
+        self.assertCountEqual(nodes, filtered_nodes)
         return (filtered_nodes, storage, interfaces)
 
 
@@ -269,7 +269,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         nodes = [factory.make_Node() for _ in range(3)]
         form = FilterNodeForm(data={})
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertItemsEqual(nodes, Machine.objects.all())
+        self.assertCountEqual(nodes, Machine.objects.all())
 
     def test_subnets_filters_by_name(self):
         subnets = [factory.make_Subnet() for _ in range(3)]
@@ -1233,7 +1233,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         form = FilterNodeForm({"fabrics": ["fabric2"]})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node2], filtered_nodes)
+        self.assertCountEqual([node2], filtered_nodes)
 
     def test_not_fabrics_constraint(self):
         fabric1 = factory.make_Fabric(name="fabric1")
@@ -1243,7 +1243,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         form = FilterNodeForm({"not_fabrics": ["fabric1"]})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node2], filtered_nodes)
+        self.assertCountEqual([node2], filtered_nodes)
 
     def test_fabric_classes_constraint(self):
         fabric1 = factory.make_Fabric(class_type="10g")
@@ -1253,7 +1253,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         form = FilterNodeForm({"fabric_classes": ["1g"]})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node2], filtered_nodes)
+        self.assertCountEqual([node2], filtered_nodes)
 
     def test_not_fabric_classes_constraint(self):
         fabric1 = factory.make_Fabric(class_type="10g")
@@ -1263,7 +1263,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         form = FilterNodeForm({"not_fabric_classes": ["10g"]})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node2], filtered_nodes)
+        self.assertCountEqual([node2], filtered_nodes)
 
     def test_interfaces_constraint_rejected_if_syntax_is_invalid(self):
         factory.make_Node_with_Interface_on_Subnet()
@@ -1344,12 +1344,12 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         form = FilterNodeForm({"interfaces": "label:fabric_class=10g"})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node2], filtered_nodes)
+        self.assertCountEqual([node2], filtered_nodes)
 
         form = FilterNodeForm({"interfaces": "label:fabric_class=1g"})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node1], filtered_nodes)
+        self.assertCountEqual([node1], filtered_nodes)
 
     def test_interfaces_filters_work_with_multiple_labels(self):
         fabric1 = factory.make_Fabric(class_type="1g")
@@ -1368,14 +1368,14 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node1], filtered_nodes)
+        self.assertCountEqual([node1], filtered_nodes)
 
         form = FilterNodeForm(
             {"interfaces": "label:fabric_class=10g;vlan:vid=2"}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node2], filtered_nodes)
+        self.assertCountEqual([node2], filtered_nodes)
 
     def test_interfaces_filters_same_key_treated_as_OR_operation(self):
         fabric1 = factory.make_Fabric(class_type="1g")
@@ -1396,14 +1396,14 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node1], filtered_nodes)
+        self.assertCountEqual([node1], filtered_nodes)
 
         form = FilterNodeForm(
             {"interfaces": "label:fabric_class=10g,fabric_class=1g;vlan:vid=2"}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node2], filtered_nodes)
+        self.assertCountEqual([node2], filtered_nodes)
 
     def test_interfaces_filters_different_key_treated_as_AND_operation(self):
         fabric1 = factory.make_Fabric(class_type="1g")
@@ -1420,14 +1420,14 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         form = FilterNodeForm({"interfaces": "none:fabric_class=1g,vid=2"})
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([], filtered_nodes)
+        self.assertCountEqual([], filtered_nodes)
 
         form = FilterNodeForm(
             {"interfaces": "any:fabric_class=10g,fabric_class=1g,vid=1,vid=2"}
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
-        self.assertItemsEqual([node1, node2], filtered_nodes)
+        self.assertCountEqual([node1, node2], filtered_nodes)
 
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name="big")
@@ -1555,14 +1555,14 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertTrue(form.is_valid(), form.errors)
         # Check first: we didn't forget to test any attributes.  When we add
         # a constraint to the form, we'll have to add it here as well.
-        self.assertItemsEqual(form.fields.keys(), constraints.keys())
+        self.assertEqual(form.fields.keys(), constraints.keys())
 
         described_constraints = {
             constraint.split("=", 1)[0]
             for constraint in form.describe_constraints().split()
         }
 
-        self.assertItemsEqual(constraints.keys(), described_constraints)
+        self.assertEqual(constraints.keys(), described_constraints)
 
 
 class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
@@ -1680,14 +1680,14 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertTrue(form.is_valid(), form.errors)
         # Check first: we didn't forget to test any attributes.  When we add
         # a constraint to the form, we'll have to add it here as well.
-        self.assertItemsEqual(form.fields.keys(), constraints.keys())
+        self.assertEqual(form.fields.keys(), constraints.keys())
 
         described_constraints = {
             constraint.split("=", 1)[0]
             for constraint in form.describe_constraints().split()
         }
 
-        self.assertItemsEqual(constraints.keys(), described_constraints)
+        self.assertEqual(constraints.keys(), described_constraints)
 
     def test_pod_not_pod_pod_type_or_not_pod_type_for_pod(self):
         node1 = factory.make_Node(
