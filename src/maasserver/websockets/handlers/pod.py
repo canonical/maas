@@ -178,7 +178,7 @@ class PodHandler(TimestampedModelHandler):
         """Create a pod."""
 
         @transactional
-        def get_form(params):
+        def create_obj(params):
             # Clear rbac cache before check (this is in its own thread).
             rbac.clear()
 
@@ -190,24 +190,24 @@ class PodHandler(TimestampedModelHandler):
             form = PodForm(
                 data=self.preprocess_form("create", params), request=request
             )
-            if not form.is_valid():
-                raise HandlerValidationError(form.errors)
+            if form.is_valid():
+                return form.save()
             else:
-                return form
+                raise HandlerValidationError(form.errors)
 
         @transactional
         def render_obj(obj):
             return self.full_dehydrate(obj)
 
-        form = await deferToDatabase(get_form, params)
-        pod = await form.save()
+        pod = await deferToDatabase(create_obj, params)
+        pod = await deferToDatabase(self._try_sync_and_save, pod)
         return await deferToDatabase(render_obj, pod)
 
     async def update(self, params):
         """Update a pod."""
 
         @transactional
-        def get_form(params):
+        def update_obj(params):
             # Clear rbac cache before check (this is in its own thread).
             rbac.clear()
 
@@ -222,18 +222,18 @@ class PodHandler(TimestampedModelHandler):
                 data=self.preprocess_form("update", params),
                 request=request,
             )
-            if not form.is_valid():
-                raise HandlerValidationError(form.errors)
-            else:
+            if form.is_valid():
                 form.cleaned_data["tags"] = params["tags"]
-                return form
+                return form.save()
+            else:
+                raise HandlerValidationError(form.errors)
 
         @transactional
         def render_obj(obj):
             return self.full_dehydrate(obj)
 
-        form = await deferToDatabase(get_form, params)
-        pod = await form.save()
+        pod = await deferToDatabase(update_obj, params)
+        pod = await deferToDatabase(self._try_sync_and_save, pod)
         return await deferToDatabase(render_obj, pod)
 
     async def delete(self, params):
@@ -276,7 +276,7 @@ class PodHandler(TimestampedModelHandler):
             return self.full_dehydrate(obj)
 
         pod = await deferToDatabase(transactional(self.get_object), params)
-        pod = await discover_and_sync_vmhost(pod, self.user)
+        await discover_and_sync_vmhost(pod, self.user)
         return await deferToDatabase(render_obj, pod)
 
     async def compose(self, params):
@@ -317,3 +317,13 @@ class PodHandler(TimestampedModelHandler):
             log.err(error, "Failed to compose machine.")
             raise PodProblem("Pod unable to compose machine: %s" % str(error))
         return await deferToDatabase(render_obj, pod)
+
+    @transactional
+    def _try_sync_and_save(self, pod):
+        try:
+            discover_and_sync_vmhost(pod, self.user)
+        except PodProblem:
+            # if discovery fails, still save the object as is, to allow config
+            # changes
+            pod.save()
+        return pod

@@ -20,7 +20,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.web.test.requesthelper import DummyRequest
 
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Event, NodeMetadata
+from maasserver.models import Event, NodeMetadata, Pod
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout
@@ -37,7 +37,6 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
-    DocTestMatches,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -1086,7 +1085,9 @@ class TestStatusWorkerService(MAASServerTestCase):
 class TestCreateVMHostForDeployment(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        self.mock_PodForm = self.patch(api_twisted_module, "PodForm")
+        self.mock_discover_and_sync = self.patch(
+            api_twisted_module, "discover_and_sync_vmhost"
+        )
 
     def test_marks_failed_if_no_creds_install_kvm(self):
         node = factory.make_Node(
@@ -1117,7 +1118,9 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         )
 
     def test_creates_vmhost_register_vmhost(self):
+        user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user,
             status=NODE_STATUS.DEPLOYING,
             agent_name="maas-kvm-pod",
             register_vmhost=True,
@@ -1133,24 +1136,15 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         if IPAddress(addr).version == 6:
             addr = f"[{addr}]"
         _create_vmhost_for_deployment(node)
-        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
-        self.mock_PodForm.assert_called_with(
-            data={
-                "type": "lxd",
-                "name": node.hostname,
-                "certificate": cert.certificate_pem(),
-                "key": cert.private_key_pem(),
-                "power_address": addr,
-                "project": "maas",
-                "zone": node.zone.name,
-                "pool": node.pool.name,
-            },
-            user=None,
-        )
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        lxd_vmhost = Pod.objects.get(power_type="lxd")
+        self.mock_discover_and_sync.assert_called_once_with(lxd_vmhost, user)
         self.assertIsNone(reload_object(password_meta))
 
     def test_creates_vmhost_install_kvm(self):
+        user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user,
             status=NODE_STATUS.DEPLOYING,
             agent_name="maas-kvm-pod",
             install_kvm=True,
@@ -1163,22 +1157,15 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         if IPAddress(addr).version == 6:
             addr = f"[{addr}]"
         _create_vmhost_for_deployment(node)
-        self.assertThat(node.status, Equals(NODE_STATUS.DEPLOYED))
-        self.mock_PodForm.assert_called_with(
-            data={
-                "type": "virsh",
-                "name": node.hostname,
-                "power_pass": password_meta.value,
-                "power_address": f"qemu+ssh://virsh@{addr}/system",
-                "zone": node.zone.name,
-                "pool": node.pool.name,
-            },
-            user=None,
-        )
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        virsh_vmhost = Pod.objects.get(power_type="virsh")
+        self.mock_discover_and_sync.assert_called_once_with(virsh_vmhost, user)
         self.assertIsNone(reload_object(password_meta))
 
     def test_creates_vmhost_both(self):
+        user = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user,
             status=NODE_STATUS.DEPLOYING,
             agent_name="maas-kvm-pod",
             install_kvm=True,
@@ -1198,45 +1185,21 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
         if IPAddress(addr).version == 6:
             addr = f"[{addr}]"
         _create_vmhost_for_deployment(node)
+        virsh_vmhost = Pod.objects.get(power_type="virsh")
+        lxd_vmhost = Pod.objects.get(power_type="lxd")
         self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
-        self.mock_PodForm.assert_has_calls(
+        self.mock_discover_and_sync.assert_has_calls(
             [
-                call(
-                    data={
-                        "type": "virsh",
-                        "name": f"{node.hostname}-virsh",
-                        "power_pass": virsh_password_meta.value,
-                        "power_address": f"qemu+ssh://virsh@{addr}/system",
-                        "zone": node.zone.name,
-                        "pool": node.pool.name,
-                    },
-                    user=None,
-                ),
-                call(
-                    data={
-                        "type": "lxd",
-                        "name": f"{node.hostname}-lxd",
-                        "certificate": cert.certificate_pem(),
-                        "key": cert.private_key_pem(),
-                        "power_address": addr,
-                        "project": "maas",
-                        "zone": node.zone.name,
-                        "pool": node.pool.name,
-                    },
-                    user=None,
-                ),
-            ],
-            any_order=True,
+                call(virsh_vmhost, user),
+                call(lxd_vmhost, user),
+            ]
         )
         self.assertIsNone(reload_object(virsh_password_meta))
         self.assertIsNone(reload_object(lxd_cert_meta))
 
-    def test_marks_failed_if_is_valid_returns_false(self):
-        mock_pod_form = Mock()
-        self.mock_PodForm.return_value = mock_pod_form
-        mock_pod_form.errors = {}
-        mock_pod_form.is_valid = Mock()
-        mock_pod_form.is_valid.return_value = False
+    def test_marks_failed_if_form_invalid(self):
+        mock_form = self.patch(api_twisted_module, "PodForm").return_value
+        mock_form.is_valid.return_value = False
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING,
             agent_name="maas-kvm-pod",
@@ -1247,19 +1210,13 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             node=node, key="virsh_password", value="xyz123"
         )
         _create_vmhost_for_deployment(node)
-        self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
-        self.assertThat(
-            node.error_description, DocTestMatches(POD_CREATION_ERROR)
-        )
+        self.assertEqual(node.status, NODE_STATUS.FAILED_DEPLOYMENT)
+        self.assertEqual(node.error_description, POD_CREATION_ERROR)
 
-    def test_marks_failed_if_save_raises(self):
-        mock_pod_form = Mock()
-        self.mock_PodForm.return_value = mock_pod_form
-        mock_pod_form.errors = {}
-        mock_pod_form.is_valid = Mock()
-        mock_pod_form.is_valid.return_value = True
-        mock_pod_form.save = Mock()
-        mock_pod_form.save.side_effect = ValueError
+    def test_marks_failed_if_form_save_raises(self):
+        mock_form = self.patch(api_twisted_module, "PodForm").return_value
+        mock_form.is_valid.return_value = True
+        mock_form.save.side_effect = ValueError
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING,
             agent_name="maas-kvm-pod",
@@ -1270,19 +1227,13 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             node=node, key="virsh_password", value="xyz123"
         )
         _create_vmhost_for_deployment(node)
-        self.assertThat(node.status, Equals(NODE_STATUS.FAILED_DEPLOYMENT))
-        self.assertThat(
-            node.error_description, DocTestMatches(POD_CREATION_ERROR)
-        )
+        self.assertEqual(node.status, NODE_STATUS.FAILED_DEPLOYMENT)
+        self.assertEqual(node.error_description, POD_CREATION_ERROR)
 
-    def test_raises_if_save_raises_database_error(self):
-        mock_pod_form = Mock()
-        self.mock_PodForm.return_value = mock_pod_form
-        mock_pod_form.errors = {}
-        mock_pod_form.is_valid = Mock()
-        mock_pod_form.is_valid.return_value = True
-        mock_pod_form.save = Mock()
-        mock_pod_form.save.side_effect = DatabaseError("broken transaction")
+    def test_marks_failed_if_form_save_raises_database_error(self):
+        mock_form = self.patch(api_twisted_module, "PodForm").return_value
+        mock_form.is_valid.return_value = True
+        mock_form.save.side_effect = DatabaseError("broken transaction")
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING,
             agent_name="maas-kvm-pod",

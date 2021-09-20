@@ -1,9 +1,6 @@
 # Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for pods API."""
-
-
 import http.client
 import random
 from unittest.mock import MagicMock
@@ -235,17 +232,18 @@ class TestPodsAPIAdmin(PodAPITestForAdmin, PodMixin):
         response = self.client.post(reverse("pods_handler"), pod_info)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
-    def test_create_proper_return_on_exception(self):
+    def test_create_succeeds_on_refresh_failure(self):
         failed_rack = factory.make_RackController()
         self.patch(vmhost, "discover_pod").return_value = (
             {},
             {failed_rack.system_id: factory.make_exception()},
         )
-
         response = self.client.post(
             reverse("pods_handler"), self.make_pod_info()
         )
-        self.assertEqual(http.client.SERVICE_UNAVAILABLE, response.status_code)
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertTrue(Pod.objects.filter(id=parsed_result["id"]).exists())
 
 
 def get_pod_uri(pod):

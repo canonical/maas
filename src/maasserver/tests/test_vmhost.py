@@ -9,6 +9,7 @@ from twisted.internet.defer import inlineCallbacks, succeed
 
 from maasserver import vmhost as vmhost_module
 from maasserver.enum import BMC_TYPE
+from maasserver.exceptions import PodProblem
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
@@ -72,7 +73,7 @@ class TestDiscoverAndSyncVMHost(MAASTransactionServerTestCase):
             [failed_rack],
         )
 
-    def test_existing_vmhost(self):
+    def test_sync_details(self):
         (
             discovered_pod,
             discovered_racks,
@@ -113,7 +114,7 @@ class TestDiscoverAndSyncVMHost(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_discover_in_twisted(self):
+    def test_sync_details_async(self):
         discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
             self.fake_pod_discovery
         )
@@ -160,3 +161,49 @@ class TestDiscoverAndSyncVMHost(MAASTransactionServerTestCase):
             self.assertCountEqual(not_routable_racks, failed_racks)
 
         yield deferToDatabase(validate_rack_routes)
+
+    def test_raises_exception_from_rack_controller(self):
+        failed_rack = factory.make_RackController()
+        exc = factory.make_exception()
+        self.patch(vmhost_module, "discover_pod").return_value = (
+            {},
+            {failed_rack.system_id: exc},
+        )
+        pod_info = self.make_pod_info()
+        power_parameters = {"power_address": pod_info["power_address"]}
+        vmhost = factory.make_Pod(
+            pod_type=pod_info["type"],
+            parameters=power_parameters,
+        )
+        error = self.assertRaises(
+            PodProblem,
+            vmhost_module.discover_and_sync_vmhost,
+            vmhost,
+            factory.make_User(),
+        )
+        self.assertEqual(str(exc), str(error))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_raises_exception_from_rack_controller_async(self):
+        failed_rack = yield deferToDatabase(factory.make_RackController)
+        exc = factory.make_exception()
+        self.patch(vmhost_module, "discover_pod").return_value = succeed(
+            ({}, {failed_rack.system_id: exc})
+        )
+        pod_info = yield deferToDatabase(self.make_pod_info)
+        power_parameters = {"power_address": pod_info["power_address"]}
+        vmhost = yield deferToDatabase(
+            factory.make_Pod,
+            pod_type=pod_info["type"],
+            parameters=power_parameters,
+        )
+        user = yield deferToDatabase(factory.make_User)
+        d = vmhost_module.discover_and_sync_vmhost(vmhost, user)
+
+        def validate_error(failure):
+            self.assertIsInstance(failure.value, PodProblem)
+            self.assertEqual(str(exc), str(failure.value))
+
+        d.addErrback(validate_error)
+        yield d

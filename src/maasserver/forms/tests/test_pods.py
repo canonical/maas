@@ -18,11 +18,9 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesSetwise,
     MatchesStructure,
-    Not,
 )
-from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.internet.defer import inlineCallbacks, succeed
 
-from maasserver import vmhost as vmhost_module
 from maasserver.enum import BMC_TYPE, INTERFACE_TYPE, NODE_STATUS
 from maasserver.exceptions import PodProblem, StaticIPAddressUnavailable
 from maasserver.forms import pods as pods_module
@@ -35,14 +33,7 @@ from maasserver.forms.pods import (
     get_known_host_interfaces,
     PodForm,
 )
-from maasserver.models import (
-    Config,
-    Machine,
-    Pod,
-    ResourcePool,
-    StaticIPAddress,
-    Zone,
-)
+from maasserver.models import Config, Machine, StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -125,8 +116,8 @@ class TestPodForm(MAASTransactionServerTestCase):
             "ip_address": pod_ip_adddress,
         }
 
-    def fake_pod_discovery(self):
-        discovered_pod = DiscoveredPod(
+    def make_discovered_pod(self):
+        return DiscoveredPod(
             architectures=["amd64/generic"],
             cores=random.randint(2, 4),
             memory=random.randint(2048, 4096),
@@ -149,22 +140,6 @@ class TestPodForm(MAASTransactionServerTestCase):
                 for _ in range(3)
             ],
         )
-        discovered_rack_1 = factory.make_RackController()
-        discovered_rack_2 = factory.make_RackController()
-        failed_rack = factory.make_RackController()
-        self.patch(vmhost_module, "post_commit_do")
-        self.patch(vmhost_module, "discover_pod").return_value = (
-            {
-                discovered_rack_1.system_id: discovered_pod,
-                discovered_rack_2.system_id: discovered_pod,
-            },
-            {failed_rack.system_id: factory.make_exception()},
-        )
-        return (
-            discovered_pod,
-            [discovered_rack_1, discovered_rack_2],
-            [failed_rack],
-        )
 
     def test_contains_limited_set_of_fields(self):
         form = PodForm()
@@ -183,65 +158,20 @@ class TestPodForm(MAASTransactionServerTestCase):
             form.fields.keys(),
         )
 
-    def test_creates_pod_with_discovered_information(self):
-        (
-            discovered_pod,
-            discovered_racks,
-            failed_racks,
-        ) = self.fake_pod_discovery()
+    def test_creates_pod_with_provided_information(self):
         pod_info = self.make_pod_info()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertEqual(discovered_pod.cores, pod.cores)
-        self.assertEqual(discovered_pod.memory, pod.memory)
-        self.assertEqual(discovered_pod.cpu_speed, pod.cpu_speed)
-        routable_racks = [
-            relation.rack_controller
-            for relation in pod.routable_rack_relationships.all()
-            if relation.routable
-        ]
-        not_routable_racks = [
-            relation.rack_controller
-            for relation in pod.routable_rack_relationships.all()
-            if not relation.routable
-        ]
-        self.assertCountEqual(routable_racks, discovered_racks)
-        self.assertCountEqual(not_routable_racks, failed_racks)
-
-    def test_creates_pod_with_only_required(self):
-        (
-            discovered_pod,
-            discovered_racks,
-            failed_racks,
-        ) = self.fake_pod_discovery()
-        pod_info = self.make_pod_info()
-        form = PodForm(data=pod_info, request=self.request)
-        self.assertTrue(form.is_valid(), form._errors)
-        pod = form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                architectures=Equals(["amd64/generic"]),
-                name=MatchesAll(Not(Is(None)), Not(Equals(""))),
-                cores=Equals(discovered_pod.cores),
-                memory=Equals(discovered_pod.memory),
-                cpu_speed=Equals(discovered_pod.cpu_speed),
-                zone=Equals(Zone.objects.get_default_zone()),
-                pool=Equals(ResourcePool.objects.get_default_resource_pool()),
-                power_type=Equals(pod_info["type"]),
-                power_parameters=Equals(
-                    {
-                        "power_address": pod_info["power_address"],
-                        "power_pass": "",
-                    }
-                ),
-                ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
-            ),
+        self.assertEqual(pod.power_type, pod_info["type"])
+        self.assertEqual(
+            pod.power_parameters["power_address"], pod_info["power_address"]
         )
+        self.assertEqual(pod.cores, 0)
+        self.assertEqual(pod.memory, 0)
+        self.assertEqual(pod.cpu_speed, 0)
 
     def test_creates_pod_with_name(self):
-        self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_name = factory.make_name("pod")
         pod_info["name"] = pod_name
@@ -251,7 +181,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(pod_name, pod.name)
 
     def test_creates_pod_with_power_parameters(self):
-        self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_info["power_pass"] = factory.make_name("pass")
         form = PodForm(data=pod_info, request=self.request)
@@ -265,7 +194,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
 
     def test_creates_pod_with_overcommit(self):
-        self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pod_info["cpu_over_commit_ratio"] = random.randint(0, 10)
         pod_info["memory_over_commit_ratio"] = random.randint(0, 10)
@@ -280,7 +208,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
 
     def test_creates_pod_with_tags(self):
-        self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         tags = [
             factory.make_name("tag"),
@@ -294,7 +221,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertCountEqual(tags, pod.tags)
 
     def test_creates_pod_with_zone(self):
-        self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         zone = factory.make_Zone()
         pod_info["zone"] = zone.name
@@ -304,7 +230,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(zone.id, pod.zone.id)
 
     def test_creates_pod_with_pool(self):
-        self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         pool = factory.make_ResourcePool()
         pod_info["pool"] = pool.name
@@ -314,7 +239,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(pool.id, pod.pool.id)
 
     def test_creates_lxd_with_generated_certificate(self):
-        self.fake_pod_discovery()
         data = {
             "type": "lxd",
             "power_address": "1.2.3.4",
@@ -330,7 +254,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(cert.cn(), Config.objects.get_config("maas_name"))
 
     def test_creates_lxd_with_generated_certificate_with_name_in_cn(self):
-        self.fake_pod_discovery()
         data = {
             "name": "lxd-server",
             "type": "lxd",
@@ -348,86 +271,7 @@ class TestPodForm(MAASTransactionServerTestCase):
             cert.cn(), "lxd-server@" + Config.objects.get_config("maas_name")
         )
 
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_creates_pod_with_in_twisted(self):
-        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
-            self.fake_pod_discovery
-        )
-        vmhost_module.discover_pod.return_value = succeed(
-            vmhost_module.discover_pod.return_value
-        )
-        zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = yield deferToDatabase(self.make_pod_info)
-        pod_info["zone"] = zone.name
-        pod_info["name"] = factory.make_name("pod")
-        form = yield deferToDatabase(
-            PodForm, data=pod_info, request=self.request
-        )
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-        pod = yield form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                architectures=Equals(["amd64/generic"]),
-                name=Equals(pod_info["name"]),
-                cores=Equals(discovered_pod.cores),
-                memory=Equals(discovered_pod.memory),
-                cpu_speed=Equals(discovered_pod.cpu_speed),
-                zone=Equals(zone),
-                power_type=Equals(pod_info["type"]),
-                power_parameters=Equals(
-                    {
-                        "power_address": pod_info["power_address"],
-                        "power_pass": "",
-                    }
-                ),
-                ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
-            ),
-        )
-
-        def validate_rack_routes():
-            routable_racks = [
-                relation.rack_controller
-                for relation in pod.routable_rack_relationships.all()
-                if relation.routable
-            ]
-            not_routable_racks = [
-                relation.rack_controller
-                for relation in pod.routable_rack_relationships.all()
-                if not relation.routable
-            ]
-            self.assertCountEqual(routable_racks, discovered_racks)
-            self.assertCountEqual(not_routable_racks, failed_racks)
-
-        yield deferToDatabase(validate_rack_routes)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_doesnt_create_pod_when_discovery_fails_in_twisted(self):
-        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
-            self.fake_pod_discovery
-        )
-        vmhost_module.discover_pod.return_value = fail(
-            factory.make_exception()
-        )
-        pod_info = yield deferToDatabase(self.make_pod_info)
-        form = yield deferToDatabase(
-            PodForm, data=pod_info, request=self.request
-        )
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-        with ExpectedException(PodProblem):
-            yield form.save()
-
-        def validate_no_pods():
-            self.assertEqual([], list(Pod.objects.all()))
-
-        yield deferToDatabase(validate_no_pods)
-
     def test_prevents_duplicate_pod(self):
-        discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         form = PodForm(data=pod_info, request=self.request)
         self.assertTrue(form.is_valid(), form._errors)
@@ -437,7 +281,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertRaises(ValidationError, new_form.save)
 
     def test_takes_over_bmc_with_pod(self):
-        discovered_pod, _, _ = self.fake_pod_discovery()
         pod_info = self.make_pod_info()
         bmc = factory.make_BMC(
             power_type=pod_info["type"],
@@ -453,7 +296,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(BMC_TYPE.POD, reload_object(bmc).bmc_type)
 
     def test_updates_existing_pod_minimal(self):
-        self.fake_pod_discovery()
         zone = factory.make_Zone()
         pool = factory.make_ResourcePool()
         cpu_over_commit = random.randint(0, 10)
@@ -485,11 +327,6 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(power_parameters, pod.power_parameters)
 
     def test_updates_existing_pod(self):
-        (
-            discovered_pod,
-            discovered_racks,
-            failed_racks,
-        ) = self.fake_pod_discovery()
         zone = factory.make_Zone()
         pool = factory.make_ResourcePool()
         pod_info = self.make_pod_info()
@@ -501,43 +338,13 @@ class TestPodForm(MAASTransactionServerTestCase):
         form = PodForm(data=pod_info, request=self.request, instance=orig_pod)
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                id=Equals(orig_pod.id),
-                bmc_type=Equals(BMC_TYPE.POD),
-                architectures=Equals(["amd64/generic"]),
-                name=Equals(new_name),
-                cores=Equals(discovered_pod.cores),
-                memory=Equals(discovered_pod.memory),
-                cpu_speed=Equals(discovered_pod.cpu_speed),
-                zone=Equals(zone),
-                pool=Equals(pool),
-                power_type=Equals(pod_info["type"]),
-                power_parameters=Equals(
-                    {
-                        "power_address": pod_info["power_address"],
-                        "power_pass": "",
-                    }
-                ),
-                ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
-            ),
-        )
-        routable_racks = [
-            relation.rack_controller
-            for relation in pod.routable_rack_relationships.all()
-            if relation.routable
-        ]
-        not_routable_racks = [
-            relation.rack_controller
-            for relation in pod.routable_rack_relationships.all()
-            if not relation.routable
-        ]
-        self.assertCountEqual(routable_racks, discovered_racks)
-        self.assertCountEqual(not_routable_racks, failed_racks)
+        self.assertEqual(pod.id, orig_pod.id)
+        self.assertEqual(pod.zone, zone)
+        self.assertEqual(pod.pool, pool)
+        self.assertEqual(pod.name, new_name)
 
     def test_updates_default_storage_pool(self):
-        discovered_pod, _, _ = self.fake_pod_discovery()
+        discovered_pod = self.make_discovered_pod()
         default_storage_pool = random.choice(discovered_pod.storage_pools)
         pod = factory.make_Pod(pod_type="virsh")
         pod.sync(discovered_pod, self.request.user)
@@ -551,17 +358,12 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                default_storage_pool=MatchesStructure(
-                    pool_id=Equals(default_storage_pool.id)
-                )
-            ),
+        self.assertEqual(
+            pod.default_storage_pool.pool_id, default_storage_pool.id
         )
 
     def test_updates_default_macvlan_mode(self):
-        discovered_pod, _, _ = self.fake_pod_discovery()
+        discovered_pod = self.make_discovered_pod()
         default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
         pod = factory.make_Pod(pod_type="virsh")
         pod.sync(discovered_pod, self.request.user)
@@ -572,201 +374,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         )
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                default_macvlan_mode=Equals(default_macvlan_mode)
-            ),
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_updates_existing_pod_in_twisted(self):
-        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
-            self.fake_pod_discovery
-        )
-        vmhost_module.discover_pod.return_value = succeed(
-            vmhost_module.discover_pod.return_value
-        )
-        zone = yield deferToDatabase(factory.make_Zone)
-        pool = yield deferToDatabase(factory.make_ResourcePool)
-        pod_info = yield deferToDatabase(self.make_pod_info)
-        pod_info["zone"] = zone.name
-        pod_info["pool"] = pool.name
-        orig_pod = yield deferToDatabase(
-            factory.make_Pod, pod_type=pod_info["type"]
-        )
-        new_name = factory.make_name("pod")
-        pod_info["name"] = new_name
-        form = yield deferToDatabase(
-            PodForm, data=pod_info, request=self.request, instance=orig_pod
-        )
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-        pod = yield form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                id=Equals(orig_pod.id),
-                bmc_type=Equals(BMC_TYPE.POD),
-                architectures=Equals(["amd64/generic"]),
-                name=Equals(new_name),
-                cores=Equals(discovered_pod.cores),
-                memory=Equals(discovered_pod.memory),
-                cpu_speed=Equals(discovered_pod.cpu_speed),
-                zone=Equals(zone),
-                power_type=Equals(pod_info["type"]),
-                power_parameters=Equals(
-                    {
-                        "power_address": pod_info["power_address"],
-                        "power_pass": "",
-                    }
-                ),
-                ip_address=MatchesStructure(ip=Equals(pod_info["ip_address"])),
-            ),
-        )
-
-        def validate_rack_routes():
-            routable_racks = [
-                relation.rack_controller
-                for relation in pod.routable_rack_relationships.all()
-                if relation.routable
-            ]
-            not_routable_racks = [
-                relation.rack_controller
-                for relation in pod.routable_rack_relationships.all()
-                if not relation.routable
-            ]
-            self.assertCountEqual(routable_racks, discovered_racks)
-            self.assertCountEqual(not_routable_racks, failed_racks)
-
-        yield deferToDatabase(validate_rack_routes)
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_updates_default_storage_pool_in_twisted(self):
-        discovered_pod, _, _ = yield deferToDatabase(self.fake_pod_discovery)
-        vmhost_module.discover_pod.return_value = succeed(
-            vmhost_module.discover_pod.return_value
-        )
-        default_storage_pool = random.choice(discovered_pod.storage_pools)
-        pod = yield deferToDatabase(factory.make_Pod, pod_type="virsh")
-        yield deferToDatabase(pod.sync, discovered_pod, self.request.user)
-        form = yield deferToDatabase(
-            PodForm,
-            data={
-                "default_storage_pool": default_storage_pool.id,
-                "power_address": "qemu:///system",
-            },
-            request=self.request,
-            instance=pod,
-        )
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-        pod = yield form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                default_storage_pool=MatchesStructure(
-                    pool_id=Equals(default_storage_pool.id)
-                )
-            ),
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_updates_default_macvlan_mode_in_twisted(self):
-        discovered_pod, _, _ = yield deferToDatabase(self.fake_pod_discovery)
-        vmhost_module.discover_pod.return_value = succeed(
-            vmhost_module.discover_pod.return_value
-        )
-        default_macvlan_mode = factory.pick_choice(MACVLAN_MODE_CHOICES)
-        pod = yield deferToDatabase(factory.make_Pod, pod_type="virsh")
-        yield deferToDatabase(pod.sync, discovered_pod, self.request.user)
-        form = yield deferToDatabase(
-            PodForm,
-            data={"default_macvlan_mode": default_macvlan_mode},
-            request=self.request,
-            instance=pod,
-        )
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-        pod = yield form.save()
-        self.assertThat(
-            pod,
-            MatchesStructure(
-                default_macvlan_mode=Equals(default_macvlan_mode)
-            ),
-        )
-
-    def test_raises_unable_to_discover_because_no_racks(self):
-        self.patch(pods_module, "discover_pod").return_value = ({}, {})
-        pod_info = self.make_pod_info()
-        form = PodForm(data=pod_info)
-        self.assertTrue(form.is_valid(), form._errors)
-        error = self.assertRaises(PodProblem, form.save)
-        self.assertEqual(
-            "Unable to start the VM host discovery process. "
-            "No rack controllers connected.",
-            str(error),
-        )
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_raises_unable_to_discover_because_no_racks_in_twisted(self):
-        self.patch(pods_module, "discover_pod").return_value = succeed(
-            ({}, {})
-        )
-        pod_info = yield deferToDatabase(self.make_pod_info)
-        form = yield deferToDatabase(PodForm, data=pod_info)
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-
-        def validate_error(failure):
-            self.assertIsInstance(failure.value, PodProblem)
-            self.assertEqual(
-                "Unable to start the VM host discovery process. "
-                "No rack controllers connected.",
-                str(failure.value),
-            )
-
-        d = form.save()
-        d.addErrback(validate_error)
-        yield d
-
-    def test_raises_exception_from_rack_controller(self):
-        failed_rack = factory.make_RackController()
-        exc = factory.make_exception()
-        self.patch(vmhost_module, "discover_pod").return_value = (
-            {},
-            {failed_rack.system_id: exc},
-        )
-        pod_info = self.make_pod_info()
-        form = PodForm(data=pod_info)
-        self.assertTrue(form.is_valid(), form._errors)
-        error = self.assertRaises(PodProblem, form.save)
-        self.assertEqual(str(exc), str(error))
-
-    @wait_for_reactor
-    @inlineCallbacks
-    def test_raises_exception_from_rack_controller_in_twisted(self):
-        failed_rack = yield deferToDatabase(factory.make_RackController)
-        exc = factory.make_exception()
-        self.patch(vmhost_module, "discover_pod").return_value = succeed(
-            ({}, {failed_rack.system_id: exc})
-        )
-        pod_info = yield deferToDatabase(self.make_pod_info)
-        form = yield deferToDatabase(PodForm, data=pod_info)
-        is_valid = yield deferToDatabase(form.is_valid)
-        self.assertTrue(is_valid, form._errors)
-
-        def validate_error(failure):
-            self.assertIsInstance(failure.value, PodProblem)
-            self.assertEqual(str(exc), str(failure.value))
-
-        d = form.save()
-        d.addErrback(validate_error)
-        yield d
+        self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
 
 
 class TestComposeMachineForm(MAASTransactionServerTestCase):

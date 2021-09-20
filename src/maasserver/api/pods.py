@@ -11,7 +11,7 @@ from piston3.utils import rc
 
 from maasserver.api.support import admin_method, operation, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
-from maasserver.exceptions import MAASAPIValidationError
+from maasserver.exceptions import MAASAPIValidationError, PodProblem
 from maasserver.forms.pods import ComposeMachineForm, DeletePodForm, PodForm
 from maasserver.models.bmc import Pod
 from maasserver.models.virtualmachine import get_vm_host_used_resources
@@ -155,9 +155,12 @@ class VmHostHandler(OperationsHandler):
         pod = Pod.objects.get_pod_or_404(id, request.user, PodPermission.edit)
         form = PodForm(data=request.data, instance=pod, request=request)
         if form.is_valid():
-            return form.save()
+            pod = form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+
+        _try_sync_and_save(pod, request.user)
+        return pod
 
     @admin_method
     def delete(self, request, id):
@@ -518,9 +521,12 @@ class VmHostsHandler(OperationsHandler):
             raise PermissionDenied()
         form = PodForm(data=request.data, request=request)
         if form.is_valid():
-            return form.save()
+            pod = form.save()
         else:
             raise MAASAPIValidationError(form.errors)
+
+        _try_sync_and_save(pod, request.user)
+        return pod
 
 
 # Pods are being renamed to VM hosts. Keep the old name on the API as well for
@@ -539,3 +545,12 @@ class PodsHandler(VmHostsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ("pods_handler", [])
+
+
+def _try_sync_and_save(pod, user):
+    try:
+        discover_and_sync_vmhost(pod, user)
+    except PodProblem:
+        # if discovery fails, still save the object as is, to allow
+        # config changes
+        pod.save()

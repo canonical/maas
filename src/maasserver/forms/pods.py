@@ -60,10 +60,7 @@ from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vmhost import (
-    discover_and_sync_vmhost,
-    request_commissioning_results,
-)
+from maasserver.vmhost import request_commissioning_results
 from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
@@ -255,52 +252,6 @@ class PodForm(MAASModelForm):
         return cleaned_data
 
     def save(self, *args, **kwargs):
-        """Persist the pod into the database."""
-
-        def check_for_duplicate(power_type, power_parameters):
-            # When the Pod is new try to get a BMC of the same type and
-            # parameters to convert the BMC to a new Pod. When the Pod is not
-            # new the form will use the already existing pod instance to update
-            # those fields. If updating the fields causes a duplicate BMC then
-            # a validation erorr will be raised from the model level.
-            if self.is_new:
-                bmc = BMC.objects.filter(
-                    power_type=power_type, power_parameters=power_parameters
-                ).first()
-                if bmc is not None:
-                    if bmc.bmc_type == BMC_TYPE.BMC:
-                        # Convert the BMC to a Pod and set as the instance for
-                        # the PodForm.
-                        bmc.bmc_type = BMC_TYPE.POD
-                        bmc.pool = (
-                            ResourcePool.objects.get_default_resource_pool()
-                        )
-                        return bmc.as_pod()
-                    else:
-                        # Pod already exists with the same power_type and
-                        # parameters.
-                        raise ValidationError(
-                            "Pod %s with type and "
-                            "parameters already exist." % bmc.name
-                        )
-
-        def update_obj(existing_obj):
-            if existing_obj is not None:
-                self.instance = existing_obj
-            self.instance = super(PodForm, self).save(commit=False)
-            self.instance.power_type = power_type
-            self.instance.power_parameters = power_parameters
-            # Add tag for pod console logging with
-            # appropriate kernel parameters.
-            tag, _ = Tag.objects.get_or_create(
-                name="pod-console-logging",
-                kernel_opts="console=tty1 console=ttyS0",
-            )
-            # Add this tag to the pod.  This only adds the tag
-            # if it is not present on the pod.
-            self.instance.add_tag(tag.name)
-            return self.instance
-
         power_type = self.cleaned_data["type"]
         # Set power_parameters to the generated param_fields.
         power_parameters = {
@@ -309,27 +260,44 @@ class PodForm(MAASModelForm):
             if param_name in self.cleaned_data
         }
 
-        def discover_and_sync():
-            user = self.request.user if self.request else self.user
-            return discover_and_sync_vmhost(self.instance, user)
+        # When the Pod is new try to get a BMC of the same type and
+        # parameters to convert the BMC to a new Pod. When the Pod is not
+        # new the form will use the already existing pod instance to update
+        # those fields. If updating the fields causes a duplicate BMC then
+        # a validation erorr will be raised from the model level.
+        if self.is_new:
+            bmc = BMC.objects.filter(
+                power_type=power_type, power_parameters=power_parameters
+            ).first()
+            if bmc is not None:
+                if bmc.bmc_type == BMC_TYPE.BMC:
+                    # Convert the BMC to a Pod and set as the instance for
+                    # the PodForm.
+                    bmc.bmc_type = BMC_TYPE.POD
+                    bmc.pool = ResourcePool.objects.get_default_resource_pool()
+                    self.instance = bmc.as_pod()
+                else:
+                    # Pod already exists with the same power_type and
+                    # parameters.
+                    raise ValidationError(
+                        "Pod %s with type and "
+                        "parameters already exist." % bmc.name
+                    )
 
-        if isInIOThread():
-            # Running in twisted reactor, do the work inside the reactor.
-            d = deferToDatabase(
-                transactional(check_for_duplicate),
-                power_type,
-                power_parameters,
-            )
-            d.addCallback(partial(deferToDatabase, transactional(update_obj)))
-            d.addCallback(lambda _: discover_and_sync())
-            return d
-        else:
-            # Perform the actions inside the executing thread.
-            existing_obj = check_for_duplicate(power_type, power_parameters)
-            if existing_obj is not None:
-                self.instance = existing_obj
-            self.instance = update_obj(self.instance)
-            return discover_and_sync()
+        # update the object
+        self.instance = super().save(commit=False)
+        self.instance.power_type = power_type
+        self.instance.power_parameters = power_parameters
+        # Add tag for pod console logging with appropriate kernel parameters.
+        tag, _ = Tag.objects.get_or_create(
+            name="pod-console-logging",
+            kernel_opts="console=tty1 console=ttyS0",
+        )
+        # Add this tag to the pod.  This only adds the tag
+        # if it is not present on the pod.
+        self.instance.add_tag(tag.name)
+        self.instance.save()
+        return self.instance
 
 
 def interface_supports_sriov(interface):

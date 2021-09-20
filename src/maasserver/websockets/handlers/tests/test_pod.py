@@ -793,6 +793,25 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertIsNotNone(created_pod["id"])
 
     @wait_for_reactor
+    async def test_create_succeeds_with_failed_refresh(self):
+        def setup_fakes():
+            self.fake_pod_discovery()
+            failed_rack = factory.make_RackController()
+            self.patch(vmhost, "discover_pod").return_value = (
+                {},
+                {failed_rack.system_id: factory.make_exception()},
+            )
+
+        user = await deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        zone = await deferToDatabase(factory.make_Zone)
+        pod_info = self.make_pod_info()
+        pod_info["zone"] = zone.id
+        await deferToDatabase(setup_fakes)
+        created_pod = await handler.create(pod_info)
+        self.assertIsNotNone(created_pod["id"])
+
+    @wait_for_reactor
     async def test_create_with_pool(self):
         user = await deferToDatabase(factory.make_admin)
         handler = PodHandler(user, {}, None)
@@ -816,6 +835,30 @@ class TestPodHandler(MAASTransactionServerTestCase):
         pod_info["id"] = pod.id
         pod_info["name"] = factory.make_name("pod")
         await deferToDatabase(self.fake_pod_discovery)
+        updated_pod = await handler.update(pod_info)
+        self.assertEqual(pod_info["name"], updated_pod["name"])
+
+    @wait_for_reactor
+    async def test_update_succeeds_with_failed_refresh(self):
+        def setup_fakes():
+            self.fake_pod_discovery()
+            failed_rack = factory.make_RackController()
+            self.patch(vmhost, "discover_pod").return_value = (
+                {},
+                {failed_rack.system_id: factory.make_exception()},
+            )
+
+        user = await deferToDatabase(factory.make_admin)
+        handler = PodHandler(user, {}, None)
+        zone = await deferToDatabase(factory.make_Zone)
+        pod_info = self.make_pod_info()
+        pod_info["zone"] = zone.id
+        pod = await deferToDatabase(
+            factory.make_Pod, pod_type=pod_info["type"]
+        )
+        pod_info["id"] = pod.id
+        pod_info["name"] = factory.make_name("pod")
+        await deferToDatabase(setup_fakes)
         updated_pod = await handler.update(pod_info)
         self.assertEqual(pod_info["name"], updated_pod["name"])
 

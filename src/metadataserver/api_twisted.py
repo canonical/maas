@@ -26,6 +26,7 @@ from maasserver.utils.orm import (
     TransactionManagementError,
 )
 from maasserver.utils.threads import deferToDatabase
+from maasserver.vmhost import discover_and_sync_vmhost
 from metadataserver import logger
 from metadataserver.api import add_event_to_node_event_log, process_file
 from metadataserver.enum import SCRIPT_STATUS
@@ -241,7 +242,7 @@ def _create_vmhost_for_deployment(node):
         pod_form = PodForm(data=form_data, user=node.owner)
         if pod_form.is_valid():
             try:
-                pod_form.save()
+                pod = pod_form.save()
             except DatabaseError:
                 # Re-raise database errors, since we want it to be
                 # retried if possible. If it's not retriable, we
@@ -255,6 +256,9 @@ def _create_vmhost_for_deployment(node):
                 node.mark_failed(comment=POD_CREATION_ERROR, commit=False)
                 log.err(None, f"Error saving VM host: {e}")
                 return
+            else:
+                discover_and_sync_vmhost(pod, node.owner)
+
         else:
             node.mark_failed(comment=POD_CREATION_ERROR, commit=False)
             log.msg("Error while creating VM host: %s" % dict(pod_form.errors))
