@@ -307,13 +307,7 @@ class LXDPodDriver(PodDriver):
     @threadDeferred
     def discover(self, pod_id: int, context: dict):
         """Discover all Pod host resources."""
-        # Allow the certificate not to be trusted (in which case an empty
-        # DiscoveredPod is returned) when creating a new VM host, at which
-        # point certs might not yet be trusted.
-        allow_untrusted = pod_id is None
-        with self._get_client(
-            pod_id, context, allow_untrusted=allow_untrusted
-        ) as client:
+        with self._get_client(pod_id, context) as client:
             return self._discover(client, pod_id, context)
 
     def _discover(self, client: Client, pod_id: int, context: dict):
@@ -808,7 +802,6 @@ class LXDPodDriver(PodDriver):
         pod_id: int,
         context: dict,
         project: Optional[str] = None,
-        allow_untrusted: bool = False,
     ):
         """Return a context manager with a PyLXD client."""
 
@@ -858,7 +851,7 @@ class LXDPodDriver(PodDriver):
             else:
                 client = client_with_certs(maas_certs)
 
-            if not client.trusted and not allow_untrusted:
+            if not client.trusted:
                 raise Error(
                     "Certificate is not trusted and no password was given"
                 )

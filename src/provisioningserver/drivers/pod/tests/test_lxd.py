@@ -348,16 +348,6 @@ class TestLXDPodDriver(MAASTestCase):
             "", SAMPLE_CERT.certificate_pem().encode("ascii")
         )
 
-    def test_get_client_allow_untrusted(self):
-        context = self.make_context(with_password=False)
-        self.fake_lxd.add_client_behavior(trusted=False)
-        # no exception is raised
-        with self.driver._get_client(
-            None, context, allow_untrusted=True
-        ) as client:
-            self.assertFalse(client.trusted)
-            self.assertIsNotNone(client.cert)
-
     def test_get_client_default_project(self):
         context = self.make_context()
         del context["project"]
@@ -536,12 +526,9 @@ class TestLXDPodDriver(MAASTestCase):
     def test_discover_new_vmhost_untrusted_cert(self):
         context = self.make_context(with_password=False)
         self.fake_lxd.add_client_behavior(trusted=False)
-        discovered_pod = yield self.driver.discover(None, context)
-        self.assertIsNone(discovered_pod.name)
-        self.assertEqual(discovered_pod.version, "")
-        self.assertEqual(discovered_pod.cores, -1)
-        self.assertEqual(discovered_pod.cpu_speed, -1)
-        self.assertEqual(discovered_pod.memory, -1)
+        error_msg = "VM Host None: Certificate is not trusted and no password was given"
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            yield self.driver.discover(None, context)
 
     @inlineCallbacks
     def test_discover_existing_vmhost_untrusted_cert(self):
