@@ -650,9 +650,15 @@ def main():
     args = parser.parse_args()
     config = ConfigParser()
     config.read("release.macaroon")
+    try:
+        macaroon = config["login.ubuntu.com"]
+    except KeyError:
+        print("Macaroon couldn't be found", file=sys.stderr)
+        print(get_macaroon_refresh_help(), file=sys.stderr)
+        return 1
     preparer = ReleasePreparer(
         args.version,
-        macaroon_auth(config["login.ubuntu.com"]),
+        macaroon_auth(macaroon),
         Launchpad.login_with(
             "MAAS Releaser",
             "production",
