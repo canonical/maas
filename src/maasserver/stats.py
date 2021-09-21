@@ -14,7 +14,7 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 import json
 
-from django.db.models import Count, F
+from django.db.models import Count, F, Max
 import requests
 from twisted.application.internet import TimerService
 
@@ -41,7 +41,9 @@ from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
+from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils.network import IPRangeStatistics
 
 log = LegacyLogger()
@@ -227,6 +229,44 @@ def get_custom_images_deployed_stats():
     return Machine.objects.filter(osystem="custom").count()
 
 
+def get_brownfield_stats():
+    deployed_machines = Machine.objects.filter(
+        dynamic=False,
+        status=NODE_STATUS.DEPLOYED,
+    )
+    brownfield_machines = deployed_machines.filter(
+        current_installation_script_set__isnull=True,
+    )
+    no_brownfield_machines = Machine.objects.filter(
+        current_installation_script_set__isnull=False,
+    ).annotate(
+        latest_installation_script_date=Max(
+            "current_installation_script_set__scriptresult__updated"
+        ),
+        latest_commissioning_script_date=Max(
+            "current_commissioning_script_set__scriptresult__updated"
+        ),
+    )
+
+    return {
+        "machines_added_deployed_with_bmc": brownfield_machines.filter(
+            bmc__isnull=False
+        ).count(),
+        "machines_added_deployed_without_bmc": brownfield_machines.filter(
+            bmc__isnull=True
+        ).count(),
+        "commissioned_after_deploy_brownfield": brownfield_machines.filter(
+            current_commissioning_script_set__scriptresult__script_name=LXD_OUTPUT_NAME,
+            current_commissioning_script_set__scriptresult__status=SCRIPT_STATUS.PASSED,
+        ).count(),
+        "commissioned_after_deploy_no_brownfield": no_brownfield_machines.filter(
+            latest_commissioning_script_date__gt=F(
+                "latest_installation_script_date"
+            ),
+        ).count(),
+    }
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -261,6 +301,7 @@ def get_maas_stats():
             "virsh": get_vm_hosts_stats(power_type="virsh"),
         },
         "workload_annotations": get_workload_annotations_stats(),
+        "brownfield": get_brownfield_stats(),
     }
 
 

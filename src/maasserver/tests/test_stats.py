@@ -14,16 +14,19 @@ from twisted.internet.defer import fail
 
 from maasserver import stats
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE, NODE_STATUS
+from maasserver.forms import AdminMachineForm
 from maasserver.models import (
     BootResourceFile,
     Config,
     Fabric,
+    Machine,
     OwnerData,
     Space,
     Subnet,
     VLAN,
 )
 from maasserver.stats import (
+    get_brownfield_stats,
     get_custom_images_deployed_stats,
     get_custom_images_uploaded_stats,
     get_maas_stats,
@@ -42,6 +45,12 @@ from maasserver.testing.testcase import (
 from maastesting.matchers import MockCalledOnce, MockNotCalled
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
+from metadataserver.builtin_scripts import load_builtin_scripts
+from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
+from metadataserver.models.scriptresult import ScriptResult
+from metadataserver.models.scriptset import ScriptSet
+from provisioningserver.drivers.pod import DiscoveredPod
+from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
 from provisioningserver.utils.twisted import asynchronous
 
 
@@ -289,6 +298,12 @@ class TestMAASStats(MAASServerTestCase):
                 "unique_keys": 1,
                 "unique_values": 1,
             },
+            "brownfield": {
+                "machines_added_deployed_with_bmc": 2,
+                "machines_added_deployed_without_bmc": 0,
+                "commissioned_after_deploy_brownfield": 0,
+                "commissioned_after_deploy_no_brownfield": 0,
+            },
         }
         self.assertEqual(stats, expected)
 
@@ -393,6 +408,12 @@ class TestMAASStats(MAASServerTestCase):
                 "unique_keys": 0,
                 "unique_values": 0,
             },
+            "brownfield": {
+                "machines_added_deployed_with_bmc": 0,
+                "machines_added_deployed_without_bmc": 0,
+                "commissioned_after_deploy_brownfield": 0,
+                "commissioned_after_deploy_no_brownfield": 0,
+            },
         }
         self.assertEqual(get_maas_stats(), expected)
 
@@ -442,6 +463,112 @@ class TestMAASStats(MAASServerTestCase):
             machine.distro_series = factory.make_name("name")
             machine.save()
         self.assertEqual(get_custom_images_deployed_stats(), 2)
+
+
+class FakeRequest:
+    def __init__(self, user):
+        self.user = user
+
+
+class TestGetBrownfieldStats(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        load_builtin_scripts()
+
+    def _make_brownfield_machine(self):
+        admin = factory.make_admin()
+        # Use the form to create the brownfield node, so that it gets
+        # created in the same way as in a real MAAS deployement.
+        form = AdminMachineForm(
+            request=FakeRequest(admin),
+            data={
+                "hostname": factory.make_string(),
+                "deployed": True,
+            },
+        )
+        return form.save()
+
+    def _make_normal_deployed_machine(self):
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED, previous_status=NODE_STATUS.DEPLOYING
+        )
+        machine.current_commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(machine)
+        )
+        machine.current_installation_script_set = factory.make_ScriptSet(
+            node=machine, result_type=RESULT_TYPE.INSTALLATION
+        )
+        factory.make_ScriptResult(
+            script_set=machine.current_installation_script_set,
+            status=SCRIPT_STATUS.PASSED,
+            exit_status=0,
+        )
+        machine.save()
+        return machine
+
+    def _make_pod_machine(self):
+        factory.make_usable_boot_resource(architecture="amd64/generic")
+        pod = factory.make_Pod()
+        mac_addresses = [factory.make_mac_address() for _ in range(3)]
+        sync_user = factory.make_User()
+        return pod.sync(
+            DiscoveredPod(
+                architectures=["amd64/generic"], mac_addresses=mac_addresses
+            ),
+            sync_user,
+        )
+
+    def _update_commissioning(self, machine):
+        commissioning_result = ScriptResult.objects.get(
+            script_set=machine.current_commissioning_script_set,
+            script_name=LXD_OUTPUT_NAME,
+        )
+        commissioning_result.store_result(exit_status=0)
+
+    def test_added_deployed(self):
+        for _ in range(5):
+            machine = self._make_brownfield_machine()
+            machine.bmc = factory.make_BMC()
+            machine.save()
+        for _ in range(9):
+            machine = self._make_brownfield_machine()
+            machine.bmc = None
+            machine.save()
+        normal = self._make_normal_deployed_machine()
+        factory.make_Machine(status=NODE_STATUS.READY)
+        # If pods and controllers are registered in MAAS, that don't
+        # have a corresponding machine already, MAAS will basically
+        # create them as brownfield nodes. We don't want those included
+        # in the stats.
+        pod = self._make_pod_machine()
+        controller = factory.make_Controller()
+        brownfield_machines = Machine.objects.filter(
+            current_installation_script_set__isnull=True,
+            dynamic=False,
+        ).all()
+        self.assertNotIn(normal, brownfield_machines)
+        self.assertNotIn(controller, brownfield_machines)
+        self.assertNotIn(pod, brownfield_machines)
+        stats = get_brownfield_stats()
+        self.assertEqual(5, stats["machines_added_deployed_with_bmc"])
+        self.assertEqual(9, stats["machines_added_deployed_without_bmc"])
+
+    def test_commission_after_deploy_brownfield(self):
+        for _ in range(5):
+            self._update_commissioning(self._make_brownfield_machine())
+        self._make_brownfield_machine()
+        for _ in range(9):
+            self._update_commissioning(self._make_normal_deployed_machine())
+        self._make_normal_deployed_machine()
+        # If pods and controllers are registered in MAAS, that don't
+        # have a corresponding machine already, MAAS will basically
+        # create them as brownfield nodes. We don't want those included
+        # in the stats.
+        self._make_pod_machine()
+        factory.make_Controller()
+        stats = get_brownfield_stats()
+        self.assertEqual(5, stats["commissioned_after_deploy_brownfield"])
+        self.assertEqual(9, stats["commissioned_after_deploy_no_brownfield"])
 
 
 class TestGetSubnetsUtilisationStats(MAASServerTestCase):
