@@ -343,7 +343,7 @@ class TestGetCustomImageDependencyValidation(MAASServerTestCase):
                 "--",
                 "bash",
                 "-c",
-                "'dpkg-query ${} cloud-init || (echo \"cloud-init not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+                'dpkg-query -s cloud-init || (echo "cloud-init not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
             "99-validate-custom-image-has-netplan.io": [
                 "curtin",
@@ -351,7 +351,7 @@ class TestGetCustomImageDependencyValidation(MAASServerTestCase):
                 "--",
                 "bash",
                 "-c",
-                "'dpkg-query ${} netplan.io || (echo \"netplan.io not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+                'dpkg-query -s netplan.io || (echo "netplan.io not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
         }
         for k in expected:
@@ -378,7 +378,7 @@ class TestGetCustomImageDependencyValidation(MAASServerTestCase):
                 "--",
                 "bash",
                 "-c",
-                "'dnf list cloud-init || (echo \"cloud-init not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+                'dnf list cloud-init || (echo "cloud-init not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
             "99-validate-custom-image-has-netplan.io": [
                 "curtin",
@@ -386,7 +386,7 @@ class TestGetCustomImageDependencyValidation(MAASServerTestCase):
                 "--",
                 "bash",
                 "-c",
-                "'dnf list netplan.io || (echo \"netplan.io not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+                'dnf list netplan.io || (echo "netplan.io not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
         }
         for k in expected:
@@ -1463,7 +1463,7 @@ class TestCurtinUtilities(
                 "--",
                 "bash",
                 "-c",
-                "'dpkg-query ${} cloud-init || (echo \"cloud-init not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+                'dpkg-query -s cloud-init || (echo "cloud-init not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
             "99-validate-custom-image-has-netplan.io": [
                 "curtin",
@@ -1471,7 +1471,7 @@ class TestCurtinUtilities(
                 "--",
                 "bash",
                 "-c",
-                "'dpkg-query ${} netplan.io || (echo \"netplan.io not detected, MAAS will not be able to configure this machine properly\" && exit 1)'",
+                'dpkg-query -s netplan.io || (echo "netplan.io not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
         }
         self.configure_get_boot_images_for_node(node, "xinstall")

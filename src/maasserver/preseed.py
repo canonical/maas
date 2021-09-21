@@ -606,12 +606,14 @@ def get_custom_image_dependency_validation(node, base_osystem):
     for i, dep in enumerate(deps):
         in_target = None
         if base_osystem == "ubuntu":
-            in_target = "'dpkg-query ${{}} {dep} || (echo \"{dep} {err_msg}\" && exit 1)'".format(
+            in_target = 'dpkg-query -s {dep} || (echo "{dep} {err_msg}" && exit 1)'.format(
                 dep=dep, err_msg=err_msg
             )
         if base_osystem == "centos":
-            in_target = "'dnf list {dep} || (echo \"{dep} {err_msg}\" && exit 1)'".format(
-                dep=dep, err_msg=err_msg
+            in_target = (
+                'dnf list {dep} || (echo "{dep} {err_msg}" && exit 1)'.format(
+                    dep=dep, err_msg=err_msg
+                )
             )
 
         if in_target is not None:
