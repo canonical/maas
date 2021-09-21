@@ -698,6 +698,7 @@ class Factory(maastesting.factory.Factory):
         parameters=None,
         ip_address=None,
         host=None,
+        cluster=None,
         **kwargs,
     ):
         if pod_type is None:
@@ -723,8 +724,11 @@ class Factory(maastesting.factory.Factory):
             **kwargs,
         )
         pod.save()
+
         if host is not None:
             pod.hints.nodes.add(host)
+        if cluster is not None:
+            pod.hints.cluster = cluster
 
         return pod
 

@@ -7,14 +7,17 @@
 from django.db.models import (
     BigIntegerField,
     CASCADE,
+    ForeignKey,
     IntegerField,
     ManyToManyField,
     Model,
     OneToOneField,
+    SET_NULL,
 )
 
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.vmcluster import VMCluster
 
 
 class PodHints(CleanSave, Model):
@@ -36,3 +39,5 @@ class PodHints(CleanSave, Model):
     local_storage = BigIntegerField(  # Bytes
         blank=False, null=False, default=0
     )
+
+    cluster = ForeignKey(VMCluster, blank=True, null=True, on_delete=SET_NULL)

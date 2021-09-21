@@ -90,6 +90,7 @@ __all__ = [
     "VLAN",
     "VLANInterface",
     "VolumeGroup",
+    "VMCluster",
     "VMFS",
     "Zone",
 ]
@@ -197,6 +198,7 @@ from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.virtualmachine import VirtualMachine
 from maasserver.models.vlan import VLAN
+from maasserver.models.vmcluster import VMCluster
 from maasserver.models.zone import Zone
 from maasserver.permissions import (
     NodePermission,
