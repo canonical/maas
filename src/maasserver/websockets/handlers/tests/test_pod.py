@@ -750,7 +750,7 @@ class TestPodHandler(MAASTransactionServerTestCase):
         handler = PodHandler(user, {}, None)
         pod = await deferToDatabase(self.make_pod_with_hints)
         self.patch(
-            pod_module, "discover_and_sync_vmhost"
+            pod_module, "discover_and_sync_vmhost_async"
         ).return_value = succeed(pod)
         expected_data = await deferToDatabase(
             handler.full_dehydrate, pod, for_list=False

@@ -4,83 +4,86 @@
 
 import random
 
-import crochet
-from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.internet.defer import succeed
 
 from maasserver import vmhost as vmhost_module
 from maasserver.enum import BMC_TYPE
 from maasserver.exceptions import PodProblem
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from provisioningserver.drivers.pod import (
     DiscoveredPod,
     DiscoveredPodHints,
     DiscoveredPodStoragePool,
 )
 
-wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
+
+def make_pod_info():
+    pod_ip_adddress = factory.make_ipv4_address()
+    pod_power_address = "qemu+ssh://user@%s/system" % pod_ip_adddress
+    return {
+        "type": "virsh",
+        "power_address": pod_power_address,
+        "ip_address": pod_ip_adddress,
+    }
 
 
-class TestDiscoverAndSyncVMHost(MAASTransactionServerTestCase):
-    def make_pod_info(self):
-        pod_ip_adddress = factory.make_ipv4_address()
-        pod_power_address = "qemu+ssh://user@%s/system" % pod_ip_adddress
-        return {
-            "type": "virsh",
-            "power_address": pod_power_address,
-            "ip_address": pod_ip_adddress,
-        }
-
-    def fake_pod_discovery(self):
-        discovered_pod = DiscoveredPod(
-            architectures=["amd64/generic"],
+def fake_pod_discovery(testcase):
+    discovered_pod = DiscoveredPod(
+        architectures=["amd64/generic"],
+        cores=random.randint(2, 4),
+        memory=random.randint(2048, 4096),
+        local_storage=random.randint(1024, 1024 * 1024),
+        cpu_speed=random.randint(2048, 4048),
+        hints=DiscoveredPodHints(
             cores=random.randint(2, 4),
-            memory=random.randint(2048, 4096),
+            memory=random.randint(1024, 4096),
             local_storage=random.randint(1024, 1024 * 1024),
             cpu_speed=random.randint(2048, 4048),
-            hints=DiscoveredPodHints(
-                cores=random.randint(2, 4),
-                memory=random.randint(1024, 4096),
-                local_storage=random.randint(1024, 1024 * 1024),
-                cpu_speed=random.randint(2048, 4048),
-            ),
-            storage_pools=[
-                DiscoveredPodStoragePool(
-                    id=factory.make_name("pool_id"),
-                    name=factory.make_name("name"),
-                    type=factory.make_name("type"),
-                    path="/var/lib/path/%s" % factory.make_name("path"),
-                    storage=random.randint(1024, 1024 * 1024),
-                )
-                for _ in range(3)
-            ],
-        )
-        discovered_rack_1 = factory.make_RackController()
-        discovered_rack_2 = factory.make_RackController()
-        failed_rack = factory.make_RackController()
-        self.patch(vmhost_module, "post_commit_do")
-        self.patch(vmhost_module, "discover_pod").return_value = (
-            {
-                discovered_rack_1.system_id: discovered_pod,
-                discovered_rack_2.system_id: discovered_pod,
-            },
-            {failed_rack.system_id: factory.make_exception()},
-        )
-        return (
-            discovered_pod,
-            [discovered_rack_1, discovered_rack_2],
-            [failed_rack],
-        )
+        ),
+        storage_pools=[
+            DiscoveredPodStoragePool(
+                id=factory.make_name("pool_id"),
+                name=factory.make_name("name"),
+                type=factory.make_name("type"),
+                path="/var/lib/path/%s" % factory.make_name("path"),
+                storage=random.randint(1024, 1024 * 1024),
+            )
+            for _ in range(3)
+        ],
+    )
+    discovered_rack_1 = factory.make_RackController()
+    discovered_rack_2 = factory.make_RackController()
+    failed_rack = factory.make_RackController()
+    testcase.patch(vmhost_module, "post_commit_do")
+    testcase.patch(vmhost_module, "discover_pod").return_value = (
+        {
+            discovered_rack_1.system_id: discovered_pod,
+            discovered_rack_2.system_id: discovered_pod,
+        },
+        {failed_rack.system_id: factory.make_exception()},
+    )
+    return (
+        discovered_pod,
+        [discovered_rack_1, discovered_rack_2],
+        [failed_rack],
+    )
 
+
+class TestDiscoverAndSyncVMHost(MAASServerTestCase):
     def test_sync_details(self):
         (
             discovered_pod,
             discovered_racks,
             failed_racks,
-        ) = self.fake_pod_discovery()
+        ) = fake_pod_discovery(self)
         zone = factory.make_Zone()
-        pod_info = self.make_pod_info()
+        pod_info = make_pod_info()
         power_parameters = {"power_address": pod_info["power_address"]}
         orig_vmhost = factory.make_Pod(
             zone=zone, pod_type=pod_info["type"], parameters=power_parameters
@@ -112,26 +115,51 @@ class TestDiscoverAndSyncVMHost(MAASTransactionServerTestCase):
         self.assertCountEqual(routable_racks, discovered_racks)
         self.assertCountEqual(not_routable_racks, failed_racks)
 
+    def test_raises_exception_from_rack_controller(self):
+        failed_rack = factory.make_RackController()
+        exc = factory.make_exception()
+        self.patch(vmhost_module, "discover_pod").return_value = (
+            {},
+            {failed_rack.system_id: exc},
+        )
+        pod_info = make_pod_info()
+        power_parameters = {"power_address": pod_info["power_address"]}
+        vmhost = factory.make_Pod(
+            pod_type=pod_info["type"],
+            parameters=power_parameters,
+        )
+        error = self.assertRaises(
+            PodProblem,
+            vmhost_module.discover_and_sync_vmhost,
+            vmhost,
+            factory.make_User(),
+        )
+        self.assertEqual(str(exc), str(error))
+
+
+class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
+
+    wait_for_reactor = wait_for(30)
+
     @wait_for_reactor
-    @inlineCallbacks
-    def test_sync_details_async(self):
-        discovered_pod, discovered_racks, failed_racks = yield deferToDatabase(
-            self.fake_pod_discovery
+    async def test_sync_details(self):
+        discovered_pod, discovered_racks, failed_racks = await deferToDatabase(
+            fake_pod_discovery, self
         )
         vmhost_module.discover_pod.return_value = succeed(
             vmhost_module.discover_pod.return_value
         )
-        zone = yield deferToDatabase(factory.make_Zone)
-        pod_info = yield deferToDatabase(self.make_pod_info)
+        zone = await deferToDatabase(factory.make_Zone)
+        pod_info = await deferToDatabase(make_pod_info)
         power_parameters = {"power_address": pod_info["power_address"]}
-        orig_vmhost = yield deferToDatabase(
+        orig_vmhost = await deferToDatabase(
             factory.make_Pod,
             zone=zone,
             pod_type=pod_info["type"],
             parameters=power_parameters,
         )
-        user = yield deferToDatabase(factory.make_User)
-        vmhost = yield vmhost_module.discover_and_sync_vmhost(
+        user = await deferToDatabase(factory.make_User)
+        vmhost = await vmhost_module.discover_and_sync_vmhost_async(
             orig_vmhost, user
         )
         self.assertEqual(vmhost.id, orig_vmhost.id)
@@ -160,50 +188,27 @@ class TestDiscoverAndSyncVMHost(MAASTransactionServerTestCase):
             self.assertCountEqual(routable_racks, discovered_racks)
             self.assertCountEqual(not_routable_racks, failed_racks)
 
-        yield deferToDatabase(validate_rack_routes)
-
-    def test_raises_exception_from_rack_controller(self):
-        failed_rack = factory.make_RackController()
-        exc = factory.make_exception()
-        self.patch(vmhost_module, "discover_pod").return_value = (
-            {},
-            {failed_rack.system_id: exc},
-        )
-        pod_info = self.make_pod_info()
-        power_parameters = {"power_address": pod_info["power_address"]}
-        vmhost = factory.make_Pod(
-            pod_type=pod_info["type"],
-            parameters=power_parameters,
-        )
-        error = self.assertRaises(
-            PodProblem,
-            vmhost_module.discover_and_sync_vmhost,
-            vmhost,
-            factory.make_User(),
-        )
-        self.assertEqual(str(exc), str(error))
+        await deferToDatabase(validate_rack_routes)
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test_raises_exception_from_rack_controller_async(self):
-        failed_rack = yield deferToDatabase(factory.make_RackController)
+    async def test_raises_exception_from_rack_controller(self):
+        failed_rack = await deferToDatabase(factory.make_RackController)
         exc = factory.make_exception()
         self.patch(vmhost_module, "discover_pod").return_value = succeed(
             ({}, {failed_rack.system_id: exc})
         )
-        pod_info = yield deferToDatabase(self.make_pod_info)
+        pod_info = await deferToDatabase(make_pod_info)
         power_parameters = {"power_address": pod_info["power_address"]}
         vmhost = yield deferToDatabase(
             factory.make_Pod,
             pod_type=pod_info["type"],
             parameters=power_parameters,
         )
-        user = yield deferToDatabase(factory.make_User)
-        d = vmhost_module.discover_and_sync_vmhost(vmhost, user)
-
-        def validate_error(failure):
-            self.assertIsInstance(failure.value, PodProblem)
-            self.assertEqual(str(exc), str(failure.value))
-
-        d.addErrback(validate_error)
-        yield d
+        user = await deferToDatabase(factory.make_User)
+        try:
+            await vmhost_module.discover_and_sync_vmhost_async(vmhost, user)
+        except Exception as error:
+            self.assertIsInstance(error, PodProblem)
+            self.assertEqual(str(exc), str(error))
+        else:
+            self.fail("No exception raised")

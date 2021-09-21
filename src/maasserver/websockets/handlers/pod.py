@@ -23,7 +23,10 @@ from maasserver.permissions import PodPermission
 from maasserver.rbac import rbac
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vmhost import discover_and_sync_vmhost
+from maasserver.vmhost import (
+    discover_and_sync_vmhost,
+    discover_and_sync_vmhost_async,
+)
 from maasserver.websockets.base import (
     dehydrate_certificate,
     HandlerPermissionError,
@@ -276,7 +279,7 @@ class PodHandler(TimestampedModelHandler):
             return self.full_dehydrate(obj)
 
         pod = await deferToDatabase(transactional(self.get_object), params)
-        await discover_and_sync_vmhost(pod, self.user)
+        await discover_and_sync_vmhost_async(pod, self.user)
         return await deferToDatabase(render_obj, pod)
 
     async def compose(self, params):
