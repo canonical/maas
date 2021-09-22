@@ -525,8 +525,16 @@ class SnapsUploaded(ReleaseStep):
         if missing_archs:
             return False, f"Missing builds for: {', '.join(missing_archs)}"
 
-        # XXX: print out which revisions were found
-        return True, None
+        revision_info = []
+        for arch, revisions in revision_map.items():
+            latest_revision = max(
+                revision["revision"] for revision in revisions
+            )
+            revision_info.append(
+                f"Latest revision for {arch}: {latest_revision}"
+            )
+
+        return True, "\n".join(revision_info)
 
 
 class SnapsInChannel(SnapsUploaded):
