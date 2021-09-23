@@ -38,10 +38,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import UserSkipCreateAuthorisationTokenFixture
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
-from maasserver.triggers.websocket import (
-    node_fields,
-    register_websocket_triggers,
-)
+from maasserver.triggers.websocket import node_fields
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.builtin_scripts import load_builtin_scripts
@@ -147,7 +144,6 @@ class TestNodeListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
@@ -162,7 +158,6 @@ class TestNodeListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
@@ -182,7 +177,6 @@ class TestNodeListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_description_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
@@ -202,7 +196,6 @@ class TestNodeListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
@@ -218,7 +211,6 @@ class TestNodeListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_domain_name_change(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         domain = yield deferToDatabase(self.create_domain, {})
@@ -240,7 +232,6 @@ class TestNodeListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_all_handler_on_domain_name_change(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = DeferredValue()
         domain = yield deferToDatabase(self.create_domain, {})
@@ -265,7 +256,7 @@ class TestNodeListener(
                 (dv.get(timeout=2) for dv in save_dvs)
             )
             self.assertCountEqual(
-                {("update", "%s" % node.system_id) for node in nodes},
+                {("update", node.system_id) for node in nodes},
                 {res for (suc, res) in results},
             )
         finally:
@@ -317,13 +308,9 @@ class TestControllerListener(
     def set_versions_info(self, controller, versions_info):
         ControllerInfo.objects.set_versions_info(controller, versions_info)
 
-    def delete_controllerinfo(self, controller):
-        ControllerInfo.objects.filter(node=controller).delete()
-
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_controllerinfo_insert(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         controller = yield deferToDatabase(self.create_node, self.params)
@@ -332,13 +319,13 @@ class TestControllerListener(
         try:
             yield deferToDatabase(self.set_version, controller, "2.10.0")
             yield dv.get(timeout=2)
+            self.assertEqual(("update", controller.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_controllerinfo_version_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         controller = yield deferToDatabase(self.create_node, self.params)
@@ -348,13 +335,13 @@ class TestControllerListener(
         try:
             yield deferToDatabase(self.set_version, controller, "2.10.1")
             yield dv.get(timeout=2)
+            self.assertEqual(("update", controller.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_controllerinfo_versionsinfo_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         controller = yield deferToDatabase(self.create_node, self.params)
@@ -372,13 +359,13 @@ class TestControllerListener(
                 ),
             )
             yield dv.get(timeout=2)
+            self.assertEqual(("update", controller.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_controllerinfo_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         controller = yield deferToDatabase(self.create_node, self.params)
@@ -386,8 +373,9 @@ class TestControllerListener(
         listener.register(self.listener, lambda *args: dv.set(args))
         yield listener.startService()
         try:
-            yield deferToDatabase(self.delete_controllerinfo, controller)
+            yield deferToDatabase(controller.controllerinfo.delete)
             yield dv.get(timeout=2)
+            self.assertEqual(("update", controller.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -400,7 +388,6 @@ class TestDeviceWithParentListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("machine", lambda *args: dv.set(args))
@@ -419,7 +406,6 @@ class TestDeviceWithParentListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("machine", lambda *args: dv.set(args))
@@ -439,7 +425,6 @@ class TestDeviceWithParentListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("machine", lambda *args: dv.set(args))
@@ -462,7 +447,6 @@ class TestZoneListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
@@ -470,14 +454,13 @@ class TestZoneListener(
         try:
             zone = yield deferToDatabase(self.create_zone)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % zone.id), dv.value)
+            self.assertEqual(("create", str(zone.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
@@ -491,14 +474,13 @@ class TestZoneListener(
                 {"description": factory.make_name("description")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % zone.id), dv.value)
+            self.assertEqual(("update", str(zone.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("zone", lambda *args: dv.set(args))
@@ -507,7 +489,7 @@ class TestZoneListener(
         try:
             yield deferToDatabase(self.delete_zone, zone.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % zone.id), dv.value)
+            self.assertEqual(("delete", str(zone.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -521,7 +503,6 @@ class TestResourcePoolListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -529,14 +510,13 @@ class TestResourcePoolListener(
         try:
             pool = yield deferToDatabase(self.create_resource_pool)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % pool.id), dv.value)
+            self.assertEqual(("create", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -550,14 +530,13 @@ class TestResourcePoolListener(
                 {"description": factory.make_name("description")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pool.id), dv.value)
+            self.assertEqual(("update", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -566,14 +545,13 @@ class TestResourcePoolListener(
         try:
             yield deferToDatabase(self.delete_resource_pool, pool.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % pool.id), dv.value)
+            self.assertEqual(("delete", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_machine(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -585,14 +563,13 @@ class TestResourcePoolListener(
                 {"node_type": NODE_TYPE.MACHINE, "pool": pool},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pool.id), dv.value)
+            self.assertEqual(("update", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_no_calls_handler_on_create_device(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -609,7 +586,6 @@ class TestResourcePoolListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_machine(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -621,14 +597,13 @@ class TestResourcePoolListener(
         try:
             yield deferToDatabase(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pool.id), dv.value)
+            self.assertEqual(("update", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_no_calls_handler_on_delete_device(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -646,7 +621,6 @@ class TestResourcePoolListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_machine_pool(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = dv1, dv2 = [DeferredValue(), DeferredValue()]
         listener.register("resourcepool", lambda *args: dvs.pop(0).set(args))
@@ -664,15 +638,14 @@ class TestResourcePoolListener(
             yield dv2.get(timeout=2)
             values = sorted([dv1.value, dv2.value])
             pool_ids = sorted(str(pool.id) for pool in [pool1, pool2])
-            self.assertEqual(("update", "%s" % pool_ids[0]), values[0])
-            self.assertEqual(("update", "%s" % pool_ids[1]), values[1])
+            self.assertEqual(("update", str(pool_ids[0])), values[0])
+            self.assertEqual(("update", str(pool_ids[1])), values[1])
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_machine_status_to_ready(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -695,14 +668,13 @@ class TestResourcePoolListener(
                 self.update_node, node.system_id, {"status": NODE_STATUS.READY}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pool.id), dv.value)
+            self.assertEqual(("update", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_machine_status_from_ready(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -723,14 +695,13 @@ class TestResourcePoolListener(
                 {"status": NODE_STATUS.COMMISSIONING},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pool.id), dv.value)
+            self.assertEqual(("update", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_machine_node_type_to_machine(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -753,14 +724,13 @@ class TestResourcePoolListener(
                 {"node_type": NODE_TYPE.MACHINE, "pool": pool},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pool.id), dv.value)
+            self.assertEqual(("update", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_machine_node_type_from_machine(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("resourcepool", lambda *args: dv.set(args))
@@ -784,7 +754,7 @@ class TestResourcePoolListener(
                 {"node_type": new_node_type, "pool_id": None},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pool.id), dv.value)
+            self.assertEqual(("update", str(pool.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -798,7 +768,6 @@ class TestTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
@@ -806,14 +775,13 @@ class TestTagListener(
         try:
             tag = yield deferToDatabase(self.create_tag)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % tag.id), dv.value)
+            self.assertEqual(("create", str(tag.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
@@ -825,14 +793,13 @@ class TestTagListener(
                 self.update_tag, tag.id, {"name": factory.make_name("tag")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % tag.id), dv.value)
+            self.assertEqual(("update", str(tag.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("tag", lambda *args: dv.set(args))
@@ -841,7 +808,7 @@ class TestTagListener(
         try:
             yield deferToDatabase(self.delete_tag, tag.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % tag.id), dv.value)
+            self.assertEqual(("delete", str(tag.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -890,7 +857,6 @@ class TestNodeTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         tag = yield deferToDatabase(self.create_tag)
 
@@ -901,14 +867,13 @@ class TestNodeTagListener(
         try:
             yield deferToDatabase(self.add_node_to_tag, node, tag)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         tag = yield deferToDatabase(self.create_tag)
         yield deferToDatabase(self.add_node_to_tag, node, tag)
@@ -920,14 +885,13 @@ class TestNodeTagListener(
         try:
             yield deferToDatabase(self.remove_node_from_tag, node, tag)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_node_handler_with_update_on_tag_rename(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         tag = yield deferToDatabase(self.create_tag)
         yield deferToDatabase(self.add_node_to_tag, node, tag)
@@ -941,7 +905,7 @@ class TestNodeTagListener(
                 self.update_tag, tag.id, {"name": factory.make_name("tag")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -988,7 +952,6 @@ class TestOwnerDataTriggers(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1007,7 +970,6 @@ class TestOwnerDataTriggers(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1029,7 +991,6 @@ class TestOwnerDataTriggers(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_replace(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1093,7 +1054,6 @@ class TestNodeMetadataTriggers(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1103,14 +1063,13 @@ class TestNodeMetadataTriggers(
         try:
             yield deferToDatabase(self.set_node_metadata, node, "foo", "bar")
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1121,14 +1080,13 @@ class TestNodeMetadataTriggers(
         try:
             yield deferToDatabase(self.set_node_metadata, node, "foo", "baz")
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1139,7 +1097,7 @@ class TestNodeMetadataTriggers(
         try:
             yield deferToDatabase(self.delete_node_metadata, node, "foo")
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1153,7 +1111,6 @@ class TestDeviceWithParentTagListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         tag = yield deferToDatabase(self.create_tag)
 
@@ -1164,14 +1121,13 @@ class TestDeviceWithParentTagListener(
         try:
             yield deferToDatabase(self.add_node_to_tag, device, tag)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         tag = yield deferToDatabase(self.create_tag)
         yield deferToDatabase(self.add_node_to_tag, device, tag)
@@ -1183,14 +1139,13 @@ class TestDeviceWithParentTagListener(
         try:
             yield deferToDatabase(self.remove_node_from_tag, device, tag)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_node_handler_with_update_on_tag_rename(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         tag = yield deferToDatabase(self.create_tag)
         yield deferToDatabase(self.add_node_to_tag, device, tag)
@@ -1204,7 +1159,7 @@ class TestDeviceWithParentTagListener(
                 self.update_tag, tag.id, {"name": factory.make_name("tag")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1222,7 +1177,6 @@ class TestUserListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
@@ -1230,14 +1184,13 @@ class TestUserListener(
         try:
             user = yield deferToDatabase(self.create_user)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % user.id), dv.value)
+            self.assertEqual(("create", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("user", lambda *args: dv.set(args))
@@ -1251,14 +1204,13 @@ class TestUserListener(
                 {"username": factory.make_name("username")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % user.id), dv.value)
+            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         user = yield deferToDatabase(self.create_user)
 
@@ -1268,7 +1220,7 @@ class TestUserListener(
         try:
             yield deferToDatabase(self.delete_user, user.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % user.id), dv.value)
+            self.assertEqual(("delete", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1282,7 +1234,6 @@ class TestEventListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("event", lambda *args: dv.set(args))
@@ -1290,7 +1241,7 @@ class TestEventListener(
         try:
             event = yield deferToDatabase(self.create_event)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % event.id), dv.value)
+            self.assertEqual(("create", str(event.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1335,7 +1286,6 @@ class TestNodeEventListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         event_type = yield deferToDatabase(
             self.create_event_type, {"level": logging.INFO}
@@ -1350,7 +1300,7 @@ class TestNodeEventListener(
                 self.create_event, {"node": node, "type": event_type}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1411,7 +1361,6 @@ class TestNodeStaticIPAddressListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id
@@ -1426,14 +1375,13 @@ class TestNodeStaticIPAddressListener(
                 self.create_staticipaddress, {"interface": interface}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id
@@ -1449,7 +1397,7 @@ class TestNodeStaticIPAddressListener(
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1463,7 +1411,6 @@ class TestDeviceWithParentStaticIPAddressListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
         )
@@ -1480,14 +1427,13 @@ class TestDeviceWithParentStaticIPAddressListener(
                 self.create_staticipaddress, {"interface": interface}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
         )
@@ -1505,7 +1451,7 @@ class TestDeviceWithParentStaticIPAddressListener(
         try:
             yield deferToDatabase(self.delete_staticipaddress, sip.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1555,7 +1501,6 @@ class TestScriptSetListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1565,7 +1510,7 @@ class TestScriptSetListener(
         try:
             yield deferToDatabase(self.create_scriptset, node)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1573,7 +1518,6 @@ class TestScriptSetListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         result = yield deferToDatabase(self.create_scriptset, node)
 
@@ -1584,7 +1528,7 @@ class TestScriptSetListener(
         try:
             yield deferToDatabase(self.delete_scriptset, result)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1599,7 +1543,6 @@ class TestDeviceWithParentScriptSetListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
 
         listener = self.make_listener_without_delay()
@@ -1609,7 +1552,7 @@ class TestDeviceWithParentScriptSetListener(
         try:
             yield deferToDatabase(self.create_scriptset, device)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1617,7 +1560,6 @@ class TestDeviceWithParentScriptSetListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         result = yield deferToDatabase(self.create_scriptset, device)
 
@@ -1628,7 +1570,7 @@ class TestDeviceWithParentScriptSetListener(
         try:
             yield deferToDatabase(self.delete_scriptset, result)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1678,7 +1620,6 @@ class TestNDScriptResultListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
 
@@ -1689,7 +1630,7 @@ class TestNDScriptResultListener(
         try:
             yield deferToDatabase(self.create_scriptresult, script_set)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1697,7 +1638,6 @@ class TestNDScriptResultListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
         script_result = yield deferToDatabase(
@@ -1713,7 +1653,7 @@ class TestNDScriptResultListener(
         try:
             yield deferToDatabase(script_result.store_result, 0)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1721,7 +1661,6 @@ class TestNDScriptResultListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         script_set = yield deferToDatabase(self.create_scriptset, node)
         script_result = yield deferToDatabase(
@@ -1735,7 +1674,7 @@ class TestNDScriptResultListener(
         try:
             yield deferToDatabase(self.delete_scriptresult, script_result)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1751,7 +1690,6 @@ class TestScriptResultListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
 
@@ -1764,7 +1702,7 @@ class TestScriptResultListener(
                 self.create_scriptresult, script_set
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % script_result.id), dv.value)
+            self.assertEqual(("create", str(script_result.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1772,7 +1710,6 @@ class TestScriptResultListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
         script_result = yield deferToDatabase(
@@ -1788,7 +1725,7 @@ class TestScriptResultListener(
         try:
             yield deferToDatabase(script_result.store_result, 0)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % script_result.id), dv.value)
+            self.assertEqual(("update", str(script_result.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1796,7 +1733,6 @@ class TestScriptResultListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         script_set = yield deferToDatabase(self.create_scriptset, node)
         script_result = yield deferToDatabase(
@@ -1811,7 +1747,7 @@ class TestScriptResultListener(
         try:
             yield deferToDatabase(self.delete_scriptresult, script_result)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % script_result_id), dv.value)
+            self.assertEqual(("delete", str(script_result_id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1825,7 +1761,6 @@ class TestConfigListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("config", lambda *args: dv.set(args))
@@ -1840,7 +1775,7 @@ class TestConfigListener(
                 transactional(Config.objects.get), name="config_verbose"
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % obj.id), dv.value)
+            self.assertEqual(("create", str(obj.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1850,7 +1785,6 @@ class TestConfigListener(
         yield deferToDatabase(
             transactional(Config.objects.set_config), "config_verbose", True
         )
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("config", lambda *args: dv.set(args))
@@ -1865,7 +1799,7 @@ class TestConfigListener(
                 transactional(Config.objects.get), name="config_verbose"
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % obj.id), dv.value)
+            self.assertEqual(("update", str(obj.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1875,7 +1809,6 @@ class TestConfigListener(
         yield deferToDatabase(
             transactional(Config.objects.set_config), "config_verbose", True
         )
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("config", lambda *args: dv.set(args))
@@ -1887,7 +1820,7 @@ class TestConfigListener(
             old_id = obj.id
             yield deferToDatabase(transactional(obj.delete))
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % old_id), dv.value)
+            self.assertEqual(("delete", str(old_id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1936,7 +1869,6 @@ class TestNodeInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -1946,14 +1878,13 @@ class TestNodeInterfaceListener(
         try:
             yield deferToDatabase(self.create_interface, {"node": node})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.create_interface, {"node": node}
@@ -1966,7 +1897,7 @@ class TestNodeInterfaceListener(
         try:
             yield deferToDatabase(self.delete_interface, interface.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -1974,7 +1905,6 @@ class TestNodeInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.create_interface, {"node": node}
@@ -1991,14 +1921,13 @@ class TestNodeInterfaceListener(
                 {"mac_address": factory.make_MAC()},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_old_node_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node1 = yield deferToDatabase(self.create_node, self.params)
         node2 = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
@@ -2023,8 +1952,8 @@ class TestNodeInterfaceListener(
             yield dvs[1].get(timeout=2)
             self.assertCountEqual(
                 [
-                    ("update", "%s" % node1.system_id),
-                    ("update", "%s" % node2.system_id),
+                    ("update", node1.system_id),
+                    ("update", node2.system_id),
                 ],
                 [dvs[0].value, dvs[1].value],
             )
@@ -2041,7 +1970,6 @@ class TestDeviceWithParentInterfaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
 
         listener = self.make_listener_without_delay()
@@ -2051,14 +1979,13 @@ class TestDeviceWithParentInterfaceListener(
         try:
             yield deferToDatabase(self.create_interface, {"node": device})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         interface = yield deferToDatabase(
             self.create_interface, {"node": device}
@@ -2071,14 +1998,13 @@ class TestDeviceWithParentInterfaceListener(
         try:
             yield deferToDatabase(self.delete_interface, interface.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(self.create_device_with_parent)
         interface = yield deferToDatabase(
             self.create_interface, {"node": device}
@@ -2095,14 +2021,13 @@ class TestDeviceWithParentInterfaceListener(
                 {"mac_address": factory.make_MAC()},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_old_node_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         device1, parent1 = yield deferToDatabase(
             self.create_device_with_parent
         )
@@ -2131,8 +2056,8 @@ class TestDeviceWithParentInterfaceListener(
             yield dvs[1].get(timeout=2)
             self.assertCountEqual(
                 [
-                    ("update", "%s" % parent1.system_id),
-                    ("update", "%s" % parent2.system_id),
+                    ("update", parent1.system_id),
+                    ("update", parent2.system_id),
                 ],
                 [dvs[0].value, dvs[1].value],
             )
@@ -2149,7 +2074,6 @@ class TestFabricListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification_with_blank_name(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = [DeferredValue(), DeferredValue()]
         save_dvs = dvs[:]
@@ -2161,7 +2085,7 @@ class TestFabricListener(
                 (dv.get(timeout=2) for dv in save_dvs)
             )
             self.assertCountEqual(
-                [("create", "%s" % fabric.id), ("update", "%s" % fabric.id)],
+                [("create", str(fabric.id)), ("update", str(fabric.id))],
                 [res for (suc, res) in results],
             )
         finally:
@@ -2170,7 +2094,6 @@ class TestFabricListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification_with_name(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
@@ -2180,14 +2103,13 @@ class TestFabricListener(
                 self.create_fabric, {"name": factory.make_name("name")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % fabric.id), dv.value)
+            self.assertEqual(("create", str(fabric.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
@@ -2201,14 +2123,13 @@ class TestFabricListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % fabric.id), dv.value)
+            self.assertEqual(("update", str(fabric.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("fabric", lambda *args: dv.set(args))
@@ -2217,7 +2138,7 @@ class TestFabricListener(
         try:
             yield deferToDatabase(self.delete_fabric, fabric.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % fabric.id), dv.value)
+            self.assertEqual(("delete", str(fabric.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2232,7 +2153,6 @@ class TestVLANListener(
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
         fabric = yield deferToDatabase(self.create_fabric)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
@@ -2240,7 +2160,7 @@ class TestVLANListener(
         try:
             vlan = yield deferToDatabase(self.create_vlan, {"fabric": fabric})
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % vlan.id), dv.value)
+            self.assertEqual(("create", str(vlan.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2248,7 +2168,6 @@ class TestVLANListener(
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
         fabric = yield deferToDatabase(self.create_fabric)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
@@ -2260,7 +2179,7 @@ class TestVLANListener(
                 self.update_vlan, vlan.id, {"name": factory.make_name("name")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % vlan.id), dv.value)
+            self.assertEqual(("update", str(vlan.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2268,7 +2187,6 @@ class TestVLANListener(
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
         fabric = yield deferToDatabase(self.create_fabric)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("vlan", lambda *args: dv.set(args))
@@ -2277,7 +2195,7 @@ class TestVLANListener(
         try:
             yield deferToDatabase(self.delete_vlan, vlan.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % vlan.id), dv.value)
+            self.assertEqual(("delete", str(vlan.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2291,7 +2209,6 @@ class TestIPRangeListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("iprange", lambda *args: dv.set(args))
@@ -2308,14 +2225,13 @@ class TestIPRangeListener(
         try:
             iprange = yield deferToDatabase(self.create_iprange, params)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % iprange.id), dv.value)
+            self.assertEqual(("create", str(iprange.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("iprange", lambda *args: dv.set(args))
@@ -2328,14 +2244,13 @@ class TestIPRangeListener(
                 {"comment": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % iprange.id), dv.value)
+            self.assertEqual(("update", str(iprange.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("iprange", lambda *args: dv.set(args))
@@ -2344,7 +2259,7 @@ class TestIPRangeListener(
         try:
             yield deferToDatabase(self.delete_iprange, iprange.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % iprange.id), dv.value)
+            self.assertEqual(("delete", str(iprange.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2358,7 +2273,6 @@ class TestStaticRouteListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("staticroute", lambda *args: dv.set(args))
@@ -2366,14 +2280,13 @@ class TestStaticRouteListener(
         try:
             staticroute = yield deferToDatabase(self.create_staticroute)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % staticroute.id), dv.value)
+            self.assertEqual(("create", str(staticroute.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("staticroute", lambda *args: dv.set(args))
@@ -2388,14 +2301,13 @@ class TestStaticRouteListener(
                 {"metric": random.randint(10, 500)},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % staticroute.id), dv.value)
+            self.assertEqual(("update", str(staticroute.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("staticroute", lambda *args: dv.set(args))
@@ -2404,7 +2316,7 @@ class TestStaticRouteListener(
         try:
             yield deferToDatabase(self.delete_staticroute, staticroute.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % staticroute.id), dv.value)
+            self.assertEqual(("delete", str(staticroute.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2418,7 +2330,6 @@ class TestDomainListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("domain", lambda *args: dv.set(args))
@@ -2426,14 +2337,13 @@ class TestDomainListener(
         try:
             domain = yield deferToDatabase(self.create_domain)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % domain.id), dv.value)
+            self.assertEqual(("create", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("domain", lambda *args: dv.set(args))
@@ -2447,14 +2357,13 @@ class TestDomainListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("domain", lambda *args: dv.set(args))
@@ -2463,7 +2372,7 @@ class TestDomainListener(
         try:
             yield deferToDatabase(self.delete_domain, domain.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % domain.id), dv.value)
+            self.assertEqual(("delete", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2471,7 +2380,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_ip_address_update(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         params = {"node_type": NODE_TYPE.MACHINE, "domain": domain}
         node = yield deferToDatabase(self.create_node, params)
         interface = yield deferToDatabase(
@@ -2500,7 +2408,7 @@ class TestDomainListener(
                 {"alloc_type": IPADDRESS_TYPE.STICKY, "ip": selected_ip},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2508,7 +2416,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_node_ip_address_addition(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         params = {"node_type": NODE_TYPE.MACHINE, "domain": domain}
         node = yield deferToDatabase(self.create_node, params)
         interface = yield deferToDatabase(
@@ -2532,7 +2439,7 @@ class TestDomainListener(
                 },
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2540,7 +2447,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_with_update_on_node_ip_address_removal(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         params = {"node_type": NODE_TYPE.MACHINE, "domain": domain}
         node = yield deferToDatabase(self.create_node, params)
         interface = yield deferToDatabase(
@@ -2565,7 +2471,7 @@ class TestDomainListener(
         try:
             yield deferToDatabase(self.delete_staticipaddress, ipaddress.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2573,7 +2479,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsresource_create_notification(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("domain", lambda *args: dv.set(args))
@@ -2581,7 +2486,7 @@ class TestDomainListener(
         try:
             yield deferToDatabase(self.create_dnsresource, {"domain": domain})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2589,7 +2494,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsresource_address_addition(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         dnsrr = yield deferToDatabase(
@@ -2612,7 +2516,7 @@ class TestDomainListener(
                 },
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2620,7 +2524,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsresource_address_removal(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         dnsrr = yield deferToDatabase(
             self.create_dnsresource, {"domain": domain}
         )
@@ -2632,7 +2535,7 @@ class TestDomainListener(
         try:
             yield deferToDatabase(self.delete_staticipaddress, staticip.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2640,7 +2543,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsresource_update_notification(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         dnsrr = yield deferToDatabase(
@@ -2656,7 +2558,7 @@ class TestDomainListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2664,7 +2566,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsresource_delete_notification(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         dnsrr = yield deferToDatabase(
             self.create_dnsresource, {"domain": domain}
         )
@@ -2675,7 +2576,7 @@ class TestDomainListener(
         try:
             yield deferToDatabase(self.delete_dnsresource, dnsrr.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2683,7 +2584,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsdata_create_notification(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("domain", lambda *args: dv.set(args))
@@ -2691,7 +2591,7 @@ class TestDomainListener(
         try:
             yield deferToDatabase(self.create_dnsdata, {"domain": domain})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2699,7 +2599,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsdata_update_notification(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         dnsdata = yield deferToDatabase(
@@ -2715,7 +2614,7 @@ class TestDomainListener(
                 {"ttl": random.randint(100, 199)},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2723,7 +2622,6 @@ class TestDomainListener(
     @inlineCallbacks
     def test_calls_handler_on_dnsdata_delete_notification(self):
         domain = yield deferToDatabase(self.create_domain)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("domain", lambda *args: dv.set(args))
@@ -2734,7 +2632,7 @@ class TestDomainListener(
         try:
             yield deferToDatabase(self.delete_dnsdata, dnsdata.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % domain.id), dv.value)
+            self.assertEqual(("update", str(domain.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2748,7 +2646,6 @@ class TestSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
@@ -2756,14 +2653,13 @@ class TestSubnetListener(
         try:
             subnet = yield deferToDatabase(self.create_subnet)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % subnet.id), dv.value)
+            self.assertEqual(("create", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
@@ -2777,14 +2673,13 @@ class TestSubnetListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % subnet.id), dv.value)
+            self.assertEqual(("update", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification_for_vlan(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
@@ -2798,14 +2693,13 @@ class TestSubnetListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % subnet.id), dv.value)
+            self.assertEqual(("update", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("subnet", lambda *args: dv.set(args))
@@ -2814,14 +2708,13 @@ class TestSubnetListener(
         try:
             yield deferToDatabase(self.delete_subnet, subnet.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % subnet.id), dv.value)
+            self.assertEqual(("delete", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_ip_address_insert(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(
             self.create_node,
             {"node_type": NODE_TYPE.MACHINE, "interface": True},
@@ -2846,14 +2739,13 @@ class TestSubnetListener(
                 },
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % subnet.id), dv.value)
+            self.assertEqual(("update", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_ip_address_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(
             self.create_node,
             {"node_type": NODE_TYPE.MACHINE, "interface": True},
@@ -2882,14 +2774,13 @@ class TestSubnetListener(
                 self.update_staticipaddress, ipaddress.id, {"ip": selected_ip}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % subnet.id), dv.value)
+            self.assertEqual(("update", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_ip_address_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(
             self.create_node,
             {"node_type": NODE_TYPE.MACHINE, "interface": True},
@@ -2915,7 +2806,7 @@ class TestSubnetListener(
         try:
             yield deferToDatabase(self.delete_staticipaddress, ipaddress.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % subnet.id), dv.value)
+            self.assertEqual(("update", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -2929,7 +2820,6 @@ class TestSpaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification_with_blank_name(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dvs = [DeferredValue(), DeferredValue()]
         save_dvs = dvs[:]
@@ -2941,7 +2831,7 @@ class TestSpaceListener(
                 (dv.get(timeout=2) for dv in save_dvs)
             )
             self.assertCountEqual(
-                [("create", "%s" % space.id), ("update", "%s" % space.id)],
+                [("create", str(space.id)), ("update", str(space.id))],
                 [res for (suc, res) in results],
             )
         finally:
@@ -2950,7 +2840,6 @@ class TestSpaceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification_with_name(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
@@ -2960,14 +2849,13 @@ class TestSpaceListener(
                 self.create_space, {"name": factory.make_name("name")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % space.id), dv.value)
+            self.assertEqual(("create", str(space.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
@@ -2981,14 +2869,13 @@ class TestSpaceListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % space.id), dv.value)
+            self.assertEqual(("update", str(space.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("space", lambda *args: dv.set(args))
@@ -2997,7 +2884,7 @@ class TestSpaceListener(
         try:
             yield deferToDatabase(self.delete_space, space.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % space.id), dv.value)
+            self.assertEqual(("delete", str(space.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3059,7 +2946,6 @@ class TestNodeNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_iface_with_update_on_fabric_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id
@@ -3080,14 +2966,13 @@ class TestNodeNetworkListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_iface_with_update_on_vlan_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id
@@ -3105,14 +2990,13 @@ class TestNodeNetworkListener(
                 self.update_vlan, vlan.id, {"name": factory.make_name("name")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_subnet_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id
@@ -3133,14 +3017,13 @@ class TestNodeNetworkListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_space_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id
@@ -3161,14 +3044,13 @@ class TestNodeNetworkListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_ip_address_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         interface = yield deferToDatabase(
             self.get_node_boot_interface, node.system_id
@@ -3194,7 +3076,7 @@ class TestNodeNetworkListener(
                 self.update_staticipaddress, ipaddress.id, {"ip": selected_ip}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3209,7 +3091,6 @@ class TestDeviceWithParentNetworkListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_iface_with_update_on_fabric_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
         )
@@ -3232,14 +3113,13 @@ class TestDeviceWithParentNetworkListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_iface_with_update_on_vlan_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
         )
@@ -3260,14 +3140,13 @@ class TestDeviceWithParentNetworkListener(
                 self.update_vlan, vlan.id, {"name": factory.make_name("name")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_subnet_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
         )
@@ -3290,14 +3169,13 @@ class TestDeviceWithParentNetworkListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_space_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
         )
@@ -3320,14 +3198,13 @@ class TestDeviceWithParentNetworkListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_ip_address_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         device, parent = yield deferToDatabase(
             self.create_device_with_parent, {"interface": True}
         )
@@ -3355,7 +3232,7 @@ class TestDeviceWithParentNetworkListener(
                 self.update_staticipaddress, ipaddress.id, {"ip": selected_ip}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % parent.system_id), dv.value)
+            self.assertEqual(("update", parent.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3369,7 +3246,6 @@ class TestStaticIPAddressSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_update_on_subnet(self):
-        yield deferToDatabase(register_websocket_triggers)
         subnet = yield deferToDatabase(self.create_subnet)
         selected_ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         ipaddress = yield deferToDatabase(
@@ -3386,14 +3262,13 @@ class TestStaticIPAddressSubnetListener(
                 self.update_staticipaddress, ipaddress.id, {"ip": selected_ip}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % subnet.id), dv.value)
+            self.assertEqual(("update", str(subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_update_on_old_and_new_subnet(self):
-        yield deferToDatabase(register_websocket_triggers)
         old_subnet = yield deferToDatabase(self.create_subnet)
         new_subnet = yield deferToDatabase(self.create_subnet)
         selected_ip = factory.pick_ip_in_network(new_subnet.get_ipnetwork())
@@ -3426,8 +3301,8 @@ class TestStaticIPAddressSubnetListener(
             yield dvs[1].get(timeout=2)
             self.assertCountEqual(
                 [
-                    ("update", "%s" % old_subnet.id),
-                    ("update", "%s" % new_subnet.id),
+                    ("update", str(old_subnet.id)),
+                    ("update", str(new_subnet.id)),
                 ],
                 [dvs[0].value, dvs[1].value],
             )
@@ -3455,7 +3330,6 @@ class TestMachineBlockDeviceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -3465,14 +3339,13 @@ class TestMachineBlockDeviceListener(
         try:
             yield deferToDatabase(self.create_blockdevice, {"node": node})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
             self.create_blockdevice, {"node": node}
@@ -3485,14 +3358,13 @@ class TestMachineBlockDeviceListener(
         try:
             yield deferToDatabase(self.delete_blockdevice, blockdevice.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
             self.create_blockdevice, {"node": node}
@@ -3509,14 +3381,13 @@ class TestMachineBlockDeviceListener(
                 {"size": random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 ** 3)},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_physicalblockdevice_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
             self.create_physicalblockdevice, {"node": node}
@@ -3533,14 +3404,13 @@ class TestMachineBlockDeviceListener(
                 {"model": factory.make_name("model")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_virtualblockdevice_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         blockdevice = yield deferToDatabase(
             self.create_virtualblockdevice,
@@ -3558,7 +3428,7 @@ class TestMachineBlockDeviceListener(
                 {"uuid": factory.make_UUID()},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3582,7 +3452,6 @@ class TestMachinePartitionTableListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -3592,14 +3461,13 @@ class TestMachinePartitionTableListener(
         try:
             yield deferToDatabase(self.create_partitiontable, {"node": node})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partitiontable = yield deferToDatabase(
             self.create_partitiontable, {"node": node}
@@ -3614,14 +3482,13 @@ class TestMachinePartitionTableListener(
                 self.delete_partitiontable, partitiontable.id
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partitiontable = yield deferToDatabase(
             self.create_partitiontable, {"node": node}
@@ -3640,7 +3507,7 @@ class TestMachinePartitionTableListener(
                 force_update=True,
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3664,7 +3531,6 @@ class TestMachinePartitionListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
 
         listener = self.make_listener_without_delay()
@@ -3674,14 +3540,13 @@ class TestMachinePartitionListener(
         try:
             yield deferToDatabase(self.create_partition, {"node": node})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
             self.create_partition, {"node": node}
@@ -3694,7 +3559,7 @@ class TestMachinePartitionListener(
         try:
             yield deferToDatabase(self.delete_partition, partition.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3702,7 +3567,6 @@ class TestMachinePartitionListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
             self.create_partition, {"node": node}
@@ -3722,7 +3586,7 @@ class TestMachinePartitionListener(
                 {"size": random.randint(MIN_PARTITION_SIZE, 1000 ** 3)},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3742,27 +3606,26 @@ class TestMachineFilesystemListener(
 
     def setUp(self):
         super().setUp()
-        register_websocket_triggers()
 
     def test_calls_handler_with_update_on_create_fs_on_partition(self):
         node = factory.make_Node(**self.params)
         partition = factory.make_Partition(node=node)
         with listenFor(self.channel) as get:
             factory.make_Filesystem(partition=partition)
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_create_fs_on_block_device(self):
         node = factory.make_Node(**self.params)
         block_device = factory.make_BlockDevice(node=node)
         with listenFor(self.channel) as get:
             factory.make_Filesystem(block_device=block_device)
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_create_special_fs(self):
         node = factory.make_Node(**self.params)
         with listenFor(self.channel) as get:
             factory.make_Filesystem(node=node)
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_delete_fs_on_partition(self):
         node = factory.make_Node(**self.params)
@@ -3770,7 +3633,7 @@ class TestMachineFilesystemListener(
         filesystem = factory.make_Filesystem(partition=partition)
         with listenFor(self.channel) as get:
             filesystem.delete()
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_delete_fs_on_block_device(self):
         node = factory.make_Node(**self.params)
@@ -3778,14 +3641,14 @@ class TestMachineFilesystemListener(
         filesystem = factory.make_Filesystem(block_device=block_device)
         with listenFor(self.channel) as get:
             filesystem.delete()
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_delete_special_fs(self):
         node = factory.make_Node(**self.params)
         filesystem = factory.make_Filesystem(node=node)
         with listenFor(self.channel) as get:
             filesystem.delete()
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_update_fs_on_partition(self):
         node = factory.make_Node(**self.params)
@@ -3793,7 +3656,7 @@ class TestMachineFilesystemListener(
         filesystem = factory.make_Filesystem(partition=partition)
         with listenFor(self.channel) as get:
             filesystem.save(force_update=True)  # A no-op update is enough.
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_update_fs_on_block_device(self):
         node = factory.make_Node(**self.params)
@@ -3801,14 +3664,14 @@ class TestMachineFilesystemListener(
         filesystem = factory.make_Filesystem(block_device=block_device)
         with listenFor(self.channel) as get:
             filesystem.save(force_update=True)  # A no-op update is enough.
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_update_special_fs(self):
         node = factory.make_Node(**self.params)
         filesystem = factory.make_Filesystem(node=node)
         with listenFor(self.channel) as get:
             filesystem.save(force_update=True)  # A no-op update is enough.
-            self.assertEqual(("update", "%s" % node.system_id), get())
+            self.assertEqual(("update", node.system_id), get())
 
 
 class TestMachineFilesystemgroupListener(
@@ -3833,7 +3696,6 @@ class TestMachineFilesystemgroupListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(
             self.create_partitiontable, {"node": node, "bootable": True}
@@ -3846,14 +3708,13 @@ class TestMachineFilesystemgroupListener(
         try:
             yield deferToDatabase(self.create_filesystemgroup, {"node": node})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(
             self.create_partitiontable, {"node": node, "bootable": True}
@@ -3871,14 +3732,13 @@ class TestMachineFilesystemgroupListener(
                 self.delete_filesystemgroup, filesystemgroup.id
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         yield deferToDatabase(
             self.create_partitiontable, {"node": node, "bootable": True}
@@ -3898,7 +3758,7 @@ class TestMachineFilesystemgroupListener(
                 {"name": factory.make_name("fsgroup")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -3922,7 +3782,6 @@ class TestMachineCachesetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
             self.create_partition, {"node": node}
@@ -3937,14 +3796,13 @@ class TestMachineCachesetListener(
                 self.create_cacheset, {"node": node, "partition": partition}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
             self.create_partition, {"node": node}
@@ -3960,14 +3818,13 @@ class TestMachineCachesetListener(
         try:
             yield deferToDatabase(self.delete_cacheset, cacheset.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node, self.params)
         partition = yield deferToDatabase(
             self.create_partition, {"node": node}
@@ -3986,7 +3843,7 @@ class TestMachineCachesetListener(
                 self.update_cacheset, cacheset.id, {}, force_update=True
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node.system_id), dv.value)
+            self.assertEqual(("update", node.system_id), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4000,7 +3857,6 @@ class TestUserTokenListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
@@ -4010,14 +3866,13 @@ class TestUserTokenListener(
         try:
             yield deferToDatabase(self.create_token, {"user": user})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % user.id), dv.value)
+            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         token = yield deferToDatabase(self.create_token, {"user": user})
 
@@ -4028,7 +3883,7 @@ class TestUserTokenListener(
         try:
             yield deferToDatabase(self.delete_token, token.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % user.id), dv.value)
+            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4042,7 +3897,6 @@ class TestTokenListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
@@ -4052,14 +3906,13 @@ class TestTokenListener(
         try:
             obj = yield deferToDatabase(self.create_token, {"user": user})
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % obj.id), dv.value)
+            self.assertEqual(("create", str(obj.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         token = yield deferToDatabase(self.create_token, {"user": user})
         new_name = factory.make_name("name")
@@ -4072,14 +3925,13 @@ class TestTokenListener(
             # Force the update because the key contents could be the same.
             yield deferToDatabase(self.update_token, token.id, name=new_name)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % token.id), dv.value)
+            self.assertEqual(("update", str(token.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         token = yield deferToDatabase(self.create_token, {"user": user})
 
@@ -4090,7 +3942,7 @@ class TestTokenListener(
         try:
             yield deferToDatabase(self.delete_token, token.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % token.id), dv.value)
+            self.assertEqual(("delete", str(token.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4104,7 +3956,6 @@ class TestUserSSHKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
@@ -4114,14 +3965,13 @@ class TestUserSSHKeyListener(
         try:
             yield deferToDatabase(self.create_sshkey, {"user": user})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % user.id), dv.value)
+            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
 
@@ -4132,7 +3982,7 @@ class TestUserSSHKeyListener(
         try:
             yield deferToDatabase(self.delete_sshkey, sshkey.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % user.id), dv.value)
+            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4146,7 +3996,6 @@ class TestSSHKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
@@ -4156,14 +4005,13 @@ class TestSSHKeyListener(
         try:
             obj = yield deferToDatabase(self.create_sshkey, {"user": user})
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % obj.id), dv.value)
+            self.assertEqual(("create", str(obj.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
         other_sshkey = yield deferToDatabase(
@@ -4185,14 +4033,13 @@ class TestSSHKeyListener(
                 force_update=True,
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % sshkey.id), dv.value)
+            self.assertEqual(("update", str(sshkey.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sshkey = yield deferToDatabase(self.create_sshkey, {"user": user})
 
@@ -4203,7 +4050,7 @@ class TestSSHKeyListener(
         try:
             yield deferToDatabase(self.delete_sshkey, sshkey.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % sshkey.id), dv.value)
+            self.assertEqual(("delete", str(sshkey.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4217,7 +4064,6 @@ class TestUserSSLKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
@@ -4227,14 +4073,13 @@ class TestUserSSLKeyListener(
         try:
             yield deferToDatabase(self.create_sslkey, {"user": user})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % user.id), dv.value)
+            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_with_update_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
 
@@ -4245,7 +4090,7 @@ class TestUserSSLKeyListener(
         try:
             yield deferToDatabase(self.delete_sslkey, sslkey.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % user.id), dv.value)
+            self.assertEqual(("update", str(user.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4259,7 +4104,6 @@ class TestSSLKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
 
         listener = self.make_listener_without_delay()
@@ -4276,7 +4120,6 @@ class TestSSLKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
         other_sslkey = yield deferToDatabase(
@@ -4306,7 +4149,6 @@ class TestSSLKeyListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete(self):
-        yield deferToDatabase(register_websocket_triggers)
         user = yield deferToDatabase(self.create_user)
         sslkey = yield deferToDatabase(self.create_sslkey, {"user": user})
 
@@ -4331,7 +4173,6 @@ class TestDHCPSnippetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("dhcpsnippet", lambda *args: dv.set(args))
@@ -4339,14 +4180,13 @@ class TestDHCPSnippetListener(
         try:
             snippet = yield deferToDatabase(self.create_dhcp_snippet)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % snippet.id), dv.value)
+            self.assertEqual(("create", str(snippet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("dhcpsnippet", lambda *args: dv.set(args))
@@ -4360,14 +4200,13 @@ class TestDHCPSnippetListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % snippet.id), dv.value)
+            self.assertEqual(("update", str(snippet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("dhcpsnippet", lambda *args: dv.set(args))
@@ -4376,7 +4215,7 @@ class TestDHCPSnippetListener(
         try:
             yield deferToDatabase(self.delete_dhcp_snippet, snippet.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % snippet.id), dv.value)
+            self.assertEqual(("delete", str(snippet.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4390,7 +4229,6 @@ class TestPackageRepositoryListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("packagerepository", lambda *args: dv.set(args))
@@ -4398,14 +4236,13 @@ class TestPackageRepositoryListener(
         try:
             repository = yield deferToDatabase(self.create_package_repository)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % repository.id), dv.value)
+            self.assertEqual(("create", str(repository.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("packagerepository", lambda *args: dv.set(args))
@@ -4419,14 +4256,13 @@ class TestPackageRepositoryListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % repository.id), dv.value)
+            self.assertEqual(("update", str(repository.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("packagerepository", lambda *args: dv.set(args))
@@ -4437,7 +4273,7 @@ class TestPackageRepositoryListener(
                 self.delete_package_repository, repository.id
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % repository.id), dv.value)
+            self.assertEqual(("delete", str(repository.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4451,7 +4287,6 @@ class TestIPRangeSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         subnet = yield deferToDatabase(
             self.create_subnet,
             {
@@ -4476,14 +4311,13 @@ class TestIPRangeSubnetListener(
                 },
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % iprange.subnet.id), dv.value)
+            self.assertEqual(("update", str(iprange.subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         iprange = yield deferToDatabase(self.create_iprange)
         new_end_ip = factory.pick_ip_in_IPRange(
             iprange, but_not=[iprange.start_ip, iprange.end_ip]
@@ -4498,14 +4332,13 @@ class TestIPRangeSubnetListener(
                 self.update_iprange, iprange.id, {"end_ip": new_end_ip}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % iprange.subnet.id), dv.value)
+            self.assertEqual(("update", str(iprange.subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_on_old_and_new_subnet_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         old_subnet = yield deferToDatabase(
             self.create_subnet,
             {
@@ -4557,8 +4390,8 @@ class TestIPRangeSubnetListener(
             yield dvs[1].get(timeout=2)
             self.assertCountEqual(
                 [
-                    ("update", "%s" % old_subnet.id),
-                    ("update", "%s" % new_subnet.id),
+                    ("update", str(old_subnet.id)),
+                    ("update", str(new_subnet.id)),
                 ],
                 [dvs[0].value, dvs[1].value],
             )
@@ -4568,7 +4401,6 @@ class TestIPRangeSubnetListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         iprange = yield deferToDatabase(self.create_iprange)
 
         listener = self.make_listener_without_delay()
@@ -4578,7 +4410,7 @@ class TestIPRangeSubnetListener(
         try:
             yield deferToDatabase(self.delete_iprange, iprange.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % iprange.subnet.id), dv.value)
+            self.assertEqual(("update", str(iprange.subnet.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4592,7 +4424,6 @@ class TestPodListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4603,14 +4434,13 @@ class TestPodListener(
                 self.create_pod, {"name": factory.make_name("pod")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % pod.id), dv.value)
+            self.assertEqual(("create", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_same_bmc_types_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         pod = yield deferToDatabase(
             self.create_pod, {"name": factory.make_name("pod")}
         )
@@ -4624,7 +4454,7 @@ class TestPodListener(
                 self.update_pod, pod.id, {"name": factory.make_name("pod")}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pod.id), dv.value)
+            self.assertEqual(("update", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4634,7 +4464,6 @@ class TestPodListener(
         bmc = yield deferToDatabase(
             self.create_bmc, {"name": factory.make_name("bmc")}
         )
-        yield deferToDatabase(register_websocket_triggers)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4645,7 +4474,7 @@ class TestPodListener(
                 self.update_bmc, bmc.id, {"bmc_type": BMC_TYPE.POD}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % bmc.id), dv.value)
+            self.assertEqual(("create", str(bmc.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4655,7 +4484,6 @@ class TestPodListener(
         pod = yield deferToDatabase(
             self.create_pod, {"name": factory.make_name("pod")}
         )
-        yield deferToDatabase(register_websocket_triggers)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4666,7 +4494,7 @@ class TestPodListener(
                 self.update_pod, pod.id, {"bmc_type": BMC_TYPE.BMC}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % pod.id), dv.value)
+            self.assertEqual(("delete", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4676,7 +4504,6 @@ class TestPodListener(
         pod = yield deferToDatabase(
             self.create_pod, {"name": factory.make_name("pod")}
         )
-        yield deferToDatabase(register_websocket_triggers)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4685,7 +4512,7 @@ class TestPodListener(
         try:
             yield deferToDatabase(self.delete_pod, pod.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % pod.id), dv.value)
+            self.assertEqual(("delete", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4695,7 +4522,6 @@ class TestPodListener(
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
-        yield deferToDatabase(register_websocket_triggers)
 
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -4704,7 +4530,7 @@ class TestPodListener(
         try:
             yield deferToDatabase(lambda: factory.make_Interface(node=host))
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pod.id), dv.value)
+            self.assertEqual(("update", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4714,7 +4540,6 @@ class TestPodListener(
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
-        yield deferToDatabase(register_websocket_triggers)
         interface = yield deferToDatabase(
             lambda: factory.make_Interface(node=host)
         )
@@ -4731,7 +4556,7 @@ class TestPodListener(
         try:
             yield deferToDatabase(_change_vlan, interface)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pod.id), dv.value)
+            self.assertEqual(("update", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4741,7 +4566,6 @@ class TestPodListener(
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
-        yield deferToDatabase(register_websocket_triggers)
         interface = yield deferToDatabase(
             lambda: factory.make_Interface(node=host)
         )
@@ -4758,7 +4582,7 @@ class TestPodListener(
         try:
             yield deferToDatabase(_change_interface_node, interface)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pod.id), dv.value)
+            self.assertEqual(("update", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4768,7 +4592,6 @@ class TestPodListener(
         pod, host = yield deferToDatabase(
             self.create_pod_with_host, {"name": factory.make_name("pod")}
         )
-        yield deferToDatabase(register_websocket_triggers)
         interface = yield deferToDatabase(
             lambda: factory.make_Interface(node=host)
         )
@@ -4780,7 +4603,7 @@ class TestPodListener(
         try:
             yield deferToDatabase(interface.delete)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pod.id), dv.value)
+            self.assertEqual(("update", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4794,7 +4617,6 @@ class TestNodePodListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         pod = yield deferToDatabase(self.create_pod)
 
         listener = self.make_listener_without_delay()
@@ -4804,7 +4626,7 @@ class TestNodePodListener(
         try:
             yield deferToDatabase(self.create_node, {"bmc": pod})
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pod.id), dv.value)
+            self.assertEqual(("update", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -4818,7 +4640,6 @@ class TestNodePodListener(
             self.create_pod, {"name": factory.make_name("pod")}
         )
         node = yield deferToDatabase(self.create_node, {"bmc": old_pod})
-        yield deferToDatabase(register_websocket_triggers)
         dvs = [DeferredValue(), DeferredValue()]
 
         def set_defer_value(*args):
@@ -4840,7 +4661,7 @@ class TestNodePodListener(
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
             self.assertCountEqual(
-                [("update", "%s" % old_pod.id), ("update", "%s" % new_pod.id)],
+                [("update", str(old_pod.id)), ("update", str(new_pod.id))],
                 [dvs[0].value, dvs[1].value],
             )
         finally:
@@ -4849,7 +4670,6 @@ class TestNodePodListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         pod = yield deferToDatabase(self.create_pod)
         node = yield deferToDatabase(self.create_node, {"bmc": pod})
 
@@ -4860,7 +4680,7 @@ class TestNodePodListener(
         try:
             yield deferToDatabase(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % pod.id), dv.value)
+            self.assertEqual(("update", str(pod.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -5002,7 +4822,6 @@ class TestNodeTypeChange(
     @wait_for_reactor
     @inlineCallbacks
     def test_transition_notifies(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener1 = self.make_listener_without_delay()
         listener2 = self.make_listener_without_delay()
         node = yield deferToDatabase(
@@ -5052,7 +4871,6 @@ class TestNotificationListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("notification", lambda *args: dv.set(args))
@@ -5060,14 +4878,13 @@ class TestNotificationListener(
         try:
             notification = yield deferToDatabase(factory.make_Notification)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % notification.id), dv.value)
+            self.assertEqual(("create", str(notification.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("notification", lambda *args: dv.set(args))
@@ -5082,14 +4899,13 @@ class TestNotificationListener(
         try:
             yield deferToDatabase(update_notification, notification)
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % notification.id), dv.value)
+            self.assertEqual(("update", str(notification.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("notification", lambda *args: dv.set(args))
@@ -5099,7 +4915,7 @@ class TestNotificationListener(
         try:
             yield deferToDatabase(notification.delete)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % notification_id), dv.value)
+            self.assertEqual(("delete", str(notification_id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -5115,7 +4931,6 @@ class TestNotificationDismissalListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("notificationdismissal", lambda *args: dv.set(args))
@@ -5142,7 +4957,6 @@ class TestScriptListener(
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("script", lambda *args: dv.set(args))
@@ -5150,7 +4964,7 @@ class TestScriptListener(
         try:
             script = yield deferToDatabase(self.create_script)
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % script.id), dv.value)
+            self.assertEqual(("create", str(script.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -5158,7 +4972,6 @@ class TestScriptListener(
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("script", lambda *args: dv.set(args))
@@ -5172,7 +4985,7 @@ class TestScriptListener(
                 {"name": factory.make_name("name")},
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % script.id), dv.value)
+            self.assertEqual(("update", str(script.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -5180,7 +4993,6 @@ class TestScriptListener(
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
         yield deferToDatabase(load_builtin_scripts)
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("script", lambda *args: dv.set(args))
@@ -5189,7 +5001,7 @@ class TestScriptListener(
         try:
             yield deferToDatabase(self.delete_script, script.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % script.id), dv.value)
+            self.assertEqual(("delete", str(script.id)), dv.value)
         finally:
             yield listener.stopService()
 
@@ -5200,7 +5012,6 @@ class TestNodeDeviceListener(
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         node = yield deferToDatabase(self.create_node)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
@@ -5211,14 +5022,13 @@ class TestNodeDeviceListener(
                 self.create_node_device, {"node": node}
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("create", "%s" % node_device.id), dv.value)
+            self.assertEqual(("create", str(node_device.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_update_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodedevice", lambda *args: dv.set(args))
@@ -5236,14 +5046,13 @@ class TestNodeDeviceListener(
                 },
             )
             yield dv.get(timeout=2)
-            self.assertEqual(("update", "%s" % node_device.id), dv.value)
+            self.assertEqual(("update", str(node_device.id)), dv.value)
         finally:
             yield listener.stopService()
 
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_delete_notification(self):
-        yield deferToDatabase(register_websocket_triggers)
         listener = self.make_listener_without_delay()
         dv = DeferredValue()
         listener.register("nodedevice", lambda *args: dv.set(args))
@@ -5252,6 +5061,6 @@ class TestNodeDeviceListener(
         try:
             yield deferToDatabase(self.delete_node_device, node_device.id)
             yield dv.get(timeout=2)
-            self.assertEqual(("delete", "%s" % node_device.id), dv.value)
+            self.assertEqual(("delete", str(node_device.id)), dv.value)
         finally:
             yield listener.stopService()
