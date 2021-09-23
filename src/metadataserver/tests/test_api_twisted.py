@@ -1192,7 +1192,8 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             [
                 call(virsh_vmhost, user),
                 call(lxd_vmhost, user),
-            ]
+            ],
+            any_order=True,
         )
         self.assertIsNone(reload_object(virsh_password_meta))
         self.assertIsNone(reload_object(lxd_cert_meta))
