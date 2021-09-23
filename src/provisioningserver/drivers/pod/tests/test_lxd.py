@@ -30,7 +30,9 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.drivers.pod import lxd as lxd_module
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils import (
     debian_to_kernel_architecture,
@@ -978,7 +980,7 @@ class TestLXDPodDriver(MAASTestCase):
 
         self.assertEqual(
             {
-                LXD_OUTPUT_NAME: {
+                COMMISSIONING_OUTPUT_NAME: {
                     **self.fake_lxd.host_info,
                     "resources": self.fake_lxd.resources,
                     "networks": {
@@ -1024,7 +1026,7 @@ class TestLXDPodDriver(MAASTestCase):
 
         self.assertEqual(
             {
-                LXD_OUTPUT_NAME: {
+                COMMISSIONING_OUTPUT_NAME: {
                     **self.fake_lxd.host_info,
                     "resources": self.fake_lxd.resources,
                     "networks": {

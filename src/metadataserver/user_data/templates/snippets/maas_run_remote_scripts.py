@@ -42,6 +42,7 @@ from subprocess import (
 )
 import sys
 import tarfile
+from tempfile import mkstemp
 from threading import Event, Lock, Thread
 import time
 import traceback
@@ -1064,14 +1065,19 @@ def run_script(script, scripts_dir, send_result=True):
     output_and_send("Starting %s" % script["msg_name"], **args)
 
     env = copy.deepcopy(os.environ)
-    env["MAAS_BASE_URL"] = get_base_url(script["config"].metadata_url)
-    env["OUTPUT_COMBINED_PATH"] = script["combined_path"]
-    env["OUTPUT_STDOUT_PATH"] = script["stdout_path"]
-    env["OUTPUT_STDERR_PATH"] = script["stderr_path"]
-    env["RESULT_PATH"] = script["result_path"]
-    env["DOWNLOAD_PATH"] = script["download_path"]
-    env["RUNTIME"] = str(timeout_seconds)
-    env["HAS_STARTED"] = str(script.get("has_started", False))
+    env.update(
+        {
+            "MAAS_BASE_URL": get_base_url(script["config"].metadata_url),
+            "MAAS_RESOURCES_FILE": script["resources_file"],
+            "OUTPUT_COMBINED_PATH": script["combined_path"],
+            "OUTPUT_STDOUT_PATH": script["stdout_path"],
+            "OUTPUT_STDERR_PATH": script["stderr_path"],
+            "RESULT_PATH": script["result_path"],
+            "DOWNLOAD_PATH": script["download_path"],
+            "RUNTIME": str(timeout_seconds),
+            "HAS_STARTED": str(script.get("has_started", False)),
+        }
+    )
     if "bmc_config_path" in script:
         env["BMC_CONFIG_PATH"] = script["bmc_config_path"]
 
@@ -1407,6 +1413,9 @@ def run_scripts(
         bmc_config_path = os.path.join(config_dir, "bmc-config.yaml")
         os.makedirs(config_dir, exist_ok=True)
 
+    fd, resources_file = mkstemp()
+    os.close(fd)
+
     # Add extra info to the script dictionary used to run the script.
     # Run by CPU(1), memory(2), storage(3), network(4) and finally node(0).
     # Because node is hardware_type 0 use 99 when ordering so it always runs
@@ -1455,6 +1464,7 @@ def run_scripts(
         script["download_path"] = os.path.join(
             scripts_dir, "downloads", script["name"]
         )
+        script["resources_file"] = resources_file
         # Make sure the download path always exists
         os.makedirs(script["download_path"], exist_ok=True)
 

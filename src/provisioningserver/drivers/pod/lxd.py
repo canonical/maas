@@ -40,7 +40,9 @@ from provisioningserver.drivers.pod import (
     RequestedMachine,
 )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils import (
     debian_to_kernel_architecture,
@@ -405,7 +407,7 @@ class LXDPodDriver(PodDriver):
                 # /1.0/networks/<network>/state
                 "networks": _get_lxd_network_states(client),
             }
-        return {LXD_OUTPUT_NAME: resources}
+        return {COMMISSIONING_OUTPUT_NAME: resources}
 
     @threadDeferred
     def compose(self, pod_id: int, context: dict, request: RequestedMachine):

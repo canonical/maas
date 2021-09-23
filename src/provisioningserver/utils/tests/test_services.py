@@ -38,7 +38,9 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver import refresh as refresh_module
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 from provisioningserver.tests.test_security import SharedSecretTestCase
 from provisioningserver.utils import services
 from provisioningserver.utils.beaconing import (
@@ -415,7 +417,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         base_lxd_data = {factory.make_string(): factory.make_string()}
         base_lxd_output = json.dumps(base_lxd_data)
         self.fake_refresher.stdout_content[
-            LXD_OUTPUT_NAME
+            COMMISSIONING_OUTPUT_NAME
         ] = base_lxd_output.encode("utf-8")
         network_extra = {
             "interfaces": {
@@ -437,12 +439,14 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         metadata_url = service.maas_url + "/metadata/2012-03-01/"
         script_runs = self.fake_refresher.script_runs[metadata_url]
-        self.assertEqual("finished", script_runs[LXD_OUTPUT_NAME].status)
+        self.assertEqual(
+            "finished", script_runs[COMMISSIONING_OUTPUT_NAME].status
+        )
         commissioning_data_out = json.loads(
-            script_runs[LXD_OUTPUT_NAME].out.decode("utf-8")
+            script_runs[COMMISSIONING_OUTPUT_NAME].out.decode("utf-8")
         )
         commissioning_data_combined = json.loads(
-            script_runs[LXD_OUTPUT_NAME].combined.decode("utf-8")
+            script_runs[COMMISSIONING_OUTPUT_NAME].combined.decode("utf-8")
         )
         expected_commisioning_data = base_lxd_data.copy()
         expected_commisioning_data.update({"network-extra": network_extra})
@@ -465,7 +469,7 @@ class TestNetworksMonitoringService(MAASTestCase):
         base_lxd_data = {factory.make_string(): factory.make_string()}
         base_lxd_output = json.dumps(base_lxd_data)
         self.fake_refresher.stdout_content[
-            LXD_OUTPUT_NAME
+            COMMISSIONING_OUTPUT_NAME
         ] = base_lxd_output.encode("utf-8")
         network_extra = {
             "interfaces": {
@@ -483,12 +487,14 @@ class TestNetworksMonitoringService(MAASTestCase):
 
         metadata_url = service.maas_url + "/metadata/2012-03-01/"
         script_runs = self.fake_refresher.script_runs[metadata_url]
-        self.assertEqual("finished", script_runs[LXD_OUTPUT_NAME].status)
+        self.assertEqual(
+            "finished", script_runs[COMMISSIONING_OUTPUT_NAME].status
+        )
         commissioning_data_out = json.loads(
-            script_runs[LXD_OUTPUT_NAME].out.decode("utf-8")
+            script_runs[COMMISSIONING_OUTPUT_NAME].out.decode("utf-8")
         )
         commissioning_data_combined = json.loads(
-            script_runs[LXD_OUTPUT_NAME].combined.decode("utf-8")
+            script_runs[COMMISSIONING_OUTPUT_NAME].combined.decode("utf-8")
         )
         expected_commisioning_data = base_lxd_data.copy()
         expected_commisioning_data.update({"network-extra": network_extra})

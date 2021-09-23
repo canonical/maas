@@ -43,7 +43,9 @@ from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 from provisioningserver.utils.network import IPRangeStatistics
 
 log = LegacyLogger()
@@ -256,7 +258,7 @@ def get_brownfield_stats():
             bmc__isnull=True
         ).count(),
         "commissioned_after_deploy_brownfield": brownfield_machines.filter(
-            current_commissioning_script_set__scriptresult__script_name=LXD_OUTPUT_NAME,
+            current_commissioning_script_set__scriptresult__script_name=COMMISSIONING_OUTPUT_NAME,
             current_commissioning_script_set__scriptresult__status=SCRIPT_STATUS.PASSED,
         ).count(),
         "commissioned_after_deploy_no_brownfield": no_brownfield_machines.filter(

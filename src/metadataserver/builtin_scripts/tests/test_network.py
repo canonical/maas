@@ -34,7 +34,9 @@ from metadataserver.builtin_scripts.network import (
     get_interface_dependencies,
     update_node_interfaces,
 )
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
     get_default_monitored_interfaces,
@@ -1903,7 +1905,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
         lxd_script = (
             controller.current_commissioning_script_set.find_script_result(
-                script_name=LXD_OUTPUT_NAME
+                script_name=COMMISSIONING_OUTPUT_NAME
             )
         )
         lxd_script_output = data.render(include_extra=True)

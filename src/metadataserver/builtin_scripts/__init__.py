@@ -17,6 +17,7 @@ from maasserver.models.controllerinfo import get_maas_version
 from metadataserver.models import Script
 from provisioningserver.refresh.node_info_scripts import (
     BMC_DETECTION,
+    COMMISSIONING_OUTPUT_NAME,
     DHCP_EXPLORE_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
@@ -24,8 +25,8 @@ from provisioningserver.refresh.node_info_scripts import (
     LLDP_INSTALL_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
     LSHW_OUTPUT_NAME,
-    LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
+    RUN_MACHINE_RESOURCES,
     SERIAL_PORTS_OUTPUT_NAME,
     SUPPORT_INFO_OUTPUT_NAME,
 )
@@ -82,19 +83,29 @@ BUILTIN_SCRIPTS = [
         name=DHCP_EXPLORE_OUTPUT_NAME, filename="dhcp_unconfigured_ifaces.py"
     ),
     BuiltinScript(name=BMC_DETECTION, filename="bmc_config.py"),
-    BuiltinScript(name=LXD_OUTPUT_NAME, filename="50-maas-01-commissioning"),
-    BuiltinScript(name=SUPPORT_INFO_OUTPUT_NAME, filename="maas-support-info"),
-    BuiltinScript(name=LSHW_OUTPUT_NAME, filename="maas-lshw"),
+    BuiltinScript(name=RUN_MACHINE_RESOURCES, filename=RUN_MACHINE_RESOURCES),
     BuiltinScript(
-        name=LIST_MODALIASES_OUTPUT_NAME, filename="maas-list-modaliases"
+        name=COMMISSIONING_OUTPUT_NAME, filename=COMMISSIONING_OUTPUT_NAME
     ),
     BuiltinScript(
-        name=GET_FRUID_DATA_OUTPUT_NAME, filename="maas-get-fruid-api-data"
+        name=SUPPORT_INFO_OUTPUT_NAME, filename=SUPPORT_INFO_OUTPUT_NAME
+    ),
+    BuiltinScript(name=LSHW_OUTPUT_NAME, filename=LSHW_OUTPUT_NAME),
+    BuiltinScript(
+        name=LIST_MODALIASES_OUTPUT_NAME,
+        filename=LIST_MODALIASES_OUTPUT_NAME,
     ),
     BuiltinScript(
-        name=KERNEL_CMDLINE_OUTPUT_NAME, filename="maas-kernel-cmdline"
+        name=GET_FRUID_DATA_OUTPUT_NAME,
+        filename=GET_FRUID_DATA_OUTPUT_NAME,
     ),
-    BuiltinScript(name=SERIAL_PORTS_OUTPUT_NAME, filename="maas-serial-ports"),
+    BuiltinScript(
+        name=KERNEL_CMDLINE_OUTPUT_NAME,
+        filename=KERNEL_CMDLINE_OUTPUT_NAME,
+    ),
+    BuiltinScript(
+        name=SERIAL_PORTS_OUTPUT_NAME, filename=SERIAL_PORTS_OUTPUT_NAME
+    ),
     BuiltinScript(name=LLDP_OUTPUT_NAME, filename="capture_lldpd.py"),
     # Testing scripts
     BuiltinScript(

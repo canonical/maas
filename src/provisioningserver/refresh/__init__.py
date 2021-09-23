@@ -19,8 +19,9 @@ from provisioningserver.refresh.maas_api_helper import (
     SignalException,
 )
 from provisioningserver.refresh.node_info_scripts import (
-    LXD_OUTPUT_NAME,
+    COMMISSIONING_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
+    RUN_MACHINE_RESOURCES,
 )
 from provisioningserver.utils.snap import running_in_snap, SnapPaths
 from provisioningserver.utils.twisted import synchronous
@@ -121,9 +122,13 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
             % (script_name, current_script, total_scripts),
         )
 
-        if script_name == LXD_OUTPUT_NAME:
-            # Execute the LXD binary directly as we are already on the
-            # rack controller and don't need to download it.
+        if script_name == RUN_MACHINE_RESOURCES:
+            # XXX skip running the script on controllers for now since it
+            # doesn't get the MAAS URL and can't run in a snap
+            continue
+        if script_name == COMMISSIONING_OUTPUT_NAME:
+            # Execute the resources binary directly as the rack controller
+            # doesn't need to fetch it or combine output.
             script_path = get_resources_bin_path()
         else:
             script_path = os.path.join(os.path.dirname(__file__), script_name)

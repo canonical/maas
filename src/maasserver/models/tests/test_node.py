@@ -184,7 +184,7 @@ from provisioningserver.drivers.power.ipmi import IPMI_BOOT_TYPE
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
-    LXD_OUTPUT_NAME,
+    COMMISSIONING_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
 from provisioningserver.rpc.cluster import (
@@ -7538,7 +7538,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
     def test_restore_commissioned_network_interfaces(self):
         node = factory.make_Node()
         lxd_script = factory.make_Script(
-            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
         )
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
@@ -7566,7 +7567,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
     def test_restore_commissioned_network_interfaces_missing_data(self):
         node = factory.make_Node()
         lxd_script = factory.make_Script(
-            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
         )
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
@@ -7594,7 +7596,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
     def test_restore_network_interfaces_ignores_stderr(self):
         node = factory.make_Node()
         lxd_script = factory.make_Script(
-            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
         )
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(
@@ -7624,7 +7627,8 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
     def test_restore_network_interfaces_extra(self):
         node = factory.make_Node()
         lxd_script = factory.make_Script(
-            name=LXD_OUTPUT_NAME, script_type=SCRIPT_TYPE.COMMISSIONING
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
         )
         commissioning_script_set = (
             ScriptSet.objects.create_commissioning_script_set(

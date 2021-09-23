@@ -141,6 +141,7 @@ def make_script(
             {factory.make_string(): factory.make_string()}
         )
         ret["download_path"] = os.path.join(scripts_dir, "downloads", name)
+        ret["resources_file"] = factory.make_name("/tmp/")
 
         if os.path.exists(scripts_dir):
             os.makedirs(out_dir, exist_ok=True)
@@ -2453,6 +2454,7 @@ class TestRunScript(MAASTestCase):
         self.assertEqual(script["stderr_path"], env["OUTPUT_STDERR_PATH"])
         self.assertEqual(script["result_path"], env["RESULT_PATH"])
         self.assertEqual(script["download_path"], env["DOWNLOAD_PATH"])
+        self.assertEqual(script["resources_file"], env["MAAS_RESOURCES_FILE"])
         self.assertEqual(str(script["timeout_seconds"]), env["RUNTIME"])
         self.assertEqual(str(script["has_started"]), env["HAS_STARTED"])
         self.assertEqual(script["bmc_config_path"], env["BMC_CONFIG_PATH"])
@@ -3362,6 +3364,7 @@ class TestRunScripts(MAASTestCase):
         script.pop("combined", None)
         script.pop("stderr", None)
         script.pop("stdout", None)
+        script.pop("resources_file")
         script["args"] = {
             "url": url,
             "creds": config.credentials,
@@ -3390,6 +3393,7 @@ class TestRunScripts(MAASTestCase):
         ]
         run_scripts(config, scripts_dir, out_dir, scripts)
         scripts[0].pop("thread", None)
+        scripts[0].pop("resources_file")
         self.assertDictEqual(script, scripts[0])
 
     def test_run_scripts_sends_unsent_results_after_bmc_discovered(self):

@@ -45,13 +45,14 @@ class ExitError(Exception):
     """Exception that causes the app to fail with the specified error message."""
 
 
-class ScriptsDir:
+class ScriptsPaths:
     def __init__(self, base_path=None):
         if base_path is None:
             base_path = Path(mkdtemp())
         self.scripts = base_path / "scripts"
         self.out = base_path / "out"
         self.downloads = base_path / "downloads"
+        self.resources_file = base_path / "resources.json"
 
     def ensure(self):
         for directory in (self.scripts, self.out, self.downloads):
@@ -67,14 +68,14 @@ ScriptRunResult = namedtuple(
 
 
 class Script:
-    def __init__(self, info, maas_url, dirs):
+    def __init__(self, info, maas_url, paths):
         self.info = info
         self.maas_url = maas_url
-        self.dirs = dirs
+        self.paths = paths
 
     @property
     def command(self):
-        return [str(self.dirs.scripts / self.info["path"])]
+        return [str(self.paths.scripts / self.info["path"])]
 
     @property
     def name(self):
@@ -82,29 +83,30 @@ class Script:
 
     @property
     def combined_path(self):
-        return self.dirs.out / self.name
+        return self.paths.out / self.name
 
     @property
     def stdout_path(self):
-        return self.dirs.out / "{name}.out".format(name=self.name)
+        return self.paths.out / "{name}.out".format(name=self.name)
 
     @property
     def stderr_path(self):
-        return self.dirs.out / "{name}.err".format(name=self.name)
+        return self.paths.out / "{name}.err".format(name=self.name)
 
     @property
     def result_path(self):
-        return self.dirs.out / "{name}.yaml".format(name=self.name)
+        return self.paths.out / "{name}.yaml".format(name=self.name)
 
     @property
     def environ(self):
         env = {
             "MAAS_BASE_URL": self.maas_url,
+            "MAAS_RESOURCES_FILE": self.paths.resources_file,
             "OUTPUT_COMBINED_PATH": self.combined_path,
             "OUTPUT_STDOUT_PATH": self.stdout_path,
             "OUTPUT_STDERR_PATH": self.stderr_path,
             "RESULT_PATH": self.result_path,
-            "DOWNLOAD_PATH": self.dirs.downloads,
+            "DOWNLOAD_PATH": self.paths.downloads,
             "HAS_STARTED": self.info.get("has_started", False),
             "RUNTIME": self.info.get("timeout_seconds"),
         }
@@ -310,7 +312,7 @@ def get_config(ns):
     return Config(config=data, credentials=credentials)
 
 
-def fetch_scripts(maas_url, metadata_url, dirs, credentials):
+def fetch_scripts(maas_url, metadata_url, paths, credentials):
     res = geturl(
         metadata_url + "maas-scripts", credentials=credentials, retry=False
     )
@@ -318,13 +320,13 @@ def fetch_scripts(maas_url, metadata_url, dirs, credentials):
         raise ExitError("No script returned")
 
     with tarfile.open(mode="r|*", fileobj=BytesIO(res.read())) as tar:
-        tar.extractall(str(dirs.scripts))
+        tar.extractall(str(paths.scripts))
 
-    with (dirs.scripts / "index.json").open() as fd:
+    with (paths.scripts / "index.json").open() as fd:
         data = json.load(fd)
 
     return [
-        Script(script_info, maas_url, dirs)
+        Script(script_info, maas_url, paths)
         for script_info in data["1.0"]["commissioning_scripts"]
     ]
 
@@ -372,19 +374,19 @@ def action_report_results(ns):
     if not config.metadata_url:
         raise ExitError("No MAAS URL set")
 
-    dirs = ScriptsDir()
-    dirs.ensure()
+    paths = ScriptsPaths()
+    paths.ensure()
 
     maas_url = get_base_url(config.metadata_url)
     metadata_url = maas_url + "/MAAS/metadata/" + MD_VERSION + "/"
 
     print(
         "* Fetching scripts from {url} to {dir}".format(
-            url=metadata_url, dir=dirs.scripts
+            url=metadata_url, dir=paths.scripts
         )
     )
     for script in fetch_scripts(
-        maas_url, metadata_url, dirs, config.credentials
+        maas_url, metadata_url, paths, config.credentials
     ):
         if not script.should_run():
             continue

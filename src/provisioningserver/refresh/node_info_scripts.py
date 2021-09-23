@@ -21,7 +21,8 @@ LLDP_INSTALL_OUTPUT_NAME = "20-maas-01-install-lldpd"
 DHCP_EXPLORE_OUTPUT_NAME = "20-maas-02-dhcp-unconfigured-ifaces"
 # Run BMC config early as it will enlist new machines.
 BMC_DETECTION = "30-maas-01-bmc-config"
-LXD_OUTPUT_NAME = "50-maas-01-commissioning"
+RUN_MACHINE_RESOURCES = "40-maas-01-machine-resources"
+COMMISSIONING_OUTPUT_NAME = "50-maas-01-commissioning"
 # The remaining scripts can run in parallel
 SUPPORT_INFO_OUTPUT_NAME = "maas-support-info"
 LSHW_OUTPUT_NAME = "maas-lshw"
@@ -74,7 +75,14 @@ NODE_INFO_SCRIPTS = OrderedDict(
             BMC_DETECTION,
             {"hook": null_hook, "run_on_controller": False},
         ),
-        (LXD_OUTPUT_NAME, {"hook": null_hook, "run_on_controller": True}),
+        (
+            RUN_MACHINE_RESOURCES,
+            {"hook": null_hook, "run_on_controller": True},
+        ),
+        (
+            COMMISSIONING_OUTPUT_NAME,
+            {"hook": null_hook, "run_on_controller": True},
+        ),
         (
             SUPPORT_INFO_OUTPUT_NAME,
             {"hook": null_hook, "run_on_controller": True},

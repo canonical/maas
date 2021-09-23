@@ -187,8 +187,8 @@ from provisioningserver.drivers.power.registry import PowerDriverRegistry
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
-    LXD_OUTPUT_NAME,
 )
 from provisioningserver.rpc.cluster import (
     AddChassis,
@@ -4641,7 +4641,7 @@ class Node(CleanSave, TimestampedModel):
         )
 
         script = self.current_commissioning_script_set.find_script_result(
-            script_name=LXD_OUTPUT_NAME
+            script_name=COMMISSIONING_OUTPUT_NAME
         )
         lxd_output = json.loads(script.stdout)
         if "networks" not in lxd_output:

@@ -32,7 +32,9 @@ from zope.interface.verify import verifyObject
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.refresh import refresh
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 from provisioningserver.utils.beaconing import (
     age_out_uuid_queue,
     BEACON_IPV4_MULTICAST,
@@ -1217,7 +1219,7 @@ class NetworksMonitoringService(SingleInstanceService):
         stdout_path,
         stderr_path,
     ):
-        if script_name != LXD_OUTPUT_NAME:
+        if script_name != COMMISSIONING_OUTPUT_NAME:
             return
         lxd_data = json.loads(Path(stdout_path).read_bytes())
         lxd_data["network-extra"] = {

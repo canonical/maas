@@ -24,7 +24,10 @@ from provisioningserver.refresh.maas_api_helper import (
     SignalException,
     TimeoutExpired,
 )
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+    RUN_MACHINE_RESOURCES,
+)
 
 
 class TestGetArchitecture(MAASTestCase):
@@ -393,7 +396,7 @@ class TestRefresh(MAASTestCase):
 
     def test_refresh_executes_lxd_binary(self):
         signal = self.patch(refresh, "signal")
-        script_name = LXD_OUTPUT_NAME
+        script_name = COMMISSIONING_OUTPUT_NAME
         info_scripts = self.create_scripts_success(script_name)
 
         system_id = factory.make_name("system_id")
@@ -418,7 +421,7 @@ class TestRefresh(MAASTestCase):
 
     def test_refresh_executes_lxd_binary_in_snap(self):
         signal = self.patch(refresh, "signal")
-        script_name = LXD_OUTPUT_NAME
+        script_name = COMMISSIONING_OUTPUT_NAME
         info_scripts = self.create_scripts_success(script_name)
         path = factory.make_name()
 
@@ -483,6 +486,25 @@ class TestRefresh(MAASTestCase):
         self.assertThat(tmpdirs_before, Not(Contains(tmpdir_during)))
         self.assertThat(tmpdirs_during, Contains(tmpdir_during))
         self.assertThat(tmpdirs_after, Not(Contains(tmpdir_during)))
+
+    def test_refresh_skips_run_machine_resources_script(self):
+        mock_popen = self.patch(refresh, "Popen")
+        info_scripts = self.create_scripts_success(RUN_MACHINE_RESOURCES)
+        path = factory.make_name()
+
+        system_id = factory.make_name("system_id")
+        consumer_key = factory.make_name("consumer_key")
+        token_key = factory.make_name("token_key")
+        token_secret = factory.make_name("token_secret")
+        url = factory.make_url()
+
+        with patch.dict("os.environ", {"SNAP": path}), patch.dict(
+            refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True
+        ):
+            refresh.refresh(
+                system_id, consumer_key, token_key, token_secret, url
+            )
+        mock_popen.assert_not_called()
 
     def test_refresh_logs_error(self):
         signal = self.patch(refresh, "signal")

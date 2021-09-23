@@ -17,34 +17,34 @@ from snippets.maas_run_scripts import (
     parse_args,
     Script,
     ScriptRunResult,
-    ScriptsDir,
+    ScriptsPaths,
     write_token,
 )
 
 
-class TestScriptsDir(MAASTestCase):
+class TestScriptsPaths(MAASTestCase):
     def test_paths(self):
         base_path = Path(self.useFixture(TempDirectory()).path)
-        scripts_dir = ScriptsDir(base_path=base_path)
-        self.assertEqual(scripts_dir.scripts, base_path / "scripts")
-        self.assertEqual(scripts_dir.out, base_path / "out")
-        self.assertEqual(scripts_dir.downloads, base_path / "downloads")
+        scripts_paths = ScriptsPaths(base_path=base_path)
+        self.assertEqual(scripts_paths.scripts, base_path / "scripts")
+        self.assertEqual(scripts_paths.out, base_path / "out")
+        self.assertEqual(scripts_paths.downloads, base_path / "downloads")
 
     def test_ensure(self):
         base_path = Path(self.useFixture(TempDirectory()).path)
-        scripts_dir = ScriptsDir(base_path=base_path)
-        scripts_dir.ensure()
-        self.assertTrue(scripts_dir.scripts.exists())
-        self.assertTrue(scripts_dir.out.exists())
-        self.assertTrue(scripts_dir.downloads.exists())
+        scripts_paths = ScriptsPaths(base_path=base_path)
+        scripts_paths.ensure()
+        self.assertTrue(scripts_paths.scripts.exists())
+        self.assertTrue(scripts_paths.out.exists())
+        self.assertTrue(scripts_paths.downloads.exists())
 
     def test_ensure_clears_existing_content(self):
         base_path = Path(self.useFixture(TempDirectory()).path)
-        scripts_dir = ScriptsDir(base_path=base_path)
-        scripts_dir.scripts.mkdir()
-        a_file = scripts_dir.scripts / "a-file"
+        scripts_paths = ScriptsPaths(base_path=base_path)
+        scripts_paths.scripts.mkdir()
+        a_file = scripts_paths.scripts / "a-file"
         a_file.touch()
-        scripts_dir.ensure()
+        scripts_paths.ensure()
         self.assertFalse(a_file.exists())
 
 
@@ -54,17 +54,17 @@ class TestScript(MAASTestCase):
             "name": "myscript",
             "path": "commissioning-scripts/myscript",
         }
-        dirs = ScriptsDir(base_path=Path("/base"))
-        script = Script(info, "http://maas.example.com", dirs)
+        paths = ScriptsPaths(base_path=Path("/base"))
+        script = Script(info, "http://maas.example.com", paths)
         self.assertEqual(script.name, "myscript")
         self.assertEqual(
             script.command,
-            [str(dirs.scripts / "commissioning-scripts/myscript")],
+            [str(paths.scripts / "commissioning-scripts/myscript")],
         )
-        self.assertEqual(script.stdout_path, dirs.out / "myscript.out")
-        self.assertEqual(script.stderr_path, dirs.out / "myscript.err")
-        self.assertEqual(script.combined_path, dirs.out / "myscript")
-        self.assertEqual(script.result_path, dirs.out / "myscript.yaml")
+        self.assertEqual(script.stdout_path, paths.out / "myscript.out")
+        self.assertEqual(script.stderr_path, paths.out / "myscript.err")
+        self.assertEqual(script.combined_path, paths.out / "myscript")
+        self.assertEqual(script.result_path, paths.out / "myscript.yaml")
 
     def test_environ(self):
         info = {
@@ -73,10 +73,13 @@ class TestScript(MAASTestCase):
             "timeout_seconds": 100,
             "bmc_config_path": "/bmc-config",
         }
-        dirs = ScriptsDir(base_path=Path("/base"))
-        script = Script(info, "http://maas.example.com", dirs)
+        paths = ScriptsPaths(base_path=Path("/base"))
+        script = Script(info, "http://maas.example.com", paths)
         self.assertEqual(
             script.environ["MAAS_BASE_URL"], "http://maas.example.com"
+        )
+        self.assertEqual(
+            script.environ["MAAS_RESOURCES_FILE"], "/base/resources.json"
         )
         self.assertEqual(script.environ["RUNTIME"], "100")
         self.assertEqual(script.environ["BMC_CONFIG_PATH"], "/bmc-config")
@@ -129,8 +132,8 @@ class TestScript(MAASTestCase):
             "path": "commissioning-scripts/myscript",
             "timeout_seconds": 100,
         }
-        dirs = ScriptsDir(base_path=Path("/base"))
-        script = Script(info, "http://maas.example.com", dirs)
+        paths = ScriptsPaths(base_path=Path("/base"))
+        script = Script(info, "http://maas.example.com", paths)
         result = script.run()
         self.assertEqual(result.exit_status, 0)
         self.assertEqual(result.status, "WORKING")
@@ -157,8 +160,8 @@ class TestScript(MAASTestCase):
             "path": "commissioning-scripts/myscript",
             "timeout_seconds": 100,
         }
-        dirs = ScriptsDir(base_path=Path("/base"))
-        script = Script(info, "http://maas.example.com", dirs)
+        paths = ScriptsPaths(base_path=Path("/base"))
+        script = Script(info, "http://maas.example.com", paths)
         result = script.run()
         self.assertEqual(result.exit_status, 10)
         self.assertEqual(result.status, "FAILED")
@@ -176,8 +179,8 @@ class TestScript(MAASTestCase):
             "path": "commissioning-scripts/myscript",
             "timeout_seconds": 100,
         }
-        dirs = ScriptsDir(base_path=Path("/base"))
-        script = Script(info, "http://maas.example.com", dirs)
+        paths = ScriptsPaths(base_path=Path("/base"))
+        script = Script(info, "http://maas.example.com", paths)
         result = script.run()
         self.assertEqual(result.exit_status, 124)
         self.assertEqual(result.status, "TIMEDOUT")

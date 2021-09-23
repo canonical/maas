@@ -50,7 +50,9 @@ from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from metadataserver.models.scriptresult import ScriptResult
 from metadataserver.models.scriptset import ScriptSet
 from provisioningserver.drivers.pod import DiscoveredPod
-from provisioningserver.refresh.node_info_scripts import LXD_OUTPUT_NAME
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 from provisioningserver.utils.twisted import asynchronous
 
 
@@ -521,7 +523,7 @@ class TestGetBrownfieldStats(MAASServerTestCase):
     def _update_commissioning(self, machine):
         commissioning_result = ScriptResult.objects.get(
             script_set=machine.current_commissioning_script_set,
-            script_name=LXD_OUTPUT_NAME,
+            script_name=COMMISSIONING_OUTPUT_NAME,
         )
         commissioning_result.store_result(exit_status=0)
 

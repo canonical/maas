@@ -30,10 +30,10 @@ from maasserver.utils.osystems import get_release
 from metadataserver.builtin_scripts.network import update_node_interfaces
 from metadataserver.enum import HARDWARE_TYPE
 from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
     KERNEL_CMDLINE_OUTPUT_NAME,
     LIST_MODALIASES_OUTPUT_NAME,
-    LXD_OUTPUT_NAME,
     NODE_INFO_SCRIPTS,
 )
 from provisioningserver.utils import kernel_to_debian_architecture
@@ -543,7 +543,7 @@ def update_node_devices(
 
 
 def _process_lxd_resources(node, data):
-    """Process the resources results of the `LXD_OUTPUT_NAME` script."""
+    """Process the resources results of the `COMMISSIONING_OUTPUT_NAME` script."""
     resources = data["resources"]
     update_deployment_resources = node.status == NODE_STATUS.DEPLOYED
     # Update CPU details.
@@ -835,7 +835,7 @@ def update_node_physical_block_devices(node, data, numa_nodes):
 
 
 def _process_lxd_environment(node, data):
-    """Process the environment results from the `LXD_OUTPUT_NAME` script."""
+    """Process the environment results from the `COMMISSIONING_OUTPUT_NAME` script."""
     # Verify the architecture is set correctly. This is how the architecture
     # gets set on controllers.
     node.architecture = kernel_to_debian_architecture(
@@ -864,7 +864,7 @@ def _process_lxd_environment(node, data):
 
 
 def process_lxd_results(node, output, exit_status):
-    """Process the results of the `LXD_OUTPUT_NAME` script.
+    """Process the results of the `COMMISSIONING_OUTPUT_NAME` script.
 
     If `exit_status` is non-zero, this function returns without doing
     anything.
@@ -1233,5 +1233,5 @@ NODE_INFO_SCRIPTS[GET_FRUID_DATA_OUTPUT_NAME][
 NODE_INFO_SCRIPTS[LIST_MODALIASES_OUTPUT_NAME][
     "hook"
 ] = create_metadata_by_modalias
-NODE_INFO_SCRIPTS[LXD_OUTPUT_NAME]["hook"] = process_lxd_results
+NODE_INFO_SCRIPTS[COMMISSIONING_OUTPUT_NAME]["hook"] = process_lxd_results
 NODE_INFO_SCRIPTS[KERNEL_CMDLINE_OUTPUT_NAME]["hook"] = update_boot_interface
