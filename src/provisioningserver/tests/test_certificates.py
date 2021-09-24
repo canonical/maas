@@ -15,36 +15,6 @@ from provisioningserver.certificates import (
     get_maas_cert_tuple,
 )
 
-
-class TestGenerateCertificate(MAASTestCase):
-    def test_generate_certificate(self):
-        cert = generate_certificate("maas")
-        self.assertIsInstance(cert.cert, crypto.X509)
-        self.assertIsInstance(cert.key, crypto.PKey)
-        self.assertEqual(cert.cert.get_subject().CN, "maas")
-        self.assertEqual(
-            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.cert.get_pubkey()),
-            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.key),
-        )
-        self.assertEqual(cert.key.bits(), 4096)
-        self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
-        self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=3650),
-            cert.expiration(),
-        )
-
-    def test_generate_certificate_key_bits(self):
-        cert = generate_certificate("maas", key_bits=1024)
-        self.assertEqual(cert.key.bits(), 1024)
-
-    def test_generate_certificate_validity(self):
-        cert = generate_certificate("maas", validity=timedelta(days=100))
-        self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=100),
-            cert.expiration(),
-        )
-
-
 SAMPLE_CERT = generate_certificate("maas")
 
 
@@ -182,4 +152,46 @@ class TestGetMAASCertTuple(MAASTestCase):
                 f"{certs_dir}/maas.crt",
                 f"{certs_dir}/maas.key",
             ),
+        )
+
+
+class TestGenerateCertificate(MAASTestCase):
+    def test_generate_certificate_defaults(self):
+        cert = generate_certificate("maas")
+        self.assertIsInstance(cert.cert, crypto.X509)
+        self.assertIsInstance(cert.key, crypto.PKey)
+        self.assertEqual(cert.cert.get_subject().CN, "maas")
+        self.assertIsNone(cert.cert.get_issuer().organizationName)
+        self.assertIsNone(cert.cert.get_issuer().organizationalUnitName)
+        self.assertEqual(
+            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.cert.get_pubkey()),
+            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.key),
+        )
+        self.assertEqual(cert.key.bits(), 4096)
+        self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
+        self.assertGreaterEqual(
+            datetime.utcnow() + timedelta(days=3650),
+            cert.expiration(),
+        )
+
+    def test_generate_certificate_key_bits(self):
+        cert = generate_certificate("maas", key_bits=1024)
+        self.assertEqual(cert.key.bits(), 1024)
+
+    def test_generate_certificate_validity(self):
+        cert = generate_certificate("maas", validity=timedelta(days=100))
+        self.assertGreaterEqual(
+            datetime.utcnow() + timedelta(days=100),
+            cert.expiration(),
+        )
+
+    def test_generate_certificate_organization(self):
+        cert = generate_certificate(
+            "maas",
+            organization_name="myorg",
+            organizational_unit_name="myunit",
+        )
+        self.assertEqual(cert.cert.get_issuer().organizationName, "myorg")
+        self.assertEqual(
+            cert.cert.get_issuer().organizationalUnitName, "myunit"
         )

@@ -21,7 +21,7 @@ from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.server_address import get_maas_facing_server_host
-from provisioningserver.certificates import generate_certificate
+from maasserver.utils.certificates import generate_certificate
 from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field

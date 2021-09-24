@@ -7,7 +7,7 @@ from django.urls import reverse
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.certificates import generate_certificate
+from maasserver.utils.certificates import generate_certificate
 
 
 class TestVMHostCertificateHandler(MAASServerTestCase):

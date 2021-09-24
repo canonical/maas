@@ -55,13 +55,15 @@ from maasserver.node_constraint_filter_forms import (
     storage_validator,
 )
 from maasserver.rpc import getClientFromIdentifiers
-from maasserver.utils.certificates import get_maas_client_cn
+from maasserver.utils.certificates import (
+    generate_certificate,
+    get_maas_client_cn,
+)
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.vmhost import request_commissioning_results
-from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,

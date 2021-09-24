@@ -25,7 +25,10 @@ from maasserver.models.node import Node
 from maasserver.models.packagerepository import PackageRepository
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.permissions import NodePermission
-from maasserver.utils.certificates import get_maas_client_cn
+from maasserver.utils.certificates import (
+    generate_certificate,
+    get_maas_client_cn,
+)
 from maasserver.utils.osystems import (
     list_all_usable_hwe_kernels,
     list_all_usable_osystems,
@@ -36,7 +39,6 @@ from maasserver.utils.osystems import (
 )
 from maasserver.websockets.base import dehydrate_datetime, Handler
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.certificates import generate_certificate
 
 
 class GeneralHandler(Handler):

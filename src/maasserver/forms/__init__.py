@@ -156,6 +156,7 @@ from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
 from maasserver.permissions import NodePermission, ResourcePoolPermission
 from maasserver.storage_layouts import VMFS6StorageLayout, VMFS7StorageLayout
+from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import machine_readable_bytes
 from maasserver.utils.forms import (
     compose_invalid_choice_text,
@@ -174,7 +175,6 @@ from maasserver.utils.osystems import (
     validate_hwe_kernel,
     validate_min_hwe_kernel,
 )
-from provisioningserver.certificates import generate_certificate
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger

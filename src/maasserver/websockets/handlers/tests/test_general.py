@@ -22,11 +22,11 @@ from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.certificates import generate_certificate
 from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
 from provisioningserver.boot import BootMethodRegistry
-from provisioningserver.certificates import generate_certificate
 from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
