@@ -240,6 +240,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "architecture": architecture,
             "filetype": upload_type,
             "content": (factory.make_file_upload(content=sample_binary_data)),
+            "base_image": "ubuntu/focal",
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -267,6 +268,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "name": name,
             "architecture": architecture,
             "content": (factory.make_file_upload(content=sample_binary_data)),
+            "base_image": "ubuntu/focal",
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -288,6 +290,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "architecture": architecture,
             "sha256": largefile.sha256,
             "size": largefile.total_size,
+            "base_image": "ubuntu/focal",
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -314,6 +317,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "architecture": architecture,
             "sha256": largefile.sha256,
             "size": largefile.total_size,
+            "base_image": "ubuntu/focal",
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -342,6 +346,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "architecture": architecture,
             "sha256": largefile.sha256,
             "size": largefile.total_size + 1,
+            "base_image": "ubuntu/focal",
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
@@ -356,6 +361,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "name": name,
             "architecture": architecture,
             "content": (factory.make_file_upload(content=sample_binary_data)),
+            "base_image": "ubuntu/focal",
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)
@@ -384,6 +390,7 @@ class TestBootResourcesAPI(APITestCase.ForUser):
             "name": name,
             "architecture": architecture,
             "content": (factory.make_file_upload(content=sample_binary_data)),
+            "base_image": "ubuntu/focal",
         }
         response = self.client.post(reverse("boot_resources_handler"), params)
         self.assertEqual(http.client.CREATED, response.status_code)

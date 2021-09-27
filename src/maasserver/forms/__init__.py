@@ -2493,7 +2493,16 @@ class BootResourceForm(MAASModelForm):
         return name
 
     def _get_base_image_info(self):
-        base_osystem, base_release = self.cleaned_data["base_image"].split(
+        base_image = self.cleaned_data["base_image"]
+        if not base_image:
+            existing_resource = super().save(commit=False)
+            existing_resource.name = self.cleaned_data["name"]
+            existing_resource.architecture = self.cleaned_data["architecture"]
+            existing_resource.rtype = BOOT_RESOURCE_TYPE.UPLOADED
+            existing_resource = self.get_existing_resource(existing_resource)
+            base_image = existing_resource.base_image
+
+        base_osystem, base_release = base_image.split(
             "/"
         )  # will raise exception if name other than <os>/<release>
         return (base_osystem.lower(), base_release.lower())
@@ -2505,8 +2514,6 @@ class BootResourceForm(MAASModelForm):
         identify what operating system the image is built on top of for deployment
         in order to minimize possible incompatibilities during install and post-deployment
         """
-        if not self.data.get("name", "").startswith("custom/"):
-            return ""
 
         try:
             base_osystem, base_version = self._get_base_image_info()
@@ -2623,7 +2630,7 @@ class BootResourceForm(MAASModelForm):
         resource.extra = {"subarches": resource.architecture.split("/")[1]}
         if "title" in self.cleaned_data:
             resource.extra["title"] = self.cleaned_data["title"]
-        if self.cleaned_data.get("base_image"):
+        if not resource.base_image:
             resource.base_image = self.cleaned_data["base_image"]
 
         resource.save()
