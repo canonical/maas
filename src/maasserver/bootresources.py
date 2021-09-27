@@ -364,7 +364,6 @@ class SimpleStreamsHandler:
             ConnectionWrapper(rfile.largefile.content),
             content_type="application/octet-stream",
         )
-        response["Content-Length"] = rfile.largefile.total_size
         return response
 
 
@@ -1598,7 +1597,7 @@ class ImportResourcesProgressService(TimerService):
 
     @transactional
     def are_boot_images_available_in_the_region(self):
-        """Return true if there are boot images available in the region. """
+        """Return true if there are boot images available in the region."""
         return BootResource.objects.all().exists()
 
     @asynchronous(timeout=90)
