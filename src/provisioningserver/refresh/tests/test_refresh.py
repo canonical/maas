@@ -5,7 +5,6 @@ from collections import OrderedDict
 import os
 from pathlib import Path
 import random
-import stat
 import subprocess
 import sys
 import tempfile
@@ -15,6 +14,7 @@ from unittest.mock import ANY, patch, sentinel
 from testtools.matchers import Contains, DirExists, Not
 
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 from provisioningserver import refresh
@@ -26,7 +26,6 @@ from provisioningserver.refresh.maas_api_helper import (
 )
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
-    RUN_MACHINE_RESOURCES,
 )
 
 
@@ -70,17 +69,14 @@ class TestRefresh(MAASTestCase):
             maas_api_helper.urllib.request, "urlopen"
         ).side_effect = self._fake_urlopen
 
+        self.tmpdir = self.useFixture(TempDirectory()).path
+        self.patch(refresh, "SCRIPTS_BASE_PATH", self.tmpdir)
+
     def _fake_urlopen(self, request, post_data=None, data=None):
         self.urlopen_calls.append((request, post_data, data))
         return FakeResponse()
 
-    def _cleanup(self, path):
-        if os.path.exists(path):
-            os.remove(path)
-
     def create_scripts_success(self, script_name=None, script_content=None):
-        if script_name is None:
-            script_name = factory.make_name("script_name")
         if script_content is None:
             script_content = dedent(
                 """\
@@ -88,38 +84,25 @@ class TestRefresh(MAASTestCase):
                 echo 'test script'
                 """
             )
-        script_path = os.path.join(
-            os.path.dirname(__file__), "..", script_name
-        )
-        with open(script_path, "w") as f:
-            f.write(script_content)
-        st = os.stat(script_path)
-        os.chmod(script_path, st.st_mode | stat.S_IEXEC)
-        self.addCleanup(self._cleanup, script_path)
-
-        return OrderedDict(
-            [(script_name, {"name": script_name, "run_on_controller": True})]
-        )
+        return self._create_scripts_content(script_name, script_content)
 
     def create_scripts_failure(self, script_name=None):
-        if script_name is None:
-            script_name = factory.make_name("script_name")
-        TEST_SCRIPT = dedent(
+        content = dedent(
             """\
             #!/bin/bash
             echo 'test failed'
             exit 1
             """
         )
-        script_path = os.path.join(
-            os.path.dirname(__file__), "..", script_name
-        )
-        with open(script_path, "w") as f:
-            f.write(TEST_SCRIPT)
-        st = os.stat(script_path)
-        os.chmod(script_path, st.st_mode | stat.S_IEXEC)
-        self.addCleanup(self._cleanup, script_path)
+        return self._create_scripts_content(script_name, content)
 
+    def _create_scripts_content(self, script_name, content):
+        if script_name is None:
+            script_name = factory.make_name("script_name")
+
+        script_path = Path(self.tmpdir) / script_name
+        script_path.write_text(content)
+        script_path.chmod(0o755)
         return OrderedDict(
             [(script_name, {"name": script_name, "run_on_controller": True})]
         )
@@ -394,31 +377,6 @@ class TestRefresh(MAASTestCase):
             ),
         )
 
-    def test_refresh_executes_lxd_binary(self):
-        signal = self.patch(refresh, "signal")
-        script_name = COMMISSIONING_OUTPUT_NAME
-        info_scripts = self.create_scripts_success(script_name)
-
-        system_id = factory.make_name("system_id")
-        consumer_key = factory.make_name("consumer_key")
-        token_key = factory.make_name("token_key")
-        token_secret = factory.make_name("token_secret")
-        url = factory.make_url()
-
-        with patch.dict(refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True):
-            refresh.refresh(
-                system_id, consumer_key, token_key, token_secret, url
-            )
-        self.assertThat(
-            signal,
-            MockAnyCall(
-                ANY,
-                ANY,
-                "WORKING",
-                "Starting %s [1/1]" % script_name,
-            ),
-        )
-
     def test_refresh_executes_lxd_binary_in_snap(self):
         signal = self.patch(refresh, "signal")
         script_name = COMMISSIONING_OUTPUT_NAME
@@ -443,7 +401,7 @@ class TestRefresh(MAASTestCase):
                 ANY,
                 ANY,
                 "WORKING",
-                "Starting %s [1/1]" % script_name,
+                f"Starting {COMMISSIONING_OUTPUT_NAME} [1/1]",
             ),
         )
 
@@ -486,25 +444,6 @@ class TestRefresh(MAASTestCase):
         self.assertThat(tmpdirs_before, Not(Contains(tmpdir_during)))
         self.assertThat(tmpdirs_during, Contains(tmpdir_during))
         self.assertThat(tmpdirs_after, Not(Contains(tmpdir_during)))
-
-    def test_refresh_skips_run_machine_resources_script(self):
-        mock_popen = self.patch(refresh, "Popen")
-        info_scripts = self.create_scripts_success(RUN_MACHINE_RESOURCES)
-        path = factory.make_name()
-
-        system_id = factory.make_name("system_id")
-        consumer_key = factory.make_name("consumer_key")
-        token_key = factory.make_name("token_key")
-        token_secret = factory.make_name("token_secret")
-        url = factory.make_url()
-
-        with patch.dict("os.environ", {"SNAP": path}), patch.dict(
-            refresh.NODE_INFO_SCRIPTS, info_scripts, clear=True
-        ):
-            refresh.refresh(
-                system_id, consumer_key, token_key, token_secret, url
-            )
-        mock_popen.assert_not_called()
 
     def test_refresh_logs_error(self):
         signal = self.patch(refresh, "signal")
@@ -553,7 +492,7 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        script_path = (Path(refresh.__file__) / ".." / script_name).resolve()
+        script_path = Path(self.tmpdir) / script_name
         mock_popen.assert_called_once_with(
             [str(script_path)],
             stdin=subprocess.DEVNULL,
@@ -589,7 +528,7 @@ class TestRefresh(MAASTestCase):
             refresh.refresh(
                 system_id, consumer_key, token_key, token_secret, url
             )
-        script_path = (Path(refresh.__file__) / ".." / script_name).resolve()
+        script_path = Path(self.tmpdir) / script_name
         mock_popen.assert_called_once_with(
             ["sudo", "-E", str(script_path)],
             stdin=subprocess.DEVNULL,

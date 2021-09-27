@@ -25,8 +25,9 @@
 # timeout: 60
 # --- End MAAS 1.0 script metadata ---
 
-resources_bin="$DOWNLOAD_PATH/machine-resources"
-arch="$(dpkg --print-architecture)"
+resources_bin=$(mktemp)
+[ "$SNAP_ARCH" ] && arch="$SNAP_ARCH" || arch="$(dpkg --print-architecture)"
 wget "$MAAS_BASE_URL/MAAS/machine-resources/$arch" -O "$resources_bin" >&2
 chmod +x "$resources_bin"
 "$resources_bin" | tee "$MAAS_RESOURCES_FILE"
+rm "$resources_bin"

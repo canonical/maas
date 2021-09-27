@@ -8,6 +8,7 @@ from functools import lru_cache
 import os
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 import tempfile
+import urllib
 
 from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger
@@ -18,11 +19,7 @@ from provisioningserver.refresh.maas_api_helper import (
     signal,
     SignalException,
 )
-from provisioningserver.refresh.node_info_scripts import (
-    COMMISSIONING_OUTPUT_NAME,
-    NODE_INFO_SCRIPTS,
-    RUN_MACHINE_RESOURCES,
-)
+from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.snap import running_in_snap, SnapPaths
 from provisioningserver.utils.twisted import synchronous
 
@@ -103,6 +100,9 @@ def refresh(
         signal_wrapper(url, creds, "OK", f"Finished refreshing {system_id}")
 
 
+SCRIPTS_BASE_PATH = os.path.dirname(__file__)
+
+
 # XXX: This method should download the scripts from the region, instead
 # of relying on the scripts being available locally.
 def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
@@ -113,44 +113,44 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
     failed_scripts = []
     out_dir = os.path.join(tmpdir, "out")
     os.makedirs(out_dir)
+    fd, resources_file = tempfile.mkstemp()
+    os.close(fd)
     for script_name in sorted(scripts.keys()):
         signal_wrapper(
             url,
             creds,
             "WORKING",
-            "Starting %s [%d/%d]"
-            % (script_name, current_script, total_scripts),
+            f"Starting {script_name} [{current_script}/{total_scripts}]",
         )
 
-        if script_name == RUN_MACHINE_RESOURCES:
-            # XXX skip running the script on controllers for now since it
-            # doesn't get the MAAS URL and can't run in a snap
-            continue
-        if script_name == COMMISSIONING_OUTPUT_NAME:
-            # Execute the resources binary directly as the rack controller
-            # doesn't need to fetch it or combine output.
-            script_path = get_resources_bin_path()
-        else:
-            script_path = os.path.join(os.path.dirname(__file__), script_name)
-
+        script_path = os.path.join(SCRIPTS_BASE_PATH, script_name)
         combined_path = os.path.join(out_dir, script_name)
-        stdout_name = "%s.out" % script_name
+        stdout_name = f"{script_name}.out"
         stdout_path = os.path.join(out_dir, stdout_name)
-        stderr_name = "%s.err" % script_name
+        stderr_name = f"{script_name}.err"
         stderr_path = os.path.join(out_dir, stderr_name)
-        result_name = "%s.yaml" % script_name
+        result_name = f"{script_name}.yaml"
         result_path = os.path.join(out_dir, result_name)
 
+        # derive the base URL for from the metadata one
+        parsed_url = urllib.parse.urlparse(url)
+        base_url = urllib.parse.urlunparse(
+            (parsed_url.scheme, parsed_url.netloc, "", "", "", "")
+        )
+
         env = copy.deepcopy(os.environ)
-        env["OUTPUT_COMBINED_PATH"] = combined_path
-        env["OUTPUT_STDOUT_PATH"] = stdout_path
-        env["OUTPUT_STDERR_PATH"] = stderr_path
-        env["RESULT_PATH"] = result_path
-
+        env.update(
+            {
+                "MAAS_BASE_URL": base_url,
+                "MAAS_RESOURCES_FILE": resources_file,
+                "OUTPUT_COMBINED_PATH": combined_path,
+                "OUTPUT_STDOUT_PATH": stdout_path,
+                "OUTPUT_STDERR_PATH": stderr_path,
+                "RESULT_PATH": result_path,
+            }
+        )
         timeout = 60
-
         command = [script_path] if in_snap else ["sudo", "-E", script_path]
-
         try:
             proc = Popen(
                 command, stdin=DEVNULL, stdout=PIPE, stderr=PIPE, env=env
