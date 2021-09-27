@@ -27,6 +27,8 @@ def snap_setup():
 
 def main(argv=sys.argv):
     # If no arguments have been passed be helpful and point out --help.
+    verbose_errors = "MAAS_CLI_VERBOSE_ERRORS" in os.environ
+
     snap_setup()
 
     parser = prepare_parser(argv)
@@ -44,7 +46,7 @@ def main(argv=sys.argv):
         raise SystemExit(1)
     except Exception as error:
         show = getattr(error, "always_show", False)
-        if options.debug or show:
+        if options.debug or show or verbose_errors:
             raise
         else:
             # Note: this will call sys.exit() when finished.
