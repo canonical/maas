@@ -183,6 +183,54 @@ class TestBootResourceForm(MAASServerTestCase):
         form = BootResourceForm(data=data, files={"content": uploaded_file})
         self.assertFalse(form.is_valid())
 
+    def test_windows_does_not_require_base_image(self):
+        name = "windows/%s" % factory.make_name("name")
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode("utf-8")
+        upload_name = factory.make_name("filename")
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            "name": name,
+            "title": factory.make_name("title"),
+            "architecture": make_usable_architecture(self),
+            "filetype": upload_type,
+        }
+        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        self.assertTrue(form.is_valid())
+
+    def test_esxi_does_not_require_base_image(self):
+        name = "esxi/%s" % factory.make_name("name")
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode("utf-8")
+        upload_name = factory.make_name("filename")
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            "name": name,
+            "title": factory.make_name("title"),
+            "architecture": make_usable_architecture(self),
+            "filetype": upload_type,
+        }
+        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        self.assertTrue(form.is_valid())
+
+    def test_rhel_does_not_require_base_image(self):
+        name = "rhel/%s" % factory.make_name("name")
+        upload_type, filetype = self.pick_filetype()
+        size = random.randint(1024, 2048)
+        content = factory.make_string(size).encode("utf-8")
+        upload_name = factory.make_name("filename")
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            "name": name,
+            "title": factory.make_name("title"),
+            "architecture": make_usable_architecture(self),
+            "filetype": upload_type,
+        }
+        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        self.assertTrue(form.is_valid())
+
     def test_validates_custom_image_base_os(self):
         name = "custom/%s" % factory.make_name("name")
         upload_type, filetype = self.pick_filetype()

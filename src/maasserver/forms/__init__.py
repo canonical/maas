@@ -2515,6 +2515,10 @@ class BootResourceForm(MAASModelForm):
         in order to minimize possible incompatibilities during install and post-deployment
         """
 
+        split_name = self.data.get("name", "").split("/")
+        if len(split_name) > 1 and split_name[0] != "custom":
+            return ""
+
         try:
             base_osystem, base_version = self._get_base_image_info()
         except ValueError:
