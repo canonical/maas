@@ -176,7 +176,6 @@ lint-shell: bin/shellcheck
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-kernel-cmdline \
 		src/provisioningserver/refresh/40-maas-01-machine-resources \
-		src/provisioningserver/refresh/50-maas-01-commissioning \
 		src/provisioningserver/refresh/maas-list-modaliases \
 		src/provisioningserver/refresh/maas-lshw \
 		src/provisioningserver/refresh/maas-serial-ports \

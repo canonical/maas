@@ -2455,14 +2455,15 @@ class TestRunScript(MAASTestCase):
         self.assertEqual(script["result_path"], env["RESULT_PATH"])
         self.assertEqual(script["download_path"], env["DOWNLOAD_PATH"])
         self.assertEqual(script["resources_file"], env["MAAS_RESOURCES_FILE"])
+        self.assertEqual(
+            env["MAAS_STORAGE_CONFIG_FILE"], "/storage-config.json"
+        )
         self.assertEqual(str(script["timeout_seconds"]), env["RUNTIME"])
         self.assertEqual(str(script["has_started"]), env["HAS_STARTED"])
         self.assertEqual(script["bmc_config_path"], env["BMC_CONFIG_PATH"])
         self.assertIn("MAAS_BASE_URL", env)
         self.assertIn("PATH", env)
-        self.assertThat(
-            self.mock_check_link_connected, MockCalledOnceWith(script)
-        )
+        self.mock_check_link_connected.assert_called_once_with(script)
 
     def test_run_script_only_sends_result_when_avail(self):
         scripts_dir = self.useFixture(TempDirectory()).path
