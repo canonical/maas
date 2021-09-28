@@ -4415,6 +4415,73 @@ class TestIPRangeSubnetListener(
             yield listener.stopService()
 
 
+class TestBMCListener(
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
+
+    scenarios = (
+        (
+            "machine",
+            {
+                "params": {
+                    "node_type": NODE_TYPE.MACHINE,
+                    # This is needed to avoid updating the node after creating it
+                    "with_boot_disk": False,
+                },
+                "listener": "machine",
+            },
+        ),
+        (
+            "rack",
+            {
+                "params": {"node_type": NODE_TYPE.RACK_CONTROLLER},
+                "listener": "controller",
+            },
+        ),
+        (
+            "region_and_rack",
+            {
+                "params": {"node_type": NODE_TYPE.REGION_AND_RACK_CONTROLLER},
+                "listener": "controller",
+            },
+        ),
+        (
+            "region",
+            {
+                "params": {"node_type": NODE_TYPE.REGION_CONTROLLER},
+                "listener": "controller",
+            },
+        ),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_bmc_update(self):
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        self.params.update(
+            {
+                "power_type": "lxd",
+                "power_parameters": {"power_address": "1.2.3.4"},
+            }
+        )
+        node = yield deferToDatabase(self.create_node, self.params)
+
+        def update_node(system_id):
+            node = Node.objects.get(system_id=system_id)
+            node.bmc.power_parameters = {"power_address": "5.6.7.8"}
+            node.bmc.save()
+
+        yield listener.startService()
+        try:
+            yield deferToDatabase(update_node, node.system_id)
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
 class TestPodListener(
     MAASTransactionServerTestCase, TransactionalHelpersMixin
 ):

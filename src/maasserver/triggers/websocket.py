@@ -728,6 +728,31 @@ VLAN_NODE_NOTIFY = dedent(
 )
 
 
+# Procedure that is called when BMC is updated
+BMC_NODE_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      node RECORD;
+    BEGIN
+      FOR node IN (
+        SELECT system_id, node_type
+        FROM maasserver_node
+        WHERE bmc_id = %s)
+      LOOP
+        IF node.node_type = %d THEN
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (%d, %d, %d) THEN
+          PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+        END IF;
+      END LOOP;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+
 # Procedure that is called when en event is created linked to a node. DEBUG
 # events do not trigger a notification, event must be >= INFO.
 EVENT_NODE_NOTIFY = dedent(
@@ -1736,6 +1761,20 @@ def register_websocket_triggers():
         )
     )
     register_trigger("maasserver_vlan", "vlan_machine_update_notify", "update")
+
+    # BMC node notifications
+    register_procedure(
+        BMC_NODE_NOTIFY
+        % (
+            "bmc_machine_update_notify",
+            "NEW.id",
+            NODE_TYPE.MACHINE,
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        )
+    )
+    register_trigger("maasserver_bmc", "bmc_machine_update_notify", "update")
 
     # Event node notifications
     register_procedure(
