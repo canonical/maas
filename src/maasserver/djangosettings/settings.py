@@ -200,8 +200,6 @@ MIDDLEWARE = (
     # DebuggingLoggerMiddleware underneath GZipMiddleware so that it deals
     # with un-compressed responses.
     "maasserver.middleware.DebuggingLoggerMiddleware",
-    # Compress responses.
-    "django.middleware.gzip.GZipMiddleware",
     # Used for session and cookies.
     "django.contrib.sessions.middleware.SessionMiddleware",
     # Used to append trailing slashes to URLs (APPEND_SLASH defaults on).
