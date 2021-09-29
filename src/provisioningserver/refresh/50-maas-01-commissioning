@@ -25,9 +25,6 @@
 # timeout: 60
 # --- End MAAS 1.0 script metadata ---
 
-# XXX this will eventually combine resources output with custom storage
-# configuration
-
 import json
 import os
 import sys

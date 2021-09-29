@@ -29,5 +29,8 @@ resources_bin=$(mktemp)
 [ "$SNAP_ARCH" ] && arch="$SNAP_ARCH" || arch="$(dpkg --print-architecture)"
 wget "$MAAS_BASE_URL/MAAS/machine-resources/$arch" -O "$resources_bin" >&2
 chmod +x "$resources_bin"
-"$resources_bin" | tee "$MAAS_RESOURCES_FILE"
+
+# MAAS_RESOURCES_FILE is owned by maas on deb-based maas installs
+[ "$SNAP" ] && tee_cmd="tee" || tee_cmd="sudo -n -u maas tee"
+"$resources_bin" | $tee_cmd "$MAAS_RESOURCES_FILE"
 rm "$resources_bin"

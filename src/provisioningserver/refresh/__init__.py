@@ -224,4 +224,5 @@ def runscripts(scripts, url, creds, tmpdir, post_process_hook=None):
 
         current_script += 1
 
+    os.unlink(resources_file)
     return failed_scripts
