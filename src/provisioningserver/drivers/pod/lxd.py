@@ -731,6 +731,7 @@ class LXDPodDriver(PodDriver):
         for name, device in machine.expanded_devices.items():
             if device["type"] == "disk":
                 requested_device = None
+                index = -1
                 if request:
                     # for composed VMs, the root disk is always the first
                     # one. Adjust the index so that it matches the requested
@@ -741,11 +742,16 @@ class LXDPodDriver(PodDriver):
                         extra_block_devices += 1
                         index = extra_block_devices
                     requested_device = request.block_devices[index]
-                block_devices.append(
-                    _get_discovered_block_device(
-                        name, device, requested_device=requested_device
-                    )
+
+                blkdev = _get_discovered_block_device(
+                    name, device, requested_device=requested_device
                 )
+
+                if index >= 0:
+                    block_devices.insert(index, blkdev)
+                else:
+                    block_devices.append(blkdev)
+
             elif device["type"] == "nic":
                 interfaces.append(
                     _get_discovered_interface(name, device, not interfaces)

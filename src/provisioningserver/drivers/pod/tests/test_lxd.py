@@ -1391,24 +1391,55 @@ class TestLXDPodDriver(MAASTestCase):
         pod_id = factory.make_name("pod_id")
         request = make_requested_machine(num_disks=2)
         self.fake_lxd.profiles.exists.return_value = False
-        mock_storage_pools = Mock()
-        self.fake_lxd.storage_pools.all.return_value = mock_storage_pools
+
         mock_get_usable_storage_pool = self.patch(
             self.driver, "_get_usable_storage_pool"
         )
         # a volume is created for the second disk
         volume = Mock()
+        volume.config = {
+            "size": str(request.block_devices[1].size),
+        }
         volume.name = factory.make_name("vol")
         usable_pool = Mock()
         usable_pool.name = factory.make_name("pool")
         usable_pool.volumes.create.return_value = volume
+        usable_pool.volumes.get.return_value = volume
         mock_get_usable_storage_pool.return_value = usable_pool
-        mock_machine = Mock()
-        self.fake_lxd.virtual_machines.create.return_value = mock_machine
-        mock_get_discovered_machine = self.patch(
-            self.driver, "_get_discovered_machine"
+        self.fake_lxd.storage_pools.get.return_value = usable_pool
+
+        # LXD sorts the devices in a way the root dist is always last
+        expanded_devices = {
+            "disk1": {
+                "path": "",
+                "pool": usable_pool.name,
+                "source": volume.name,
+                "type": "disk",
+            },
+            "eth0": {
+                "boot.priority": "1",
+                "name": "eth0",
+                "nictype": "bridged",
+                "parent": "maas-kvm",
+                "type": "nic",
+            },
+            "root": {
+                "path": "/",
+                "pool": usable_pool.name,
+                "size": str(request.block_devices[0].size),
+                "type": "disk",
+                "boot.priority": 0,
+            },
+        }
+        mock_machine = Mock(
+            name=factory.make_name(),
+            architecture=debian_to_kernel_architecture(request.architecture),
+            expanded_devices=expanded_devices,
+            expanded_config={},
+            status_code=101,
         )
-        mock_get_discovered_machine.return_value = sentinel.discovered_machine
+        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+
         definition = {
             "name": request.hostname,
             "architecture": debian_to_kernel_architecture(
@@ -1452,7 +1483,17 @@ class TestLXDPodDriver(MAASTestCase):
         self.fake_lxd.virtual_machines.create.assert_called_once_with(
             definition, wait=True
         )
-        self.assertEqual(sentinel.discovered_machine, discovered_machine)
+
+        # assert the device order was preserved
+        self.assertEqual(
+            request.block_devices[0].size,
+            discovered_machine.block_devices[0].size,
+        )
+        self.assertEqual(
+            request.block_devices[1].size,
+            discovered_machine.block_devices[1].size,
+        )
+
         # a volume for the additional disk is created
         usable_pool.volumes.create.assert_called_with(
             "custom",
