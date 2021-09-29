@@ -46,7 +46,7 @@ maas ALL= NOPASSWD: /usr/lib/maas/maas-write-file
 maas ALL= NOPASSWD: /usr/lib/maas/maas-common scan-network *
 maas ALL= NOPASSWD: /usr/lib/maas/maas-common scan-network
 
-# Allow running resource binaries to collect hardware/network information
+# Allow running resource binaries to collect network information
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/amd64
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/arm64
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/armhf
@@ -55,6 +55,8 @@ maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/ppc64el
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/s390x
 
 # Allow running refresh scripts on controllers
+maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/40-maas-01-machine-resources
+maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/50-maas-01-commissioning
 maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/maas-list-modaliases
 maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/maas-lshw
 maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/maas-serial-ports
