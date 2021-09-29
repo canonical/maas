@@ -1250,6 +1250,20 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertNotEqual(-1, pod.hints.memory)
         self.assertNotEqual(-1, pod.hints.local_storage)
 
+    def test_sync_pod_with_cluster_saves_cluster_hint(self):
+        pod = factory.make_Pod()
+        cluster = factory.make_VMCluster()
+
+        discovered_pod = self.make_discovered_pod(
+            machines=[], storage_pools=[]
+        )
+        user = factory.make_User()
+        pod.sync(discovered_pod, user, cluster=cluster)
+
+        self.assertIsNotNone(pod.hints.cluster)
+        self.assertEqual(pod.hints.cluster.name, cluster.name)
+        self.assertEqual(pod.hints.cluster.project, cluster.project)
+
     def test_create_machine_ensures_unique_hostname(self):
         existing_machine = factory.make_Node()
         discovered_machine = self.make_discovered_machine()

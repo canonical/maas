@@ -628,8 +628,17 @@ class DiscoverPod(amp.Command):
     response = [
         (
             b"pod",
-            AttrsClassArgument("provisioningserver.drivers.pod.DiscoveredPod"),
-        )
+            AttrsClassArgument(
+                "provisioningserver.drivers.pod.DiscoveredPod", optional=True
+            ),
+        ),
+        (
+            b"cluster",
+            AttrsClassArgument(
+                "provisioningserver.drivers.pod.DiscoveredCluster",
+                optional=True,
+            ),
+        ),
     ]
     errors = {
         exceptions.UnknownPodType: b"UnknownPodType",

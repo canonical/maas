@@ -37,6 +37,7 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.models import NodeKey
 from provisioningserver.drivers.pod import (
+    DiscoveredCluster,
     DiscoveredPod,
     DiscoveredPodHints,
     DiscoveredPodProject,
@@ -215,6 +216,55 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
         self.assertThat(
             discovered[1], MatchesDict({rack_id: IsInstance(CancelledError)})
         )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_discovers_cluster(self):
+        rack_id = factory.make_name("system_id")
+        client = Mock()
+        client.ident = rack_id
+        pod_type = factory.make_name("pod")
+        cluster = DiscoveredCluster(
+            name=factory.make_name("cluster"),
+            project=factory.make_name("project"),
+            pods=[
+                DiscoveredPod(
+                    architectures=["amd64/generic"],
+                    cores=random.randint(1, 8),
+                    cpu_speed=random.randint(1000, 3000),
+                    memory=random.randint(1024, 4096),
+                    local_storage=random.randint(500, 1000),
+                    hints=DiscoveredPodHints(
+                        cores=random.randint(1, 8),
+                        cpu_speed=random.randint(1000, 3000),
+                        memory=random.randint(1024, 4096),
+                        local_storage=random.randint(500, 1000),
+                    ),
+                ),
+                DiscoveredPod(
+                    architectures=["amd64/generic"],
+                    cores=random.randint(1, 8),
+                    cpu_speed=random.randint(1000, 3000),
+                    memory=random.randint(1024, 4096),
+                    local_storage=random.randint(500, 1000),
+                    hints=DiscoveredPodHints(
+                        cores=random.randint(1, 8),
+                        cpu_speed=random.randint(1000, 3000),
+                        memory=random.randint(1024, 4096),
+                        local_storage=random.randint(500, 1000),
+                    ),
+                ),
+            ],
+        )
+        clients = []
+        client.return_value = succeed({"cluster": cluster})
+        clients.append(client)
+
+        self.patch(pods_module, "getAllClients").return_value = clients
+
+        discovered = yield discover_pod(pod_type, {})
+
+        self.assertEqual(({rack_id: cluster}, {}), discovered)
 
 
 class TestGetBestDiscoveredResult(MAASTestCase):

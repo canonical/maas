@@ -102,6 +102,7 @@ from maasserver.models import (
     VersionedTextFile,
     VirtualBlockDevice,
     VLAN,
+    VMCluster,
     VolumeGroup,
     Zone,
 )
@@ -2956,6 +2957,17 @@ class Factory(maastesting.factory.Factory):
     def make_VMFS(self, *args, **kwargs):
         return self.make_FilesystemGroup(
             *args, group_type=FILESYSTEM_GROUP_TYPE.VMFS6, **kwargs
+        )
+
+    def make_VMCluster(self, name=None, project=None):
+        if name is None:
+            name = factory.make_name("name")
+        if project is None:
+            project = factory.make_name("project")
+
+        return VMCluster.objects.create(
+            name=name,
+            project=project,
         )
 
     def make_VirtualBlockDevice(

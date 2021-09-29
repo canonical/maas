@@ -11,12 +11,13 @@ from unittest.mock import call, MagicMock
 from urllib.parse import urlparse
 
 from testtools import ExpectedException
-from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.pod import (
+    DiscoveredCluster,
     DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
@@ -172,6 +173,26 @@ class TestDiscoverPod(MAASTestCase):
             re.escape("Failed talking to pod: " + fake_exception_msg),
         ):
             yield pods.discover_pod(fake_driver.name, {})
+
+    @inlineCallbacks
+    def test_handlers_driver_returning_cluster(self):
+        fake_driver = MagicMock()
+        fake_driver.name = factory.make_name("pod")
+        expected_cluster = DiscoveredCluster(
+            name=factory.make_name("name"),
+            project=factory.make_name("project"),
+            pods=[
+                DiscoveredPod(name=factory.make_name("pod-name"))
+                for _ in range(0, 3)
+            ],
+        )
+        fake_driver.discover.return_value = returnValue(expected_cluster)
+        self.patch(PodDriverRegistry, "get_item").return_value = fake_driver
+        result = yield pods.discover_pod(fake_driver.name, {})
+        discovered_cluster = result["cluster"]
+        self.assertEqual(expected_cluster.name, discovered_cluster.name)
+        self.assertEqual(expected_cluster.project, discovered_cluster.project)
+        self.assertCountEqual(expected_cluster.pods, discovered_cluster.pods)
 
 
 class TestComposeMachine(MAASTestCase):

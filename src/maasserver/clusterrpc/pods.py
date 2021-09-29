@@ -69,7 +69,9 @@ def discover_pod(pod_type, context, pod_id=None, name=None, timeout=120):
 
     clients = getAllClients()
     dl = DeferredList(map(discover, clients), consumeErrors=True)
-    return dl.addCallback(_collect_results_and_failures, clients, "pod")
+    return dl.addCallback(
+        _collect_xor_results_and_failures, clients, "cluster", "pod"
+    )
 
 
 def get_best_discovered_result(discovered):
@@ -250,6 +252,27 @@ def _collect_results_and_failures(results, clients, result_key):
     for client, (success, result) in zip(clients, results):
         if success:
             discovered[client.ident] = result[result_key]
+        else:
+            failures[client.ident] = result.value
+    return discovered, failures
+
+
+def _collect_xor_results_and_failures(
+    results, clients, result_key_a, result_key_b
+):
+    discovered, failures = {}, {}
+    for client, (success, result) in zip(clients, results):
+        if success:
+            if result_key_a in result:
+                discovered[client.ident] = result[result_key_a]
+            elif result_key_b in result:
+                discovered[client.ident] = result[result_key_b]
+            else:
+                raise ValueError(
+                    "neither %s or %s where found in result",
+                    result_key_a,
+                    result_key_b,
+                )
         else:
             failures[client.ident] = result.value
     return discovered, failures

@@ -665,8 +665,9 @@ class Pod(BMC):
         else:
             return None
 
-    def sync_hints(self, discovered_hints):
+    def sync_hints(self, discovered_hints, cluster=None):
         """Sync the hints with `discovered_hints`."""
+
         try:
             hints = self.hints
         except PodHints.DoesNotExist:
@@ -679,6 +680,8 @@ class Pod(BMC):
             hints.memory = discovered_hints.memory
         if discovered_hints.local_storage != -1:
             hints.local_storage = discovered_hints.local_storage
+        if cluster is not None:
+            hints.cluster = cluster
         hints.save()
 
     def add_tag(self, tag):
@@ -1478,7 +1481,7 @@ class Pod(BMC):
                 % (self.name, pool.name)
             )
 
-    def sync(self, discovered_pod, commissioning_user):
+    def sync(self, discovered_pod, commissioning_user, cluster=None):
         """Sync the pod and machines from the `discovered_pod`.
 
         This method ensures consistency with what is discovered by a pod
@@ -1497,7 +1500,7 @@ class Pod(BMC):
             self.power_parameters = power_params
         self.version = discovered_pod.version
         self.architectures = discovered_pod.architectures
-        if not self.name and discovered_pod.name:
+        if not self.name or cluster is not None and discovered_pod.name:
             self.name = discovered_pod.name
         self.capabilities = discovered_pod.capabilities
         if discovered_pod.cores != -1:
@@ -1510,7 +1513,7 @@ class Pod(BMC):
             self.local_storage = discovered_pod.local_storage
         self.tags = list(set(self.tags).union(discovered_pod.tags))
         self.save()
-        self.sync_hints(discovered_pod.hints)
+        self.sync_hints(discovered_pod.hints, cluster=cluster)
         self.sync_storage_pools(discovered_pod.storage_pools)
         self.sync_machines(discovered_pod.machines, commissioning_user)
         if discovered_pod.mac_addresses:

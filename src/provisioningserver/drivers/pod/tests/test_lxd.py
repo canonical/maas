@@ -147,15 +147,16 @@ class FakeClient:
 class FakeLXD:
     """A fake LXD server."""
 
-    def __init__(self):
+    def __init__(self, name="lxd-server", clustered=False):
         # global details
         self.host_info = {
             "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
             "environment": {
                 "architectures": ["x86_64", "i686"],
                 "kernel_architecture": "x86_64",
-                "server_name": "lxd-server",
+                "server_name": name,
                 "server_version": "4.1",
+                "server_clustered": clustered,
             },
         }
         self.resources = {}
@@ -166,6 +167,9 @@ class FakeLXD:
         self.projects = MagicMock()
         self.storage_pools = MagicMock()
         self.virtual_machines = MagicMock()
+        if clustered:
+            self.cluster = MagicMock()
+            self.cluster.members = MagicMock()
 
         self._client_behaviors = None
 
@@ -203,7 +207,129 @@ class FakeLXD:
         self._client_behaviors.append(behaviors)
 
 
+class FakeLXDCluster:
+    """A fake cluster of LXD servers"""
+
+    def __init__(self, num_pods=1):
+        self.pods = [
+            FakeLXD(name="lxd-server-%d" % i, clustered=True)
+            for i in range(0, num_pods)
+        ]
+        self.pod_addresses = []
+
+        self.clients = []
+        self.client_idx = 0
+        for pod in self.pods:
+            self.clients.append(pod.make_client)
+
+        self._make_members()
+
+    def _make_members(self):
+        members = []
+        for i, pod in enumerate(self.pods):
+            member = Mock()
+            member.architectures = pod.host_info["environment"][
+                "architectures"
+            ]
+            member.server_name = pod.host_info["environment"]["server_name"]
+            member.url = "http://lxd-%d" % i
+            self.pod_addresses.append(member.url)
+            members.append(member)
+        for pod in self.pods:
+            pod.cluster.members.all.return_value = members
+
+    def make_client(
+        self,
+        endpoint="https://lxd",
+        project="default",
+        cert=None,
+        verify=False,
+    ):
+        if self.client_idx == len(self.clients):
+            self.client_idx = 0
+        client = self.clients[self.client_idx](endpoint, project, cert, verify)
+        client._PROXIES += ("cluster", "cluster/members")
+        self.client_idx += 1
+        return client
+
+
 SAMPLE_CERT = generate_certificate("maas")
+
+
+def _make_maas_certs(test_case):
+    tempdir = Path(test_case.useFixture(TempDir()).path)
+    test_case.useFixture(EnvironmentVariable("MAAS_ROOT", str(tempdir)))
+    test_case.certs_dir = tempdir / "etc/maas/certificates"
+    test_case.certs_dir.mkdir(parents=True)
+    maas_cert = test_case.certs_dir / "maas.crt"
+    maas_cert.touch()
+    maas_key = test_case.certs_dir / "maas.key"
+    maas_key.touch()
+    return str(maas_cert), str(maas_key)
+
+
+def _make_context(with_cert=True, with_password=True, extra=None):
+    params = {
+        "power_address": "".join(
+            [
+                factory.make_name("power_address"),
+                ":%s" % factory.pick_port(),
+            ]
+        ),
+        "instance_name": factory.make_name("instance_name"),
+        "project": factory.make_name("project"),
+    }
+    if with_cert:
+        params["certificate"] = SAMPLE_CERT.certificate_pem()
+        params["key"] = SAMPLE_CERT.private_key_pem()
+    if with_password:
+        params["password"] = factory.make_name("password")
+    if not extra:
+        extra = {}
+    return {**params, **extra}
+
+
+class TestClusteredLXDPodDriver(MAASTestCase):
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def setUp(self):
+        super().setUp()
+        self.fake_lxd_cluster = FakeLXDCluster(num_pods=3)
+        self.fake_lxd = self.fake_lxd_cluster.pods[0]
+        self.driver = lxd_module.LXDPodDriver()
+        self.driver._pylxd_client_class = self.fake_lxd_cluster.make_client
+
+    def make_maas_certs(self):
+        return _make_maas_certs(self)
+
+    def make_context(self, with_cert=True, with_password=True, extra=None):
+        return _make_context(with_cert, with_password, extra)
+
+    @inlineCallbacks
+    def test_discover_discovers_cluster(self):
+        mac_address = factory.make_mac_address()
+        lxd_net1 = Mock(type="physical")
+        lxd_net1.state.return_value = FakeNetworkState(mac_address)
+        # virtual interfaces are excluded
+        lxd_net2 = Mock(type="bridge")
+        lxd_net2.state.return_value = FakeNetworkState(
+            factory.make_mac_address()
+        )
+        self.fake_lxd.networks.all.return_value = [lxd_net1, lxd_net2]
+        context = self.make_context()
+        expected_names = [
+            pod.host_info["environment"]["server_name"]
+            for pod in self.fake_lxd_cluster.pods
+        ]
+        discovered_cluster = yield self.driver.discover(None, context)
+        self.assertEqual(context["instance_name"], discovered_cluster.name)
+        self.assertEqual(context["project"], discovered_cluster.project)
+        discovered_names = [pod.name for pod in discovered_cluster.pods]
+        self.assertCountEqual(expected_names, discovered_names)
+        self.assertCountEqual(
+            self.fake_lxd_cluster.pod_addresses,
+            discovered_cluster.pod_addresses,
+        )
 
 
 class TestLXDPodDriver(MAASTestCase):
@@ -217,35 +343,10 @@ class TestLXDPodDriver(MAASTestCase):
         self.driver._pylxd_client_class = self.fake_lxd.make_client
 
     def make_maas_certs(self):
-        tempdir = Path(self.useFixture(TempDir()).path)
-        self.useFixture(EnvironmentVariable("MAAS_ROOT", str(tempdir)))
-        self.certs_dir = tempdir / "etc/maas/certificates"
-        self.certs_dir.mkdir(parents=True)
-        maas_cert = self.certs_dir / "maas.crt"
-        maas_cert.touch()
-        maas_key = self.certs_dir / "maas.key"
-        maas_key.touch()
-        return str(maas_cert), str(maas_key)
+        return _make_maas_certs(self)
 
     def make_context(self, with_cert=True, with_password=True, extra=None):
-        params = {
-            "power_address": "".join(
-                [
-                    factory.make_name("power_address"),
-                    ":%s" % factory.pick_port(),
-                ]
-            ),
-            "instance_name": factory.make_name("instance_name"),
-            "project": factory.make_name("project"),
-        }
-        if with_cert:
-            params["certificate"] = SAMPLE_CERT.certificate_pem()
-            params["key"] = SAMPLE_CERT.private_key_pem()
-        if with_password:
-            params["password"] = factory.make_name("password")
-        if not extra:
-            extra = {}
-        return {**params, **extra}
+        return _make_context(with_cert, with_password, extra)
 
     def test_missing_packages(self):
         self.assertEqual(self.driver.detect_missing_packages(), [])

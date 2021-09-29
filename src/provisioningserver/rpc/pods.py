@@ -10,6 +10,7 @@ from twisted.internet.defer import Deferred, ensureDeferred
 from twisted.internet.threads import deferToThread
 
 from provisioningserver.drivers.pod import (
+    DiscoveredCluster,
     DiscoveredMachine,
     DiscoveredPod,
     DiscoveredPodHints,
@@ -85,6 +86,8 @@ def discover_pod(pod_type, context, pod_id=None, name=None):
         """Convert the result to send over RPC."""
         if result is None:
             raise PodActionFail("unable to discover pod information.")
+        elif isinstance(result, DiscoveredCluster):
+            return {"cluster": result}
         elif not isinstance(result, DiscoveredPod):
             raise PodActionFail(
                 "bad pod driver '%s'; 'discover' returned invalid result."

@@ -29,6 +29,7 @@ from provisioningserver.drivers import (
 )
 from provisioningserver.drivers.pod import (
     Capabilities,
+    DiscoveredCluster,
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
     DiscoveredMachineInterface,
@@ -310,7 +311,29 @@ class LXDPodDriver(PodDriver):
     def discover(self, pod_id: int, context: dict):
         """Discover all Pod host resources."""
         with self._get_client(pod_id, context) as client:
-            return self._discover(client, pod_id, context)
+            discovered_pod = self._discover(client, pod_id, context)
+            if discovered_pod.clustered:
+                return self._discover_cluster(client, context)
+            return discovered_pod
+
+    def _discover_cluster(self, client: Client, context: dict):
+        discovered_cluster = DiscoveredCluster(
+            name=context.get("instance_name"),
+            project=client.project,
+        )
+
+        cluster_members = client.cluster.members.all()
+
+        for member in cluster_members:
+            discovered_context = context.copy()
+            discovered_context["instance_name"] = member.server_name
+            discovered_context["power_address"] = member.url
+            with self._get_client(-1, discovered_context) as client:
+                discovered_cluster.pods.append(
+                    self._discover(client, -1, discovered_context)
+                )
+                discovered_cluster.pod_addresses.append(member.url)
+        return discovered_cluster
 
     def _discover(self, client: Client, pod_id: int, context: dict):
         self._check_required_extensions(client)
@@ -345,6 +368,7 @@ class LXDPodDriver(PodDriver):
                 Capabilities.OVER_COMMIT,
                 Capabilities.STORAGE_POOLS,
             ],
+            clustered=environment["server_clustered"],
         )
 
         # Discover networks. "unknown" interfaces are considered too to match

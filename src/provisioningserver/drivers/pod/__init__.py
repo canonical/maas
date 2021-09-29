@@ -295,6 +295,21 @@ class DiscoveredPod:
         converter=converter_list(DiscoveredPodStoragePool),
         default=attr.Factory(list),
     )
+    clustered = attr.ib(converter=bool, default=False)
+
+
+@attr.s
+class DiscoveredCluster:
+    """Discovered cluster information"""
+
+    name = attr.ib(converter=converter_obj(str, optional=True), default=None)
+    project = attr.ib(converter=str, default="")
+    pods = attr.ib(
+        converter=converter_list(DiscoveredPod), default=attr.Factory(list)
+    )
+    pod_addresses = attr.ib(
+        converter=converter_list(str), default=attr.Factory(list)
+    )
 
 
 @attr.s
