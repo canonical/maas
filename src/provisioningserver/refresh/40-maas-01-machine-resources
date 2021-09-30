@@ -30,7 +30,9 @@ resources_bin=$(mktemp)
 wget "$MAAS_BASE_URL/MAAS/machine-resources/$arch" -O "$resources_bin" >&2
 chmod +x "$resources_bin"
 
-# MAAS_RESOURCES_FILE is owned by maas on deb-based maas installs
-[ "$SNAP" ] && tee_cmd="tee" || tee_cmd="sudo -n -u maas tee"
+# MAAS_RESOURCES_FILE is owned by maas on deb-based MAAS controllers
+file_owner=$(stat -c '%U' "$MAAS_RESOURCES_FILE")
+[ "$file_owner" = "maas" ] && tee_cmd="sudo -n -u maas tee" || tee_cmd="tee"
 "$resources_bin" | $tee_cmd "$MAAS_RESOURCES_FILE"
+
 rm "$resources_bin"
