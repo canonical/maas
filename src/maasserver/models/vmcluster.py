@@ -3,7 +3,8 @@
 
 from dataclasses import dataclass, field
 
-from django.db.models import TextField
+from django.db import connection
+from django.db.models import Manager, TextField
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -33,8 +34,34 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
     cluster_resources.vm_count.other += host_resources.vm_count.other
 
 
+class VMClusterManager(Manager):
+    def group_by_physical_cluster(self):
+        cursor = connection.cursor()
+
+        # find all unique power addresses with a cluster relation,
+        # aggregate each cluster id of said address into an array
+        query = """
+        SELECT DISTINCT clusters.cluster FROM (
+            SELECT
+                array_agg(DISTINCT cluster.id) as cluster,
+                bmc.power_parameters->>'power_address' as power_address
+            FROM maasserver_vmcluster cluster, maasserver_podhints hints, maasserver_bmc bmc
+            WHERE hints.pod_id=bmc.id AND hints.cluster_id=cluster.id AND hints.cluster_id IS NOT NULL
+            GROUP BY bmc.power_parameters->>'power_address'
+        ) as clusters GROUP BY clusters.cluster;
+        """
+        cursor.execute(query)
+        cluster_groups = cursor.fetchall()
+        return [
+            list(self.filter(id__in=cluster_group[0]))
+            for cluster_group in cluster_groups
+        ]
+
+
 class VMCluster(CleanSave, TimestampedModel):
     """Model for a cluster of VM hosts"""
+
+    objects = VMClusterManager()
 
     name = TextField(unique=True)
     project = TextField()
@@ -74,6 +101,10 @@ class VMClusterResource:
     @property
     def allocated(self):
         return self.allocated_tracked + self.allocated_other
+
+    @property
+    def total(self):
+        return self.allocated + self.free
 
 
 @dataclass

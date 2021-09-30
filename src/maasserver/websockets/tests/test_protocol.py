@@ -826,6 +826,7 @@ ALL_HANDLERS = {
     "token",
     "user",
     "vlan",
+    "vmcluster",
     "zone",
 }
 

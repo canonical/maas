@@ -36,6 +36,7 @@ __all__ = [
     "TokenHandler",
     "UserHandler",
     "VLANHandler",
+    "VMClusterHandler",
     "ZoneHandler",
 ]
 
@@ -70,4 +71,5 @@ from maasserver.websockets.handlers.tag import TagHandler
 from maasserver.websockets.handlers.token import TokenHandler
 from maasserver.websockets.handlers.user import UserHandler
 from maasserver.websockets.handlers.vlan import VLANHandler
+from maasserver.websockets.handlers.vmcluster import VMClusterHandler
 from maasserver.websockets.handlers.zone import ZoneHandler

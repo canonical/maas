@@ -104,6 +104,7 @@ from maasserver.api.virtualmachine import (
     VirtualMachinesHandler,
 )
 from maasserver.api.vlans import VlanHandler, VlansHandler
+from maasserver.api.vmcluster import VMClusterHandler, VMClustersHandler
 from maasserver.api.vmfs_datastores import (
     VmfsDatastoreHandler,
     VmfsDatastoresHandler,
@@ -159,6 +160,12 @@ device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
 devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 pod_handler = RestrictedResource(PodHandler, authentication=api_auth)
 pods_handler = RestrictedResource(PodsHandler, authentication=api_auth)
+vm_cluster_handler = RestrictedResource(
+    VMClusterHandler, authentication=api_auth
+)
+vm_clusters_handler = RestrictedResource(
+    VMClustersHandler, authentication=api_auth
+)
 vm_host_handler = RestrictedResource(VmHostHandler, authentication=api_auth)
 vm_hosts_handler = RestrictedResource(VmHostsHandler, authentication=api_auth)
 virtual_machine_handler = RestrictedResource(
@@ -497,6 +504,16 @@ urlpatterns += [
         r"^virtual-machines/$",
         virtual_machines_handler,
         name="virtual_machines_handler",
+    ),
+    url(
+        r"^vm-clusters/(?P<id>[^/]+)$",
+        vm_cluster_handler,
+        name="vm_cluster_handler",
+    ),
+    url(
+        r"^vm-clusters/$",
+        vm_clusters_handler,
+        name="vm_clusters_handler",
     ),
     url(r"^events/$", events_handler, name="events_handler"),
     url(r"^discovery/$", discoveries_handler, name="discoveries_handler"),

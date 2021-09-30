@@ -1,0 +1,124 @@
+# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+from maasserver.models import VMCluster
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
+from maasserver.websockets.handlers.timestampedmodel import (
+    TimestampedModelHandler,
+)
+
+
+class VMClusterHandler(TimestampedModelHandler):
+    class Meta:
+        queryset = VMCluster.objects.all()
+        pk = "id"
+        allowed_methods = [
+            "list",
+            "list_by_physical_cluster",
+            "get",
+        ]
+
+    def _dehydrate_vmhost(self, vmhost):
+        return {
+            "id": vmhost.id,
+            "name": vmhost.name,
+            "project": vmhost.tracked_project,
+            "tags": vmhost.tags,
+            "resource_pool": vmhost.pool.name,
+            "availability_zone": vmhost.zone.name,
+        }
+
+    def _dehydrate_virtual_machine(self, vm):
+        return {"name": vm.machine.hostname, "project": vm.project}
+
+    def _dehydrate_resources(self, resources):
+        return {
+            "cpu": {
+                "total": resources.cores.total,
+                "free": resources.cores.free,
+            },
+            "memory": {
+                "hugepages": {
+                    "total": resources.memory.hugepages.total,
+                    "free": resources.memory.hugepages.free,
+                },
+                "general": {
+                    "total": resources.memory.general.total,
+                    "free": resources.memory.general.free,
+                },
+            },
+            "storage": {
+                "total": resources.storage.total,
+                "free": resources.storage.free,
+            },
+            "vm_count": resources.vm_count.tracked,
+        }
+
+    def dehydrate(self, cluster, vmhosts, resources, vms):
+        return {
+            "id": cluster.id,
+            "name": cluster.name,
+            "project": cluster.project,
+            "hosts": [self._dehydrate_vmhost(vmhost) for vmhost in vmhosts],
+            "total_resources": self._dehydrate_resources(resources),
+            "virtual_machines": [
+                self._dehydrate_virtual_machine(vm) for vm in vms
+            ],
+        }
+
+    async def list(self, params):
+        @transactional
+        def get_objects(params):
+            return VMCluster.objects.all()
+
+        @transactional
+        def render_objects(objs):
+            return {
+                cluster.name: self.dehydrate(
+                    cluster,
+                    cluster.hosts(),
+                    cluster.total_resources(),
+                    cluster.virtual_machines(),
+                )
+                for cluster in objs
+            }
+
+        clusters = await deferToDatabase(get_objects, params)
+
+        return await deferToDatabase(render_objects, clusters)
+
+    async def list_by_physical_cluster(self, params):
+        @transactional
+        def get_objects(params):
+            return VMCluster.objects.group_by_physical_cluster()
+
+        @transactional
+        def render_objects(objs):
+            return [
+                [
+                    self.dehydrate(
+                        cluster,
+                        cluster.hosts(),
+                        cluster.total_resources(),
+                        cluster.virtual_machines(),
+                    )
+                    for cluster in phys_cluster
+                ]
+                for phys_cluster in objs
+            ]
+
+        clusters = await deferToDatabase(get_objects, params)
+
+        return await deferToDatabase(render_objects, clusters)
+
+    async def read(self, id):
+        @transactional
+        def get_object(id):
+            return VMCluster.objects.get(id=id)
+
+        @transactional
+        def render_object(obj):
+            return self.dehydrate(
+                obj, obj.hosts(), obj.total_resources(), obj.virtual_machines()
+            )

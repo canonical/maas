@@ -4,6 +4,29 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
+class TestVMClusterManager(MAASServerTestCase):
+    def test_group_by_physical_cluster(self):
+        cluster_groups = [
+            [factory.make_VMCluster() for _ in range(3)] for _ in range(3)
+        ]
+
+        for i, cluster_group in enumerate(cluster_groups):
+            address_group = [factory.make_StaticIPAddress() for _ in range(3)]
+            for cluster in cluster_group:
+                for address in address_group:
+                    factory.make_Pod(
+                        cluster=cluster,
+                        parameters={
+                            "project": cluster.project,
+                            "power_address": "%s:8443" % address,
+                        },
+                        pod_type="lxd",
+                    )
+
+        results = VMCluster.objects.group_by_physical_cluster()
+        self.assertCountEqual(results, cluster_groups)
+
+
 class TestVMCluster(MAASServerTestCase):
     def test_hosts(self):
         cluster_name = factory.make_name("name")

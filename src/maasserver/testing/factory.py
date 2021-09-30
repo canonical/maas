@@ -730,6 +730,7 @@ class Factory(maastesting.factory.Factory):
             pod.hints.nodes.add(host)
         if cluster is not None:
             pod.hints.cluster = cluster
+            pod.hints.save()
 
         return pod
 
