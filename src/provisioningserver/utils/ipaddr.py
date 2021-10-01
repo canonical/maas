@@ -3,16 +3,18 @@
 
 """Helper functions to parse network information from LXD-based resource binary."""
 
+from functools import lru_cache
 import json
 import os
 from pathlib import Path
 
 import netifaces
 
-from provisioningserver.refresh import get_resources_bin_path
+from provisioningserver.config import is_dev_environment
+from provisioningserver.utils.arch import get_architecture
 from provisioningserver.utils.lxd import parse_lxd_networks
 from provisioningserver.utils.shell import call_and_check
-from provisioningserver.utils.snap import running_in_snap
+from provisioningserver.utils.snap import running_in_snap, SnapPaths
 
 
 def get_ip_addr():
@@ -21,7 +23,7 @@ def get_ip_addr():
     :raises:ExternalProcessError: if IP address information could not be
         gathered.
     """
-    cmd_path = get_resources_bin_path()
+    cmd_path = _get_resources_bin_path()
     command = [cmd_path] if running_in_snap() else ["sudo", cmd_path]
     output = call_and_check(command)
     ifaces = parse_lxd_networks(json.loads(output)["networks"])
@@ -146,3 +148,14 @@ def _parse_proc_net_bonding(path):
             if len(hw_addr) == 2:
                 interfaces[current_iface] = hw_addr[1]
     return interfaces
+
+
+@lru_cache(maxsize=1)
+def _get_resources_bin_path():
+    """Return the path of the resources binary."""
+    if is_dev_environment():
+        path = "src/machine-resources/bin"
+    else:
+        prefix = SnapPaths.from_environ().snap or ""
+        path = f"{prefix}/usr/share/maas/machine-resources"
+    return os.path.join(path, get_architecture())

@@ -12,10 +12,10 @@ import netifaces
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.refresh import get_resources_bin_path
 from provisioningserver.utils import ipaddr as ipaddr_module
 from provisioningserver.utils.ipaddr import (
     _annotate_with_proc_net_bonding_original_macs,
+    _get_resources_bin_path,
     _update_interface_type,
     get_ip_addr,
     get_mac_addresses,
@@ -137,7 +137,7 @@ class TestGetIPAddr(MAASTestCase):
         # all interfaces from binary output are included in result
         self.assertCountEqual(SAMPLE_LXD_NETWORKS, get_ip_addr())
         patch_call_and_check.assert_called_once_with(
-            ["sudo", get_resources_bin_path()]
+            ["sudo", _get_resources_bin_path()]
         )
 
     def test_no_use_sudo_in_snap(self):
@@ -148,7 +148,7 @@ class TestGetIPAddr(MAASTestCase):
         self.patch(ipaddr_module, "running_in_snap").return_value = True
         get_ip_addr()
         patch_call_and_check.assert_called_once_with(
-            [get_resources_bin_path()]
+            [_get_resources_bin_path()]
         )
 
     def test_get_mac_addresses_returns_all_mac_addresses(self):

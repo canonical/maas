@@ -43,7 +43,7 @@ from provisioningserver.import_images.download_descriptions import (
 )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.refresh import get_architecture
+from provisioningserver.utils.arch import get_architecture
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, FOREVER
 

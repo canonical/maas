@@ -4,13 +4,11 @@
 """Functionality to refresh rack controller hardware and networking details."""
 
 import copy
-from functools import lru_cache
 import os
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 import tempfile
 import urllib
 
-from provisioningserver.config import is_dev_environment
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.refresh.maas_api_helper import (
     capture_script_output,
@@ -20,34 +18,10 @@ from provisioningserver.refresh.maas_api_helper import (
     SignalException,
 )
 from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
-from provisioningserver.utils.snap import running_in_snap, SnapPaths
+from provisioningserver.utils.snap import running_in_snap
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("refresh")
-
-
-@lru_cache(maxsize=1)
-def get_architecture():
-    """Get the Debian architecture of the running system."""
-    arch = os.getenv("SNAP_ARCH")
-    if not arch:
-        # assume it's a deb environment
-        import apt_pkg
-
-        apt_pkg.init()
-        arch = apt_pkg.get_architectures()[0]
-    return arch
-
-
-@lru_cache(maxsize=1)
-def get_resources_bin_path():
-    """Return the path of the resources binary."""
-    if is_dev_environment():
-        path = "src/machine-resources/bin"
-    else:
-        prefix = SnapPaths.from_environ().snap or ""
-        path = f"{prefix}/usr/share/maas/machine-resources"
-    return os.path.join(path, get_architecture())
 
 
 def signal_wrapper(*args, **kwargs):
