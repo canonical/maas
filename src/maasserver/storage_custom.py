@@ -7,6 +7,11 @@
 import dataclasses
 from typing import Any, cast, Dict, List, Optional, Set
 
+from maasserver.enum import (
+    FILESYSTEM_TYPE_CHOICES,
+    PARTITION_TABLE_TYPE_CHOICES,
+)
+
 
 @dataclasses.dataclass
 class StorageEntry:
@@ -41,7 +46,7 @@ class FileSystem(StorageEntry):
 @dataclasses.dataclass
 class Partition(StorageEntry):
     on: str
-    size: str
+    size: int
     after: str = ""
 
     def deps(self) -> Set[str]:
@@ -83,11 +88,18 @@ class BCache(StorageEntry):
         return {self.backing_device, self.cache_device}
 
 
+class ConfigError(Exception):
+    """Provided configuration is invalid."""
+
+
 Config = Dict[str, Any]
 
 
 def get_storage_layout(config: Config) -> StorageLayout:
     """Return a StorageLayout for the provided configuration."""
+    for base_key in ("layout", "mounts"):
+        if base_key not in config:
+            raise ConfigError(f"Section '{base_key}' missing in config")
     entries = _get_storage_entries(config["layout"])
     entries_map = {entry.name: entry for entry in entries}
     _set_mountpoints(entries_map, config["mounts"])
@@ -99,7 +111,8 @@ def _get_filesystem(name: str, data: Config) -> Optional[FileSystem]:
     fs = data.get("fs")
     if not fs:
         return None
-
+    if fs not in (choice[0] for choice in FILESYSTEM_TYPE_CHOICES):
+        raise ConfigError(f"Unknown filesystem type '{fs}'")
     return FileSystem(
         name=f"{name}[fs]",
         on=name,
@@ -107,19 +120,33 @@ def _get_filesystem(name: str, data: Config) -> Optional[FileSystem]:
     )
 
 
+def _validate_partition_table(name: str, data: Config) -> str:
+    ptable = data.get("ptable", "")
+    if ptable:
+        if ptable.upper() not in (
+            choice[0] for choice in PARTITION_TABLE_TYPE_CHOICES
+        ):
+            raise ConfigError(f"Unknown partition table type '{ptable}'")
+    elif data.get("partitions"):
+        raise ConfigError(f"Partition table not specified for '{name}'")
+    return ptable
+
+
 def _flatten_disk(name: str, data: Config) -> List[StorageEntry]:
-    items: List = [Disk(name=name, ptable=data.get("ptable", ""))]
+    ptable = _validate_partition_table(name, data)
+    items: List = [Disk(name=name, ptable=ptable)]
     items.extend(_disk_partitions(name, data.get("partitions", [])))
     return items
 
 
 def _flatten_raid(name: str, data: Config) -> List[StorageEntry]:
+    ptable = _validate_partition_table(name, data)
     items: List = [
         RAID(
             name=name,
             level=data["level"],
             members=data.get("members", []),
-            ptable=data.get("ptable", ""),
+            ptable=ptable,
         )
     ]
     fs = _get_filesystem(name, data)
@@ -156,7 +183,7 @@ def _flatten_lvm(name: str, data: Config) -> List[StorageEntry]:
             LogicalVolume(
                 name=vol_name,
                 on=name,
-                size=volume["size"],
+                size=_get_size(volume["size"]),
             )
         )
         fs = _get_filesystem(vol_name, volume)
@@ -176,7 +203,7 @@ def _disk_partitions(
             Partition(
                 name=part_name,
                 on=disk_name,
-                size=part["size"],
+                size=_get_size(part["size"]),
                 after=after,
             )
         )
@@ -198,9 +225,17 @@ _FLATTENERS = {
 def _flatten(config: Config) -> List[StorageEntry]:
     items: List[StorageEntry] = []
     for name, data in config.items():
-        flattener = _FLATTENERS.get(data["type"])
-        if flattener:
+        try:
+            device_type = data["type"]
+            flattener = _FLATTENERS[device_type]
+        except KeyError:
+            raise ConfigError(f"Unsupported device type '{device_type}'")
+
+        try:
             items.extend(flattener(name, data))
+        except KeyError as e:
+            key = e.args[0]
+            raise ConfigError(f"Missing required key '{key}' for '{name}'")
     return items
 
 
@@ -239,6 +274,31 @@ def _sort_entries(entries: List[StorageEntry]) -> List[StorageEntry]:
 
 def _set_mountpoints(entries: Dict[str, StorageEntry], config: Config):
     for mount, data in config.items():
-        fs = cast(FileSystem, entries[f"{data['device']}[fs]"])
+        device = data["device"]
+        try:
+            fs = cast(FileSystem, entries[f"{device}[fs]"])
+        except KeyError:
+            raise ConfigError(f"Filesystem not found for device '{device}'")
         fs.mount = mount
         fs.mount_options = data.get("options", "")
+
+
+def _get_size(size: str) -> int:
+    """Return size in bytes from a string.
+
+    It supports M, G, T suffixes.
+    """
+    multipliers = {
+        "M": 1000 ** 2,
+        "G": 1000 ** 3,
+        "T": 1000 ** 4,
+    }
+    try:
+        value, multiplier = size[:-1], size[-1]
+        value = float(value)
+        bytes_value = int(value * multipliers[multiplier])
+    except (IndexError, KeyError, ValueError):
+        raise ConfigError(f"Invalid size '{size}'")
+    if bytes_value <= 0:
+        raise ConfigError(f"Invalid negative size '{size}'")
+    return bytes_value

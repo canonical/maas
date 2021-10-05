@@ -1,5 +1,7 @@
 from maasserver.storage_custom import (
+    _get_size,
     BCache,
+    ConfigError,
     Disk,
     FileSystem,
     get_storage_layout,
@@ -9,6 +11,10 @@ from maasserver.storage_custom import (
     RAID,
 )
 from maastesting.testcase import MAASTestCase
+
+MB = 1000 ** 2
+GB = 1000 ** 3
+TB = 1000 ** 4
 
 
 class TestGetStorageLayout(MAASTestCase):
@@ -22,7 +28,7 @@ class TestGetStorageLayout(MAASTestCase):
                         {
                             "name": "sda1",
                             "size": "100M",
-                            "fs": "efi",
+                            "fs": "vfat",
                         },
                         {
                             "name": "sda2",
@@ -43,11 +49,11 @@ class TestGetStorageLayout(MAASTestCase):
             },
         }
         sda = Disk(name="sda", ptable="gpt")
-        sda1 = Partition(name="sda1", on="sda", size="100M")
+        sda1 = Partition(name="sda1", on="sda", size=100 * MB)
         sda1_fs = FileSystem(
-            name="sda1[fs]", on="sda1", type="efi", mount="/boot/efi"
+            name="sda1[fs]", on="sda1", type="vfat", mount="/boot/efi"
         )
-        sda2 = Partition(name="sda2", on="sda", size="20G", after="sda1")
+        sda2 = Partition(name="sda2", on="sda", size=20 * GB, after="sda1")
         sda2_fs = FileSystem(
             name="sda2[fs]",
             on="sda2",
@@ -80,7 +86,7 @@ class TestGetStorageLayout(MAASTestCase):
                         {
                             "name": "sda1",
                             "size": "100M",
-                            "fs": "efi",
+                            "fs": "vfat",
                         },
                         {
                             "name": "sda2",
@@ -120,14 +126,14 @@ class TestGetStorageLayout(MAASTestCase):
             },
         }
         sda = Disk(name="sda", ptable="gpt")
-        sda1 = Partition(name="sda1", on="sda", size="100M")
+        sda1 = Partition(name="sda1", on="sda", size=100 * MB)
         sda1_fs = FileSystem(
-            name="sda1[fs]", on="sda1", type="efi", mount="/boot/efi"
+            name="sda1[fs]", on="sda1", type="vfat", mount="/boot/efi"
         )
-        sda2 = Partition(name="sda2", on="sda", size="20G", after="sda1")
+        sda2 = Partition(name="sda2", on="sda", size=20 * GB, after="sda1")
         sdb = Disk(name="sdb", ptable="gpt")
-        sdb1 = Partition(name="sdb1", on="sdb", size="100M")
-        sdb2 = Partition(name="sdb2", on="sdb", size="20G", after="sdb1")
+        sdb1 = Partition(name="sdb1", on="sdb", size=100 * MB)
+        sdb2 = Partition(name="sdb2", on="sdb", size=20 * GB, after="sdb1")
         raid = RAID(name="raid0", level=0, members=["sda2", "sdb2"])
         raid_fs = FileSystem(
             name="raid0[fs]",
@@ -166,7 +172,7 @@ class TestGetStorageLayout(MAASTestCase):
                         {
                             "name": "sda1",
                             "size": "100M",
-                            "fs": "efi",
+                            "fs": "vfat",
                         },
                         {
                             "name": "sda2",
@@ -219,16 +225,16 @@ class TestGetStorageLayout(MAASTestCase):
             },
         }
         sda = Disk(name="sda", ptable="gpt")
-        sda1 = Partition(name="sda1", on="sda", size="100M")
+        sda1 = Partition(name="sda1", on="sda", size=100 * MB)
         sda1_fs = FileSystem(
-            name="sda1[fs]", on="sda1", type="efi", mount="/boot/efi"
+            name="sda1[fs]", on="sda1", type="vfat", mount="/boot/efi"
         )
-        sda2 = Partition(name="sda2", on="sda", size="100G", after="sda1")
+        sda2 = Partition(name="sda2", on="sda", size=100 * GB, after="sda1")
         sdb = Disk(name="sdb", ptable="gpt")
-        sdb1 = Partition(name="sdb1", on="sdb", size="100M")
-        sdb2 = Partition(name="sdb2", on="sdb", size="100G", after="sdb1")
+        sdb1 = Partition(name="sdb1", on="sdb", size=100 * MB)
+        sdb2 = Partition(name="sdb2", on="sdb", size=100 * GB, after="sdb1")
         lvm = LVM(name="storage", members=["sda2", "sdb2"])
-        root_vol = LogicalVolume(name="root", on="storage", size="10G")
+        root_vol = LogicalVolume(name="root", on="storage", size=10 * GB)
         root_fs = FileSystem(
             name="root[fs]",
             on="root",
@@ -236,7 +242,7 @@ class TestGetStorageLayout(MAASTestCase):
             mount="/",
             mount_options="noatime",
         )
-        data_vol = LogicalVolume(name="data", on="storage", size="140G")
+        data_vol = LogicalVolume(name="data", on="storage", size=140 * GB)
         data_fs = FileSystem(
             name="data[fs]",
             on="data",
@@ -289,7 +295,7 @@ class TestGetStorageLayout(MAASTestCase):
                         {
                             "name": "sda1",
                             "size": "100M",
-                            "fs": "efi",
+                            "fs": "vfat",
                         },
                         {
                             "name": "sda2",
@@ -315,11 +321,11 @@ class TestGetStorageLayout(MAASTestCase):
             },
         }
         sda = Disk(name="sda", ptable="gpt")
-        sda1 = Partition(name="sda1", on="sda", size="100M")
+        sda1 = Partition(name="sda1", on="sda", size=100 * MB)
         sda1_fs = FileSystem(
-            name="sda1[fs]", on="sda1", type="efi", mount="/boot/efi"
+            name="sda1[fs]", on="sda1", type="vfat", mount="/boot/efi"
         )
-        sda2 = Partition(name="sda2", on="sda", size="100G", after="sda1")
+        sda2 = Partition(name="sda2", on="sda", size=100 * GB, after="sda1")
         sdb = Disk(name="sdb")
         bcache = BCache(
             name="fast-root", backing_device="sda2", cache_device="sdb"
@@ -393,7 +399,7 @@ class TestGetStorageLayout(MAASTestCase):
             name="raid0", level=5, members=["sda", "sdb", "sdc", "sdd", "sde"]
         )
         lvm = LVM(name="lvm0", members=["raid0"])
-        root_vol = LogicalVolume(name="root", on="lvm0", size="10G")
+        root_vol = LogicalVolume(name="root", on="lvm0", size=10 * GB)
         root_fs = FileSystem(
             name="root[fs]",
             on="root",
@@ -401,7 +407,7 @@ class TestGetStorageLayout(MAASTestCase):
             mount="/",
             mount_options="noatime",
         )
-        storage_vol = LogicalVolume(name="storage", on="lvm0", size="500G")
+        storage_vol = LogicalVolume(name="storage", on="lvm0", size=500 * GB)
         storage_fs = FileSystem(
             name="storage[fs]",
             on="storage",
@@ -441,3 +447,166 @@ class TestGetStorageLayout(MAASTestCase):
                 storage_fs,
             ],
         )
+
+    def test_invalid_device_type(self):
+        config = {
+            "layout": {
+                "device": {
+                    "type": "unknown",
+                },
+            },
+            "mounts": {},
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Unsupported device type 'unknown'")
+
+    def test_invalid_partition_table_type(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "foo",
+                },
+            },
+            "mounts": {},
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Unknown partition table type 'foo'")
+
+    def test_missing_partition_table_type(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "10G",
+                            "fs": "ext4",
+                        },
+                    ],
+                },
+            },
+            "mounts": {},
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Partition table not specified for 'sda'")
+
+    def test_invalid_filesytem_type(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "100M",
+                            "fs": "foo",
+                        },
+                    ],
+                },
+            },
+            "mounts": {},
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Unknown filesystem type 'foo'")
+
+    def test_missing_required_attributes(self):
+        config = {
+            "layout": {
+                "lvm0": {
+                    "type": "lvm",
+                }
+            },
+            "mounts": {},
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Missing required key 'members' for 'lvm0'")
+
+    def test_missing_filesystem_for_mountpoint(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                },
+            },
+            "mounts": {
+                "/": {
+                    "device": "sda",
+                },
+            },
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Filesystem not found for device 'sda'")
+
+    def test_missing_layout(self):
+        config = {}
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Section 'layout' missing in config")
+
+    def test_missing_mounts(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                },
+            },
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Section 'mounts' missing in config")
+
+
+class TestGetSize(MAASTestCase):
+    def test_return_size(self):
+        self.assertEqual(_get_size("500M"), 500000000)
+        self.assertEqual(_get_size("20G"), 20000000000)
+        self.assertEqual(_get_size("3T"), 3000000000000)
+
+    def test_float_value(self):
+        self.assertEqual(_get_size("0.2M"), 200000)
+        self.assertEqual(_get_size("0.5G"), 500000000)
+
+    def test_invalid_suffix(self):
+        err = self.assertRaises(ConfigError, _get_size, "10W")
+        self.assertEqual(str(err), "Invalid size '10W'")
+
+    def test_invalid_value(self):
+        err = self.assertRaises(ConfigError, _get_size, "tenG")
+        self.assertEqual(str(err), "Invalid size 'tenG'")
+
+    def test_negative_value(self):
+        err = self.assertRaises(ConfigError, _get_size, "-10G")
+        self.assertEqual(str(err), "Invalid negative size '-10G'")
