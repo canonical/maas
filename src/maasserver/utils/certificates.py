@@ -1,7 +1,4 @@
 from maasserver.models import Config, RegionController
-from provisioningserver.certificates import (
-    generate_certificate as low_level_generate_certificate,
-)
 from provisioningserver.certificates import Certificate
 
 
@@ -25,7 +22,7 @@ def generate_certificate(cn) -> Certificate:
     Set O and OU so that we can identify that a certificate was
     created from this MAAS deployment.
     """
-    return low_level_generate_certificate(
+    return Certificate.generate(
         cn,
         organization_name="MAAS",
         organizational_unit_name=RegionController.objects.get_or_create_uuid(),

@@ -27,7 +27,7 @@ from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers import pod as pod_module
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.crochet import wait_for
-from provisioningserver.certificates import generate_certificate
+from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPod,
@@ -37,7 +37,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.rpc.cluster import DiscoverPodProjects
 
-SAMPLE_CERTIFICATE = generate_certificate("maas")
+SAMPLE_CERTIFICATE = Certificate.generate("maas")
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

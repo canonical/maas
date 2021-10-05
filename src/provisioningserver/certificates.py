@@ -49,6 +49,42 @@ class Certificate(NamedTuple):
         cls._check_key_match(key, cert)
         return cls(key, cert)
 
+    @classmethod
+    def generate(
+        cls,
+        cn,
+        organization_name=None,
+        organizational_unit_name=None,
+        key_bits=4096,
+        validity=timedelta(days=3650),
+    ):
+        """Low-level method for generating an X509 certificate.
+
+        This should only be used in test and in cases where you don't have
+        access to the database.
+
+        Most MAAS code should use
+        maasserver.utils.certificate.generate_certificate() for generating a
+        certificate, so that the parameters get set properly.
+        """
+        key = crypto.PKey()
+        key.generate_key(crypto.TYPE_RSA, key_bits)
+
+        cert = crypto.X509()
+        cert.get_subject().CN = cn
+        # Set O and OU so that we can identify that a certificate was
+        # created from this MAAS deployment.
+        if organization_name:
+            cert.get_issuer().organizationName = organization_name
+        if organizational_unit_name:
+            cert.get_issuer().organizationalUnitName = organizational_unit_name
+        cert.set_serial_number(random.randint(0, (1 << 128) - 1))
+        cert.gmtime_adj_notBefore(0)
+        cert.gmtime_adj_notAfter(int(validity.total_seconds()))
+        cert.set_pubkey(key)
+        cert.sign(key, "sha512")
+        return cls(key, cert)
+
     def cn(self) -> str:
         """Return the certificate CN."""
         return self.cert.get_subject().CN
@@ -123,38 +159,3 @@ def get_maas_cert_tuple():
     if not private_key.exists() or not certificate.exists():
         return None
     return str(certificate), str(private_key)
-
-
-def generate_certificate(
-    cn,
-    organization_name=None,
-    organizational_unit_name=None,
-    key_bits=4096,
-    validity=timedelta(days=3650),
-) -> Certificate:
-    """Low-level function for generating an X509 certificate.
-
-    This should only be used in test and in cases where you don't have
-    access to the database.
-
-    Most MAAS code should use
-    maasserver.utils.certificate.generate_certificate() for generating a
-    certificate, so that the parameters get set properly.
-    """
-    key = crypto.PKey()
-    key.generate_key(crypto.TYPE_RSA, key_bits)
-
-    cert = crypto.X509()
-    cert.get_subject().CN = cn
-    # Set O and OU so that we can identify that a certificate was
-    # created from this MAAS deployment.
-    if organization_name:
-        cert.get_issuer().organizationName = organization_name
-    if organizational_unit_name:
-        cert.get_issuer().organizationalUnitName = organizational_unit_name
-    cert.set_serial_number(random.randint(0, (1 << 128) - 1))
-    cert.gmtime_adj_notBefore(0)
-    cert.gmtime_adj_notAfter(int(validity.total_seconds()))
-    cert.set_pubkey(key)
-    cert.sign(key, "sha512")
-    return Certificate(key, cert)

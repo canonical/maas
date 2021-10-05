@@ -119,7 +119,7 @@ from metadataserver.enum import (
 )
 from metadataserver.models.nodekey import NodeKey
 from metadataserver.models.scriptset import get_status_from_qs
-from provisioningserver.certificates import generate_certificate
+from provisioningserver.certificates import Certificate
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
@@ -127,7 +127,7 @@ from provisioningserver.refresh.node_info_scripts import (
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.tags import merge_details_cleanly
 
-SAMPLE_CERTIFICATE = generate_certificate("maas")
+SAMPLE_CERTIFICATE = Certificate.generate("maas")
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 

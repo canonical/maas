@@ -11,11 +11,10 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.certificates import (
     Certificate,
     CertificateError,
-    generate_certificate,
     get_maas_cert_tuple,
 )
 
-SAMPLE_CERT = generate_certificate("maas")
+SAMPLE_CERT = Certificate.generate("maas")
 
 
 class TestCertificate(MAASTestCase):
@@ -95,7 +94,7 @@ class TestCertificate(MAASTestCase):
         self.assertEqual(str(error), "Invalid PEM material")
 
     def test_from_pem_check_keys_match(self):
-        cert = generate_certificate("maas")
+        cert = Certificate.generate("maas")
         material = SAMPLE_CERT.certificate_pem() + cert.private_key_pem()
         error = self.assertRaises(
             CertificateError,
@@ -157,7 +156,7 @@ class TestGetMAASCertTuple(MAASTestCase):
 
 class TestGenerateCertificate(MAASTestCase):
     def test_generate_certificate_defaults(self):
-        cert = generate_certificate("maas")
+        cert = Certificate.generate("maas")
         self.assertIsInstance(cert.cert, crypto.X509)
         self.assertIsInstance(cert.key, crypto.PKey)
         self.assertEqual(cert.cert.get_subject().CN, "maas")
@@ -175,18 +174,18 @@ class TestGenerateCertificate(MAASTestCase):
         )
 
     def test_generate_certificate_key_bits(self):
-        cert = generate_certificate("maas", key_bits=1024)
+        cert = Certificate.generate("maas", key_bits=1024)
         self.assertEqual(cert.key.bits(), 1024)
 
     def test_generate_certificate_validity(self):
-        cert = generate_certificate("maas", validity=timedelta(days=100))
+        cert = Certificate.generate("maas", validity=timedelta(days=100))
         self.assertGreaterEqual(
             datetime.utcnow() + timedelta(days=100),
             cert.expiration(),
         )
 
     def test_generate_certificate_organization(self):
-        cert = generate_certificate(
+        cert = Certificate.generate(
             "maas",
             organization_name="myorg",
             organizational_unit_name="myunit",

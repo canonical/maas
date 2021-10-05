@@ -15,7 +15,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.certificates import generate_certificate
+from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachineBlockDevice,
@@ -253,7 +253,7 @@ class FakeLXDCluster:
         return client
 
 
-SAMPLE_CERT = generate_certificate("maas")
+SAMPLE_CERT = Certificate.generate("maas")
 
 
 def _make_maas_certs(test_case):
