@@ -6,7 +6,11 @@ import random
 from statistics import mean
 from unittest.mock import call, Mock, sentinel
 
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import (
+    ObjectDoesNotExist,
+    PermissionDenied,
+    ValidationError,
+)
 from django.db.models.deletion import ProtectedError
 from django.http import Http404
 import petname
@@ -19,7 +23,7 @@ from testtools.matchers import (
     MatchesSetwise,
     MatchesStructure,
 )
-from twisted.internet.defer import fail, inlineCallbacks, succeed
+from twisted.internet.defer import DeferredList, fail, inlineCallbacks, succeed
 
 from maasserver.enum import (
     INTERFACE_TYPE,
@@ -49,6 +53,7 @@ from maasserver.models.virtualmachine import (
     VirtualMachine,
     VirtualMachineInterface,
 )
+from maasserver.models.vmcluster import VMCluster
 from maasserver.permissions import PodPermission
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
@@ -3075,6 +3080,40 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
         yield deferToDatabase(pod.delete_and_wait)
         mock_async_delete.assert_called_with(decompose=False)
         mock_result.wait.assert_called_with(60)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_delete_clustered_pod_deletes_cluster(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster)
+        pod_defers = yield DeferredList(
+            [
+                deferToDatabase(factory.make_Pod, cluster=cluster)
+                for _ in range(3)
+            ]
+        )
+        pods = [pod[1] for pod in pod_defers]
+        yield pods[0].async_delete()
+        try:
+            yield deferToDatabase(VMCluster.objects.get, id=cluster.id)
+        except Exception as e:
+            self.assertIsInstance(e, ObjectDoesNotExist)
+
+    @wait_for_reactor
+    async def test_delete_clustered_pod_deletes_peers(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster)
+        pod_defers = yield DeferredList(
+            [
+                deferToDatabase(factory.make_Pod, cluster=cluster)
+                for _ in range(3)
+            ]
+        )
+        pods = [pod[1] for pod in pod_defers]
+        pod_ids = [pod.id for pod in pods]
+        not_found_pods = yield deferToDatabase(
+            Pod.objects.filter, id__in=pod_ids
+        )
+        list_not_found_pods = yield deferToDatabase(list, not_found_pods)
+        self.assertEqual(list_not_found_pods, [])
 
 
 class TestPodDefaultMACVlanMode(MAASServerTestCase):

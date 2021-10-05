@@ -33,7 +33,7 @@ from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from netaddr import AddrFormatError, IPAddress
 import petname
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import DeferredList, inlineCallbacks
 
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.pods import decompose_machine
@@ -60,6 +60,7 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.vlan import VLAN
+from maasserver.models.vmcluster import VMCluster
 from maasserver.models.zone import Zone
 from maasserver.permissions import PodPermission
 from maasserver.rpc import getAllClients, getClientFromIdentifiers
@@ -1605,7 +1606,7 @@ class Pod(BMC):
         pod.async_delete(decompose=decompose).wait(machine_wait + 60)
 
     @asynchronous
-    def async_delete(self, decompose=False):
+    def async_delete(self, decompose=False, delete_peers=True):
         """Delete a pod asynchronously.
 
         If `decompose` is True, any machine in the pod will be decomposed
@@ -1703,12 +1704,40 @@ class Pod(BMC):
                 pod = Pod.objects.get(id=pod_id)
                 super(BMC, pod).delete()
 
+        @inlineCallbacks
+        def delete_cluster(*args):
+            if not self.hints.cluster or not delete_peers:
+                return
+
+            @transactional
+            def _fetch_cluster_peers():
+                cluster = VMCluster.objects.get(id=self.hints.cluster_id)
+                return (
+                    cluster,
+                    [
+                        vmhost
+                        for vmhost in cluster.hosts()
+                        if vmhost.id != self.id
+                    ],
+                )
+
+            cluster, peers = yield deferToDatabase(_fetch_cluster_peers)
+
+            yield DeferredList(
+                [
+                    peer.async_delete(decompose=decompose, delete_peers=False)
+                    for peer in peers
+                ]
+            )
+            yield deferToDatabase(cluster.delete)
+
         # Don't catch any errors here they are raised to the caller.
         d = deferToDatabase(gather_clients_and_machines, self)
         d.addCallback(
             decompose_machines if decompose else get_pod_and_machine_ids
         )
         d.addCallback(partial(deferToDatabase, perform_deletion))
+        d.addCallback(delete_cluster)
         return d
 
 
