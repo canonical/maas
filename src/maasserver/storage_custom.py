@@ -129,8 +129,8 @@ def get_storage_layout(config: Config) -> StorageLayout:
 
 
 def apply_layout_to_machine(layout: StorageLayout, machine):
-    # clear everything
-    machine.set_storage_layout("blank")
+    # clear everything storage-related, except physical disks
+    machine._clear_full_storage_configuration()
 
     block_devices = {disk.name: disk for disk in machine.blockdevice_set.all()}
     missing_disks = layout.disk_names() - set(

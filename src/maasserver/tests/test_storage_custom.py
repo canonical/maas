@@ -17,6 +17,7 @@ from maasserver.storage_custom import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
+from maasserver.utils.orm import reload_object
 from maastesting.testcase import MAASTestCase
 
 MB = 1000 ** 2
@@ -708,6 +709,56 @@ class TestApplyLayoutToMachine(MAASServerTestCase):
         self.assertEqual(fs2.fstype, FILESYSTEM_TYPE.EXT4)
         self.assertEqual(fs2.mount_point, "/")
         self.assertEqual(fs2.mount_options, "noatime")
+
+    def test_remove_previous_config(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "boot": True,
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "100M",
+                            "fs": "vfat",
+                            "bootable": True,
+                        },
+                        {
+                            "name": "sda2",
+                            "size": "20G",
+                            "fs": "ext4",
+                        },
+                    ],
+                },
+            },
+            "mounts": {
+                "/": {
+                    "device": "sda2",
+                },
+                "/boot/efi": {
+                    "device": "sda1",
+                },
+            },
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        disk = factory.make_PhysicalBlockDevice(
+            node=machine, name="sda", size=40 * GB
+        )
+        ptable = factory.make_PartitionTable(block_device=disk)
+        part1 = factory.make_Partition(partition_table=ptable, size=10 * GB)
+        fs1 = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.EXT4, partition=part1
+        )
+        part2 = factory.make_Partition(partition_table=ptable, size=15 * GB)
+        fs2 = factory.make_Filesystem(
+            fstype=FILESYSTEM_TYPE.XFS, partition=part2
+        )
+
+        apply_layout_to_machine(layout, machine)
+        for obj in (ptable, part1, fs1, part2, fs2):
+            self.assertIsNone(reload_object(obj))
 
     def test_set_boot_disk(self):
         config = {
