@@ -1,5 +1,8 @@
+from maasserver.enum import FILESYSTEM_TYPE, PARTITION_TABLE_TYPE
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.storage_custom import (
     _get_size,
+    apply_layout_to_machine,
     BCache,
     ConfigError,
     Disk,
@@ -9,12 +12,20 @@ from maasserver.storage_custom import (
     LVM,
     Partition,
     RAID,
+    UnappliableLayout,
 )
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import round_size_to_nearest_block
 from maastesting.testcase import MAASTestCase
 
 MB = 1000 ** 2
 GB = 1000 ** 3
 TB = 1000 ** 4
+
+
+def rounded_size(size):
+    return round_size_to_nearest_block(size, PARTITION_ALIGNMENT_SIZE, False)
 
 
 class TestGetStorageLayout(MAASTestCase):
@@ -24,11 +35,13 @@ class TestGetStorageLayout(MAASTestCase):
                 "sda": {
                     "type": "disk",
                     "ptable": "gpt",
+                    "boot": True,
                     "partitions": [
                         {
                             "name": "sda1",
                             "size": "100M",
                             "fs": "vfat",
+                            "bootable": True,
                         },
                         {
                             "name": "sda2",
@@ -48,8 +61,8 @@ class TestGetStorageLayout(MAASTestCase):
                 },
             },
         }
-        sda = Disk(name="sda", ptable="gpt")
-        sda1 = Partition(name="sda1", on="sda", size=100 * MB)
+        sda = Disk(name="sda", ptable="gpt", boot=True)
+        sda1 = Partition(name="sda1", on="sda", size=100 * MB, bootable=True)
         sda1_fs = FileSystem(
             name="sda1[fs]", on="sda1", type="vfat", mount="/boot/efi"
         )
@@ -75,6 +88,7 @@ class TestGetStorageLayout(MAASTestCase):
         self.assertEqual(
             layout.sorted_entries, [sda, sda1, sda1_fs, sda2, sda2_fs]
         )
+        self.assertEqual(layout.disk_names(), {"sda"})
 
     def test_raid(self):
         config = {
@@ -161,6 +175,7 @@ class TestGetStorageLayout(MAASTestCase):
             layout.sorted_entries,
             [sda, sda1, sda1_fs, sda2, sdb, sdb1, sdb2, raid, raid_fs],
         )
+        self.assertEqual(layout.disk_names(), {"sda", "sdb"})
 
     def test_lvm(self):
         config = {
@@ -284,6 +299,7 @@ class TestGetStorageLayout(MAASTestCase):
                 data_fs,
             ],
         )
+        self.assertEqual(layout.disk_names(), {"sda", "sdb"})
 
     def test_bcache(self):
         config = {
@@ -354,6 +370,7 @@ class TestGetStorageLayout(MAASTestCase):
             layout.sorted_entries,
             [sda, sda1, sda1_fs, sda2, sdb, bcache, root_fs],
         )
+        self.assertEqual(layout.disk_names(), {"sda", "sdb"})
 
     def test_nested(self):
         config = {
@@ -446,6 +463,9 @@ class TestGetStorageLayout(MAASTestCase):
                 storage_vol,
                 storage_fs,
             ],
+        )
+        self.assertEqual(
+            layout.disk_names(), {"sda", "sdb", "sdc", "sdd", "sde"}
         )
 
     def test_invalid_device_type(self):
@@ -610,3 +630,103 @@ class TestGetSize(MAASTestCase):
     def test_negative_value(self):
         err = self.assertRaises(ConfigError, _get_size, "-10G")
         self.assertEqual(str(err), "Invalid negative size '-10G'")
+
+
+class TestApplyLayoutToMachine(MAASServerTestCase):
+    def test_missing_disk(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                },
+                "sdb": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                },
+            },
+            "mounts": {},
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=machine, name="sda")
+        err = self.assertRaises(
+            UnappliableLayout, apply_layout_to_machine, layout, machine
+        )
+        self.assertEqual(str(err), "Unknown machine disk(s): sdb")
+
+    def test_simple(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "boot": True,
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "100M",
+                            "fs": "vfat",
+                            "bootable": True,
+                        },
+                        {
+                            "name": "sda2",
+                            "size": "20G",
+                            "fs": "ext4",
+                        },
+                    ],
+                },
+            },
+            "mounts": {
+                "/": {
+                    "device": "sda2",
+                    "options": "noatime",
+                },
+                "/boot/efi": {
+                    "device": "sda1",
+                },
+            },
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        disk = factory.make_PhysicalBlockDevice(
+            node=machine, name="sda", size=40 * GB
+        )
+        apply_layout_to_machine(layout, machine)
+        ptable = disk.partitiontable_set.first()
+        self.assertEqual(ptable.table_type, PARTITION_TABLE_TYPE.GPT)
+        part1, part2 = ptable.partitions.order_by("id")
+        self.assertEqual(part1.size, rounded_size(100 * MB))
+        self.assertTrue(part1.bootable)
+        self.assertEqual(part2.size, rounded_size(20 * GB))
+        self.assertFalse(part2.bootable)
+        fs1 = part1.filesystem_set.first()
+        fs2 = part2.filesystem_set.first()
+        self.assertEqual(fs1.fstype, FILESYSTEM_TYPE.VFAT)
+        self.assertEqual(fs1.mount_point, "/boot/efi")
+        self.assertEqual(fs1.mount_options, "")
+        self.assertEqual(fs2.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(fs2.mount_point, "/")
+        self.assertEqual(fs2.mount_options, "noatime")
+
+    def test_set_boot_disk(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                },
+                "sdb": {
+                    "type": "disk",
+                    "ptable": "mbr",
+                    "boot": True,
+                },
+            },
+            "mounts": {},
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=machine, name="sda")
+        sdb = factory.make_PhysicalBlockDevice(node=machine, name="sdb")
+        apply_layout_to_machine(layout, machine)
+        self.assertEqual(machine.boot_disk, sdb)

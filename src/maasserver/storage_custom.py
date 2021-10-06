@@ -7,6 +7,7 @@
 import dataclasses
 from typing import Any, cast, Dict, List, Optional, Set
 
+from maasserver import models
 from maasserver.enum import (
     FILESYSTEM_TYPE_CHOICES,
     PARTITION_TABLE_TYPE_CHOICES,
@@ -22,14 +23,9 @@ class StorageEntry:
 
 
 @dataclasses.dataclass
-class StorageLayout:
-    entries: Dict[str, StorageEntry]
-    sorted_entries: List[StorageEntry]
-
-
-@dataclasses.dataclass
 class Disk(StorageEntry):
     ptable: str = ""
+    boot: bool = False
 
 
 @dataclasses.dataclass
@@ -47,6 +43,7 @@ class FileSystem(StorageEntry):
 class Partition(StorageEntry):
     on: str
     size: int
+    bootable: bool = False
     after: str = ""
 
     def deps(self) -> Set[str]:
@@ -88,8 +85,32 @@ class BCache(StorageEntry):
         return {self.backing_device, self.cache_device}
 
 
+@dataclasses.dataclass
+class StorageLayout:
+    """A storage layout.
+
+    It is described by a series of entries that must be configured in order to
+    fulfill the layout.
+    """
+
+    entries: Dict[str, StorageEntry]
+    sorted_entries: List[StorageEntry]
+
+    def disk_names(self) -> Set[str]:
+        """Return a list of physical disk names required by the layout."""
+        return {
+            entry.name
+            for entry in self.sorted_entries
+            if isinstance(entry, Disk)
+        }
+
+
 class ConfigError(Exception):
     """Provided configuration is invalid."""
+
+
+class UnappliableLayout(Exception):
+    """Layout can't be applied to the machine."""
 
 
 Config = Dict[str, Any]
@@ -105,6 +126,25 @@ def get_storage_layout(config: Config) -> StorageLayout:
     _set_mountpoints(entries_map, config["mounts"])
     sorted_entries = _sort_entries(entries)
     return StorageLayout(entries=entries_map, sorted_entries=sorted_entries)
+
+
+def apply_layout_to_machine(layout: StorageLayout, machine):
+    # clear everything
+    machine.set_storage_layout("blank")
+
+    block_devices = {disk.name: disk for disk in machine.blockdevice_set.all()}
+    missing_disks = layout.disk_names() - set(
+        machine.physicalblockdevice_set.values_list("name", flat=True)
+    )
+    if missing_disks:
+        missing_disks_list = ", ".join(sorted(missing_disks))
+        raise UnappliableLayout(
+            f"Unknown machine disk(s): {missing_disks_list}"
+        )
+    for entry in layout.sorted_entries:
+        entry_type = type(entry).__name__
+        apply_layout = _LAYOUT_APPLIERS[entry_type]
+        apply_layout(entry, block_devices)
 
 
 def _get_filesystem(name: str, data: Config) -> Optional[FileSystem]:
@@ -134,7 +174,9 @@ def _validate_partition_table(name: str, data: Config) -> str:
 
 def _flatten_disk(name: str, data: Config) -> List[StorageEntry]:
     ptable = _validate_partition_table(name, data)
-    items: List = [Disk(name=name, ptable=ptable)]
+    items: List = [
+        Disk(name=name, ptable=ptable, boot=data.get("boot", False))
+    ]
     items.extend(_disk_partitions(name, data.get("partitions", [])))
     return items
 
@@ -204,6 +246,7 @@ def _disk_partitions(
                 name=part_name,
                 on=disk_name,
                 size=_get_size(part["size"]),
+                bootable=part.get("bootable", False),
                 after=after,
             )
         )
@@ -215,10 +258,10 @@ def _disk_partitions(
 
 
 _FLATTENERS = {
-    "disk": _flatten_disk,
-    "raid": _flatten_raid,
     "bcache": _flatten_bcache,
+    "disk": _flatten_disk,
     "lvm": _flatten_lvm,
+    "raid": _flatten_raid,
 }
 
 
@@ -237,6 +280,54 @@ def _flatten(config: Config) -> List[StorageEntry]:
             key = e.args[0]
             raise ConfigError(f"Missing required key '{key}' for '{name}'")
     return items
+
+
+def _apply_layout_disk(entry: StorageEntry, block_devices: List):
+    if not entry.ptable:
+        return
+    disk = block_devices[entry.name]
+    if entry.boot:
+        disk.node.boot_disk = disk.physicalblockdevice
+        disk.node.save()
+    partition_table = models.PartitionTable.objects.create(
+        block_device=disk,
+        table_type=entry.ptable.upper(),
+    )
+    # cache the partition table to avoid having to fetch it when creating
+    # partitions
+    disk.partition_table = partition_table
+
+
+def _apply_layout_partition(entry: StorageEntry, block_devices: List):
+    device = block_devices[entry.on]
+    # if there is a partition table for the device, it has been cached above
+    partition_table = getattr(device, "partition_table", None)
+    block_devices[entry.name] = models.Partition.objects.create(
+        partition_table=partition_table,
+        bootable=entry.bootable,
+        size=entry.size,
+    )
+
+
+def _apply_layout_filesystem(entry: StorageEntry, block_devices: List):
+    params = {
+        "fstype": entry.type,
+        "mount_point": entry.mount,
+        "mount_options": entry.mount_options,
+    }
+    device = block_devices[entry.on]
+    if isinstance(device, models.Partition):
+        params["partition"] = device
+    else:
+        params["block_device"] = device
+    block_devices[entry.name] = models.Filesystem.objects.create(**params)
+
+
+_LAYOUT_APPLIERS = {
+    "Disk": _apply_layout_disk,
+    "FileSystem": _apply_layout_filesystem,
+    "Partition": _apply_layout_partition,
+}
 
 
 def _add_missing_disks(entries: List[StorageEntry]) -> List[StorageEntry]:
