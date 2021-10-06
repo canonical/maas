@@ -73,3 +73,4 @@ class TestVMCluster(APITestCase.ForUser):
         self.assertEqual(
             resources.storage.allocated, parsed_result["used"]["local_storage"]
         )
+        self.assertEqual(resources.vm_count.tracked, parsed_result["vm_count"])

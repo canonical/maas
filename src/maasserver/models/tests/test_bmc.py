@@ -66,6 +66,7 @@ from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
@@ -82,6 +83,7 @@ from provisioningserver.utils.constraints import LabeledConstraintMap
 
 wait_for_reactor = wait_for(30)  # 30 seconds.
 UNDEFINED = object()
+SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 
 class TestBMC(MAASServerTestCase):
@@ -2842,6 +2844,28 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod._sync_machine(discovered_machine, machine)
         [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
         self.assertEqual(host_interface, vm_interface.host_interface)
+
+    def test_update_cluster_certificate_updates_peers_with_same_cert(self):
+        cluster = factory.make_VMCluster()
+        vmhosts = [
+            factory.make_Pod(pod_type="lxd", cluster=cluster) for _ in range(3)
+        ]
+        power_parameters = vmhosts[0].power_parameters.copy()
+        power_parameters["certificate"] = SAMPLE_CERT.certificate_pem()
+        power_parameters["key"] = SAMPLE_CERT.private_key_pem()
+        vmhosts[0].power_parameters = power_parameters
+        vmhosts[0].update_cluster_certificate()
+        vmhosts[0].save()
+        updated_vmhosts = Pod.objects.filter(hints__cluster=cluster)
+        certificates = [
+            vmhost.power_parameters["certificate"]
+            for vmhost in updated_vmhosts
+        ]
+        keys = [vmhost.power_parameters["key"] for vmhost in updated_vmhosts]
+        for cert in certificates:
+            self.assertEqual(cert, SAMPLE_CERT.certificate_pem())
+        for key in keys:
+            self.assertEqual(key, SAMPLE_CERT.private_key_pem())
 
 
 class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):

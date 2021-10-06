@@ -290,6 +290,13 @@ class PodForm(MAASModelForm):
         self.instance = super().save(commit=False)
         self.instance.power_type = power_type
         self.instance.power_parameters = power_parameters
+
+        # update all members in a cluster if certificates are updated
+        if not self.is_new and (
+            power_parameters.get("certificate") or power_parameters.get("key")
+        ):
+            self.instance.update_cluster_certificate()
+
         # Add tag for pod console logging with appropriate kernel parameters.
         tag, _ = Tag.objects.get_or_create(
             name="pod-console-logging",

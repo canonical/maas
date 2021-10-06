@@ -64,6 +64,7 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 
 wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
+SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 
 def make_pod_with_hints(with_host=False, host=None):
@@ -375,6 +376,33 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         pod = form.save()
         self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
+
+    def test_updates_clustered_peers_certificates(self):
+        cluster = factory.make_VMCluster()
+        vmhosts = [
+            factory.make_Pod(pod_type="lxd", cluster=cluster) for _ in range(3)
+        ]
+        form = PodForm(
+            data={
+                "type": "lxd",
+                "certificate": SAMPLE_CERT.certificate_pem(),
+                "key": SAMPLE_CERT.private_key_pem(),
+            },
+            request=self.request,
+            instance=vmhosts[0],
+        )
+        self.assertTrue(form.is_valid(), form._errors)
+        result = form.save()
+        updated_vmhosts = [vmhost for vmhost in result.hints.cluster.hosts()]
+        for vmhost in updated_vmhosts:
+            self.assertEqual(
+                vmhost.power_parameters["certificate"],
+                SAMPLE_CERT.certificate_pem().strip(),
+            )
+            self.assertEqual(
+                vmhost.power_parameters["key"],
+                SAMPLE_CERT.private_key_pem().strip(),
+            )
 
 
 class TestComposeMachineForm(MAASTransactionServerTestCase):

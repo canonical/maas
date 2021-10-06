@@ -1584,6 +1584,25 @@ class Pod(BMC):
         hints.save()
         self.save()
 
+    def update_cluster_certificate(self):
+        if not self.hints.cluster:
+            return
+
+        certificate = self.power_parameters.get("certificate")
+        key = self.power_parameters.get("key")
+        if certificate is None or key is None:
+            return
+
+        cluster = VMCluster.objects.get(id=self.hints.cluster_id)
+        for vmhost in cluster.hosts():
+            if vmhost.id == self.id:
+                continue
+            power_parameters = vmhost.power_parameters.copy()
+            power_parameters["certificate"] = certificate
+            power_parameters["key"] = key
+            vmhost.power_parameters = power_parameters
+            vmhost.save()
+
     def delete(self, *args, **kwargs):
         raise AttributeError(
             "Use `async_delete` instead. Deleting a Pod takes "

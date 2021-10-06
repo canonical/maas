@@ -43,7 +43,7 @@ class VMClusterHandler(OperationsHandler):
 
     @classmethod
     def vm_count(cls, cluster):
-        return cluster.total_resources().vm_count
+        return cluster.total_resources().vm_count.tracked
 
     @classmethod
     def version(cls, cluster):
