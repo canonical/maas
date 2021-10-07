@@ -53,6 +53,10 @@ class VMClusterHandler(TimestampedModelHandler):
                 "free": resources.storage.free,
             },
             "vm_count": resources.vm_count.tracked,
+            "storage_pools": {
+                n: {"free": p.free, "total": p.total}
+                for n, p in resources.storage_pools.items()
+            },
         }
 
     def dehydrate(self, cluster, vmhosts, resources, vms):

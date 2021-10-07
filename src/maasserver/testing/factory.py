@@ -2960,16 +2960,39 @@ class Factory(maastesting.factory.Factory):
             *args, group_type=FILESYSTEM_GROUP_TYPE.VMFS6, **kwargs
         )
 
-    def make_VMCluster(self, name=None, project=None):
+    def make_VMCluster(self, name=None, project=None, pods=0, vms=0):
         if name is None:
             name = factory.make_name("name")
         if project is None:
             project = factory.make_name("project")
 
-        return VMCluster.objects.create(
+        cluster = VMCluster.objects.create(
             name=name,
             project=project,
         )
+
+        for _ in range(0, pods):
+            pod = factory.make_Pod(
+                pod_type="lxd",
+                host=None,
+                cores=8,
+                memory=4096,
+                cluster=cluster,
+            )
+            pool = factory.make_PodStoragePool(pod=pod)
+
+            for _ in range(0, vms):
+                node = factory.make_Node(bmc=pod)
+                vm = factory.make_VirtualMachine(
+                    machine=node,
+                    memory=1024,
+                    pinned_cores=[0, 2],
+                    hugepages_backed=False,
+                    bmc=pod,
+                )
+                factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool)
+
+        return cluster
 
     def make_VirtualBlockDevice(
         self,

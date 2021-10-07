@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.virtualmachine import (
     get_vm_host_resources,
+    get_vm_host_storage_pools,
     get_vm_host_used_resources,
     MB,
     VirtualMachine,
@@ -80,6 +81,34 @@ class TestVirtualMachine(MAASServerTestCase):
             machine=machine,
         )
         self.assertIs(machine.virtualmachine, vm)
+
+
+class TestGetVMHostStoragePools(MAASServerTestCase):
+    def test_get_storage_pools(self):
+        pod = factory.make_Pod(
+            pod_type="lxd",
+            host=None,
+            cores=8,
+            memory=4096,
+        )
+        pool_name = factory.make_name("pool")
+        pool1 = factory.make_PodStoragePool(pod=pod, name=pool_name)
+        node = factory.make_Node(bmc=pod)
+        vm = factory.make_VirtualMachine(
+            machine=node,
+            memory=1024,
+            pinned_cores=[0, 2],
+            hugepages_backed=False,
+            bmc=pod,
+        )
+        disk1 = factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool1)
+
+        pools = get_vm_host_storage_pools(pod)
+        self.assertEqual(1, len(pools))
+        self.assertIn(pool_name, pools.keys())
+        self.assertEqual(disk1.size, pools[pool_name].allocated)
+        self.assertEqual(pool1.storage, pools[pool_name].total)
+        self.assertEqual(pool1.storage - disk1.size, pools[pool_name].free)
 
 
 class TestGetVMHostResources(MAASServerTestCase):

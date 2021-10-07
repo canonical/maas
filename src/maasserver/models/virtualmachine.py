@@ -4,7 +4,7 @@
 from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field
 from math import ceil
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
@@ -239,6 +239,20 @@ class VMHostVirtualMachineResources:
 
 
 @dataclass
+class VMHostStoragePool:
+    """Storage pool available on a VM host"""
+
+    name: str = ""
+    shared: bool = False
+    allocated: int = 0
+    total: int = 0
+
+    @property
+    def free(self):
+        return self.total - self.allocated
+
+
+@dataclass
 class VMHostResources:
     """Resources for a VM host."""
 
@@ -247,6 +261,7 @@ class VMHostResources:
         default_factory=VMHostMemoryResources
     )
     storage: VMHostResource = field(default_factory=VMHostResource)
+    storage_pools: Dict[str, VMHostStoragePool] = field(default_factory=dict)
     vm_count: VMHostCount = field(default_factory=VMHostCount)
     interfaces: List[VMHostNetworkInterface] = field(default_factory=list)
     vms: List[VMHostVirtualMachineResources] = field(default_factory=list)
@@ -293,6 +308,12 @@ def get_vm_host_resources(pod, detailed=True) -> VMHostResources:
     if detailed:
         _update_detailed_resource_counters(pod, resources)
     return resources
+
+
+def get_vm_host_storage_pools(pod) -> Dict[str, VMHostStoragePool]:
+    """Return storage pools for a VM host by its ID."""
+    resources = _get_global_vm_host_storage(pod, VMHostResources())
+    return resources.storage_pools
 
 
 def _update_detailed_resource_counters(pod, resources):
@@ -377,6 +398,50 @@ def _update_detailed_resource_counters(pod, resources):
     return resources
 
 
+def _get_global_vm_host_storage(pod, resources):
+    """Get VMHost storage details, including storage pools """
+    storage = (
+        VirtualMachineDisk.objects.filter(
+            backing_pool__pod=pod,
+        )
+        .values(
+            "backing_pool__name",
+            tracked_project=ExpressionWrapper(
+                Q(vm__project=pod.tracked_project),
+                output_field=BooleanField(),
+            ),
+        )
+        .annotate(
+            used=Sum("size"),
+        )
+    )
+    storage_pools = PodStoragePool.objects.filter(
+        pod=pod,
+    )
+
+    total_storage = 0
+    for pool in storage_pools:
+        resources.storage_pools[pool.name] = VMHostStoragePool(
+            name=pool.name,
+            shared=(pool.pool_type == "ceph"),
+            total=pool.storage,
+        )
+        total_storage += pool.storage
+
+    for entry in storage:
+        if entry["tracked_project"]:
+            resources.storage.allocated_tracked += entry["used"]
+        else:
+            resources.storage.allocated_other += entry["used"]
+
+        pool_name = entry["backing_pool__name"]
+        if pool_name in resources.storage_pools:
+            resources.storage_pools[pool_name].allocated += entry["used"]
+
+    resources.storage.free = total_storage - resources.storage.allocated
+    return resources
+
+
 def _get_global_vm_host_resources(pod):
     resources = VMHostResources()
 
@@ -396,29 +461,7 @@ def _get_global_vm_host_resources(pod):
             "hugepages": 0,  # no info about hugepages configuration
         }
 
-    storage = (
-        VirtualMachineDisk.objects.filter(
-            backing_pool__pod=pod,
-        )
-        .values(
-            tracked_project=ExpressionWrapper(
-                Q(vm__project=pod.tracked_project),
-                output_field=BooleanField(),
-            )
-        )
-        .annotate(
-            used=Sum("size"),
-        )
-    )
-    for entry in storage:
-        if entry["tracked_project"]:
-            resources.storage.allocated_tracked += entry["used"]
-        else:
-            resources.storage.allocated_other += entry["used"]
-    total_storage = PodStoragePool.objects.filter(pod=pod).aggregate(
-        storage=NotNullSum("storage")
-    )["storage"]
-    resources.storage.free = total_storage - resources.storage.allocated
+    resources = _get_global_vm_host_storage(pod, resources)
 
     vms = (
         VirtualMachine.objects.filter(bmc=pod)

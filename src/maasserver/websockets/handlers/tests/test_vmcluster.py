@@ -56,9 +56,7 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
 
         return cluster_groups
 
-    def _assert_dehydrated_cluster_equal(
-        self, result, cluster, vmhosts, vms, resources
-    ):
+    def _assert_dehydrated_cluster_equal(self, result, cluster, vmhosts, vms):
         self.assertEqual(result["id"], cluster.id)
         self.assertEqual(result["name"], cluster.name)
         self.assertEqual(result["project"], cluster.project)
@@ -115,10 +113,18 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         self.assertEqual(
             resources.vm_count.tracked, result["total_resources"]["vm_count"]
         )
+        for name, pool in resources.storage_pools.items():
+            self.assertIn(name, result["total_resources"]["storage_pools"])
+            self.assertEqual(
+                pool.free,
+                result["total_resources"]["storage_pools"][name]["free"],
+            )
 
     def test_dehydrate(self):
         cluster = factory.make_VMCluster()
         vmhosts = [factory.make_Pod(cluster=cluster) for _ in range(3)]
+        _ = [factory.make_PodStoragePool(pod=pod) for pod in vmhosts]
+
         vms = [
             factory.make_VirtualMachine(
                 bmc=vmhost.as_bmc(), machine=factory.make_Machine()
@@ -131,9 +137,7 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         result = handler.dehydrate(
             cluster, vmhosts, cluster.total_resources(), vms
         )
-        self._assert_dehydrated_cluster_equal(
-            result, cluster, vmhosts, vms, None
-        )
+        self._assert_dehydrated_cluster_equal(result, cluster, vmhosts, vms)
 
     @wait_for_reactor
     async def test_list(self):
@@ -151,7 +155,6 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
                 cluster[0],
                 cluster[1],
                 cluster[2],
-                None,
             )
 
     @wait_for_reactor

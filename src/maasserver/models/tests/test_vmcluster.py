@@ -1,3 +1,8 @@
+# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+import random
+
 from maasserver.models.virtualmachine import MB
 from maasserver.models.vmcluster import VMCluster
 from maasserver.testing.factory import factory
@@ -55,6 +60,54 @@ class TestVMCluster(MAASServerTestCase):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
         cluster = VMCluster(name=cluster_name, project=project)
+        storage_total = 0
+        storage_allocated = 0
+
+        for _ in range(0, 3):
+            pod = factory.make_Pod(
+                pod_type="lxd",
+                host=None,
+                cores=8,
+                memory=4096,
+                cluster=cluster,
+            )
+            pool_name = factory.make_name("pool")
+            pool1 = factory.make_PodStoragePool(pod=pod, name=pool_name)
+            storage_total += pool1.storage
+            node = factory.make_Node(bmc=pod)
+            vm = factory.make_VirtualMachine(
+                machine=node,
+                memory=1024,
+                pinned_cores=[0, 2],
+                hugepages_backed=False,
+                bmc=pod,
+            )
+            disk1 = factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool1)
+            storage_allocated += disk1.size
+
+        resources = cluster.total_resources()
+        self.assertEqual(resources.cores.allocated, 6)
+        self.assertEqual(resources.cores.free, 18)
+        self.assertEqual(resources.memory.general.free, 9216 * MB)
+        self.assertEqual(resources.memory.general.allocated, 3072 * MB)
+        self.assertEqual(resources.memory.hugepages.free, 0)
+        self.assertEqual(resources.memory.hugepages.allocated, 0)
+        self.assertEqual(resources.storage.allocated, storage_allocated)
+        for pool in resources.storage_pools.values():
+            self.assertEqual(pool.shared, False)
+
+        self.assertEqual(
+            resources.storage.free, storage_total - storage_allocated
+        )
+
+    def test_allocated_total_resources_shared_pool(self):
+        cluster_name = factory.make_name("name")
+        project = factory.make_name("project")
+        cluster = VMCluster(name=cluster_name, project=project)
+        storage_allocated = 0
+        storage_total = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+        pool_name = factory.make_name("pool")
+
         for _ in range(0, 3):
             pod = factory.make_Pod(
                 pod_type="lxd",
@@ -64,13 +117,24 @@ class TestVMCluster(MAASServerTestCase):
                 cluster=cluster,
             )
             node = factory.make_Node(bmc=pod)
-            factory.make_VirtualMachine(
+            vm = factory.make_VirtualMachine(
                 machine=node,
                 memory=1024,
                 pinned_cores=[0, 2],
                 hugepages_backed=False,
                 bmc=pod,
             )
+            pool1 = factory.make_PodStoragePool(
+                pod=pod,
+                name=pool_name,
+                pool_type="ceph",
+                storage=storage_total,
+            )
+            disk_size = random.randint(1 * 1024 ** 3, storage_total // 3)
+            factory.make_VirtualMachineDisk(
+                vm=vm, backing_pool=pool1, size=disk_size
+            )
+            storage_allocated += disk_size
 
         resources = cluster.total_resources()
         self.assertEqual(resources.cores.allocated, 6)
@@ -79,8 +143,109 @@ class TestVMCluster(MAASServerTestCase):
         self.assertEqual(resources.memory.general.allocated, 3072 * MB)
         self.assertEqual(resources.memory.hugepages.free, 0)
         self.assertEqual(resources.memory.hugepages.allocated, 0)
-        self.assertEqual(resources.storage.allocated, 0)
-        self.assertEqual(resources.storage.free, 0)
+        self.assertEqual(resources.storage.allocated, storage_allocated)
+        self.assertEqual(resources.storage_pools[pool_name].shared, True)
+        self.assertEqual(
+            resources.storage_pools[pool_name].allocated, storage_allocated
+        )
+        self.assertEqual(
+            resources.storage_pools[pool_name].total, storage_total
+        )
+        self.assertEqual(
+            resources.storage.free, storage_total - storage_allocated
+        )
+
+    def test_allocated_total_resources_mixed_pool(self):
+        cluster_name = factory.make_name("name")
+        project = factory.make_name("project")
+        cluster = VMCluster(name=cluster_name, project=project)
+        storage_shared_allocated = 0
+        storage_shared_total = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+        storage_nonshared_allocated = 0
+        storage_nonshared_total = 0
+        pool_shared_name = factory.make_name("pool-ceph")
+        pool_nonshared_name = factory.make_name("pool-lvm")
+
+        for _ in range(0, 3):
+            pod = factory.make_Pod(
+                pod_type="lxd",
+                host=None,
+                cores=8,
+                memory=4096,
+                cluster=cluster,
+            )
+            node = factory.make_Node(bmc=pod)
+            vm = factory.make_VirtualMachine(
+                machine=node,
+                memory=1024,
+                pinned_cores=[0, 2],
+                hugepages_backed=False,
+                bmc=pod,
+            )
+            pool1 = factory.make_PodStoragePool(
+                pod=pod,
+                name=pool_shared_name,
+                pool_type="ceph",
+                storage=storage_shared_total,
+            )
+            disk_size = random.randint(
+                1 * 1024 ** 3, storage_shared_total // 3
+            )
+            factory.make_VirtualMachineDisk(
+                vm=vm, backing_pool=pool1, size=disk_size
+            )
+            storage_shared_allocated += disk_size
+            pool2 = factory.make_PodStoragePool(
+                pod=pod, name=pool_nonshared_name, pool_type="lvm"
+            )
+            storage_nonshared_total += pool2.storage
+            disk_size = random.randint(1 * 1024 ** 3, pool2.storage)
+            factory.make_VirtualMachineDisk(
+                vm=vm, backing_pool=pool2, size=disk_size
+            )
+            storage_nonshared_allocated += disk_size
+
+        resources = cluster.total_resources()
+        self.assertEqual(resources.cores.allocated, 6)
+        self.assertEqual(resources.cores.free, 18)
+        self.assertEqual(resources.memory.general.free, 9216 * MB)
+        self.assertEqual(resources.memory.general.allocated, 3072 * MB)
+        self.assertEqual(resources.memory.hugepages.free, 0)
+        self.assertEqual(resources.memory.hugepages.allocated, 0)
+        self.assertEqual(
+            resources.storage_pools[pool_nonshared_name].shared, False
+        )
+        self.assertEqual(
+            resources.storage_pools[pool_nonshared_name].allocated,
+            storage_nonshared_allocated,
+        )
+        self.assertEqual(
+            resources.storage_pools[pool_nonshared_name].total,
+            storage_nonshared_total,
+        )
+        self.assertEqual(
+            resources.storage_pools[pool_shared_name].shared, True
+        )
+        self.assertEqual(
+            resources.storage_pools[pool_shared_name].allocated,
+            storage_shared_allocated,
+        )
+        self.assertEqual(
+            resources.storage_pools[pool_shared_name].total,
+            storage_shared_total,
+        )
+
+        self.assertEqual(
+            resources.storage.allocated,
+            storage_shared_allocated + storage_nonshared_allocated,
+        )
+        self.assertEqual(
+            resources.storage.free,
+            storage_nonshared_total
+            + storage_shared_total
+            - storage_shared_allocated
+            - storage_nonshared_allocated,
+        )
 
     def test_no_allocated_total_resources(self):
         cluster_name = factory.make_name("name")
@@ -119,6 +284,76 @@ class TestVMCluster(MAASServerTestCase):
         self.assertEqual(resources.memory.hugepages.allocated, 0)
         self.assertEqual(resources.storage.allocated, 0)
         self.assertEqual(resources.storage.free, 0)
+
+    def test_get_storage_pools(self):
+        cluster_name = factory.make_name("name")
+        project = factory.make_name("project")
+        cluster = VMCluster(name=cluster_name, project=project)
+        storage_shared_allocated = 0
+        storage_shared_total = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+        storage_nonshared_allocated = 0
+        storage_nonshared_total = 0
+        pool_shared_name = factory.make_name("pool-ceph")
+        pool_nonshared_name = factory.make_name("pool-lvm")
+
+        for _ in range(0, 3):
+            pod = factory.make_Pod(
+                pod_type="lxd",
+                host=None,
+                cores=8,
+                memory=4096,
+                cluster=cluster,
+            )
+            node = factory.make_Node(bmc=pod)
+            vm = factory.make_VirtualMachine(
+                machine=node,
+                memory=1024,
+                pinned_cores=[0, 2],
+                hugepages_backed=False,
+                bmc=pod,
+            )
+            pool1 = factory.make_PodStoragePool(
+                pod=pod,
+                name=pool_shared_name,
+                pool_type="ceph",
+                storage=storage_shared_total,
+            )
+            disk_size = random.randint(
+                1 * 1024 ** 3, storage_shared_total // 3
+            )
+            factory.make_VirtualMachineDisk(
+                vm=vm, backing_pool=pool1, size=disk_size
+            )
+            storage_shared_allocated += disk_size
+            pool2 = factory.make_PodStoragePool(
+                pod=pod, name=pool_nonshared_name, pool_type="lvm"
+            )
+            storage_nonshared_total += pool2.storage
+            disk_size = random.randint(1 * 1024 ** 3, pool2.storage)
+            factory.make_VirtualMachineDisk(
+                vm=vm, backing_pool=pool2, size=disk_size
+            )
+            storage_nonshared_allocated += disk_size
+
+        cluster_pools = cluster.storage_pools()
+        self.assertEqual(cluster_pools[pool_nonshared_name].shared, False)
+        self.assertEqual(
+            cluster_pools[pool_nonshared_name].allocated,
+            storage_nonshared_allocated,
+        )
+        self.assertEqual(
+            cluster_pools[pool_nonshared_name].total,
+            storage_nonshared_total,
+        )
+        self.assertEqual(cluster_pools[pool_shared_name].shared, True)
+        self.assertEqual(
+            cluster_pools[pool_shared_name].allocated,
+            storage_shared_allocated,
+        )
+        self.assertEqual(
+            cluster_pools[pool_shared_name].total,
+            storage_shared_total,
+        )
 
     def test_virtual_machines(self):
         cluster_name = factory.make_name("name")

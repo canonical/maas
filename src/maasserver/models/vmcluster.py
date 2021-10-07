@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass, field
+from typing import Dict
 
 from django.db import connection
 from django.db.models import Manager, TextField
@@ -27,11 +28,40 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
     cluster_resources.memory.general = _add_vmresources(
         cluster_resources.memory.general, host_resources.memory.general
     )
-    cluster_resources.storage = _add_vmresources(
-        cluster_resources.storage, host_resources.storage
-    )
     cluster_resources.vm_count.tracked += host_resources.vm_count.tracked
     cluster_resources.vm_count.other += host_resources.vm_count.other
+
+    cluster_resources.storage.allocated_tracked += (
+        host_resources.storage.allocated_tracked
+    )
+    cluster_resources.storage.allocated_other += (
+        host_resources.storage.allocated_other
+    )
+
+    added_storage = 0
+    for pool in host_resources.storage_pools.values():
+        if pool.name in cluster_resources.storage_pools:
+            cluster_resources.storage_pools[
+                pool.name
+            ].allocated += pool.allocated
+            if not pool.shared:
+                cluster_resources.storage_pools[pool.name].total += pool.total
+                added_storage += pool.total
+
+        else:
+            cluster_resources.storage_pools[pool.name] = VMClusterStoragePool(
+                name=pool.name,
+                shared=pool.shared,
+                allocated=pool.allocated,
+                total=pool.total,
+            )
+            added_storage += pool.total
+
+    cluster_resources.storage.free += (
+        added_storage
+        - host_resources.storage.allocated_tracked
+        - host_resources.storage.allocated_other
+    )
 
 
 class VMClusterManager(Manager):
@@ -89,6 +119,27 @@ class VMCluster(CleanSave, TimestampedModel):
         hosts = self.hosts()
         return VirtualMachine.objects.filter(bmc__in=hosts)
 
+    def storage_pools(self):
+        from maasserver.models.virtualmachine import get_vm_host_storage_pools
+
+        host_pools = [get_vm_host_storage_pools(host) for host in self.hosts()]
+
+        cluster_pools = dict()
+        for h in host_pools:
+            for p in h.values():
+                if p.name in cluster_pools:
+                    cluster_pools[p.name].allocated += p.allocated
+                    if not cluster_pools[p.name].shared:
+                        cluster_pools[p.name].total += p.total
+                else:
+                    cluster_pools[p.name] = VMClusterStoragePool(
+                        name=p.name,
+                        shared=p.shared,
+                        allocated=p.allocated,
+                        total=p.total,
+                    )
+        return cluster_pools
+
 
 @dataclass
 class VMClusterResource:
@@ -124,6 +175,20 @@ class VMClusterVMCount:
 
 
 @dataclass
+class VMClusterStoragePool:
+    """VMClusterStoragePool tracks the usage of a storage pool accross the cluster"""
+
+    name: str = ""
+    shared: bool = False
+    allocated: int = 0
+    total: int = 0
+
+    @property
+    def free(self):
+        return self.total - self.allocated
+
+
+@dataclass
 class VMClusterResources:
     """Resources for a VM Cluster"""
 
@@ -132,4 +197,7 @@ class VMClusterResources:
         default_factory=VMClusterMemoryResource
     )
     storage: VMClusterResource = field(default_factory=VMClusterResource)
+    storage_pools: Dict[str, VMClusterStoragePool] = field(
+        default_factory=dict
+    )
     vm_count: VMClusterVMCount = field(default_factory=VMClusterVMCount)

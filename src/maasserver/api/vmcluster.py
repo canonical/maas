@@ -17,6 +17,7 @@ DISPLAYED_VMCLUSTER_FIELDS = (
     "total",
     "used",
     "available",
+    "storage_pools",
 )
 
 
@@ -77,6 +78,13 @@ class VMClusterHandler(OperationsHandler):
             "cores": resources.cores.free,
             "memory": resources.memory.general.free,
             "local_storage": resources.storage.free,
+        }
+
+    @classmethod
+    def storage_pools(cls, cluster):
+        pools = cluster.storage_pools()
+        return {
+            n: {"free": p.free, "total": p.total} for n, p in pools.items()
         }
 
 

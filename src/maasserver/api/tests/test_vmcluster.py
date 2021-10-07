@@ -38,7 +38,7 @@ class TestVMCluster(APITestCase.ForUser):
         )
 
     def test_read_a_cluster(self):
-        cluster = factory.make_VMCluster()
+        cluster = factory.make_VMCluster(pods=2, vms=2)
         response = self.client.get(
             reverse("vm_cluster_handler", args=[cluster.id])
         )
@@ -74,3 +74,11 @@ class TestVMCluster(APITestCase.ForUser):
             resources.storage.allocated, parsed_result["used"]["local_storage"]
         )
         self.assertEqual(resources.vm_count.tracked, parsed_result["vm_count"])
+        for name, pool in resources.storage_pools.items():
+            self.assertIn(name, parsed_result["storage_pools"])
+            self.assertEqual(
+                pool.free, parsed_result["storage_pools"][name]["free"]
+            )
+            self.assertEqual(
+                pool.total, parsed_result["storage_pools"][name]["total"]
+            )
