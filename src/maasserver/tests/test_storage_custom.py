@@ -324,6 +324,7 @@ class TestGetStorageLayout(MAASTestCase):
                     "type": "bcache",
                     "backing-device": "sda2",
                     "cache-device": "sdb",
+                    "cache-mode": "writeback",
                     "fs": "ext4",
                 },
             },
@@ -345,7 +346,10 @@ class TestGetStorageLayout(MAASTestCase):
         sda2 = Partition(name="sda2", on="sda", size=100 * GB, after="sda1")
         sdb = Disk(name="sdb")
         bcache = BCache(
-            name="fast-root", backing_device="sda2", cache_device="sdb"
+            name="fast-root",
+            backing_device="sda2",
+            cache_device="sdb",
+            cache_mode="writeback",
         )
         root_fs = FileSystem(
             name="fast-root[fs]",
@@ -548,6 +552,25 @@ class TestGetStorageLayout(MAASTestCase):
             config,
         )
         self.assertEqual(str(err), "Unknown filesystem type 'foo'")
+
+    def test_invalid_bcache_cache_type(self):
+        config = {
+            "layout": {
+                "bcache0": {
+                    "type": "bcache",
+                    "backing-device": "sda",
+                    "cache-device": "sdb",
+                    "cache-mode": "foo",
+                },
+            },
+            "mounts": {},
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Unknown cache mode 'foo'")
 
     def test_missing_required_attributes(self):
         config = {
@@ -781,3 +804,186 @@ class TestApplyLayoutToMachine(MAASServerTestCase):
         sdb = factory.make_PhysicalBlockDevice(node=machine, name="sdb")
         apply_layout_to_machine(layout, machine)
         self.assertEqual(machine.boot_disk, sdb)
+
+    def test_bcache(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "100M",
+                            "fs": "vfat",
+                            "bootable": True,
+                        },
+                        {
+                            "name": "sda2",
+                            "size": "500M",
+                            "fs": "ext2",
+                        },
+                        {
+                            "name": "sda3",
+                            "size": "800G",
+                        },
+                    ],
+                },
+                "cached-root": {
+                    "type": "bcache",
+                    "backing-device": "sda3",
+                    "cache-device": "sdb",
+                    "fs": "ext4",
+                },
+            },
+            "mounts": {
+                "/": {
+                    "device": "cached-root",
+                },
+                "/boot/efi": {
+                    "device": "sda1",
+                },
+                "/boot": {
+                    "device": "sda2",
+                },
+            },
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        sda = factory.make_PhysicalBlockDevice(
+            node=machine, name="sda", size=2 * TB
+        )
+        sdb = factory.make_PhysicalBlockDevice(
+            node=machine, name="sdb", size=500 * GB
+        )
+        apply_layout_to_machine(layout, machine)
+        ptable = sda.partitiontable_set.first()
+        self.assertEqual(ptable.table_type, PARTITION_TABLE_TYPE.GPT)
+        part1, part2, part3 = ptable.partitions.order_by("id")
+        self.assertEqual(part1.size, rounded_size(100 * MB))
+        self.assertTrue(part1.bootable)
+        self.assertEqual(part2.size, rounded_size(500 * MB))
+        self.assertFalse(part2.bootable)
+        self.assertEqual(part3.size, rounded_size(800 * GB))
+        self.assertFalse(part3.bootable)
+        fs3 = part3.filesystem_set.first()
+        self.assertEqual(fs3.fstype, FILESYSTEM_TYPE.BCACHE_BACKING)
+        cache_fs = sdb.filesystem_set.first()
+        self.assertEqual(cache_fs.fstype, FILESYSTEM_TYPE.BCACHE_CACHE)
+        bcache = machine.blockdevice_set.get(name="cached-root")
+        root_fs = bcache.filesystem_set.first()
+        self.assertEqual(root_fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(root_fs.mount_point, "/")
+
+    def test_bcache_same_cacheset(self):
+        config = {
+            "layout": {
+                "bcache0": {
+                    "type": "bcache",
+                    "backing-device": "sdb",
+                    "cache-device": "sda",
+                },
+                "bcache1": {
+                    "type": "bcache",
+                    "backing-device": "sdc",
+                    "cache-device": "sda",
+                },
+            },
+            "mounts": {},
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        sda = factory.make_PhysicalBlockDevice(node=machine, name="sda")
+        sdb = factory.make_PhysicalBlockDevice(node=machine, name="sdb")
+        sdc = factory.make_PhysicalBlockDevice(node=machine, name="sdc")
+        apply_layout_to_machine(layout, machine)
+        fs1 = sda.get_effective_filesystem()
+        self.assertEqual(fs1.fstype, FILESYSTEM_TYPE.BCACHE_CACHE)
+        fs2 = sdb.get_effective_filesystem()
+        self.assertEqual(fs2.fstype, FILESYSTEM_TYPE.BCACHE_BACKING)
+        fs3 = sdc.get_effective_filesystem()
+        self.assertEqual(fs3.fstype, FILESYSTEM_TYPE.BCACHE_BACKING)
+
+    def test_bcache_cache_partition(self):
+        config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "100M",
+                            "fs": "vfat",
+                            "bootable": True,
+                        },
+                        {
+                            "name": "sda2",
+                            "size": "500M",
+                            "fs": "ext2",
+                        },
+                        {
+                            "name": "sda3",
+                            "size": "800G",
+                        },
+                    ],
+                },
+                "sdb": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {
+                            "name": "sdb1",
+                            "size": "300G",
+                        },
+                    ],
+                },
+                "bcache0": {
+                    "type": "bcache",
+                    "backing-device": "sda3",
+                    "cache-device": "sdb1",
+                    "fs": "ext4",
+                },
+            },
+            "mounts": {
+                "/": {
+                    "device": "bcache0",
+                },
+                "/boot/efi": {
+                    "device": "sda1",
+                },
+                "/boot": {
+                    "device": "sda2",
+                },
+            },
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        sda = factory.make_PhysicalBlockDevice(
+            node=machine, name="sda", size=2 * TB
+        )
+        sdb = factory.make_PhysicalBlockDevice(
+            node=machine, name="sdb", size=500 * GB
+        )
+        apply_layout_to_machine(layout, machine)
+        ptable1 = sda.partitiontable_set.first()
+        self.assertEqual(ptable1.table_type, PARTITION_TABLE_TYPE.GPT)
+        part1, part2, part3 = ptable1.partitions.order_by("id")
+        self.assertEqual(part1.size, rounded_size(100 * MB))
+        self.assertTrue(part1.bootable)
+        self.assertEqual(part2.size, rounded_size(500 * MB))
+        self.assertFalse(part2.bootable)
+        self.assertEqual(part3.size, rounded_size(800 * GB))
+        self.assertFalse(part3.bootable)
+        fs3 = part3.filesystem_set.first()
+        self.assertEqual(fs3.fstype, FILESYSTEM_TYPE.BCACHE_BACKING)
+
+        ptable2 = sdb.partitiontable_set.first()
+        self.assertEqual(ptable2.table_type, PARTITION_TABLE_TYPE.GPT)
+        cache_part = ptable2.partitions.first()
+        cache_fs = cache_part.filesystem_set.first()
+        self.assertEqual(cache_fs.fstype, FILESYSTEM_TYPE.BCACHE_CACHE)
+        bcache = machine.blockdevice_set.get(name="bcache0")
+        root_fs = bcache.filesystem_set.first()
+        self.assertEqual(root_fs.fstype, FILESYSTEM_TYPE.EXT4)
+        self.assertEqual(root_fs.mount_point, "/")

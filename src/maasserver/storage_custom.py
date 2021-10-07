@@ -9,6 +9,9 @@ from typing import Any, cast, Dict, List, Optional, Set
 
 from maasserver import models
 from maasserver.enum import (
+    CACHE_MODE_TYPE,
+    CACHE_MODE_TYPE_CHOICES,
+    FILESYSTEM_TYPE,
     FILESYSTEM_TYPE_CHOICES,
     PARTITION_TABLE_TYPE_CHOICES,
 )
@@ -80,6 +83,7 @@ class LogicalVolume(Partition):
 class BCache(StorageEntry):
     backing_device: str
     cache_device: str
+    cache_mode: str = CACHE_MODE_TYPE.WRITETHROUGH
 
     def deps(self) -> Set[str]:
         return {self.backing_device, self.cache_device}
@@ -147,11 +151,15 @@ def apply_layout_to_machine(layout: StorageLayout, machine):
         apply_layout(entry, block_devices)
 
 
+def _choices(choices_tuple):
+    return tuple(choice[0] for choice in choices_tuple)
+
+
 def _get_filesystem(name: str, data: Config) -> Optional[FileSystem]:
     fs = data.get("fs")
     if not fs:
         return None
-    if fs not in (choice[0] for choice in FILESYSTEM_TYPE_CHOICES):
+    if fs not in _choices(FILESYSTEM_TYPE_CHOICES):
         raise ConfigError(f"Unknown filesystem type '{fs}'")
     return FileSystem(
         name=f"{name}[fs]",
@@ -163,9 +171,7 @@ def _get_filesystem(name: str, data: Config) -> Optional[FileSystem]:
 def _validate_partition_table(name: str, data: Config) -> str:
     ptable = data.get("ptable", "")
     if ptable:
-        if ptable.upper() not in (
-            choice[0] for choice in PARTITION_TABLE_TYPE_CHOICES
-        ):
+        if ptable.upper() not in _choices(PARTITION_TABLE_TYPE_CHOICES):
             raise ConfigError(f"Unknown partition table type '{ptable}'")
     elif data.get("partitions"):
         raise ConfigError(f"Partition table not specified for '{name}'")
@@ -199,11 +205,15 @@ def _flatten_raid(name: str, data: Config) -> List[StorageEntry]:
 
 
 def _flatten_bcache(name: str, data: Config) -> List[StorageEntry]:
+    cache_mode = data.get("cache-mode", CACHE_MODE_TYPE.WRITETHROUGH)
+    if cache_mode not in _choices(CACHE_MODE_TYPE_CHOICES):
+        raise ConfigError(f"Unknown cache mode '{cache_mode}'")
     items: List = [
         BCache(
             name=name,
             backing_device=data["backing-device"],
             cache_device=data["cache-device"],
+            cache_mode=cache_mode,
         )
     ]
     fs = _get_filesystem(name, data)
@@ -323,7 +333,42 @@ def _apply_layout_filesystem(entry: StorageEntry, block_devices: List):
     block_devices[entry.name] = models.Filesystem.objects.create(**params)
 
 
+def _apply_layout_bcache(entry: StorageEntry, block_devices: List):
+    backing_device = block_devices[entry.backing_device]
+    cache_device = block_devices[entry.cache_device]
+
+    # track the cache device since multiple Bcaches can use the same cache
+    # device
+    cache_set_name = f"{entry.cache_device}[cacheset]"
+    cache_set = block_devices.get(cache_set_name)
+    if not cache_set:
+        cache_set = models.CacheSet.objects.create()
+        block_devices[cache_set_name] = cache_set
+        params = {
+            "fstype": FILESYSTEM_TYPE.BCACHE_CACHE,
+            "cache_set": cache_set,
+        }
+        if isinstance(cache_device, models.Partition):
+            params["partition"] = cache_device
+        else:
+            params["block_device"] = cache_device
+        models.Filesystem.objects.create(**params)
+
+    params = {
+        "name": entry.name,
+        "cache_mode": entry.cache_mode,
+        "cache_set": cache_set,
+    }
+    if isinstance(backing_device, models.Partition):
+        params["backing_partition"] = backing_device
+    else:
+        params["backing_device"] = backing_device
+    bcache = models.Bcache.objects.create_bcache(**params)
+    block_devices[entry.name] = bcache.virtual_device
+
+
 _LAYOUT_APPLIERS = {
+    "BCache": _apply_layout_bcache,
     "Disk": _apply_layout_disk,
     "FileSystem": _apply_layout_filesystem,
     "Partition": _apply_layout_partition,
