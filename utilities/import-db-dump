@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+"""Import a db dump into a new database.
+
+It assumes that the current user may sudo to the postgres user.
+"""
+import argparse
+import subprocess
+import sys
+
+
+def get_db_names():
+    process = subprocess.run(
+        ["sudo", "-u", "postgres", "psql", "-l", "-t", "-A"],
+        text=True,
+        check=True,
+        stdout=subprocess.PIPE,
+    )
+    for line in process.stdout.splitlines():
+        yield line.split("|")[0]
+
+
+def main(raw_args):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("db_dump", help="Path to the DB dump")
+    parser.add_argument(
+        "--db-name", default="dump", help="Name of the database to import into"
+    )
+    parser.add_argument(
+        "--force",
+        default=False,
+        action="store_true",
+        help="Delete the database (if it exists) before trying to create it",
+    )
+    args = parser.parse_args(raw_args)
+    if args.db_name in get_db_names():
+        if not args.force:
+            return (
+                f"Database {args.db_name} already exists. "
+                "Use --force to delete it first."
+            )
+        else:
+            print(f"Dropping database '{args.db_name}'")
+            subprocess.run(
+                ["sudo", "-u", "postgres", "dropdb", args.db_name],
+                check=True,
+            )
+    print(f"Creating database '{args.db_name}'")
+    subprocess.run(
+        ["sudo", "-u", "postgres", "createdb", args.db_name], check=True
+    )
+    print(f"Importing dump into database '{args.db_name}'")
+    subprocess.run(
+        [
+            "sudo",
+            "-u",
+            "postgres",
+            "pg_restore",
+            "-d",
+            args.db_name,
+            "-O",
+            "-x",
+            "--clean",
+            "--if-exists",
+            "--disable-triggers",
+            args.db_dump,
+        ],
+        check=True,
+    )
+    print("You may now connect to the imported dump:")
+    print(f"    sudo -u postgres psql {args.db_name}")
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
