@@ -35,6 +35,15 @@ def make_pod_info():
     }
 
 
+def make_lxd_pod_info(url=None):
+    if url is None:
+        url = factory.make_ipv4_address() + ":8443"
+    return {
+        "type": "lxd",
+        "power_address": url,
+    }
+
+
 def fake_pod_discovery(testcase):
     discovered_pod = DiscoveredPod(
         architectures=["amd64/generic"],
@@ -307,6 +316,36 @@ class TestSyncVMCluster(MAASServerTestCase):
         ) = fake_cluster_discovery(self)
         zone = factory.make_Zone()
         pod_info = make_pod_info()
+        power_parameters = {"power_address": pod_info["power_address"]}
+        orig_vmhost = factory.make_Pod(
+            zone=zone, pod_type=pod_info["type"], parameters=power_parameters
+        )
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        self.patch(vmhost_module, "discover_pod").return_value = (
+            successes,
+            failures,
+        )
+        vmhost = vmhost_module.discover_and_sync_vmhost(
+            orig_vmhost, factory.make_User()
+        )
+        hints = PodHints.objects.filter(cluster=vmhost.hints.cluster)
+        pod_names = [hint.pod.name for hint in hints]
+        expected_names = [pod.name for pod in discovered_cluster.pods]
+        self.assertCountEqual(pod_names, expected_names)
+
+    def test_sync_vmcluster_adds_host_only_once(self):
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = fake_cluster_discovery(self)
+        zone = factory.make_Zone()
+        pod_info = make_lxd_pod_info(url=factory.make_ipv4_address())
         power_parameters = {"power_address": pod_info["power_address"]}
         orig_vmhost = factory.make_Pod(
             zone=zone, pod_type=pod_info["type"], parameters=power_parameters

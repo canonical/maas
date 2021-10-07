@@ -21,7 +21,7 @@ from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.models import NodeKey
-from provisioningserver.drivers.pod import DiscoveredCluster
+from provisioningserver.drivers.pod import DiscoveredCluster, DiscoveredPod
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -128,12 +128,20 @@ async def discover_and_sync_vmhost_async(vmhost, user):
     return vmhost
 
 
-def _generate_cluster_power_params(pod, pod_address, first_host):
+def _generate_cluster_power_params(vmhost, vmhost_address, first_host):
     new_params = first_host.power_parameters.copy()
-    if pod_address.startswith("http://") or pod_address.startswith("https://"):
-        pod_address = pod_address.split("://")[1]
-    new_params["power_address"] = pod_address
-    new_params["instance_name"] = pod.name
+    vmhost_url = urlparse(vmhost_address)
+    if vmhost_url.port is None:
+        # parsing just an IP as a url results in the IP stored in path
+        host = vmhost_url.hostname or vmhost_url.path
+        vmhost_address = vmhost_url._replace(netloc=host + ":8443").geturl()
+
+    if vmhost_url.scheme == "http" or vmhost_url.scheme == "https":
+        vmhost_address = vmhost_address.split("://")[1]
+
+    new_params["power_address"] = vmhost_address
+    if isinstance(vmhost, DiscoveredPod):
+        new_params["instance_name"] = vmhost.name
     return new_params
 
 
@@ -142,26 +150,33 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
         name=discovered_cluster.name or vmhost.name,
         project=discovered_cluster.project,
     )
+    vmhost.power_parameters = _generate_cluster_power_params(
+        vmhost,
+        vmhost.power_parameters["power_address"],
+        vmhost,
+    )
     new_host = vmhost
-    for i, pod in enumerate(discovered_cluster.pods):
+    for i, discovered_vmhost in enumerate(discovered_cluster.pods):
         power_parameters = _generate_cluster_power_params(
-            pod, discovered_cluster.pod_addresses[i], vmhost
+            discovered_vmhost, discovered_cluster.pod_addresses[i], vmhost
         )
         if (
             power_parameters["power_address"]
             != vmhost.power_parameters["power_address"]
         ):
             new_host = Pod.objects.create(
-                name=pod.name,
-                architectures=pod.architectures,
-                capabilities=pod.capabilities,
-                version=pod.version,
-                cores=pod.cores,
-                cpu_speed=pod.cpu_speed,
+                name=discovered_vmhost.name,
+                architectures=discovered_vmhost.architectures,
+                capabilities=discovered_vmhost.capabilities,
+                version=discovered_vmhost.version,
+                cores=discovered_vmhost.cores,
+                cpu_speed=discovered_vmhost.cpu_speed,
                 power_parameters=power_parameters,
                 power_type="lxd",  # VM clusters are only supported in LXD
             )
-        new_host = _update_db(pod, discovered, new_host, user, cluster)
+        new_host = _update_db(
+            discovered_vmhost, discovered, new_host, user, cluster
+        )
         post_commit_do(
             reactor.callLater,
             0,
@@ -179,10 +194,15 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
             name=discovered_cluster.name or vmhost.name,
             project=discovered_cluster.project,
         )
+        vmhost.power_parameters = _generate_cluster_power_params(
+            vmhost,
+            vmhost.power_parameters["power_address"],
+            vmhost,
+        )
         new_hosts = []
-        for i, pod in enumerate(discovered_cluster.pods):
+        for i, discovered_vmhost in enumerate(discovered_cluster.pods):
             power_parameters = _generate_cluster_power_params(
-                pod, discovered_cluster.pod_addresses[i], vmhost
+                discovered, discovered_cluster.pod_addresses[i], vmhost
             )
             new_host = vmhost
             if (
@@ -190,16 +210,18 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
                 != vmhost.power_parameters["power_address"]
             ):
                 new_host = Pod.objects.create(
-                    name=pod.name,
-                    architectures=pod.architectures,
-                    capabilities=pod.capabilities,
-                    version=pod.version,
-                    cores=pod.cores,
-                    cpu_speed=pod.cpu_speed,
+                    name=discovered_vmhost.name,
+                    architectures=discovered_vmhost.architectures,
+                    capabilities=discovered_vmhost.capabilities,
+                    version=discovered_vmhost.version,
+                    cores=discovered_vmhost.cores,
+                    cpu_speed=discovered_vmhost.cpu_speed,
                     power_parameters=power_parameters,
                     power_type="lxd",  # VM clusters are only supported in LXD
                 )
-            new_host = _update_db(pod, discovered, new_host, user, cluster)
+            new_host = _update_db(
+                discovered_vmhost, discovered, new_host, user, cluster
+            )
             new_hosts.append(new_host)
         return new_hosts
 
