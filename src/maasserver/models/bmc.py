@@ -1725,11 +1725,11 @@ class Pod(BMC):
 
         @inlineCallbacks
         def delete_cluster(*args):
-            if not self.hints.cluster or not delete_peers:
-                return
-
             @transactional
             def _fetch_cluster_peers():
+                if not self.hints.cluster or not delete_peers:
+                    return None, []
+
                 cluster = VMCluster.objects.get(id=self.hints.cluster_id)
                 return (
                     cluster,
@@ -1748,7 +1748,8 @@ class Pod(BMC):
                     for peer in peers
                 ]
             )
-            yield deferToDatabase(cluster.delete)
+            if cluster is not None:
+                yield deferToDatabase(cluster.delete)
 
         # Don't catch any errors here they are raised to the caller.
         d = deferToDatabase(gather_clients_and_machines, self)
