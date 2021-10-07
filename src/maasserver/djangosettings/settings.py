@@ -83,12 +83,6 @@ PISTON_DISPLAY_ERRORS = False
 # same model, so we silence the warnings that Piston gives.
 PISTON_IGNORE_DUPE_MODELS = True
 
-# Set this to where jQuery files can be found.
-JQUERY_LOCATION = "/usr/share/javascript/jquery/"
-
-# Set this to where AngularJS files can be found.
-ANGULARJS_LOCATION = "/usr/share/javascript/angular.js/"
-
 AUTHENTICATION_BACKENDS = (
     "maasserver.models.MAASAuthorizationBackend",
     "maasserver.macaroon_auth.MacaroonAuthorizationBackend",
