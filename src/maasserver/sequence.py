@@ -7,11 +7,7 @@
 from textwrap import dedent
 
 from django.db import connection, transaction, utils
-from psycopg2.errorcodes import (
-    DUPLICATE_TABLE,
-    OBJECT_NOT_IN_PREREQUISITE_STATE,
-    UNDEFINED_TABLE,
-)
+from psycopg2.errorcodes import UNDEFINED_TABLE
 
 from maasserver.utils.orm import get_psycopg2_exception
 from provisioningserver.utils import typed
@@ -23,12 +19,12 @@ INT_MAX = (2 ** 32) - 1
 class Sequence:
     """PostgreSQL sequence.
 
-    This permits creating and dropping sequences in a PostgreSQL database with
-    many difference options. The only limitations are that you cannot create a
-    temporary sequence, nor can you specify cache parameters, but these could
-    be added without difficulty.
+    This permits creating a sequences in a PostgreSQL database with
+    many difference options. The only limitations are that you cannot
+    create a temporary sequence, nor can you specify cache parameters,
+    but these could be added without difficulty.
 
-    See http://www.postgresql.org/docs/9.4/interactive/sql-createsequence.html
+    See http://www.postgresql.org/docs/12/interactive/sql-createsequence.html
     for details.
     """
 
@@ -65,13 +61,12 @@ class Sequence:
 
     _sql_create = dedent(
         """\
-        CREATE SEQUENCE {name} INCREMENT BY {increment:d}
+        CREATE SEQUENCE IF NOT EXISTS {name} INCREMENT BY {increment:d}
         {minvalue} {maxvalue} {start} {cycle} OWNED BY {owner};
     """
     )
-    _sql_drop = "DROP SEQUENCE {name}"
 
-    def create(self):
+    def create_if_not_exists(self):
         """Create this sequence in the database."""
         minv, maxv = self.minvalue, self.maxvalue
         statement = self._sql_create.format(
@@ -86,39 +81,6 @@ class Sequence:
         with transaction.atomic():
             with connection.cursor() as cursor:
                 cursor.execute(statement)
-
-    def create_if_not_exists(self):
-        """Create this sequence in the database.
-
-        If it already exists, fine.
-        """
-        try:
-            self.create()
-        except utils.ProgrammingError as error:
-            if is_postgres_error(error, DUPLICATE_TABLE):
-                pass  # Sequence already exists.
-            else:
-                raise
-
-    def drop(self):
-        """Drop this sequence from the database."""
-        statement = self._sql_drop.format(name=self.name)
-        with transaction.atomic():
-            with connection.cursor() as cursor:
-                cursor.execute(statement)
-
-    def drop_if_exists(self):
-        """Drop this sequence from the database.
-
-        If it doesn't exist, fine.
-        """
-        try:
-            self.drop()
-        except utils.ProgrammingError as error:
-            if is_postgres_error(error, UNDEFINED_TABLE):
-                pass  # Sequence already dropped.
-            else:
-                raise
 
     def __iter__(self):
         """Return an iterator for this sequence."""
@@ -151,32 +113,6 @@ class Sequence:
                 # Suppress DUPLICATE_TABLE errors from races here.
                 self.create_if_not_exists()
                 return next(self)
-            else:
-                raise
-
-    def current(self):
-        """Return the current value of this sequence, or `None`.
-
-        :return: The sequence value, or None if there is no current value for
-            the sequence in the database session or if the sequence does not
-            exist.
-        :rtype: int / None
-        """
-        try:
-            with transaction.atomic():
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT currval(%s)", [self.name])
-                    return cursor.fetchone()[0]
-        except utils.OperationalError as error:
-            if is_postgres_error(error, OBJECT_NOT_IN_PREREQUISITE_STATE):
-                # There is no current value for the sequence in this session.
-                return None
-            else:
-                raise
-        except utils.ProgrammingError as error:
-            if is_postgres_error(error, UNDEFINED_TABLE):
-                # The sequence does not exist, hence has no current value.
-                return None
             else:
                 raise
 

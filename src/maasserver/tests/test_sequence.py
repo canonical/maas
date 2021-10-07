@@ -8,7 +8,7 @@ from itertools import islice
 import random
 
 from django.db import connection, transaction
-from django.db.utils import DatabaseError, DataError, ProgrammingError
+from django.db.utils import DataError, ProgrammingError
 from testtools import ExpectedException
 
 from maasserver.sequence import Sequence
@@ -25,20 +25,14 @@ class TestSequence(MAASServerTestCase):
     def test_create_sequence(self):
         name = factory.make_name("seq", sep="")
         seq = Sequence(name)
-        seq.create()
+        seq.create_if_not_exists()
         val = self.query_seq(seq.name)
         self.assertEqual(1, val)
-
-    def test_create_sequence_fails_if_sequence_exists(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        seq.create()
-        self.assertRaisesRegex(ProgrammingError, "already exists", seq.create)
 
     def test_create_if_not_exists_does_not_fail_if_sequence_exists(self):
         name = factory.make_name("seq", sep="")
         seq = Sequence(name)
-        seq.create()
+        seq.create_if_not_exists()
         seq.create_if_not_exists()
         self.assertEqual(1, next(seq))
 
@@ -46,7 +40,7 @@ class TestSequence(MAASServerTestCase):
         name = factory.make_name("seq", sep="")
         minvalue = random.randint(1, 50)
         seq = Sequence(name, minvalue=minvalue)
-        seq.create()
+        seq.create_if_not_exists()
         val = self.query_seq(seq.name)
         self.assertEqual(minvalue, val)
 
@@ -54,7 +48,7 @@ class TestSequence(MAASServerTestCase):
         name = factory.make_name("seq", sep="")
         start = random.randint(5, 50)
         seq = Sequence(name, start=start)
-        seq.create()
+        seq.create_if_not_exists()
         val = self.query_seq(seq.name)
         self.assertEqual(start, val)
 
@@ -62,7 +56,7 @@ class TestSequence(MAASServerTestCase):
         name = factory.make_name("seq", sep="")
         increment = random.randint(1, 50)
         seq = Sequence(name, increment=increment)
-        seq.create()
+        seq.create_if_not_exists()
         val = self.query_seq(seq.name)
         val = self.query_seq(seq.name)
         self.assertEqual(1 + increment, val)
@@ -71,7 +65,7 @@ class TestSequence(MAASServerTestCase):
         name = factory.make_name("seq", sep="")
         maxvalue = random.randint(10, 50)
         seq = Sequence(name, maxvalue=maxvalue)
-        seq.create()
+        seq.create_if_not_exists()
         cursor = connection.cursor()
         query = "ALTER SEQUENCE %s" % seq.name
         cursor.execute(query + " RESTART WITH %s", [maxvalue])
@@ -81,7 +75,7 @@ class TestSequence(MAASServerTestCase):
 
     def test_sequence_cycling_can_be_prevented(self):
         seq = Sequence("alice", maxvalue=2, cycle=False)
-        seq.create()
+        seq.create_if_not_exists()
         self.assertSequenceEqual([1, 2], [next(seq), next(seq)])
         self.assertRaisesRegex(
             DataError, "nextval: reached maximum value of sequence", next, seq
@@ -91,7 +85,7 @@ class TestSequence(MAASServerTestCase):
         with connection.cursor() as cursor:
             cursor.execute("CREATE TABLE alice (bob INT)")
         seq = Sequence("carol", owner="alice.bob")
-        seq.create()
+        seq.create_if_not_exists()
         self.assertEqual(1, next(seq))
         # Dropping the table drops the sequence too.
         with connection.cursor() as cursor:
@@ -114,29 +108,10 @@ class TestSequence(MAASServerTestCase):
         self.assertEqual(1, next(seq))
         self.assertEqual(2, self.query_seq(seq.name))
 
-    def test_drop_sequence(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        seq.create()
-        seq.drop()
-        self.assertRaisesRegex(
-            DatabaseError, "does not exist", self.query_seq, seq.name
-        )
-
-    def test_drop_sequence_fails_if_sequence_does_not_exist(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        self.assertRaisesRegex(ProgrammingError, "does not exist", seq.drop)
-
-    def test_drop_if_exists_does_not_fail_if_sequence_does_not_exist(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        seq.drop_if_exists()
-
     def test_next_returns_sequential_values(self):
         name = factory.make_name("seq", sep="")
         seq = Sequence(name)
-        seq.create()
+        seq.create_if_not_exists()
         self.assertSequenceEqual(
             list(range(1, 11)), [next(seq) for _ in range(10)]
         )
@@ -144,43 +119,13 @@ class TestSequence(MAASServerTestCase):
     def test_iteration_returns_sequential_values(self):
         name = factory.make_name("seq", sep="")
         seq = Sequence(name)
-        seq.create()
+        seq.create_if_not_exists()
         self.assertSequenceEqual(list(range(1, 11)), list(islice(seq, 10)))
-
-    def test_current_returns_none_when_table_does_not_exist(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        self.assertIsNone(seq.current())
-
-    def test_current_returns_none_when_no_current_value(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        seq.create()
-        self.assertIsNone(seq.current())
-
-    def test_current_returns_current_value(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        seq.create()
-        expected = next(seq)
-        self.assertEqual(expected, seq.current())
-        self.assertEqual(expected, seq.current())
-
-    def test_current_returns_correct_value(self):
-        name = factory.make_name("seq", sep="")
-        seq = Sequence(name)
-        seq.create()
-        expected = next(seq)
-        self.assertEqual(expected, seq.current())
-        self.assertEqual(expected, seq.current())
-        expected = next(seq)
-        self.assertEqual(expected, seq.current())
-        self.assertEqual(expected, seq.current())
 
     def test_set_value_sets_value(self):
         name = factory.make_name("seq", sep="")
         seq = Sequence(name)
-        seq.create()
+        seq.create_if_not_exists()
         expected = random.randint(2000, 9999)
         seq.set_value(expected)
         self.assertEqual(expected, next(seq))
