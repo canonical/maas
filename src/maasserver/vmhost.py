@@ -149,6 +149,8 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
     cluster = VMCluster.objects.create(
         name=discovered_cluster.name or vmhost.name,
         project=discovered_cluster.project,
+        pool=vmhost.pool,
+        zone=vmhost.zone,
     )
     vmhost.power_parameters = _generate_cluster_power_params(
         vmhost,
@@ -173,6 +175,8 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
                 cpu_speed=discovered_vmhost.cpu_speed,
                 power_parameters=power_parameters,
                 power_type="lxd",  # VM clusters are only supported in LXD
+                zone=vmhost.zone,
+                pool=vmhost.pool,
             )
         new_host = _update_db(
             discovered_vmhost, discovered, new_host, user, cluster
@@ -193,6 +197,8 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
         cluster = VMCluster.objects.create(
             name=discovered_cluster.name or vmhost.name,
             project=discovered_cluster.project,
+            pool=vmhost.pool,
+            zone=vmhost.zone,
         )
         vmhost.power_parameters = _generate_cluster_power_params(
             vmhost,
@@ -218,6 +224,8 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
                     cpu_speed=discovered_vmhost.cpu_speed,
                     power_parameters=power_parameters,
                     power_type="lxd",  # VM clusters are only supported in LXD
+                    zone=vmhost.zone,
+                    pool=vmhost.pool,
                 )
             new_host = _update_db(
                 discovered_vmhost, discovered, new_host, user, cluster

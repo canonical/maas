@@ -4,11 +4,23 @@
 from dataclasses import dataclass, field
 from typing import Dict
 
+from django.core.exceptions import PermissionDenied
 from django.db import connection
-from django.db.models import Manager, TextField
+from django.db.models import (
+    ForeignKey,
+    Manager,
+    PROTECT,
+    SET_DEFAULT,
+    TextField,
+)
+from django.shortcuts import get_object_or_404
 
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.node import get_default_zone
+from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.models.zone import Zone
+from maasserver.permissions import VMClusterPermission
 
 
 def _add_vmresources(cluster_resource, host_resource):
@@ -65,7 +77,9 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
 
 
 class VMClusterManager(Manager):
-    def group_by_physical_cluster(self):
+    def group_by_physical_cluster(self, user):
+        from maasserver.rbac import rbac
+
         cursor = connection.cursor()
 
         # find all unique power addresses with a cluster relation,
@@ -82,10 +96,45 @@ class VMClusterManager(Manager):
         """
         cursor.execute(query)
         cluster_groups = cursor.fetchall()
+
+        if rbac.is_enabled():
+            result = []
+            fetched = rbac.get_resource_pool_ids(
+                user.username, "view", "view-all"
+            )
+            pool_ids = set(fetched["view"] + fetched["view-all"])
+            for cluster_group in cluster_groups:
+                cluster_group_list = list(
+                    self.filter(id__in=cluster_group[0], pool_id__in=pool_ids)
+                )
+                if cluster_group_list:
+                    result.append(cluster_group_list)
+            return result
         return [
             list(self.filter(id__in=cluster_group[0]))
             for cluster_group in cluster_groups
         ]
+
+    def get_clusters(self, user, perm):
+        from maasserver.rbac import rbac
+
+        if rbac.is_enabled():
+            if perm == VMClusterPermission.view:
+                fetched = rbac.get_resource_pool_ids(
+                    user.username, "view", "view-all"
+                )
+                pool_ids = set(fetched["view"] + fetched["view-all"])
+                return self.filter(pool_id__in=pool_ids)
+            else:
+                raise ValueError("Unknown perm: %s", perm)
+        return self.all()
+
+    def get_cluster_or_404(self, id, user, perm, **kwargs):
+        cluster = get_object_or_404(self, id=id, **kwargs)
+        if user.has_perm(perm, cluster):
+            return cluster
+        else:
+            raise PermissionDenied()
 
 
 class VMCluster(CleanSave, TimestampedModel):
@@ -95,6 +144,22 @@ class VMCluster(CleanSave, TimestampedModel):
 
     name = TextField(unique=True)
     project = TextField()
+    pool = ForeignKey(
+        ResourcePool,
+        default=None,
+        null=True,
+        blank=True,
+        editable=True,
+        on_delete=PROTECT,
+    )
+    zone = ForeignKey(
+        Zone,
+        verbose_name="Physical zone",
+        default=get_default_zone,
+        editable=True,
+        db_index=True,
+        on_delete=SET_DEFAULT,
+    )
 
     def hosts(self):
         from maasserver.models.bmc import Pod

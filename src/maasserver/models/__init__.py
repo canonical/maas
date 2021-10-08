@@ -204,6 +204,7 @@ from maasserver.permissions import (
     NodePermission,
     PodPermission,
     ResourcePoolPermission,
+    VMClusterPermission,
 )
 from provisioningserver.utils import is_instance_or_subclass
 
@@ -407,6 +408,16 @@ class MAASAuthorizationBackend(ModelBackend):
                 view_all_pools,
                 deploy_pools,
                 admin_pools,
+                obj,
+            )
+
+        if isinstance(perm, VMClusterPermission):
+            return self._perm_vmcluster(
+                user,
+                perm,
+                rbac,
+                visible_pools,
+                view_all_pools,
                 obj,
             )
 
@@ -675,6 +686,25 @@ class MAASAuthorizationBackend(ModelBackend):
             return True
 
         raise ValueError("unknown PodPermission value: %s" % perm)
+
+    def _perm_vmcluster(
+        self, user, perm, rbac, visible_pools, view_all_pools, obj=None
+    ):
+        rbac_enabled = rbac.is_enabled()
+        if not isinstance(obj, VMCluster):
+            raise ValueError(
+                "`VMClusterPermission` requires an `obj` of type `VMCluster`"
+            )
+
+        if perm == VMClusterPermission.view:
+            if rbac_enabled:
+                return (
+                    obj.pool_id in visible_pools
+                    or obj.pool_id in view_all_pools
+                )
+            return True
+
+        raise ValueError("unknown VMClusterPermission value: %s" % perm)
 
 
 # Ensure that all signals modules are loaded.

@@ -38,3 +38,9 @@ class ResourcePoolPermission(enum.Enum):
     edit = "edit"
     create = "create"
     delete = "delete"
+
+
+class VMClusterPermission(enum.Enum):
+    """Permissions for `VMCluster`."""
+
+    view = "view"

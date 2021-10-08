@@ -2960,15 +2960,21 @@ class Factory(maastesting.factory.Factory):
             *args, group_type=FILESYSTEM_GROUP_TYPE.VMFS6, **kwargs
         )
 
-    def make_VMCluster(self, name=None, project=None, pods=0, vms=0):
+    def make_VMCluster(
+        self, name=None, project=None, pods=0, vms=0, pool=None, zone=None
+    ):
         if name is None:
             name = factory.make_name("name")
         if project is None:
             project = factory.make_name("project")
+        if zone is None:
+            zone = self.make_Zone()
 
         cluster = VMCluster.objects.create(
             name=name,
             project=project,
+            pool=pool,
+            zone=zone,
         )
 
         for _ in range(0, pods):

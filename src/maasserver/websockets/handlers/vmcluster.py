@@ -95,7 +95,7 @@ class VMClusterHandler(TimestampedModelHandler):
     async def list_by_physical_cluster(self, params):
         @transactional
         def get_objects(params):
-            return VMCluster.objects.group_by_physical_cluster()
+            return VMCluster.objects.group_by_physical_cluster(self.user)
 
         @transactional
         def render_objects(objs):

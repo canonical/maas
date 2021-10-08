@@ -3,14 +3,23 @@
 
 import random
 
+from django.http import Http404
+
 from maasserver.models.virtualmachine import MB
 from maasserver.models.vmcluster import VMCluster
+from maasserver.permissions import VMClusterPermission
 from maasserver.testing.factory import factory
+from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 
 
 class TestVMClusterManager(MAASServerTestCase):
+    def enable_rbac(self):
+        rbac = self.useFixture(RBACEnabled())
+        self.store = rbac.store
+
     def test_group_by_physical_cluster(self):
+        user = factory.make_User()
         cluster_groups = [
             [factory.make_VMCluster() for _ in range(3)] for _ in range(3)
         ]
@@ -28,8 +37,87 @@ class TestVMClusterManager(MAASServerTestCase):
                         pod_type="lxd",
                     )
 
-        results = VMCluster.objects.group_by_physical_cluster()
+        results = VMCluster.objects.group_by_physical_cluster(user)
         self.assertCountEqual(results, cluster_groups)
+
+    def test_group_by_physucal_cluster_with_rbac(self):
+        self.enable_rbac()
+        user = factory.make_User()
+        view_pool = factory.make_ResourcePool()
+        self.store.add_pool(view_pool)
+        self.store.allow(user.username, view_pool, "view")
+        view_all_pool = factory.make_ResourcePool()
+        self.store.add_pool(view_all_pool)
+        self.store.allow(user.username, view_all_pool, "view-all")
+        view_cluster_group = [
+            factory.make_VMCluster(pool=view_pool) for _ in range(3)
+        ]
+        view_all_cluster_group = [
+            factory.make_VMCluster(pool=view_all_pool) for _ in range(3)
+        ]
+        other_cluster_group = [factory.make_VMCluster() for _ in range(3)]
+        cluster_groups = [
+            view_cluster_group,
+            view_all_cluster_group,
+            other_cluster_group,
+        ]
+        for i, cluster_group in enumerate(cluster_groups):
+            address_group = [factory.make_StaticIPAddress() for _ in range(3)]
+            for cluster in cluster_group:
+                for address in address_group:
+                    factory.make_Pod(
+                        cluster=cluster,
+                        parameters={
+                            "project": cluster.project,
+                            "power_address": "%s:8443" % address,
+                        },
+                        pod_type="lxd",
+                    )
+
+        results = VMCluster.objects.group_by_physical_cluster(user)
+        self.assertCountEqual(
+            results, [view_cluster_group, view_all_cluster_group]
+        )
+
+    def test_get_cluster_or_404_returns_cluster(self):
+        username = factory.make_name("name")
+        user = factory.make_User(username=username)
+        cluster = factory.make_VMCluster()
+        result = VMCluster.objects.get_cluster_or_404(
+            cluster.id, user, VMClusterPermission.view
+        )
+        self.assertEqual(result, cluster)
+
+    def test_get_cluster_or_404_returns_404_for_non_existent_cluster(self):
+        username = factory.make_name("name")
+        user = factory.make_User(username=username)
+        self.assertRaises(
+            Http404,
+            VMCluster.objects.get_cluster_or_404,
+            -1,
+            user,
+            VMClusterPermission.view,
+        )
+
+    def test_get_clusters_returns_view_rights(self):
+        self.enable_rbac()
+        user = factory.make_User()
+        view_pool = factory.make_ResourcePool()
+        view_cluster = factory.make_VMCluster(pool=view_pool)
+        self.store.add_pool(view_pool)
+        self.store.allow(user.username, view_pool, "view")
+        view_all_pool = factory.make_ResourcePool()
+        view_all_cluster = factory.make_VMCluster(pool=view_all_pool)
+        self.store.add_pool(view_all_pool)
+        self.store.allow(user.username, view_all_pool, "view-all")
+
+        for _ in range(3):
+            factory.make_VMCluster()
+
+        self.assertCountEqual(
+            [view_cluster, view_all_cluster],
+            VMCluster.objects.get_clusters(user, VMClusterPermission.view),
+        )
 
 
 class TestVMCluster(MAASServerTestCase):
@@ -49,12 +137,6 @@ class TestVMCluster(MAASServerTestCase):
 
         for pod in pods:
             self.assertIn(pod, hosts)
-
-    def test_hosts_with_no_registered_hosts(self):
-        cluster_name = factory.make_name("name")
-        project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
-        self.assertEqual(list(cluster.hosts()), [])
 
     def test_allocated_total_resources(self):
         cluster_name = factory.make_name("name")

@@ -9,7 +9,7 @@ from twisted.internet.defer import succeed
 from maasserver import vmhost as vmhost_module
 from maasserver.enum import BMC_TYPE
 from maasserver.exceptions import PodProblem
-from maasserver.models import PodHints
+from maasserver.models import PodHints, VMCluster
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -368,6 +368,35 @@ class TestSyncVMCluster(MAASServerTestCase):
         expected_names = [pod.name for pod in discovered_cluster.pods]
         self.assertCountEqual(pod_names, expected_names)
 
+    def test_sync_vmcluster_adds_vmhost_zone_and_pool(self):
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = fake_cluster_discovery(self)
+        zone = factory.make_Zone()
+        pod_info = make_pod_info()
+        power_parameters = {"power_address": pod_info["power_address"]}
+        orig_vmhost = factory.make_Pod(
+            zone=zone, pod_type=pod_info["type"], parameters=power_parameters
+        )
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        self.patch(vmhost_module, "discover_pod").return_value = (
+            successes,
+            failures,
+        )
+        vmhost = vmhost_module.discover_and_sync_vmhost(
+            orig_vmhost, factory.make_User()
+        )
+        cluster = VMCluster.objects.get(id=vmhost.hints.cluster_id)
+        self.assertEqual(vmhost.pool, cluster.pool)
+        self.assertEqual(vmhost.zone, cluster.zone)
+
 
 class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
 
@@ -444,3 +473,40 @@ class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
         pod_names = await deferToDatabase(_get_cluster_pod_names)
         expected_names = [pod.name for pod in discovered_cluster.pods]
         self.assertCountEqual(pod_names, expected_names)
+
+    @wait_for_reactor
+    async def test_sync_vmcluster_async_cluster_has_vmhost_pool_and_zone(self):
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = await deferToDatabase(fake_cluster_discovery, self)
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        vmhost_module.discover_pod.return_value = succeed(
+            (successes, failures)
+        )
+        zone = await deferToDatabase(factory.make_Zone)
+        pod_info = await deferToDatabase(make_pod_info)
+        power_parameters = {"power_address": pod_info["power_address"]}
+        orig_vmhost = await deferToDatabase(
+            factory.make_Pod,
+            zone=zone,
+            pod_type=pod_info["type"],
+            parameters=power_parameters,
+        )
+        user = await deferToDatabase(factory.make_User)
+        vmhost = await vmhost_module.discover_and_sync_vmhost_async(
+            orig_vmhost, user
+        )
+
+        def _check_cluster():
+            cluster = VMCluster.objects.get(id=vmhost.hints.cluster_id)
+            self.assertEqual(vmhost.pool, cluster.pool)
+            self.assertEqual(vmhost.zone, cluster.zone)
+
+        await deferToDatabase(_check_cluster)

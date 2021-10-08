@@ -6,6 +6,7 @@
 
 from maasserver.api.support import OperationsHandler
 from maasserver.models import VMCluster
+from maasserver.permissions import VMClusterPermission
 
 DISPLAYED_VMCLUSTER_FIELDS = (
     "id",
@@ -110,4 +111,6 @@ class VMClustersHandler(OperationsHandler):
         @success-example (json) "success-json" [exkey=read-vmclusters]
         placeholder text
         """
-        return VMCluster.objects.order_by("id")
+        return VMCluster.objects.get_clusters(
+            request.user, VMClusterPermission.view
+        ).order_by("id")
