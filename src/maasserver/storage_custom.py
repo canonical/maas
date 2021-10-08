@@ -322,7 +322,7 @@ def _apply_layout_partition(entry: StorageEntry, block_devices: List):
 def _apply_layout_filesystem(entry: StorageEntry, block_devices: List):
     params = {
         "fstype": entry.type,
-        "mount_point": entry.mount,
+        "mount_point": entry.mount or None,
         "mount_options": entry.mount_options,
     }
     device = block_devices[entry.on]
@@ -367,11 +367,34 @@ def _apply_layout_bcache(entry: StorageEntry, block_devices: List):
     block_devices[entry.name] = bcache.virtual_device
 
 
+def _apply_layout_lvm(entry: StorageEntry, block_devices: List):
+    devices = []
+    partitions = []
+    for name in entry.members:
+        device = block_devices[name]
+        if isinstance(device, models.Partition):
+            partitions.append(device)
+        else:
+            devices.append(device)
+    vg = models.VolumeGroup.objects.create_volume_group(
+        entry.name, devices, partitions
+    )
+    block_devices[entry.name] = vg
+
+
+def _apply_layout_logicalvolume(entry: StorageEntry, block_devices: List):
+    vg = block_devices[entry.on]
+    lv = vg.create_logical_volume(entry.name, entry.size)
+    block_devices[entry.name] = lv
+
+
 _LAYOUT_APPLIERS = {
     "BCache": _apply_layout_bcache,
     "Disk": _apply_layout_disk,
     "FileSystem": _apply_layout_filesystem,
     "Partition": _apply_layout_partition,
+    "LogicalVolume": _apply_layout_logicalvolume,
+    "LVM": _apply_layout_lvm,
 }
 
 

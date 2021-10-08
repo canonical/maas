@@ -987,3 +987,55 @@ class TestApplyLayoutToMachine(MAASServerTestCase):
         root_fs = bcache.filesystem_set.first()
         self.assertEqual(root_fs.fstype, FILESYSTEM_TYPE.EXT4)
         self.assertEqual(root_fs.mount_point, "/")
+
+    def test_lvm(self):
+        config = {
+            "layout": {
+                "storage": {
+                    "type": "lvm",
+                    "members": ["sda", "sdb", "sdc"],
+                    "volumes": [
+                        {
+                            "name": "data1",
+                            "size": "100G",
+                            "fs": "ext4",
+                        },
+                        {
+                            "name": "data2",
+                            "size": "150G",
+                            "fs": "btrfs",
+                        },
+                    ],
+                },
+            },
+            "mounts": {
+                "/data1": {
+                    "device": "data1",
+                },
+                "/data2": {
+                    "device": "data2",
+                },
+            },
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        disks = [
+            factory.make_PhysicalBlockDevice(
+                node=machine,
+                name=name,
+                size=500 * GB,
+            )
+            for name in config["layout"]["storage"]["members"]
+        ]
+        apply_layout_to_machine(layout, machine)
+        for disk in disks:
+            fs = disk.filesystem_set.first()
+            self.assertEqual(fs.fstype, FILESYSTEM_TYPE.LVM_PV)
+        data1 = machine.blockdevice_set.get(name="data1")
+        self.assertEqual(data1.size, rounded_size(100 * GB))
+        fs1 = data1.filesystem_set.first()
+        self.assertEqual(fs1.fstype, FILESYSTEM_TYPE.EXT4)
+        data2 = machine.blockdevice_set.get(name="data2")
+        self.assertEqual(data2.size, rounded_size(150 * GB))
+        fs2 = data2.filesystem_set.first()
+        self.assertEqual(fs2.fstype, FILESYSTEM_TYPE.BTRFS)
