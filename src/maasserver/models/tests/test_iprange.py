@@ -7,9 +7,8 @@
 import random
 
 from django.core.exceptions import ValidationError
-from django.db.utils import IntegrityError
 from netaddr import IPNetwork
-from testtools import ExpectedException
+from testtools import TestCase
 
 from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE
 from maasserver.models import IPRange
@@ -31,6 +30,11 @@ def make_plain_ipv6_subnet():
 
 
 class IPRangeTest(MAASServerTestCase):
+    def setUp(self):
+        super().setUp()
+        unittest_case = super(TestCase, self)
+        self.assertRaises = unittest_case.assertRaises
+
     def test_create(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
@@ -53,22 +57,17 @@ class IPRangeTest(MAASServerTestCase):
             comment="The quick brown fox jumps over the lazy dog.",
             subnet=subnet,
         )
-        with ExpectedException(ValidationError, ".*Enter a valid.*"):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean_fields()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": ["Enter a valid IPv4 or IPv6 address."],
+                "end_ip": ["Enter a valid IPv4 or IPv6 address."],
+            },
+        )
 
     def test_requires_start_ip_address(self):
-        subnet = make_plain_subnet()
-        iprange = IPRange(
-            start_ip="192.168.0.1",
-            type=IPRANGE_TYPE.RESERVED,
-            user=factory.make_User(),
-            subnet=subnet,
-            comment="The quick brown fox jumps over the lazy dog.",
-        )
-        with ExpectedException(ValidationError, ".*both required.*"):
-            iprange.save()
-
-    def test_requires_end_ip_address(self):
         subnet = make_plain_subnet()
         iprange = IPRange(
             end_ip="192.168.0.1",
@@ -77,8 +76,32 @@ class IPRangeTest(MAASServerTestCase):
             subnet=subnet,
             comment="The quick brown fox jumps over the lazy dog.",
         )
-        with ExpectedException(ValidationError, ".*both required.*"):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean_fields()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": ["This field cannot be null."],
+            },
+        )
+
+    def test_requires_end_ip_address(self):
+        subnet = make_plain_subnet()
+        iprange = IPRange(
+            start_ip="192.168.0.1",
+            type=IPRANGE_TYPE.RESERVED,
+            user=factory.make_User(),
+            subnet=subnet,
+            comment="The quick brown fox jumps over the lazy dog.",
+        )
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean_fields()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "end_ip": ["This field cannot be null."],
+            },
+        )
 
     def test_requires_matching_address_family(self):
         subnet = make_plain_subnet()
@@ -90,8 +113,19 @@ class IPRangeTest(MAASServerTestCase):
             subnet=subnet,
             comment="The quick brown fox jumps over the lazy dog.",
         )
-        with ExpectedException(ValidationError, ".*same address family.*"):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [
+                    "Start IP address and end IP address must be in the same address family."
+                ],
+                "end_ip": [
+                    "Start IP address and end IP address must be in the same address family."
+                ],
+            },
+        )
 
     def test_requires_subnet(self):
         iprange = IPRange(
@@ -101,8 +135,12 @@ class IPRangeTest(MAASServerTestCase):
             user=factory.make_User(),
             comment="The quick brown weasel jumps over the lazy elephant.",
         )
-        with ExpectedException(IntegrityError):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean_fields()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {"subnet": ["This field cannot be null."]},
+        )
 
     def test_requires_start_ip_and_end_ip(self):
         subnet = make_plain_subnet()
@@ -112,8 +150,15 @@ class IPRangeTest(MAASServerTestCase):
             user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.",
         )
-        with ExpectedException(ValidationError, ".*are both required.*"):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean_fields()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": ["This field cannot be null."],
+                "end_ip": ["This field cannot be null."],
+            },
+        )
 
     def test_requires_start_ip_and_end_ip_to_be_within_subnet(self):
         subnet = make_plain_subnet()
@@ -125,10 +170,19 @@ class IPRangeTest(MAASServerTestCase):
             user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.",
         )
-        with ExpectedException(
-            ValidationError, ".*addresses must be within subnet.*"
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [
+                    f"IP addresses must be within subnet: {subnet.cidr}."
+                ],
+                "end_ip": [
+                    f"IP addresses must be within subnet: {subnet.cidr}."
+                ],
+            },
+        )
 
     def test_requires_start_ip_to_be_within_subnet(self):
         subnet = make_plain_subnet()
@@ -140,10 +194,16 @@ class IPRangeTest(MAASServerTestCase):
             user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.",
         )
-        with ExpectedException(
-            ValidationError, ".*Start IP address must be within subnet.*"
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [
+                    f"Start IP address must be within subnet: {subnet.cidr}."
+                ],
+            },
+        )
 
     def test_requires_end_ip_to_be_within_subnet(self):
         subnet = make_plain_subnet()
@@ -155,10 +215,16 @@ class IPRangeTest(MAASServerTestCase):
             user=factory.make_User(),
             comment="The quick brown cow jumps over the lazy moon.",
         )
-        with ExpectedException(
-            ValidationError, ".*End IP address must be within subnet.*"
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "end_ip": [
+                    f"End IP address must be within subnet: {subnet.cidr}."
+                ],
+            },
+        )
 
     def test_requires_end_ip_to_be_greater_or_equal_to_start_ip(self):
         subnet = make_plain_subnet()
@@ -170,10 +236,16 @@ class IPRangeTest(MAASServerTestCase):
             type=IPRANGE_TYPE.DYNAMIC,
             comment="The quick brown cow jumps over the lazy moon.",
         )
-        with ExpectedException(
-            ValidationError, ".*End IP address must not be less than.*"
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "end_ip": [
+                    "End IP address must not be less than Start IP address."
+                ],
+            },
+        )
 
     def test_requires_end_ip_to_not_be_broadcast(self):
         subnet = make_plain_subnet()
@@ -184,11 +256,16 @@ class IPRangeTest(MAASServerTestCase):
             subnet=subnet,
             type=IPRANGE_TYPE.RESERVED,
         )
-        with ExpectedException(
-            ValidationError,
-            ".*Broadcast address cannot be included in IP range.*",
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "end_ip": [
+                    "Broadcast address cannot be included in IP range."
+                ],
+            },
+        )
 
     def test_requires_start_ip_to_not_be_network(self):
         subnet = make_plain_subnet()
@@ -199,11 +276,16 @@ class IPRangeTest(MAASServerTestCase):
             subnet=subnet,
             type=IPRANGE_TYPE.RESERVED,
         )
-        with ExpectedException(
-            ValidationError,
-            ".*Reserved network address cannot be included in IP range.*",
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [
+                    "Reserved network address cannot be included in IP range."
+                ],
+            },
+        )
 
     def test_requires_start_ip_to_not_be_ipv6_reserved_anycast(self):
         subnet = make_plain_ipv6_subnet()
@@ -214,11 +296,16 @@ class IPRangeTest(MAASServerTestCase):
             subnet=subnet,
             type=IPRANGE_TYPE.RESERVED,
         )
-        with ExpectedException(
-            ValidationError,
-            ".*Reserved network address cannot be included in IP range.*",
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [
+                    "Reserved network address cannot be included in IP range."
+                ],
+            },
+        )
 
     def test_requires_256_addresses_for_ipv6_dynamic(self):
         subnet = factory.make_Subnet(
@@ -232,11 +319,19 @@ class IPRangeTest(MAASServerTestCase):
             type=IPRANGE_TYPE.DYNAMIC,
             comment="This is a comment.",
         )
-        with ExpectedException(
-            ValidationError,
-            ".*IPv6 dynamic range must be at least 256 addresses in size.",
-        ):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [
+                    "IPv6 dynamic range must be at least 256 addresses in size."
+                ],
+                "end_ip": [
+                    "IPv6 dynamic range must be at least 256 addresses in size."
+                ],
+            },
+        )
 
     def test_requires_type(self):
         subnet = make_plain_subnet()
@@ -247,8 +342,12 @@ class IPRangeTest(MAASServerTestCase):
             subnet=subnet,
             comment="The quick brown mule jumps over the lazy cheetah.",
         )
-        with ExpectedException(ValidationError):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean_fields()
+        self.assertEqual(
+            cm.exception.message_dict,
+            {"type": ["This field cannot be blank."]},
+        )
 
     def test_user_optional(self):
         subnet = make_plain_subnet()
@@ -259,7 +358,7 @@ class IPRangeTest(MAASServerTestCase):
             subnet=subnet,
             comment="The quick brown owl jumps over the lazy alligator.",
         )
-        iprange.save()
+        iprange.clean_fields()
 
     def test_comment_optional(self):
         subnet = make_plain_subnet()
@@ -270,18 +369,23 @@ class IPRangeTest(MAASServerTestCase):
             type=IPRANGE_TYPE.RESERVED,
             user=factory.make_User(),
         )
-        iprange.save()
+        iprange.clean_fields()
 
 
 class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
 
-    overlaps = ".*Requested %s range conflicts with an existing %srange.*"
+    overlaps = "Requested %s range conflicts with an existing %srange."
     dynamic_overlaps = overlaps % (IPRANGE_TYPE.DYNAMIC, "IP address or ")
     reserved_overlaps = overlaps % (IPRANGE_TYPE.RESERVED, "")
 
-    no_room = ".*There is no room for any %s ranges on this subnet.*"
+    no_room = "There is no room for any %s ranges on this subnet."
     dynamic_no_room = no_room % IPRANGE_TYPE.DYNAMIC
     reserved_no_room = no_room % IPRANGE_TYPE.RESERVED
+
+    def setUp(self):
+        super().setUp()
+        unittest_case = super(TestCase, self)
+        self.assertRaises = unittest_case.assertRaises
 
     def test_no_save_duplicate_ipranges(self):
         subnet = make_plain_subnet()
@@ -298,8 +402,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.100",
             end_ip="192.168.0.150",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_no_save_range_overlap_begin(self):
         subnet = make_plain_subnet()
@@ -316,12 +428,28 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.90",
             end_ip="192.168.0.100",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
         # Try as reserved range.
         iprange.type = IPRANGE_TYPE.RESERVED
-        with ExpectedException(ValidationError, self.reserved_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.reserved_overlaps],
+                "end_ip": [self.reserved_overlaps],
+            },
+        )
 
     def test_no_save_range_overlap_end(self):
         subnet = make_plain_subnet()
@@ -338,8 +466,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.140",
             end_ip="192.168.0.160",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_no_save_range_within_ranges(self):
         subnet = make_plain_subnet()
@@ -356,8 +492,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.110",
             end_ip="192.168.0.140",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_no_save_range_spanning_existing_range(self):
         subnet = make_plain_subnet()
@@ -374,8 +518,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.10",
             end_ip="192.168.0.240",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_no_save_range_within_existing_range(self):
         subnet = make_plain_subnet()
@@ -392,8 +544,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.110",
             end_ip="192.168.0.140",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_no_save_range_within_existing_reserved_range(self):
         subnet = make_plain_subnet()
@@ -410,8 +570,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.110",
             end_ip="192.168.0.140",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_no_save_when_no_ranges_available(self):
         subnet = make_plain_subnet()
@@ -429,8 +597,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.1",
             end_ip="192.168.0.1",
         )
-        with ExpectedException(ValidationError, self.dynamic_no_room):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_no_room],
+                "end_ip": [self.dynamic_no_room],
+            },
+        )
         # We CAN reserve the gateway addr.
         IPRange(
             subnet=subnet,
@@ -445,8 +621,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.25",
             end_ip="192.168.0.35",
         )
-        with ExpectedException(ValidationError, self.reserved_no_room):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.reserved_no_room],
+                "end_ip": [self.reserved_no_room],
+            },
+        )
 
     def test_modify_existing_performs_validation(self):
         subnet = make_plain_subnet()
@@ -471,8 +655,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         instance_id = iprange.id
         iprange.start_ip = "192.168.0.110"
         iprange.end_ip = "192.168.0.140"
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
         # Make sure original range isn't deleted after failure to modify.
         iprange = reload_object(iprange)
         self.assertEqual(iprange.id, instance_id)
@@ -482,14 +674,19 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         iprange = IPRange(
             subnet=subnet,
             type=IPRANGE_TYPE.DYNAMIC,
-            start_ip="192.168.0.2",
+            start_ip="192.168.0.1",
             end_ip="192.168.0.5",
         )
-        iprange.save()
-        # A DYNAMIC range cannot overlap the gateway IP.
-        iprange.start_ip = "192.168.0.1"
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_reserved_range_can_overlap_gateway_ip(self):
         subnet = make_plain_subnet()
@@ -502,7 +699,7 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
         iprange.save()
         # A RESERVED range can overlap the gateway IP.
         iprange.start_ip = "192.168.0.1"
-        iprange.save()
+        iprange.clean()
 
     def test_reserved_range_cannot_overlap_dynamic_ranges(self):
         subnet = factory.make_Subnet(
@@ -522,8 +719,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.25",
             end_ip="192.168.0.30",
         )
-        with ExpectedException(ValidationError, self.reserved_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.reserved_overlaps],
+                "end_ip": [self.reserved_overlaps],
+            },
+        )
 
     def test_reserved_range_cannot_overlap_reserved_ranges(self):
         subnet = factory.make_Subnet(
@@ -543,8 +748,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.250",
             end_ip="192.168.0.254",
         )
-        with ExpectedException(ValidationError, self.reserved_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.reserved_overlaps],
+                "end_ip": [self.reserved_overlaps],
+            },
+        )
 
     def test_reserved_range_can_overlap_most_ip_types(self):
         subnet = make_plain_subnet()
@@ -582,8 +795,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.2",
             end_ip="192.168.0.254",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_dynamic_range_cannot_overlap_sticky_address(self):
         subnet = make_plain_subnet()
@@ -600,8 +821,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.2",
             end_ip="192.168.0.254",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_dynamic_range_cannot_overlap_user_reserved_address(self):
         subnet = make_plain_subnet()
@@ -618,8 +847,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.2",
             end_ip="192.168.0.254",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     # Regression for lp:1580772.
     def test_dynamic_range_can_overlap_discovered_ip(self):
@@ -635,7 +872,7 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.2",
             end_ip="192.168.0.254",
         )
-        iprange.save()
+        iprange.clean()
 
     # Regression for lp:1580772.
     def test_dynamic_range_can_match_discovered_ip(self):
@@ -651,7 +888,7 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.3",
             end_ip="192.168.0.3",
         )
-        iprange.save()
+        iprange.clean()
 
     def test_dynamic_range_cannot_overlap_dns_servers(self):
         subnet = factory.make_Subnet(
@@ -665,8 +902,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
             start_ip="192.168.0.1",
             end_ip="192.168.0.254",
         )
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
 
     def test_reserved_range_can_overlap_dns_servers(self):
         subnet = factory.make_Subnet(
@@ -695,8 +940,16 @@ class TestIPRangeSavePreventsOverlapping(MAASServerTestCase):
 
         # Dynamic should not save overlapping gateway IP.
         iprange.type = IPRANGE_TYPE.DYNAMIC
-        with ExpectedException(ValidationError, self.dynamic_overlaps):
-            iprange.save()
+        with self.assertRaises(ValidationError) as cm:
+            iprange.clean()
+
+        self.assertEqual(
+            cm.exception.message_dict,
+            {
+                "start_ip": [self.dynamic_overlaps],
+                "end_ip": [self.dynamic_overlaps],
+            },
+        )
         # Fix start_ip and now it should save.
         iprange.start_ip = "192.168.0.2"
         iprange.save()
