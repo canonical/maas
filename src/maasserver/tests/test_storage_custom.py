@@ -12,6 +12,7 @@ from maasserver.storage_custom import (
     LVM,
     Partition,
     RAID,
+    SpecialDevice,
     UnappliableLayout,
 )
 from maasserver.testing.factory import factory
@@ -90,6 +91,56 @@ class TestGetStorageLayout(MAASTestCase):
             layout.sorted_entries, [sda, sda1, sda1_fs, sda2, sda2_fs]
         )
         self.assertEqual(layout.disk_names(), {"sda"})
+
+    def test_special_filesystem(self):
+        config = {
+            "layout": {
+                "special1": {
+                    "type": "special",
+                    "fs": "tmpfs",
+                },
+                "special2": {
+                    "type": "special",
+                    "fs": "ramfs",
+                },
+            },
+            "mounts": {
+                "/temp1": {
+                    "device": "special1",
+                },
+                "/temp2": {
+                    "device": "special2",
+                },
+            },
+        }
+        special1 = SpecialDevice(name="special1")
+        special1_fs = FileSystem(
+            name="special1[fs]",
+            on="special1",
+            type="tmpfs",
+            mount="/temp1",
+        )
+        special2 = SpecialDevice(name="special2")
+        special2_fs = FileSystem(
+            name="special2[fs]",
+            on="special2",
+            type="ramfs",
+            mount="/temp2",
+        )
+        layout = get_storage_layout(config)
+        self.assertEqual(
+            layout.entries,
+            {
+                "special1": special1,
+                "special1[fs]": special1_fs,
+                "special2": special2,
+                "special2[fs]": special2_fs,
+            },
+        )
+        self.assertEqual(
+            layout.sorted_entries,
+            [special1, special1_fs, special2, special2_fs],
+        )
 
     def test_raid(self):
         config = {
@@ -679,6 +730,59 @@ class TestGetStorageLayout(MAASTestCase):
             str(err), "RAID 'md0' has duplicated devices in members and spares"
         )
 
+    def test_invalid_special_invalid_filesystem(self):
+        config = {
+            "layout": {
+                "special": {
+                    "type": "special",
+                    "fs": "ext4",
+                },
+            },
+            "mounts": {
+                "/temp": {
+                    "device": "special",
+                },
+            },
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(str(err), "Invalid special filesystem 'ext4'")
+
+    def test_invalid_special_missing_mounts(self):
+        config = {
+            "layout": {
+                "special1": {
+                    "type": "special",
+                    "fs": "tmpfs",
+                },
+                "special2": {
+                    "type": "special",
+                    "fs": "ramfs",
+                },
+                "special3": {
+                    "type": "special",
+                    "fs": "tmpfs",
+                },
+            },
+            "mounts": {
+                "/temp2": {
+                    "device": "special2",
+                }
+            },
+        }
+        err = self.assertRaises(
+            ConfigError,
+            get_storage_layout,
+            config,
+        )
+        self.assertEqual(
+            str(err),
+            "Special device(s) missing mountpoint: special1, special3",
+        )
+
     def test_missing_required_attributes(self):
         config = {
             "layout": {
@@ -1231,3 +1335,33 @@ class TestApplyLayoutToMachine(MAASServerTestCase):
         raid_fs = raid.get_effective_filesystem()
         self.assertEqual(raid_fs.fstype, FILESYSTEM_TYPE.EXT4)
         self.assertEqual(raid_fs.mount_point, "/data")
+
+    def test_special_filesystems(self):
+        config = {
+            "layout": {
+                "special1": {
+                    "type": "special",
+                    "fs": "tmpfs",
+                },
+                "special2": {
+                    "type": "special",
+                    "fs": "ramfs",
+                },
+            },
+            "mounts": {
+                "/temp1": {
+                    "device": "special1",
+                },
+                "/temp2": {
+                    "device": "special2",
+                },
+            },
+        }
+        layout = get_storage_layout(config)
+        machine = factory.make_Node()
+        apply_layout_to_machine(layout, machine)
+        fs1, fs2 = machine.special_filesystems.order_by("label")
+        self.assertEqual(fs1.fstype, FILESYSTEM_TYPE.TMPFS)
+        self.assertEqual(fs1.mount_point, "/temp1")
+        self.assertEqual(fs2.fstype, FILESYSTEM_TYPE.RAMFS)
+        self.assertEqual(fs2.mount_point, "/temp2")

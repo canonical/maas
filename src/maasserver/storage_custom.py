@@ -27,6 +27,11 @@ class StorageEntry:
 
 
 @dataclasses.dataclass
+class SpecialDevice(StorageEntry):
+    pass
+
+
+@dataclasses.dataclass
 class Disk(StorageEntry):
     ptable: str = ""
     boot: bool = False
@@ -149,7 +154,7 @@ def apply_layout_to_machine(layout: StorageLayout, machine):
     for entry in layout.sorted_entries:
         entry_type = type(entry).__name__
         apply_layout = _LAYOUT_APPLIERS[entry_type]
-        apply_layout(entry, block_devices)
+        apply_layout(machine, entry, block_devices)
 
 
 def _choices(choices_tuple):
@@ -181,7 +186,7 @@ def _validate_partition_table(name: str, data: Config) -> str:
 
 def _flatten_disk(name: str, data: Config) -> List[StorageEntry]:
     ptable = _validate_partition_table(name, data)
-    items: List = [
+    items: List[StorageEntry] = [
         Disk(name=name, ptable=ptable, boot=data.get("boot", False))
     ]
     items.extend(_disk_partitions(name, data.get("partitions", [])))
@@ -203,7 +208,7 @@ def _flatten_raid(name: str, data: Config) -> List[StorageEntry]:
         )
     if spares and level == 0:
         raise ConfigError("RAID level 0 doesn't support spares")
-    items: List = [
+    items: List[StorageEntry] = [
         RAID(
             name=name,
             level=level,
@@ -221,7 +226,7 @@ def _flatten_bcache(name: str, data: Config) -> List[StorageEntry]:
     cache_mode = data.get("cache-mode", CACHE_MODE_TYPE.WRITETHROUGH)
     if cache_mode not in _choices(CACHE_MODE_TYPE_CHOICES):
         raise ConfigError(f"Unknown cache mode '{cache_mode}'")
-    items: List = [
+    items: List[StorageEntry] = [
         BCache(
             name=name,
             backing_device=data["backing-device"],
@@ -236,7 +241,7 @@ def _flatten_bcache(name: str, data: Config) -> List[StorageEntry]:
 
 
 def _flatten_lvm(name: str, data: Config) -> List[StorageEntry]:
-    items: List = [
+    items: List[StorageEntry] = [
         LVM(
             name=name,
             members=data["members"],
@@ -257,10 +262,21 @@ def _flatten_lvm(name: str, data: Config) -> List[StorageEntry]:
     return items
 
 
+def _flatten_special(name: str, data: Config) -> List[StorageEntry]:
+    fstype = data.get("fs")
+    if fstype not in (FILESYSTEM_TYPE.TMPFS, FILESYSTEM_TYPE.RAMFS):
+        raise ConfigError(f"Invalid special filesystem '{fstype}'")
+    items: List[StorageEntry] = [
+        SpecialDevice(name=name),
+        _get_filesystem(name, data),
+    ]
+    return items
+
+
 def _disk_partitions(
     disk_name: str, partitions_data: List[Config]
 ) -> List[StorageEntry]:
-    items: List = []
+    items: List[StorageEntry] = []
     after = ""
     for part in partitions_data:
         part_name = part["name"]
@@ -285,6 +301,7 @@ _FLATTENERS = {
     "disk": _flatten_disk,
     "lvm": _flatten_lvm,
     "raid": _flatten_raid,
+    "special": _flatten_special,
 }
 
 
@@ -305,7 +322,9 @@ def _flatten(config: Config) -> List[StorageEntry]:
     return items
 
 
-def _apply_layout_disk(entry: StorageEntry, block_devices: List):
+def _apply_layout_disk(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
     if not entry.ptable:
         return
     disk = block_devices[entry.name]
@@ -321,7 +340,9 @@ def _apply_layout_disk(entry: StorageEntry, block_devices: List):
     disk.partition_table = partition_table
 
 
-def _apply_layout_partition(entry: StorageEntry, block_devices: List):
+def _apply_layout_partition(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
     device = block_devices[entry.on]
     # if there is a partition table for the device, it has been cached above
     partition_table = getattr(device, "partition_table", None)
@@ -332,21 +353,27 @@ def _apply_layout_partition(entry: StorageEntry, block_devices: List):
     )
 
 
-def _apply_layout_filesystem(entry: StorageEntry, block_devices: List):
+def _apply_layout_filesystem(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
     params = {
         "fstype": entry.type,
         "mount_point": entry.mount or None,
         "mount_options": entry.mount_options,
     }
     device = block_devices[entry.on]
-    if isinstance(device, models.Partition):
+    if device is None:
+        params["node"] = machine
+    elif isinstance(device, models.Partition):
         params["partition"] = device
     else:
         params["block_device"] = device
     block_devices[entry.name] = models.Filesystem.objects.create(**params)
 
 
-def _apply_layout_bcache(entry: StorageEntry, block_devices: List):
+def _apply_layout_bcache(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
     backing_device = block_devices[entry.backing_device]
     cache_device = block_devices[entry.cache_device]
 
@@ -380,7 +407,9 @@ def _apply_layout_bcache(entry: StorageEntry, block_devices: List):
     block_devices[entry.name] = bcache.virtual_device
 
 
-def _apply_layout_lvm(entry: StorageEntry, block_devices: List):
+def _apply_layout_lvm(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
     devices = []
     partitions = []
     for name in entry.members:
@@ -395,13 +424,17 @@ def _apply_layout_lvm(entry: StorageEntry, block_devices: List):
     block_devices[entry.name] = vg
 
 
-def _apply_layout_logicalvolume(entry: StorageEntry, block_devices: List):
+def _apply_layout_logicalvolume(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
     vg = block_devices[entry.on]
     lv = vg.create_logical_volume(entry.name, entry.size)
     block_devices[entry.name] = lv
 
 
-def _apply_layout_raid(entry: StorageEntry, block_devices: List):
+def _apply_layout_raid(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
     devices = []
     partitions = []
     spare_devices = []
@@ -429,6 +462,13 @@ def _apply_layout_raid(entry: StorageEntry, block_devices: List):
     block_devices[entry.name] = raid.virtual_device
 
 
+def _apply_layout_special_device(
+    machine: models.Node, entry: StorageEntry, block_devices: List
+):
+    # there's no device linked to special filesystems
+    block_devices[entry.name] = None
+
+
 _LAYOUT_APPLIERS = {
     "BCache": _apply_layout_bcache,
     "Disk": _apply_layout_disk,
@@ -437,6 +477,7 @@ _LAYOUT_APPLIERS = {
     "LogicalVolume": _apply_layout_logicalvolume,
     "LVM": _apply_layout_lvm,
     "RAID": _apply_layout_raid,
+    "SpecialDevice": _apply_layout_special_device,
 }
 
 
@@ -474,14 +515,28 @@ def _sort_entries(entries: List[StorageEntry]) -> List[StorageEntry]:
 
 
 def _set_mountpoints(entries: Dict[str, StorageEntry], config: Config):
+    mounted_devices = set()  # all devices with a mountpoint
     for mount, data in config.items():
         device = data["device"]
+        mounted_devices.add(device)
         try:
             fs = cast(FileSystem, entries[f"{device}[fs]"])
         except KeyError:
             raise ConfigError(f"Filesystem not found for device '{device}'")
         fs.mount = mount
         fs.mount_options = data.get("options", "")
+    # all special filesystems must have a mount point
+    special_devices = set(
+        entry.name
+        for entry in entries.values()
+        if isinstance(entry, SpecialDevice)
+    )
+    unmounted_devices = special_devices - mounted_devices
+    if unmounted_devices:
+        unmounted_list = ", ".join(sorted(unmounted_devices))
+        raise ConfigError(
+            f"Special device(s) missing mountpoint: {unmounted_list}"
+        )
 
 
 def _get_size(size: str) -> int:
