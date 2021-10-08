@@ -1,9 +1,6 @@
 # Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver models."""
-
-
 import base64
 from datetime import datetime, timedelta
 import email
@@ -5075,6 +5072,18 @@ class TestNode(MAASServerTestCase):
             "Virtual block device on another virtual block device should have "
             "been removed.",
         )
+
+    def test_clear_full_storage_configuration_removes_special_fs(self):
+        node = factory.make_Node()
+        special_filesystems = [
+            factory.make_Filesystem(node=node, fstype=FILESYSTEM_TYPE.TMPFS),
+            factory.make_Filesystem(node=node, fstype=FILESYSTEM_TYPE.TMPFS),
+        ]
+        self.assertCountEqual(
+            node.special_filesystems.all(), special_filesystems
+        )
+        node._clear_full_storage_configuration()
+        self.assertCountEqual(node.special_filesystems.all(), [])
 
     def test_clear_full_storage_configuration_lp1815091(self):
         node = factory.make_Node()

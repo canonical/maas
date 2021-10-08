@@ -4318,6 +4318,7 @@ class Node(CleanSave, TimestampedModel):
         Filesystem.objects.filter(
             block_device__id__in=block_device_ids
         ).delete()
+        self.special_filesystems.all().delete()
         virtual_devices = list(reversed(self.virtualblockdevice_set.all()))
         for _ in range(10):  # 10 times gives enough tries to remove.
             for virtual_bd in virtual_devices[:]:  # Iterate on copy.
