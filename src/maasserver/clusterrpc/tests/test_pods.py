@@ -187,7 +187,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
         valid_rack_id = factory.make_name("system_id")
         client = Mock()
         client.ident = valid_rack_id
-        client.return_value = succeed({"pod": pod})
+        client.return_value = succeed({"pod": pod, "cluster": None})
         clients.append(client)
 
         self.patch(pods_module, "getAllClients").return_value = clients
@@ -257,7 +257,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
             ],
         )
         clients = []
-        client.return_value = succeed({"cluster": cluster})
+        client.return_value = succeed({"cluster": cluster, "pod": None})
         clients.append(client)
 
         self.patch(pods_module, "getAllClients").return_value = clients

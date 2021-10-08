@@ -70,7 +70,7 @@ def discover_pod(pod_type, context, pod_id=None, name=None, timeout=120):
     clients = getAllClients()
     dl = DeferredList(map(discover, clients), consumeErrors=True)
     return dl.addCallback(
-        _collect_xor_results_and_failures, clients, "cluster", "pod"
+        _collect_xor_results_and_failures, clients, ("cluster", "pod")
     )
 
 
@@ -257,22 +257,18 @@ def _collect_results_and_failures(results, clients, result_key):
     return discovered, failures
 
 
-def _collect_xor_results_and_failures(
-    results, clients, result_key_a, result_key_b
-):
+def _collect_xor_results_and_failures(results, clients, keys):
     discovered, failures = {}, {}
     for client, (success, result) in zip(clients, results):
         if success:
-            if result_key_a in result:
-                discovered[client.ident] = result[result_key_a]
-            elif result_key_b in result:
-                discovered[client.ident] = result[result_key_b]
-            else:
-                raise ValueError(
-                    "neither %s or %s where found in result",
-                    result_key_a,
-                    result_key_b,
-                )
+            value = None
+            for key in keys:
+                value = result.get(key)
+                if value:
+                    discovered[client.ident] = value
+                    break
+            if value is None:
+                raise ValueError("no value found in result")
         else:
             failures[client.ident] = result.value
     return discovered, failures
