@@ -11,6 +11,7 @@ from maasserver import models
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     CACHE_MODE_TYPE_CHOICES,
+    FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_TYPE,
     FILESYSTEM_TYPE_CHOICES,
     PARTITION_TABLE_TYPE_CHOICES,
@@ -60,10 +61,10 @@ class Partition(StorageEntry):
 class RAID(StorageEntry):
     level: int
     members: List[str]
-    ptable: str = ""
+    spares: List[str]
 
     def deps(self) -> Set[str]:
-        return set(self.members)
+        return set(self.members + self.spares)
 
 
 @dataclasses.dataclass
@@ -188,19 +189,31 @@ def _flatten_disk(name: str, data: Config) -> List[StorageEntry]:
 
 
 def _flatten_raid(name: str, data: Config) -> List[StorageEntry]:
-    ptable = _validate_partition_table(name, data)
+    level = data["level"]
+    valid_levels = [
+        int(raid_level[5:]) for raid_level in FILESYSTEM_GROUP_RAID_TYPES
+    ]
+    if level not in valid_levels:
+        raise ConfigError(f"Unknown RAID level '{level}'")
+    members = data.get("members", [])
+    spares = data.get("spares", [])
+    if set(members) & set(spares):
+        raise ConfigError(
+            f"RAID '{name}' has duplicated devices in members and spares"
+        )
+    if spares and level == 0:
+        raise ConfigError("RAID level 0 doesn't support spares")
     items: List = [
         RAID(
             name=name,
-            level=data["level"],
-            members=data.get("members", []),
-            ptable=ptable,
+            level=level,
+            members=members,
+            spares=spares,
         )
     ]
     fs = _get_filesystem(name, data)
     if fs:
         items.append(fs)
-    items.extend(_disk_partitions(name, data.get("partitions", [])))
     return items
 
 
@@ -388,6 +401,34 @@ def _apply_layout_logicalvolume(entry: StorageEntry, block_devices: List):
     block_devices[entry.name] = lv
 
 
+def _apply_layout_raid(entry: StorageEntry, block_devices: List):
+    devices = []
+    partitions = []
+    spare_devices = []
+    spare_partitions = []
+    for name in entry.members:
+        device = block_devices[name]
+        if isinstance(device, models.Partition):
+            partitions.append(device)
+        else:
+            devices.append(device)
+    for name in entry.spares:
+        device = block_devices[name]
+        if isinstance(device, models.Partition):
+            spare_partitions.append(device)
+        else:
+            spare_devices.append(device)
+    raid = models.RAID.objects.create_raid(
+        f"raid-{entry.level}",
+        name=entry.name,
+        block_devices=devices,
+        partitions=partitions,
+        spare_devices=spare_devices,
+        spare_partitions=spare_partitions,
+    )
+    block_devices[entry.name] = raid.virtual_device
+
+
 _LAYOUT_APPLIERS = {
     "BCache": _apply_layout_bcache,
     "Disk": _apply_layout_disk,
@@ -395,6 +436,7 @@ _LAYOUT_APPLIERS = {
     "Partition": _apply_layout_partition,
     "LogicalVolume": _apply_layout_logicalvolume,
     "LVM": _apply_layout_lvm,
+    "RAID": _apply_layout_raid,
 }
 
 
