@@ -29,6 +29,10 @@ git_show_commit() {
     git show HEAD
 }
 
+version_changed() {
+    ! git diff --exit-code setup.cfg
+}
+
 deb_version() {
     local version
     version="$(echo "$1" | sed 's/a/~alpha/; tend; s/b/~beta/; tend; s/rc/~rc/; :end')"
@@ -91,6 +95,9 @@ if ! git_tree_clean; then
 fi
 
 replace_setup_version "$version"
+if ! version_changed; then
+    exit_error "The version is already set to $1"
+fi
 add_debian_changelog "$version"
 commit "$version"
 git_show_commit
