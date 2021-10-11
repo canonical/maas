@@ -16,19 +16,26 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from maasserver.enum import NODE_DEVICE_BUS, NODE_METADATA, NODE_STATUS
+from maasserver.models import (
+    Event,
+    Interface,
+    Node,
+    NodeDevice,
+    NodeMetadata,
+    NUMANode,
+    NUMANodeHugepages,
+    PhysicalBlockDevice,
+    PhysicalInterface,
+    Subnet,
+    Tag,
+)
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.interface import Interface, PhysicalInterface
-from maasserver.models.node import Node
-from maasserver.models.nodedevice import NodeDevice
-from maasserver.models.nodemetadata import NodeMetadata
-from maasserver.models.numa import NUMANode, NUMANodeHugepages
-from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.subnet import Subnet
-from maasserver.models.tag import Tag
+from maasserver.storage_custom import get_storage_layout
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
 from metadataserver.builtin_scripts.network import update_node_interfaces
 from metadataserver.enum import HARDWARE_TYPE
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
     GET_FRUID_DATA_OUTPUT_NAME,
@@ -573,8 +580,11 @@ def _process_lxd_resources(node, data):
         numa_nodes[numa_index] = numa_node
 
     network_devices = update_node_network_information(node, data, numa_nodes)
-    storage_devices = update_node_physical_block_devices(
-        node, resources, numa_nodes
+    storage_devices = _update_node_physical_block_devices(
+        node,
+        resources,
+        numa_nodes,
+        custom_storage_config=data.get("storage-extra"),
     )
 
     update_node_devices(
@@ -702,7 +712,13 @@ def _condense_luns(disks):
     return sorted(processed_disks, key=itemgetter("id"))
 
 
-def update_node_physical_block_devices(node, data, numa_nodes):
+def _update_node_physical_block_devices(
+    node, data, numa_nodes, custom_storage_config=None
+):
+    if custom_storage_config:
+        # generate the layout to validate the config
+        get_storage_layout(custom_storage_config)
+
     block_devices = {}
     # Skip storage configuration if set by the user.
     if node.skip_storage:
@@ -869,6 +885,16 @@ def process_lxd_results(node, output, exit_status):
     If `exit_status` is non-zero, this function returns without doing
     anything.
     """
+
+    def log_failure_event(reason):
+        Event.objects.create_node_event(
+            system_id=node,
+            event_type=EVENT_TYPES.SCRIPT_RESULT_ERROR,
+            event_description=(
+                f"Failed processing commissioning data: {reason}"
+            ),
+        )
+
     if exit_status != 0:
         logger.error(
             "%s: lxd script failed with status: "
@@ -879,6 +905,7 @@ def process_lxd_results(node, output, exit_status):
     try:
         data = json.loads(output.decode("utf-8"))
     except ValueError as e:
+        log_failure_event("invalid JSON data")
         raise ValueError(f"{e}: {output}")
 
     assert data.get("api_version") == "1.0", "Data not from LXD API 1.0!"
@@ -901,8 +928,12 @@ def process_lxd_results(node, output, exit_status):
         not missing_extensions
     ), f"Missing required LXD API extensions {sorted(missing_extensions)}"
 
-    _process_lxd_environment(node, data["environment"])
-    _process_lxd_resources(node, data)
+    try:
+        _process_lxd_environment(node, data["environment"])
+        _process_lxd_resources(node, data)
+    except Exception as e:
+        log_failure_event(str(e))
+        raise
 
     node.save()
 

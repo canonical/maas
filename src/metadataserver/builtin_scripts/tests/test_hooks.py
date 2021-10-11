@@ -28,15 +28,18 @@ from maasserver.enum import (
     NODE_STATUS,
 )
 from maasserver.fields import MAC
+from maasserver.models import (
+    NodeMetadata,
+    NUMANode,
+    PhysicalBlockDevice,
+    PhysicalInterface,
+    Tag,
+    VLAN,
+)
+from maasserver.models import Config, Event, Interface
 from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.config import Config
-from maasserver.models.interface import Interface, PhysicalInterface
-from maasserver.models.nodemetadata import NodeMetadata
-from maasserver.models.numa import NUMANode
-from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.tag import Tag
-from maasserver.models.vlan import VLAN
+from maasserver.storage_custom import ConfigError
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -45,6 +48,7 @@ from maastesting.matchers import MockNotCalled
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
+    _update_node_physical_block_devices,
     add_switch_vendor_model_tags,
     create_metadata_by_modalias,
     detect_switch_vendor_model,
@@ -57,10 +61,10 @@ from metadataserver.builtin_scripts.hooks import (
     retag_node_for_hardware_by_modalias,
     update_node_fruid_metadata,
     update_node_network_information,
-    update_node_physical_block_devices,
 )
 from metadataserver.enum import HARDWARE_TYPE, SCRIPT_TYPE
 from metadataserver.models import ScriptSet
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
     KERNEL_CMDLINE_OUTPUT_NAME,
 )
@@ -1324,6 +1328,57 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         self.assertDictEqual(data, pulled_data)
 
+    def test_invalid_json_logs_event(self):
+        node = factory.make_Node()
+        self.assertRaises(
+            ValueError, process_lxd_results, node, b"not json", 0
+        )
+        [event] = Event.objects.all()
+        self.assertEqual(event.node, node)
+        self.assertEqual(event.type.name, EVENT_TYPES.SCRIPT_RESULT_ERROR)
+        self.assertEqual(
+            event.description,
+            "Failed processing commissioning data: invalid JSON data",
+        )
+
+    def test_validate_storage_extra(self):
+        node = factory.make_Node()
+        uuid = factory.make_UUID()
+        data = make_lxd_output(uuid=uuid)
+        data["storage-extra"] = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                },
+            },
+            "mounts": {},
+        }
+        process_lxd_results(node, json.dumps(data).encode(), 0)
+        node = reload_object(node)
+        self.assertEqual(uuid, node.hardware_uuid)
+
+    def test_invalid_storage_extra(self):
+        node = factory.make_Node()
+        uuid = factory.make_UUID()
+        data = make_lxd_output(uuid=uuid)
+        data["storage-extra"] = {"invalid": "data"}
+        self.assertRaises(
+            ConfigError,
+            process_lxd_results,
+            node,
+            json.dumps(data).encode(),
+            0,
+        )
+        [event] = Event.objects.all()
+        self.assertEqual(event.node, node)
+        self.assertEqual(event.type.name, EVENT_TYPES.SCRIPT_RESULT_ERROR)
+        self.assertEqual(
+            event.description,
+            "Failed processing commissioning data: "
+            "Section 'layout' missing in config",
+        )
+
     def test_errors_if_not_supported_lxd_api_ver(self):
         node = factory.make_Node()
         self.assertRaises(
@@ -2265,10 +2320,10 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ]
         node = factory.make_Node()
         numa_nodes = create_numa_nodes(node)
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, numa_nodes
         )
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, numa_nodes
         )
         devices = list(PhysicalBlockDevice.objects.filter(node=node))
@@ -2281,14 +2336,14 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test_does_nothing_if_skip_storage(self):
         node = factory.make_Node(skip_storage=True)
         block_device = factory.make_PhysicalBlockDevice(node=node)
-        update_node_physical_block_devices(node, {}, create_numa_nodes(node))
+        _update_node_physical_block_devices(node, {}, create_numa_nodes(node))
         self.assertIsNotNone(reload_object(block_device))
         self.assertFalse(reload_object(node).skip_storage)
 
     def test_removes_previous_physical_block_devices(self):
         node = factory.make_Node()
         block_device = factory.make_PhysicalBlockDevice(node=node)
-        update_node_physical_block_devices(node, {}, create_numa_nodes(node))
+        _update_node_physical_block_devices(node, {}, create_numa_nodes(node))
         self.assertIsNone(reload_object(block_device))
 
     def test_creates_physical_block_devices(self):
@@ -2296,7 +2351,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_names = [
@@ -2310,7 +2365,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         READ_ONLY_AND_CDROM = deepcopy(SAMPLE_LXD_RESOURCES)
         READ_ONLY_AND_CDROM["storage"]["disks"][0]["read_only"] = "true"
         READ_ONLY_AND_CDROM["storage"]["disks"][1]["type"] = "cdrom"
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, READ_ONLY_AND_CDROM, create_numa_nodes(node)
         )
         created_names = [
@@ -2321,13 +2376,13 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_handles_renamed_block_device(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         NEW_NAMES = deepcopy(SAMPLE_LXD_RESOURCES)
         NEW_NAMES["storage"]["disks"][0]["id"] = "sdy"
         NEW_NAMES["storage"]["disks"][1]["id"] = "sdz"
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, NEW_NAMES, create_numa_nodes(node)
         )
         device_names = ["sdy", "sdz"]
@@ -2342,7 +2397,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         # this test, there need to be at least two disks in order to
         # simulate a condition like the one in bug #1662343.
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
@@ -2371,7 +2426,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
         # After recommissioning the node, we'll have three devices, as
         # expected.
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, NEW_NAMES, create_numa_nodes(node)
         )
         device_names = [
@@ -2389,14 +2444,14 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_only_updates_physical_block_devices(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_ids_one = [
             device.id
             for device in PhysicalBlockDevice.objects.filter(node=node)
         ]
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_ids_two = [
@@ -2407,23 +2462,23 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_doesnt_reset_boot_disk(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         boot_disk = PhysicalBlockDevice.objects.filter(node=node).first()
         node.boot_disk = boot_disk
         node.save()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertEqual(boot_disk, reload_object(node).boot_disk)
 
     def test_clears_boot_disk(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        update_node_physical_block_devices(node, {}, create_numa_nodes(node))
+        _update_node_physical_block_devices(node, {}, create_numa_nodes(node))
         self.assertIsNone(reload_object(node).boot_disk)
 
     def test_creates_physical_block_devices_in_order(self):
@@ -2431,7 +2486,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             device["id"] for device in SAMPLE_LXD_RESOURCES["storage"]["disks"]
         ]
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_names = [
@@ -2453,7 +2508,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         serial = device["serial"]
         firmware_version = device["firmware_version"]
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2482,7 +2537,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         serial = device["serial"]
         firmware_version = device["firmware_version"]
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_DEFAULT_BLOCK_SIZE, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2509,7 +2564,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         serial = device["serial"]
         firmware_version = device["firmware_version"]
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, NO_DEVICE_PATH, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2534,7 +2589,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         block_size = device["block_size"]
         model = device["model"]
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, NO_SERIAL, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2552,7 +2607,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test_creates_physical_block_device_only_for_node(self):
         node = factory.make_Node(with_boot_disk=False)
         other_node = factory.make_Node(with_boot_disk=False)
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertEqual(
@@ -2563,7 +2618,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_creates_physical_block_device_with_rotary_tag(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.expectThat(
@@ -2577,7 +2632,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_creates_physical_block_device_with_rotary_and_rpm_tags(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.expectThat(
@@ -2591,7 +2646,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_creates_physical_block_device_with_ssd_tag(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.expectThat(
@@ -2605,7 +2660,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_creates_physical_block_device_without_removable_tag(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2615,7 +2670,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_creates_physical_block_device_with_removable_tag(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2625,7 +2680,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_creates_physical_block_device_without_sata_tag(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2635,7 +2690,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def test_creates_physical_block_device_with_sata_tag(self):
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
@@ -2652,7 +2707,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             1, MIN_BLOCK_DEVICE_SIZE
         )
         node = factory.make_Node()
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, UNDER_MIN_BLOCK_SIZE, create_numa_nodes(node)
         )
         self.assertEqual(0, len(PhysicalBlockDevice.objects.filter(node=node)))
@@ -2673,7 +2728,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         ONE_DISK = deepcopy(SAMPLE_LXD_RESOURCES)
         del ONE_DISK["storage"]["disks"][1]
         device = ONE_DISK["storage"]["disks"][0]
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, ONE_DISK, create_numa_nodes(node)
         )
 
@@ -2700,7 +2755,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test_sets_default_configuration(self):
         node = factory.make_Node()
 
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
@@ -2717,7 +2772,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node_module.Node, "set_default_storage_layout"
         )
 
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
 
@@ -2816,7 +2871,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             },
         ]
 
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, resources, create_numa_nodes(node)
         )
 
@@ -2904,7 +2959,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             },
         ]
 
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, resources, create_numa_nodes(node)
         )
 
@@ -2953,7 +3008,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             },
         ]
 
-        update_node_physical_block_devices(
+        _update_node_physical_block_devices(
             node, resources, create_numa_nodes(node)
         )
 

@@ -366,24 +366,19 @@ class ScriptResult(CleanSave, TimestampedModel):
             and stdout is not None
         ):
             post_process_hook = NODE_INFO_SCRIPTS[self.name]["hook"]
-            err = (
-                "%s(%s): commissioning script '%s' failed during "
-                "post-processing."
-                % (
-                    self.script_set.node.fqdn,
-                    self.script_set.node.system_id,
-                    self.name,
-                )
-            )
-            # Circular imports.
             from metadataserver.api import try_or_log_event
 
+            node = self.script_set.node
+            error_message = (
+                f"{node.fqdn}({node.system_id}): commissioning script '{self.name}' "
+                "failed during post-processing."
+            )
             signal_status = try_or_log_event(
-                self.script_set.node,
+                node,
                 None,
-                err,
+                error_message,
                 post_process_hook,
-                node=self.script_set.node,
+                node=node,
                 output=self.stdout,
                 exit_status=self.exit_status,
             )
