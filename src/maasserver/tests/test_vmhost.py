@@ -368,6 +368,35 @@ class TestSyncVMCluster(MAASServerTestCase):
         expected_names = [pod.name for pod in discovered_cluster.pods]
         self.assertCountEqual(pod_names, expected_names)
 
+    def test_discovered_vmhosts_receive_correct_tags(self):
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = fake_cluster_discovery(self)
+        zone = factory.make_Zone()
+        pod_info = make_lxd_pod_info(url=factory.make_ipv4_address())
+        power_parameters = {"power_address": pod_info["power_address"]}
+        orig_vmhost = factory.make_Pod(
+            zone=zone, pod_type=pod_info["type"], parameters=power_parameters
+        )
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        self.patch(vmhost_module, "discover_pod").return_value = (
+            successes,
+            failures,
+        )
+        vmhost = vmhost_module.discover_and_sync_vmhost(
+            orig_vmhost, factory.make_User()
+        )
+        hosts = vmhost.hints.cluster.hosts()
+        for host in hosts:
+            self.assertIn("pod-console-logging", host.tags)
+
     def test_sync_vmcluster_adds_vmhost_zone_and_pool(self):
         (
             discovered_cluster,
@@ -510,3 +539,41 @@ class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
             self.assertEqual(vmhost.zone, cluster.zone)
 
         await deferToDatabase(_check_cluster)
+
+    @wait_for_reactor
+    async def test_discovered_vmhosts_receive_correct_tags_async(self):
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = await deferToDatabase(fake_cluster_discovery, self)
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        vmhost_module.discover_pod.return_value = succeed(
+            (successes, failures)
+        )
+        zone = await deferToDatabase(factory.make_Zone)
+        pod_info = await deferToDatabase(make_pod_info)
+        power_parameters = {"power_address": pod_info["power_address"]}
+        orig_vmhost = await deferToDatabase(
+            factory.make_Pod,
+            zone=zone,
+            pod_type=pod_info["type"],
+            parameters=power_parameters,
+        )
+        user = await deferToDatabase(factory.make_User)
+        vmhost = await vmhost_module.discover_and_sync_vmhost_async(
+            orig_vmhost, user
+        )
+
+        def _get_vmhosts_tags():
+            hosts = vmhost.hints.cluster.hosts()
+            return [tag for host in hosts for tag in host.tags]
+
+        tags = await deferToDatabase(_get_vmhosts_tags)
+        for tag in tags:
+            self.assertEqual("pod-console-logging", tag)

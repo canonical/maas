@@ -14,6 +14,7 @@ from maasserver.models import (
     Event,
     Pod,
     RackController,
+    Tag,
     VMCluster,
 )
 from maasserver.rpc import getClientFromIdentifiers
@@ -178,6 +179,12 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
                 zone=vmhost.zone,
                 pool=vmhost.pool,
             )
+            tag, _ = Tag.objects.get_or_create(
+                name="pod-console-logging",
+                kernel_opts="console=tty1 console=ttyS0",
+            )
+            new_host.add_tag(tag.name)
+            new_host.save()
         new_host = _update_db(
             discovered_vmhost, discovered, new_host, user, cluster
         )
