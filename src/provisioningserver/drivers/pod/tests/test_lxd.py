@@ -331,6 +331,65 @@ class TestClusteredLXDPodDriver(MAASTestCase):
             discovered_cluster.pod_addresses,
         )
 
+    @inlineCallbacks
+    def test_compose_specifies_target(self):
+        request = make_requested_machine()
+        self.fake_lxd.profiles.exists.return_value = True
+        mock_storage_pools = Mock()
+        self.fake_lxd.storage_pools.all.return_value = mock_storage_pools
+        mock_get_usable_storage_pool = self.patch(
+            self.driver, "_get_usable_storage_pool"
+        )
+        usable_pool = Mock()
+        usable_pool.name = factory.make_name("pool")
+        mock_get_usable_storage_pool.return_value = usable_pool
+        mock_machine = Mock()
+        self.fake_lxd.virtual_machines.create.return_value = mock_machine
+        mock_get_discovered_machine = self.patch(
+            self.driver, "_get_discovered_machine"
+        )
+        mock_get_discovered_machine.return_value = sentinel.discovered_machine
+        definition = {
+            "name": request.hostname,
+            "architecture": debian_to_kernel_architecture(
+                request.architecture
+            ),
+            "config": {
+                "limits.cpu": str(request.cores),
+                "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory.hugepages": "false",
+                "security.secureboot": "false",
+            },
+            "profiles": ["maas"],
+            "source": {"type": "none"},
+            "devices": {
+                "root": {
+                    "path": "/",
+                    "type": "disk",
+                    "pool": usable_pool.name,
+                    "size": str(request.block_devices[0].size),
+                    "boot.priority": "0",
+                },
+                "eth0": {
+                    "name": "eth0",
+                    "type": "nic",
+                    "nictype": "bridged",
+                    "parent": "lxdbr0",
+                    "boot.priority": "1",
+                },
+            },
+        }
+
+        discovered_machine, empty_hints = yield self.driver.compose(
+            None, self.make_context(), request
+        )
+        self.fake_lxd.virtual_machines.create.assert_called_once_with(
+            definition,
+            wait=True,
+            target=self.fake_lxd.host_info["environment"]["server_name"],
+        )
+        self.fake_lxd.profiles.exists.assert_called_once_with("maas")
+
 
 class TestLXDPodDriver(MAASTestCase):
 

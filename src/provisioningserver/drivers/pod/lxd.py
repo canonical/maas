@@ -454,7 +454,15 @@ class LXDPodDriver(PodDriver):
             }
 
             # Create the machine.
-            machine = client.virtual_machines.create(definition, wait=True)
+            create_kwargs = {"wait": True}
+            if client.host_info["environment"]["server_clustered"]:
+                create_kwargs["target"] = client.host_info["environment"][
+                    "server_name"
+                ]
+
+            machine = client.virtual_machines.create(
+                definition, **create_kwargs
+            )
             # Pod hints are updated on the region after the machine is composed.
             discovered_machine = self._get_discovered_machine(
                 client, machine, storage_pools, request=request
