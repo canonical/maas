@@ -6,6 +6,7 @@
 
 import base64
 import json
+from random import randrange
 
 from django.db import transaction
 import requests as requests_module
@@ -29,6 +30,7 @@ from maasserver.stats import (
     get_brownfield_stats,
     get_custom_images_deployed_stats,
     get_custom_images_uploaded_stats,
+    get_lxd_initial_auth_stats,
     get_maas_stats,
     get_machine_stats,
     get_machines_by_architecture,
@@ -199,6 +201,87 @@ class TestMAASStats(MAASServerTestCase):
             },
         )
 
+    def test_get_lxd_initial_auth_stats_empty(self):
+        self.assertEqual(
+            get_lxd_initial_auth_stats(),
+            {
+                "trust_password": 0,
+                "no_trust_password": 0,
+                "maas_generated_cert": 0,
+                "user_provided_cert": 0,
+                "cert_expiration_days": {
+                    "10_days": 0,
+                    "1_month": 0,
+                    "3_months": 0,
+                    "1_year": 0,
+                    "2_years": 0,
+                    "3_years": 0,
+                    "10_years": 0,
+                    "more_than_10_years": 0,
+                },
+            },
+        )
+
+    def test_get_lxd_initial_auth_stats_trust_password(self):
+        factory.make_Pod(pod_type="virsh", created_with_trust_password=True)
+        factory.make_Pod(pod_type="lxd", created_with_trust_password=None)
+        for _ in range(3):
+            factory.make_Pod(pod_type="lxd", created_with_trust_password=False)
+        for _ in range(5):
+            factory.make_Pod(pod_type="lxd", created_with_trust_password=True)
+        stats = get_lxd_initial_auth_stats()
+        self.assertEqual(5, stats["trust_password"])
+        self.assertEqual(3, stats["no_trust_password"])
+
+    def test_get_lxd_initial_auth_stats_maas_generated_cert(self):
+        factory.make_Pod(
+            pod_type="virsh", created_with_maas_generated_cert=True
+        )
+        factory.make_Pod(pod_type="lxd", created_with_maas_generated_cert=None)
+        for _ in range(3):
+            factory.make_Pod(
+                pod_type="lxd", created_with_maas_generated_cert=False
+            )
+        for _ in range(5):
+            factory.make_Pod(
+                pod_type="lxd", created_with_maas_generated_cert=True
+            )
+        stats = get_lxd_initial_auth_stats()
+        self.assertEqual(5, stats["maas_generated_cert"])
+        self.assertEqual(3, stats["user_provided_cert"])
+
+    def test_get_lxd_initial_auth_stats_cert_expiration(self):
+        factory.make_Pod(pod_type="virsh", created_with_cert_expiration_days=1)
+        factory.make_Pod(
+            pod_type="lxd", created_with_cert_expiration_days=None
+        )
+        expected = {
+            "10 days": (3, (0, 10)),
+            "1 month": (5, (10, 31)),
+            "3 months": (7, (31, 92)),
+            "1 year": (9, (92, 366)),
+            "2 years": (11, (366, 731)),
+            "3 years": (13, (731, 1096)),
+            "10 years": (17, (1096, 3653)),
+            "more than 10 years": (31, (3653, 100000)),
+        }
+        for count, days_range in expected.values():
+            for _ in range(count):
+                factory.make_Pod(
+                    pod_type="lxd",
+                    created_with_cert_expiration_days=randrange(*days_range),
+                )
+        stats = get_lxd_initial_auth_stats()
+        expirations = stats["cert_expiration_days"]
+        self.assertEqual(3, expirations["10_days"])
+        self.assertEqual(5, expirations["1_month"])
+        self.assertEqual(7, expirations["3_months"])
+        self.assertEqual(9, expirations["1_year"])
+        self.assertEqual(11, expirations["2_years"])
+        self.assertEqual(13, expirations["3_years"])
+        self.assertEqual(17, expirations["10_years"])
+        self.assertEqual(31, expirations["more_than_10_years"])
+
     def test_get_maas_stats(self):
         # Make one component of everything
         factory.make_RegionRackController()
@@ -275,6 +358,22 @@ class TestMAASStats(MAASServerTestCase):
                         "cores": 0,
                         "memory": 0,
                         "storage": 0,
+                    },
+                    "initial_auth": {
+                        "trust_password": 0,
+                        "no_trust_password": 0,
+                        "maas_generated_cert": 0,
+                        "user_provided_cert": 0,
+                        "cert_expiration_days": {
+                            "10_days": 0,
+                            "1_month": 0,
+                            "3_months": 0,
+                            "1_year": 0,
+                            "2_years": 0,
+                            "3_years": 0,
+                            "10_years": 0,
+                            "more_than_10_years": 0,
+                        },
                     },
                 },
                 "virsh": {
@@ -385,6 +484,22 @@ class TestMAASStats(MAASServerTestCase):
                         "cores": 0,
                         "memory": 0,
                         "storage": 0,
+                    },
+                    "initial_auth": {
+                        "trust_password": 0,
+                        "no_trust_password": 0,
+                        "maas_generated_cert": 0,
+                        "user_provided_cert": 0,
+                        "cert_expiration_days": {
+                            "10_days": 0,
+                            "1_month": 0,
+                            "3_months": 0,
+                            "1_year": 0,
+                            "2_years": 0,
+                            "3_years": 0,
+                            "10_years": 0,
+                            "more_than_10_years": 0,
+                        },
                     },
                 },
                 "virsh": {

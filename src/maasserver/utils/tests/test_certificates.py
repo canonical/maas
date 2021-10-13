@@ -6,9 +6,11 @@ from OpenSSL import crypto
 from maasserver.models import Config
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.certificates import (
+    certificate_generated_by_this_maas,
     generate_certificate,
     get_maas_client_cn,
 )
+from provisioningserver.certificates import Certificate
 
 
 class TestGetMAASClientCN(MAASServerTestCase):
@@ -50,3 +52,21 @@ class TestGenerateCertificate(MAASServerTestCase):
         issuer = cert.cert.get_issuer()
         self.assertEqual("MAAS", issuer.O)
         self.assertEqual(myuuid, issuer.OU)
+
+
+class TestCertificateGeneratedByThisMAAS(MAASServerTestCase):
+    def test_generate_certificate(self):
+        maas_cert = generate_certificate("mycn")
+        self.assertTrue(certificate_generated_by_this_maas(maas_cert))
+
+    def test_non_maas_certificate_no_o_ou(self):
+        non_maas_cert = Certificate.generate("mycn")
+        self.assertFalse(certificate_generated_by_this_maas(non_maas_cert))
+
+    def test_non_maas_certificate_with_o_ou(self):
+        non_maas_cert = Certificate.generate(
+            "mycn",
+            organization_name="MAAS",
+            organizational_unit_name="not-this-maas",
+        )
+        self.assertFalse(certificate_generated_by_this_maas(non_maas_cert))

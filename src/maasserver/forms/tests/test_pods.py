@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from datetime import timedelta
 import random
 from unittest.mock import ANY, call, MagicMock
 
@@ -39,6 +40,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import (
@@ -67,7 +69,7 @@ wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
 SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 
-def make_pod_with_hints(with_host=False, host=None):
+def make_pod_with_hints(with_host=False, host=None, **pod_attributes):
     architectures = [
         "amd64/generic",
         "i386/generic",
@@ -87,6 +89,7 @@ def make_pod_with_hints(with_host=False, host=None):
         memory=random.randint(4096, 8192),
         ip_address=ip,
         cpu_speed=random.randint(2000, 3000),
+        **pod_attributes,
     )
     for _ in range(3):
         pool = factory.make_PodStoragePool(pod)
@@ -105,17 +108,17 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.request = MagicMock()
         self.request.user = factory.make_User()
 
-    def make_pod_info(self):
-        # Use virsh pod type as the required fields are specific to the
-        # type of pod being created.
-        pod_type = "virsh"
-        pod_ip_adddress = factory.make_ipv4_address()
-        pod_power_address = "qemu+ssh://user@%s/system" % pod_ip_adddress
-        return {
+    def make_pod_info(self, pod_type="virsh", **extra_power_parameters):
+        assert pod_type in ["virsh", "lxd"], "Unsupported pod type"
+        power_address = factory.make_ipv4_address()
+        if pod_type == "virsh":
+            power_address = "qemu+ssh://user@%s/system" % power_address
+        pod_info = {
             "type": pod_type,
-            "power_address": pod_power_address,
-            "ip_address": pod_ip_adddress,
+            "power_address": power_address,
         }
+        pod_info.update(extra_power_parameters)
+        return pod_info
 
     def make_discovered_pod(self):
         return DiscoveredPod(
@@ -403,6 +406,95 @@ class TestPodForm(MAASTransactionServerTestCase):
                 vmhost.power_parameters["key"],
                 SAMPLE_CERT.private_key_pem().strip(),
             )
+
+    def test_creates_virsh_pod_with_no_metrics(self):
+        pod_info = self.make_pod_info("virsh")
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertIsNone(pod.created_with_trust_password)
+        self.assertIsNone(pod.created_with_maas_generated_cert)
+        self.assertIsNone(pod.created_with_cert_expiration_days)
+
+    def test_creates_lxd_pod_with_trustpassword_metrics(self):
+        pod_info = self.make_pod_info("lxd", password="mypass")
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertTrue(pod.created_with_trust_password)
+
+    def test_creates_lxd_pod_with_no_trustpassword_metrics(self):
+        pod_info = self.make_pod_info("lxd")
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertFalse(pod.created_with_trust_password)
+
+    def test_creates_lxd_pod_with_maas_generated_cert_default(self):
+        pod_info = self.make_pod_info("lxd")
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertTrue(pod.created_with_maas_generated_cert)
+
+    def test_creates_lxd_pod_with_cert_expiration_default(self):
+        pod_info = self.make_pod_info("lxd")
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(3649, pod.created_with_cert_expiration_days)
+
+    def test_creates_lxd_pod_with_cert_expiration_supplied(self):
+        pod_info = self.make_pod_info("lxd")
+        maas_cert = Certificate.generate("mypod", validity=timedelta(days=10))
+        pod_info["certificate"] = maas_cert.certificate_pem()
+        pod_info["key"] = maas_cert.private_key_pem()
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertEqual(9, pod.created_with_cert_expiration_days)
+
+    def test_creates_lxd_pod_with_maas_generated_cert_supplied(self):
+        pod_info = self.make_pod_info("lxd")
+        maas_cert = generate_certificate("mypod")
+        pod_info["certificate"] = maas_cert.certificate_pem()
+        pod_info["key"] = maas_cert.private_key_pem()
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertTrue(pod.created_with_maas_generated_cert)
+
+    def test_creates_lxd_pod_with_not_maas_generated_cert(self):
+        pod_info = self.make_pod_info("lxd")
+        non_maas_cert = Certificate.generate("mycn")
+        pod_info["certificate"] = non_maas_cert.certificate_pem()
+        pod_info["key"] = non_maas_cert.private_key_pem()
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertIsNotNone(pod.created_with_maas_generated_cert)
+        self.assertFalse(pod.created_with_maas_generated_cert)
+
+    def test_creates_lxd_pod_with_metrics_existing(self):
+        pod_info = self.make_pod_info("lxd")
+        pod = make_pod_with_hints(
+            pod_type="lxd",
+            created_with_trust_password=True,
+            created_with_maas_generated_cert=True,
+            created_with_cert_expiration_days=12,
+        )
+        pod_info["password"] = ""
+        non_maas_cert = Certificate.generate(
+            "mycn", validity=timedelta(days=24)
+        )
+        pod_info["certificate"] = non_maas_cert.certificate_pem()
+        pod_info["key"] = non_maas_cert.private_key_pem()
+        form = PodForm(instance=pod, data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertTrue(pod.created_with_trust_password)
+        self.assertTrue(pod.created_with_maas_generated_cert)
+        self.assertEqual(12, pod.created_with_cert_expiration_days)
 
 
 class TestComposeMachineForm(MAASTransactionServerTestCase):

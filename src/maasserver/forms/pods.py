@@ -10,6 +10,7 @@ __all__ = [
     "PodForm",
 ]
 
+from datetime import datetime
 from functools import partial
 
 import crochet
@@ -56,6 +57,7 @@ from maasserver.node_constraint_filter_forms import (
 )
 from maasserver.rpc import getClientFromIdentifiers
 from maasserver.utils.certificates import (
+    certificate_generated_by_this_maas,
     generate_certificate,
     get_maas_client_cn,
 )
@@ -64,6 +66,7 @@ from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.vmhost import request_commissioning_results
+from provisioningserver.certificates import Certificate
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
     Capabilities,
@@ -305,6 +308,19 @@ class PodForm(MAASModelForm):
         # Add this tag to the pod.  This only adds the tag
         # if it is not present on the pod.
         self.instance.add_tag(tag.name)
+        if self.is_new and power_type == "lxd":
+            self.instance.created_with_trust_password = bool(
+                self.cleaned_data["password"]
+            )
+            cert = Certificate.from_pem(
+                self.cleaned_data["certificate"], self.cleaned_data["key"]
+            )
+            self.instance.created_with_maas_generated_cert = (
+                certificate_generated_by_this_maas(cert)
+            )
+            expiration = cert.expiration() - datetime.utcnow()
+            self.instance.created_with_cert_expiration_days = expiration.days
+
         self.instance.save()
         return self.instance
 

@@ -89,6 +89,14 @@ class Certificate(NamedTuple):
         """Return the certificate CN."""
         return self.cert.get_subject().CN
 
+    def o(self) -> str:
+        """Return the certificate O."""
+        return self.cert.get_issuer().O
+
+    def ou(self) -> str:
+        """Return the certificate OU."""
+        return self.cert.get_issuer().OU
+
     def expiration(self) -> Optional[datetime]:
         """Return the certificate expiration."""
         expiry = self.cert.get_notAfter()

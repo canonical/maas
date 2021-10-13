@@ -267,6 +267,22 @@ class BMC(CleanSave, TimestampedModel):
         choices=MACVLAN_MODE_CHOICES,
     )
 
+    created_with_trust_password = BooleanField(
+        null=True,
+        default=None,
+        editable=False,
+    )
+    created_with_maas_generated_cert = BooleanField(
+        null=True,
+        default=None,
+        editable=False,
+    )
+    created_with_cert_expiration_days = IntegerField(
+        null=True,
+        default=None,
+        editable=False,
+    )
+
     def __str__(self):
         return "%s (%s)" % (
             self.id,

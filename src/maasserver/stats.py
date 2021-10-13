@@ -14,7 +14,7 @@ from collections import Counter, defaultdict
 from datetime import timedelta
 import json
 
-from django.db.models import Count, F, Max
+from django.db.models import Case, Count, F, Max, When
 import requests
 from twisted.application.internet import TimerService
 
@@ -133,6 +133,60 @@ def get_vm_hosts_stats(**filter_params):
             "storage": storage,
         },
     }
+
+
+def count_of(**filters):
+    return Count(Case(When(**filters, then=1)))
+
+
+def get_lxd_initial_auth_stats():
+    stats = Pod.objects.filter(power_type="lxd").aggregate(
+        trust_password=count_of(created_with_trust_password=True),
+        no_trust_password=count_of(created_with_trust_password=False),
+        maas_generated_cert=count_of(created_with_maas_generated_cert=True),
+        user_provided_cert=count_of(created_with_maas_generated_cert=False),
+        expires_in_10_days=count_of(
+            created_with_cert_expiration_days__gte=0,
+            created_with_cert_expiration_days__lt=10,
+        ),
+        expires_in_1_month=count_of(
+            created_with_cert_expiration_days__gte=10,
+            created_with_cert_expiration_days__lt=31,
+        ),
+        expires_in_3_months=count_of(
+            created_with_cert_expiration_days__gte=31,
+            created_with_cert_expiration_days__lt=92,
+        ),
+        expires_in_1_year=count_of(
+            created_with_cert_expiration_days__gte=92,
+            created_with_cert_expiration_days__lt=366,
+        ),
+        expires_in_2_years=count_of(
+            created_with_cert_expiration_days__gte=366,
+            created_with_cert_expiration_days__lt=731,
+        ),
+        expires_in_3_years=count_of(
+            created_with_cert_expiration_days__gte=731,
+            created_with_cert_expiration_days__lt=1096,
+        ),
+        expires_in_10_years=count_of(
+            created_with_cert_expiration_days__gte=1096,
+            created_with_cert_expiration_days__lt=3653,
+        ),
+        expires_in_more_than_10_years=count_of(
+            created_with_cert_expiration_days__gte=3653,
+        ),
+    )
+    cert_expiration_days = {}
+    for key, value in stats.items():
+        if not key.startswith("expires_in_"):
+            continue
+        cert_expiration_days[key[len("expires_in_") :]] = value
+    for key in cert_expiration_days:
+        del stats["expires_in_" + key]
+
+    stats["cert_expiration_days"] = cert_expiration_days
+    return stats
 
 
 def get_subnets_stats():
@@ -282,7 +336,8 @@ def get_maas_stats():
     machine_status = get_machine_state_stats()
     # get summary of network objects
     netstats = get_subnets_stats()
-
+    lxd_vm_hosts_stats = get_vm_hosts_stats(power_type="lxd")
+    lxd_vm_hosts_stats["initial_auth"] = get_lxd_initial_auth_stats()
     return {
         "controllers": {
             "regionracks": node_types.get(
@@ -299,7 +354,7 @@ def get_maas_stats():
         "machine_status": machine_status,  # machines by status
         "network_stats": netstats,  # network status
         "vm_hosts": {
-            "lxd": get_vm_hosts_stats(power_type="lxd"),
+            "lxd": lxd_vm_hosts_stats,
             "virsh": get_vm_hosts_stats(power_type="virsh"),
         },
         "workload_annotations": get_workload_annotations_stats(),
