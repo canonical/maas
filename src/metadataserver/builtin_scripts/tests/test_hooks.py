@@ -21,11 +21,13 @@ from testtools.matchers import (
 )
 
 from maasserver.enum import (
+    FILESYSTEM_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_DEVICE_BUS,
     NODE_METADATA,
     NODE_STATUS,
+    PARTITION_TABLE_TYPE,
 )
 from maasserver.fields import MAC
 from maasserver.models import (
@@ -2762,6 +2764,117 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _, layout = get_applied_storage_layout_for_node(node)
         self.assertEqual(
             Config.objects.get_config("default_storage_layout"), layout
+        )
+
+    def test_applies_custom_layout(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        custom_storage_config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "500M",
+                            "fs": "vfat",
+                        },
+                    ],
+                },
+            },
+            "mounts": {
+                "/boot/efi": {
+                    "device": "sda1",
+                }
+            },
+        }
+        _update_node_physical_block_devices(
+            node,
+            SAMPLE_LXD_RESOURCES,
+            create_numa_nodes(node),
+            custom_storage_config=custom_storage_config,
+        )
+        sda = node.physicalblockdevice_set.get(name="sda")
+        ptable = sda.get_partitiontable()
+        self.assertEqual(ptable.table_type, PARTITION_TABLE_TYPE.GPT)
+        [part] = ptable.partitions.all()
+        fs = part.get_effective_filesystem()
+        self.assertEqual(fs.fstype, FILESYSTEM_TYPE.VFAT)
+        self.assertEqual(fs.mount_point, "/boot/efi")
+
+    def test_no_layout_if_applies_custom_layout_fails_missing_disk(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        custom_storage_config = {
+            "layout": {
+                "vda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {
+                            "name": "vda1",
+                            "size": "500M",
+                            "fs": "vfat",
+                        },
+                    ],
+                },
+            },
+            "mounts": {
+                "/boot/efi": {
+                    "device": "vda1",
+                },
+            },
+        }
+        _update_node_physical_block_devices(
+            node,
+            SAMPLE_LXD_RESOURCES,
+            create_numa_nodes(node),
+            custom_storage_config=custom_storage_config,
+        )
+        self.assertIsNone(
+            node.physicalblockdevice_set.filter(name="vda").first()
+        )
+        [event] = Event.objects.all()
+        self.assertEqual(event.node, node)
+        self.assertEqual(event.type.name, EVENT_TYPES.CONFIGURING_STORAGE)
+        self.assertEqual(
+            event.description,
+            "Cannot apply custom layout: Unknown machine disk(s): vda",
+        )
+
+    def test_no_layout_if_applies_custom_layout_fails_applying(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        custom_storage_config = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {
+                            "name": "sda1",
+                            "size": "5T",
+                            "fs": "ext4",
+                        },
+                    ],
+                },
+            },
+            "mounts": {},
+        }
+        _update_node_physical_block_devices(
+            node,
+            SAMPLE_LXD_RESOURCES,
+            create_numa_nodes(node),
+            custom_storage_config=custom_storage_config,
+        )
+        sda = node.physicalblockdevice_set.get(name="sda")
+        # no layout is applied
+        self.assertIsNone(sda.get_partitiontable())
+        [event] = Event.objects.all()
+        self.assertEqual(event.node, node)
+        self.assertEqual(event.type.name, EVENT_TYPES.CONFIGURING_STORAGE)
+        self.assertEqual(
+            event.description,
+            "Cannot apply custom layout: "
+            "{'size': ['Partition cannot be saved; not enough free space on the block device.']}",
         )
 
     def test_doesnt_set_storage_layout_if_deployed(self):

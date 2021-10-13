@@ -13,6 +13,7 @@ from operator import itemgetter
 import re
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 
 from maasserver.enum import NODE_DEVICE_BUS, NODE_METADATA, NODE_STATUS
@@ -30,7 +31,11 @@ from maasserver.models import (
     Tag,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.storage_custom import get_storage_layout
+from maasserver.storage_custom import (
+    apply_layout_to_machine,
+    get_storage_layout,
+    UnappliableLayout,
+)
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
 from metadataserver.builtin_scripts.network import update_node_interfaces
@@ -715,9 +720,10 @@ def _condense_luns(disks):
 def _update_node_physical_block_devices(
     node, data, numa_nodes, custom_storage_config=None
 ):
+    custom_layout = None
     if custom_storage_config:
-        # generate the layout to validate the config
-        get_storage_layout(custom_storage_config)
+        # generating the layout also validates the config
+        custom_layout = get_storage_layout(custom_storage_config)
 
     block_devices = {}
     # Skip storage configuration if set by the user.
@@ -842,12 +848,27 @@ def _update_node_physical_block_devices(
         ).delete()
 
     if node.is_commissioning():
-        # Layout needs to be set last so removed disks aren't included in the
+        # Layouts need to be set last so removed disks aren't included in the
         # applied layout. Deployed Pods should not have a layout set as the
         # layout of the deployed system is unknown.
-        node.set_default_storage_layout()
+        if custom_layout:
+            _try_apply_custom_storage_layout(custom_layout, node)
+        else:
+            node.set_default_storage_layout()
 
     return block_devices
+
+
+def _try_apply_custom_storage_layout(layout, node):
+    try:
+        with transaction.atomic():
+            apply_layout_to_machine(layout, node)
+    except (IntegrityError, UnappliableLayout, ValidationError) as e:
+        Event.objects.create_node_event(
+            system_id=node,
+            event_type=EVENT_TYPES.CONFIGURING_STORAGE,
+            event_description=(f"Cannot apply custom layout: {e}"),
+        )
 
 
 def _process_lxd_environment(node, data):
