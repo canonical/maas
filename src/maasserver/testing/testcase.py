@@ -25,6 +25,7 @@ from django.db import (
 from django.db.utils import IntegrityError, OperationalError
 
 from maasserver.fields import register_mac_type
+from maasserver.models import signals
 from maasserver.testing.fixtures import (
     IntroCompletedFixture,
     PackageRepositoryFixture,
@@ -48,6 +49,14 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     """
 
     client_class = MAASSensibleClient
+
+    # cache_boot_sources and delete_large_object_content_later are
+    # called from signals and fire off threads to do work after the
+    # commit. This can interfere with other tests, so we mock out,
+    # post_commit_do for them, so they never will be called, unless the
+    # tests explicitly sets these attributes to False.
+    mock_cache_boot_source = True
+    mock_delete_large_object_content_later = True
 
     @property
     def client(self):
@@ -76,6 +85,10 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     def setUp(self):
         reset_queries()  # Formerly this was handled by... Django?
         super().setUp()
+        if self.mock_cache_boot_source:
+            self.patch(signals.bootsources, "post_commit_do")
+        if self.mock_delete_large_object_content_later:
+            self.patch(signals.largefiles, "post_commit_do")
 
     def setUpFixtures(self):
         """This should be called by a subclass once other set-up is done."""

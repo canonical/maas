@@ -56,12 +56,6 @@ class PatchOSInfoMixin:
 
 
 class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
-    def setUp(self):
-        super().setUp()
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
     def make_other_resource(
         self, os=None, arch=None, subarch=None, release=None, extra=None
     ):

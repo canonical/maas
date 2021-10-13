@@ -15,7 +15,6 @@ from twisted.internet.defer import inlineCallbacks
 
 from maasserver import proxyconfig
 from maasserver.models import Config
-from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
@@ -35,9 +34,6 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         self.tmpdir = self.make_dir()
         self.proxy_path = Path(self.tmpdir) / config.MAAS_PROXY_CONF_NAME
         self.service_monitor = self.patch(proxyconfig, "service_monitor")
-        # Setting the http_proxy Config will cause the boot sources to be
-        # re-cached. Disable the signals so no threads are dirty.
-        bootsources.signals.disable()
         self.useFixture(
             EnvironmentVariableFixture("MAAS_PROXY_CONFIG_DIR", self.tmpdir)
         )

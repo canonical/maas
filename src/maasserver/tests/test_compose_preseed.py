@@ -27,7 +27,6 @@ from maasserver.enum import (
 )
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
-from maasserver.models.signals import bootsources
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
@@ -304,9 +303,6 @@ class TestAptProxy(MAASServerTestCase):
     def test_returns_correct_url(self):
         import maasserver.compose_preseed as cp_module
 
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
         # Force the server host to be our test data.
         self.patch(cp_module, "get_maas_facing_server_host").return_value = (
             self.rack if self.rack else self.default_region_ip
@@ -480,10 +476,6 @@ class TestComposePreseed(MAASServerTestCase):
         )
 
     def test_compose_preseed_for_commissioning_node_skips_apt_proxy(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True, status=NODE_STATUS.COMMISSIONING
@@ -893,10 +885,6 @@ class TestComposePreseed(MAASServerTestCase):
         )
 
     def test_compose_preseed_with_curtin_installer_skips_apt_proxy(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         rack_controller = factory.make_RackController()
         node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
         nic = node.get_boot_interface()
@@ -915,10 +903,6 @@ class TestComposePreseed(MAASServerTestCase):
 
     # LP: #1743966 - Test for archive key work around
     def test_compose_preseed_for_curtin_and_trusty_aptsources(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True,
@@ -945,10 +929,6 @@ class TestComposePreseed(MAASServerTestCase):
     # (e.g. Xenial/Bionic), so it no longer needs the workaround that
     # the bug report addresses.
     def test_compose_preseed_for_curtin_precise_not_aptsources(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True,
@@ -969,10 +949,6 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertNotIn("apt_sources", preseed)
 
     def test_compose_preseed_for_curtin_not_packages(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         rack_controller = factory.make_RackController()
         node = factory.make_Node(
             interface=True,

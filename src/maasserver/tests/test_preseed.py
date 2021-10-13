@@ -36,7 +36,7 @@ from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.compose_preseed import get_archive_config, make_clean_repo_name
 from maasserver.enum import FILESYSTEM_TYPE, NODE_STATUS, PRESEED_TYPE
 from maasserver.exceptions import ClusterUnavailable, MissingBootImage
-from maasserver.models import BootResource, Config, PackageRepository, signals
+from maasserver.models import BootResource, Config, PackageRepository
 from maasserver.preseed import (
     compose_curtin_archive_config,
     compose_curtin_cloud_config,
@@ -2175,12 +2175,6 @@ class TestPreseedMethods(
 
     These tests check that the preseed templates render and 'look right'.
     """
-
-    def setUp(self):
-        super().setUp()
-        # We don't want to test that the bootsources get updated.
-        self.addCleanup(signals.bootsources.signals.enable)
-        signals.bootsources.signals.disable()
 
     def assertSystemInfo(self, config):
         self.assertThat(

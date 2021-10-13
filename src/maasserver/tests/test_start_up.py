@@ -94,9 +94,6 @@ class TestInnerStartUp(MAASServerTestCase):
         self.useFixture(MAASIDFixture(None))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
         self.patch(ipaddr, "get_ip_addr").return_value = {}
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
 
     def test_calls_dns_kms_setting_changed_if_master(self):
         with post_commit_hooks:

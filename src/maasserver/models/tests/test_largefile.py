@@ -64,6 +64,9 @@ class TestLargeFileManager(MAASServerTestCase):
 
 
 class TestLargeFile(MAASServerTestCase):
+
+    mock_delete_large_object_content_later = False
+
     def test_content(self):
         size = randint(512, 1024)
         content = factory.make_bytes(size=size)
@@ -154,6 +157,9 @@ class TestLargeFile(MAASServerTestCase):
 
 
 class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
+
+    mock_delete_large_object_content_later = False
+
     def test_schedules_unlink(self):
         # We're going to capture the delayed call that
         # delete_large_object_content_later() creates.

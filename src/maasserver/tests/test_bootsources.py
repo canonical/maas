@@ -34,9 +34,6 @@ from maasserver.models import (
     Config,
     Notification,
 )
-from maasserver.models.signals.bootsources import (
-    signals as bootsources_signals,
-)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -99,12 +96,6 @@ def make_boot_image_mapping(image_specs=None):
 
 
 class TestHelpers(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources_signals.enable)
-        bootsources_signals.disable()
-
     def test_ensure_boot_source_definition_creates_default_source(self):
         BootSource.objects.all().delete()
         arch = factory.make_name("arch")
@@ -245,12 +236,6 @@ class TestHelpers(MAASServerTestCase):
 
 
 class TestGetOSInfoFromBootSources(MAASServerTestCase):
-    def setUp(self):
-        super().setUp()
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources_signals.enable)
-        bootsources_signals.disable()
-
     def test_returns_empty_sources_and_sets_when_cache_empty(self):
         self.assertEqual(
             ([], set(), set()),
@@ -289,9 +274,6 @@ class TestPrivateUpdateCache(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(SimplestreamsEnvFixture())
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources_signals.enable)
-        bootsources_signals.disable()
 
     def make_release(self, image_mapping):
         os = factory.make_name("os")
@@ -368,9 +350,6 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(SimplestreamsEnvFixture())
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources_signals.enable)
-        bootsources_signals.disable()
 
     def test_has_env_GNUPGHOME_set(self):
         capture = patch_and_capture_env_for_download_all_image_descriptions(
@@ -576,9 +555,6 @@ class TestBadConnectionHandling(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         self.useFixture(SimplestreamsEnvFixture())
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources_signals.enable)
-        bootsources_signals.disable()
 
     def test_catches_connection_errors_and_sets_component_error(self):
         sources = [
