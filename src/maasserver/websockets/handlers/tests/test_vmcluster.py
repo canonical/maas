@@ -178,3 +178,17 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         ]
 
         self.assertCountEqual(result_ids, expected_ids)
+
+    @wait_for_reactor
+    async def test_get(self):
+        cluster = await deferToDatabase(factory.make_VMCluster)
+        admin = await deferToDatabase(factory.make_admin)
+
+        handler = VMClusterHandler(admin, {}, None)
+
+        result = await handler.get({"id": cluster.id})
+
+        self.assertEqual(cluster.name, result["name"])
+        self.assertEqual(cluster.project, result["project"])
+        self.assertEqual([], result["hosts"])
+        self.assertEqual([], result["virtual_machines"])

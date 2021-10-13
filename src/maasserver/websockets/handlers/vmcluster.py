@@ -116,7 +116,7 @@ class VMClusterHandler(TimestampedModelHandler):
 
         return await deferToDatabase(render_objects, clusters)
 
-    async def read(self, id):
+    async def get(self, params):
         @transactional
         def get_object(id):
             return VMCluster.objects.get(id=id)
@@ -126,3 +126,6 @@ class VMClusterHandler(TimestampedModelHandler):
             return self.dehydrate(
                 obj, obj.hosts(), obj.total_resources(), obj.virtual_machines()
             )
+
+        cluster = await deferToDatabase(get_object, params["id"])
+        return await deferToDatabase(render_object, cluster)
