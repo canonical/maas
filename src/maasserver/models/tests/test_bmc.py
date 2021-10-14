@@ -1259,7 +1259,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
 
     def test_sync_pod_with_cluster_saves_cluster_hint(self):
         pod = factory.make_Pod()
-        cluster = factory.make_VMCluster()
+        cluster = factory.make_VMCluster(pods=0)
 
         discovered_pod = self.make_discovered_pod(
             machines=[], storage_pools=[]
@@ -2846,7 +2846,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(host_interface, vm_interface.host_interface)
 
     def test_update_cluster_certificate_updates_peers_with_same_cert(self):
-        cluster = factory.make_VMCluster()
+        cluster = factory.make_VMCluster(pods=0)
         vmhosts = [
             factory.make_Pod(pod_type="lxd", cluster=cluster) for _ in range(3)
         ]
@@ -3108,7 +3108,7 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
     @wait_for_reactor
     @inlineCallbacks
     def test_delete_clustered_pod_deletes_cluster(self):
-        cluster = yield deferToDatabase(factory.make_VMCluster)
+        cluster = yield deferToDatabase(factory.make_VMCluster, pods=0)
         pod_defers = yield DeferredList(
             [
                 deferToDatabase(factory.make_Pod, cluster=cluster)
@@ -3124,7 +3124,7 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
 
     @wait_for_reactor
     async def test_delete_clustered_pod_deletes_peers(self):
-        cluster = yield deferToDatabase(factory.make_VMCluster)
+        cluster = yield deferToDatabase(factory.make_VMCluster, pods=0)
         pod_defers = yield DeferredList(
             [
                 deferToDatabase(factory.make_Pod, cluster=cluster)

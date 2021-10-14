@@ -13,10 +13,14 @@ wait_for_reactor = wait_for(30)  # 30 seconds.
 class TestVMClusterHandler(MAASTransactionServerTestCase):
     def make_cluster_group(self):
         cluster_group = []
+        pool = factory.make_ResourcePool()
 
         for _ in range(3):
-            cluster = factory.make_VMCluster()
-            vmhosts = [factory.make_Pod(cluster=cluster) for _ in range(3)]
+            cluster = factory.make_VMCluster(pool=pool, pods=0)
+            vmhosts = [
+                factory.make_Pod(cluster=cluster, pod_type="lxd")
+                for _ in range(3)
+            ]
             vms = [
                 factory.make_VirtualMachine(
                     bmc=vmhost.as_bmc(), machine=factory.make_Machine()
@@ -34,7 +38,7 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
             address_group = [factory.make_ip_address() for _ in range(3)]
             cluster_group = []
             for _ in range(3):
-                cluster = factory.make_VMCluster()
+                cluster = factory.make_VMCluster(pods=0)
                 vmhosts = [
                     factory.make_Pod(
                         parameters={
@@ -42,6 +46,7 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
                             "project": cluster.project,
                         },
                         cluster=cluster,
+                        pod_type="lxd",
                     )
                     for address in address_group
                 ]
@@ -60,6 +65,14 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         self.assertEqual(result["id"], cluster.id)
         self.assertEqual(result["name"], cluster.name)
         self.assertEqual(result["project"], cluster.project)
+        self.assertEqual(result["availability_zone"], cluster.zone.name)
+        self.assertEqual(
+            result["version"], vmhosts[0].version if len(vmhosts) > 0 else ""
+        )
+        self.assertEqual(
+            result["resource_pool"],
+            cluster.pool.name if cluster.pool is not None else "",
+        )
 
         expected_vmhosts = [
             {
@@ -121,7 +134,7 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
             )
 
     def test_dehydrate(self):
-        cluster = factory.make_VMCluster()
+        cluster = factory.make_VMCluster(pods=0)
         vmhosts = [factory.make_Pod(cluster=cluster) for _ in range(3)]
         _ = [factory.make_PodStoragePool(pod=pod) for pod in vmhosts]
 
@@ -190,5 +203,5 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
 
         self.assertEqual(cluster.name, result["name"])
         self.assertEqual(cluster.project, result["project"])
-        self.assertEqual([], result["hosts"])
+        self.assertEqual(1, len(result["hosts"]))
         self.assertEqual([], result["virtual_machines"])

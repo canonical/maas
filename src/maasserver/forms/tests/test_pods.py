@@ -381,7 +381,7 @@ class TestPodForm(MAASTransactionServerTestCase):
         self.assertEqual(pod.default_macvlan_mode, default_macvlan_mode)
 
     def test_updates_clustered_peers_certificates(self):
-        cluster = factory.make_VMCluster()
+        cluster = factory.make_VMCluster(pods=0)
         vmhosts = [
             factory.make_Pod(pod_type="lxd", cluster=cluster) for _ in range(3)
         ]

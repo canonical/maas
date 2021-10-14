@@ -21,7 +21,8 @@ class TestVMClusterManager(MAASServerTestCase):
     def test_group_by_physical_cluster(self):
         user = factory.make_User()
         cluster_groups = [
-            [factory.make_VMCluster() for _ in range(3)] for _ in range(3)
+            [factory.make_VMCluster(pods=0) for _ in range(3)]
+            for _ in range(3)
         ]
 
         for i, cluster_group in enumerate(cluster_groups):
@@ -40,7 +41,7 @@ class TestVMClusterManager(MAASServerTestCase):
         results = VMCluster.objects.group_by_physical_cluster(user)
         self.assertCountEqual(results, cluster_groups)
 
-    def test_group_by_physucal_cluster_with_rbac(self):
+    def test_group_by_physical_cluster_with_rbac(self):
         self.enable_rbac()
         user = factory.make_User()
         view_pool = factory.make_ResourcePool()
@@ -50,12 +51,15 @@ class TestVMClusterManager(MAASServerTestCase):
         self.store.add_pool(view_all_pool)
         self.store.allow(user.username, view_all_pool, "view-all")
         view_cluster_group = [
-            factory.make_VMCluster(pool=view_pool) for _ in range(3)
+            factory.make_VMCluster(pool=view_pool, pods=0) for _ in range(3)
         ]
         view_all_cluster_group = [
-            factory.make_VMCluster(pool=view_all_pool) for _ in range(3)
+            factory.make_VMCluster(pool=view_all_pool, pods=0)
+            for _ in range(3)
         ]
-        other_cluster_group = [factory.make_VMCluster() for _ in range(3)]
+        other_cluster_group = [
+            factory.make_VMCluster(pods=0) for _ in range(3)
+        ]
         cluster_groups = [
             view_cluster_group,
             view_all_cluster_group,

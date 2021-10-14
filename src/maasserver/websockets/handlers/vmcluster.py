@@ -69,6 +69,11 @@ class VMClusterHandler(TimestampedModelHandler):
             "virtual_machines": [
                 self._dehydrate_virtual_machine(vm) for vm in vms
             ],
+            "resource_pool": (
+                cluster.pool.name if cluster.pool is not None else ""
+            ),
+            "availability_zone": cluster.zone.name,
+            "version": (vmhosts[0].version if len(vmhosts) > 0 else ""),
         }
 
     async def list(self, params):

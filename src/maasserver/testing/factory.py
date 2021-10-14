@@ -2961,7 +2961,7 @@ class Factory(maastesting.factory.Factory):
         )
 
     def make_VMCluster(
-        self, name=None, project=None, pods=0, vms=0, pool=None, zone=None
+        self, name=None, project=None, pods=1, vms=0, pool=None, zone=None
     ):
         if name is None:
             name = factory.make_name("name")
