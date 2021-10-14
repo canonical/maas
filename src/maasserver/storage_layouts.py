@@ -533,10 +533,16 @@ class LVMStorageLayout(StorageLayoutBase):
         return None
 
 
-class BcacheStorageLayoutBase(StorageLayoutBase):
-    """Base that provides the logic for bcache layout types.
+class BcacheStorageLayout(FlatStorageLayout):
+    """Bcache layout.
 
-    This class is shared by `BcacheStorageLayout` and `BcacheLVMStorageLayout`.
+    NAME        SIZE        TYPE    FSTYPE         MOUNTPOINT
+    sda         100G        disk
+      sda1      512M        part    fat32          /boot/efi
+      sda2      99.5G       part    bc-backing
+    sdb         50G         disk
+      sdb1      50G         part    bc-cache
+    bcache0     99.5G       disk    ext4           /
     """
 
     DEFAULT_CACHE_MODE = CACHE_MODE_TYPE.WRITETHROUGH
@@ -546,6 +552,10 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
     )
     cache_size = BytesOrPercentageField(required=False)
     cache_no_part = forms.BooleanField(required=False)
+
+    def __init__(self, node, params: dict = None):
+        super().__init__(node, params=({} if params is None else params))
+        self.setup_cache_device_field()
 
     def setup_cache_device_field(self):
         """Setup the possible cache devices."""
@@ -668,23 +678,6 @@ class BcacheStorageLayoutBase(StorageLayoutBase):
                 )
             cleaned_data["cache_size"] = cache_size
         return cleaned_data
-
-
-class BcacheStorageLayout(FlatStorageLayout, BcacheStorageLayoutBase):
-    """Bcache layout.
-
-    NAME        SIZE        TYPE    FSTYPE         MOUNTPOINT
-    sda         100G        disk
-      sda1      512M        part    fat32          /boot/efi
-      sda2      99.5G       part    bc-backing
-    sdb         50G         disk
-      sdb1      50G         part    bc-cache
-    bcache0     99.5G       disk    ext4           /
-    """
-
-    def __init__(self, node, params: dict = None):
-        super().__init__(node, params=({} if params is None else params))
-        self.setup_cache_device_field()
 
     def configure_storage(self, allow_fallback):
         """Create the Bcache configuration."""

@@ -24,7 +24,6 @@ from maasserver.models.partitiontable import (
 )
 from maasserver.storage_layouts import (
     BcacheStorageLayout,
-    BcacheStorageLayoutBase,
     BlankStorageLayout,
     calculate_size_from_percentage,
     EFI_PARTITION_SIZE,
@@ -1303,10 +1302,10 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
             self.assertIsNone(lvm_layout.is_layout(), layout_name)
 
 
-class TestBcacheStorageLayoutBase(MAASServerTestCase):
+class TestBcacheStorageLayout(MAASServerTestCase):
     def test_setup_cache_device_field_does_nothing_if_no_boot_device(self):
         node = make_Node_with_uefi_boot_method()
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.setup_cache_device_field()
         self.assertNotIn("cache_device", layout.fields)
 
@@ -1320,13 +1319,13 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             for _ in range(3)
         ]
         valid_choices = [(disk.id, disk.id) for disk in other_disks]
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.setup_cache_device_field()
         self.assertEqual(valid_choices, layout.fields["cache_device"].choices)
 
     def test_find_best_cache_device_returns_None_if_not_boot_disk(self):
         node = make_Node_with_uefi_boot_method()
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         self.assertIsNone(layout._find_best_cache_device())
 
     def test_find_best_cache_device_returns_smallest_ssd_first(self):
@@ -1344,7 +1343,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=1 * 1024 * 1024 * 1024, tags=["rotary"]
         )
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         self.assertEqual(smallest_ssd, layout._find_best_cache_device())
 
     def test_find_best_cache_device_returns_None_if_no_ssd(self):
@@ -1358,7 +1357,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=2 * 1024 * 1024 * 1024, tags=["rotary"]
         )
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         self.assertIsNone(layout._find_best_cache_device())
 
     def test_get_cache_device_returns_set_cache_device_over_find(self):
@@ -1372,7 +1371,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=2 * 1024 * 1024 * 1024, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.cleaned_data = {"cache_device": small_ssd.id}
         self.assertEqual(small_ssd, layout.get_cache_device())
 
@@ -1387,26 +1386,26 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         smallest_ssd = factory.make_PhysicalBlockDevice(
             node=node, size=2 * 1024 * 1024 * 1024, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.cleaned_data = {}
         self.assertEqual(smallest_ssd, layout.get_cache_device())
 
     def test_get_cache_mode_returns_set_cache_mode(self):
         node = make_Node_with_uefi_boot_method()
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         cache_mode = factory.pick_enum(CACHE_MODE_TYPE)
         layout.cleaned_data = {"cache_mode": cache_mode}
         self.assertEqual(cache_mode, layout.get_cache_mode())
 
     def test_get_cache_mode_returns_default_if_blank(self):
         node = make_Node_with_uefi_boot_method()
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.cleaned_data = {"cache_mode": ""}
         self.assertEqual(layout.DEFAULT_CACHE_MODE, layout.get_cache_mode())
 
     def test_get_cache_size_returns_set_cache_size(self):
         node = make_Node_with_uefi_boot_method()
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         cache_size = random.randint(
             MIN_ROOT_PARTITION_SIZE, MIN_ROOT_PARTITION_SIZE * 2
         )
@@ -1415,13 +1414,13 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
 
     def test_get_cache_size_returns_None_if_blank(self):
         node = make_Node_with_uefi_boot_method()
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.cleaned_data = {"cache_size": ""}
         self.assertIsNone(layout.get_cache_size())
 
     def test_get_cache_no_part_returns_boolean(self):
         node = make_Node_with_uefi_boot_method()
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         cache_no_part = factory.pick_bool()
         layout.cleaned_data = {"cache_no_part": cache_no_part}
         self.assertEqual(cache_no_part, layout.get_cache_no_part())
@@ -1432,7 +1431,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         ssd = factory.make_PhysicalBlockDevice(
             node=node, size=5 * 1024 * 1024 * 1024, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.cleaned_data = {"cache_no_part": False}
         cache_set = layout.create_cache_set()
         cache_device = cache_set.get_device()
@@ -1447,7 +1446,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         ssd = factory.make_PhysicalBlockDevice(
             node=node, size=5 * 1024 * 1024 * 1024, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.cleaned_data = {"cache_no_part": True}
         cache_set = layout.create_cache_set()
         cache_device = cache_set.get_device()
@@ -1466,7 +1465,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             random.randint(3 * 1024 * 1024 * 1024, 4.5 * 1024 * 1024 * 1024),
             4096,
         )
-        layout = BcacheStorageLayoutBase(node)
+        layout = BcacheStorageLayout(node)
         layout.cleaned_data = {
             "cache_size": cache_size,
             "cache_no_part": False,
@@ -1492,7 +1491,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         ssd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node, {"cache_device": boot_disk.id})
+        layout = BcacheStorageLayout(node, {"cache_device": boot_disk.id})
         layout.setup_cache_device_field()
         self.assertFalse(layout.is_valid(), layout.errors)
         self.assertEqual(
@@ -1508,7 +1507,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
     def test_raises_error_when_cache_size_and_cache_no_part_set(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
-        layout = BcacheStorageLayoutBase(
+        layout = BcacheStorageLayout(
             node,
             {"cache_size": MIN_ROOT_PARTITION_SIZE, "cache_no_part": True},
         )
@@ -1532,7 +1531,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node, {"cache_size": "0%"})
+        layout = BcacheStorageLayout(node, {"cache_size": "0%"})
         layout.setup_cache_device_field()
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
@@ -1551,7 +1550,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(
+        layout = BcacheStorageLayout(
             node, {"cache_size": MIN_BLOCK_DEVICE_SIZE - 1}
         )
         layout.setup_cache_device_field()
@@ -1572,7 +1571,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         ssd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node, {"cache_size": "101%"})
+        layout = BcacheStorageLayout(node, {"cache_size": "101%"})
         layout.setup_cache_device_field()
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
@@ -1590,7 +1589,7 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
         ssd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        layout = BcacheStorageLayoutBase(node, {"cache_size": ssd.size + 1})
+        layout = BcacheStorageLayout(node, {"cache_size": ssd.size + 1})
         layout.setup_cache_device_field()
         error = self.assertRaises(StorageLayoutFieldsError, layout.configure)
         self.assertEqual(
@@ -1602,8 +1601,6 @@ class TestBcacheStorageLayoutBase(MAASServerTestCase):
             error.message_dict,
         )
 
-
-class TestBcacheStorageLayout(MAASServerTestCase):
     def test_init_sets_up_cache_device_field(self):
         node = make_Node_with_uefi_boot_method()
         factory.make_PhysicalBlockDevice(node=node, size=LARGE_BLOCK_DEVICE)
