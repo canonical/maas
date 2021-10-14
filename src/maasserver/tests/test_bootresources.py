@@ -1496,7 +1496,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                     written_data = stream.read()
                 self.assertEqual(content, written_data)
 
-    @asynchronous(timeout=1)
+    @wait_for_reactor
     def test_finalize_calls_notify_errback(self):
         @transactional
         def create_store(testcase):
@@ -1514,7 +1514,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
         d.addErrback(lambda failure: failure.trap(Exception))
         return d
 
-    @asynchronous(timeout=1)
+    @wait_for_reactor
     def test_finalize_calls_notify_callback(self):
         @transactional
         def create_store(testcase):
