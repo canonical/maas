@@ -29,6 +29,9 @@ class TestScriptsPaths(MAASTestCase):
         self.assertEqual(scripts_paths.scripts, base_path / "scripts")
         self.assertEqual(scripts_paths.out, base_path / "out")
         self.assertEqual(scripts_paths.downloads, base_path / "downloads")
+        self.assertEqual(
+            scripts_paths.resources_file, base_path / "resources.json"
+        )
 
     def test_ensure(self):
         base_path = Path(self.useFixture(TempDirectory()).path)
@@ -37,6 +40,7 @@ class TestScriptsPaths(MAASTestCase):
         self.assertTrue(scripts_paths.scripts.exists())
         self.assertTrue(scripts_paths.out.exists())
         self.assertTrue(scripts_paths.downloads.exists())
+        self.assertTrue(scripts_paths.resources_file.exists())
 
     def test_ensure_clears_existing_content(self):
         base_path = Path(self.useFixture(TempDirectory()).path)

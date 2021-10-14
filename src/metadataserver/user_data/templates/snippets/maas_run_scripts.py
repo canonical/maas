@@ -59,6 +59,7 @@ class ScriptsPaths:
             if directory.exists():
                 shutil.rmtree(directory)
             directory.mkdir()
+        self.resources_file.touch()
 
 
 ScriptRunResult = namedtuple(
