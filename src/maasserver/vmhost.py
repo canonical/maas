@@ -153,11 +153,6 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
         pool=vmhost.pool,
         zone=vmhost.zone,
     )
-    vmhost.power_parameters = _generate_cluster_power_params(
-        vmhost,
-        vmhost.power_parameters["power_address"],
-        vmhost,
-    )
     new_host = vmhost
     for i, discovered_vmhost in enumerate(discovered_cluster.pods):
         power_parameters = _generate_cluster_power_params(
@@ -165,7 +160,9 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
         )
         if (
             power_parameters["power_address"]
-            != vmhost.power_parameters["power_address"]
+            not in vmhost.power_parameters["power_address"]
+            and vmhost.power_parameters["power_address"]
+            not in power_parameters["power_address"]
         ):
             new_host = Pod.objects.create(
                 name=discovered_vmhost.name,
