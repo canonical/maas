@@ -53,6 +53,8 @@ from provisioningserver.testing.bindfixture import allocate_ports, BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from provisioningserver.utils.twisted import retries
 
+RELOAD_TIMEOUT = 30
+
 
 class TestDNSUtilities(MAASServerTestCase):
     def make_listener_without_delay(self):
@@ -291,14 +293,14 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_dns_update_all_zones_loads_full_dns_config(self):
         self.patch(settings, "DNS_CONNECT", True)
         node, static = self.create_node_with_static_ip()
-        dns_update_all_zones()
+        dns_update_all_zones(reload_timeout=RELOAD_TIMEOUT)
         self.assertDNSMatches(node.hostname, node.domain.name, static.ip)
 
     def test_dns_update_all_zones_includes_internal_domain(self):
         self.patch(settings, "DNS_CONNECT", True)
         rack, static = self.create_rack_with_static_ip()
         factory.make_RegionRackRPCConnection(rack)
-        dns_update_all_zones()
+        dns_update_all_zones(reload_timeout=RELOAD_TIMEOUT)
         resource_name = get_resource_name_for_subnet(static.subnet)
         self.assertDNSMatches(
             resource_name,
@@ -313,7 +315,7 @@ class TestDNSConfigModifications(TestDNSServer):
         factory.make_RegionRackRPCConnection(rack1)
         rack2, static2 = self.create_rack_with_static_ip(subnet=static1.subnet)
         factory.make_RegionRackRPCConnection(rack2)
-        dns_update_all_zones()
+        dns_update_all_zones(reload_timeout=RELOAD_TIMEOUT)
         resource_name = get_resource_name_for_subnet(static1.subnet)
         self.assertDNSMatches(
             resource_name,
@@ -345,7 +347,7 @@ class TestDNSConfigModifications(TestDNSServer):
         bind_write_options = self.patch_autospec(
             dns_config_module, "bind_write_options"
         )
-        dns_update_all_zones()
+        dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
         self.assertThat(
             bind_write_options,
             MockCalledOnceWith(
@@ -360,7 +362,7 @@ class TestDNSConfigModifications(TestDNSServer):
             dns_config_module, "get_trusted_networks"
         )
         get_trusted_networks_patch.return_value = [trusted_network]
-        dns_update_all_zones()
+        dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(trusted_network)),
@@ -373,7 +375,7 @@ class TestDNSConfigModifications(TestDNSServer):
             dns_config_module, "get_trusted_acls"
         )
         get_trusted_acls_patch.return_value = [extra_trusted_network.cidr]
-        dns_update_all_zones()
+        dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(str(extra_trusted_network))),
@@ -386,7 +388,7 @@ class TestDNSConfigModifications(TestDNSServer):
             config.maas_url = "http://%s/" % ip
         domain = factory.make_Domain()
         node, static = self.create_node_with_static_ip(domain=domain)
-        dns_update_all_zones()
+        dns_update_all_zones(reload_retry=RELOAD_TIMEOUT)
         # Creating the domain triggered writing the zone file and updating the
         # DNS.
         self.dns_wait_soa(domain.name)
@@ -413,7 +415,9 @@ class TestDNSConfigModifications(TestDNSServer):
         self.patch(
             dns_config_module, "current_zone_serial"
         ).return_value = fake_serial
-        serial, reloaded, domains = dns_update_all_zones()
+        serial, reloaded, domains = dns_update_all_zones(
+            reload_timeout=RELOAD_TIMEOUT
+        )
         self.assertThat(serial, Equals(fake_serial))
         self.assertThat(reloaded, Is(True))
         self.assertThat(
@@ -446,7 +450,7 @@ class TestDNSDynamicIPAddresses(TestDNSServer):
             subnet=subnet,
             interface=nic,
         )
-        dns_update_all_zones()
+        dns_update_all_zones(reload_timeout=RELOAD_TIMEOUT)
         self.assertDNSMatches(node.hostname, node.domain.name, ip_obj.ip)
 
 
@@ -466,7 +470,7 @@ class TestDNSResource(TestDNSServer):
         dnsrr = factory.make_DNSResource(
             name=rrname, domain=domain, ip_addresses=[ip_obj]
         )
-        dns_update_all_zones()
+        dns_update_all_zones(reload_timeout=RELOAD_TIMEOUT)
         self.assertDNSMatches(dnsrr.name, domain.name, ip_obj.ip)
 
 
@@ -476,7 +480,7 @@ class TestIPv6DNS(TestDNSServer):
         network = factory.make_ipv6_network(slash=random.randint(118, 125))
         subnet = factory.make_Subnet(cidr=str(network.cidr))
         node, static = self.create_node_with_static_ip(subnet=subnet)
-        dns_update_all_zones()
+        dns_update_all_zones(reload_timeout=RELOAD_TIMEOUT)
         self.assertDNSMatches(
             node.hostname, node.domain.name, static.ip, version=6
         )
