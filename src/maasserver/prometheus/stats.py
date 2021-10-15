@@ -17,6 +17,7 @@ from maasserver.stats import (
     get_machines_by_architecture,
     get_subnets_utilisation_stats,
     get_vm_hosts_stats,
+    get_vmcluster_stats,
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
@@ -124,6 +125,21 @@ STATS_DEFINITIONS = [
         "maas_custom_static_images_deployed",
         "Number of custom static OS images deployed",
     ),
+    MetricDefinition(
+        "Gauge",
+        "maas_vmcluster_projects",
+        "Number of cluster projects",
+    ),
+    MetricDefinition(
+        "Gauge",
+        "maas_vmcluster_hosts",
+        "Number of VM hosts in a cluster",
+    ),
+    MetricDefinition(
+        "Gauge",
+        "maas_vmcluster_vms",
+        "Number of machines in a cluster",
+    ),
 ]
 
 _METRICS = {}
@@ -154,6 +170,7 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
     stats = get_maas_stats()
     architectures = get_machines_by_architecture()
     vm_hosts = get_vm_hosts_stats()
+    vmcluster = get_vmcluster_stats()
 
     # Gather counter for machines per status
     for status, machines in stats["machine_status"].items():
@@ -256,6 +273,12 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
         "set",
         value=get_custom_images_deployed_stats(),
     )
+
+    metrics.update(
+        "maas_vmcluster_projects", "set", value=vmcluster["projects"]
+    )
+    metrics.update("maas_vmcluster_hosts", "set", value=vmcluster["vm_hosts"])
+    metrics.update("maas_vmcluster_vms", "set", value=vmcluster["vms"])
 
     return metrics
 

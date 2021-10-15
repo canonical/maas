@@ -3000,7 +3000,18 @@ class Factory(maastesting.factory.Factory):
         )
 
     def make_VMCluster(
-        self, name=None, project=None, pods=1, vms=0, pool=None, zone=None
+        self,
+        name=None,
+        project=None,
+        pods=1,
+        vms=0,
+        pool=None,
+        zone=None,
+        memory=4096,
+        vm_memory=1024,
+        cores=8,
+        storage=None,
+        disk_size=None,
     ):
         if name is None:
             name = factory.make_name("name")
@@ -3020,22 +3031,24 @@ class Factory(maastesting.factory.Factory):
             pod = factory.make_Pod(
                 pod_type="lxd",
                 host=None,
-                cores=8,
-                memory=4096,
+                cores=cores,
+                memory=memory,
                 cluster=cluster,
             )
-            pool = factory.make_PodStoragePool(pod=pod)
+            pool = factory.make_PodStoragePool(pod=pod, storage=storage)
 
             for _ in range(0, vms):
                 node = factory.make_Node(bmc=pod)
                 vm = factory.make_VirtualMachine(
                     machine=node,
-                    memory=1024,
+                    memory=vm_memory,
                     pinned_cores=[0, 2],
                     hugepages_backed=False,
                     bmc=pod,
                 )
-                factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool)
+                factory.make_VirtualMachineDisk(
+                    vm=vm, backing_pool=pool, size=disk_size
+                )
 
         return cluster
 

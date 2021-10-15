@@ -27,10 +27,12 @@ def _add_vmresources(cluster_resource, host_resource):
     cluster_resource.allocated_tracked += host_resource.allocated_tracked
     cluster_resource.allocated_other += host_resource.allocated_other
     cluster_resource.free += host_resource.free
+    cluster_resource.overcommited += host_resource.overcommited
     return cluster_resource
 
 
 def aggregate_vmhost_resources(cluster_resources, host_resources):
+    cluster_resources.vmhost_count += 1
     cluster_resources.cores = _add_vmresources(
         cluster_resources.cores, host_resources.cores
     )
@@ -213,6 +215,7 @@ class VMClusterResource:
     allocated_tracked: int = 0
     allocated_other: int = 0
     free: int = 0
+    overcommited: int = 0
 
     @property
     def allocated(self):
@@ -237,6 +240,10 @@ class VMClusterVMCount:
 
     tracked: int = 0
     other: int = 0
+
+    @property
+    def total(self):
+        return self.tracked - self.other
 
 
 @dataclass
@@ -266,3 +273,4 @@ class VMClusterResources:
         default_factory=dict
     )
     vm_count: VMClusterVMCount = field(default_factory=VMClusterVMCount)
+    vmhost_count: int = 0

@@ -36,6 +36,7 @@ from maasserver.models import (
     StaticIPAddress,
     Subnet,
     VLAN,
+    VMCluster,
 )
 from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.utils import get_maas_user_agent
@@ -281,6 +282,52 @@ def get_custom_images_uploaded_stats():
     )
 
 
+def get_vmcluster_stats(**filter_params):
+    clusters = VMCluster.objects.filter(**filter_params)
+    stats = {
+        "projects": len(clusters),
+        "vm_hosts": 0,
+        "vms": 0,
+        "available_resources": {
+            "cores": 0,
+            "memory": 0,
+            "over_cores": 0,
+            "over_memory": 0,
+            "storage_local": 0,
+            "storage_shared": 0,
+        },
+        "utilized_resources": {
+            "cores": 0,
+            "memory": 0,
+            "storage_local": 0,
+            "storage_shared": 0,
+        },
+    }
+
+    for cluster in clusters:
+        res = cluster.total_resources()
+        stats["vm_hosts"] += res.vmhost_count
+        stats["vms"] += res.vm_count.total
+        stats["available_resources"]["cores"] += res.cores.total
+        stats["available_resources"]["over_cores"] += res.cores.overcommited
+        stats["available_resources"]["memory"] += res.memory.general.total
+        stats["available_resources"][
+            "over_memory"
+        ] += res.memory.general.overcommited
+        stats["utilized_resources"]["cores"] += res.cores.allocated
+        stats["utilized_resources"]["memory"] += res.memory.general.allocated
+
+        for pool in res.storage_pools.values():
+            if pool.shared:
+                stats["available_resources"]["storage_shared"] += pool.total
+                stats["utilized_resources"]["storage_shared"] += pool.allocated
+            else:
+                stats["available_resources"]["storage_local"] += pool.total
+                stats["utilized_resources"]["storage_local"] += pool.allocated
+
+    return stats
+
+
 def get_custom_images_deployed_stats():
     return Machine.objects.filter(osystem="custom").count()
 
@@ -369,6 +416,7 @@ def get_maas_stats():
                 for img in custom_images
             },
         },
+        "vmcluster": get_vmcluster_stats(),
     }
 
 

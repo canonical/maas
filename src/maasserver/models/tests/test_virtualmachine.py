@@ -130,8 +130,10 @@ class TestGetVMHostResources(MAASServerTestCase):
         resources = get_vm_host_resources(pod)
         self.assertEqual(resources.cores.free, 6)
         self.assertEqual(resources.cores.allocated, 2)
+        self.assertEqual(resources.cores.overcommited, 8)
         self.assertEqual(resources.memory.general.free, 3072 * MB)
         self.assertEqual(resources.memory.general.allocated, 1024 * MB)
+        self.assertEqual(resources.memory.general.overcommited, 4096 * MB)
         self.assertEqual(resources.memory.hugepages.free, 0)
         self.assertEqual(resources.memory.hugepages.allocated, 0)
         self.assertEqual(resources.numa, [])
@@ -171,7 +173,11 @@ class TestGetVMHostResources(MAASServerTestCase):
         )
         project = factory.make_string()
         pod = factory.make_Pod(
-            pod_type="lxd", parameters={"project": project}, host=node
+            pod_type="lxd",
+            parameters={"project": project},
+            host=node,
+            cpu_over_commit_ratio=1.5,
+            memory_over_commit_ratio=2,
         )
         pool1 = factory.make_PodStoragePool(pod=pod)
         pool2 = factory.make_PodStoragePool(pod=pod)
@@ -207,10 +213,12 @@ class TestGetVMHostResources(MAASServerTestCase):
         self.assertEqual(resources.cores.allocated, 6)
         self.assertEqual(resources.cores.allocated_tracked, 4)
         self.assertEqual(resources.cores.allocated_other, 2)
+        self.assertEqual(resources.cores.overcommited, 12)
         self.assertEqual(resources.memory.general.free, 6144 * MB)
         self.assertEqual(resources.memory.general.allocated, 4096 * MB)
         self.assertEqual(resources.memory.general.allocated_tracked, 1024 * MB)
         self.assertEqual(resources.memory.general.allocated_other, 3072 * MB)
+        self.assertEqual(resources.memory.general.overcommited, 20480 * MB)
         self.assertEqual(resources.memory.hugepages.free, 1024 * MB)
         self.assertEqual(resources.memory.hugepages.allocated, 1024 * MB)
         self.assertEqual(

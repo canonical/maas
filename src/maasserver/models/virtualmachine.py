@@ -2,7 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from collections import defaultdict, OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
 from math import ceil
 from typing import Dict, List, Optional
 
@@ -190,10 +190,19 @@ class VMHostResource:
     allocated_tracked: int = 0
     allocated_other: int = 0
     free: int = 0
+    overcommit_ratio: InitVar[float] = 1.0
 
     @property
     def allocated(self):
         return self.allocated_tracked + self.allocated_other
+
+    @property
+    def total(self):
+        return self.allocated + self.free
+
+    @property
+    def overcommited(self):
+        return int(self.total * self.overcommit_ratio)
 
 
 @dataclass
@@ -494,9 +503,11 @@ def _get_global_vm_host_resources(pod):
                 resources.memory.general.allocated_other += mem
 
     resources.cores.free = totals["cores"] - resources.cores.allocated
+    resources.cores.overcommit_ratio = pod.cpu_over_commit_ratio
     resources.memory.general.free = (
         totals["memory"] - resources.memory.general.allocated
     )
+    resources.memory.general.overcommit_ratio = pod.memory_over_commit_ratio
     resources.memory.hugepages.free = (
         totals["hugepages"] - resources.memory.hugepages.allocated
     )

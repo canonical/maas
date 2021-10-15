@@ -83,6 +83,9 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_machine_arches",
             "maas_custom_static_images_uploaded",
             "maas_custom_static_images_deployed",
+            "maas_vmcluster_projects",
+            "maas_vmcluster_hosts",
+            "maas_vmcluster_vms",
         )
         for metric in metrics:
             self.assertIn("TYPE {} gauge".format(metric), content)
@@ -96,32 +99,9 @@ class TestPrometheusHandler(MAASServerTestCase):
         Config.objects.set_config("prometheus_enabled", True)
         response = self.client.get(reverse("metrics"))
         content = response.content.decode("utf-8")
-        metrics = (
-            "maas_machines",
-            "maas_nodes",
-            "maas_net_spaces",
-            "maas_net_fabrics",
-            "maas_net_vlans",
-            "maas_net_subnets_v4",
-            "maas_net_subnets_v6",
-            "maas_machines_total_mem",
-            "maas_machines_total_cpu",
-            "maas_machines_total_storage",
-            "maas_kvm_pods",
-            "maas_kvm_machines",
-            "maas_kvm_cores",
-            "maas_kvm_memory",
-            "maas_kvm_storage",
-            "maas_kvm_overcommit_cores",
-            "maas_kvm_overcommit_memory",
-            "maas_machine_arches",
-            "maas_custom_static_images_uploaded",
-            "maas_custom_static_images_deployed",
-        )
-        for metric in metrics:
-            for line in content.splitlines():
-                if line.startswith("maas_"):
-                    self.assertIn('maas_id="abcde"', line)
+        for line in content.splitlines():
+            if line.startswith("maas_"):
+                self.assertIn('maas_id="abcde"', line)
 
 
 class TestPrometheus(MAASServerTestCase):

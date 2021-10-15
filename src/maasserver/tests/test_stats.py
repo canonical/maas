@@ -41,6 +41,7 @@ from maasserver.stats import (
     get_machines_by_architecture,
     get_request_params,
     get_vm_hosts_stats,
+    get_vmcluster_stats,
     get_workload_annotations_stats,
     make_maas_user_agent_request,
 )
@@ -429,6 +430,25 @@ class TestMAASStats(MAASServerTestCase):
                     f"{resource.base_image}__{BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW}": 1
                 },
             },
+            "vmcluster": {
+                "available_resources": {
+                    "cores": 0,
+                    "memory": 0,
+                    "over_cores": 0,
+                    "over_memory": 0,
+                    "storage_local": 0,
+                    "storage_shared": 0,
+                },
+                "projects": 0,
+                "utilized_resources": {
+                    "cores": 0,
+                    "memory": 0,
+                    "storage_local": 0,
+                    "storage_shared": 0,
+                },
+                "vm_hosts": 0,
+                "vms": 0,
+            },
         }
         self.assertEqual(stats, expected)
 
@@ -559,6 +579,25 @@ class TestMAASStats(MAASServerTestCase):
                 "deployed": 0,
                 "uploaded": {},
             },
+            "vmcluster": {
+                "available_resources": {
+                    "cores": 0,
+                    "memory": 0,
+                    "over_cores": 0,
+                    "over_memory": 0,
+                    "storage_local": 0,
+                    "storage_shared": 0,
+                },
+                "projects": 0,
+                "utilized_resources": {
+                    "cores": 0,
+                    "memory": 0,
+                    "storage_local": 0,
+                    "storage_shared": 0,
+                },
+                "vm_hosts": 0,
+                "vms": 0,
+            },
         }
         self.assertEqual(get_maas_stats(), expected)
 
@@ -608,6 +647,65 @@ class TestMAASStats(MAASServerTestCase):
             machine.distro_series = factory.make_name("name")
             machine.save()
         self.assertEqual(get_custom_images_deployed_stats(), 2)
+
+    def test_vmcluster_stats(self):
+        GiB = 2 ** 30
+        GB = 10 ** 9
+
+        # create clusters
+        factory.make_VMCluster(
+            pods=1,
+            vms=2,
+            memory=4096,
+            cores=8,
+            vm_memory=512,
+            storage=100 * GB,
+            disk_size=10 * GB,
+        )
+        factory.make_VMCluster(
+            pods=2,
+            vms=2,
+            memory=4096,
+            cores=8,
+            vm_memory=512,
+            storage=100 * GB,
+            disk_size=10 * GB,
+        )
+        # create VMHost and VM not part of a cluster
+        pod = factory.make_Pod()
+        factory.make_VirtualMachine(bmc=pod)
+
+        # only cluster elements should be counted
+        cluster_stats = get_vmcluster_stats()
+        self.assertEqual(cluster_stats["projects"], 2)
+        self.assertEqual(cluster_stats["vm_hosts"], 3)
+        self.assertEqual(cluster_stats["vms"], 6)
+        self.assertEqual(cluster_stats["available_resources"]["cores"], 24)
+        self.assertEqual(
+            cluster_stats["available_resources"]["memory"], 12 * GiB
+        )
+        self.assertEqual(
+            cluster_stats["available_resources"]["over_cores"], 24
+        )
+        self.assertEqual(
+            cluster_stats["available_resources"]["over_memory"], 12 * GiB
+        )
+        self.assertEqual(
+            cluster_stats["available_resources"]["storage_local"], 300 * GB
+        )
+        self.assertEqual(
+            cluster_stats["available_resources"]["storage_shared"], 0
+        )
+        self.assertEqual(cluster_stats["utilized_resources"]["cores"], 12)
+        self.assertEqual(
+            cluster_stats["utilized_resources"]["memory"], 3 * GiB
+        )
+        self.assertEqual(
+            cluster_stats["utilized_resources"]["storage_local"], 60 * GB
+        )
+        self.assertEqual(
+            cluster_stats["utilized_resources"]["storage_shared"], 0
+        )
 
 
 class FakeRequest:
