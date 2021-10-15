@@ -65,13 +65,13 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         self.assertEqual(result["id"], cluster.id)
         self.assertEqual(result["name"], cluster.name)
         self.assertEqual(result["project"], cluster.project)
-        self.assertEqual(result["availability_zone"], cluster.zone.name)
+        self.assertEqual(result["availability_zone"], cluster.zone.id)
         self.assertEqual(
             result["version"], vmhosts[0].version if len(vmhosts) > 0 else ""
         )
         self.assertEqual(
             result["resource_pool"],
-            cluster.pool.name if cluster.pool is not None else "",
+            cluster.pool.id if cluster.pool is not None else "",
         )
 
         expected_vmhosts = [
