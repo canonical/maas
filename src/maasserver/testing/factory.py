@@ -2493,6 +2493,45 @@ class Factory(maastesting.factory.Factory):
             )
         return resource
 
+    def make_custom_boot_resource(
+        self,
+        name=None,
+        architecture=None,
+        extra=None,
+        version=None,
+        label=None,
+        filename=None,
+        filetype=None,
+        base_image="",
+    ):
+        resource = self.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name=name,
+            architecture=architecture,
+            extra=extra,
+            base_image=base_image,
+        )
+        resource_set = self.make_BootResourceSet(
+            resource, version=version, label=label
+        )
+        if filetype is None:
+            filetype = random.choice(
+                [
+                    BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+                    BOOT_RESOURCE_FILE_TYPE.ROOT_DDTGZ,
+                    BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,
+                ]
+            )
+
+        self.make_boot_resource_file_with_content(
+            resource_set,
+            filename=filename,
+            filetype=filetype,
+            size=None,
+            extra=extra,
+        )
+        return resource
+
     def make_incomplete_boot_resource(
         self,
         rtype=None,

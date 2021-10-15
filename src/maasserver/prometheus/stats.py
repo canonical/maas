@@ -117,7 +117,7 @@ STATS_DEFINITIONS = [
         "Gauge",
         "maas_custom_static_images_uploaded",
         "Number of custom static OS images uploaded to MAAS",
-        ["base_image"],
+        ["base_image", "file_type"],
     ),
     MetricDefinition(
         "Gauge",

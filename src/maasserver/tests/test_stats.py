@@ -14,7 +14,12 @@ from twisted.application.internet import TimerService
 from twisted.internet.defer import fail
 
 from maasserver import stats
-from maasserver.enum import IPADDRESS_TYPE, IPRANGE_TYPE, NODE_STATUS
+from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
+    IPADDRESS_TYPE,
+    IPRANGE_TYPE,
+    NODE_STATUS,
+)
 from maasserver.forms import AdminMachineForm
 from maasserver.models import (
     BootResourceFile,
@@ -39,6 +44,7 @@ from maasserver.stats import (
     get_workload_annotations_stats,
     make_maas_user_agent_request,
 )
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import (
     MAASServerTestCase,
@@ -303,6 +309,18 @@ class TestMAASStats(MAASServerTestCase):
         self.make_pod(cpu=10, mem=100, pod_type="lxd")
         self.make_pod(cpu=20, mem=200, pod_type="virsh")
 
+        arch = make_usable_architecture(self)
+        osname = factory.make_name()
+        factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED, osystem="custom", distro_series=osname
+        )
+        resource = factory.make_custom_boot_resource(
+            name=osname,
+            architecture=arch,
+            base_image="ubuntu/focal",
+            filetype=BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW,
+        )
+
         subnets = Subnet.objects.all()
         v4 = [net for net in subnets if net.get_ip_version() == 4]
         v6 = [net for net in subnets if net.get_ip_version() == 6]
@@ -317,7 +335,7 @@ class TestMAASStats(MAASServerTestCase):
 
         expected = {
             "controllers": {"regionracks": 1, "regions": 1, "racks": 1},
-            "nodes": {"machines": 10, "devices": 2},
+            "nodes": {"machines": 11, "devices": 2},
             "machine_stats": {
                 "total_cpu": 5,
                 "total_mem": 300,
@@ -327,7 +345,7 @@ class TestMAASStats(MAASServerTestCase):
                 "new": 1,
                 "ready": 2,
                 "allocated": 4,
-                "deployed": 2,
+                "deployed": 3,
                 "commissioning": 0,
                 "testing": 0,
                 "deploying": 0,
@@ -400,10 +418,16 @@ class TestMAASStats(MAASServerTestCase):
                 "unique_values": 1,
             },
             "brownfield": {
-                "machines_added_deployed_with_bmc": 2,
+                "machines_added_deployed_with_bmc": 3,
                 "machines_added_deployed_without_bmc": 0,
                 "commissioned_after_deploy_brownfield": 0,
                 "commissioned_after_deploy_no_brownfield": 0,
+            },
+            "custom_images": {
+                "deployed": 1,
+                "uploaded": {
+                    f"{resource.base_image}__{BOOT_RESOURCE_FILE_TYPE.ROOT_DDRAW}": 1
+                },
             },
         }
         self.assertEqual(stats, expected)
@@ -530,6 +554,10 @@ class TestMAASStats(MAASServerTestCase):
                 "machines_added_deployed_without_bmc": 0,
                 "commissioned_after_deploy_brownfield": 0,
                 "commissioned_after_deploy_no_brownfield": 0,
+            },
+            "custom_images": {
+                "deployed": 0,
+                "uploaded": {},
             },
         }
         self.assertEqual(get_maas_stats(), expected)

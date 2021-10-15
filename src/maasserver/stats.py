@@ -338,6 +338,9 @@ def get_maas_stats():
     netstats = get_subnets_stats()
     lxd_vm_hosts_stats = get_vm_hosts_stats(power_type="lxd")
     lxd_vm_hosts_stats["initial_auth"] = get_lxd_initial_auth_stats()
+    # custom images
+    custom_images = get_custom_images_uploaded_stats()
+
     return {
         "controllers": {
             "regionracks": node_types.get(
@@ -359,6 +362,13 @@ def get_maas_stats():
         },
         "workload_annotations": get_workload_annotations_stats(),
         "brownfield": get_brownfield_stats(),
+        "custom_images": {
+            "deployed": get_custom_images_deployed_stats(),
+            "uploaded": {
+                f'{img["base_image"]}__{img["filetype"]}': img.get("count", 0)
+                for img in custom_images
+            },
+        },
     }
 
 
