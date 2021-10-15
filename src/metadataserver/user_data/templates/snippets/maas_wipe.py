@@ -243,7 +243,7 @@ def secure_erase_hdparm(kname):
     fobj.readinto(rmap)
 
     read_buf = rmap.read(len(buf))
-    os.close(rfd)
+    fobj.close()
     rmap.close()
 
     if read_buf == buf:
