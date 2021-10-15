@@ -580,8 +580,8 @@ def populate_main():
                 random.choice(
                     [
                         layout
-                        for layout in STORAGE_LAYOUTS.keys()
-                        if layout != "vmfs6"
+                        for layout in STORAGE_LAYOUTS
+                        if layout.name != "vmfs6"
                     ]
                 )
             )

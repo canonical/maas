@@ -70,7 +70,7 @@ from maasserver.permissions import NodePermission
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.storage_layouts import (
     get_applied_storage_layout_for_node,
-    get_storage_layout_choices,
+    STORAGE_LAYOUT_CHOICES,
     VMFS6StorageLayout,
     VMFS7StorageLayout,
 )
@@ -3615,7 +3615,7 @@ class TestMachineHandler(MAASServerTestCase):
         )
         factory.make_PhysicalBlockDevice(node=node, size=20 * 1024 ** 3)
         storage_layout = factory.pick_choice(
-            get_storage_layout_choices(), but_not=("blank",)
+            STORAGE_LAYOUT_CHOICES, but_not=("blank",)
         )
         self.addDetail("storage_layout", text_content(storage_layout))
         params = {
@@ -3641,9 +3641,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(with_boot_disk=False)
         params = {
             "system_id": node.system_id,
-            "storage_layout": factory.pick_choice(
-                get_storage_layout_choices()
-            ),
+            "storage_layout": factory.pick_choice(STORAGE_LAYOUT_CHOICES),
         }
         self.assertRaises(HandlerError, handler.apply_storage_layout, params)
 
@@ -3654,9 +3652,7 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(size=1024 ** 3)
         params = {
             "system_id": node.system_id,
-            "storage_layout": factory.pick_choice(
-                get_storage_layout_choices()
-            ),
+            "storage_layout": factory.pick_choice(STORAGE_LAYOUT_CHOICES),
         }
         self.assertRaises(HandlerError, handler.apply_storage_layout, params)
 

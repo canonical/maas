@@ -52,6 +52,10 @@ class StorageLayoutBase(Form):
     boot_size = BytesOrPercentageField(required=False)
     root_size = BytesOrPercentageField(required=False)
 
+    # subclasses should override these
+    name = ""
+    title = ""
+
     def __init__(self, node, params: dict = None):
         super().__init__(data=({} if params is None else params))
         self.node = node
@@ -328,6 +332,9 @@ class FlatStorageLayout(StorageLayoutBase):
       sda2      99.5G       part    ext4           /
     """
 
+    name = "flat"
+    title = "Flat layout"
+
     def configure_storage(self, allow_fallback):
         """Create the flat configuration."""
         # Circular imports.
@@ -340,7 +347,7 @@ class FlatStorageLayout(StorageLayoutBase):
             label="root",
             mount_point="/",
         )
-        return "flat"
+        return self.name
 
     def is_layout(self):
         """Checks if the node is using a flat layout."""
@@ -385,6 +392,9 @@ class LVMStorageLayout(StorageLayoutBase):
     vgroot      99.5G       lvm
       lvroot    99.5G       lvm     ext4           /
     """
+
+    name = "lvm"
+    title = "LVM layout"
 
     DEFAULT_VG_NAME = "vgroot"
     DEFAULT_LV_NAME = "lvroot"
@@ -485,7 +495,7 @@ class LVMStorageLayout(StorageLayoutBase):
             label="root",
             mount_point="/",
         )
-        return "lvm"
+        return self.name
 
     def is_layout(self):
         """Checks if the node is using an LVM layout."""
@@ -544,6 +554,9 @@ class BcacheStorageLayout(FlatStorageLayout):
       sdb1      50G         part    bc-cache
     bcache0     99.5G       disk    ext4           /
     """
+
+    name = "bcache"
+    title = "Bcache layout"
 
     DEFAULT_CACHE_MODE = CACHE_MODE_TYPE.WRITETHROUGH
 
@@ -712,7 +725,7 @@ class BcacheStorageLayout(FlatStorageLayout):
             label="root",
             mount_point="/",
         )
-        return "bcache"
+        return self.name
 
     def is_layout(self):
         """Checks if the node is using a Bcache layout."""
@@ -786,6 +799,9 @@ class VMFS6StorageLayout(StorageLayoutBase):
     VMFS                3           Remaining 7555          End of disk
     """
 
+    name = "vmfs6"
+    title = "VMFS6 layout"
+
     base_partitions = [
         # EFI System
         {"size": 3 * 1024 ** 2, "bootable": True},
@@ -840,7 +856,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
                     partition_table=boot_partition_table,
                     created=now,
                     updated=now,
-                    **partition
+                    **partition,
                 )
                 for partition in self.base_partitions
             ]
@@ -854,7 +870,7 @@ class VMFS6StorageLayout(StorageLayoutBase):
         vmfs_part.save()
         # datastore1 is the default name VMware uses.
         VMFS.objects.create_vmfs(name="datastore1", partitions=[vmfs_part])
-        return "VMFS6"
+        return self.name
 
     def is_layout(self):
         """Checks if the node is using a VMFS6 layout."""
@@ -900,6 +916,9 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
     VMFS                8           Remaining 10960         End of disk
     """
 
+    name = "vmfs7"
+    title = "VMFS7 layout"
+
     base_partitions = [
         # EFI System
         {"size": 105 * 1024 ** 2, "bootable": True},
@@ -928,7 +947,7 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
 
     def configure_storage(self, allow_fallback):
         super().configure_storage(allow_fallback)
-        return "VMFS7"
+        return self.name
 
 
 class BlankStorageLayout(StorageLayoutBase):
@@ -939,10 +958,13 @@ class BlankStorageLayout(StorageLayoutBase):
     not based on any existing layout.
     """
 
+    name = "blank"
+    title = "No storage (blank) layout"
+
     def configure_storage(self, allow_fallback):
         # StorageLayoutBase has the code to ensure nothing is configured.
         # Once that is done there is nothing left for us to do.
-        return "blank"
+        return self.name
 
     def is_layout(self):
         """Checks if the node is using a blank layout."""
@@ -956,45 +978,37 @@ class BlankStorageLayout(StorageLayoutBase):
         return self.boot_disk
 
 
-# Holds all the storage layouts that can be used.
-STORAGE_LAYOUTS = {
-    "flat": ("Flat layout", FlatStorageLayout),
-    "lvm": ("LVM layout", LVMStorageLayout),
-    "bcache": ("Bcache layout", BcacheStorageLayout),
-    "vmfs6": ("VMFS6 layout", VMFS6StorageLayout),
-    "vmfs7": ("VMFS7 layout", VMFS7StorageLayout),
-    "blank": ("No storage (blank) layout", BlankStorageLayout),
-}
-
-
-def get_storage_layout_choices():
-    """Return the storage layout choices.
-
-    Formatted to work with Django form.
-    """
-    return [
-        (name, title)
-        for name, (title, klass) in sorted(STORAGE_LAYOUTS.items())
+# All available layouts
+STORAGE_LAYOUTS = frozenset(
+    [
+        BcacheStorageLayout,
+        BlankStorageLayout,
+        FlatStorageLayout,
+        LVMStorageLayout,
+        VMFS6StorageLayout,
+        VMFS7StorageLayout,
     ]
+)
+STORAGE_LAYOUT_CHOICES = [
+    (layout.name, layout.title) for layout in STORAGE_LAYOUTS
+]
 
 
 def get_storage_layout_for_node(name, node, params: dict = None):
     """Get the storage layout object from its name."""
-    if name in STORAGE_LAYOUTS:
-        return STORAGE_LAYOUTS[name][1](
-            node, params=({} if params is None else params)
-        )
-    else:
-        return None
+    for layout in STORAGE_LAYOUTS:
+        if layout.name == name:
+            return layout(node, params=params or {})
+    return None
 
 
 def get_applied_storage_layout_for_node(node):
     """Returns the detected storage layout on the node."""
-    for name, (_, layout_class) in STORAGE_LAYOUTS.items():
+    for layout_class in STORAGE_LAYOUTS:
         layout = layout_class(node)
         bd = layout.is_layout()
         if bd is not None:
-            return bd, name
+            return bd, layout.name
     return None, "unknown"
 
 
@@ -1007,12 +1021,11 @@ class StorageLayoutForm(Form):
         self.setup_field(required=required)
 
     def setup_field(self, required=False):
-        choices = get_storage_layout_choices()
         invalid_choice_message = compose_invalid_choice_text(
-            "storage_layout", choices
+            "storage_layout", STORAGE_LAYOUT_CHOICES
         )
         self.fields["storage_layout"] = forms.ChoiceField(
-            choices=choices,
+            choices=STORAGE_LAYOUT_CHOICES,
             required=required,
             error_messages={"invalid_choice": invalid_choice_message},
         )

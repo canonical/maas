@@ -579,7 +579,7 @@ class TestPartition(MAASServerTestCase):
         pt = bd.get_partitiontable()
         for partition in pt.partitions.all():
             if (
-                layout_name == "VMFS7"
+                layout_name == "vmfs7"
                 and partition.get_partition_number() >= 8
             ):
                 self.assertFalse(partition.is_vmfs_partition())

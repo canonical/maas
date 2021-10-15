@@ -29,7 +29,6 @@ from maasserver.storage_layouts import (
     EFI_PARTITION_SIZE,
     FlatStorageLayout,
     get_applied_storage_layout_for_node,
-    get_storage_layout_choices,
     get_storage_layout_for_node,
     is_percentage,
     LVMStorageLayout,
@@ -79,19 +78,6 @@ def make_arm64_Node_without_uefi_boot_method(*args, **kwargs):
 
 
 class TestFormHelpers(MAASServerTestCase):
-    def test_get_storage_layout_choices(self):
-        self.assertCountEqual(
-            [
-                ("flat", "Flat layout"),
-                ("lvm", "LVM layout"),
-                ("bcache", "Bcache layout"),
-                ("vmfs6", "VMFS6 layout"),
-                ("vmfs7", "VMFS7 layout"),
-                ("blank", "No storage (blank) layout"),
-            ],
-            get_storage_layout_choices(),
-        )
-
     def test_get_storage_layout_for_node(self):
         node = make_Node_with_uefi_boot_method()
         layout = get_storage_layout_for_node("flat", node)
@@ -100,16 +86,10 @@ class TestFormHelpers(MAASServerTestCase):
 
 
 class TestGetAppliedStorageLayoutForNode(MAASServerTestCase):
-    def __init__(self, *args, **kwargs):
-        # Make sure any existing storage layout can be cleared.
-        self.scenarios = [
-            (
-                layout_name,
-                {"layout_name": layout_name, "layout_class": layout_class},
-            )
-            for layout_name, (_, layout_class) in STORAGE_LAYOUTS.items()
-        ]
-        super().__init__(*args, **kwargs)
+    scenarios = [
+        (layout_class.name, {"layout_class": layout_class})
+        for layout_class in STORAGE_LAYOUTS
+    ]
 
     def test_detects_layout(self):
         node = make_Node_with_uefi_boot_method()
@@ -122,7 +102,8 @@ class TestGetAppliedStorageLayoutForNode(MAASServerTestCase):
         layout = self.layout_class(node)
         layout.configure()
         self.assertEqual(
-            (bd, self.layout_name), get_applied_storage_layout_for_node(node)
+            (bd, self.layout_class.name),
+            get_applied_storage_layout_for_node(node),
         )
 
     def test_returns_unknown(self):
@@ -201,8 +182,6 @@ class TestCalculateSizeFromPercentHelper(MAASServerTestCase):
 
 
 class TestStorageLayoutBase(MAASServerTestCase):
-    """Tests for `StorageLayoutBase`."""
-
     def test_init__sets_node(self):
         node = make_Node_with_uefi_boot_method()
         layout = StorageLayoutBase(node)
@@ -475,7 +454,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_name, layout_class in STORAGE_LAYOUTS.values():
+        for layout_class in STORAGE_LAYOUTS:
             layout = layout_class(node)
             layout.configure()
             for bd in node.physicalblockdevice_set.all():
@@ -484,7 +463,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
                     continue
                 for partition in pt.partitions.all():
                     self.assertFalse(
-                        layout.is_uefi_partition(partition), layout_name
+                        layout.is_uefi_partition(partition), layout_class.name
                     )
 
     def test_is_boot_partition(self):
@@ -504,7 +483,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_name, layout_class in STORAGE_LAYOUTS.values():
+        for layout_class in STORAGE_LAYOUTS:
             # Bcache always creates a boot partition.
             if layout_class == BcacheStorageLayout:
                 continue
@@ -516,7 +495,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
                     continue
                 for partition in pt.partitions.all():
                     self.assertFalse(
-                        layout.is_boot_partition(partition), layout_name
+                        layout.is_boot_partition(partition), layout_class.name
                     )
 
 
@@ -977,13 +956,13 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_name, layout_class in STORAGE_LAYOUTS.values():
+        for layout_class in STORAGE_LAYOUTS:
             if layout_class == FlatStorageLayout:
                 continue
             layout = layout_class(node)
             layout.configure()
             flat_layout = FlatStorageLayout(node)
-            self.assertIsNone(flat_layout.is_layout(), layout_name)
+            self.assertIsNone(flat_layout.is_layout(), layout_class.name)
 
 
 class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
@@ -1293,13 +1272,13 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_name, layout_class in STORAGE_LAYOUTS.values():
+        for layout_class in STORAGE_LAYOUTS:
             if layout_class == LVMStorageLayout:
                 continue
             layout = layout_class(node)
             layout.configure()
             lvm_layout = LVMStorageLayout(node)
-            self.assertIsNone(lvm_layout.is_layout(), layout_name)
+            self.assertIsNone(lvm_layout.is_layout(), layout_class.name)
 
 
 class TestBcacheStorageLayout(MAASServerTestCase):
@@ -1822,13 +1801,13 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_name, layout_class in STORAGE_LAYOUTS.values():
+        for layout_class in STORAGE_LAYOUTS:
             if layout_class == BcacheStorageLayout:
                 continue
             layout = layout_class(node)
             layout.configure()
             bcache_layout = BcacheStorageLayout(node)
-            self.assertIsNone(bcache_layout.is_layout(), layout_name)
+            self.assertIsNone(bcache_layout.is_layout(), layout_class.name)
 
 
 class TestVMFS6StorageLayout(MAASServerTestCase):
@@ -1846,7 +1825,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS6StorageLayout(node)
-        self.assertEqual("VMFS6", layout.configure())
+        self.assertEqual("vmfs6", layout.configure())
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
@@ -1895,7 +1874,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS6StorageLayout(node, {"root_device": root_disk.id})
-        self.assertEqual("VMFS6", layout.configure())
+        self.assertEqual("vmfs6", layout.configure())
         pt = root_disk.get_partitiontable()
         self.assertEqual(
             {
@@ -1928,7 +1907,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS6StorageLayout(node, {"root_size": 10 * 1024 ** 3})
-        self.assertEqual("VMFS6", layout.configure())
+        self.assertEqual("vmfs6", layout.configure())
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
@@ -1971,13 +1950,13 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_name, layout_class in STORAGE_LAYOUTS.values():
+        for layout_class in STORAGE_LAYOUTS:
             if layout_class == VMFS6StorageLayout:
                 continue
             layout = layout_class(node)
             layout.configure()
             vmfs_layout = VMFS6StorageLayout(node)
-            self.assertIsNone(vmfs_layout.is_layout(), layout_name)
+            self.assertIsNone(vmfs_layout.is_layout(), layout_class.name)
 
 
 class TestVMFS7StorageLayout(MAASServerTestCase):
@@ -1994,7 +1973,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS7StorageLayout(node)
-        self.assertEqual("VMFS7", layout.configure())
+        self.assertEqual("vmfs7", layout.configure())
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
@@ -2037,7 +2016,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS7StorageLayout(node, {"root_device": root_disk.id})
-        self.assertEqual("VMFS7", layout.configure())
+        self.assertEqual("vmfs7", layout.configure())
         pt = root_disk.get_partitiontable()
         self.assertEqual(
             {
@@ -2064,7 +2043,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
             node=node, size=LARGE_BLOCK_DEVICE
         )
         layout = VMFS7StorageLayout(node, {"root_size": 10 * 1024 ** 3})
-        self.assertEqual("VMFS7", layout.configure())
+        self.assertEqual("vmfs7", layout.configure())
         pt = node.boot_disk.get_partitiontable()
         self.assertEqual(
             {
@@ -2104,23 +2083,20 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_name, layout_class in STORAGE_LAYOUTS.values():
+        for layout_class in STORAGE_LAYOUTS:
             if layout_class == VMFS7StorageLayout:
                 continue
             layout = layout_class(node)
             layout.configure()
             vmfs_layout = VMFS7StorageLayout(node)
-            self.assertIsNone(vmfs_layout.is_layout(), layout_name)
+            self.assertIsNone(vmfs_layout.is_layout(), layout_class.name)
 
 
 class TestBlankStorageLayout(MAASServerTestCase):
-    def __init__(self, *args, **kwargs):
-        # Make sure any existing storage layout can be cleared.
-        self.scenarios = [
-            (layout_name, {"layout_class": layout_class})
-            for layout_name, layout_class in STORAGE_LAYOUTS.values()
-        ]
-        super().__init__(*args, **kwargs)
+    scenarios = [
+        (layout_class.name, {"layout_class": layout_class})
+        for layout_class in STORAGE_LAYOUTS
+    ]
 
     def test_creates_blank_layout(self):
         node = factory.make_Node(with_boot_disk=False)

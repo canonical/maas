@@ -33,7 +33,7 @@ from maasserver.models.config import (
     NETWORK_DISCOVERY_CHOICES,
 )
 from maasserver.models.domain import validate_domain_name
-from maasserver.storage_layouts import get_storage_layout_choices
+from maasserver.storage_layouts import STORAGE_LAYOUT_CHOICES
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
     list_all_usable_osystems,
@@ -555,7 +555,7 @@ CONFIG_ITEMS = {
         "form": forms.ChoiceField,
         "form_kwargs": {
             "label": "Default storage layout",
-            "choices": get_storage_layout_choices(),
+            "choices": STORAGE_LAYOUT_CHOICES,
             "help_text": (
                 "Storage layout that is applied to a node when it is "
                 "commissioned."
