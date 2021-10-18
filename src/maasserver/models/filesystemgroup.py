@@ -760,25 +760,12 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         :param force: Delete any related object that prevents this object
             from being deleted.
         """
-        if self.is_lvm():
-            if self.virtual_devices.count() > 0:
-                if force:
-                    # Delete the linked virtual block devices, since the
-                    # deletion of this object is forced.
-                    self.virtual_devices.all().delete()
-                else:
-                    # Don't allow the filesystem group to be deleted if virtual
-                    # block devices are linked. You cannot delete a volume
-                    # group that has logical volumes.
-                    raise ValidationError(
-                        "This volume group has logical volumes; it cannot be "
-                        "deleted."
-                    )
-        else:
-            # For the other types we delete the virtual block device.
-            virtual_device = self.virtual_device
-            if virtual_device is not None:
-                self.virtual_device.delete()
+        if self.is_lvm() and not force and self.virtual_devices.exists():
+            raise ValidationError(
+                "This volume group has logical volumes; it cannot be deleted."
+            )
+
+        self.virtual_devices.all().delete()
 
         # Possible that the virtual block device has already deleted the
         # filesystem group. Skip the call if no id is set.

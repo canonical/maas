@@ -1650,6 +1650,23 @@ class TestFilesystemGroup(MAASServerTestCase):
         self.assertCountEqual([], deleted_filesystems)
         self.assertCountEqual(block_devices, kept_block_devices)
 
+    def test_delete_deletes_lvm_without_lvs_on_raid(self):
+        node = factory.make_Node()
+        block_devices = [
+            factory.make_PhysicalBlockDevice(node=node) for _ in range(3)
+        ]
+        raid = RAID.objects.create_raid(
+            level=FILESYSTEM_GROUP_TYPE.RAID_0,
+            block_devices=block_devices,
+        )
+        VolumeGroup.objects.create_volume_group(
+            factory.make_name(),
+            block_devices=[raid.virtual_device],
+            partitions=[],
+        )
+        raid.delete()
+        self.assertIsNone(reload_object(raid))
+
     def test_delete_cannot_delete_volume_group_with_logical_volumes(self):
         volume_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
