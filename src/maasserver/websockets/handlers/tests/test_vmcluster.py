@@ -88,7 +88,15 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         self.assertCountEqual(result["hosts"], expected_vmhosts)
 
         expected_vms = [
-            {"name": vm.machine.hostname, "project": vm.project} for vm in vms
+            {
+                "system_id": vm.machine.system_id,
+                "name": vm.machine.hostname,
+                "project": vm.project,
+                "hugepages_enabled": vm.hugepages_backed,
+                "pinned_cores": vm.pinned_cores,
+                "unpinned_cores": vm.unpinned_cores,
+            }
+            for vm in vms
         ]
         self.assertCountEqual(result["virtual_machines"], expected_vms)
 

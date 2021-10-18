@@ -30,7 +30,14 @@ class VMClusterHandler(TimestampedModelHandler):
         }
 
     def _dehydrate_virtual_machine(self, vm):
-        return {"name": vm.machine.hostname, "project": vm.project}
+        return {
+            "system_id": vm.machine.system_id,
+            "name": vm.machine.hostname,
+            "project": vm.project,
+            "hugepages_enabled": vm.hugepages_backed,
+            "pinned_cores": vm.pinned_cores,
+            "unpinned_cores": vm.unpinned_cores,
+        }
 
     def _dehydrate_resources(self, resources):
         return {
