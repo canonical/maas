@@ -1,12 +1,10 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test DNS utilities."""
-
-
 from math import pow
 
 from django.core.exceptions import ValidationError
+from django.core.validators import URLValidator
 from testtools.matchers import Equals, HasLength
 
 from maasserver.utils.dns import (
@@ -54,6 +52,14 @@ class TestURLValidator(MAASTestCase):
                 schemes=EXTENDED_SCHEMES,
             )
         )
+
+    def test_accepts_single_digit_port(self):
+        # newer versions of django fixed the regexp to accept single-digit
+        # port. If this failes on the next assertion, we could drop this test
+        self.assertRaises(
+            ValidationError, URLValidator(), "http://example.com:5"
+        )
+        self.assertAccepts("http://example.com:5")
 
     def test_fails_hostname_starting_with_hyphen(self):
         self.assertRaises(

@@ -105,36 +105,32 @@ def validate_url(url, schemes=("http", "https")):
     :param url: Input value for a url.
     :raise ValidationError: If the url is not valid.
     """
-    # Re-structure django's regex.
-    url_validator = URLValidator
+    # Re-structure django's host regex to allow for hostnames without domain
     host_re = (
         "("
-        + url_validator.hostname_re
-        + url_validator.domain_re
-        + url_validator.tld_re
+        + URLValidator.hostname_re
+        + URLValidator.domain_re
+        + URLValidator.tld_re
         + "|"
-        + url_validator.hostname_re
+        + URLValidator.hostname_re
         + "|localhost)"
     )
 
+    # override builtin regexp to change host and port bits
     regex = _lazy_re_compile(
-        r"^(?:[a-z0-9\.\-\+]*)://"  # scheme is validated separately
-        r"(?:\S+(?::\S*)?@)?"  # user:pass authentication
+        r"^(?:[a-z0-9.+-]*)://"
+        r"(?:[^\s:@/]+(?::[^\s:@/]*)?@)?"
         r"(?:"
-        + url_validator.ipv4_re
+        + URLValidator.ipv4_re
         + "|"
-        + url_validator.ipv6_re
+        + URLValidator.ipv6_re
         + "|"
         + host_re
         + ")"
-        r"(?::\d{2,5})?"  # port
-        r"(?:[/?#][^\s]*)?"  # resource path
+        r"(?::\d{1,5})?"
+        r"(?:[/?#][^\s]*)?"
         r"\Z",
         re.IGNORECASE,
     )
-
-    url_validator.regex = regex
-    valid_url = url_validator(schemes=schemes)
-
-    # Validate the url.
-    return valid_url(url)
+    validator = URLValidator(regex=regex, schemes=schemes)
+    return validator(url)
