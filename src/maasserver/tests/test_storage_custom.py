@@ -604,7 +604,10 @@ class TestGetStorageLayout(MAASTestCase):
             get_storage_layout,
             config,
         )
-        self.assertEqual(str(err), "Unknown partition table type 'foo'")
+        self.assertEqual(
+            str(err),
+            "Invalid config at layout/sda/ptable: 'foo' is not one of ['gpt', 'mbr']",
+        )
 
     def test_missing_partition_table_type(self):
         config = {
@@ -670,7 +673,11 @@ class TestGetStorageLayout(MAASTestCase):
             get_storage_layout,
             config,
         )
-        self.assertEqual(str(err), "Unknown cache mode 'foo'")
+        self.assertEqual(
+            str(err),
+            "Invalid config at layout/bcache0/cache-mode: "
+            "'foo' is not one of ['writeback', 'writethrough', 'writearound']",
+        )
 
     def test_invalid_raid_level(self):
         config = {
@@ -688,7 +695,10 @@ class TestGetStorageLayout(MAASTestCase):
             get_storage_layout,
             config,
         )
-        self.assertEqual(str(err), "Unknown RAID level '123'")
+        self.assertEqual(
+            str(err),
+            "Invalid config at layout/md0/level: 123 is not one of [0, 1, 5, 6, 10]",
+        )
 
     def test_invalid_raid_zero_with_spares(self):
         config = {
@@ -797,7 +807,10 @@ class TestGetStorageLayout(MAASTestCase):
             get_storage_layout,
             config,
         )
-        self.assertEqual(str(err), "Missing required key 'members' for 'lvm0'")
+        self.assertEqual(
+            str(err),
+            "Invalid config at layout/lvm0: 'members' is a required property",
+        )
 
     def test_missing_filesystem_for_mountpoint(self):
         config = {
@@ -826,7 +839,10 @@ class TestGetStorageLayout(MAASTestCase):
             get_storage_layout,
             config,
         )
-        self.assertEqual(str(err), "Section 'layout' missing in config")
+        self.assertEqual(
+            str(err),
+            "Invalid config at top level: 'layout' is a required property",
+        )
 
     def test_missing_mounts(self):
         config = {
@@ -841,7 +857,10 @@ class TestGetStorageLayout(MAASTestCase):
             get_storage_layout,
             config,
         )
-        self.assertEqual(str(err), "Section 'mounts' missing in config")
+        self.assertEqual(
+            str(err),
+            "Invalid config at top level: 'mounts' is a required property",
+        )
 
 
 class TestGetSize(MAASTestCase):

@@ -5,17 +5,20 @@
 
 
 import dataclasses
+from pathlib import Path
 from typing import Any, cast, Dict, List, Optional, Set
+
+import jsonschema
+import yaml
 
 from maasserver import models
 from maasserver.enum import (
     CACHE_MODE_TYPE,
-    CACHE_MODE_TYPE_CHOICES,
-    FILESYSTEM_GROUP_RAID_TYPES,
     FILESYSTEM_TYPE,
     FILESYSTEM_TYPE_CHOICES,
-    PARTITION_TABLE_TYPE_CHOICES,
 )
+
+SCHEMA_FILE = Path(__file__).parent / "storage_custom_schema.yaml"
 
 
 @dataclasses.dataclass
@@ -128,6 +131,7 @@ Config = Dict[str, Any]
 
 def get_storage_layout(config: Config) -> StorageLayout:
     """Return a StorageLayout for the provided configuration."""
+    _validate_schema(config)
     for base_key in ("layout", "mounts"):
         if base_key not in config:
             raise ConfigError(f"Section '{base_key}' missing in config")
@@ -176,10 +180,7 @@ def _get_filesystem(name: str, data: Config) -> Optional[FileSystem]:
 
 def _validate_partition_table(name: str, data: Config) -> str:
     ptable = data.get("ptable", "")
-    if ptable:
-        if ptable.upper() not in _choices(PARTITION_TABLE_TYPE_CHOICES):
-            raise ConfigError(f"Unknown partition table type '{ptable}'")
-    elif data.get("partitions"):
+    if not ptable and data.get("partitions"):
         raise ConfigError(f"Partition table not specified for '{name}'")
     return ptable
 
@@ -195,11 +196,6 @@ def _flatten_disk(name: str, data: Config) -> List[StorageEntry]:
 
 def _flatten_raid(name: str, data: Config) -> List[StorageEntry]:
     level = data["level"]
-    valid_levels = [
-        int(raid_level[5:]) for raid_level in FILESYSTEM_GROUP_RAID_TYPES
-    ]
-    if level not in valid_levels:
-        raise ConfigError(f"Unknown RAID level '{level}'")
     members = data.get("members", [])
     spares = data.get("spares", [])
     if set(members) & set(spares):
@@ -224,8 +220,6 @@ def _flatten_raid(name: str, data: Config) -> List[StorageEntry]:
 
 def _flatten_bcache(name: str, data: Config) -> List[StorageEntry]:
     cache_mode = data.get("cache-mode", CACHE_MODE_TYPE.WRITETHROUGH)
-    if cache_mode not in _choices(CACHE_MODE_TYPE_CHOICES):
-        raise ConfigError(f"Unknown cache mode '{cache_mode}'")
     items: List[StorageEntry] = [
         BCache(
             name=name,
@@ -558,3 +552,15 @@ def _get_size(size: str) -> int:
     if bytes_value <= 0:
         raise ConfigError(f"Invalid negative size '{size}'")
     return bytes_value
+
+
+def _validate_schema(data: Config):
+    """Validate data against the JSON schema."""
+    schema = yaml.safe_load(SCHEMA_FILE.read_text())
+    try:
+        jsonschema.validate(data, schema)
+    except jsonschema.ValidationError as e:
+        path = "/".join(str(item) for item in e.absolute_path)
+        if not path:
+            path = "top level"
+        raise ConfigError(f"Invalid config at {path}: {e.message}")

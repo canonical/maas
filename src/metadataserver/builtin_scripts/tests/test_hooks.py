@@ -1378,7 +1378,8 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(
             event.description,
             "Failed processing commissioning data: "
-            "Section 'layout' missing in config",
+            "Invalid config at top level: "
+            "Additional properties are not allowed ('invalid' was unexpected)",
         )
 
     def test_errors_if_not_supported_lxd_api_ver(self):

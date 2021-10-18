@@ -1,0 +1,207 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Custom storage configuration schema
+
+type: object
+additionalProperties: false
+required:
+  - layout
+  - mounts
+properties:
+  layout:
+    title: The storage layout
+    type: object
+    additionalProperties: false
+    patternProperties:
+      ^[a-zA-Z][a-zA-Z0-9_-]*$:
+        allOf:
+          - if:
+              properties:
+                type:
+                  const: bcache
+            then:
+              $ref: "#/definitions/bcache"
+          - if:
+              properties:
+                type:
+                  const: disk
+            then:
+              $ref: "#/definitions/disk"
+          - if:
+              properties:
+                type:
+                  const: lvm
+            then:
+              $ref: "#/definitions/lvm"
+          - if:
+              properties:
+                type:
+                  const: raid
+            then:
+              $ref: "#/definitions/raid"
+          - if:
+              properties:
+                type:
+                  const: special
+            then:
+              $ref: "#/definitions/special"
+  mounts:
+    title: Filesystem mount points
+    type: object
+    patternProperties:
+      .*:
+        $ref: "#/definitions/mount"
+
+definitions:
+  bcache:
+    title: A Bcache device
+    type: object
+    additionalProperties: false
+    required:
+      - type
+      - backing-device
+      - cache-device
+    properties:
+      type:
+        title: The device type
+        const: bcache
+      backing-device:
+        title: The storage device for the Bcache
+        type: string
+      cache-device:
+        title: The cache device for the Bcache
+        type: string
+      cache-mode:
+        title: Bcache cache mode
+        type: string
+        enum: [writeback, writethrough, writearound]
+      fs:
+        label: Filesystem type for device
+        type: string
+
+  disk:
+    title: A physical disk
+    type: object
+    additionalProperties: false
+    required:
+      - type
+    properties:
+      type:
+        title: The device type
+        const: disk
+      boot:
+        title: Whether the disk is bootable
+        type: boolean
+      ptable:
+        title: Partition table type
+        type: string
+        enum: [gpt, mbr]
+      partitions:
+        $ref: "#/definitions/partitionList"
+      fs:
+        label: Filesystem type for disk
+        type: string
+
+  lvm:
+    title: An LVM volume group
+    type: object
+    additionalProperties: false
+    required:
+      - type
+      - members
+    properties:
+      type:
+        title: The device type
+        const: lvm
+      members:
+        type: array
+        items:
+          title: A phyisical volume of the volume group
+          type: string
+      volumes:
+        $ref: "#/definitions/partitionList"    
+
+  raid:
+    title: A RAID device
+    type: object
+    additionalProperties: false
+    required:
+      - type
+      - level
+      - members
+    properties:
+      type:
+        title: The device type
+        const: raid
+      level:
+        title: RAID level
+        type: integer
+        enum: [0, 1, 5, 6, 10]
+      members:
+        type: array
+        items:
+          title: An active member of the array
+          type: string
+      spares:
+        type: array
+        items:
+          title: A spare member of the array
+          type: string
+      fs:
+        label: Filesystem type for the RAID
+        type: string
+
+  special:
+    title: A special filesystem
+    type: object
+    additionalProperties: false
+    required:
+      - type
+      - fs
+    properties:
+      type:
+        title: The device type
+        const: special
+      fs:
+        label: Device filesystem type
+        type: string
+
+  partitionList:
+    title: Device partitions
+    type: array
+    items:
+      $ref: "#/definitions/partition"
+    
+  partition:
+    title: A partition
+    type: object
+    additionalProperties: false
+    required:
+      - name
+      - size
+    properties:
+      name:
+        label: Partition name
+        type: string
+      size:
+        label: Partition byte size. Can use M, G, T suffixes
+        type: string
+      bootable:
+        label: Whether the partition has the "bootable" flag
+        type: boolean
+      fs:
+        label: Filesystem type for partition
+        type: string
+
+  mount:
+    title: A mount point
+    type: object
+    additionalProperties: false
+    required:
+      - device
+    properties:
+      device:
+        title: The device to mount
+        type: string
+      options:
+        title: Mount options
+        type: string
