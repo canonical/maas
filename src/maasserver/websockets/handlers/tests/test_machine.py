@@ -3615,7 +3615,8 @@ class TestMachineHandler(MAASServerTestCase):
         )
         factory.make_PhysicalBlockDevice(node=node, size=20 * 1024 ** 3)
         storage_layout = factory.pick_choice(
-            STORAGE_LAYOUT_CHOICES, but_not=("blank",)
+            STORAGE_LAYOUT_CHOICES,
+            but_not=("blank", "custom"),
         )
         self.addDetail("storage_layout", text_content(storage_layout))
         params = {

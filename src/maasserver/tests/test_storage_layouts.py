@@ -1,9 +1,8 @@
 # Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test the storage layouts."""
 
-
+import json
 from math import ceil
 import random
 
@@ -26,6 +25,7 @@ from maasserver.storage_layouts import (
     BcacheStorageLayout,
     BlankStorageLayout,
     calculate_size_from_percentage,
+    CustomStorageLayout,
     EFI_PARTITION_SIZE,
     FlatStorageLayout,
     get_applied_storage_layout_for_node,
@@ -36,6 +36,7 @@ from maasserver.storage_layouts import (
     MIN_ROOT_PARTITION_SIZE,
     STORAGE_LAYOUTS,
     StorageLayoutBase,
+    StorageLayoutError,
     StorageLayoutFieldsError,
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
@@ -46,8 +47,22 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
 from maastesting.matchers import MockCalledOnceWith
+from metadataserver.builtin_scripts.tests import test_hooks
+from metadataserver.enum import SCRIPT_TYPE
+from metadataserver.models import ScriptSet
+from provisioningserver.refresh.node_info_scripts import (
+    COMMISSIONING_OUTPUT_NAME,
+)
 
 LARGE_BLOCK_DEVICE = 100 * 1024 * 1024 * 1024  # 100 GiB
+
+# exclude CustomStorageLayout since it can only be applied if storage config
+# from commissioning data are availble
+REGULAR_LAYOUTS = [
+    layout_class
+    for layout_class in STORAGE_LAYOUTS
+    if layout_class is not CustomStorageLayout
+]
 
 
 def make_Node_with_uefi_boot_method(*args, **kwargs):
@@ -88,7 +103,7 @@ class TestFormHelpers(MAASServerTestCase):
 class TestGetAppliedStorageLayoutForNode(MAASServerTestCase):
     scenarios = [
         (layout_class.name, {"layout_class": layout_class})
-        for layout_class in STORAGE_LAYOUTS
+        for layout_class in REGULAR_LAYOUTS
     ]
 
     def test_detects_layout(self):
@@ -454,7 +469,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_class in STORAGE_LAYOUTS:
+        for layout_class in REGULAR_LAYOUTS:
             layout = layout_class(node)
             layout.configure()
             for bd in node.physicalblockdevice_set.all():
@@ -483,7 +498,7 @@ class TestStorageLayoutBase(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_class in STORAGE_LAYOUTS:
+        for layout_class in REGULAR_LAYOUTS:
             # Bcache always creates a boot partition.
             if layout_class == BcacheStorageLayout:
                 continue
@@ -956,7 +971,7 @@ class TestFlatStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_class in STORAGE_LAYOUTS:
+        for layout_class in REGULAR_LAYOUTS:
             if layout_class == FlatStorageLayout:
                 continue
             layout = layout_class(node)
@@ -1272,7 +1287,7 @@ class TestLVMStorageLayout(MAASServerTestCase, LayoutHelpersMixin):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_class in STORAGE_LAYOUTS:
+        for layout_class in REGULAR_LAYOUTS:
             if layout_class == LVMStorageLayout:
                 continue
             layout = layout_class(node)
@@ -1801,7 +1816,7 @@ class TestBcacheStorageLayout(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_class in STORAGE_LAYOUTS:
+        for layout_class in REGULAR_LAYOUTS:
             if layout_class == BcacheStorageLayout:
                 continue
             layout = layout_class(node)
@@ -1950,7 +1965,7 @@ class TestVMFS6StorageLayout(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_class in STORAGE_LAYOUTS:
+        for layout_class in REGULAR_LAYOUTS:
             if layout_class == VMFS6StorageLayout:
                 continue
             layout = layout_class(node)
@@ -2083,7 +2098,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE, tags=["ssd"]
         )
-        for layout_class in STORAGE_LAYOUTS:
+        for layout_class in REGULAR_LAYOUTS:
             if layout_class == VMFS7StorageLayout:
                 continue
             layout = layout_class(node)
@@ -2095,7 +2110,7 @@ class TestVMFS7StorageLayout(MAASServerTestCase):
 class TestBlankStorageLayout(MAASServerTestCase):
     scenarios = [
         (layout_class.name, {"layout_class": layout_class})
-        for layout_class in STORAGE_LAYOUTS
+        for layout_class in REGULAR_LAYOUTS
     ]
 
     def test_creates_blank_layout(self):
@@ -2120,3 +2135,154 @@ class TestBlankStorageLayout(MAASServerTestCase):
         for bd in node.blockdevice_set.all():
             self.assertFalse(bd.filesystem_set.exists())
             self.assertFalse(bd.partitiontable_set.exists())
+
+
+class TestCustomStorageLayout(MAASServerTestCase):
+    def test_creates_custom_layout(self):
+        node = factory.make_Node(with_boot_disk=False)
+        sda = factory.make_PhysicalBlockDevice(
+            name="sda", node=node, size=LARGE_BLOCK_DEVICE
+        )
+        sdb = factory.make_PhysicalBlockDevice(
+            name="sdb", node=node, size=LARGE_BLOCK_DEVICE
+        )
+        lxd_script = factory.make_Script(
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+        )
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node,
+            scripts=[lxd_script.name],
+        )
+        node.current_commissioning_script_set = script_set
+        node.save()
+
+        data = test_hooks.make_lxd_output()
+        layout_data = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {"name": "sda1", "size": "200M", "fs": "vfat"},
+                        {"name": "sda2", "size": "10G", "fs": "ext4"},
+                    ],
+                },
+                "sdb": {
+                    "type": "disk",
+                    "ptable": "mbr",
+                },
+            },
+            "mounts": {
+                "/boot/efi": {
+                    "device": "sda1",
+                },
+                "/": {
+                    "device": "sda2",
+                },
+            },
+        }
+        data["storage-extra"] = layout_data
+        output = json.dumps(data).encode()
+        factory.make_ScriptResult(
+            script_set=script_set,
+            script=lxd_script,
+            exit_status=0,
+            output=output,
+            stdout=output,
+        )
+
+        layout = CustomStorageLayout(node)
+        self.assertEqual(layout.configure(), "custom")
+        ptable1 = sda.get_partitiontable()
+        sda1, sda2 = ptable1.partitions.order_by("id")
+        self.assertEqual(
+            sda1.get_effective_filesystem().fstype, FILESYSTEM_TYPE.VFAT
+        )
+        self.assertEqual(
+            sda2.get_effective_filesystem().fstype, FILESYSTEM_TYPE.EXT4
+        )
+        self.assertEqual(ptable1.table_type, PARTITION_TABLE_TYPE.GPT)
+        ptable2 = sdb.get_partitiontable()
+        self.assertEqual(ptable2.table_type, PARTITION_TABLE_TYPE.MBR)
+        self.assertCountEqual(ptable2.partitions.all(), [])
+
+    def test_creates_custom_layout_no_storage_data(self):
+        node = factory.make_Node()
+        lxd_script = factory.make_Script(
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+        )
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node,
+            scripts=[lxd_script.name],
+        )
+        node.current_commissioning_script_set = script_set
+        node.save()
+
+        output = json.dumps(test_hooks.make_lxd_output()).encode()
+        factory.make_ScriptResult(
+            script_set=script_set,
+            script=lxd_script,
+            exit_status=0,
+            output=output,
+            stdout=output,
+        )
+
+        layout = CustomStorageLayout(node)
+        error = self.assertRaises(StorageLayoutError, layout.configure)
+        self.assertEqual(
+            str(error), "No custom storage layout configuration found"
+        )
+
+    def test_creates_custom_layout_unappliable_layout(self):
+        node = factory.make_Node()
+        lxd_script = factory.make_Script(
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+        )
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node,
+            scripts=[lxd_script.name],
+        )
+        node.current_commissioning_script_set = script_set
+        node.save()
+
+        data = test_hooks.make_lxd_output()
+        # there is no "sda" disk
+        layout_data = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {"name": "sda1", "size": "200M", "fs": "vfat"},
+                        {"name": "sda2", "size": "10G", "fs": "ext4"},
+                    ],
+                },
+            },
+            "mounts": {
+                "/boot/efi": {
+                    "device": "sda1",
+                },
+                "/": {
+                    "device": "sda2",
+                },
+            },
+        }
+        data["storage-extra"] = layout_data
+        output = json.dumps(data).encode()
+        factory.make_ScriptResult(
+            script_set=script_set,
+            script=lxd_script,
+            exit_status=0,
+            output=output,
+            stdout=output,
+        )
+
+        layout = CustomStorageLayout(node)
+        error = self.assertRaises(StorageLayoutError, layout.configure)
+        self.assertEqual(
+            str(error),
+            "Failed to apply storage layout: Unknown machine disk(s): sda",
+        )

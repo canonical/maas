@@ -4636,23 +4636,28 @@ class Node(CleanSave, TimestampedModel):
 
     def restore_network_interfaces(self):
         """Restore the network interface to their commissioned state."""
-        # Local import to avoid circular import problems.
         from metadataserver.builtin_scripts.hooks import (
             update_node_network_information,
         )
 
-        script = self.current_commissioning_script_set.find_script_result(
-            script_name=COMMISSIONING_OUTPUT_NAME
-        )
-        lxd_output = json.loads(script.stdout)
-        if "networks" not in lxd_output:
+        data = self.get_commissioning_resources()
+        assert data is not None, "No resources found from commissioning output"
+        if "networks" not in data:
             raise NetworkingResetProblem(
                 "Missing network information from commissioning script, "
                 "please commission the machine again"
             )
         update_node_network_information(
-            self, lxd_output, NUMANode.objects.filter(node=self)
+            self, data, NUMANode.objects.filter(node=self)
         )
+
+    def get_commissioning_resources(self):
+        script = self.current_commissioning_script_set.find_script_result(
+            script_name=COMMISSIONING_OUTPUT_NAME
+        )
+        if not script or not script.stdout:
+            return None
+        return json.loads(script.stdout)
 
     def set_initial_networking_configuration(self):
         """Set the networking configuration to the default for this node.

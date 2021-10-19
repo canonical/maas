@@ -950,6 +950,41 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
         return self.name
 
 
+class CustomStorageLayout(StorageLayoutBase):
+    """Layout from custom commissioning data."""
+
+    name = "custom"
+    title = "Custom layout (from commissioning storage config)"
+
+    def configure_storage(self, allow_fallback):
+        from maasserver.storage_custom import (
+            apply_layout_to_machine,
+            ConfigError,
+            get_storage_layout,
+            UnappliableLayout,
+        )
+
+        data = self.node.get_commissioning_resources()
+        if not data or "storage-extra" not in data:
+            raise StorageLayoutError(
+                "No custom storage layout configuration found"
+            )
+
+        try:
+            layout = get_storage_layout(data["storage-extra"])
+            apply_layout_to_machine(layout, self.node)
+        except (ConfigError, UnappliableLayout) as e:
+            raise StorageLayoutError(f"Failed to apply storage layout: {e}")
+        return self.name
+
+    def is_layout(self):
+        # XXX we can't really detect if the layout is currently applied as it
+        # depends on the provided config. It doesn't really matter though as
+        # it's mostly used for the VMFS case. We should eventually get rid of
+        # it entirely.
+        return None
+
+
 class BlankStorageLayout(StorageLayoutBase):
     """Blank layout.
 
@@ -983,6 +1018,7 @@ STORAGE_LAYOUTS = frozenset(
     [
         BcacheStorageLayout,
         BlankStorageLayout,
+        CustomStorageLayout,
         FlatStorageLayout,
         LVMStorageLayout,
         VMFS6StorageLayout,

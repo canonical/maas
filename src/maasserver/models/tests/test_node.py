@@ -5847,6 +5847,61 @@ class TestNode(MAASServerTestCase):
         self.assertIs(node.default_numanode.node, node)
         self.assertEqual(node.default_numanode.index, 0)
 
+    def test_get_commissioning_resources_no_script(self):
+        node = factory.make_Node()
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node=node,
+        )
+        node.current_commissioning_script_set = script_set
+        node.save()
+        self.assertIsNone(node.get_commissioning_resources())
+
+    def test_get_commissioning_resources(self):
+        node = factory.make_Node()
+        factory.make_PhysicalBlockDevice(name="sda", node=node)
+        lxd_script = factory.make_Script(
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+        )
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node,
+            scripts=[lxd_script.name],
+        )
+        node.current_commissioning_script_set = script_set
+        node.save()
+
+        data = test_hooks.make_lxd_output()
+        layout_data = {
+            "layout": {
+                "sda": {
+                    "type": "disk",
+                    "ptable": "gpt",
+                    "partitions": [
+                        {"name": "sda1", "size": "200M", "fs": "vfat"},
+                        {"name": "sda2", "size": "10G", "fs": "ext4"},
+                    ],
+                }
+            },
+            "mounts": {
+                "/boot/efi": {
+                    "device": "sda1",
+                },
+                "/": {
+                    "device": "sda2",
+                },
+            },
+        }
+        data["storage-extra"] = layout_data
+        output = json.dumps(data).encode()
+        factory.make_ScriptResult(
+            script_set=script_set,
+            script=lxd_script,
+            exit_status=0,
+            output=output,
+            stdout=output,
+        )
+        self.assertEqual(node.get_commissioning_resources(), data)
+
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):

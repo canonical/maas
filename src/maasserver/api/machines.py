@@ -1027,16 +1027,17 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @param (string) "{system_id}" [required=true] The machines's system_id.
 
         @param (string) "storage_layout" [required=true] Storage layout for the
-        machine: ``flat``, ``lvm``, ``bcache``, ``vmfs6``, or ``blank``.
+        machine: ``flat``, ``lvm``, ``bcache``, ``vmfs6``, ``vmfs7``,
+        ``custom`` or ``blank``.
 
-        @param (string) "boot_size" [required=false] All layouts. Size of the
-        boot partition (e.g. 512M, 1G).
+        @param (string) "boot_size" [required=false] Size of the boot partition
+        (e.g. 512M, 1G).
 
-        @param (string) "root_size" [required=false] All layouts. Size of the
-        root partition (e.g. 24G).
+        @param (string) "root_size" [required=false] Size of the root partition
+        (e.g. 24G).
 
-        @param (string) "root_device" [required=false] All layouts. Physical
-        block device to place the root partition (e.g. /dev/sda).
+        @param (string) "root_device" [required=false] Physical block device to
+        place the root partition (e.g. /dev/sda).
 
         @param (string) "vg_name" [required=false] LVM only. Name of created
         volume group.
