@@ -147,12 +147,12 @@ def _generate_cluster_power_params(vmhost, vmhost_address, first_host):
 
 
 def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
-    cluster = VMCluster.objects.create(
+    cluster = VMCluster.objects.get_or_create(
         name=discovered_cluster.name or vmhost.name,
         project=discovered_cluster.project,
         pool=vmhost.pool,
         zone=vmhost.zone,
-    )
+    )[0]
     new_host = vmhost
     for i, discovered_vmhost in enumerate(discovered_cluster.pods):
         power_parameters = _generate_cluster_power_params(
@@ -164,24 +164,32 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
             and vmhost.power_parameters["power_address"]
             not in power_parameters["power_address"]
         ):
-            new_host = Pod.objects.create(
-                name=discovered_vmhost.name,
-                architectures=discovered_vmhost.architectures,
-                capabilities=discovered_vmhost.capabilities,
-                version=discovered_vmhost.version,
-                cores=discovered_vmhost.cores,
-                cpu_speed=discovered_vmhost.cpu_speed,
-                power_parameters=power_parameters,
-                power_type="lxd",  # VM clusters are only supported in LXD
-                zone=vmhost.zone,
-                pool=vmhost.pool,
-            )
-            tag, _ = Tag.objects.get_or_create(
-                name="pod-console-logging",
-                kernel_opts="console=tty1 console=ttyS0",
-            )
-            new_host.add_tag(tag.name)
-            new_host.save()
+            try:
+                new_host = Pod.objects.get(
+                    name=discovered_vmhost.name,
+                    power_parameters__power_address=discovered_cluster.pod_addresses[
+                        i
+                    ],
+                )
+            except Pod.DoesNotExist:
+                new_host = Pod.objects.create(
+                    name=discovered_vmhost.name,
+                    architectures=discovered_vmhost.architectures,
+                    capabilities=discovered_vmhost.capabilities,
+                    version=discovered_vmhost.version,
+                    cores=discovered_vmhost.cores,
+                    cpu_speed=discovered_vmhost.cpu_speed,
+                    power_parameters=power_parameters,
+                    power_type="lxd",  # VM clusters are only supported in LXD
+                    zone=vmhost.zone,
+                    pool=vmhost.pool,
+                )
+                tag, _ = Tag.objects.get_or_create(
+                    name="pod-console-logging",
+                    kernel_opts="console=tty1 console=ttyS0",
+                )
+                new_host.add_tag(tag.name)
+                new_host.save()
         new_host = _update_db(
             discovered_vmhost, discovered, new_host, user, cluster
         )
@@ -198,17 +206,12 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
 
 async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
     def _transaction(discovered_cluster, discovered, vmhost, user):
-        cluster = VMCluster.objects.create(
+        cluster = VMCluster.objects.get_or_create(
             name=discovered_cluster.name or vmhost.name,
             project=discovered_cluster.project,
             pool=vmhost.pool,
             zone=vmhost.zone,
-        )
-        vmhost.power_parameters = _generate_cluster_power_params(
-            vmhost,
-            vmhost.power_parameters["power_address"],
-            vmhost,
-        )
+        )[0]
         new_hosts = []
         for i, discovered_vmhost in enumerate(discovered_cluster.pods):
             power_parameters = _generate_cluster_power_params(
@@ -217,20 +220,36 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
             new_host = vmhost
             if (
                 power_parameters["power_address"]
-                != vmhost.power_parameters["power_address"]
+                not in vmhost.power_parameters["power_address"]
+                and vmhost.power_parameters["power_address"]
+                not in power_parameters["power_address"]
             ):
-                new_host = Pod.objects.create(
-                    name=discovered_vmhost.name,
-                    architectures=discovered_vmhost.architectures,
-                    capabilities=discovered_vmhost.capabilities,
-                    version=discovered_vmhost.version,
-                    cores=discovered_vmhost.cores,
-                    cpu_speed=discovered_vmhost.cpu_speed,
-                    power_parameters=power_parameters,
-                    power_type="lxd",  # VM clusters are only supported in LXD
-                    zone=vmhost.zone,
-                    pool=vmhost.pool,
-                )
+                try:
+                    new_host = Pod.objects.get(
+                        name=discovered_vmhost.name,
+                        power_parameters__power_address=discovered_cluster.pod_addresses[
+                            i
+                        ],
+                    )
+                except Pod.DoesNotExist:
+                    new_host = Pod.objects.create(
+                        name=discovered_vmhost.name,
+                        architectures=discovered_vmhost.architectures,
+                        capabilities=discovered_vmhost.capabilities,
+                        version=discovered_vmhost.version,
+                        cores=discovered_vmhost.cores,
+                        cpu_speed=discovered_vmhost.cpu_speed,
+                        power_parameters=power_parameters,
+                        power_type="lxd",  # VM clusters are only supported in LXD
+                        zone=vmhost.zone,
+                        pool=vmhost.pool,
+                    )
+                    tag, _ = Tag.objects.get_or_create(
+                        name="pod-console-logging",
+                        kernel_opts="console=tty1 console=ttyS0",
+                    )
+                    new_host.add_tag(tag.name)
+                    new_host.save()
             new_host = _update_db(
                 discovered_vmhost, discovered, new_host, user, cluster
             )
