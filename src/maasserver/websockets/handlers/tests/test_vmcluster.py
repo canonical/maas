@@ -1,9 +1,12 @@
 # Copyright 2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from datetime import datetime
+
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
+from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers import VMClusterHandler
 from maastesting.crochet import wait_for
 
@@ -72,6 +75,10 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         self.assertEqual(
             result["resource_pool"],
             cluster.pool.id if cluster.pool is not None else "",
+        )
+        self.assertEqual(
+            datetime.strptime(result["created_at"], DATETIME_FORMAT),
+            cluster.created.replace(microsecond=0),
         )
 
         expected_vmhosts = [

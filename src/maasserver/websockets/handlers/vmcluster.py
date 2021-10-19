@@ -4,6 +4,7 @@
 from maasserver.models import VMCluster
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maasserver.websockets.base import dehydrate_datetime
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -81,6 +82,7 @@ class VMClusterHandler(TimestampedModelHandler):
             ),
             "availability_zone": cluster.zone.id,
             "version": (vmhosts[0].version if len(vmhosts) > 0 else ""),
+            "created_at": dehydrate_datetime(cluster.created),
         }
 
     async def list(self, params):
