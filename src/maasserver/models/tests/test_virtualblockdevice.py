@@ -90,9 +90,11 @@ class TestVirtualBlockDeviceManager(MAASServerTestCase):
         # The new size of the RAID-0 array should be the size of the smallest
         # filesystem (in this case, they are all the same) times the number of
         # filesystems in it.
-        array_size = new_size * filesystem_group.filesystems.count()
+        array_size = (
+            new_size - RAID_SUPERBLOCK_OVERHEAD
+        ) * filesystem_group.filesystems.count()
         self.assertEqual(
-            array_size - RAID_SUPERBLOCK_OVERHEAD,
+            array_size,
             reload_object(filesystem_group.virtual_device).size,
         )
 

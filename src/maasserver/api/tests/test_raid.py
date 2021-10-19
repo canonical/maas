@@ -1,9 +1,6 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for raid API."""
-
-
 import http.client
 import json
 import uuid
@@ -15,7 +12,7 @@ from testtools.matchers import ContainsDict, Equals
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, FILESYSTEM_TYPE, NODE_STATUS
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystem import Filesystem
-from maasserver.models.filesystemgroup import RAID_SUPERBLOCK_OVERHEAD
+from maasserver.models.filesystemgroup import RAID, RAID_SUPERBLOCK_OVERHEAD
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.testing.api import APITestCase
@@ -227,9 +224,8 @@ class TestRaidsAPI(APITestCase.ForUser):
             parsed_block_device_spares,
             parsed_partition_spares,
         ) = get_devices_from_raid(parsed_device)
-        self.assertEqual(
-            (10 * PART_SIZE) - RAID_SUPERBLOCK_OVERHEAD, parsed_device["size"]
-        )
+        raid = RAID.objects.get(id=parsed_device["id"])
+        self.assertEqual(parsed_device["size"], raid.get_size())
         self.assertEqual(uuid4, parsed_device["uuid"])
         self.assertCountEqual(block_devices, parsed_block_devices)
         self.assertCountEqual(partitions, parsed_partitions)

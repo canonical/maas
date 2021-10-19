@@ -458,10 +458,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     def get_total_size(self):
         """Return the size of all filesystems combined."""
-        total = 0
-        for fs in self.filesystems.all():
-            total += fs.get_size()
-        return total
+        return sum(fs.get_size() for fs in self.filesystems.all())
 
     def get_raid_size(self):
         """Size of this RAID.
@@ -479,9 +476,9 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             # Possible when no filesytems are attached to this group.
             return 0
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
-            return (
-                min_size * self.filesystems.count()
-            ) - RAID_SUPERBLOCK_OVERHEAD
+            return self.get_total_size() - (
+                RAID_SUPERBLOCK_OVERHEAD * self.filesystems.count()
+            )
         elif self.group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
             return min_size - RAID_SUPERBLOCK_OVERHEAD
         else:

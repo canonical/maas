@@ -1,8 +1,6 @@
 # Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `FilesystemGroup`."""
-
 
 import random
 import re
@@ -783,7 +781,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = FilesystemGroup(group_type=FILESYSTEM_GROUP_TYPE.RAID_0)
         self.assertEqual(0, fsgroup.get_size())
 
-    def test_get_size_returns_smallest_disk_size_for_raid_0(self):
+    def test_get_size_returns_sum_of_disk_size_for_raid_0(self):
         node = factory.make_Node()
         small_size = random.randint(
             MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
@@ -806,10 +804,9 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.RAID_0, filesystems=filesystems
         )
-        # Size should be twice the smallest device (the rest of the larger
-        # device remains unused.
         self.assertEqual(
-            (small_size * 2) - RAID_SUPERBLOCK_OVERHEAD, fsgroup.get_size()
+            fsgroup.get_size(),
+            (small_size + large_size) - RAID_SUPERBLOCK_OVERHEAD * 2,
         )
 
     def test_get_size_returns_smallest_disk_size_for_raid_1(self):
