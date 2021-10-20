@@ -3163,7 +3163,7 @@ class TestBMCConfig(MAASTestCase):
         )
         mock_output_and_send.return_value = False
         mock_enlist = self.patch(maas_run_remote_scripts, "enlist")
-        maas_run_remote_scripts.bmc_config_uploaded = False
+        maas_run_remote_scripts._bmc_config_uploaded = False
         config_dir = self.useFixture(TempDirectory()).path
         bmc_config_path = os.path.join(config_dir, "bmc-config.yaml")
         power_type = factory.make_name("power_type")

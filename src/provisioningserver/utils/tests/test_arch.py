@@ -8,6 +8,10 @@ from provisioningserver.utils.arch import get_architecture
 
 
 class TestGetArchitecture(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        get_architecture.cache_clear()
+
     def tearDown(self):
         super().tearDown()
         get_architecture.cache_clear()
