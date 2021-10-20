@@ -464,6 +464,48 @@ class TestSyncVMCluster(MAASServerTestCase):
             cluster.hosts(), updated_vmhost.hints.cluster.hosts()
         )
 
+    def test_sync_vmcluster_uses_existing_cluster_name_when_discovered_cluster_has_none(
+        self,
+    ):
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = fake_cluster_discovery(self)
+        discovered_cluster.name = None
+        zone = factory.make_Zone()
+        pool = factory.make_ResourcePool()
+        cluster = factory.make_VMCluster(
+            name=factory.make_name("cluster"),
+            project=discovered_cluster.project,
+            zone=zone,
+            pool=pool,
+            pods=0,
+        )
+        vmhosts = [
+            factory.make_Pod(
+                cluster=cluster,
+                parameters={"power_address": address},
+                zone=zone,
+                pool=pool,
+            )
+            for address in discovered_cluster.pod_addresses
+        ]
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        self.patch(vmhost_module, "discover_pod").return_value = (
+            successes,
+            failures,
+        )
+        updated_vmhost = vmhost_module.discover_and_sync_vmhost(
+            vmhosts[0], factory.make_User()
+        )
+        self.assertEqual(updated_vmhost.hints.cluster.name, cluster.name)
+
 
 class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
 
@@ -670,3 +712,56 @@ class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
             )
 
         await deferToDatabase(_compare_cluster)
+
+    @wait_for_reactor
+    async def test_sync_vmcluster_uses_existing_cluster_name_when_discovered_cluster_has_none_async(
+        self,
+    ):
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = await deferToDatabase(fake_cluster_discovery, self)
+        discovered_cluster.name = None
+        zone = await deferToDatabase(factory.make_Zone)
+        pool = await deferToDatabase(factory.make_ResourcePool)
+        cluster = await deferToDatabase(
+            factory.make_VMCluster,
+            name=factory.make_name("cluster"),
+            project=discovered_cluster.project,
+            zone=zone,
+            pool=pool,
+            pods=0,
+        )
+
+        def _create_vmhosts():
+            return [
+                factory.make_Pod(
+                    cluster=cluster,
+                    parameters={"power_address": address},
+                    zone=zone,
+                    pool=pool,
+                )
+                for address in discovered_cluster.pod_addresses
+            ]
+
+        vmhosts = await deferToDatabase(_create_vmhosts)
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        vmhost_module.discover_pod.return_value = succeed(
+            (successes, failures)
+        )
+        user = await deferToDatabase(factory.make_User)
+        updated_vmhost = await vmhost_module.discover_and_sync_vmhost_async(
+            vmhosts[0], user
+        )
+
+        def _get_name():
+            return updated_vmhost.hints.cluster.name
+
+        name = await deferToDatabase(_get_name)
+        self.assertEqual(name, cluster.name)
