@@ -223,6 +223,9 @@ class DiscoveredMachine:
     bios_boot_method = attr.ib(
         converter=converter_obj(str, optional=True), default=None
     )
+    location = attr.ib(
+        converter=converter_obj(str, optional=True), default=None
+    )
 
     @property
     def instance_name(self):

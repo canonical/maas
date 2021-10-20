@@ -758,6 +758,7 @@ class TestLXDPodDriver(MAASTestCase):
         mock_machine = Mock()
         mock_machine.name = factory.make_name("machine")
         mock_machine.architecture = "x86_64"
+        mock_machine.location = "FakeLXD"
         expanded_config = {
             "limits.cpu": "2",
             "limits.memory": "1024MiB",
@@ -949,6 +950,7 @@ class TestLXDPodDriver(MAASTestCase):
             "limits.memory": "1024MiB",
             "volatile.eth0.hwaddr": "00:16:3e:78:be:04",
         }
+        mock_machine.location = "FakeLXD"
         mock_machine.expanded_devices = {}
         mock_machine.status_code = 102
         mock_storage_pool = Mock()
@@ -977,6 +979,7 @@ class TestLXDPodDriver(MAASTestCase):
         mock_machine = Mock()
         mock_machine.name = factory.make_name("machine")
         mock_machine.architecture = "x86_64"
+        mock_machine.location = "FakeLXD"
         expanded_config = {
             "limits.cpu": "0-2",
             "limits.memory.hugepages": "true",
@@ -1050,6 +1053,7 @@ class TestLXDPodDriver(MAASTestCase):
         }
         mock_machine.expanded_config = expanded_config
         mock_machine.expanded_devices = expanded_devices
+        mock_machine.location = "FakeLXD"
         self.fake_lxd.virtual_machines.create.return_value = mock_machine
         discovered_machine = driver._get_discovered_machine(
             self.fake_lxd.make_client(), mock_machine, [usable_pool], request
@@ -1066,6 +1070,7 @@ class TestLXDPodDriver(MAASTestCase):
         mock_machine = Mock()
         mock_machine.name = factory.make_name("machine")
         mock_machine.architecture = "x86_64"
+        mock_machine.location = "FakeLXD"
         expanded_config = {
             "limits.memory.hugepages": "1",
         }
@@ -1082,6 +1087,7 @@ class TestLXDPodDriver(MAASTestCase):
         mock_machine = Mock()
         mock_machine.name = factory.make_name("machine")
         mock_machine.architecture = "x86_64"
+        mock_machine.location = "FakeLXD"
         expanded_config = {
             "limits.cpu": "2",
             "limits.memory": "1024",
@@ -1495,6 +1501,7 @@ class TestLXDPodDriver(MAASTestCase):
             architecture=debian_to_kernel_architecture(request.architecture),
             expanded_devices=expanded_devices,
             expanded_config={},
+            location="FakeLXD",
             status_code=101,
         )
         self.fake_lxd.virtual_machines.create.return_value = mock_machine

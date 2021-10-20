@@ -34,7 +34,7 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
 
         return cluster_group
 
-    def make_physical_cluster_group(self):
+    def make_physical_cluster_group(self, with_vms=True):
         cluster_groups = []
 
         for _ in range(2):
@@ -53,12 +53,14 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
                     )
                     for address in address_group
                 ]
-                vms = [
-                    factory.make_VirtualMachine(
-                        bmc=vmhost.as_bmc(), machine=factory.make_Machine()
-                    )
-                    for vmhost in vmhosts
-                ]
+                vms = []
+                if with_vms:
+                    vms = [
+                        factory.make_VirtualMachine(
+                            bmc=vmhost.as_bmc(), machine=factory.make_Machine()
+                        )
+                        for vmhost in vmhosts
+                    ]
                 cluster_group.append((cluster, vmhosts, vms))
             cluster_groups.append(cluster_group)
 
@@ -206,6 +208,21 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         ]
 
         self.assertCountEqual(result_ids, expected_ids)
+
+    @wait_for_reactor
+    async def test_list_by_physical_cluster_no_vms(self):
+        await deferToDatabase(
+            self.make_physical_cluster_group,
+            with_vms=False,
+        )
+        admin = await deferToDatabase(factory.make_admin)
+
+        handler = VMClusterHandler(admin, {}, None)
+
+        result = await handler.list_by_physical_cluster(None)
+        for group in result:
+            for cluster in group:
+                self.assertCountEqual([], cluster["virtual_machines"])
 
     @wait_for_reactor
     async def test_get(self):

@@ -788,11 +788,13 @@ class PodTestMixin:
 
     def make_discovered_machine(
         self,
+        hostname=None,
         project=None,
         block_devices=None,
         interfaces=None,
         storage_pools=None,
         memory=None,
+        location=None,
     ):
         if block_devices is None:
             block_devices = [
@@ -804,7 +806,8 @@ class PodTestMixin:
         if interfaces is None:
             interfaces = [self.make_discovered_interface() for i in range(3)]
             interfaces[0].boot = True
-        hostname = factory.make_name("hostname")
+        if hostname is None:
+            hostname = factory.make_name("hostname")
         if memory is None:
             memory = random.randint(8192, 8192 * 8)
         power_parameters = {"instance_name": hostname}
@@ -821,6 +824,7 @@ class PodTestMixin:
             power_state=random.choice([POWER_STATE.ON, POWER_STATE.OFF]),
             power_parameters=power_parameters,
             tags=[factory.make_name("tag") for _ in range(3)],
+            location=location,
         )
 
     def make_discovered_storage_pool(self):
@@ -2844,6 +2848,75 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod._sync_machine(discovered_machine, machine)
         [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
         self.assertEqual(host_interface, vm_interface.host_interface)
+
+    def test_sync_machines_uses_location_to_set_bmc_in_a_cluster(self):
+        self.patch(Machine, "start_commissioning").return_value = None
+        project = factory.make_string()
+        cluster = factory.make_VMCluster(pods=0, project=project)
+        vmhosts = [
+            factory.make_Pod(
+                pod_type="lxd",
+                cluster=cluster,
+                parameters={
+                    "project": project,
+                    "power_address": "https://10.0.0.{}:8443".format(i),
+                },
+            )
+            for i in range(3)
+        ]
+        admin = factory.make_admin()
+        discovered_machines = [
+            self.make_discovered_machine(project=project, location=vmhost.name)
+            for vmhost in vmhosts
+        ]
+        for vmhost in vmhosts:
+            vmhost.sync_machines(discovered_machines, admin)
+        bmc_ids = [vmhost.id for vmhost in vmhosts]
+        discovered_machines[0].memory = 1024
+        for vmhost in vmhosts:
+            vmhost.sync_machines(discovered_machines, admin)
+        new_bmc_ids = [vm.bmc_id for vm in cluster.virtual_machines()]
+        self.assertCountEqual(bmc_ids, new_bmc_ids)
+        vm = VirtualMachine.objects.get(
+            identifier=discovered_machines[0].hostname
+        )
+        self.assertEqual(vm.memory, discovered_machines[0].memory)
+
+    def test_sync_machines_uses_location_to_update_bmc_in_a_cluster(self):
+        self.patch(Machine, "start_commissioning").return_value = None
+        project = factory.make_string()
+        cluster = factory.make_VMCluster(pods=0, project=project)
+        vmhosts = [
+            factory.make_Pod(
+                pod_type="lxd",
+                cluster=cluster,
+                parameters={
+                    "project": project,
+                    "power_address": "https://10.0.0.{}:8443".format(i),
+                },
+            )
+            for i in range(3)
+        ]
+        admin = factory.make_admin()
+        discovered_machines = [
+            self.make_discovered_machine(project=project, location=vmhost.name)
+            for vmhost in vmhosts
+        ]
+        for vmhost in vmhosts:
+            vmhost.sync_machines(discovered_machines, admin)
+        discovered_machines[0].location = vmhosts[2].name
+        for vmhost in vmhosts:
+            vmhost.sync_machines(discovered_machines, admin)
+        new_bmc_ids = [vm.bmc_id for vm in cluster.virtual_machines()]
+        self.assertNotIn(vmhosts[0].id, new_bmc_ids)
+        vm = VirtualMachine.objects.get(
+            identifier=discovered_machines[0].hostname
+        )
+        intended_bmc = Pod.objects.get(
+            name=discovered_machines[0].location,
+            power_parameters__project=project,
+        )
+        self.assertEqual(vm.bmc_id, intended_bmc.id)
 
     def test_update_cluster_certificate_updates_peers_with_same_cert(self):
         cluster = factory.make_VMCluster(pods=0)

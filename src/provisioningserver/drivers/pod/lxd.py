@@ -798,6 +798,7 @@ class LXDPodDriver(PodDriver):
             pinned_cores=pinned_cores,
             # LXD VMs use only UEFI.
             bios_boot_method="uefi",
+            location=machine.location,
         )
 
     def _get_discovered_pod_storage_pool(self, storage_pool):

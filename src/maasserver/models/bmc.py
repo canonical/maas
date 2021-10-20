@@ -1329,6 +1329,12 @@ class Pod(BMC):
         existing_interface.tags = discovered_nic.tags
         existing_interface.save()
 
+    def _cluster_location_match(self, discovered_machine):
+        return (
+            discovered_machine.location is None
+            or discovered_machine.location == self.name
+        )
+
     def sync_machines(self, discovered_machines, commissioning_user):
         """Sync the machines on this pod from `discovered_machines`."""
         tracked_machines = []
@@ -1338,6 +1344,8 @@ class Pod(BMC):
         # across all projects
         if self.tracked_project:
             for discovered_machine in discovered_machines:
+                if not self._cluster_location_match(discovered_machine):
+                    continue
                 machine_project = discovered_machine.power_parameters.get(
                     "project", ""
                 )
@@ -1347,7 +1355,11 @@ class Pod(BMC):
                 if machine_project == self.tracked_project:
                     tracked_machines.append(discovered_machine)
         else:
-            tracked_machines = discovered_machines
+            tracked_machines = [
+                machine
+                for machine in discovered_machines
+                if self._cluster_location_match(machine)
+            ]
             discovered_by_project[""] = discovered_machines
 
         from maasserver.models.virtualmachine import (
