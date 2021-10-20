@@ -1248,6 +1248,8 @@ class Node(CleanSave, TimestampedModel):
 
     locked = BooleanField(default=False)
 
+    last_applied_storage_layout = CharField(max_length=50, blank=True)
+
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
@@ -4016,11 +4018,13 @@ class Node(CleanSave, TimestampedModel):
             used_layout = storage_layout.configure(
                 allow_fallback=allow_fallback
             )
+            self.last_applied_storage_layout = used_layout
+            self.save(update_fields=["last_applied_storage_layout"])
             maaslog.info(
-                "%s: Storage layout was set to %s.", self.hostname, used_layout
+                f"{self.hostname}: Storage layout was set to {used_layout}."
             )
         else:
-            raise StorageLayoutError("Unknown storage layout: %s" % layout)
+            raise StorageLayoutError(f"Unknown storage layout: {layout}")
 
     def set_storage_configuration_from_node(self, source_node):
         """Set the storage configuration for this node from the source node."""

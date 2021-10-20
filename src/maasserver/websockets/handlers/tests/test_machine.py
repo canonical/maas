@@ -366,6 +366,7 @@ class TestMachineHandler(MAASServerTestCase):
             "pool": handler.dehydrate_pool(node.pool),
             "default_user": node.default_user,
             "workload_annotations": OwnerData.objects.get_owner_data(node),
+            "last_applied_storage_layout": node.last_applied_storage_layout,
         }
         if "module" in driver and "comment" in driver:
             data["third_party_driver"] = {

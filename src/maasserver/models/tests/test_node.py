@@ -2126,16 +2126,15 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(skip_storage=True)
         mock_set_storage_layout = self.patch(node, "set_storage_layout")
         node.set_default_storage_layout()
-        self.assertThat(mock_set_storage_layout, MockNotCalled())
+        mock_set_storage_layout.assert_not_called()
+        self.assertEqual(node.last_applied_storage_layout, "")
 
     def test_set_default_storage_layout_uses_default(self):
         node = factory.make_Node()
         default_layout = Config.objects.get_config("default_storage_layout")
         mock_set_storage_layout = self.patch(node, "set_storage_layout")
         node.set_default_storage_layout()
-        self.assertThat(
-            mock_set_storage_layout, MockCalledOnceWith(default_layout)
-        )
+        mock_set_storage_layout.assert_called_once_with(default_layout)
 
     def test_set_default_storage_layout_logs_error_missing_boot_disk(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -2185,18 +2184,20 @@ class TestNode(MAASServerTestCase):
         )
         layout_object = MagicMock()
         mock_get_layout.return_value = layout_object
+        layout_object.configure.return_value = "used-layout"
         allow_fallback = factory.pick_bool()
         node.set_storage_layout(
-            sentinel.layout, sentinel.params, allow_fallback=allow_fallback
+            "foo-layout", sentinel.params, allow_fallback=allow_fallback
         )
-        self.assertThat(
-            mock_get_layout,
-            MockCalledOnceWith(sentinel.layout, node, params=sentinel.params),
+        mock_get_layout.assert_called_once_with(
+            "foo-layout",
+            node,
+            params=sentinel.params,
         )
-        self.assertThat(
-            layout_object.configure,
-            MockCalledOnceWith(allow_fallback=allow_fallback),
+        layout_object.configure.assert_called_once_with(
+            allow_fallback=allow_fallback,
         )
+        self.assertEqual(node.last_applied_storage_layout, "used-layout")
 
     def test_set_storage_layout_logs_success(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -2208,13 +2209,11 @@ class TestNode(MAASServerTestCase):
         layout_object = MagicMock()
         layout_object.configure.return_value = used_layout
         mock_get_layout.return_value = layout_object
-        node.set_storage_layout(sentinel.layout, sentinel.params)
-        self.assertThat(
-            maaslog.info,
-            MockCalledOnceWith(
-                "%s: Storage layout was set to %s.", node.hostname, used_layout
-            ),
+        node.set_storage_layout("foo-layout", sentinel.params)
+        maaslog.info.assert_called_once_with(
+            f"{node.hostname}: Storage layout was set to {used_layout}."
         )
+        self.assertEqual(node.last_applied_storage_layout, used_layout)
 
     def test_set_storage_layout_raises_error_when_unknown_layout(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)

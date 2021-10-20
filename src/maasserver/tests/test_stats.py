@@ -1,8 +1,6 @@
 # Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver.stats."""
-
 
 import base64
 import json
@@ -40,6 +38,7 @@ from maasserver.stats import (
     get_machine_stats,
     get_machines_by_architecture,
     get_request_params,
+    get_storage_layouts_stats,
     get_vm_hosts_stats,
     get_vmcluster_stats,
     get_workload_annotations_stats,
@@ -449,6 +448,7 @@ class TestMAASStats(MAASServerTestCase):
                 "vm_hosts": 0,
                 "vms": 0,
             },
+            "storage_layouts": {},
         }
         self.assertEqual(stats, expected)
 
@@ -598,6 +598,7 @@ class TestMAASStats(MAASServerTestCase):
                 "vm_hosts": 0,
                 "vms": 0,
             },
+            "storage_layouts": {},
         }
         self.assertEqual(get_maas_stats(), expected)
 
@@ -706,6 +707,21 @@ class TestMAASStats(MAASServerTestCase):
         self.assertEqual(
             cluster_stats["utilized_resources"]["storage_shared"], 0
         )
+
+    def test_get_storage_layouts_stats(self):
+        counts = {
+            "bcache": 5,
+            "flat": 4,
+            "lvm": 3,
+        }
+        for layout, count in counts.items():
+            for _ in range(count):
+                node = factory.make_Node()
+                node.set_storage_layout(layout)
+        # nodes with no storage layout applied are not reported
+        for _ in range(2):
+            factory.make_Node()
+        self.assertEqual(get_storage_layouts_stats(), counts)
 
 
 class FakeRequest:

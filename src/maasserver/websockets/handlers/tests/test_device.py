@@ -185,6 +185,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "updated": dehydrate_datetime(node.updated),
             "zone": {"id": node.zone.id, "name": node.zone.name},
             "pool": None,
+            "last_applied_storage_layout": node.last_applied_storage_layout,
         }
         if for_list:
             allowed_fields = DeviceHandler.Meta.list_fields + [

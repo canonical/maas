@@ -370,6 +370,18 @@ def get_brownfield_stats():
     }
 
 
+def get_storage_layouts_stats():
+    counts = (
+        Node.objects.exclude(last_applied_storage_layout="")
+        .values("last_applied_storage_layout")
+        .annotate(count=Count("id"))
+    )
+    return {
+        entry["last_applied_storage_layout"]: entry["count"]
+        for entry in counts
+    }
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -417,6 +429,7 @@ def get_maas_stats():
             },
         },
         "vmcluster": get_vmcluster_stats(),
+        "storage_layouts": get_storage_layouts_stats(),
     }
 
 
