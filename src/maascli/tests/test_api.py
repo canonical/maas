@@ -139,13 +139,19 @@ class TestFunctions(MAASTestCase):
         self.assertEqual(error_expected, "%s" % error)
 
     def test_get_action_class_returns_None_for_unknown_handler(self):
-        handler = {"name": factory.make_name("handler")}
+        handler = {
+            "name": factory.make_name("handler"),
+            "handler_name": factory.make_name("handler"),
+        }
         action = {"name": "create"}
         self.assertIsNone(api.get_action_class(handler, action))
 
     def test_get_action_class_returns_BootResourcesCreateAction_class(self):
         # Test uses BootResourcesCreateAction as its know to exist.
-        handler = {"name": "BootResourcesHandler"}
+        handler = {
+            "name": "BootResourcesHandler",
+            "handler_name": "boot-resources",
+        }
         action = {"name": "create"}
         self.assertEqual(
             BootResourcesCreateAction, api.get_action_class(handler, action)
@@ -153,14 +159,17 @@ class TestFunctions(MAASTestCase):
 
     def test_get_action_class_returns_SSHKeysImportAction_class(self):
         # Test uses SSHKeysImportAction as its know to exist.
-        handler = {"name": "SSHKeysHandler"}
+        handler = {"name": "SSHKeysHandler", "handler_name": "sshkeys"}
         action = {"name": "import"}
         self.assertEqual(
             SSHKeysImportAction, api.get_action_class(handler, action)
         )
 
     def test_get_action_class_bases_returns_Action(self):
-        handler = {"name": factory.make_name("handler")}
+        handler = {
+            "name": factory.make_name("handler"),
+            "handler_name": factory.make_name("handler"),
+        }
         action = {"name": "create"}
         self.assertEqual(
             (api.Action,), api.get_action_class_bases(handler, action)
@@ -168,7 +177,10 @@ class TestFunctions(MAASTestCase):
 
     def test_get_action_class_bases_returns_BootResourcesCreateAction(self):
         # Test uses BootResourcesCreateAction as its know to exist.
-        handler = {"name": "BootResourcesHandler"}
+        handler = {
+            "name": "BootResourcesHandler",
+            "handler_name": "boot-resources",
+        }
         action = {"name": "create"}
         self.assertEqual(
             (BootResourcesCreateAction,),
@@ -177,7 +189,7 @@ class TestFunctions(MAASTestCase):
 
     def test_get_action_class_bases_returns_SSHKeysImportAction(self):
         # Test uses SSHKeysImportAction as its know to exist.
-        handler = {"name": "SSHKeysHandler"}
+        handler = {"name": "SSHKeysHandler", "handler_name": "sshkeys"}
         action = {"name": "import"}
         self.assertEqual(
             (SSHKeysImportAction,), api.get_action_class_bases(handler, action)

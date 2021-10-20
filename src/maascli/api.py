@@ -361,7 +361,7 @@ class ActionHelp(argparse.Action):
 
 def get_action_class(handler, action):
     """Return custom action handler class."""
-    handler_name = handler_command_name(handler["name"]).replace("-", "_")
+    handler_name = handler["handler_name"].replace("-", "_")
     action_name = "%s_%s" % (
         handler_name,
         safe_name(action["name"]).replace("-", "_"),
@@ -408,9 +408,11 @@ def register_actions(profile, handler, parser):
 def register_handler(profile, handler, parser):
     """Register a resource's handler."""
     help_title, help_body = parse_docstring(handler["doc"])
-    handler_name = handler_command_name(handler["name"])
     handler_parser = parser.subparsers.add_parser(
-        handler_name, help=help_title, description=help_title, epilog=help_body
+        handler["handler_name"],
+        help=help_title,
+        description=help_title,
+        epilog=help_body,
     )
     register_actions(profile, handler, handler_parser)
 
@@ -420,7 +422,9 @@ def register_resources(profile, parser):
     anonymous = profile["credentials"] is None
     description = profile["description"]
     resources = description["resources"]
-    for resource in sorted(resources, key=itemgetter("name")):
+
+    handler_defs = []
+    for resource in resources:
         # Don't consider the authenticated handler if this profile has no
         # credentials associated with it.
         if anonymous:
@@ -443,16 +447,20 @@ def register_resources(profile, parser):
         represent_as = dict(
             resource["auth"] or resource["anon"],
             name=resource["name"],
+            handler_name=handler_command_name(resource["name"]),
             actions=[],
         )
         # Each value in the actions dict is a list of one or more action
         # descriptions. Here we register the handler with only the first of
         # each of those.
-        if len(actions) != 0:
+        if actions:
             represent_as["actions"].extend(
                 value[0] for value in actions.values()
             )
-            register_handler(profile, represent_as, parser)
+            handler_defs.append(represent_as)
+
+    for handler in sorted(handler_defs, key=itemgetter("handler_name")):
+        register_handler(profile, handler, parser)
 
 
 profile_help_paragraphs = [
