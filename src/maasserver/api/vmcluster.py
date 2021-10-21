@@ -3,8 +3,11 @@
 
 """API handlers: `VMCluster`."""
 
+from piston3.utils import rc
 
-from maasserver.api.support import OperationsHandler
+from maasserver.api.support import admin_method, OperationsHandler
+from maasserver.exceptions import MAASAPIValidationError
+from maasserver.forms.vmcluster import DeleteVMClusterForm
 from maasserver.models import VMCluster
 from maasserver.permissions import VMClusterPermission
 
@@ -30,7 +33,7 @@ class VMClusterHandler(OperationsHandler):
     """
 
     api_doc_section_name = "Virtual Machine Cluster"
-    create = update = delete = None
+    create = update = None
     model = VMCluster
     fields = DISPLAYED_VMCLUSTER_FIELDS
 
@@ -87,6 +90,48 @@ class VMClusterHandler(OperationsHandler):
         return {
             n: {"free": p.free, "total": p.total} for n, p in pools.items()
         }
+
+    @admin_method
+    def delete(self, request, id):
+        """@description-title Deletes a VM cluster
+        @description Deletes a VM cluster with the given ID.
+
+        @param (int) "{id}" [required=true] The VM cluster's ID.
+        @param (boolean) "decompose" [required=false] Whether to also also
+        decompose all machines in the VM cluster on removal. If not provided, machines
+        will not be removed.
+
+        @success (http-status-code) "204" 204
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" No VM cluster with that ID can be found.
+        @error-example "not-found"
+            Not Found
+
+        @error (http-status-code) "403" 403
+        @error (content) "no-perms" The user does not have the permissions
+        to delete the VM cluster.
+        @error-example (content) "no-perms"
+            This method is reserved for admin users.
+
+        """
+        cluster = VMCluster.objects.get_cluster_or_404(
+            id, request.user, VMClusterPermission.delete
+        )
+        form = DeleteVMClusterForm(data=request.GET)
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+
+        machine_wait = 0
+        decompose = form.cleaned_data["decompose"]
+        vmhosts = cluster.hosts()
+        if decompose:
+            machine_wait = len(vmhosts) * 60
+
+        vmhosts[0].async_delete(decompose=decompose, delete_peers=True).wait(
+            machine_wait + 60
+        )
+        return rc.DELETED
 
 
 class VMClustersHandler(OperationsHandler):

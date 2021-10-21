@@ -2,9 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from maasserver.models import VMCluster
+from maasserver.permissions import VMClusterPermission
+from maasserver.rbac import rbac
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import HandlerPermissionError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -18,7 +20,11 @@ class VMClusterHandler(TimestampedModelHandler):
             "list",
             "list_by_physical_cluster",
             "get",
+            "delete",
         ]
+        listen_channels = ["vmcluster"]
+        view_permission = VMClusterPermission.view
+        delete_permission = VMClusterPermission.delete
 
     def _dehydrate_vmhost(self, vmhost):
         return {
@@ -82,13 +88,18 @@ class VMClusterHandler(TimestampedModelHandler):
             ),
             "availability_zone": cluster.zone.id,
             "version": (vmhosts[0].version if len(vmhosts) > 0 else ""),
-            "created_at": dehydrate_datetime(cluster.created),
+            "created_at": self.dehydrate_created(cluster.created),
+            "updated_at": self.dehydrate_updated(cluster.updated),
         }
 
     async def list(self, params):
         @transactional
         def get_objects(params):
-            return VMCluster.objects.all()
+            # Clear rbac cache before check (this is in its own thread).
+            rbac.clear()
+            return VMCluster.objects.get_clusters(
+                self.user, self._meta.view_permission
+            )
 
         @transactional
         def render_objects(objs):
@@ -109,7 +120,9 @@ class VMClusterHandler(TimestampedModelHandler):
     async def list_by_physical_cluster(self, params):
         @transactional
         def get_objects(params):
-            return VMCluster.objects.group_by_physical_cluster(self.user)
+            return VMCluster.objects.group_by_physical_cluster(
+                self.user, self._meta.view_permission
+            )
 
         @transactional
         def render_objects(objs):
@@ -133,7 +146,9 @@ class VMClusterHandler(TimestampedModelHandler):
     async def get(self, params):
         @transactional
         def get_object(id):
-            return VMCluster.objects.get(id=id)
+            return VMCluster.objects.get_cluster_or_404(
+                id=id, user=self.user, perm=self._meta.view_permission
+            )
 
         @transactional
         def render_object(obj):
@@ -143,3 +158,23 @@ class VMClusterHandler(TimestampedModelHandler):
 
         cluster = await deferToDatabase(get_object, params["id"])
         return await deferToDatabase(render_object, cluster)
+
+    async def delete(self, params):
+        """Delete the object."""
+
+        @transactional
+        def get_one_vmhost(params):
+            # Clear rbac cache before check (this is in its own thread).
+            rbac.clear()
+
+            obj = self.get_object(params)
+            if not self.user.has_perm(self._meta.delete_permission, obj):
+                raise HandlerPermissionError()
+            return obj.hosts()[0]
+
+        decompose = params.get("decompose", False)
+        vmhost = await deferToDatabase(get_one_vmhost, params)
+        # delete the 1st VMHost, the others and the cluster itself will follow
+        return await vmhost.async_delete(
+            decompose=decompose, delete_peers=True
+        )

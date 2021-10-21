@@ -793,6 +793,7 @@ ALL_NOTIFIERS = {
     "token",
     "user",
     "vlan",
+    "vmcluster",
     "zone",
 }
 

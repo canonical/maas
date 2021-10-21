@@ -44,3 +44,4 @@ class VMClusterPermission(enum.Enum):
     """Permissions for `VMCluster`."""
 
     view = "view"
+    delete = "delete"

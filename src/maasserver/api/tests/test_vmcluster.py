@@ -3,12 +3,15 @@
 
 import http.client
 import random
+from unittest.mock import MagicMock
 
 from django.urls import reverse
 
+from maasserver.models.bmc import Pod
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
+from maastesting.matchers import MockCalledOnceWith
 
 
 class TestVMClusters(APITestCase.ForUser):
@@ -82,3 +85,29 @@ class TestVMCluster(APITestCase.ForUser):
             self.assertEqual(
                 pool.total, parsed_result["storage_pools"][name]["total"]
             )
+
+    def test_DELETE_calls_async_delete(self):
+        cluster = factory.make_VMCluster()
+
+        response = self.client.delete(
+            reverse("vm_cluster_handler", args=[cluster.id])
+        )
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+
+class TestVMClusterAdmin(APITestCase.ForAdmin):
+    def test_DELETE_calls_async_delete(self):
+        cluster = factory.make_VMCluster()
+        mock_eventual = MagicMock()
+        mock_async_delete = self.patch(Pod, "async_delete")
+        mock_async_delete.return_value = mock_eventual
+
+        response = self.client.delete(
+            reverse("vm_cluster_handler", args=[cluster.id])
+        )
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.assertThat(mock_eventual.wait, MockCalledOnceWith(60))

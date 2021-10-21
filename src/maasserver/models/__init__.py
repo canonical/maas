@@ -418,6 +418,7 @@ class MAASAuthorizationBackend(ModelBackend):
                 rbac,
                 visible_pools,
                 view_all_pools,
+                admin_pools,
                 obj,
             )
 
@@ -688,7 +689,14 @@ class MAASAuthorizationBackend(ModelBackend):
         raise ValueError("unknown PodPermission value: %s" % perm)
 
     def _perm_vmcluster(
-        self, user, perm, rbac, visible_pools, view_all_pools, obj=None
+        self,
+        user,
+        perm,
+        rbac,
+        visible_pools,
+        view_all_pools,
+        admin_pools,
+        obj=None,
     ):
         rbac_enabled = rbac.is_enabled()
         if not isinstance(obj, VMCluster):
@@ -702,6 +710,11 @@ class MAASAuthorizationBackend(ModelBackend):
                     obj.pool_id in visible_pools
                     or obj.pool_id in view_all_pools
                 )
+            return True
+
+        if perm == VMClusterPermission.delete:
+            if rbac_enabled:
+                return obj.pool_id in admin_pools
             return True
 
         raise ValueError("unknown VMClusterPermission value: %s" % perm)

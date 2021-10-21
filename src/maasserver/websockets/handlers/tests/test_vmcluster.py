@@ -5,6 +5,7 @@ from datetime import datetime
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers import VMClusterHandler
@@ -237,3 +238,14 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         self.assertEqual(cluster.project, result["project"])
         self.assertEqual(1, len(result["hosts"]))
         self.assertEqual([], result["virtual_machines"])
+
+    @wait_for_reactor
+    async def test_delete(self):
+        cluster = await deferToDatabase(factory.make_VMCluster)
+        admin = await deferToDatabase(factory.make_admin)
+
+        handler = VMClusterHandler(admin, {}, None)
+
+        await handler.delete({"id": cluster.id})
+        expected_vmcluster = await deferToDatabase(reload_object, cluster)
+        self.assertIsNone(expected_vmcluster)

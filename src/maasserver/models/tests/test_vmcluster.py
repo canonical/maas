@@ -38,7 +38,9 @@ class TestVMClusterManager(MAASServerTestCase):
                         pod_type="lxd",
                     )
 
-        results = VMCluster.objects.group_by_physical_cluster(user)
+        results = VMCluster.objects.group_by_physical_cluster(
+            user, VMClusterPermission.view
+        )
         self.assertCountEqual(results, cluster_groups)
 
     def test_group_by_physical_cluster_with_rbac(self):
@@ -78,7 +80,9 @@ class TestVMClusterManager(MAASServerTestCase):
                         pod_type="lxd",
                     )
 
-        results = VMCluster.objects.group_by_physical_cluster(user)
+        results = VMCluster.objects.group_by_physical_cluster(
+            user, VMClusterPermission.view
+        )
         self.assertCountEqual(
             results, [view_cluster_group, view_all_cluster_group]
         )

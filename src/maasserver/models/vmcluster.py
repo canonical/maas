@@ -79,7 +79,7 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
 
 
 class VMClusterManager(Manager):
-    def group_by_physical_cluster(self, user):
+    def group_by_physical_cluster(self, user, perm):
         from maasserver.rbac import rbac
 
         cursor = connection.cursor()
@@ -100,6 +100,8 @@ class VMClusterManager(Manager):
         cluster_groups = cursor.fetchall()
 
         if rbac.is_enabled():
+            if perm != VMClusterPermission.view:
+                raise ValueError("Unknown perm: %s" % perm)
             result = []
             fetched = rbac.get_resource_pool_ids(
                 user.username, "view", "view-all"
@@ -128,7 +130,7 @@ class VMClusterManager(Manager):
                 pool_ids = set(fetched["view"] + fetched["view-all"])
                 return self.filter(pool_id__in=pool_ids)
             else:
-                raise ValueError("Unknown perm: %s", perm)
+                raise ValueError("Unknown perm: %s" % perm)
         return self.all()
 
     def get_cluster_or_404(self, id, user, perm, **kwargs):
