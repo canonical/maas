@@ -304,6 +304,55 @@ class TestInterfaceVLANUpdateController(MAASServerTestCase):
             (vlan_subnet.vlan.fabric.id, vlan_subnet.vlan.vid),
         )
 
+    def test_remove_old_empty_fabric(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        node = self.maker()
+        interface = factory.make_Interface(node=node, vlan=vlan)
+        fabric2 = factory.make_Fabric()
+        interface.vlan = fabric2.get_default_vlan()
+        interface.save()
+        self.assertIsNone(reload_object(fabric))
+        self.assertIsNone(reload_object(vlan))
+
+    def test_no_remove_fabric_if_subnet_on_vlan(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        factory.make_Subnet(vlan=vlan)
+        node = self.maker()
+        interface = factory.make_Interface(node=node, vlan=vlan)
+        fabric2 = factory.make_Fabric()
+        interface.vlan = fabric2.get_default_vlan()
+        interface.save()
+        self.assertEqual(reload_object(fabric), fabric)
+        self.assertEqual(reload_object(vlan), vlan)
+
+    def test_no_remove_fabric_if_subnet_on_other_vlan(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        vlan2 = factory.make_VLAN(fabric=fabric)
+        factory.make_Subnet(vlan=vlan2)
+        node = self.maker()
+        interface = factory.make_Interface(node=node, vlan=vlan)
+        fabric2 = factory.make_Fabric()
+        interface.vlan = fabric2.get_default_vlan()
+        interface.save()
+        self.assertEqual(reload_object(fabric), fabric)
+        self.assertEqual(reload_object(vlan), vlan)
+
+    def test_no_remove_fabric_if_other_interfaces_on_vlan(self):
+        fabric = factory.make_Fabric()
+        vlan = fabric.get_default_vlan()
+        factory.make_Subnet(vlan=vlan)
+        node = self.maker()
+        interface = factory.make_Interface(node=node, vlan=vlan)
+        factory.make_Interface(node=factory.make_Node(), vlan=vlan)
+        fabric2 = factory.make_Fabric()
+        interface.vlan = fabric2.get_default_vlan()
+        interface.save()
+        self.assertEqual(reload_object(fabric), fabric)
+        self.assertEqual(reload_object(vlan), vlan)
+
 
 class TestDiscoveryConfigChanges(MAASServerTestCase):
     """Test that changes to the network discovery cause interface changes."""

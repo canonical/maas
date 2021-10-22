@@ -2606,6 +2606,17 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ],
         )
 
+    def test_no_empty_fabrics(self):
+        data = FakeCommissioningData()
+        eth0 = data.create_physical_network(name="eth0")
+        veth0 = data.create_physical_network_without_nic(name="veth0")
+        data.create_bridge_network("br0", parents=[eth0, veth0])
+        node = factory.make_Node()
+        self.update_interfaces(node, data)
+        # All interfaces are on the same fabric/vlan and no extra fabric is created
+        self.assertEqual(Fabric.objects.count(), 1)
+        self.assertEqual(VLAN.objects.count(), 1)
+
 
 class TestUpdateInterfacesWithHints(
     MAASTransactionServerTestCase, UpdateInterfacesMixin

@@ -826,7 +826,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         node.save()
         iface = node.get_boot_interface()
         iface2 = factory.make_Interface(node=node)
-        iface3 = factory.make_Interface(node=node)
+        iface3 = factory.make_Interface(node=node, vlan=iface2.vlan)
         bondif = factory.make_Interface(
             INTERFACE_TYPE.BOND, node=node, parents=[iface2, iface3]
         )
@@ -862,7 +862,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             hostname=factory.make_name("host"), subnet=subnet
         )
         iface = node.get_boot_interface()
-        iface2 = factory.make_Interface(node=node)
+        iface2 = factory.make_Interface(node=node, vlan=iface.vlan)
         bondif = factory.make_Interface(
             INTERFACE_TYPE.BOND, node=node, parents=[iface, iface2]
         )
@@ -892,7 +892,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         )
         iface = node.get_boot_interface()
         iface2 = factory.make_Interface(node=node)
-        iface3 = factory.make_Interface(node=node)
+        iface3 = factory.make_Interface(node=node, vlan=iface2.vlan)
         bondif = factory.make_Interface(
             INTERFACE_TYPE.BOND, node=node, parents=[iface2, iface3]
         )

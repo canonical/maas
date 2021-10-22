@@ -41,7 +41,7 @@ from provisioningserver.utils.network import get_source_address
 
 
 def get_config(*args, **kwargs):
-    query_count = kwargs.pop("query_count", 23)
+    query_count = kwargs.pop("query_count", 24)
     count, result = count_queries(orig_get_config, *args, **kwargs)
     assert (
         count <= query_count

@@ -14,14 +14,16 @@ from maasserver.models import (
     BondInterface,
     BridgeInterface,
     Config,
+    Controller,
+    Fabric,
     Interface,
+    Node,
     PhysicalInterface,
+    StaticIPAddress,
     UnknownInterface,
     VLAN,
     VLANInterface,
 )
-from maasserver.models.node import Controller, Node
-from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.utils.signals import SignalsManager
 from provisioningserver.logger import LegacyLogger
 
@@ -182,25 +184,24 @@ update_parents_thread_local = InterfaceVisitingThreadLocal()
 
 def update_interface_parents(sender, instance, created, **kwargs):
     """Update parents when an interface is created."""
-    if instance.type in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
-        visiting = update_parents_thread_local.visiting
-        for parent in instance.parents.all():
-            parent.clear_all_links(clearing_config=True)
-            if parent.vlan != instance.vlan and parent.id not in visiting:
-                visiting.add(parent.id)
-                try:
-                    parent.vlan = instance.vlan
-                    parent.save()
-                    log.msg(
-                        "%s: VLAN updated to match %s (vlan=%s)."
-                        % (
-                            parent.get_log_string(),
-                            instance.get_log_string(),
-                            parent.vlan_id,
-                        )
-                    )
-                finally:
-                    visiting.discard(parent.id)
+    if instance.type not in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
+        return
+
+    visiting = update_parents_thread_local.visiting
+    for parent in instance.parents.all():
+        parent.clear_all_links(clearing_config=True)
+        if parent.vlan != instance.vlan and parent.id not in visiting:
+            visiting.add(parent.id)
+            try:
+                parent.vlan = instance.vlan
+                parent.save()
+                log.msg(
+                    f"{parent.get_log_string}: "
+                    f"VLAN updated to match {instance.get_log_string()} "
+                    f"(vlan={parent.vlan_id})."
+                )
+            finally:
+                visiting.discard(parent.id)
 
 
 for klass in INTERFACE_CLASSES:
@@ -282,6 +283,17 @@ def interface_vlan_update(instance, old_values, **kwargs):
                 "%s: deleted IP addresses due to VLAN update (%s -> %s)."
                 % (instance.get_log_string(), old_vlan_id, new_vlan_id)
             )
+
+    if old_vlan_id not in (None, new_vlan_id):
+        # XXX if the interface was previously attached to a fabric with no
+        # subnets nor interfaces on its VLAN, delete the fabric. This happens
+        # for instance when a new interface without links is created, in which
+        # case it's place on its own fabric. If the VLAN gets updated earlier
+        # here, the old fabric/VLAN are left empty.
+        Fabric.objects.annotate(
+            subnet_count=Count("vlan__subnet"),
+            iface_count=Count("vlan__interface"),
+        ).filter(subnet_count=0, iface_count=0, vlan__id=old_vlan_id).delete()
 
 
 for klass in INTERFACE_CLASSES:

@@ -1486,7 +1486,9 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner, status=NODE_STATUS.COMMISSIONING)
         handler = MachineHandler(owner, {}, None)
         eth0 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        eth1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        eth1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=eth0.vlan
+        )
         bond_params = {
             "bond_downdelay": 0,
             "bond_lacp_rate": "fast",
@@ -1705,7 +1707,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         handler = MachineHandler(owner, {}, None)
         interface1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=interface1.vlan
+        )
         bond = factory.make_Interface(
             INTERFACE_TYPE.BOND, node=node, parents=[interface1, interface2]
         )
@@ -1743,7 +1747,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         handler = MachineHandler(owner, {}, None)
         interface1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        interface2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        interface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node, vlan=interface1.vlan
+        )
         bond = factory.make_Interface(
             INTERFACE_TYPE.BOND, node=node, parents=[interface1, interface2]
         )
