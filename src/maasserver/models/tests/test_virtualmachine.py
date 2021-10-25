@@ -807,3 +807,36 @@ class TestGetVMHostUsedResources(MAASServerTestCase):
         self.assertEqual(used_resources.memory, 0)
         self.assertEqual(used_resources.hugepages_memory, 0)
         self.assertEqual(used_resources.storage, 0)
+
+    def test_get_used_resources_multiple_disks(self):
+        project = factory.make_string()
+        vmhost = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+        )
+        pool1 = factory.make_PodStoragePool(pod=vmhost)
+        pool2 = factory.make_PodStoragePool(pod=vmhost)
+        vm1 = factory.make_VirtualMachine(
+            bmc=vmhost,
+            project=project,
+            memory=1024,
+            pinned_cores=[0, 1, 2],
+            hugepages_backed=False,
+        )
+        factory.make_VirtualMachineDisk(vm=vm1, backing_pool=pool1, size=1000)
+        factory.make_VirtualMachineDisk(vm=vm1, backing_pool=pool2, size=2000)
+        vm2 = factory.make_VirtualMachine(
+            bmc=vmhost,
+            project=project,
+            memory=2048,
+            unpinned_cores=2,
+            hugepages_backed=True,
+        )
+        factory.make_VirtualMachineDisk(vm=vm2, backing_pool=pool1, size=1000)
+        factory.make_VirtualMachineDisk(vm=vm2, backing_pool=pool2, size=4000)
+        used_resources = get_vm_host_used_resources(vmhost)
+        self.assertEqual(used_resources.cores, 5)
+        self.assertEqual(used_resources.memory, 1024)
+        self.assertEqual(used_resources.hugepages_memory, 2048)
+        self.assertEqual(used_resources.total_memory, 3072)
+        self.assertEqual(used_resources.storage, 8000)

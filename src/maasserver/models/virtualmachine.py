@@ -300,10 +300,16 @@ def get_vm_host_used_resources(vmhost) -> VMHostUsedResources:
     counts = VirtualMachine.objects.filter(
         bmc=vmhost, project=vmhost.tracked_project
     ).aggregate(
-        cores=C(Sum("unpinned_cores") + Sum(ArrayLength("pinned_cores"))),
+        cores=C(Sum(F("unpinned_cores") + ArrayLength("pinned_cores"))),
         memory=C(Sum("memory", filter=Q(hugepages_backed=False))),
         hugepages_memory=C(Sum("memory", filter=Q(hugepages_backed=True))),
-        storage=C(Sum("disks_set__size")),
+    )
+    counts.update(
+        VirtualMachineDisk.objects.filter(
+            vm__bmc=vmhost, vm__project=vmhost.tracked_project
+        ).aggregate(
+            storage=C(Sum("size")),
+        )
     )
     return VMHostUsedResources(**counts)
 
