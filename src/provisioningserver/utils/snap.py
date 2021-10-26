@@ -5,13 +5,15 @@
 
 import dataclasses
 from functools import total_ordering
-import json
 import os
 from pathlib import Path
 import re
 from typing import NamedTuple, Optional
 
+import yaml
+
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
+from provisioningserver.utils.shell import run_command
 
 
 def running_in_snap():
@@ -152,35 +154,22 @@ class SnapVersionsInfo:
             self.update = SnapVersion(**self.update)
 
 
-def get_snap_versions_info(info_file=None) -> Optional[SnapVersionsInfo]:
+def get_snap_versions_info() -> Optional[SnapVersionsInfo]:
     """Return versions information for current snap and update."""
-    # XXX until snapd provides a way from within the snap the tracking channel,
-    # cohort and whether there are available updates (and their details), mock
-    # this functionality by reading JSON content from
-    # /var/snap/maas/common/snapd-info, with contents similar to
-    #
-    # {
-    #   "channel": "3.0/edge",
-    #   "cohort": "abcd1234",
-    #   "update": {
-    #     "revision": "7890",
-    #     "version": "3.0.1~alpha1-1234-g.deadbeef"
-    #   }
-    # }
-    #
     if not running_in_snap():
         return None
 
     versions = SnapVersionsInfo(current=get_snap_version())
 
-    if info_file is None:
-        info_file = SnapPaths.from_environ().common / "snapd-info"
-    if info_file.exists():
-        data = json.loads(info_file.read_text())
-        versions.cohort = data.get("cohort", "")
-        if "channel" in data:
-            versions.channel = SnapChannel.from_string(data["channel"])
-        if "update" in data:
-            versions.update = SnapVersion(**data["update"])
-
+    result = run_command("snapctl", "refresh", "--pending")
+    if result.returncode == 0:
+        refresh_info = yaml.safe_load(result.stdout)
+        # XXX add cohort information once snapctl reports it
+        if "channel" in refresh_info:
+            versions.channel = SnapChannel.from_string(refresh_info["channel"])
+        if "version" in refresh_info:
+            versions.update = SnapVersion(
+                revision=str(refresh_info["revision"]),
+                version=refresh_info["version"],
+            )
     return versions

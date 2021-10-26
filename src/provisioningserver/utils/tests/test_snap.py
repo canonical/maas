@@ -2,14 +2,16 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
-import json
 import os
 from pathlib import Path
 
 from fixtures import EnvironmentVariable
+import yaml
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.utils import snap
+from provisioningserver.utils.shell import ProcessResult
 from provisioningserver.utils.snap import (
     get_snap_mode,
     get_snap_version,
@@ -251,12 +253,21 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             },
         )
 
+    def mock_snapctl_info(self, data=None, returncode=0):
+        mock_snapctl = self.patch(snap, "run_command")
+        mock_snapctl.return_value = ProcessResult(
+            stdout=yaml.dump(data) if data else "",
+            stderr="",
+            returncode=returncode,
+        )
+
     def test_get_snap_versions_info_not_snap(self):
         self.patch(os, "environ", {})
         self.assertIsNone(get_snap_versions_info())
 
-    def test_get_snap_versions_info_no_file(self):
-        versions = get_snap_versions_info(Path("/not/here"))
+    def test_get_snap_versions_failed_command(self):
+        self.mock_snapctl_info(returncode=1)
+        versions = get_snap_versions_info()
         self.assertEqual(
             versions,
             SnapVersionsInfo(
@@ -270,16 +281,14 @@ class TestGetSnapVersionsInfo(MAASTestCase):
         )
 
     def test_get_snap_versions_info(self):
-        data = {
-            "channel": "3.0/edge/fix-9991",
-            "update": {
-                "revision": "5678",
+        self.mock_snapctl_info(
+            data={
+                "channel": "3.0/edge/fix-9991",
+                "revision": 5678,
                 "version": "3.0.0~alpha2-222-g.cafecafe",
-            },
-            "cohort": "abcd1234",
-        }
-        path = self.make_file(contents=json.dumps(data))
-        versions = get_snap_versions_info(info_file=Path(path))
+            }
+        )
+        versions = get_snap_versions_info()
         self.assertEqual(
             versions,
             SnapVersionsInfo(
@@ -292,16 +301,13 @@ class TestGetSnapVersionsInfo(MAASTestCase):
                 update=SnapVersion(
                     revision="5678", version="3.0.0~alpha2-222-g.cafecafe"
                 ),
-                cohort="abcd1234",
+                cohort="",
             ),
         )
 
     def test_get_snap_version_info_no_update(self):
-        data = {
-            "channel": "3.0/edge/fix-9991",
-        }
-        path = self.make_file(contents=json.dumps(data))
-        versions = get_snap_versions_info(info_file=Path(path))
+        self.mock_snapctl_info(data={"channel": "3.0/edge/fix-9991"})
+        versions = get_snap_versions_info()
         self.assertEqual(
             versions,
             SnapVersionsInfo(
