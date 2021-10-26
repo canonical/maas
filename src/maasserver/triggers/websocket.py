@@ -105,6 +105,45 @@ TAG_NODES_NOTIFY = dedent(
 )
 
 
+# Procedure that is called when a VM cluster is created.
+VMCLUSTER_INSERT_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+        PERFORM pg_notify('vmcluster_create',CAST(NEW.id AS text));
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+
+# Procedure that is called when a VM cluster is updated
+VMCLUSTER_UPDATE_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+        PERFORM pg_notify('vmcluster_update',CAST(NEW.id AS text));
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+
+# Procedure that is called when a VM cluster is deleted
+VMCLUSTER_DELETE_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    BEGIN
+        PERFORM pg_notify('vmcluster_delete',CAST(OLD.id as text));
+        RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+
 # Procedure that is called when a pod is created.
 POD_INSERT_NOTIFY = dedent(
     """\
@@ -1862,6 +1901,12 @@ def register_websocket_triggers():
     register_triggers(
         "maasserver_iprange", "iprange_subnet", events=EVENTS_IUD
     )
+
+    # VMCluster notifications
+    register_procedure(VMCLUSTER_INSERT_NOTIFY % ("vmcluster_insert_notify"))
+    register_procedure(VMCLUSTER_UPDATE_NOTIFY % ("vmcluster_update_notify"))
+    register_procedure(VMCLUSTER_DELETE_NOTIFY % ("vmcluster_delete_notify"))
+    register_triggers("maasserver_vmcluster", "vmcluster", events=EVENTS_IUD)
 
     # Pod notifications
     register_procedure(POD_INSERT_NOTIFY % ("pod_insert_notify", BMC_TYPE.POD))

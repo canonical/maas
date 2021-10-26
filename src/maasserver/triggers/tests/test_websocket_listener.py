@@ -29,7 +29,13 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
 )
 from maasserver.listener import PostgresListenerService
-from maasserver.models import Config, ControllerInfo, Node, OwnerData
+from maasserver.models import (
+    Config,
+    ControllerInfo,
+    Node,
+    OwnerData,
+    VMCluster,
+)
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.storage_layouts import MIN_BOOT_PARTITION_SIZE
@@ -4478,6 +4484,84 @@ class TestBMCListener(
             yield deferToDatabase(update_node, node.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(("update", node.system_id), dv.value)
+        finally:
+            yield listener.stopService()
+
+
+class TestVMClusterListener(
+    MAASTransactionServerTestCase, TransactionalHelpersMixin
+):
+    def create_vmcluster(self, values):
+        return VMCluster.objects.create(**values)
+
+    def update_vmcluster(self, filter, values):
+        return VMCluster.objects.filter(**filter).update(**values)
+
+    def delete_vmcluster(self, filter):
+        VMCluster.objects.filter(**filter).delete()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_create_notification(self):
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            cluster = yield deferToDatabase(
+                self.create_vmcluster,
+                {
+                    "name": factory.make_name("cluster"),
+                    "project": factory.make_name("project"),
+                },
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("create", str(cluster.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_update_notification(self):
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        cluster = yield deferToDatabase(
+            self.create_vmcluster,
+            {
+                "name": factory.make_name("cluster"),
+                "project": factory.make_name("project"),
+            },
+        )
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            pool = yield deferToDatabase(factory.make_ResourcePool)
+            yield deferToDatabase(
+                self.update_vmcluster, {"id": cluster.id}, {"pool": pool}
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", str(cluster.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_delete_notification(self):
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        cluster = yield deferToDatabase(
+            self.create_vmcluster,
+            {
+                "name": factory.make_name("cluster"),
+                "project": factory.make_name("project"),
+            },
+        )
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_vmcluster, {"id": cluster.id})
+            yield dv.get(timeout=2)
+            self.assertEqual(("delete", str(cluster.id)), dv.value)
         finally:
             yield listener.stopService()
 

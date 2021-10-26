@@ -288,6 +288,9 @@ class TestTriggersUsed(MAASServerTestCase):
         "zone_zone_create_notify",
         "zone_zone_delete_notify",
         "zone_zone_update_notify",
+        "vmcluster_vmcluster_insert_notify",
+        "vmcluster_vmcluster_update_notify",
+        "vmcluster_vmcluster_delete_notify",
     }
 
     triggers_all = triggers_system | triggers_websocket

@@ -328,6 +328,15 @@ class TestPodHandler(MAASTransactionServerTestCase):
         result = handler.get({"id": pod.id})
         self.assertEqual(result["attached_vlans"], [])
 
+    def test_get_with_cluster(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        node = factory.make_Node()
+        cluster = factory.make_VMCluster(pods=0)
+        pod = factory.make_Pod(cluster=cluster, host=node)
+        result = handler.get({"id": pod.id})
+        self.assertEqual(result["cluster"], cluster.id)
+
     def test_get_host_interfaces_no_sriov(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)

@@ -149,6 +149,9 @@ class PodHandler(TimestampedModelHandler):
         if self.user.has_perm(PodPermission.compose, obj):
             data["permissions"].append("compose")
 
+        if obj.hints.cluster:
+            data["cluster"] = obj.hints.cluster_id
+
         return data
 
     def dehydrate_storage_pool(self, pool):
