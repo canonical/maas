@@ -151,6 +151,24 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
                 result["total_resources"]["storage_pools"][name]["free"],
             )
 
+    def test_full_dehydrate(self):
+        cluster = factory.make_VMCluster(pods=3)
+        vmhosts = cluster.hosts()
+        _ = [factory.make_PodStoragePool(pod=vmhost) for vmhost in vmhosts]
+
+        vms = [
+            factory.make_VirtualMachine(
+                bmc=vmhost.as_bmc(), machine=factory.make_Machine()
+            )
+            for vmhost in vmhosts
+        ]
+
+        handler = VMClusterHandler(factory.make_admin(), {}, None)
+
+        result = handler.full_dehydrate(cluster)
+
+        self._assert_dehydrated_cluster_equal(result, cluster, vmhosts, vms)
+
     def test_dehydrate(self):
         cluster = factory.make_VMCluster(pods=0)
         vmhosts = [factory.make_Pod(cluster=cluster) for _ in range(3)]

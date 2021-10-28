@@ -73,6 +73,11 @@ class VMClusterHandler(TimestampedModelHandler):
             },
         }
 
+    def full_dehydrate(self, obj, for_list=False):
+        return self.dehydrate(
+            obj, obj.hosts(), obj.total_resources(), obj.virtual_machines()
+        )
+
     def dehydrate(self, cluster, vmhosts, resources, vms):
         return {
             "id": cluster.id,
