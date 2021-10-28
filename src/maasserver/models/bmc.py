@@ -25,9 +25,11 @@ from django.db.models import (
     Manager,
     ManyToManyField,
     PROTECT,
+    Q,
     SET_DEFAULT,
     SET_NULL,
     TextField,
+    UniqueConstraint,
 )
 from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
@@ -150,6 +152,13 @@ class BMC(CleanSave, TimestampedModel):
         # use a HASH index to get around the size limitation on the content of
         # the indexed object
         indexes = (HashIndex(fields=("power_parameters",)),)
+        constraints = [
+            UniqueConstraint(
+                name="name-unique",
+                fields=["name"],
+                condition=Q(power_parameters__project__exists=False),
+            ),
+        ]
 
     objects = Manager()
 
@@ -190,7 +199,7 @@ class BMC(CleanSave, TimestampedModel):
     )
 
     # Name of the pod.
-    name = CharField(max_length=255, default="", blank=True, unique=True)
+    name = CharField(max_length=255, default="", blank=True, unique=False)
 
     version = TextField(default="", blank=True)
 

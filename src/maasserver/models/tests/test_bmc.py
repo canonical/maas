@@ -11,6 +11,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
 )
+from django.db import IntegrityError
 from django.db.models.deletion import ProtectedError
 from django.http import Http404
 import petname
@@ -878,6 +879,49 @@ class PodTestMixin:
 
 
 class TestPod(MAASServerTestCase, PodTestMixin):
+    def test_name_project_cluster_uniqueness(self):
+        user = factory.make_User()
+        cluster = factory.make_VMCluster(pods=0)
+        discovered_pod = self.make_discovered_pod()
+        pod1 = Pod(
+            power_type="lxd",
+            power_parameters={"project": factory.make_name("project")},
+        )
+        pod1.sync(discovered_pod, user)
+        pod1.hints.cluster = cluster
+        pod1.save()
+        pod2 = Pod(
+            power_type="lxd",
+            name=pod1.name,
+            power_parameters={"project": pod1.power_parameters["project"]},
+        )
+        self.assertRaises(IntegrityError, pod2.sync, discovered_pod, user)
+
+    def test_name_always_unique_with_no_cluster(self):
+        pod1 = Pod(power_type="virsh", power_parameters={})
+        pod1.save()
+        pod2 = Pod(power_type="virsh", power_parameters={}, name=pod1.name)
+        self.assertRaises(IntegrityError, pod2.save)
+
+    def test_allows_same_name_in_cluster_different_project(self):
+        cluster = factory.make_VMCluster(pods=0)
+        discovered = self.make_discovered_pod()
+        pod1 = Pod(
+            power_type="lxd",
+            power_parameters={"project": factory.make_name("project")},
+        )
+        pod1.save()
+        pod1.sync_hints(discovered.hints, cluster=cluster)
+        pod2 = Pod(
+            power_type="lxd",
+            name=pod1.name,
+            power_parameters={"project": factory.make_name("project")},
+        )
+        pod2.save()
+        pod2.sync_hints(discovered.hints, cluster=cluster)
+        self.assertEqual(pod1.name, pod2.name)
+        self.assertEqual(pod1.hints.cluster_id, pod2.hints.cluster_id)
+
     def test_create_with_pool(self):
         pool = ResourcePool.objects.get_default_resource_pool()
         pod = Pod(power_type="virsh", power_parameters={}, pool=pool)
