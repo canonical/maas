@@ -3,6 +3,7 @@
 
 """Tests for `provisioningserver.drivers.power.apc`."""
 
+import random
 
 from testtools.matchers import Equals
 
@@ -18,12 +19,20 @@ COMMON_OUTPUT = "iso.3.6.1.4.1.318.1.1.12.3.3.1.1.4.%s = INTEGER: 1\n"
 
 
 class TestAPCPowerDriver(MAASTestCase):
-    def make_context(self):
-        return {
+    def make_context(self, pdu_type=None, outlet=None):
+        context = {
             "power_address": factory.make_name("power_address"),
-            "node_outlet": factory.make_name("node_outlet"),
+            "node_outlet": (
+                outlet if outlet is not None else random.randrange(1, 8)
+            ),
             "power_on_delay": "5",
         }
+        # Don't put pdu_type in the context by default, since driver
+        # instance that were created before that setting was added won't
+        # have it.
+        if pdu_type is not None:
+            context["pdu_type"] = pdu_type
+        return context
 
     def test_missing_packages(self):
         mock = self.patch(has_command_available)
@@ -48,7 +57,8 @@ class TestAPCPowerDriver(MAASTestCase):
 
     def test_run_process_calls_command_and_returns_output(self):
         driver = apc_module.APCPowerDriver()
-        context = self.make_context()
+        pdu_type = random.choice([None, "RPDU"])
+        context = self.make_context(pdu_type=pdu_type)
         command = ["snmpget"] + COMMON_ARGS.format(
             context["power_address"], context["node_outlet"]
         ).split()
@@ -77,7 +87,8 @@ class TestAPCPowerDriver(MAASTestCase):
     def test_power_on_calls_run_process(self):
         driver = apc_module.APCPowerDriver()
         system_id = factory.make_name("system_id")
-        context = self.make_context()
+        pdu_type = random.choice([None, "RPDU"])
+        context = self.make_context(pdu_type=pdu_type)
         mock_power_query = self.patch(driver, "power_query")
         mock_power_query.return_value = "on"
         self.patch(driver, "power_off")
@@ -103,7 +114,8 @@ class TestAPCPowerDriver(MAASTestCase):
     def test_power_off_calls_run_process(self):
         driver = apc_module.APCPowerDriver()
         system_id = factory.make_name("system_id")
-        context = self.make_context()
+        pdu_type = random.choice([None, "RPDU"])
+        context = self.make_context(pdu_type=pdu_type)
         mock_run_process = self.patch(driver, "run_process")
         driver.power_off(system_id, context)
         command = (
@@ -118,7 +130,8 @@ class TestAPCPowerDriver(MAASTestCase):
     def test_power_query_returns_power_state_on(self):
         driver = apc_module.APCPowerDriver()
         system_id = factory.make_name("system_id")
-        context = self.make_context()
+        pdu_type = random.choice([None, "RPDU"])
+        context = self.make_context(pdu_type=pdu_type)
         mock_run_process = self.patch(driver, "run_process")
         mock_run_process.return_value = apc_module.APCState.ON
         result = driver.power_query(system_id, context)
@@ -131,7 +144,8 @@ class TestAPCPowerDriver(MAASTestCase):
     def test_power_query_returns_power_state_off(self):
         driver = apc_module.APCPowerDriver()
         system_id = factory.make_name("system_id")
-        context = self.make_context()
+        pdu_type = random.choice([None, "RPDU"])
+        context = self.make_context(pdu_type=pdu_type)
         mock_run_process = self.patch(driver, "run_process")
         mock_run_process.return_value = apc_module.APCState.OFF
         result = driver.power_query(system_id, context)
@@ -144,9 +158,23 @@ class TestAPCPowerDriver(MAASTestCase):
     def test_power_query_crashes_for_uknown_power_state(self):
         driver = apc_module.APCPowerDriver()
         system_id = factory.make_name("system_id")
-        context = self.make_context()
+        pdu_type = random.choice([None, "RPDU"])
+        context = self.make_context(pdu_type=pdu_type)
         mock_run_process = self.patch(driver, "run_process")
         mock_run_process.return_value = "Error"
         self.assertRaises(
             PowerActionError, driver.power_query, system_id, context
+        )
+
+    def test_masterswitch(self):
+        context = self.make_context(pdu_type="MASTERSWITCH", outlet=5)
+        self.assertEqual(
+            [
+                "-c",
+                "private",
+                "-v1",
+                context["power_address"],
+                ".1.3.6.1.4.1.318.1.1.4.4.2.1.3.5",
+            ],
+            apc_module._get_common_args(context),
         )

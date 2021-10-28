@@ -24,6 +24,23 @@ class APCState:
     OFF = "2"
 
 
+class APC_PDU_TYPE:
+    RPDU = "RPDU"
+    MASTERSWITCH = "MASTERSWITCH"
+
+
+APC_PDU_TYPE_CHOICES = [
+    [APC_PDU_TYPE.RPDU, "rPDU"],
+    [APC_PDU_TYPE.MASTERSWITCH, "masterswitch"],
+]
+
+APC_HARDWARE_OID = "1.3.6.1.4.1.318.1.1"
+APC_PDU_TYPE_OUTLET_SUFFIX = {
+    APC_PDU_TYPE.RPDU: "12.3.3.1.1.4",
+    APC_PDU_TYPE.MASTERSWITCH: "4.4.2.1.3",
+}
+
+
 class APCPowerDriver(PowerDriver):
 
     name = "apc"
@@ -41,6 +58,14 @@ class APCPowerDriver(PowerDriver):
         ),
         make_setting_field(
             "power_on_delay", "Power ON outlet delay (seconds)", default="5"
+        ),
+        make_setting_field(
+            "pdu_type",
+            "PDU type",
+            field_type="choice",
+            choices=APC_PDU_TYPE_CHOICES,
+            # This was the first type the APC driver supported.
+            default=APC_PDU_TYPE.RPDU,
         ),
     ]
     ip_extractor = make_ip_extractor("power_address")
@@ -75,9 +100,7 @@ class APCPowerDriver(PowerDriver):
         sleep(float(context["power_on_delay"]))
         self.run_process(
             "snmpset",
-            *_get_common_args(
-                context["power_address"], context["node_outlet"]
-            ),
+            *_get_common_args(context),
             "i",
             "1",
         )
@@ -86,9 +109,7 @@ class APCPowerDriver(PowerDriver):
         """Power off APC outlet."""
         self.run_process(
             "snmpset",
-            *_get_common_args(
-                context["power_address"], context["node_outlet"]
-            ),
+            *_get_common_args(context),
             "i",
             "2",
         )
@@ -97,9 +118,7 @@ class APCPowerDriver(PowerDriver):
         """Power query APC outlet."""
         power_state = self.run_process(
             "snmpget",
-            *_get_common_args(
-                context["power_address"], context["node_outlet"]
-            ),
+            *_get_common_args(context),
         )
         if power_state == APCState.OFF:
             return "off"
@@ -112,11 +131,14 @@ class APCPowerDriver(PowerDriver):
             )
 
 
-def _get_common_args(address, outlet):
+def _get_common_args(context):
+    address = context["power_address"]
+    outlet = context["node_outlet"]
+    pdu_type = context.get("pdu_type", APC_PDU_TYPE.RPDU)
     return [
         "-c",
         "private",
         "-v1",
         address,
-        f".1.3.6.1.4.1.318.1.1.12.3.3.1.1.4.{outlet}",
+        f".{APC_HARDWARE_OID}.{APC_PDU_TYPE_OUTLET_SUFFIX[pdu_type]}.{outlet}",
     ]
