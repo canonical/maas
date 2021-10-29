@@ -1098,6 +1098,9 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
@@ -1173,6 +1176,9 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
@@ -1198,6 +1204,9 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
@@ -1214,6 +1223,25 @@ class TestLXDPodDriver(MAASTestCase):
             yield driver.compose(pod_id, context, request)
 
     @inlineCallbacks
+    def test_compose_checks_required_extensions(self):
+        driver = lxd_module.LXDPodDriver()
+        Client = self.patch(driver, "_get_client")
+        client = Client.return_value
+        client.host_info = {
+            "api_extensions": sorted(
+                lxd_module.LXD_REQUIRED_EXTENSIONS - {"projects"}
+            ),
+        }
+        error_msg = (
+            "Please upgrade your LXD host to 4.16 or higher "
+            "to support the following extensions: projects"
+        )
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            yield driver.compose(
+                None, self.make_parameters_context(), make_requested_machine()
+            )
+
+    @inlineCallbacks
     def test_compose_multiple_disks(self):
         pod_id = factory.make_name("pod_id")
         context = self.make_parameters_context()
@@ -1221,6 +1249,9 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
@@ -1338,6 +1369,9 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         client.profiles.exists.return_value = False
         mock_storage_pools = Mock()
         client.storage_pools.all.return_value = mock_storage_pools
@@ -1407,6 +1441,9 @@ class TestLXDPodDriver(MAASTestCase):
         driver = lxd_module.LXDPodDriver()
         Client = self.patch(driver, "_get_client")
         client = Client.return_value
+        client.host_info = {
+            "api_extensions": sorted(lxd_module.LXD_REQUIRED_EXTENSIONS),
+        }
         mock_profiles_exists = client.profiles.exists
         mock_profiles_exists.return_value = True
         mock_storage_pools = Mock()
