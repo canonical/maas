@@ -65,7 +65,11 @@ cache_store_log /var/log/maas/proxy/store.log
 {{endif}}
 {{if peers}}
 {{for peer in peers}}
+{{if peer['username'] and peer['password']}}
+cache_peer {{peer['address']}} parent {{peer['port']}} 0 no-query default login={{peer['username']}}:{{peer['password']}}
+{{else}}
 cache_peer {{peer['address']}} parent {{peer['port']}} 0 no-query default
+{{endif}}
 {{endfor}}
 never_direct allow all
 {{endif}}
