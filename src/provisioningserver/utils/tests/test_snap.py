@@ -305,6 +305,16 @@ class TestGetSnapVersionsInfo(MAASTestCase):
             ),
         )
 
+    def test_get_snap_versions_info_with_cohort(self):
+        self.mock_snapctl_info(
+            data={
+                "channel": "3.0/stable",
+                "cohort": "abcdef",
+            }
+        )
+        versions = get_snap_versions_info()
+        self.assertEqual(versions.cohort, "abcdef")
+
     def test_get_snap_version_info_no_update(self):
         self.mock_snapctl_info(data={"channel": "3.0/edge/fix-9991"})
         versions = get_snap_versions_info()

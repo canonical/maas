@@ -164,7 +164,6 @@ def get_snap_versions_info() -> Optional[SnapVersionsInfo]:
     result = run_command("snapctl", "refresh", "--pending")
     if result.returncode == 0:
         refresh_info = yaml.safe_load(result.stdout)
-        # XXX add cohort information once snapctl reports it
         if "channel" in refresh_info:
             versions.channel = SnapChannel.from_string(refresh_info["channel"])
         if "version" in refresh_info:
@@ -172,4 +171,5 @@ def get_snap_versions_info() -> Optional[SnapVersionsInfo]:
                 revision=str(refresh_info["revision"]),
                 version=refresh_info["version"],
             )
+        versions.cohort = refresh_info.get("cohort", "")
     return versions
