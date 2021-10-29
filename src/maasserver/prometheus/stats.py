@@ -7,6 +7,7 @@
 from datetime import timedelta
 
 from django.http import HttpResponse, HttpResponseNotFound
+import prometheus_client
 from twisted.application.internet import TimerService
 
 from maasserver.models import Config
@@ -22,7 +23,6 @@ from maasserver.stats import (
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.prometheus import prom_cli, PROMETHEUS_SUPPORTED
 from provisioningserver.prometheus.utils import (
     create_metrics,
     MetricDefinition,
@@ -147,8 +147,7 @@ _METRICS = {}
 
 def prometheus_stats_handler(request):
     configs = Config.objects.get_configs(["prometheus_enabled", "uuid"])
-    have_prometheus = PROMETHEUS_SUPPORTED and configs["prometheus_enabled"]
-    if not have_prometheus:
+    if not configs["prometheus_enabled"]:
         return HttpResponseNotFound()
 
     global _METRICS
@@ -157,7 +156,7 @@ def prometheus_stats_handler(request):
             STATS_DEFINITIONS,
             extra_labels={"maas_id": configs["uuid"]},
             update_handlers=[update_prometheus_stats],
-            registry=prom_cli.CollectorRegistry(),
+            registry=prometheus_client.CollectorRegistry(),
         )
 
     return HttpResponse(
@@ -285,10 +284,10 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
 
 def push_stats_to_prometheus(maas_name, push_gateway):
     metrics = create_metrics(
-        STATS_DEFINITIONS, registry=prom_cli.CollectorRegistry()
+        STATS_DEFINITIONS, registry=prometheus_client.CollectorRegistry()
     )
     update_prometheus_stats(metrics)
-    prom_cli.push_to_gateway(
+    prometheus_client.push_to_gateway(
         push_gateway, job="stats_for_%s" % maas_name, registry=metrics.registry
     )
 
@@ -327,8 +326,7 @@ class PrometheusService(TimerService):
             )
             # Determine if we can run the actual update.
             if (
-                not PROMETHEUS_SUPPORTED
-                or not config["prometheus_enabled"]
+                not config["prometheus_enabled"]
                 or config["prometheus_push_gateway"] is None
             ):
                 return

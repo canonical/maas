@@ -4,9 +4,9 @@ import os
 import re
 from time import time
 
+import prometheus_client
 from twisted.internet.defer import Deferred
 
-from provisioningserver.prometheus import prom_cli, PROMETHEUS_SUPPORTED
 from provisioningserver.utils.ps import is_pid_running
 
 
@@ -37,7 +37,7 @@ class PrometheusMetrics:
             self.registry = None
             self._metrics = {}
         else:
-            self.registry = registry or prom_cli.REGISTRY
+            self.registry = registry or prometheus_client.REGISTRY
             self._metrics = self._create_metrics(definitions)
 
     def _create_metrics(self, definitions):
@@ -46,7 +46,7 @@ class PrometheusMetrics:
             labels = definition.labels.copy()
             if self._extra_labels:
                 labels.extend(self._extra_labels)
-            cls = getattr(prom_cli, definition.type)
+            cls = getattr(prometheus_client, definition.type)
             metrics[definition.name] = cls(
                 definition.name,
                 definition.description,
@@ -92,18 +92,18 @@ class PrometheusMetrics:
             return
 
         registry = self.registry
-        if registry is prom_cli.REGISTRY:
+        if registry is prometheus_client.REGISTRY:
             # when using the global registry, setup up multiprocess
             # support. In this case, a separate registry needs to be used
             # for generating the samples.
-            registry = prom_cli.CollectorRegistry()
+            registry = prometheus_client.CollectorRegistry()
             from prometheus_client import multiprocess
 
             multiprocess.MultiProcessCollector(registry)
 
         for handler in self._update_handlers:
             handler(self)
-        return prom_cli.generate_latest(registry)
+        return prometheus_client.generate_latest(registry)
 
     def record_call_latency(
         self, metric_name, get_labels=lambda *args, **kwargs: {}
@@ -153,9 +153,8 @@ def create_metrics(
     metric_definitions, extra_labels=None, update_handlers=(), registry=None
 ):
     """Return a PrometheusMetrics from the specified definitions."""
-    definitions = metric_definitions if PROMETHEUS_SUPPORTED else None
     return PrometheusMetrics(
-        definitions=definitions,
+        definitions=metric_definitions,
         extra_labels=extra_labels,
         update_handlers=update_handlers,
         registry=registry,

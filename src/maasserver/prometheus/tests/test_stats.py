@@ -24,11 +24,6 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maastesting.matchers import (
-    MockCalledOnce,
-    MockCalledOnceWith,
-    MockNotCalled,
-)
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver.prometheus.utils import create_metrics
@@ -38,22 +33,14 @@ from provisioningserver.utils.twisted import asynchronous
 class TestPrometheusHandler(MAASServerTestCase):
     def test_prometheus_stats_handler_not_found_disabled(self):
         Config.objects.set_config("prometheus_enabled", False)
-        self.patch(stats, "PROMETHEUS_SUPPORTED", True)
-        response = self.client.get(reverse("metrics"))
-        self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
-        self.assertEqual(response.status_code, http.client.NOT_FOUND)
-
-    def test_prometheus_stats_handler_not_found_not_supported(self):
-        Config.objects.set_config("prometheus_enabled", True)
-        self.patch(stats, "PROMETHEUS_SUPPORTED", False)
         response = self.client.get(reverse("metrics"))
         self.assertEqual("text/html; charset=utf-8", response["Content-Type"])
         self.assertEqual(response.status_code, http.client.NOT_FOUND)
 
     def test_prometheus_stats_handler_returns_success(self):
         Config.objects.set_config("prometheus_enabled", True)
-        mock_prom_cli = self.patch(stats, "prom_cli")
-        mock_prom_cli.generate_latest.return_value = {}
+        mock_prometheus_client = self.patch(stats, "prometheus_client")
+        mock_prometheus_client.generate_latest.return_value = {}
         response = self.client.get(reverse("metrics"))
         self.assertEqual("text/plain", response["Content-Type"])
         self.assertEqual(response.status_code, http.client.OK)
@@ -106,7 +93,7 @@ class TestPrometheusHandler(MAASServerTestCase):
 
 class TestPrometheus(MAASServerTestCase):
     def test_update_prometheus_stats(self):
-        self.patch(stats, "prom_cli")
+        self.patch(stats, "prometheus_client")
         # general values
         values = {
             "machine_status": {"random_status": 0},
@@ -174,13 +161,10 @@ class TestPrometheus(MAASServerTestCase):
         factory.make_RegionRackController()
         maas_name = "random.maas"
         push_gateway = "127.0.0.1:2000"
-        mock_prom_cli = self.patch(stats, "prom_cli")
+        mock_prometheus_client = self.patch(stats, "prometheus_client")
         push_stats_to_prometheus(maas_name, push_gateway)
-        self.assertThat(
-            mock_prom_cli.push_to_gateway,
-            MockCalledOnceWith(
-                push_gateway, job="stats_for_%s" % maas_name, registry=mock.ANY
-            ),
+        mock_prometheus_client.push_to_gateway.assert_called_once_with(
+            push_gateway, job="stats_for_%s" % maas_name, registry=mock.ANY
         )
 
     def test_subnet_stats(self):
@@ -281,7 +265,6 @@ class TestPrometheusServiceAsync(MAASTransactionServerTestCase):
 
     def test_maybe_make_stats_request_makes_request(self):
         mock_call = self.patch(stats, "push_stats_to_prometheus")
-        self.patch(stats, "PROMETHEUS_SUPPORTED", True)
 
         with transaction.atomic():
             Config.objects.set_config("prometheus_enabled", True)
@@ -295,10 +278,10 @@ class TestPrometheusServiceAsync(MAASTransactionServerTestCase):
         )
         maybe_push_prometheus_stats().wait(5)
 
-        self.assertThat(mock_call, MockCalledOnce())
+        mock_call.assert_called_once()
 
     def test_maybe_make_stats_request_doesnt_make_request(self):
-        mock_prom_cli = self.patch(stats, "prom_cli")
+        mock_prometheus_client = self.patch(stats, "prometheus_client")
 
         with transaction.atomic():
             Config.objects.set_config("enable_analytics", False)
@@ -308,7 +291,4 @@ class TestPrometheusServiceAsync(MAASTransactionServerTestCase):
             service.maybe_push_prometheus_stats
         )
         maybe_push_prometheus_stats().wait(5)
-
-        self.assertThat(
-            mock_prom_cli.push_stats_to_prometheus, MockNotCalled()
-        )
+        mock_prometheus_client.push_stats_to_prometheus.assert_not_called()

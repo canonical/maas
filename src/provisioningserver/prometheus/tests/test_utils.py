@@ -8,7 +8,6 @@ from twisted.internet.defer import inlineCallbacks, returnValue
 
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.prometheus import utils
 from provisioningserver.prometheus.utils import (
     clean_prometheus_dir,
     create_metrics,
@@ -176,14 +175,6 @@ class TestCreateMetrics(MAASTestCase):
             prometheus_metrics.available_metrics,
             ["sample_counter", "sample_histogram"],
         )
-
-    def test_metrics_prometheus_not_availble(self):
-        self.patch(utils, "PROMETHEUS_SUPPORTED", False)
-        prometheus_metrics = create_metrics(
-            self.metrics_definitions,
-            registry=prometheus_client.CollectorRegistry(),
-        )
-        self.assertEqual(prometheus_metrics.available_metrics, [])
 
     def test_extra_labels(self):
         prometheus_metrics = create_metrics(
