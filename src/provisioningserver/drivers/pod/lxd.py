@@ -437,6 +437,8 @@ class LXDPodDriver(PodDriver):
     def compose(self, pod_id: int, context: dict, request: RequestedMachine):
         """Compose a virtual machine."""
         with self._get_client(pod_id, context) as client:
+            self._check_required_extensions(client)
+
             storage_pools = client.storage_pools.all()
             default_storage_pool = context.get(
                 "default_storage_pool_id", context.get("default_storage_pool")

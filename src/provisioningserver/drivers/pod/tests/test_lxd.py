@@ -1452,6 +1452,18 @@ class TestLXDPodDriver(MAASTestCase):
             yield self.driver.compose(None, self.make_context(), request)
 
     @inlineCallbacks
+    def test_compose_checks_required_extensions(self):
+        self.fake_lxd.host_info["api_extensions"].remove("projects")
+        error_msg = (
+            "Please upgrade your LXD host to 4.16 or higher "
+            "to support the following extensions: projects"
+        )
+        with ExpectedException(lxd_module.LXDPodError, error_msg):
+            yield self.driver.compose(
+                None, self.make_context(), make_requested_machine()
+            )
+
+    @inlineCallbacks
     def test_compose_multiple_disks(self):
         pod_id = factory.make_name("pod_id")
         request = make_requested_machine(num_disks=2)
