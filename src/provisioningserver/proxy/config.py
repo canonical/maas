@@ -67,8 +67,14 @@ def write_config(
 
     formatted_peers = []
     for peer in peer_proxies:
+        parsed_peer = urlparse(peer)
         formatted_peers.append(
-            {"address": urlparse(peer).hostname, "port": urlparse(peer).port}
+            {
+                "address": parsed_peer.hostname,
+                "port": parsed_peer.port,
+                "username": parsed_peer.username,
+                "password": parsed_peer.password,
+            }
         )
     context["peers"] = formatted_peers
 

@@ -78,6 +78,20 @@ class TestWriteConfig(MAASTestCase):
             self.assertIn(cache_peer1_line, lines)
             self.assertIn(cache_peer2_line, lines)
 
+    def test_peer_proxies_with_auth(self):
+        cidr = factory.make_ipv4_network()
+        peer_proxies = [
+            "http://example:example@example.com:8000/",
+            "http://other:other@other.com:8001",
+        ]
+        config.write_config([cidr], peer_proxies=peer_proxies)
+        cache_peer1_line = "cache_peer example.com parent 8000 0 no-query default login=example:example"
+        cache_peer2_line = "cache_peer other.com parent 8001 0 no-query default login=other:other"
+        with self.proxy_path.open() as proxy_file:
+            lines = [line.strip() for line in proxy_file.readlines()]
+            self.assertIn(cache_peer1_line, lines)
+            self.assertIn(cache_peer2_line, lines)
+
     def test_without_use_peer_proxy(self):
         cidr = factory.make_ipv4_network()
         config.write_config([cidr])
