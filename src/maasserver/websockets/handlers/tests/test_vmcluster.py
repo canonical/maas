@@ -127,6 +127,44 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
             result["total_resources"]["storage"]["total"],
         )
         self.assertEqual(
+            resources.cores.allocated_tracked,
+            result["total_resources"]["cpu"]["allocated_tracked"],
+        )
+        self.assertEqual(
+            resources.memory.general.allocated_tracked,
+            result["total_resources"]["memory"]["general"][
+                "allocated_tracked"
+            ],
+        )
+        self.assertEqual(
+            resources.memory.hugepages.allocated_tracked,
+            result["total_resources"]["memory"]["hugepages"][
+                "allocated_tracked"
+            ],
+        )
+        self.assertEqual(
+            resources.storage.allocated_tracked,
+            result["total_resources"]["storage"]["allocated_tracked"],
+        )
+        self.assertEqual(
+            resources.cores.allocated_tracked,
+            result["total_resources"]["cpu"]["allocated_other"],
+        )
+        self.assertEqual(
+            resources.memory.general.allocated_tracked,
+            result["total_resources"]["memory"]["general"]["allocated_other"],
+        )
+        self.assertEqual(
+            resources.memory.hugepages.allocated_tracked,
+            result["total_resources"]["memory"]["hugepages"][
+                "allocated_other"
+            ],
+        )
+        self.assertEqual(
+            resources.storage.allocated_tracked,
+            result["total_resources"]["storage"]["allocated_other"],
+        )
+        self.assertEqual(
             resources.cores.free, result["total_resources"]["cpu"]["free"]
         )
         self.assertEqual(
@@ -149,6 +187,10 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
             self.assertEqual(
                 pool.free,
                 result["total_resources"]["storage_pools"][name]["free"],
+            )
+            self.assertEqual(
+                pool.total,
+                result["total_resources"]["storage_pools"][name]["total"],
             )
 
     def test_full_dehydrate(self):

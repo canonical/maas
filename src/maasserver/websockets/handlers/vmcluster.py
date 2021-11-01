@@ -50,20 +50,28 @@ class VMClusterHandler(TimestampedModelHandler):
         return {
             "cpu": {
                 "total": resources.cores.total,
+                "allocated_tracked": resources.cores.allocated_tracked,
+                "allocated_other": resources.cores.allocated_other,
                 "free": resources.cores.free,
             },
             "memory": {
                 "hugepages": {
                     "total": resources.memory.hugepages.total,
+                    "allocated_tracked": resources.memory.hugepages.allocated_tracked,
+                    "allocated_other": resources.memory.hugepages.allocated_other,
                     "free": resources.memory.hugepages.free,
                 },
                 "general": {
                     "total": resources.memory.general.total,
+                    "allocated_tracked": resources.memory.general.allocated_tracked,
+                    "allocated_other": resources.memory.general.allocated_other,
                     "free": resources.memory.general.free,
                 },
             },
             "storage": {
                 "total": resources.storage.total,
+                "allocated_tracked": resources.storage.allocated_tracked,
+                "allocated_other": resources.storage.allocated_other,
                 "free": resources.storage.free,
             },
             "vm_count": resources.vm_count.tracked,
