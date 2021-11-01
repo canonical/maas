@@ -34,6 +34,25 @@ from provisioningserver.drivers.power.redfish import (
     WebClientContextFactory,
 )
 
+SAMPLE_HEADERS = {
+    b"strict-transport-security": [b"max-age=63072000"],
+    b"odata-version": [b"4.0"],
+    b"etag": [b'"1631219999"'],
+    b"vary": [b"Accept-Encoding"],
+    b"content-type": [
+        b"application/json;odata.metadata=minimal;charset=utf-8"
+    ],
+    b"server": [b"iDRAC/8"],
+    b"date": [b"Thu, 09 Sep 2021 08:39:59 GMT"],
+    b"link": [
+        b"</redfish/v1/Schemas/ComputerSystem.v1_5_0.json>;rel=describedby"
+    ],
+    b"cache-control": [b"no-cache"],
+    b"allow": [b"POST,PATCH"],
+    b"access-control-allow-origin": [b"*"],
+    b"accept-ranges": [b"bytes"],
+}
+
 SAMPLE_JSON_SYSTEMS = {
     "@odata.context": "/redfish/v1/$metadata#Systems",
     "@odata.count": 1,
@@ -191,6 +210,83 @@ class TestRedfishPowerDriver(MAASTestCase):
         driver = RedfishPowerDriver()
         headers = driver.make_auth_headers(power_user, power_pass)
         self.assertEqual(headers, Headers(attributes))
+
+    @inlineCallbacks
+    def test_get_etag_as_resource(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        node_id = b"1"
+        headers = driver.make_auth_headers(**context)
+        NODE_DATA = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_DATA["@odata.etag"] = '"1631210000"'
+        NODE_HEADERS = deepcopy(SAMPLE_HEADERS)
+        mock_agent = self.patch(redfish_module, "Agent")
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.OK
+        expected_headers.headers = Headers(NODE_HEADERS)
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers
+        )
+        mock_readBody = self.patch(redfish_module, "readBody")
+        mock_readBody.return_value = succeed(
+            json.dumps(NODE_DATA).encode("utf-8")
+        )
+        etag = yield driver.get_etag(url, node_id, headers)
+        self.assertEqual(b'"1631210000"', etag)
+
+    @inlineCallbacks
+    def test_get_etag_as_header(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        node_id = b"1"
+        headers = driver.make_auth_headers(**context)
+        NODE_DATA = deepcopy(SAMPLE_JSON_SYSTEM)
+        NODE_HEADERS = deepcopy(SAMPLE_HEADERS)
+        mock_agent = self.patch(redfish_module, "Agent")
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.OK
+        expected_headers.headers = Headers(NODE_HEADERS)
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers
+        )
+        mock_readBody = self.patch(redfish_module, "readBody")
+        mock_readBody.return_value = succeed(
+            json.dumps(NODE_DATA).encode("utf-8")
+        )
+        expected_etag = b'"1631219999"'
+        etag = yield driver.get_etag(url, node_id, headers)
+        self.assertEqual(expected_etag, etag)
+
+    @inlineCallbacks
+    def test_get_etag_unsupported(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        node_id = b"1"
+        headers = driver.make_auth_headers(**context)
+        NODE_DATA = deepcopy(SAMPLE_JSON_SYSTEM)
+        mock_agent = self.patch(redfish_module, "Agent")
+        mock_agent.return_value.request = Mock()
+        expected_headers = Mock()
+        expected_headers.code = HTTPStatus.OK
+        expected_headers.headers = Headers(
+            {
+                b"Testing": [b"Headers"],
+            }
+        )
+        mock_agent.return_value.request.return_value = succeed(
+            expected_headers
+        )
+        mock_readBody = self.patch(redfish_module, "readBody")
+        mock_readBody.return_value = succeed(
+            json.dumps(NODE_DATA).encode("utf-8")
+        )
+        etag = yield driver.get_etag(url, node_id, headers)
+        self.assertIsNone(etag)
 
     @inlineCallbacks
     def test_get_node_id_trailing_slash(self):
@@ -421,7 +517,7 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
 
     @inlineCallbacks
-    def test_set_pxe_boot(self):
+    def test_set_pxe_boot_no_etag(self):
         driver = RedfishPowerDriver()
         context = make_context()
         url = driver.get_url(context)
@@ -444,7 +540,46 @@ class TestRedfishPowerDriver(MAASTestCase):
         )
         mock_file_body_producer.return_value = payload
         mock_redfish_request = self.patch(driver, "redfish_request")
+        mock_get_etag = self.patch(driver, "get_etag")
+        mock_get_etag.return_value = None
+        yield driver.set_pxe_boot(url, node_id, headers)
+        self.assertThat(
+            mock_redfish_request,
+            MockCalledOnceWith(
+                b"PATCH",
+                join(url, b"redfish/v1/Systems/%s" % node_id),
+                headers,
+                payload,
+            ),
+        )
 
+    @inlineCallbacks
+    def test_set_pxe_boot_with_etag(self):
+        driver = RedfishPowerDriver()
+        context = make_context()
+        url = driver.get_url(context)
+        node_id = b"1"
+        headers = driver.make_auth_headers(**context)
+        mock_file_body_producer = self.patch(
+            redfish_module, "FileBodyProducer"
+        )
+        payload = FileBodyProducer(
+            BytesIO(
+                json.dumps(
+                    {
+                        "Boot": {
+                            "BootSourceOverrideEnabled": "Once",
+                            "BootSourceOverrideTarget": "Pxe",
+                        }
+                    }
+                ).encode("utf-8")
+            )
+        )
+        mock_file_body_producer.return_value = payload
+        mock_redfish_request = self.patch(driver, "redfish_request")
+        mock_get_etag = self.patch(driver, "get_etag")
+        mock_get_etag.return_value = b"1631210000"
+        headers.addRawHeader(b"If-Match", mock_get_etag.return_value)
         yield driver.set_pxe_boot(url, node_id, headers)
         self.assertThat(
             mock_redfish_request,

@@ -178,6 +178,21 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
         return url, node_id, headers
 
     @inlineCallbacks
+    def get_etag(self, url, node_id, headers):
+        """Get the system Etag suggested for PATCH calls"""
+        uri = join(url, REDFISH_SYSTEMS_ENDPOINT, b"%s" % node_id)
+        node_data, node_headers = yield self.redfish_request(
+            b"GET", uri, headers
+        )
+        etag = node_data.get("@odata.etag")
+        if etag is None and node_headers.getRawHeaders("etag"):
+            etag = node_headers.getRawHeaders("etag")[0]
+
+        if etag:
+            etag = etag.encode("utf-8")
+        return etag
+
+    @inlineCallbacks
     def get_node_id(self, url, headers):
         uri = join(url, REDFISH_SYSTEMS_ENDPOINT)
         systems, _ = yield self.redfish_request(b"GET", uri, headers)
@@ -202,6 +217,9 @@ class RedfishPowerDriver(RedfishPowerDriverBase):
                 ).encode("utf-8")
             )
         )
+        etag = yield self.get_etag(url, node_id, headers)
+        if etag:
+            headers.addRawHeader(b"If-Match", etag)
         yield self.redfish_request(
             b"PATCH", join(url, endpoint), headers, payload
         )
