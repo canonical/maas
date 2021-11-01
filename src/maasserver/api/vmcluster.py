@@ -92,7 +92,7 @@ class VMClusterHandler(OperationsHandler):
         }
 
     @admin_method
-    def update(self, request, id):
+    def update(self, request, *args, **kwargs):
         """@description-title Update VMCluster
         @description Update a specific VMCluster by ID.
 
@@ -112,7 +112,7 @@ class VMClusterHandler(OperationsHandler):
 
         """
         cluster = VMCluster.objects.get_cluster_or_404(
-            id, request.user, VMClusterPermission.edit
+            kwargs["id"], request.user, VMClusterPermission.edit
         )
         form = UpdateVMClusterForm(
             data=request.data, instance=cluster, request=request
@@ -125,7 +125,7 @@ class VMClusterHandler(OperationsHandler):
         return cluster
 
     @admin_method
-    def delete(self, request, id):
+    def delete(self, request, *args, **kwargs):
         """@description-title Deletes a VM cluster
         @description Deletes a VM cluster with the given ID.
 
@@ -149,7 +149,7 @@ class VMClusterHandler(OperationsHandler):
 
         """
         cluster = VMCluster.objects.get_cluster_or_404(
-            id, request.user, VMClusterPermission.delete
+            kwargs["id"], request.user, VMClusterPermission.delete
         )
         form = DeleteVMClusterForm(data=request.GET)
         if not form.is_valid():
