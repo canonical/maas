@@ -712,10 +712,15 @@ class MAASAuthorizationBackend(ModelBackend):
                 )
             return True
 
+        if perm == VMClusterPermission.edit:
+            if rbac_enabled:
+                return obj.pool_id in admin_pools
+            return user.is_superuser
+
         if perm == VMClusterPermission.delete:
             if rbac_enabled:
                 return obj.pool_id in admin_pools
-            return True
+            return user.is_superuser
 
         raise ValueError("unknown VMClusterPermission value: %s" % perm)
 

@@ -7,7 +7,7 @@ from piston3.utils import rc
 
 from maasserver.api.support import admin_method, OperationsHandler
 from maasserver.exceptions import MAASAPIValidationError
-from maasserver.forms.vmcluster import DeleteVMClusterForm
+from maasserver.forms.vmcluster import DeleteVMClusterForm, UpdateVMClusterForm
 from maasserver.models import VMCluster
 from maasserver.permissions import VMClusterPermission
 
@@ -33,7 +33,7 @@ class VMClusterHandler(OperationsHandler):
     """
 
     api_doc_section_name = "Virtual Machine Cluster"
-    create = update = None
+    create = None
     model = VMCluster
     fields = DISPLAYED_VMCLUSTER_FIELDS
 
@@ -92,6 +92,39 @@ class VMClusterHandler(OperationsHandler):
         }
 
     @admin_method
+    def update(self, request, id):
+        """@description-title Update VMCluster
+        @description Update a specific VMCluster by ID.
+
+        @param (url-string) "{id}" [required=true] The VMCluster's ID.
+        @param (string) "name" [required=false] The VMCluster's name.
+        @param (string) "pool" [required=false] The name of the resource pool
+        associated with this VM Cluster -- this change is propagated to VMHosts
+        @param (string) "zone" [required=false] The VMCluster's zone.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON VMClister object.
+        @success-example "success-json" [exkey=read-vmcluster] placeholder text
+
+        @error (http-status-code) "404" 404 -- The VMCluster's ID was not found.
+        @error (http-status-code) "403" 403 -- The current user does not have
+        permission to update the VMCluster.
+
+        """
+        cluster = VMCluster.objects.get_cluster_or_404(
+            id, request.user, VMClusterPermission.edit
+        )
+        form = UpdateVMClusterForm(
+            data=request.data, instance=cluster, request=request
+        )
+        if not form.is_valid():
+            raise MAASAPIValidationError(form.errors)
+        cluster = form.save()
+        cluster.async_update_vmhosts(form.changed_data).wait(60)
+
+        return cluster
+
+    @admin_method
     def delete(self, request, id):
         """@description-title Deletes a VM cluster
         @description Deletes a VM cluster with the given ID.
@@ -122,15 +155,12 @@ class VMClusterHandler(OperationsHandler):
         if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
 
-        machine_wait = 0
+        machine_wait = 60
         decompose = form.cleaned_data["decompose"]
-        vmhosts = cluster.hosts()
         if decompose:
-            machine_wait = len(vmhosts) * 60
+            machine_wait += len(cluster.hosts()) * 60
 
-        vmhosts[0].async_delete(decompose=decompose, delete_peers=True).wait(
-            machine_wait + 60
-        )
+        cluster.async_delete(decompose=decompose).wait(machine_wait)
         return rc.DELETED
 
 

@@ -309,3 +309,19 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         await handler.delete({"id": cluster.id})
         expected_vmcluster = await deferToDatabase(reload_object, cluster)
         self.assertIsNone(expected_vmcluster)
+
+    @wait_for_reactor
+    async def test_update(self):
+        cluster = await deferToDatabase(factory.make_VMCluster)
+        admin = await deferToDatabase(factory.make_admin)
+
+        zone = await deferToDatabase(factory.make_Zone)
+        cluster_info = {}
+        cluster_info["id"] = cluster.id
+        cluster_info["zone"] = zone.name
+        cluster_info["name"] = factory.make_name("cluster")
+
+        handler = VMClusterHandler(admin, {}, None)
+        updated_pod = await handler.update(cluster_info)
+
+        self.assertEqual(cluster_info["name"], updated_pod["name"])

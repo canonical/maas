@@ -7,11 +7,19 @@ from unittest.mock import MagicMock
 
 from django.urls import reverse
 
-from maasserver.models.bmc import Pod
+from maasserver.models.vmcluster import VMCluster
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
 from maastesting.matchers import MockCalledOnceWith
+
+
+class VMClusterTestMixin:
+    """Mixin to VMCluster tests."""
+
+    def get_cluster_uri(self, cluster):
+        """Get the API URI for `machine`."""
+        return reverse("vm_cluster_handler", args=[cluster.id])
 
 
 class TestVMClusters(APITestCase.ForUser):
@@ -32,7 +40,7 @@ class TestVMClusters(APITestCase.ForUser):
         )
 
 
-class TestVMCluster(APITestCase.ForUser):
+class TestVMCluster(APITestCase.ForUser, VMClusterTestMixin):
     def test_handler_path(self):
         cluster_id = random.randint(0, 10)
         self.assertEqual(
@@ -42,9 +50,7 @@ class TestVMCluster(APITestCase.ForUser):
 
     def test_read_a_cluster(self):
         cluster = factory.make_VMCluster(pods=2, vms=2)
-        response = self.client.get(
-            reverse("vm_cluster_handler", args=[cluster.id])
-        )
+        response = self.client.get(self.get_cluster_uri(cluster))
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(cluster.name, parsed_result["name"])
         self.assertEqual(cluster.project, parsed_result["project"])
@@ -89,25 +95,45 @@ class TestVMCluster(APITestCase.ForUser):
     def test_DELETE_calls_async_delete(self):
         cluster = factory.make_VMCluster()
 
-        response = self.client.delete(
-            reverse("vm_cluster_handler", args=[cluster.id])
+        response = self.client.delete(self.get_cluster_uri(cluster))
+        self.assertEqual(
+            http.client.FORBIDDEN, response.status_code, response.content
+        )
+
+    def test_PUT_calls_async_update(self):
+        cluster = factory.make_VMCluster()
+
+        response = self.client.put(
+            self.get_cluster_uri(cluster),
+            {"name": "new_name"},
         )
         self.assertEqual(
             http.client.FORBIDDEN, response.status_code, response.content
         )
 
 
-class TestVMClusterAdmin(APITestCase.ForAdmin):
+class TestVMClusterAdmin(APITestCase.ForAdmin, VMClusterTestMixin):
     def test_DELETE_calls_async_delete(self):
         cluster = factory.make_VMCluster()
         mock_eventual = MagicMock()
-        mock_async_delete = self.patch(Pod, "async_delete")
+        mock_async_delete = self.patch(VMCluster, "async_delete")
         mock_async_delete.return_value = mock_eventual
 
-        response = self.client.delete(
-            reverse("vm_cluster_handler", args=[cluster.id])
-        )
+        response = self.client.delete(self.get_cluster_uri(cluster))
         self.assertEqual(
             http.client.NO_CONTENT, response.status_code, response.content
         )
         self.assertThat(mock_eventual.wait, MockCalledOnceWith(60))
+
+    def test_UPDATE_calls_async_update(self):
+        cluster = factory.make_VMCluster()
+        new_name = factory.make_name("cluster")
+        response = self.client.put(
+            self.get_cluster_uri(cluster),
+            {"name": new_name},
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed_output = json_load_bytes(response.content)
+        self.assertEqual(new_name, parsed_output["name"])

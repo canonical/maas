@@ -35,7 +35,7 @@ from django.db.models.query import QuerySet
 from django.shortcuts import get_object_or_404
 from netaddr import AddrFormatError, IPAddress
 import petname
-from twisted.internet.defer import DeferredList, inlineCallbacks
+from twisted.internet.defer import inlineCallbacks
 
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.pods import decompose_machine
@@ -62,7 +62,6 @@ from maasserver.models.subnet import Subnet
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.vlan import VLAN
-from maasserver.models.vmcluster import VMCluster
 from maasserver.models.zone import Zone
 from maasserver.permissions import PodPermission
 from maasserver.rpc import getAllClients, getClientFromIdentifiers
@@ -690,6 +689,11 @@ class Pod(BMC):
                 return interface.node
         else:
             return None
+
+    @property
+    def cluster(self):
+        """shortcut to the cluster (if any)"""
+        return self.hints.cluster
 
     def sync_hints(self, discovered_hints, cluster=None):
         """Sync the hints with `discovered_hints`."""
@@ -1621,25 +1625,6 @@ class Pod(BMC):
         hints.save()
         self.save()
 
-    def update_cluster_certificate(self):
-        if not self.hints.cluster:
-            return
-
-        certificate = self.power_parameters.get("certificate")
-        key = self.power_parameters.get("key")
-        if certificate is None or key is None:
-            return
-
-        cluster = VMCluster.objects.get(id=self.hints.cluster_id)
-        for vmhost in cluster.hosts():
-            if vmhost.id == self.id:
-                continue
-            power_parameters = vmhost.power_parameters.copy()
-            power_parameters["certificate"] = certificate
-            power_parameters["key"] = key
-            vmhost.power_parameters = power_parameters
-            vmhost.save()
-
     def delete(self, *args, **kwargs):
         raise AttributeError(
             "Use `async_delete` instead. Deleting a Pod takes "
@@ -1760,33 +1745,9 @@ class Pod(BMC):
                 pod = Pod.objects.get(id=pod_id)
                 super(BMC, pod).delete()
 
-        @inlineCallbacks
-        def delete_cluster(*args):
-            @transactional
-            def _fetch_cluster_peers():
-                if not self.hints.cluster or not delete_peers:
-                    return None, []
-
-                cluster = VMCluster.objects.get(id=self.hints.cluster_id)
-                return (
-                    cluster,
-                    [
-                        vmhost
-                        for vmhost in cluster.hosts()
-                        if vmhost.id != self.id
-                    ],
-                )
-
-            cluster, peers = yield deferToDatabase(_fetch_cluster_peers)
-
-            yield DeferredList(
-                [
-                    peer.async_delete(decompose=decompose, delete_peers=False)
-                    for peer in peers
-                ]
-            )
-            if cluster is not None:
-                yield deferToDatabase(cluster.delete)
+        # if this vmhost belongs to a cluster, drive the process from there
+        if delete_peers and self.cluster is not None:
+            return self.cluster.async_delete(decompose)
 
         # Don't catch any errors here they are raised to the caller.
         d = deferToDatabase(gather_clients_and_machines, self)
@@ -1794,7 +1755,6 @@ class Pod(BMC):
             decompose_machines if decompose else get_pod_and_machine_ids
         )
         d.addCallback(partial(deferToDatabase, perform_deletion))
-        d.addCallback(delete_cluster)
         return d
 
 

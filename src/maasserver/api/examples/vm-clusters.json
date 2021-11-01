@@ -23,5 +23,28 @@
             },
             "version": "4.17"
         }
-    ]
+    ],
+    "read-vmcluster": {
+        "id": 1,
+        "name": "my-cluster",
+        "project": "my-project",
+        "vmhost_count": 3,
+        "vm_count": 5,
+        "total": {
+            "cores": 8,
+            "memory": 1024,
+            "storage": 4096
+        },
+        "available": {
+            "cores": 8,
+            "memory": 1024,
+            "storage": 4096
+        },
+        "used": {
+            "cores": 0,
+            "memory": 0,
+            "storage": 0
+        },
+        "version": "4.17"
+    }
 }

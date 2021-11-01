@@ -295,10 +295,12 @@ class PodForm(MAASModelForm):
         self.instance.power_parameters = power_parameters
 
         # update all members in a cluster if certificates are updated
-        if not self.is_new and (
-            power_parameters.get("certificate") or power_parameters.get("key")
-        ):
-            self.instance.update_cluster_certificate()
+        if not self.is_new and self.instance.cluster is not None:
+            self.instance.cluster.update_certificate(
+                power_parameters.get("certificate"),
+                power_parameters.get("key"),
+                self.instance,
+            )
 
         # Add tag for pod console logging with appropriate kernel parameters.
         tag, _ = Tag.objects.get_or_create(

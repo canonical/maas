@@ -4,13 +4,24 @@
 import random
 
 from django.http import Http404
+from twisted.internet.defer import inlineCallbacks
 
 from maasserver.models.virtualmachine import MB
 from maasserver.models.vmcluster import VMCluster
 from maasserver.permissions import VMClusterPermission
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
+from maasserver.utils.orm import reload_object
+from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
+from provisioningserver.certificates import Certificate
+
+wait_for_reactor = wait_for(30)  # 30 seconds.
+SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 
 class TestVMClusterManager(MAASServerTestCase):
@@ -493,3 +504,83 @@ class TestVMCluster(MAASServerTestCase):
         project = factory.make_name("project")
         cluster = VMCluster(name=cluster_name, project=project)
         self.assertEqual(list(cluster.virtual_machines()), [])
+
+    def test_update_cluster_certificate_updates_peers_with_same_cert(self):
+        cluster = factory.make_VMCluster(pods=3)
+        cert = SAMPLE_CERT.certificate_pem()
+        key = SAMPLE_CERT.private_key_pem()
+        cluster.update_certificate(cert, key)
+
+        creds = [
+            (
+                vmhost.power_parameters["certificate"],
+                vmhost.power_parameters["key"],
+            )
+            for vmhost in cluster.hosts()
+        ]
+        for cert, key in creds:
+            self.assertEqual(cert, SAMPLE_CERT.certificate_pem())
+            self.assertEqual(key, SAMPLE_CERT.private_key_pem())
+
+
+class TestVMClusterDelete(MAASTransactionServerTestCase):
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_decomposes_and_deletes_machines_and_pod(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster, pods=0)
+        pod1 = yield deferToDatabase(
+            factory.make_Pod, pod_type="lxd", host=None, cluster=cluster
+        )
+        pod2 = yield deferToDatabase(
+            factory.make_Pod, pod_type="lxd", host=None, cluster=cluster
+        )
+
+        yield cluster.async_delete(decompose=False)
+        pod1 = yield deferToDatabase(reload_object, pod1)
+        pod2 = yield deferToDatabase(reload_object, pod2)
+        cluster = yield deferToDatabase(reload_object, cluster)
+        self.assertIsNone(pod1)
+        self.assertIsNone(pod2)
+        self.assertIsNone(cluster)
+
+
+class TestVMClusterUpdate(MAASTransactionServerTestCase):
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_update_vmcluster_and_pods_zone(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster, pods=0)
+        pod1 = yield deferToDatabase(
+            factory.make_Pod, pod_type="lxd", host=None, cluster=cluster
+        )
+        pod2 = yield deferToDatabase(
+            factory.make_Pod, pod_type="lxd", host=None, cluster=cluster
+        )
+
+        zone = yield deferToDatabase(factory.make_Zone)
+        yield deferToDatabase(lambda: setattr(cluster, "zone", zone))
+
+        yield cluster.async_update_vmhosts(changed_data=["zone"])
+        pod1_zone = yield deferToDatabase(lambda: reload_object(pod1).zone)
+        pod2_zone = yield deferToDatabase(lambda: reload_object(pod2).zone)
+        self.assertEqual(zone, pod1_zone)
+        self.assertEqual(zone, pod2_zone)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_update_vmcluster_and_pods_pool(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster, pods=0)
+        pod1 = yield deferToDatabase(
+            factory.make_Pod, pod_type="lxd", host=None, cluster=cluster
+        )
+        pod2 = yield deferToDatabase(
+            factory.make_Pod, pod_type="lxd", host=None, cluster=cluster
+        )
+
+        pool = yield deferToDatabase(factory.make_ResourcePool)
+        yield deferToDatabase(lambda: setattr(cluster, "pool", pool))
+
+        yield cluster.async_update_vmhosts(changed_data=["pool"])
+        pod1_pool = yield deferToDatabase(lambda: reload_object(pod1).pool)
+        pod2_pool = yield deferToDatabase(lambda: reload_object(pod2).pool)
+        self.assertEqual(pool, pod1_pool)
+        self.assertEqual(pool, pod2_pool)

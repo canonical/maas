@@ -1,12 +1,18 @@
 # Copyright 2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from django.http import HttpRequest
+
+from maasserver.forms.vmcluster import UpdateVMClusterForm
 from maasserver.models import VMCluster
 from maasserver.permissions import VMClusterPermission
 from maasserver.rbac import rbac
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.websockets.base import HandlerPermissionError
+from maasserver.websockets.base import (
+    HandlerPermissionError,
+    HandlerValidationError,
+)
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -21,9 +27,11 @@ class VMClusterHandler(TimestampedModelHandler):
             "list_by_physical_cluster",
             "get",
             "delete",
+            "update",
         ]
         listen_channels = ["vmcluster"]
         view_permission = VMClusterPermission.view
+        edit_permission = VMClusterPermission.edit
         delete_permission = VMClusterPermission.delete
 
     def _dehydrate_vmhost(self, vmhost):
@@ -176,18 +184,48 @@ class VMClusterHandler(TimestampedModelHandler):
         """Delete the object."""
 
         @transactional
-        def get_one_vmhost(params):
+        def get_vmcluster(params):
             # Clear rbac cache before check (this is in its own thread).
             rbac.clear()
 
             obj = self.get_object(params)
             if not self.user.has_perm(self._meta.delete_permission, obj):
                 raise HandlerPermissionError()
-            return obj.hosts()[0]
+            return obj
 
         decompose = params.get("decompose", False)
-        vmhost = await deferToDatabase(get_one_vmhost, params)
-        # delete the 1st VMHost, the others and the cluster itself will follow
-        return await vmhost.async_delete(
-            decompose=decompose, delete_peers=True
-        )
+        vmcluster = await deferToDatabase(get_vmcluster, params)
+        return await vmcluster.async_delete(decompose=decompose)
+
+    async def update(self, params):
+        """Update a vmcluster."""
+
+        @transactional
+        def update_obj(params):
+            # Clear rbac cache before check (this is in its own thread).
+            rbac.clear()
+
+            obj = self.get_object(params)
+            if not self.user.has_perm(self._meta.edit_permission, obj):
+                raise HandlerPermissionError()
+
+            request = HttpRequest()
+            request.user = self.user
+            form = UpdateVMClusterForm(
+                instance=obj,
+                data=self.preprocess_form("update", params),
+                request=request,
+            )
+            if form.is_valid():
+                cluster = form.save()
+                return (cluster, form.changed_data)
+            else:
+                raise HandlerValidationError(form.errors)
+
+        @transactional
+        def render_obj(obj):
+            return self.full_dehydrate(obj)
+
+        (cluster, changed_data) = await deferToDatabase(update_obj, params)
+        await cluster.async_update_vmhosts(changed_data)
+        return await deferToDatabase(render_obj, cluster)

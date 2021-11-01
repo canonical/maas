@@ -2962,28 +2962,6 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         self.assertEqual(vm.bmc_id, intended_bmc.id)
 
-    def test_update_cluster_certificate_updates_peers_with_same_cert(self):
-        cluster = factory.make_VMCluster(pods=0)
-        vmhosts = [
-            factory.make_Pod(pod_type="lxd", cluster=cluster) for _ in range(3)
-        ]
-        power_parameters = vmhosts[0].power_parameters.copy()
-        power_parameters["certificate"] = SAMPLE_CERT.certificate_pem()
-        power_parameters["key"] = SAMPLE_CERT.private_key_pem()
-        vmhosts[0].power_parameters = power_parameters
-        vmhosts[0].update_cluster_certificate()
-        vmhosts[0].save()
-        updated_vmhosts = Pod.objects.filter(hints__cluster=cluster)
-        certificates = [
-            vmhost.power_parameters["certificate"]
-            for vmhost in updated_vmhosts
-        ]
-        keys = [vmhost.power_parameters["key"] for vmhost in updated_vmhosts]
-        for cert in certificates:
-            self.assertEqual(cert, SAMPLE_CERT.certificate_pem())
-        for key in keys:
-            self.assertEqual(key, SAMPLE_CERT.private_key_pem())
-
 
 class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
     def test_delete_is_not_allowed(self):

@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Dict
 
 from django.core.exceptions import PermissionDenied
@@ -14,6 +15,7 @@ from django.db.models import (
     TextField,
 )
 from django.shortcuts import get_object_or_404
+from twisted.internet.defer import DeferredList, inlineCallbacks, succeed
 
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import get_default_zone
@@ -21,6 +23,9 @@ from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
 from maasserver.permissions import VMClusterPermission
+from maasserver.utils.orm import transactional
+from maasserver.utils.threads import deferToDatabase
+from provisioningserver.utils.twisted import asynchronous
 
 
 def _add_vmresources(cluster_resource, host_resource):
@@ -165,6 +170,9 @@ class VMCluster(CleanSave, TimestampedModel):
         on_delete=SET_DEFAULT,
     )
 
+    def __str__(self):
+        return f"VMCluster {self.id} ({self.name})"
+
     def hosts(self):
         from maasserver.models.bmc import Pod
 
@@ -208,6 +216,96 @@ class VMCluster(CleanSave, TimestampedModel):
                         total=p.total,
                     )
         return cluster_pools
+
+    @transactional
+    def update_certificate(self, cert, key, skip=None):
+        """Update vmcluster certificates"""
+        if cert is None or key is None:
+            return
+
+        for vmhost in self.hosts():
+            if skip is not None and vmhost.id == skip.id:
+                continue
+            power_parameters = vmhost.power_parameters.copy()
+            power_parameters["certificate"] = cert
+            power_parameters["key"] = key
+            vmhost.power_parameters = power_parameters
+            vmhost.save()
+
+    @asynchronous
+    def async_update_vmhosts(self, changed_data):
+        """Updates cluster's vmhosts"""
+
+        @transactional
+        def _get_peers(cluster, updated_attrs):
+            peers = [peer for peer in cluster.hosts()]
+            updated_data = {
+                attr: getattr(cluster, attr) for attr in updated_attrs
+            }
+            return (peers, updated_data)
+
+        @transactional
+        def _update_vmhost(vmhost, updated_data):
+            for attr, value in updated_data.items():
+                setattr(vmhost, attr, value)
+            vmhost.save(update_fields=updated_data.keys())
+
+        @inlineCallbacks
+        def _update_peers(result):
+            (peers, updated_data) = result
+            yield DeferredList(
+                [
+                    deferToDatabase(_update_vmhost, peer, updated_data)
+                    for peer in peers
+                ]
+            )
+
+        # filter attributes that should not be propagated
+        valid_fields = ["zone", "pool"]
+        updated_attrs = list(set(valid_fields) & set(changed_data))
+
+        if len(updated_attrs) == 0:
+            return succeed(self)
+
+        d = deferToDatabase(_get_peers, self, updated_attrs)
+        d.addCallback(_update_peers)
+        return d
+
+    @asynchronous
+    def async_delete(self, decompose=False):
+        """Delete a vmcluster asynchronously.
+
+        If `decompose` is True, any machine in a pod in this cluster will be
+        decomposed before it is removed from the database. If there are any
+        errors during decomposition, the deletion of the machine and
+        ultimately the vmcluster is not stopped.
+        """
+
+        @transactional
+        def _get_peers(cluster):
+            peers = [peer for peer in cluster.hosts()]
+            return (cluster.id, peers)
+
+        @inlineCallbacks
+        def _delete_cluster_peers(result):
+            (cluster_id, peers) = result
+            yield DeferredList(
+                [
+                    peer.async_delete(decompose=decompose, delete_peers=False)
+                    for peer in peers
+                ]
+            )
+            return cluster_id
+
+        @transactional
+        def _do_delete(cluster_id):
+            cluster = VMCluster.objects.get(id=cluster_id)
+            cluster.delete()
+
+        d = deferToDatabase(_get_peers, self)
+        d.addCallback(_delete_cluster_peers)
+        d.addCallback(partial(deferToDatabase, _do_delete))
+        return d
 
 
 @dataclass
