@@ -252,9 +252,14 @@ class VMHostStoragePool:
     """Storage pool available on a VM host"""
 
     name: str = ""
-    shared: bool = False
+    path: str = ""
+    backend: str = ""
     allocated: int = 0
     total: int = 0
+
+    @property
+    def shared(self):
+        return self.backend == "ceph"
 
     @property
     def free(self):
@@ -438,7 +443,8 @@ def _get_global_vm_host_storage(pod, resources):
     for pool in storage_pools:
         resources.storage_pools[pool.name] = VMHostStoragePool(
             name=pool.name,
-            shared=(pool.pool_type == "ceph"),
+            path=pool.path,
+            backend=pool.pool_type,
             total=pool.storage,
         )
         total_storage += pool.storage

@@ -419,6 +419,7 @@ class TestVMCluster(MAASServerTestCase):
                 pod=pod,
                 name=pool_shared_name,
                 pool_type="ceph",
+                path="/shared",
                 storage=storage_shared_total,
             )
             disk_size = random.randint(
@@ -429,7 +430,7 @@ class TestVMCluster(MAASServerTestCase):
             )
             storage_shared_allocated += disk_size
             pool2 = factory.make_PodStoragePool(
-                pod=pod, name=pool_nonshared_name, pool_type="lvm"
+                pod=pod, name=pool_nonshared_name, pool_type="lvm", path="/"
             )
             storage_nonshared_total += pool2.storage
             disk_size = random.randint(1 * 1024 ** 3, pool2.storage)
@@ -440,6 +441,8 @@ class TestVMCluster(MAASServerTestCase):
 
         cluster_pools = cluster.storage_pools()
         self.assertEqual(cluster_pools[pool_nonshared_name].shared, False)
+        self.assertEqual(cluster_pools[pool_nonshared_name].path, "/")
+        self.assertEqual(cluster_pools[pool_nonshared_name].backend, "lvm")
         self.assertEqual(
             cluster_pools[pool_nonshared_name].allocated,
             storage_nonshared_allocated,
@@ -449,6 +452,8 @@ class TestVMCluster(MAASServerTestCase):
             storage_nonshared_total,
         )
         self.assertEqual(cluster_pools[pool_shared_name].shared, True)
+        self.assertEqual(cluster_pools[pool_shared_name].path, "/shared")
+        self.assertEqual(cluster_pools[pool_shared_name].backend, "ceph")
         self.assertEqual(
             cluster_pools[pool_shared_name].allocated,
             storage_shared_allocated,

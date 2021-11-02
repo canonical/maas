@@ -84,7 +84,12 @@ class VMClusterHandler(TimestampedModelHandler):
             },
             "vm_count": resources.vm_count.tracked,
             "storage_pools": {
-                n: {"free": p.free, "total": p.total}
+                n: {
+                    "free": p.free,
+                    "total": p.total,
+                    "path": p.path,
+                    "backend": p.backend,
+                }
                 for n, p in resources.storage_pools.items()
             },
         }

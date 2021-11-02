@@ -86,6 +86,12 @@ class TestVMCluster(APITestCase.ForUser, VMClusterTestMixin):
         for name, pool in resources.storage_pools.items():
             self.assertIn(name, parsed_result["storage_pools"])
             self.assertEqual(
+                pool.backend, parsed_result["storage_pools"][name]["backend"]
+            )
+            self.assertEqual(
+                pool.path, parsed_result["storage_pools"][name]["path"]
+            )
+            self.assertEqual(
                 pool.free, parsed_result["storage_pools"][name]["free"]
             )
             self.assertEqual(

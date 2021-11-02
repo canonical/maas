@@ -88,7 +88,13 @@ class VMClusterHandler(OperationsHandler):
     def storage_pools(cls, cluster):
         pools = cluster.storage_pools()
         return {
-            n: {"free": p.free, "total": p.total} for n, p in pools.items()
+            n: {
+                "free": p.free,
+                "total": p.total,
+                "path": p.path,
+                "backend": p.backend,
+            }
+            for n, p in pools.items()
         }
 
     @admin_method

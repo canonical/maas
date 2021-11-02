@@ -185,6 +185,14 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         for name, pool in resources.storage_pools.items():
             self.assertIn(name, result["total_resources"]["storage_pools"])
             self.assertEqual(
+                pool.backend,
+                result["total_resources"]["storage_pools"][name]["backend"],
+            )
+            self.assertEqual(
+                pool.path,
+                result["total_resources"]["storage_pools"][name]["path"],
+            )
+            self.assertEqual(
                 pool.free,
                 result["total_resources"]["storage_pools"][name]["free"],
             )

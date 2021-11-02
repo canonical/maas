@@ -70,7 +70,8 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
         else:
             cluster_resources.storage_pools[pool.name] = VMClusterStoragePool(
                 name=pool.name,
-                shared=pool.shared,
+                backend=pool.backend,
+                path=pool.path,
                 allocated=pool.allocated,
                 total=pool.total,
             )
@@ -201,7 +202,7 @@ class VMCluster(CleanSave, TimestampedModel):
 
         host_pools = [get_vm_host_storage_pools(host) for host in self.hosts()]
 
-        cluster_pools = dict()
+        cluster_pools = {}
         for h in host_pools:
             for p in h.values():
                 if p.name in cluster_pools:
@@ -211,7 +212,8 @@ class VMCluster(CleanSave, TimestampedModel):
                 else:
                     cluster_pools[p.name] = VMClusterStoragePool(
                         name=p.name,
-                        shared=p.shared,
+                        backend=p.backend,
+                        path=p.path,
                         allocated=p.allocated,
                         total=p.total,
                     )
@@ -351,9 +353,14 @@ class VMClusterStoragePool:
     """VMClusterStoragePool tracks the usage of a storage pool accross the cluster"""
 
     name: str = ""
-    shared: bool = False
+    path: str = ""
+    backend: str = ""
     allocated: int = 0
     total: int = 0
+
+    @property
+    def shared(self):
+        return self.backend == "ceph"
 
     @property
     def free(self):
