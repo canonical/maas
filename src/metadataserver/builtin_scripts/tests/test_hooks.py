@@ -1850,6 +1850,29 @@ class TestProcessLXDResults(MAASServerTestCase):
             pcie_node_device.pci_address, pcie_device["pci_address"]
         )
 
+    def test_usb_device_null_interfaces(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        usb_device = make_lxd_usb_device()
+        usb_device["interfaces"] = None
+        lxd_output["resources"]["usb"] = {
+            "devices": [usb_device],
+            "total": 1,
+        }
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        usb_node_device = node.node_devices.get(bus=NODE_DEVICE_BUS.USB)
+        self.assertEqual(usb_node_device.hardware_type, HARDWARE_TYPE.NODE)
+        self.assertEqual(usb_node_device.vendor_id, usb_device["vendor_id"])
+        self.assertEqual(usb_node_device.product_id, usb_device["product_id"])
+        self.assertEqual(usb_node_device.vendor_name, usb_device["vendor"])
+        self.assertEqual(usb_node_device.product_name, usb_device["product"])
+        self.assertEqual(usb_node_device.bus_number, usb_device["bus_address"])
+        self.assertEqual(usb_node_device.commissioning_driver, "")
+        self.assertEqual(
+            usb_node_device.device_number, usb_device["device_address"]
+        )
+        self.assertIsNone(usb_node_device.pci_address)
+
     def test_updates_node_device(self):
         node = factory.make_Node()
         pcie_device = factory.make_NodeDevice(
