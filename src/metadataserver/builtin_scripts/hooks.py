@@ -465,13 +465,15 @@ def _process_usb_devices(add_func, data):
             device["device_address"],
         )
         key = (device["vendor_id"], device["product_id"], usb_address)
+        # the "interfaces" field can be present but None
+        interfaces = device.get("interfaces") or []
         # USB devices can have different drivers for each
         # functionality. e.g a webcam has a video and audio driver.
         commissioning_driver = ", ".join(
             set(
                 [
                     interface["driver"]
-                    for interface in device.get("interfaces", [])
+                    for interface in interfaces
                     if "driver" in interface
                 ]
             )
