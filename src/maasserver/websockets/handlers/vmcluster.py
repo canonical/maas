@@ -197,7 +197,7 @@ class VMClusterHandler(TimestampedModelHandler):
                 user=self.user, perm=self._meta.delete_permission, **params
             )
 
-        decompose = params.get("decompose", False)
+        decompose = params.pop("decompose", False)
         vmcluster = await deferToDatabase(get_vmcluster, params)
         return await vmcluster.async_delete(decompose=decompose)
 

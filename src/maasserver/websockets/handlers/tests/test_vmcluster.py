@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
+from functools import partial
 
 from django.http import Http404
 
@@ -333,6 +334,17 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
             self.assertIsInstance(e, Http404)
         else:
             self.fail("did not raise expected 'Http404' exception")
+
+    @wait_for_reactor
+    async def test_delete_decompose(self):
+        cluster = await deferToDatabase(partial(factory.make_VMCluster, vms=3))
+        admin = await deferToDatabase(factory.make_admin)
+
+        handler = VMClusterHandler(admin, {}, None)
+
+        await handler.delete({"id": cluster.id, "decompose": False})
+        expected_vmcluster = await deferToDatabase(reload_object, cluster)
+        self.assertIsNone(expected_vmcluster)
 
     @wait_for_reactor
     async def test_update(self):
