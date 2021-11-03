@@ -3863,12 +3863,16 @@ class Node(CleanSave, TimestampedModel):
 
         If the node is allocated, release it first.
         """
+        event = EVENT_TYPES.REQUEST_NODE_MARK_BROKEN_SYSTEM
+        if user:
+            event = EVENT_TYPES.REQUEST_NODE_MARK_BROKEN
         self._register_request_event(
             user,
-            EVENT_TYPES.REQUEST_NODE_MARK_BROKEN,
+            event,
             action="mark broken",
             comment=comment,
         )
+
         if self.status in RELEASABLE_STATUSES:
             self._release(user)
         # release() normally sets the status to RELEASING and leaves the
@@ -3880,12 +3884,16 @@ class Node(CleanSave, TimestampedModel):
 
     def mark_fixed(self, user, comment=None):
         """Mark a broken node as fixed and change its state to 'READY'."""
+        event = EVENT_TYPES.REQUEST_NODE_MARK_FIXED_SYSTEM
+        if user:
+            event = EVENT_TYPES.REQUEST_NODE_MARK_FIXED
         self._register_request_event(
             user,
-            EVENT_TYPES.REQUEST_NODE_MARK_FIXED,
+            event,
             action="mark fixed",
             comment=comment,
         )
+
         if self.status != NODE_STATUS.BROKEN:
             raise NodeStateViolation(
                 "Can't mark a non-broken node as 'Ready'."

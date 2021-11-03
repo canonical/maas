@@ -347,7 +347,9 @@ class TestInterfacesAPI(APITestCase.ForUser):
 
     def test_create_physical_requires_mac(self):
         self.become_admin()
-        node = factory.make_Node(status=random.choice(EDITABLE_STATUSES))
+        node = factory.make_Node(
+            status=random.choice(EDITABLE_STATUSES), bmc=factory.make_BMC()
+        )
         uri = get_interfaces_uri(node)
         response = self.client.post(uri, {"op": "create_physical"})
         self.assertEqual(

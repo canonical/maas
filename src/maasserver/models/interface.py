@@ -41,6 +41,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     INTERFACE_TYPE_CHOICES,
     IPADDRESS_TYPE,
+    NODE_STATUS,
     NODE_TYPE,
 )
 from maasserver.exceptions import (
@@ -507,6 +508,20 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                     child=interface, parent=parent_nic
                 ).save()
         return interface
+
+    def resolve_missing_mac_address(self, iface):
+        if iface.mac_address is None:
+            raise ValidationError(
+                "interface needs a MAC address in order to resolve the error"
+            )
+
+        old = self.get(id=iface.id)
+        if (
+            old.mac_address is not None
+            or iface.node.status != NODE_STATUS.BROKEN
+        ):
+            return
+        iface.node.mark_fixed(None)
 
 
 class Interface(CleanSave, TimestampedModel):
@@ -1649,6 +1664,13 @@ class PhysicalInterface(Interface):
     def get_type(self):
         return INTERFACE_TYPE.PHYSICAL
 
+    def _is_virtual(self):
+        if self.node is None or self.node.bmc is None:
+            return False
+
+        power_type = self.node.bmc.power_type
+        return power_type == "lxd" or power_type == "virsh"
+
     def clean(self):
         super().clean()
         # Node and MAC address is always required for a physical interface.
@@ -1656,26 +1678,42 @@ class PhysicalInterface(Interface):
         if self.node is None:
             validation_errors["node"] = ["This field cannot be blank."]
         if self.mac_address is None:
-            validation_errors["mac_address"] = ["This field cannot be blank."]
+            if self._is_virtual():
+                self.node.mark_broken(
+                    None,
+                    comment="A Physical Interface requires a MAC address.",
+                )
+            else:
+                validation_errors["mac_address"] = [
+                    "This field cannot be blank."
+                ]
         if validation_errors:
             raise ValidationError(validation_errors)
 
-        # MAC address must be unique amongst every PhysicalInterface.
-        other_interfaces = PhysicalInterface.objects.filter(
-            mac_address=self.mac_address
-        )
-        if self.id is not None:
-            other_interfaces = other_interfaces.exclude(id=self.id)
-        other_interfaces = other_interfaces.all()
-        if len(other_interfaces) > 0:
-            raise ValidationError(
-                {
-                    "mac_address": [
-                        "This MAC address is already in use by %s."
-                        % (other_interfaces[0].get_log_string())
-                    ]
-                }
+        if self.mac_address:
+            # MAC address must be unique amongst every PhysicalInterface.
+            other_interfaces = PhysicalInterface.objects.filter(
+                mac_address=self.mac_address
             )
+            if self.id is not None:
+                other_interfaces = other_interfaces.exclude(id=self.id)
+            other_interfaces = other_interfaces.all()
+            if len(other_interfaces) > 0:
+                raise ValidationError(
+                    {
+                        "mac_address": [
+                            "This MAC address is already in use by %s."
+                            % (other_interfaces[0].get_log_string())
+                        ]
+                    }
+                )
+
+            if (
+                self.node.status == NODE_STATUS.BROKEN
+                and self._is_virtual()
+                and self.id is not None
+            ):
+                PhysicalInterface.objects.resolve_missing_mac_address(self)
 
         # No parents are allow for a physical interface.
         if self.id is not None:

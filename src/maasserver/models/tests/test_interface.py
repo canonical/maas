@@ -30,6 +30,7 @@ from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
+    NODE_STATUS,
 )
 from maasserver.exceptions import (
     StaticIPAddressOutOfRange,
@@ -373,6 +374,34 @@ class TestInterfaceManager(MAASServerTestCase):
         self.assertEqual(iface, fetched_iface)
         fetched_iface = get_one(Interface.objects.filter_by_ip("10.0.0.1"))
         self.assertEqual(iface, fetched_iface)
+
+    def test_resolve_missing_mac_address(self):
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=factory.make_Node(bmc=factory.make_Pod()),
+        )
+        iface.mac_address = None
+        iface.save()
+        self.assertEqual(iface.node.status, NODE_STATUS.BROKEN)
+        iface.mac_address = factory.make_mac_address()
+        PhysicalInterface.objects.resolve_missing_mac_address(iface)
+        self.assertEqual(iface.node.status, NODE_STATUS.READY)
+
+    def test_resolve_missing_mac_address_raises_error_on_no_new_mac_address(
+        self,
+    ):
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            node=factory.make_Node(bmc=factory.make_Pod()),
+        )
+        iface.mac_address = None
+        iface.save()
+        self.assertEqual(iface.node.status, NODE_STATUS.BROKEN)
+        self.assertRaises(
+            ValidationError,
+            PhysicalInterface.objects.resolve_missing_mac_address,
+            iface,
+        )
 
 
 class TestInterfaceQueriesMixin(MAASServerTestCase):
@@ -1578,13 +1607,43 @@ class TestPhysicalInterface(MAASServerTestCase):
 
     def test_requires_mac_address(self):
         interface = PhysicalInterface(
-            name=factory.make_name("eth"), node=factory.make_Node()
+            name=factory.make_name("eth"),
+            node=factory.make_Node(bmc=factory.make_BMC()),
         )
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEqual(
             {"mac_address": ["This field cannot be blank."]},
             error.message_dict,
         )
+
+    def test_virtual_machine_does_not_require_mac_address(self):
+        interface = PhysicalInterface(
+            name=factory.make_name("eth"),
+            node=factory.make_Node(bmc=factory.make_Pod()),
+        )
+        interface.save()
+        self.assertIsNone(interface.mac_address)
+
+    def test_virtual_machine_with_no_mac_sets_node_broken(self):
+        interface = PhysicalInterface(
+            name=factory.make_name("eth"),
+            node=factory.make_Node(bmc=factory.make_Pod()),
+        )
+        interface.save()
+        self.assertEqual(interface.node.status, NODE_STATUS.BROKEN)
+
+    def test_virtual_machine_with_no_mac_can_set_node_to_fixed_when_mac_is_provided(
+        self,
+    ):
+        interface = PhysicalInterface(
+            name=factory.make_name("eth"),
+            node=factory.make_Node(bmc=factory.make_Pod()),
+        )
+        interface.save()
+        self.assertEqual(interface.node.status, NODE_STATUS.BROKEN)
+        interface.mac_address = factory.make_mac_address()
+        interface.save()
+        self.assertEqual(interface.node.status, NODE_STATUS.READY)
 
     def test_mac_address_must_be_unique(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
