@@ -85,17 +85,17 @@ class TestVMCluster(APITestCase.ForUser, VMClusterTestMixin):
         self.assertEqual(resources.vm_count.tracked, parsed_result["vm_count"])
         for name, pool in resources.storage_pools.items():
             self.assertIn(name, parsed_result["storage_pools"])
+
+            parsed_pool = parsed_result["storage_pools"][name]
+            self.assertEqual(pool.backend, parsed_pool["backend"])
+            self.assertEqual(pool.path, parsed_pool["path"])
+            self.assertEqual(pool.free, parsed_pool["free"])
+            self.assertEqual(pool.total, parsed_pool["total"])
             self.assertEqual(
-                pool.backend, parsed_result["storage_pools"][name]["backend"]
+                pool.allocated_tracked, parsed_pool["allocated_tracked"]
             )
             self.assertEqual(
-                pool.path, parsed_result["storage_pools"][name]["path"]
-            )
-            self.assertEqual(
-                pool.free, parsed_result["storage_pools"][name]["free"]
-            )
-            self.assertEqual(
-                pool.total, parsed_result["storage_pools"][name]["total"]
+                pool.allocated_other, parsed_pool["allocated_other"]
             )
 
     def test_DELETE_calls_async_delete(self):

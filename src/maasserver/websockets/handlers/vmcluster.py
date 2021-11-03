@@ -89,6 +89,8 @@ class VMClusterHandler(TimestampedModelHandler):
                     "total": p.total,
                     "path": p.path,
                     "backend": p.backend,
+                    "allocated_tracked": p.allocated_tracked,
+                    "allocated_other": p.allocated_other,
                 }
                 for n, p in resources.storage_pools.items()
             },

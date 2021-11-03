@@ -188,22 +188,15 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         )
         for name, pool in resources.storage_pools.items():
             self.assertIn(name, result["total_resources"]["storage_pools"])
+            ret_pool = result["total_resources"]["storage_pools"][name]
+            self.assertEqual(pool.backend, ret_pool["backend"])
+            self.assertEqual(pool.path, ret_pool["path"])
+            self.assertEqual(pool.free, ret_pool["free"])
+            self.assertEqual(pool.total, ret_pool["total"])
             self.assertEqual(
-                pool.backend,
-                result["total_resources"]["storage_pools"][name]["backend"],
+                pool.allocated_tracked, ret_pool["allocated_tracked"]
             )
-            self.assertEqual(
-                pool.path,
-                result["total_resources"]["storage_pools"][name]["path"],
-            )
-            self.assertEqual(
-                pool.free,
-                result["total_resources"]["storage_pools"][name]["free"],
-            )
-            self.assertEqual(
-                pool.total,
-                result["total_resources"]["storage_pools"][name]["total"],
-            )
+            self.assertEqual(pool.allocated_other, ret_pool["allocated_other"])
 
     def test_full_dehydrate(self):
         cluster = factory.make_VMCluster(pods=3)

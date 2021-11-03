@@ -60,11 +60,12 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
     added_storage = 0
     for pool in host_resources.storage_pools.values():
         if pool.name in cluster_resources.storage_pools:
-            cluster_resources.storage_pools[
-                pool.name
-            ].allocated += pool.allocated
+            cluster_pool = cluster_resources.storage_pools[pool.name]
+            cluster_pool.allocated_tracked += pool.allocated_tracked
+            cluster_pool.allocated_other += pool.allocated_other
+
             if not pool.shared:
-                cluster_resources.storage_pools[pool.name].total += pool.total
+                cluster_pool.total += pool.total
                 added_storage += pool.total
 
         else:
@@ -72,7 +73,8 @@ def aggregate_vmhost_resources(cluster_resources, host_resources):
                 name=pool.name,
                 backend=pool.backend,
                 path=pool.path,
-                allocated=pool.allocated,
+                allocated_tracked=pool.allocated_tracked,
+                allocated_other=pool.allocated_other,
                 total=pool.total,
             )
             added_storage += pool.total
@@ -206,15 +208,17 @@ class VMCluster(CleanSave, TimestampedModel):
         for h in host_pools:
             for p in h.values():
                 if p.name in cluster_pools:
-                    cluster_pools[p.name].allocated += p.allocated
-                    if not cluster_pools[p.name].shared:
-                        cluster_pools[p.name].total += p.total
+                    cpool = cluster_pools[p.name]
+                    cpool.allocated_tracked += p.allocated_tracked
+                    cpool.allocated_other += p.allocated_other
+                    cpool.total += p.total if not cpool.shared else 0
                 else:
                     cluster_pools[p.name] = VMClusterStoragePool(
                         name=p.name,
                         backend=p.backend,
                         path=p.path,
-                        allocated=p.allocated,
+                        allocated_tracked=p.allocated_tracked,
+                        allocated_other=p.allocated_other,
                         total=p.total,
                     )
         return cluster_pools
@@ -355,12 +359,17 @@ class VMClusterStoragePool:
     name: str = ""
     path: str = ""
     backend: str = ""
-    allocated: int = 0
+    allocated_tracked: int = 0
+    allocated_other: int = 0
     total: int = 0
 
     @property
     def shared(self):
         return self.backend == "ceph"
+
+    @property
+    def allocated(self):
+        return self.allocated_other + self.allocated_tracked
 
     @property
     def free(self):

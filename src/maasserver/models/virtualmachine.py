@@ -254,12 +254,17 @@ class VMHostStoragePool:
     name: str = ""
     path: str = ""
     backend: str = ""
-    allocated: int = 0
+    allocated_tracked: int = 0
+    allocated_other: int = 0
     total: int = 0
 
     @property
     def shared(self):
         return self.backend == "ceph"
+
+    @property
+    def allocated(self):
+        return self.allocated_other + self.allocated_tracked
 
     @property
     def free(self):
@@ -450,14 +455,17 @@ def _get_global_vm_host_storage(pod, resources):
         total_storage += pool.storage
 
     for entry in storage:
-        if entry["tracked_project"]:
-            resources.storage.allocated_tracked += entry["used"]
-        else:
-            resources.storage.allocated_other += entry["used"]
-
         pool_name = entry["backing_pool__name"]
-        if pool_name in resources.storage_pools:
-            resources.storage_pools[pool_name].allocated += entry["used"]
+        used = entry["used"]
+
+        if entry["tracked_project"]:
+            resources.storage.allocated_tracked += used
+            if pool_name in resources.storage_pools:
+                resources.storage_pools[pool_name].allocated_tracked += used
+        else:
+            resources.storage.allocated_other += used
+            if pool_name in resources.storage_pools:
+                resources.storage_pools[pool_name].allocated_other += used
 
     resources.storage.free = total_storage - resources.storage.allocated
     return resources

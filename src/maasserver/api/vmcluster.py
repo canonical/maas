@@ -91,6 +91,8 @@ class VMClusterHandler(OperationsHandler):
             n: {
                 "free": p.free,
                 "total": p.total,
+                "allocated_tracked": p.allocated_tracked,
+                "allocated_other": p.allocated_other,
                 "path": p.path,
                 "backend": p.backend,
             }
