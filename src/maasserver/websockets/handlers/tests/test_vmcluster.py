@@ -3,6 +3,8 @@
 
 from datetime import datetime
 
+from django.http import Http404
+
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
@@ -317,6 +319,20 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
         await handler.delete({"id": cluster.id})
         expected_vmcluster = await deferToDatabase(reload_object, cluster)
         self.assertIsNone(expected_vmcluster)
+
+    @wait_for_reactor
+    async def test_delete_returns_404_on_invalid_id(self):
+        cluster = await deferToDatabase(factory.make_VMCluster)
+        admin = await deferToDatabase(factory.make_admin)
+
+        handler = VMClusterHandler(admin, {}, None)
+
+        try:
+            await handler.delete({"id": -1 * cluster.id})
+        except Exception as e:
+            self.assertIsInstance(e, Http404)
+        else:
+            self.fail("did not raise expected 'Http404' exception")
 
     @wait_for_reactor
     async def test_update(self):

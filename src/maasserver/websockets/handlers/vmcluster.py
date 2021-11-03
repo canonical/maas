@@ -193,10 +193,9 @@ class VMClusterHandler(TimestampedModelHandler):
             # Clear rbac cache before check (this is in its own thread).
             rbac.clear()
 
-            obj = self.get_object(params)
-            if not self.user.has_perm(self._meta.delete_permission, obj):
-                raise HandlerPermissionError()
-            return obj
+            return VMCluster.objects.get_cluster_or_404(
+                user=self.user, perm=self._meta.delete_permission, **params
+            )
 
         decompose = params.get("decompose", False)
         vmcluster = await deferToDatabase(get_vmcluster, params)
