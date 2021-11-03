@@ -3316,7 +3316,7 @@ class TestRunScripts(MAASTestCase):
             scripts += copy.deepcopy(instance_thread_group)
         scripts += copy.deepcopy(any_thread)
         config = Config()
-        scripts_dir = factory.make_name("scripts_dir")
+        scripts_dir = self.useFixture(TempDirectory()).path
         out_dir = os.path.join(scripts_dir, "out")
 
         run_scripts(config, scripts_dir, out_dir, scripts)
@@ -3352,7 +3352,7 @@ class TestRunScripts(MAASTestCase):
         )
 
     def test_run_scripts_adds_data(self):
-        scripts_dir = factory.make_name("scripts_dir")
+        scripts_dir = self.useFixture(TempDirectory()).path
         out_dir = os.path.join(scripts_dir, "out")
         self.patch(maas_run_remote_scripts, "install_dependencies")
         self.patch(maas_run_remote_scripts, "run_script")
