@@ -3218,7 +3218,8 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
             self.assertIsInstance(e, ObjectDoesNotExist)
 
     @wait_for_reactor
-    async def test_delete_clustered_pod_deletes_peers(self):
+    @inlineCallbacks
+    def test_delete_clustered_pod_deletes_peers(self):
         cluster = yield deferToDatabase(factory.make_VMCluster, pods=0)
         pod_defers = yield DeferredList(
             [
@@ -3228,6 +3229,7 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
         )
         pods = [pod[1] for pod in pod_defers]
         pod_ids = [pod.id for pod in pods]
+        yield pods[0].async_delete()
         not_found_pods = yield deferToDatabase(
             Pod.objects.filter, id__in=pod_ids
         )

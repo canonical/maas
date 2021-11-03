@@ -1745,16 +1745,26 @@ class Pod(BMC):
                 pod = Pod.objects.get(id=pod_id)
                 super(BMC, pod).delete()
 
-        # if this vmhost belongs to a cluster, drive the process from there
-        if delete_peers and self.cluster is not None:
-            return self.cluster.async_delete(decompose)
+        @transactional
+        def _check_for_cluster_delete():
+            return delete_peers and self.cluster is not None
 
-        # Don't catch any errors here they are raised to the caller.
-        d = deferToDatabase(gather_clients_and_machines, self)
-        d.addCallback(
-            decompose_machines if decompose else get_pod_and_machine_ids
-        )
-        d.addCallback(partial(deferToDatabase, perform_deletion))
+        d = deferToDatabase(_check_for_cluster_delete)
+
+        def build_delete_callback_chain(clustered_delete):
+            # if this vmhost belongs to a cluster, drive the process from there
+            if clustered_delete:
+                return self.cluster.async_delete(decompose)
+            # Don't catch any errors here they are raised to the caller.
+            d = deferToDatabase(gather_clients_and_machines, self)
+            d.addCallback(
+                decompose_machines if decompose else get_pod_and_machine_ids
+            )
+            d.addCallback(partial(deferToDatabase, perform_deletion))
+            return d
+
+        d.addCallback(build_delete_callback_chain)
+
         return d
 
 
