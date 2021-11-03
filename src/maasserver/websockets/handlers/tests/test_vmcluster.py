@@ -2,10 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from datetime import datetime
-from functools import partial
 
 from django.http import Http404
+from twisted.internet.defer import succeed
 
+from maasserver.models import Pod
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
@@ -337,14 +338,22 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     async def test_delete_decompose(self):
-        cluster = await deferToDatabase(partial(factory.make_VMCluster, vms=3))
+        cluster = await deferToDatabase(factory.make_VMCluster, pods=2)
         admin = await deferToDatabase(factory.make_admin)
+
+        mock_async_delete = self.patch(Pod, "async_delete")
+        mock_async_delete.return_value = succeed(None)
 
         handler = VMClusterHandler(admin, {}, None)
 
-        await handler.delete({"id": cluster.id, "decompose": False})
+        await handler.delete({"id": cluster.id, "decompose": True})
         expected_vmcluster = await deferToDatabase(reload_object, cluster)
+
         self.assertIsNone(expected_vmcluster)
+        self.assertEqual(2, mock_async_delete.call_count)
+        mock_async_delete.assert_called_with(
+            decompose=True, delete_peers=False
+        )
 
     @wait_for_reactor
     async def test_update(self):
