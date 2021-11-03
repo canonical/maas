@@ -75,7 +75,7 @@ class TestRegisterCommands(MAASTestCase):
     def test_loads_all_regiond_commands(self):
         parser = ArgumentParser()
         cli.register_cli_commands(parser)
-        for name, app, help_text in cli.regiond_commands:
+        for name, app, help_text in cli.REGIOND_COMMANDS:
             subparser = parser.subparsers.choices.get(name)
             klass = management.load_command_class(app, name)
             if help_text is None:

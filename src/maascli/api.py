@@ -5,7 +5,7 @@
 
 
 import argparse
-from collections import defaultdict
+from contextlib import suppress
 from functools import partial
 import http.client
 import json
@@ -431,33 +431,29 @@ def register_resources(profile, parser):
             handlers = [resource["anon"]]
         else:
             handlers = [resource["auth"], resource["anon"]]
-        # Merge actions from the active handlers. This could be slightly
-        # simpler using a dict and going through the handlers in reverse, but
-        # doing it forwards with a defaultdict(list) leaves an easier-to-debug
-        # structure, and ought to be easier to understand.
-        actions = defaultdict(list)
+        actions = {}
         for handler in handlers:
             if handler is not None:
                 for action in handler["actions"]:
                     action_name = action["name"]
-                    actions[action_name].append(action)
+                    if action_name not in actions:
+                        # register handler only for the first action of each
+                        # name found
+                        actions[action_name] = action
+
+        if not actions:
+            continue
         # Always represent this resource using the authenticated handler, if
         # defined, before the fall-back anonymous handler, even if this
         # profile does not have credentials.
-        represent_as = dict(
-            resource["auth"] or resource["anon"],
-            name=resource["name"],
-            handler_name=handler_command_name(resource["name"]),
-            actions=[],
+        handler_defs.append(
+            {
+                "name": resource["name"],
+                "handler_name": handler_command_name(resource["name"]),
+                "actions": list(actions.values()),
+                **(resource["auth"] or resource["anon"]),
+            }
         )
-        # Each value in the actions dict is a list of one or more action
-        # descriptions. Here we register the handler with only the first of
-        # each of those.
-        if actions:
-            represent_as["actions"].extend(
-                value[0] for value in actions.values()
-            )
-            handler_defs.append(represent_as)
 
     for handler in sorted(handler_defs, key=itemgetter("handler_name")):
         register_handler(profile, handler, parser)
@@ -484,19 +480,16 @@ profile_help = "\n\n".join(
 
 def register_api_commands(parser):
     """Register all profiles as subcommands on `parser`."""
-    try:
-        with ProfileConfig.open() as config:
-            for profile_name in config:
-                profile = config[profile_name]
-                profile_parser = parser.subparsers.add_parser(
-                    profile["name"],
-                    help="Interact with %(url)s" % profile,
-                    description=(
-                        "Issue commands to the MAAS region controller at "
-                        "%(url)s." % profile
-                    ),
-                    epilog=profile_help,
-                )
-                register_resources(profile, profile_parser)
-    except FileNotFoundError:
-        return
+    with suppress(FileNotFoundError), ProfileConfig.open() as config:
+        for profile_name in config:
+            profile = config[profile_name]
+            profile_parser = parser.subparsers.add_parser(
+                profile["name"],
+                help="Interact with %(url)s" % profile,
+                description=(
+                    "Issue commands to the MAAS region controller at "
+                    "%(url)s." % profile
+                ),
+                epilog=profile_help,
+            )
+            register_resources(profile, profile_parser)

@@ -202,7 +202,7 @@ class cmd_init(Command):
 
 
 # Built-in commands to the maascli.
-commands = {
+COMMANDS = {
     "login": cmd_login,
     "logout": cmd_logout,
     "list": cmd_list,
@@ -211,7 +211,7 @@ commands = {
 
 # Commands to expose in the maascli when installed on a machine with
 # python3-maasserver.
-regiond_commands = (
+REGIOND_COMMANDS = (
     ("apikey", "maasserver", None),
     ("configauth", "maasserver", None),
     ("createadmin", "maasserver", None),
@@ -240,7 +240,7 @@ def register_cli_commands(parser):
             )
         command_parser.set_defaults(execute=command(command_parser))
 
-    for name, command in commands.items():
+    for name, command in COMMANDS.items():
         add_command(name, command)
 
     # Setup the snap commands into the maascli if in a snap and command exists.
@@ -304,7 +304,7 @@ def run_regiond_command(management, parser):
 
 def load_regiond_commands(management, parser):
     """Load the allowed regiond commands into the MAAS cli."""
-    for name, app, help_text in regiond_commands:
+    for name, app, help_text in REGIOND_COMMANDS:
         klass = management.load_command_class(app, name)
         if help_text is None:
             help_text = klass.help
