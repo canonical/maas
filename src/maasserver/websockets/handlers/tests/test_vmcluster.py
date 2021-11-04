@@ -31,7 +31,9 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
             ]
             vms = [
                 factory.make_VirtualMachine(
-                    bmc=vmhost.as_bmc(), machine=factory.make_Machine()
+                    bmc=vmhost.as_bmc(),
+                    machine=factory.make_Machine(),
+                    project=cluster.project,
                 )
                 for vmhost in vmhosts
             ]
@@ -62,7 +64,9 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
                 if with_vms:
                     vms = [
                         factory.make_VirtualMachine(
-                            bmc=vmhost.as_bmc(), machine=factory.make_Machine()
+                            bmc=vmhost.as_bmc(),
+                            machine=factory.make_Machine(),
+                            project=cluster.project,
                         )
                         for vmhost in vmhosts
                     ]
@@ -201,11 +205,13 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
     def test_full_dehydrate(self):
         cluster = factory.make_VMCluster(pods=3)
         vmhosts = cluster.hosts()
-        _ = [factory.make_PodStoragePool(pod=vmhost) for vmhost in vmhosts]
+        [factory.make_PodStoragePool(pod=vmhost) for vmhost in vmhosts]
 
         vms = [
             factory.make_VirtualMachine(
-                bmc=vmhost.as_bmc(), machine=factory.make_Machine()
+                bmc=vmhost.as_bmc(),
+                machine=factory.make_Machine(),
+                project=cluster.project,
             )
             for vmhost in vmhosts
         ]
@@ -216,6 +222,31 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
 
         self._assert_dehydrated_cluster_equal(result, cluster, vmhosts, vms)
 
+    def test_full_dehydrate_with_untracked_vms(self):
+        cluster = factory.make_VMCluster()
+        vmhost = cluster.hosts().get()
+        factory.make_PodStoragePool(pod=vmhost)
+
+        tracked_vm = factory.make_VirtualMachine(
+            bmc=vmhost.as_bmc(),
+            machine=factory.make_Machine(),
+            project=cluster.project,
+        )
+        # Untracked VM in a separate project
+        factory.make_VirtualMachine(
+            bmc=vmhost.as_bmc(),
+            machine=None,
+            project=factory.make_name("project"),
+        )
+
+        handler = VMClusterHandler(factory.make_admin(), {}, None)
+
+        result = handler.full_dehydrate(cluster)
+
+        self._assert_dehydrated_cluster_equal(
+            result, cluster, [vmhost], [tracked_vm]
+        )
+
     def test_dehydrate(self):
         cluster = factory.make_VMCluster(pods=0)
         vmhosts = [factory.make_Pod(cluster=cluster) for _ in range(3)]
@@ -223,7 +254,9 @@ class TestVMClusterHandler(MAASTransactionServerTestCase):
 
         vms = [
             factory.make_VirtualMachine(
-                bmc=vmhost.as_bmc(), machine=factory.make_Machine()
+                bmc=vmhost.as_bmc(),
+                machine=factory.make_Machine(),
+                project=cluster.project,
             )
             for vmhost in vmhosts
         ]

@@ -510,6 +510,19 @@ class TestVMCluster(MAASServerTestCase):
         cluster = VMCluster(name=cluster_name, project=project)
         self.assertEqual(list(cluster.virtual_machines()), [])
 
+    def test_tracked_virtual_machines(self):
+        our_project = factory.make_name("project")
+        other_project = factory.make_name("project")
+        cluster = factory.make_VMCluster(project=our_project, vms=3)
+
+        pod = cluster.hosts().get()
+        # a VM that we're not tracking, since it's in another project
+        untracked_vm = factory.make_VirtualMachine(
+            memory=1024, bmc=pod, project=other_project
+        )
+        self.assertNotIn(untracked_vm, cluster.tracked_virtual_machines())
+        self.assertIn(untracked_vm, cluster.virtual_machines())
+
     def test_update_cluster_certificate_updates_peers_with_same_cert(self):
         cluster = factory.make_VMCluster(pods=3)
         cert = SAMPLE_CERT.certificate_pem()
@@ -589,3 +602,22 @@ class TestVMClusterUpdate(MAASTransactionServerTestCase):
         pod2_pool = yield deferToDatabase(lambda: reload_object(pod2).pool)
         self.assertEqual(pool, pod1_pool)
         self.assertEqual(pool, pod2_pool)
+
+
+class TestVMClusterVMCount(MAASServerTestCase):
+    def test_untracked_vms_counted(self):
+        our_project = factory.make_name("project")
+        other_project = factory.make_name("project")
+
+        cluster = factory.make_VMCluster(project=our_project, vms=3)
+
+        pod = cluster.hosts().get()
+        # a VM that we're not tracking, since it's in another project
+        factory.make_VirtualMachine(
+            memory=1024, bmc=pod.as_bmc(), project=other_project
+        )
+
+        resources = cluster.total_resources()
+        self.assertEqual(3, resources.vm_count.tracked)
+        self.assertEqual(1, resources.vm_count.other)
+        self.assertEqual(4, resources.vm_count.total)

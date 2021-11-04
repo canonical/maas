@@ -656,7 +656,7 @@ class Factory(maastesting.factory.Factory):
     def make_BMC(
         self, power_type=None, power_parameters=None, ip_address=None, **kwargs
     ):
-        """Make a :class:`BMC`. """
+        """Make a :class:`BMC`."""
         # If an IP address was specified, we need to present it in the BMC
         # power_parameters, or it will be overwritten.
         if ip_address is not None:
@@ -699,6 +699,7 @@ class Factory(maastesting.factory.Factory):
         parameters=None,
         ip_address=None,
         host=None,
+        project=None,
         cluster=None,
         **kwargs,
     ):
@@ -718,6 +719,8 @@ class Factory(maastesting.factory.Factory):
                 }
             elif pod_type == "lxd":
                 parameters = {"power_address": f"{ip}:8443"}
+        if project:
+            parameters["project"] = project
         pod = Pod(
             power_type=pod_type,
             power_parameters=parameters,
@@ -3014,9 +3017,9 @@ class Factory(maastesting.factory.Factory):
         disk_size=None,
     ):
         if name is None:
-            name = factory.make_name("name")
+            name = self.make_name("name")
         if project is None:
-            project = factory.make_name("project")
+            project = self.make_name("project")
         if zone is None:
             zone = self.make_Zone()
 
@@ -3028,25 +3031,26 @@ class Factory(maastesting.factory.Factory):
         )
 
         for _ in range(0, pods):
-            pod = factory.make_Pod(
+            pod = self.make_Pod(
                 pod_type="lxd",
-                host=None,
                 cores=cores,
                 memory=memory,
                 cluster=cluster,
+                project=project,
             )
-            pool = factory.make_PodStoragePool(pod=pod, storage=storage)
+            pool = self.make_PodStoragePool(pod=pod, storage=storage)
 
             for _ in range(0, vms):
-                node = factory.make_Node(bmc=pod)
-                vm = factory.make_VirtualMachine(
+                node = self.make_Node(bmc=pod)
+                vm = self.make_VirtualMachine(
                     machine=node,
                     memory=vm_memory,
                     pinned_cores=[0, 2],
                     hugepages_backed=False,
                     bmc=pod,
+                    project=project,
                 )
-                factory.make_VirtualMachineDisk(
+                self.make_VirtualMachineDisk(
                     vm=vm, backing_pool=pool, size=disk_size
                 )
 

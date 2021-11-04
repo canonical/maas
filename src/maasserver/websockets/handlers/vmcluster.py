@@ -98,7 +98,10 @@ class VMClusterHandler(TimestampedModelHandler):
 
     def full_dehydrate(self, obj, for_list=False):
         return self.dehydrate(
-            obj, obj.hosts(), obj.total_resources(), obj.virtual_machines()
+            obj,
+            obj.hosts(),
+            obj.total_resources(),
+            obj.tracked_virtual_machines(),
         )
 
     def dehydrate(self, cluster, vmhosts, resources, vms):
@@ -136,7 +139,7 @@ class VMClusterHandler(TimestampedModelHandler):
                     cluster,
                     cluster.hosts(),
                     cluster.total_resources(),
-                    cluster.virtual_machines(),
+                    cluster.tracked_virtual_machines(),
                 )
                 for cluster in objs
             }
@@ -160,7 +163,7 @@ class VMClusterHandler(TimestampedModelHandler):
                         cluster,
                         cluster.hosts(),
                         cluster.total_resources(),
-                        cluster.virtual_machines(),
+                        cluster.tracked_virtual_machines(),
                     )
                     for cluster in phys_cluster
                 ]
@@ -181,7 +184,10 @@ class VMClusterHandler(TimestampedModelHandler):
         @transactional
         def render_object(obj):
             return self.dehydrate(
-                obj, obj.hosts(), obj.total_resources(), obj.virtual_machines()
+                obj,
+                obj.hosts(),
+                obj.total_resources(),
+                obj.tracked_virtual_machines(),
             )
 
         cluster = await deferToDatabase(get_object, params["id"])

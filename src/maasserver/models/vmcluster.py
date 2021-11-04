@@ -194,10 +194,15 @@ class VMCluster(CleanSave, TimestampedModel):
         return cluster_resources
 
     def virtual_machines(self):
+        """All VirtualMachines on this cluster, includes untracked VMs"""
         from maasserver.models.virtualmachine import VirtualMachine
 
         hosts = self.hosts()
         return VirtualMachine.objects.filter(bmc__in=hosts)
+
+    def tracked_virtual_machines(self):
+        """VirtualMachines that are part of this project."""
+        return self.virtual_machines().filter(project=self.project)
 
     def storage_pools(self):
         from maasserver.models.virtualmachine import get_vm_host_storage_pools
@@ -349,7 +354,7 @@ class VMClusterVMCount:
 
     @property
     def total(self):
-        return self.tracked - self.other
+        return self.tracked + self.other
 
 
 @dataclass
