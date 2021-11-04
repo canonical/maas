@@ -104,7 +104,7 @@ from maasserver.api.virtualmachine import (
     VirtualMachinesHandler,
 )
 from maasserver.api.vlans import VlanHandler, VlansHandler
-from maasserver.api.vmcluster import VMClusterHandler, VMClustersHandler
+from maasserver.api.vmcluster import VmClusterHandler, VmClustersHandler
 from maasserver.api.vmfs_datastores import (
     VmfsDatastoreHandler,
     VmfsDatastoresHandler,
@@ -161,10 +161,10 @@ devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 pod_handler = RestrictedResource(PodHandler, authentication=api_auth)
 pods_handler = RestrictedResource(PodsHandler, authentication=api_auth)
 vm_cluster_handler = RestrictedResource(
-    VMClusterHandler, authentication=api_auth
+    VmClusterHandler, authentication=api_auth
 )
 vm_clusters_handler = RestrictedResource(
-    VMClustersHandler, authentication=api_auth
+    VmClustersHandler, authentication=api_auth
 )
 vm_host_handler = RestrictedResource(VmHostHandler, authentication=api_auth)
 vm_hosts_handler = RestrictedResource(VmHostsHandler, authentication=api_auth)

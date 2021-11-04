@@ -25,7 +25,7 @@ DISPLAYED_VMCLUSTER_FIELDS = (
 )
 
 
-class VMClusterHandler(OperationsHandler):
+class VmClusterHandler(OperationsHandler):
     """
     Read operations for the VM Cluster object
 
@@ -172,7 +172,7 @@ class VMClusterHandler(OperationsHandler):
         return rc.DELETED
 
 
-class VMClustersHandler(OperationsHandler):
+class VmClustersHandler(OperationsHandler):
     """
     Read operations for the VM Clusters collection
     """
