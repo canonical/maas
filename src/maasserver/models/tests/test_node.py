@@ -12217,3 +12217,37 @@ class TestNodeInterfaceClone_BridgeNetworkLayout(
         self.assertNotEqual(
             node_bridge[0]["mac_address"], dest_bridge[0]["mac_address"]
         )
+
+
+class TestNodeClone__Prefetches(MAASServerTestCase):
+    def test_node_with_prefetch(self):
+        source = factory.make_Machine(with_boot_disk=False)
+        disk = factory.make_PhysicalBlockDevice(
+            node=source, size=8 * 1024 ** 3, name="sda"
+        )
+        ptable = factory.make_PartitionTable(block_device=disk)
+        part1 = ptable.add_partition(size=2 * 1024 ** 3)
+        factory.make_Filesystem(partition=part1)
+        part2 = ptable.add_partition(size=3 * 1024 ** 3)
+        factory.make_Filesystem(partition=part2)
+        factory.make_Interface(node=source, name="eth0")
+        destination = factory.make_Machine(
+            status=random.choice(
+                [NODE_STATUS.READY, NODE_STATUS.FAILED_TESTING]
+            ),
+            with_boot_disk=False,
+        )
+        factory.make_PhysicalBlockDevice(
+            node=destination, size=8 * 1024 ** 3, name="sda"
+        )
+        factory.make_Interface(node=destination, name="eth0")
+        # fetch the object again and apply prefetches
+        source = Machine.objects.prefetch_related(
+            (
+                "blockdevice_set__physicalblockdevice__partitiontable_set"
+                "__partitions__filesystem_set"
+            ),
+            "interface_set",
+        ).get(id=source.id)
+        destination.set_storage_configuration_from_node(source)
+        destination.set_networking_configuration_from_node(source)

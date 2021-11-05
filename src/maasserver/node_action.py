@@ -1021,7 +1021,9 @@ class Clone(NodeAction):
         try:
             form.save()
         except ValidationError as exc:
-            raise NodeActionError(self._format_errors_as_json(exc.errors))
+            raise NodeActionError(
+                self._format_errors_as_json(exc.message_dict)
+            )
         if _error_data:
             for name, error_list in _error_data.items():
                 if name in form.errors:

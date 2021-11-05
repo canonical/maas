@@ -13,7 +13,6 @@ __all__ = [
 ]
 
 from collections import defaultdict, namedtuple, OrderedDict
-import copy
 from datetime import datetime, timedelta
 from functools import partial
 from itertools import chain, count
@@ -4042,59 +4041,87 @@ class Node(CleanSave, TimestampedModel):
         # Get all the filesystem groups and cachesets for the source node. This
         # is used to do the cloning in layers, only cloning the filesystem
         # groups and cache sets once filesystems that make up have been cloned.
-        source_groups = list(
+        fs_groups = list(
             FilesystemGroup.objects.filter_by_node(source_node)
             .order_by("id")
             .prefetch_related("filesystems")
         )
-        source_groups += list(
+        fs_groups_map = {
+            fs_group.id: fs_group
+            for fs_group in FilesystemGroup.objects.filter_by_node(
+                source_node
+            ).order_by("id")
+        }
+        cacheset_groups = list(
             CacheSet.objects.get_cache_sets_for_node(source_node)
             .order_by("id")
             .prefetch_related("filesystems")
         )
+        cacheset_groups_map = {
+            cacheset_group.id: cacheset_group
+            for cacheset_group in CacheSet.objects.get_cache_sets_for_node(
+                source_node
+            ).order_by("id")
+        }
 
         # Clone the model at the physical level.
         filesystem_map = self._copy_between_block_device_mappings(mapping)
 
         # Continue through each layer until no more filesystem groups exist.
-        source_groups, layer_groups = self._get_group_layers_for_copy(
-            source_groups, filesystem_map
+        fs_groups, fs_groups_layer = self._get_group_layers_for_copy(
+            fs_groups, filesystem_map
         )
+        (
+            cacheset_groups,
+            cacheset_groups_layer,
+        ) = self._get_group_layers_for_copy(cacheset_groups, filesystem_map)
+
         cache_sets_mapping = {}
-        while source_groups or layer_groups:
-            if not layer_groups:
+        while (
+            fs_groups
+            or cacheset_groups
+            or fs_groups_layer
+            or cacheset_groups_layer
+        ):
+            if not fs_groups_layer and not cacheset_groups_layer:
                 raise ValueError(
                     "Copying the next layer of filesystems groups or cache "
                     "sets has failed."
                 )
+
             # Always do `CacheSet`'s before `FilesystemGroup`, because a
             # filesystem group might depend on the cache set.
-            for source_group, dest_filesystems in layer_groups.items():
-                if isinstance(source_group, CacheSet):
-                    cache_set = self._copy_cache_set(
-                        source_group, dest_filesystems
-                    )
-                    cache_sets_mapping[source_group.id] = cache_set
+            for (
+                source_cacheset,
+                dest_filesystems,
+            ) in cacheset_groups_layer.items():
+                cacheset = cacheset_groups_map.pop(source_cacheset.id)
+                self._clone_cache_set(cacheset, dest_filesystems)
+                cache_sets_mapping[source_cacheset.id] = cacheset
             filesystem_map = {}
-            for source_group, dest_filesystems in layer_groups.items():
-                if isinstance(source_group, FilesystemGroup):
-                    _, group_fsmap = self._copy_filesystem_group(
-                        source_group, dest_filesystems, cache_sets_mapping
-                    )
-                    filesystem_map.update(group_fsmap)
-            # Load the next layer.
-            source_groups, layer_groups = self._get_group_layers_for_copy(
-                source_groups, filesystem_map
+            for source_fs_group, dest_filesystems in fs_groups_layer.items():
+                fs_group = fs_groups_map.pop(source_fs_group.id)
+                group_fsmap = self._clone_filesystem_group(
+                    fs_group, dest_filesystems, cache_sets_mapping
+                )
+                filesystem_map.update(group_fsmap)
+            # load the next layer
+            fs_groups, fs_groups_layer = self._get_group_layers_for_copy(
+                fs_groups, filesystem_map
+            )
+            (
+                cacheset_groups,
+                cacheset_groups_layer,
+            ) = self._get_group_layers_for_copy(
+                cacheset_groups, filesystem_map
             )
 
         # Clone the special filesystems.
-        for source_filesystem in source_node.special_filesystems.all():
-            self_filesystem = copy.deepcopy(source_filesystem)
-            self_filesystem.id = None
-            self_filesystem.pk = None
-            self_filesystem.uuid = None
-            self_filesystem.node = self
-            self_filesystem.save(force_insert=True)
+        for filesystem in source_node.special_filesystems.all():
+            filesystem.id = None
+            filesystem.uuid = None
+            filesystem.node = self
+            filesystem.save()
 
     def _get_storage_mapping_between_nodes(self, source_node):
         """Return the mapping between which disks from this node map to disks
@@ -4129,20 +4156,20 @@ class Node(CleanSave, TimestampedModel):
                 "boot disk(%s)" % (self_boot_disk.name, source_boot_disk.name)
             )
 
-        self_disks = [
-            disk
-            for disk in self.physicalblockdevice_set.order_by("id")
-            if disk.id != self_boot_disk.id
-        ]
-        source_disks = [
-            disk
-            for disk in source_node.physicalblockdevice_set.order_by("id")
-            if disk.id != source_boot_disk.id
-        ]
+        self_disks = list(
+            self.physicalblockdevice_set.exclude(
+                id=self_boot_disk.id
+            ).order_by("id")
+        )
+        source_disks = list(
+            source_node.physicalblockdevice_set.exclude(
+                id=source_boot_disk.id
+            ).order_by("id")
+        )
         if len(self_disks) < len(source_disks):
             raise ValidationError(
                 "source node does not have enough physical block devices "
-                "(%d < %d)" % (len(self_disks) + 1, len(source_disks) + 1)
+                f"({len(self_disks) + 1} < {len(source_disks) + 1})"
             )
 
         mapping = {self_boot_disk: source_boot_disk}
@@ -4204,54 +4231,47 @@ class Node(CleanSave, TimestampedModel):
         """
         filesystem_map = {}
         for self_disk, source_disk in mapping.items():
-            source_ptable = source_disk.get_partitiontable()
-            if source_ptable is not None:
-                self_ptable = copy.deepcopy(source_ptable)
-                self_ptable.id = None
-                self_ptable.pk = None
-                self_ptable.block_device = self_disk
-                self_ptable.save(force_insert=True)
-                source_partitions = source_ptable.partitions.order_by("id")
-                for source_partition in source_partitions.all():
-                    self_partition = copy.deepcopy(source_partition)
-                    self_partition.id = None
-                    self_partition.pk = None
-                    self_partition.uuid = None
-                    self_partition.partition_table = self_ptable
-                    self_partition.save(force_insert=True)
-                    source_filesystems = (
-                        source_partition.filesystem_set.order_by("id")
-                    )
-                    for source_filesystem in source_filesystems.all():
-                        if not source_filesystem.acquired:
-                            self_filesystem = copy.deepcopy(source_filesystem)
-                            self_filesystem.id = None
-                            self_filesystem.pk = None
-                            self_filesystem.uuid = None
-                            self_filesystem.block_device = None
-                            self_filesystem.partition = self_partition
-                            self_filesystem.save(force_insert=True)
-                            filesystem_map[
-                                source_filesystem.id
-                            ] = self_filesystem
-            source_filesystems = source_disk.filesystem_set.order_by("id")
-            for source_filesystem in source_filesystems.all():
-                if not source_filesystem.acquired:
-                    self_filesystem = copy.deepcopy(source_filesystem)
-                    self_filesystem.id = None
-                    self_filesystem.pk = None
-                    self_filesystem.uuid = None
-                    self_filesystem.block_device = self_disk
-                    self_filesystem.partition = None
-                    self_filesystem.save(force_insert=True)
-                    filesystem_map[source_filesystem.id] = self_filesystem
+            ptable = source_disk.get_partitiontable()
+            if ptable is not None:
+                partitions = ptable.partitions.order_by("id")
+                ptable.id = None
+                ptable._prefetched_objects_cache = {}
+                ptable.block_device = self_disk
+                ptable.save()
+                for partition in partitions.all():
+                    filesystems = partition.filesystem_set.filter(
+                        acquired=False
+                    ).order_by("id")
+                    partition.id = None
+                    partition.uuid = None
+                    partition.partition_table = ptable
+                    partition.save()
+                    for filesystem in filesystems.all():
+                        source_filesystem_id = filesystem.id
+                        filesystem.id = None
+                        filesystem.uuid = None
+                        filesystem.block_device = None
+                        filesystem.partition = partition
+                        filesystem.save()
+                        filesystem_map[source_filesystem_id] = filesystem
+            filesystems = source_disk.filesystem_set.filter(
+                acquired=False
+            ).order_by("id")
+            for filesystem in filesystems:
+                source_filesystem_id = filesystem.id
+                filesystem.id = None
+                filesystem.uuid = None
+                filesystem.block_device = self_disk
+                filesystem.partition = None
+                filesystem.save()
+                filesystem_map[source_filesystem_id] = filesystem
         return filesystem_map
 
-    def _get_group_layers_for_copy(self, source_groups, filesystem_map):
-        """Pops the filesystem groups or cache set from the `source_groups`
+    def _get_group_layers_for_copy(self, filesystem_groups, filesystem_map):
+        """Pop the filesystem groups or cache set from the `filesystem_groups`
         when all filesystems that make it up exist in `filesystem_map`."""
         layer = {}
-        for group in source_groups[:]:  # Iterate on copy
+        for group in filesystem_groups[:]:  # Iterate on copy
             contains_all = True
             dest_filesystems = []
             for filesystem in group.filesystems.all():
@@ -4263,52 +4283,47 @@ class Node(CleanSave, TimestampedModel):
                     break
             if contains_all:
                 layer[group] = dest_filesystems
-                source_groups.remove(group)
-        return source_groups, layer
+                filesystem_groups.remove(group)
+        return filesystem_groups, layer
 
-    def _copy_cache_set(self, source_cache_set, dest_filesystems):
-        """Copy the `cache_set` linking to `dest_filesystems`."""
-        self_cache_set = copy.deepcopy(source_cache_set)
-        self_cache_set.id = None
-        self_cache_set.pk = None
-        self_cache_set._prefetched_objects_cache = {}
-        self_cache_set.save(force_insert=True)
+    def _clone_cache_set(self, cache_set, dest_filesystems):
+        """Clone the `cache_set` linking to `dest_filesystems`."""
+        cache_set.id = None
+        cache_set.save()
         for dest_filesystem in dest_filesystems:
-            self_cache_set.filesystems.add(dest_filesystem)
-        return self_cache_set
+            cache_set.filesystems.add(dest_filesystem)
 
-    def _copy_filesystem_group(
-        self, source_group, dest_filesystems, cache_sets_mapping
+    def _clone_filesystem_group(
+        self, fs_group, dest_filesystems, cache_sets_mapping
     ):
-        """Copy the `source_group` linking to the `dest_filesystems`."""
-        self_group = copy.deepcopy(source_group)
-        self_group.id = None
-        self_group.pk = None
-        self_group._prefetched_objects_cache = {}
-        self_group.uuid = None
-        if source_group.cache_set_id is not None:
-            self_group.cache_set = cache_sets_mapping[
-                source_group.cache_set_id
-            ]
-        self_group.save(force_insert=True)
+        """Clone the `source_group` linking to the `dest_filesystems`."""
+        # Get two copies of the devices since we need to pass the original ones
+        # for the filesystem_map.
+        source_vds = fs_group.virtual_devices.order_by("id")
+        dest_vds = fs_group.virtual_devices.order_by("id")
+
+        fs_group.id = None
+        fs_group.uuid = None
+        if fs_group.cache_set_id is not None:
+            fs_group.cache_set = cache_sets_mapping[fs_group.cache_set_id]
+        fs_group.save()
         for dest_filesystem in dest_filesystems:
-            self_group.filesystems.add(dest_filesystem)
+            fs_group.filesystems.add(dest_filesystem)
 
         # Copy the virtual block devices for the created filesystem group.
         filesystem_map = {}
-        for source_vd in source_group.virtual_devices.all():
-            self_vd = copy.deepcopy(source_vd)
-            self_vd.id = None
-            self_vd.pk = None
-            self_vd.node = self
-            self_vd.uuid = None
-            self_vd.filesystem_group = self_group
-            self_vd.save(force_insert=True)
+        for source_vd, dest_vd in zip(source_vds, dest_vds):
+            dest_vd.id = None
+            dest_vd.pk = None
+            dest_vd.node = self
+            dest_vd.uuid = None
+            dest_vd.filesystem_group = fs_group
+            dest_vd.save()
             filesystem_map.update(
-                self._copy_between_block_device_mappings({self_vd: source_vd})
+                self._copy_between_block_device_mappings({dest_vd: source_vd})
             )
 
-        return self_group, filesystem_map
+        return filesystem_map
 
     def _clear_full_storage_configuration(self):
         """Clear's the full storage configuration for this node.
@@ -4733,11 +4748,17 @@ class Node(CleanSave, TimestampedModel):
         # is used to do the cloning in layers, only cloning the interfaces
         # that have already been cloned to make up the next layer of
         # interfaces.
-        source_interfaces = [
-            interface
-            for interface in source_node.interface_set.all()
-            if interface.type != INTERFACE_TYPE.PHYSICAL
-        ]
+        source_interfaces = list(
+            source_node.interface_set.exclude(type=INTERFACE_TYPE.PHYSICAL)
+        )
+        # Get another copy of interface objects since they will be modified
+        # during cloning.
+        interfaces_map = {
+            interface.id: interface
+            for interface in source_node.interface_set.exclude(
+                type=INTERFACE_TYPE.PHYSICAL
+            )
+        }
 
         # Clone the model at the physical level.
         exclude_addresses = self._copy_between_interface_mappings(mapping)
@@ -4757,9 +4778,9 @@ class Node(CleanSave, TimestampedModel):
                     "Copying the next layer of interfaces has failed."
                 )
             for source_interface, dest_parents in layer_interfaces.items():
-                dest_mapping = self._copy_interface(
-                    source_interface, dest_parents
-                )
+                interface = interfaces_map.pop(source_interface.id)
+                self._clone_interface(interface, dest_parents)
+                dest_mapping = {interface: source_interface}
                 exclude_addresses += self._copy_between_interface_mappings(
                     dest_mapping, exclude_addresses=exclude_addresses
                 )
@@ -4837,12 +4858,10 @@ class Node(CleanSave, TimestampedModel):
                     self_interface.ip_addresses.add(new_ip)
                     exclude_addresses.append(new_ip.id)
                 elif ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                    self_ip_address = copy.deepcopy(ip_address)
-                    self_ip_address.id = None
-                    self_ip_address.pk = None
-                    self_ip_address.ip = None
-                    self_ip_address.save(force_insert=True)
-                    self_interface.ip_addresses.add(self_ip_address)
+                    ip_address.id = None
+                    ip_address.ip = None
+                    ip_address.save()
+                    self_interface.ip_addresses.add(ip_address)
         return exclude_addresses
 
     def _get_interface_layers_for_copy(
@@ -4868,21 +4887,18 @@ class Node(CleanSave, TimestampedModel):
                 source_interfaces.remove(interface)
         return source_interfaces, layer
 
-    def _copy_interface(self, source_interface, dest_parents):
-        """Copy the `source_interface` linking to the `dest_parents`."""
-        self_interface = copy.copy(source_interface)
-        self_interface.id = None
-        self_interface.pk = None
-        self_interface.node = self
-        self_interface._prefetched_objects_cache = {}
-        self_interface.save(force_insert=True)
+    def _clone_interface(self, interface, dest_parents):
+        """clone the `interface` linking to the `dest_parents`."""
+        interface.id = None
+        interface.node = self
+        interface._prefetched_objects_cache = {}
+        interface.save()
         for parent in dest_parents:
             InterfaceRelationship.objects.create(
-                child=self_interface, parent=parent
+                child=interface, parent=parent
             )
-        self_interface.mac_address = dest_parents[0].mac_address
-        self_interface.save()
-        return {self_interface: source_interface}
+        interface.mac_address = dest_parents[0].mac_address
+        interface.save()
 
     def get_gateways_by_priority(self):
         """Return all possible default gateways for the Node, by priority.
