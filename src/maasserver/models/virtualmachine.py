@@ -251,6 +251,7 @@ class VMHostVirtualMachineResources:
 class VMHostStoragePool:
     """Storage pool available on a VM host"""
 
+    id: str = ""
     name: str = ""
     path: str = ""
     backend: str = ""
@@ -447,6 +448,7 @@ def _get_global_vm_host_storage(pod, resources):
     total_storage = 0
     for pool in storage_pools:
         resources.storage_pools[pool.name] = VMHostStoragePool(
+            id=pool.pool_id,
             name=pool.name,
             path=pool.path,
             backend=pool.pool_type,

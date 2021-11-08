@@ -164,6 +164,38 @@ class TestPodHandler(MAASTransactionServerTestCase):
         )
         self.assertEqual(result["power_parameters"], power_params)
 
+    def test_get_with_storage_pool(self):
+        admin = factory.make_admin()
+        handler = PodHandler(admin, {}, None)
+        power_params = {
+            "power_address": "1.2.3.4",
+            "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
+            "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            "project": "maas",
+        }
+        pod = self.make_pod_with_hints(
+            pod_type="lxd",
+            parameters=power_params,
+        )
+        factory.make_Node()
+        factory.make_Node(bmc=pod)
+        factory.make_Node(bmc=pod, owner=admin)
+        factory.make_Node(bmc=pod, owner=factory.make_User())
+        storage_pool = factory.make_PodStoragePool(pod=pod)
+        expected_data = handler.full_dehydrate(pod)
+        result = handler.get({"id": pod.id})
+        self.assertEqual(expected_data.keys(), result.keys())
+        self.assertEqual(
+            result["storage_pools"], expected_data["storage_pools"]
+        )
+        storage_pool_ids = [pool["id"] for pool in result["storage_pools"]]
+        self.assertIn(storage_pool.pool_id, storage_pool_ids)
+        resource_storage_pool_ids = [
+            pool["id"]
+            for pool in result["resources"]["storage_pools"].values()
+        ]
+        self.assertIn(storage_pool.pool_id, resource_storage_pool_ids)
+
     def test_get_with_pod_host(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)
