@@ -71,13 +71,13 @@ class Certificate(NamedTuple):
         key.generate_key(crypto.TYPE_RSA, key_bits)
 
         cert = crypto.X509()
-        cert.get_subject().CN = cn
-        # Set O and OU so that we can identify that a certificate was
-        # created from this MAAS deployment.
+        cert.get_subject().CN = cn[:64]
         if organization_name:
-            cert.get_issuer().organizationName = organization_name
+            cert.get_issuer().organizationName = organization_name[:64]
         if organizational_unit_name:
-            cert.get_issuer().organizationalUnitName = organizational_unit_name
+            cert.get_issuer().organizationalUnitName = (
+                organizational_unit_name[:64]
+            )
         cert.set_serial_number(random.randint(0, (1 << 128) - 1))
         cert.gmtime_adj_notBefore(0)
         cert.gmtime_adj_notAfter(int(validity.total_seconds()))

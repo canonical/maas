@@ -4,6 +4,7 @@ from uuid import uuid1
 from OpenSSL import crypto
 
 from maasserver.models import Config
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.certificates import (
     certificate_generated_by_this_maas,
@@ -18,6 +19,14 @@ class TestGetMAASClientCN(MAASServerTestCase):
         Config.objects.set_config("maas_name", "my-maas")
         object_name = "my-object"
         self.assertEqual("my-object@my-maas", get_maas_client_cn(object_name))
+
+    def test_with_object_long_name(self):
+        Config.objects.set_config("maas_name", "my-maas")
+        object_name = factory.make_string(size=60)
+        truncated_name = object_name[:56]
+        self.assertEqual(
+            f"{truncated_name}@my-maas", get_maas_client_cn(object_name)
+        )
 
     def test_no_object(self):
         Config.objects.set_config("maas_name", "my-maas")

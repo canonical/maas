@@ -7,6 +7,7 @@ from pathlib import Path
 from fixtures import EnvironmentVariable, TempDir
 from OpenSSL import crypto
 
+from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.certificates import (
     Certificate,
@@ -112,6 +113,58 @@ class TestCertificate(MAASTestCase):
             Path(key_file).read_text(), SAMPLE_CERT.private_key_pem()
         )
 
+    def test_generate_certificate_defaults(self):
+        cert = Certificate.generate("maas")
+        self.assertIsInstance(cert.cert, crypto.X509)
+        self.assertIsInstance(cert.key, crypto.PKey)
+        self.assertEqual(cert.cert.get_subject().CN, "maas")
+        self.assertIsNone(cert.cert.get_issuer().organizationName)
+        self.assertIsNone(cert.cert.get_issuer().organizationalUnitName)
+        self.assertEqual(
+            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.cert.get_pubkey()),
+            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.key),
+        )
+        self.assertEqual(cert.key.bits(), 4096)
+        self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
+        self.assertGreaterEqual(
+            datetime.utcnow() + timedelta(days=3650),
+            cert.expiration(),
+        )
+
+    def test_generate_certificate_key_bits(self):
+        cert = Certificate.generate("maas", key_bits=1024)
+        self.assertEqual(cert.key.bits(), 1024)
+
+    def test_generate_certificate_validity(self):
+        cert = Certificate.generate("maas", validity=timedelta(days=100))
+        self.assertGreaterEqual(
+            datetime.utcnow() + timedelta(days=100),
+            cert.expiration(),
+        )
+
+    def test_generate_certificate_organization(self):
+        cert = Certificate.generate(
+            "maas",
+            organization_name="myorg",
+            organizational_unit_name="myunit",
+        )
+        self.assertEqual(cert.cert.get_issuer().organizationName, "myorg")
+        self.assertEqual(
+            cert.cert.get_issuer().organizationalUnitName, "myunit"
+        )
+
+    def test_generate_truncate_fields(self):
+        cn = factory.make_string(size=65)
+        o = factory.make_string(size=65)
+        ou = factory.make_string(size=65)
+        cert = Certificate.generate(
+            cn, organization_name=o, organizational_unit_name=ou
+        )
+        # max fields length is 64, so the last char is truncated
+        self.assertEqual(cert.cn(), cn[:-1])
+        self.assertEqual(cert.o(), o[:-1])
+        self.assertEqual(cert.ou(), ou[:-1])
+
 
 class TestGetMAASCertTuple(MAASTestCase):
     def setUp(self):
@@ -151,46 +204,4 @@ class TestGetMAASCertTuple(MAASTestCase):
                 f"{certs_dir}/maas.crt",
                 f"{certs_dir}/maas.key",
             ),
-        )
-
-
-class TestGenerateCertificate(MAASTestCase):
-    def test_generate_certificate_defaults(self):
-        cert = Certificate.generate("maas")
-        self.assertIsInstance(cert.cert, crypto.X509)
-        self.assertIsInstance(cert.key, crypto.PKey)
-        self.assertEqual(cert.cert.get_subject().CN, "maas")
-        self.assertIsNone(cert.cert.get_issuer().organizationName)
-        self.assertIsNone(cert.cert.get_issuer().organizationalUnitName)
-        self.assertEqual(
-            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.cert.get_pubkey()),
-            crypto.dump_publickey(crypto.FILETYPE_PEM, cert.key),
-        )
-        self.assertEqual(cert.key.bits(), 4096)
-        self.assertEqual(cert.key.type(), crypto.TYPE_RSA)
-        self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=3650),
-            cert.expiration(),
-        )
-
-    def test_generate_certificate_key_bits(self):
-        cert = Certificate.generate("maas", key_bits=1024)
-        self.assertEqual(cert.key.bits(), 1024)
-
-    def test_generate_certificate_validity(self):
-        cert = Certificate.generate("maas", validity=timedelta(days=100))
-        self.assertGreaterEqual(
-            datetime.utcnow() + timedelta(days=100),
-            cert.expiration(),
-        )
-
-    def test_generate_certificate_organization(self):
-        cert = Certificate.generate(
-            "maas",
-            organization_name="myorg",
-            organizational_unit_name="myunit",
-        )
-        self.assertEqual(cert.cert.get_issuer().organizationName, "myorg")
-        self.assertEqual(
-            cert.cert.get_issuer().organizationalUnitName, "myunit"
         )
