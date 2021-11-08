@@ -1,8 +1,7 @@
 # Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test forms settings."""
-
+from textwrap import dedent
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -41,9 +40,31 @@ class TestGetConfigForm(MAASServerTestCase):
 
 class TestGetConfigDoc(MAASServerTestCase):
     def test_get_config_doc(self):
-        doc = get_config_doc()
-        # Just make sure that the doc looks okay.
-        self.assertIn("maas_name", doc)
+        config_items = {
+            "testitem": {
+                "default": "foo",
+                "form": forms.CharField,
+                "form_kwargs": {
+                    "label": "bar",
+                    "choices": [
+                        ("b", "B"),
+                        ("a", "A"),
+                    ],
+                },
+            },
+        }
+        doc = get_config_doc(config_items=config_items)
+        # choices are returned in the correct order
+        self.assertEqual(
+            doc,
+            dedent(
+                """\
+                Available configuration items:
+
+                :testitem: bar. Available choices are: 'a' (A), 'b' (B).
+                """
+            ),
+        )
 
 
 class TestSpecificConfigSettings(MAASServerTestCase):

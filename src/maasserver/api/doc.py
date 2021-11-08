@@ -19,6 +19,7 @@ from inspect import getdoc
 from io import StringIO
 from itertools import zip_longest
 import json
+from operator import itemgetter
 from threading import RLock
 
 from django.urls import get_resolver
@@ -44,25 +45,23 @@ def accumulate_api_resources(resolver, accumulator):
     :rtype: Generator, yielding handlers.
     """
 
-    def p_has_resource_uri(resource):
-        return getattr(resource.handler, "resource_uri", None) is not None
-
-    def p_is_not_hidden(resource):
-        return getattr(resource.handler, "hidden", False)
+    def visible(handler):
+        return bool(
+            getattr(handler, "resource_uri", None)
+            and not getattr(handler, "hidden", False)
+        )
 
     for pattern in resolver.url_patterns:
         if isinstance(pattern, URLResolver):
             accumulate_api_resources(pattern, accumulator)
         elif isinstance(pattern, URLPattern):
-            if isinstance(pattern.callback, Resource):
-                resource = pattern.callback
-                if p_has_resource_uri(resource) and not p_is_not_hidden(
-                    resource
-                ):
-                    accumulator.add(resource)
+            if isinstance(pattern.callback, Resource) and visible(
+                pattern.callback.handler
+            ):
+                accumulator.add(pattern.callback)
         else:
             raise AssertionError(
-                "Not a recognised pattern or resolver: %r" % (pattern,)
+                f"Not a recognised pattern or resolver: {pattern!r}"
             )
 
 
@@ -228,10 +227,18 @@ def describe_actions(handler):
       restful: Indicates if this is a CRUD/ReSTful action.
 
     """
-    from maasserver.api import support  # Circular import.
+    from maasserver.api import support
 
     getname = support.OperationsResource.crudmap.get
-    for signature, function in handler.exports.items():
+
+    actions = []
+
+    # ensure stable sorting, accounting for operation being None
+    exports = sorted(
+        handler.exports.items(),
+        key=lambda item: (item[0][0], item[0][1] or ""),
+    )
+    for signature, function in exports:
         http_method, operation = signature
         name = getname(http_method) if operation is None else operation
 
@@ -276,13 +283,16 @@ def describe_actions(handler):
                         )
                         doc += ":type %s: %s\n\n " % (pname, param["type"])
 
-        yield dict(
-            method=http_method,
-            name=name,
-            doc=doc,
-            op=operation,
-            restful=(operation is None),
+        actions.append(
+            {
+                "method": http_method,
+                "name": name,
+                "doc": doc,
+                "op": operation,
+                "restful": operation is None,
+            }
         )
+    return sorted(actions, key=itemgetter("name"))
 
 
 def describe_handler(handler):
@@ -306,7 +316,7 @@ def describe_handler(handler):
     )
 
     return {
-        "actions": list(describe_actions(handler)),
+        "actions": describe_actions(handler),
         "doc": getdoc(handler),
         "name": handler.__name__,
         "params": tuple(uri_params),
@@ -345,26 +355,30 @@ def describe_api():
     """
     from maasserver import urls_api as urlconf
 
+    resources = sorted(
+        (
+            describe_resource(resource)
+            for resource in find_api_resources(urlconf)
+        ),
+        key=itemgetter("name"),
+    )
+
     # This is the core of it:
     description = {
         "doc": "MAAS API",
-        "resources": [
-            describe_resource(resource)
-            for resource in find_api_resources(urlconf)
-        ],
+        "resources": resources,
     }
-
     # However, for backward compatibility, add "handlers" as an alias for all
     # not-None anon and auth handlers in "resources".
     description["handlers"] = []
     description["handlers"].extend(
         resource["anon"]
-        for resource in description["resources"]
+        for resource in resources
         if resource["anon"] is not None
     )
     description["handlers"].extend(
         resource["auth"]
-        for resource in description["resources"]
+        for resource in resources
         if resource["auth"] is not None
     )
 
@@ -537,11 +551,7 @@ def hash_canonical(description):
     into a new `hashlib.sha1` object.
     """
     description = describe_canonical(description)
-    description_as_json = json.dumps(description)
-    # Python 3's json.dumps returns a `str`, so encode if necessary.
-    if not isinstance(description_as_json, bytes):
-        description_as_json = description_as_json.encode("ascii")
-    # We /could/ instead pass a hashing object in and call .update()...
+    description_as_json = json.dumps(description).encode("ascii")
     return hashlib.sha1(description_as_json)
 
 

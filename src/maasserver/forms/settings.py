@@ -75,7 +75,7 @@ def make_default_osystem_field(*args, **kwargs):
                 "osystem", os_choices
             )
         },
-        **kwargs
+        **kwargs,
     )
     return field
 
@@ -154,7 +154,7 @@ def make_default_distro_series_field(*args, **kwargs):
                 "release", release_choices
             )
         },
-        **kwargs
+        **kwargs,
     )
     return field
 
@@ -186,7 +186,7 @@ def make_default_min_hwe_kernel_field(*args, **kwargs):
                 "default_min_hwe_kernel", kernel_choices
             )
         },
-        **kwargs
+        **kwargs,
     )
     return field
 
@@ -206,7 +206,7 @@ def make_commissioning_distro_series_field(*args, **kwargs):
                 "commissioning_distro_series", commissioning_choices
             )
         },
-        **kwargs
+        **kwargs,
     )
     return field
 
@@ -221,7 +221,7 @@ def make_dnssec_validation_field(*args, **kwargs):
                 "dnssec_validation", DNSSEC_VALIDATION_CHOICES
             )
         },
-        **kwargs
+        **kwargs,
     )
     return field
 
@@ -236,7 +236,7 @@ def make_network_discovery_field(*args, **kwargs):
                 "network_discovery", NETWORK_DISCOVERY_CHOICES
             )
         },
-        **kwargs
+        **kwargs,
     )
     return field
 
@@ -251,7 +251,7 @@ def make_active_discovery_interval_field(*args, **kwargs):
                 "active_discovery_interval", ACTIVE_DISCOVERY_INTERVAL_CHOICES
             )
         },
-        **kwargs
+        **kwargs,
     )
     return field
 
@@ -998,17 +998,12 @@ def get_config_form(config_name, data=None):
     return form
 
 
-def describe_choices(choices):
-    """Describe the items in an enumeration of Django form choices."""
-    return ", ".join(
-        "'%s' (%s)" % (value, meaning) for value, meaning in choices
-    )
-
-
-def get_config_doc(indentation=0):
+def get_config_doc(config_items=None, indentation=0):
     """Return the documentation about the available configuration settings."""
+    if config_items is None:
+        config_items = CONFIG_ITEMS
     doc = ["Available configuration items:\n\n"]
-    for config_name, config_details in sorted(CONFIG_ITEMS.items()):
+    for config_name, config_details in sorted(config_items.items()):
         form_details = config_details["form_kwargs"]
         doc.append(":" + config_name + ": " + form_details["label"] + ". ")
         # Append help text if present.
@@ -1018,7 +1013,9 @@ def get_config_doc(indentation=0):
         # Append list of possible choices if present.
         choices = form_details.get("choices")
         if choices is not None:
-            choice_descr = describe_choices(choices)
+            choice_descr = ", ".join(
+                f"'{value}' ({meaning})" for value, meaning in sorted(choices)
+            )
             doc.append("Available choices are: %s." % choice_descr)
         doc.append("\n")
     full_text = (" " * indentation).join(doc)

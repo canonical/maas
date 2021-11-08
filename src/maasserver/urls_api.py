@@ -566,7 +566,7 @@ urlpatterns += [
     ),
     url(r"^vlans/(?P<vlan_id>[^/]+)/$", vlan_handler, name="vlanid_handler"),
     url(
-        r"fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vid>[^/]+)/$",
+        r"^fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vid>[^/]+)/$",
         vlan_handler,
         name="vlan_handler",
     ),

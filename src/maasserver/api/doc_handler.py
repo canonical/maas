@@ -235,11 +235,12 @@ def describe(request):
     # The handler URIs returned by describe_resource() are relative paths.
     absolute = partial(build_absolute_uri, request)
     for resource in description["resources"]:
-        for handler_type in "anon", "auth":
+        for handler_type in ("anon", "auth"):
             handler = resource[handler_type]
             if handler is not None:
                 handler["uri"] = absolute(handler["path"])
     # Return as a JSON document.
     return HttpResponse(
-        json.dumps(description), content_type="application/json"
+        json.dumps(description, sort_keys=True),
+        content_type="application/json",
     )
