@@ -915,6 +915,10 @@ class Pod(BMC):
             discovered_machine, created_interfaces, requested_ips, ip_modes
         )
 
+        boot_interface = machine.get_boot_interface()
+        if boot_interface and boot_interface.mac_address is None:
+            skip_commissioning = True
+
         # New machines get commission started immediately unless skipped.
         if not skip_commissioning:
             skip_networking = False

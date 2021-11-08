@@ -3100,7 +3100,10 @@ class Node(CleanSave, TimestampedModel):
         # address, but only if not already set.
         if "mac_address" not in power_params:
             boot_interface = self.get_boot_interface()
-            if boot_interface is not None:
+            if (
+                boot_interface is not None
+                and boot_interface.mac_address is not None
+            ):
                 mac = boot_interface.mac_address.get_raw()
                 power_params["mac_address"] = mac
 

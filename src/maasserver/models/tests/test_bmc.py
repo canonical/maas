@@ -1919,6 +1919,43 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(disk1.size, vmdisk1.size)
         self.assertEqual(disk2.size, vmdisk2.size)
 
+    def test_create_new_machine_skips_commissioning_if_no_mac_is_present(self):
+        discovered_machine = self.make_discovered_machine()
+        for iface in discovered_machine.interfaces:
+            iface.mac_address = None
+
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        self.patch(Machine, "_release")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric,
+            dhcp_on=True,
+            primary_rack=factory.make_RackController(),
+        )
+        pod = factory.make_Pod()
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        self.assertEquals(machine.status, NODE_STATUS.BROKEN)
+        machine.start_commissioning.assert_not_called()
+
+    def test_create_new_machine_does_not_skip_commissioning_if_mac_is_present(
+        self,
+    ):
+        discovered_machine = self.make_discovered_machine()
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        fabric = factory.make_Fabric()
+        factory.make_VLAN(
+            fabric=fabric,
+            dhcp_on=True,
+            primary_rack=factory.make_RackController(),
+        )
+        pod = factory.make_Pod()
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        machine.start_commissioning.assert_called_once()
+
     def test_sync_pod_creates_new_machines_connected_to_dhcp_vlan(self):
         discovered = self.make_discovered_pod()
         mock_set_default_storage_layout = self.patch(
