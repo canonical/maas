@@ -5320,7 +5320,9 @@ class Node(CleanSave, TimestampedModel):
     def get_pxe_mac_vendor(self):
         """Return the vendor of the MAC address the node booted from."""
         boot_interface = self.get_boot_interface()
-        if boot_interface is None:
+        if boot_interface is None or (
+            boot_interface and boot_interface.mac_address is None
+        ):
             return None
         else:
             return get_vendor_for_mac(boot_interface.mac_address.get_raw())

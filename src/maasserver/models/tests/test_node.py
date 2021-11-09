@@ -4948,6 +4948,20 @@ class TestNode(MAASServerTestCase):
         node.save()
         self.assertThat(node.get_pxe_mac_vendor(), IsNonEmptyString)
 
+    def test_get_pxe_mac_vendor_returns_none_with_no_interface(self):
+        node = factory.make_Node()
+        self.assertIsNone(node.get_pxe_mac_vendor())
+
+    def test_get_pxe_mac_vendor_returns_none_with_no_mac_address(self):
+        node = factory.make_Node()
+        node.boot_interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node=node
+        )
+        node.boot_interface.mac_address = None
+        node.boot_interface.save()
+        node.save()
+        self.assertIsNone(node.get_pxe_mac_vendor())
+
     def test_get_extra_macs_returns_all_but_boot_interface_mac(self):
         node = factory.make_Node()
         interfaces = [
