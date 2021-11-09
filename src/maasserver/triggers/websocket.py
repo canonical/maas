@@ -195,6 +195,127 @@ POD_DELETE_NOTIFY = dedent(
 )
 
 
+# Procedure that is called when a machine is created to update its
+# related VMCluster, if one exists
+NODE_VMCLUSTER_INSERT_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      bmc RECORD;
+      hints RECORD;
+    BEGIN
+      IF NEW.bmc_id IS NOT NULL THEN
+        SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+        IF bmc.bmc_type = %d THEN
+          SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
+          IF hints IS NOT NULL AND hints.cluster_id IS NOT NULL THEN
+            PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
+          END IF;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+NODE_VMCLUSTER_UPDATE_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      bmc_type INT;
+      new_bmc RECORD;
+      old_bmc RECORD;
+      old_hints RECORD;
+      new_hints RECORD;
+    BEGIN
+      bmc_type = %d;
+      IF OLD.bmc_id IS NOT NULL AND NEW.bmc_id IS NOT NULL THEN
+        IF OLD.bmc_id = NEW.bmc_id THEN
+          SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+          IF new_bmc.bmc_type = bmc_type THEN
+            SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
+            IF new_hints IS NOT NULL AND new_hints.cluster_id is NOT NULL THEN
+              PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id AS text));
+            END IF;
+          END IF;
+        ELSE
+          SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+          SELECT * INTO old_bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+          IF new_bmc.bmc_type = bmc_type THEN
+            SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
+          ELSE
+            new_hints = NULL;
+          END IF;
+          IF old_bmc.bmc_type = bmc_type THEN
+            SELECT * INTO old_hints FROM maasserver_podhints WHERE pod_id = old_bmc.id;
+          ELSE
+            old_hints = NULL;
+          END IF;
+          IF old_hints IS NOT NULL THEN
+            IF old_hints.cluster_id IS NOT NULL THEN
+              PERFORM pg_notify('vmcluster_update',CAST(old_hints.cluster_id as text));
+            END IF;
+            IF new_hints IS NOT NULL THEN
+              IF new_hints.cluster_id IS NOT NULL AND new_hints.cluster_id != old_hints.cluster_id THEN
+                PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id as text));
+              END IF;
+            END IF;
+          END IF;
+          IF new_hints IS NOT NULL THEN
+            IF new_hints.cluster_id IS NOT NULL AND old_hints IS NULL THEN
+              PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id as text));
+            END IF;
+          END IF;
+        END IF;
+      ELSE
+        IF OLD.bmc_id IS NOT NULL THEN
+          SELECT * INTO old_bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+          IF old_bmc.bmc_type = bmc_type THEN
+            SELECT * INTO old_hints FROM maasserver_podhints WHERE pod_id = old_bmc.id;
+            IF old_hints IS NOT NULL AND old_hints.cluster_id IS NOT NULL THEN
+              PERFORM pg_notify('vmcluster_update',CAST(old_hints.cluster_id as text));
+            END IF;
+          END IF;
+        END IF;
+        IF NEW.bmc_id IS NOT NULL THEN
+          SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+          IF new_bmc.bmc_type = bmc_type THEN
+            SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
+            IF new_hints IS NOT NULL AND new_hints.cluster_id IS NOT NULL THEN
+              PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id as text));
+            END IF;
+          END IF;
+        END IF;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
+NODE_VMCLUSTER_DELETE_NOTIFY = dedent(
+    """\
+    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    DECLARE
+      bmc RECORD;
+      hints RECORD;
+    BEGIN
+      IF OLD.bmc_id IS NOT NULL THEN
+        SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+        IF bmc.bmc_type = %d THEN
+          SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
+          IF hints.cluster_id IS NOT NULL THEN
+            PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
+          END IF;
+        END IF;
+      END IF;
+      RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+)
+
 # Procedure that is called when a machine is created to update its related
 # bmc if bmc_type is pod.
 NODE_POD_INSERT_NOTIFY = dedent(
@@ -1907,6 +2028,21 @@ def register_websocket_triggers():
     register_procedure(VMCLUSTER_UPDATE_NOTIFY % ("vmcluster_update_notify"))
     register_procedure(VMCLUSTER_DELETE_NOTIFY % ("vmcluster_delete_notify"))
     register_triggers("maasserver_vmcluster", "vmcluster", events=EVENTS_IUD)
+
+    # NODE VMCluster notifications
+    register_procedure(
+        NODE_VMCLUSTER_INSERT_NOTIFY
+        % ("node_vmcluster_insert_notify", BMC_TYPE.POD)
+    )
+    register_procedure(
+        NODE_VMCLUSTER_UPDATE_NOTIFY
+        % ("node_vmcluster_update_notify", BMC_TYPE.POD)
+    )
+    register_procedure(
+        NODE_VMCLUSTER_DELETE_NOTIFY
+        % ("node_vmcluster_delete_notify", BMC_TYPE.POD)
+    )
+    register_triggers("maasserver_node", "node_vmcluster", events=EVENTS_IUD)
 
     # Pod notifications
     register_procedure(POD_INSERT_NOTIFY % ("pod_insert_notify", BMC_TYPE.POD))

@@ -4500,6 +4500,27 @@ class TestVMClusterListener(
     def delete_vmcluster(self, filter):
         VMCluster.objects.filter(**filter).delete()
 
+    def create_clustered_node(self, cluster, **kwargs):
+        vmhosts = cluster.hosts()
+        vmhost = vmhosts[0]
+        if "bmc" not in kwargs:
+            kwargs["bmc"] = vmhost
+        return Node.objects.create(**kwargs)
+
+    def update_clustered_node(self, filter, cluster=None, **kwargs):
+        if cluster is not None:
+            vmhosts = cluster.hosts()
+            vmhost = vmhosts[0]
+            if "bmc" not in kwargs:
+                kwargs["bmc"] = vmhost
+        return Node.objects.filter(**filter).update(**kwargs)
+
+    def remove_cluster_from_node(self, id):
+        return Node.objects.filter(id=id).update(bmc=factory.make_Pod())
+
+    def delete_clustered_node(self, id):
+        Node.objects.filter(id=id).delete()
+
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_create_notification(self):
@@ -4562,6 +4583,143 @@ class TestVMClusterListener(
             yield deferToDatabase(self.delete_vmcluster, {"id": cluster.id})
             yield dv.get(timeout=2)
             self.assertEqual(("delete", str(cluster.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_node_insert_if_in_cluster(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.create_clustered_node,
+                cluster,
+                hostname=factory.make_name("hostname"),
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", str(cluster.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_on_node_update_old_and_new_cluster_same(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster)
+        node = yield deferToDatabase(
+            self.create_clustered_node,
+            cluster,
+            hostname=factory.make_name("hostname"),
+        )
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_clustered_node,
+                {"id": node.id},
+                hostname=factory.make_name("new_hostname"),
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", str(cluster.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_when_cluster_is_removed_from_node(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster)
+        node = yield deferToDatabase(
+            self.create_clustered_node,
+            cluster,
+            hostname=factory.make_name("hostname"),
+        )
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.remove_cluster_from_node, node.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", str(cluster.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_when_node_is_added_to_cluster(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster)
+        node = yield deferToDatabase(factory.make_Node)
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_clustered_node, {"id": node.id}, cluster=cluster
+            )
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", str(cluster.id)), dv.value)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_twice_when_node_changes_clusters(self):
+        cluster1 = yield deferToDatabase(factory.make_VMCluster)
+        cluster2 = yield deferToDatabase(factory.make_VMCluster)
+        node = yield deferToDatabase(
+            self.create_clustered_node,
+            cluster1,
+            hostname=factory.make_name("hostname"),
+        )
+        listener = self.make_listener_without_delay()
+        dvs = [DeferredValue() for _ in range(2)]
+
+        def _check(*args):
+            for dv in dvs:
+                if not dv.isSet:
+                    dv.set(args)
+                    return
+
+        listener.register("vmcluster", _check)
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_clustered_node, {"id": node.id}, cluster=cluster2
+            )
+            notifies = []
+            for dv in dvs:
+                yield dv.get(timeout=2)
+                notifies.append(dv.value)
+            self.assertCountEqual(
+                [("update", str(cluster1.id)), ("update", str(cluster2.id))],
+                notifies,
+            )
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handler_when_node_in_cluster_is_deleted(self):
+        cluster = yield deferToDatabase(factory.make_VMCluster)
+        node = yield deferToDatabase(
+            self.create_clustered_node,
+            cluster,
+            hostname=factory.make_name("hostname"),
+        )
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("vmcluster", lambda *args: dv.set(args))
+        yield listener.startService()
+        try:
+            yield deferToDatabase(self.delete_clustered_node, node.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(("update", str(cluster.id)), dv.value)
         finally:
             yield listener.stopService()
 
