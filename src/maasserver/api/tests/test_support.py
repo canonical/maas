@@ -1,8 +1,6 @@
 # Copyright 2013-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for API helpers."""
-
 
 from collections import namedtuple
 import http.client
@@ -13,7 +11,7 @@ from django.urls import reverse
 from piston3.authentication import NoAuthentication
 from testtools.matchers import Equals, Is
 
-from maasserver.api.doc import get_api_description_hash
+from maasserver.api.doc import get_api_description
 from maasserver.api.support import (
     admin_method,
     AdminRestrictedResource,
@@ -77,8 +75,8 @@ class TestOperationsResource(APITestCase.ForUser):
         response = self.client.get(
             reverse("maas_handler"), {"op": "get_config", "name": "maas_name"}
         )
-        self.assertThat(
-            response["X-MAAS-API-Hash"], Equals(get_api_description_hash())
+        self.assertEqual(
+            response["X-MAAS-API-Hash"], get_api_description()["hash"]
         )
 
     def test_authenticated_is_False_when_no_authentication_provided(self):

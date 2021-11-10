@@ -24,7 +24,7 @@ from piston3.handler import AnonymousBaseHandler, BaseHandler, HandlerMetaClass
 from piston3.resource import Resource
 from piston3.utils import HttpStatusCode, rc
 
-from maasserver.api.doc import get_api_description_hash
+from maasserver.api.doc import get_api_description
 from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
 from maasserver.utils.orm import get_one
 from provisioningserver.logger import LegacyLogger
@@ -54,7 +54,7 @@ class OperationsResource(Resource):
 
     def __call__(self, request, *args, **kwargs):
         response = super().__call__(request, *args, **kwargs)
-        response["X-MAAS-API-Hash"] = get_api_description_hash()
+        response["X-MAAS-API-Hash"] = get_api_description()["hash"]
         return response
 
     def error_handler(self, e, request, meth, em_format):

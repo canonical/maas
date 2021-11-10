@@ -31,16 +31,17 @@ from testtools.matchers import (
 
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
-    describe_api,
-    describe_canonical,
-    describe_handler,
-    describe_resource,
+    _describe_api,
+    _describe_canonical,
+    _describe_handler,
+    _describe_resource,
+    _get_api_description_hash,
+    _hash_canonical,
     find_api_resources,
     generate_api_docs,
     generate_pod_types_doc,
     generate_power_types_doc,
-    get_api_description_hash,
-    hash_canonical,
+    get_api_description,
 )
 from maasserver.api.doc_handler import render_api_docs
 from maasserver.api.support import (
@@ -50,10 +51,35 @@ from maasserver.api.support import (
 )
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maastesting.matchers import IsCallable, MockCalledOnceWith
+from maastesting.matchers import IsCallable
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
+
+
+class TestGetAPIDescription(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        get_api_description.cache_clear()
+
+    def test_adds_hash(self):
+        self.patch(doc_module, "_describe_api").return_value = {}
+        self.patch(
+            doc_module, "_get_api_description_hash"
+        ).return_value = "abcd"
+        self.assertEqual(get_api_description(), {"hash": "abcd"})
+
+    def test_cached(self):
+        mock_describe_api = self.patch(doc_module, "_describe_api")
+        mock_describe_api.return_value = {}
+        mock_get_api_description_hash = self.patch(
+            doc_module, "_get_api_description_hash"
+        )
+        mock_get_api_description_hash.return_value = "abcd"
+        description = get_api_description()
+        self.assertEqual(get_api_description(), description)
+        mock_describe_api.assert_called_once()
+        mock_get_api_description_hash.assert_called_once()
 
 
 class TestFindingResources(MAASTestCase):
@@ -281,7 +307,7 @@ class TestDescribingAPI(MAASTestCase):
         )
 
     def test_describe_handler(self):
-        # describe_handler() returns a description of a handler that can be
+        # _describe_handler() returns a description of a handler that can be
         # readily serialised into JSON, for example.
         expected_actions = [
             {
@@ -306,7 +332,7 @@ class TestDescribingAPI(MAASTestCase):
                 "restful": True,
             },
         ]
-        observed = describe_handler(ExampleHandler)
+        observed = _describe_handler(ExampleHandler)
         # The description contains several entries.
         self.assertSetEqual(
             {"actions", "doc", "name", "params", "path"}, set(observed)
@@ -317,11 +343,11 @@ class TestDescribingAPI(MAASTestCase):
         self.assertCountEqual(expected_actions, observed["actions"])
 
     def test_describe_handler_with_maas_handler(self):
-        # Ensure that describe_handler() yields something sensible with a
+        # Ensure that _describe_handler() yields something sensible with a
         # "real" MAAS API handler.
         from maasserver.api.zones import ZoneHandler as handler
 
-        description = describe_handler(handler)
+        description = _describe_handler(handler)
         # The RUD of CRUD actions are still available, but the C(reate) action
         # has been overridden with custom non-ReSTful operations.
         expected_actions = {
@@ -346,11 +372,11 @@ class TestDescribingAPI(MAASTestCase):
         self.patch(ExampleHandler, "anonymous", ExampleFallbackHandler)
         resource = OperationsResource(ExampleHandler)
         expected = {
-            "anon": describe_handler(ExampleHandler),
+            "anon": _describe_handler(ExampleHandler),
             "auth": None,
             "name": "ExampleHandler",
         }
-        self.assertEqual(expected, describe_resource(resource))
+        self.assertEqual(expected, _describe_resource(resource))
 
     def test_describe_resource_authenticated_resource(self):
         # When the resource requires authentication, but has no fallback
@@ -359,10 +385,10 @@ class TestDescribingAPI(MAASTestCase):
         resource = OperationsResource(ExampleHandler, sentinel.auth)
         expected = {
             "anon": None,
-            "auth": describe_handler(ExampleHandler),
+            "auth": _describe_handler(ExampleHandler),
             "name": "ExampleHandler",
         }
-        self.assertEqual(expected, describe_resource(resource))
+        self.assertEqual(expected, _describe_resource(resource))
 
     def test_describe_resource_authenticated_resource_with_fallback(self):
         # When the resource requires authentication, but has a fallback
@@ -371,11 +397,11 @@ class TestDescribingAPI(MAASTestCase):
         self.patch(ExampleHandler, "anonymous", ExampleFallbackHandler)
         resource = OperationsResource(ExampleHandler, sentinel.auth)
         expected = {
-            "anon": describe_handler(ExampleFallbackHandler),
-            "auth": describe_handler(ExampleHandler),
+            "anon": _describe_handler(ExampleFallbackHandler),
+            "auth": _describe_handler(ExampleHandler),
             "name": "ExampleHandler",
         }
-        self.assertEqual(expected, describe_resource(resource))
+        self.assertEqual(expected, _describe_resource(resource))
 
     def test_describe_api_returns_description_document(self):
         is_list = IsInstance(list)
@@ -421,7 +447,7 @@ class TestDescribingAPI(MAASTestCase):
         is_legacy_handler_list = MatchesAll(is_list, AllMatch(is_handler))
 
         self.assertThat(
-            describe_api(),
+            _describe_api(),
             MatchesDict(
                 {
                     "doc": Equals("MAAS API"),
@@ -478,30 +504,31 @@ class TestGeneratePodTypesDoc(MAASTestCase):
 
 class TestDescribeCanonical(MAASTestCase):
     def test_passes_True_False_and_None_through(self):
-        self.expectThat(describe_canonical(True), Is(True))
-        self.expectThat(describe_canonical(False), Is(False))
-        self.expectThat(describe_canonical(None), Is(None))
+        self.expectThat(_describe_canonical(True), Is(True))
+        self.expectThat(_describe_canonical(False), Is(False))
+        self.expectThat(_describe_canonical(None), Is(None))
 
     def test_passes_numbers_through(self):
         self.expectThat(
-            describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
+            _describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
         )
         self.expectThat(
-            describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
+            _describe_canonical(1), MatchesAll(IsInstance(int), Equals(1))
         )
         self.expectThat(
-            describe_canonical(1.0), MatchesAll(IsInstance(float), Equals(1.0))
+            _describe_canonical(1.0),
+            MatchesAll(IsInstance(float), Equals(1.0)),
         )
 
     def test_passes_unicode_strings_through(self):
         string = factory.make_string()
         self.assertThat(string, IsInstance(str))
-        self.expectThat(describe_canonical(string), Is(string))
+        self.expectThat(_describe_canonical(string), Is(string))
 
     def test_decodes_byte_strings(self):
         string = factory.make_string().encode("utf-8")
         self.expectThat(
-            describe_canonical(string),
+            _describe_canonical(string),
             MatchesAll(
                 IsInstance(str),
                 Not(Is(string)),
@@ -510,28 +537,28 @@ class TestDescribeCanonical(MAASTestCase):
         )
 
     def test_returns_sequences_as_tuples(self):
-        self.expectThat(describe_canonical([1, 2, 3]), Equals((1, 2, 3)))
+        self.expectThat(_describe_canonical([1, 2, 3]), Equals((1, 2, 3)))
 
     def test_recursively_calls_sequence_elements(self):
-        self.expectThat(describe_canonical([1, [2, 3]]), Equals((1, (2, 3))))
+        self.expectThat(_describe_canonical([1, [2, 3]]), Equals((1, (2, 3))))
 
     def test_sorts_sequences(self):
-        self.expectThat(describe_canonical([3, 1, 2]), Equals((1, 2, 3)))
+        self.expectThat(_describe_canonical([3, 1, 2]), Equals((1, 2, 3)))
         self.expectThat(
-            describe_canonical([[1, 2], [1, 1]]), Equals(((1, 1), (1, 2)))
+            _describe_canonical([[1, 2], [1, 1]]), Equals(((1, 1), (1, 2)))
         )
 
     def test_returns_mappings_as_tuples(self):
-        self.expectThat(describe_canonical({1: 2}), Equals(((1, 2),)))
+        self.expectThat(_describe_canonical({1: 2}), Equals(((1, 2),)))
 
     def test_recursively_calls_mapping_keys_and_values(self):
         mapping = {"key\u1234".encode("utf-8"): ["b", "a", "r"]}
         expected = (("key\u1234", ("a", "b", "r")),)
-        self.expectThat(describe_canonical(mapping), Equals(expected))
+        self.expectThat(_describe_canonical(mapping), Equals(expected))
 
     def test_sorts_mappings(self):
         self.expectThat(
-            describe_canonical({2: 1, 1: 1}), Equals(((1, 1), (2, 1)))
+            _describe_canonical({2: 1, 1: 1}), Equals(((1, 1), (2, 1)))
         )
 
     def test_sorts_mappings_by_key_and_value(self):
@@ -557,23 +584,21 @@ class TestDescribeCanonical(MAASTestCase):
             ((1, 2), "bar"),
             ((1, 2), "foo"),
         )
-        self.expectThat(describe_canonical(mapping), Equals(expected))
+        self.expectThat(_describe_canonical(mapping), Equals(expected))
 
     def test_rejects_other_types(self):
-        self.assertRaises(TypeError, describe_canonical, lambda: None)
+        self.assertRaises(TypeError, _describe_canonical, lambda: None)
 
 
 class TestHashCanonical(MAASTestCase):
-    """Tests for `hash_canonical`."""
-
     def test_canonicalizes_argument(self):
-        describe_canonical = self.patch(doc_module, "describe_canonical")
-        describe_canonical.return_value = ""
-        hash_canonical(sentinel.desc)
-        self.assertThat(describe_canonical, MockCalledOnceWith(sentinel.desc))
+        _describe_canonical = self.patch(doc_module, "_describe_canonical")
+        _describe_canonical.return_value = ""
+        _hash_canonical(sentinel.desc)
+        _describe_canonical.assert_called_once_with(sentinel.desc)
 
     def test_returns_hash_object(self):
-        hasher = hash_canonical(factory.make_string())
+        hasher = _hash_canonical(factory.make_string())
         self.assertThat(
             hasher,
             MatchesStructure(
@@ -588,7 +613,7 @@ class TestHashCanonical(MAASTestCase):
 
     def test_misc_digests(self):
         def hexdigest(data):
-            return hash_canonical(data).hexdigest()
+            return _hash_canonical(data).hexdigest()
 
         def has_digest(digest):
             return AfterPreprocessing(hexdigest, Equals(digest))
@@ -621,46 +646,13 @@ class TestHashCanonical(MAASTestCase):
 
 
 class TestGetAPIDescriptionHash(MAASTestCase):
-    """Tests for `get_api_description_hash`."""
-
-    def setUp(self):
-        super().setUp()
-        self.addCleanup(self.clear_hash_cache)
-        self.clear_hash_cache()
-
-    def clear_hash_cache(self):
-        # Clear the API description hash cache.
-        with doc_module.api_description_hash_lock:
-            doc_module.api_description_hash = None
-
     def test_calculates_hash_from_api_description(self):
         # Fake the API description.
         api_description = factory.make_string()
-        api_description_hasher = hash_canonical(api_description)
-        self.patch(doc_module, "describe_api").return_value = api_description
+        api_description_hasher = _hash_canonical(api_description)
+        self.patch(doc_module, "_describe_api").return_value = api_description
         # The hash is generated from the faked API description.
-        self.assertThat(
-            get_api_description_hash(),
-            Equals(api_description_hasher.hexdigest()),
+        self.assertEqual(
+            _get_api_description_hash(api_description),
+            api_description_hasher.hexdigest(),
         )
-
-    def test_caches_hash(self):
-        # Fake the API description.
-        api_description = factory.make_string()
-        api_description_hasher = hash_canonical(api_description)
-        # The description can only be fetched once before crashing.
-        self.patch(doc_module, "describe_api").side_effect = [
-            api_description,
-            factory.make_exception_type(),
-        ]
-        # The hash is generated and cached.
-        self.assertThat(
-            get_api_description_hash(),
-            Equals(api_description_hasher.hexdigest()),
-        )
-        self.assertThat(
-            get_api_description_hash(),
-            Equals(api_description_hasher.hexdigest()),
-        )
-        # Calling `describe_api` a second time would have failed.
-        self.assertRaises(Exception, doc_module.describe_api)

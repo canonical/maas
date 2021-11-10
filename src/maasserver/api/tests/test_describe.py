@@ -24,7 +24,7 @@ from testtools.matchers import (
     StartsWith,
 )
 
-from maasserver.api.doc import get_api_description_hash
+from maasserver.api.doc import get_api_description
 from maasserver.api.doc_handler import describe
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
@@ -66,9 +66,7 @@ class TestDescribe(APITestCase.ForAnonymousAndUserAndAdmin):
     def test_describe_hash_is_the_api_hash(self):
         response = self.client.get(reverse("describe"))
         description = json_load_bytes(response.content)
-        self.assertThat(
-            description["hash"], Equals(get_api_description_hash())
-        )
+        self.assertEqual(description["hash"], get_api_description()["hash"])
 
 
 class TestDescribeAbsoluteURIs(MAASTestCase):
@@ -115,6 +113,9 @@ class TestDescribeAbsoluteURIs(MAASTestCase):
         This manipulates how Piston gets Django's version of script_name
         which it needs so that it can prefix script_name to URL paths.
         """
+        # clear the cached API description since the following patching causes
+        # changes in the handlers URIs
+        get_api_description.cache_clear()
         # Patching up get_script_prefix doesn't seem to do the trick,
         # and patching it in the right module requires unwarranted
         # intimacy with Piston.  So just go through the proper call and

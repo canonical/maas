@@ -53,6 +53,7 @@ For example, to list all machines, you might GET "/MAAS/api/2.0/machines".
 """
 
 
+from copy import deepcopy
 from functools import partial
 from inspect import getdoc
 from io import StringIO
@@ -65,12 +66,11 @@ from django.http import HttpResponse
 
 from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.doc import (
-    describe_api,
     find_api_resources,
     generate_api_docs,
     generate_pod_types_doc,
     generate_power_types_doc,
-    get_api_description_hash,
+    get_api_description,
 )
 from maasserver.api.templates import APITemplateRenderer
 from maasserver.utils import build_absolute_uri
@@ -227,12 +227,10 @@ def describe(request):
         API. Links to the API will use the same scheme and hostname that the
         client used in `request`.
     """
-    description = describe_api()
-    # Add hash so that client can check if things are up to date.
-    description["hash"] = get_api_description_hash()
+    description = deepcopy(get_api_description())
     # Make all URIs absolute. Clients - and the command-line client in
     # particular - expect that all handler URIs are absolute, not just paths.
-    # The handler URIs returned by describe_resource() are relative paths.
+    # The handler URIs returned by _describe_resource() are relative paths.
     absolute = partial(build_absolute_uri, request)
     for resource in description["resources"]:
         for handler_type in ("anon", "auth"):

@@ -4,26 +4,20 @@
 """Utilities to help document/describe the public facing API."""
 
 __all__ = [
-    "describe_api",
-    "describe_handler",
-    "describe_resource",
     "find_api_resources",
     "generate_api_docs",
-    "get_api_description_hash",
 ]
 
 from collections.abc import Mapping, Sequence
-from functools import partial
+from functools import lru_cache, partial
 import hashlib
 from inspect import getdoc
 from io import StringIO
 from itertools import zip_longest
 import json
 from operator import itemgetter
-from threading import RLock
 
-from django.urls import get_resolver
-from django.urls.resolvers import URLPattern, URLResolver
+from django.urls import get_resolver, URLPattern, URLResolver
 from piston3.authentication import NoAuthentication
 from piston3.doc import generate_doc
 from piston3.handler import BaseHandler
@@ -34,35 +28,12 @@ from provisioningserver.drivers.pod.registry import PodDriverRegistry
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
 
-def accumulate_api_resources(resolver, accumulator):
-    """Accumulate handlers from the given resolver.
-
-    Handlers are of type :class:`HandlerMetaClass`, and must define a
-    `resource_uri` method.
-
-    Handlers that have the attribute hidden set to True, will not be returned.
-
-    :rtype: Generator, yielding handlers.
-    """
-
-    def visible(handler):
-        return bool(
-            getattr(handler, "resource_uri", None)
-            and not getattr(handler, "hidden", False)
-        )
-
-    for pattern in resolver.url_patterns:
-        if isinstance(pattern, URLResolver):
-            accumulate_api_resources(pattern, accumulator)
-        elif isinstance(pattern, URLPattern):
-            if isinstance(pattern.callback, Resource) and visible(
-                pattern.callback.handler
-            ):
-                accumulator.add(pattern.callback)
-        else:
-            raise AssertionError(
-                f"Not a recognised pattern or resolver: {pattern!r}"
-            )
+@lru_cache(maxsize=1)
+def get_api_description():
+    """Return the API description"""
+    description = _describe_api()
+    description["hash"] = _get_api_description_hash(description)
+    return description
 
 
 def find_api_resources(urlconf=None):
@@ -70,9 +41,10 @@ def find_api_resources(urlconf=None):
 
     :rtype: :class:`set` of :class:`Resource` instances.
     """
-    resolver, accumulator = get_resolver(urlconf), set()
-    accumulate_api_resources(resolver, accumulator)
-    return accumulator
+    resolver = get_resolver(urlconf)
+    resources = set()
+    _accumulate_api_resources(resolver, resources)
+    return resources
 
 
 def generate_power_types_doc():
@@ -195,7 +167,36 @@ def generate_api_docs(resources):
         yield generate_doc(handler)
 
 
-def merge(*iterables):
+def _accumulate_api_resources(resolver, accumulator):
+    """Add handlers from the resolver to the accumulator set.
+
+    Handlers are of type :class:`HandlerMetaClass`, and must define a
+    `resource_uri` method.
+
+    Handlers that have the attribute hidden set to True, will not be returned.
+    """
+
+    def visible(handler):
+        return bool(
+            getattr(handler, "resource_uri", None)
+            and not getattr(handler, "hidden", False)
+        )
+
+    for pattern in resolver.url_patterns:
+        if isinstance(pattern, URLResolver):
+            _accumulate_api_resources(pattern, accumulator)
+        elif isinstance(pattern, URLPattern):
+            if isinstance(pattern.callback, Resource) and visible(
+                pattern.callback.handler
+            ):
+                accumulator.add(pattern.callback)
+        else:
+            raise AssertionError(
+                f"Not a recognised pattern or resolver: {pattern!r}"
+            )
+
+
+def _merge(*iterables):
     """Merge iterables.
 
     The iterables are iterated in lock-step. For the values at each iteration,
@@ -213,7 +214,7 @@ def merge(*iterables):
         yield next(value for value in values if value is not undefined)
 
 
-def describe_actions(handler):
+def _describe_actions(handler):
     """Describe the actions that `handler` supports.
 
     For each action, which could be a CRUD operation or a custom (piggybacked)
@@ -295,7 +296,7 @@ def describe_actions(handler):
     return sorted(actions, key=itemgetter("name"))
 
 
-def describe_handler(handler):
+def _describe_handler(handler):
     """Return a serialisable description of a handler.
 
     :type handler: :class:`OperationsHandler` or
@@ -309,14 +310,14 @@ def describe_handler(handler):
     path = "" if path is None else path
 
     resource_uri = getattr(handler, "resource_uri", lambda: ())
-    view_name, uri_params, uri_kw = merge(resource_uri(), (None, (), {}))
+    view_name, uri_params, uri_kw = _merge(resource_uri(), (None, (), {}))
     assert uri_kw == {}, (
         "Resource URI specifications with keyword parameters are not yet "
         "supported: handler=%r; view_name=%r" % (handler, view_name)
     )
 
     return {
-        "actions": describe_actions(handler),
+        "actions": _describe_actions(handler),
         "doc": getdoc(handler),
         "name": handler.__name__,
         "params": tuple(uri_params),
@@ -324,7 +325,7 @@ def describe_handler(handler):
     }
 
 
-def describe_resource(resource):
+def _describe_resource(resource):
     """Return a serialisable description of a resource.
 
     :type resource: :class:`OperationsResource` instance.
@@ -336,17 +337,17 @@ def describe_resource(resource):
         if resource.anonymous is None:
             anon = None
         else:
-            anon = describe_handler(resource.anonymous)
-        auth = describe_handler(resource.handler)
+            anon = _describe_handler(resource.anonymous)
+        auth = _describe_handler(resource.handler)
         name = auth["name"]
     else:
-        anon = describe_handler(resource.handler)
+        anon = _describe_handler(resource.handler)
         auth = None
         name = anon["name"]
     return {"anon": anon, "auth": auth, "name": name}
 
 
-def describe_api():
+def _describe_api():
     """Return a description of the whole MAAS API.
 
     :return: An object describing the whole MAAS API. Links to the API will
@@ -357,12 +358,11 @@ def describe_api():
 
     resources = sorted(
         (
-            describe_resource(resource)
+            _describe_resource(resource)
             for resource in find_api_resources(urlconf)
         ),
         key=itemgetter("name"),
     )
-
     # This is the core of it:
     description = {
         "doc": "MAAS API",
@@ -386,7 +386,7 @@ def describe_api():
 
 
 class KeyCanonicalNone:
-    """See `key_canonical`."""
+    """See `_key_canonical`."""
 
     def __lt__(self, other):
         if isinstance(other, KeyCanonicalNone):
@@ -402,7 +402,7 @@ class KeyCanonicalNone:
 
 
 class KeyCanonicalNumeric:
-    """See `key_canonical`."""
+    """See `_key_canonical`."""
 
     def __init__(self, value):
         self.value = value
@@ -423,7 +423,7 @@ class KeyCanonicalNumeric:
 
 
 class KeyCanonicalString:
-    """See `key_canonical`."""
+    """See `_key_canonical`."""
 
     def __init__(self, value):
         self.value = value
@@ -444,7 +444,7 @@ class KeyCanonicalString:
 
 
 class KeyCanonicalTuple:
-    """See `key_canonical`."""
+    """See `_key_canonical`."""
 
     def __init__(self, value):
         self.value = value
@@ -462,7 +462,7 @@ class KeyCanonicalTuple:
             return False
 
 
-def key_canonical(value):
+def _key_canonical(value):
     """Create a sort key for the canonical API description.
 
     For a limited set of types, this provides Python 2-like sorting. For
@@ -474,7 +474,7 @@ def key_canonical(value):
     Within each type, comparisons happen as normal. Use with ``sort`` or
     ``sorted``::
 
-      sorted(things, key=key_canonical)
+      sorted(things, key=_key_canonical)
 
     :raise TypeError: For types that cannot be compared.
     """
@@ -485,14 +485,14 @@ def key_canonical(value):
     elif isinstance(value, str):
         return KeyCanonicalString(value)
     elif isinstance(value, tuple):
-        return KeyCanonicalTuple(tuple(key_canonical(v) for v in value))
+        return KeyCanonicalTuple(tuple(_key_canonical(v) for v in value))
     else:
         raise TypeError(
             "Cannot compare %r (%s)" % (value, type(value).__qualname__)
         )
 
 
-def describe_canonical(description):
+def _describe_canonical(description):
     """Returns an ordered data structure composed from limited types.
 
     Specifically:
@@ -523,18 +523,18 @@ def describe_canonical(description):
     elif isinstance(description, Sequence):
         return tuple(
             sorted(
-                (describe_canonical(element) for element in description),
-                key=key_canonical,
+                (_describe_canonical(element) for element in description),
+                key=_key_canonical,
             )
         )
     elif isinstance(description, Mapping):
         return tuple(
             sorted(
                 (
-                    (describe_canonical(key), describe_canonical(value))
+                    (_describe_canonical(key), _describe_canonical(value))
                     for (key, value) in sorted(description.items())
                 ),
-                key=key_canonical,
+                key=_key_canonical,
             )
         )
     else:
@@ -543,34 +543,19 @@ def describe_canonical(description):
         )
 
 
-def hash_canonical(description):
+def _hash_canonical(description):
     """Return an SHA-1 HASH object seeded with `description`.
 
     Specifically, `description` is converted to a canonical representation by
-    `describe_canonical`, dumped as JSON, encoded as a byte string, then fed
+    `_describe_canonical`, dumped as JSON, encoded as a byte string, then fed
     into a new `hashlib.sha1` object.
     """
-    description = describe_canonical(description)
+    description = _describe_canonical(description)
     description_as_json = json.dumps(description).encode("ascii")
     return hashlib.sha1(description_as_json)
 
 
-api_description_hash = None
-api_description_hash_lock = RLock()
-
-
-def get_api_description_hash():
-    """Return a hash for the current API description."""
-
-    global api_description_hash
-    global api_description_hash_lock
-
-    if api_description_hash is None:
-        with api_description_hash_lock:
-            if api_description_hash is None:
-                api_description = describe_api()
-                api_description_hasher = hash_canonical(api_description)
-                api_description_hash = api_description_hasher.hexdigest()
-
-    # The hash is an immutable string, so safe to return directly.
-    return api_description_hash
+def _get_api_description_hash(description):
+    """Return the SHA-1 hash for the API description."""
+    hasher = _hash_canonical(description)
+    return hasher.hexdigest()
