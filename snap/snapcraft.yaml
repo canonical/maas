@@ -199,7 +199,7 @@ parts:
   ui:
     plugin: npm
     source: src/maasui/src
-    npm-node-version: "12.13.0"
+    npm-node-version: "16.13.0"
     build-packages:
       - on amd64: []
       - else:

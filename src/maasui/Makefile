@@ -1,7 +1,15 @@
-mkfile_dir := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-nodejs_path := $(mkfile_dir)/nodejs
+MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+NODEJS_DIR := $(MAKEFILE_DIR)/nodejs
+NODEJS_BIN := $(NODEJS_DIR)/bin
 
-export PATH := $(nodejs_path)/bin:$(PATH)
+export PATH := $(NODEJS_BIN):$(PATH)
+
+YARN_TARBALL := nodejs/yarn.tar.gz
+NODEJS_TARBALL := nodejs/nodejs.tar.gz
+
+NODEJS_VERSION := 16.13.0
+YARN_VERSION := 1.22.17
+
 
 build: build/index.html
 .PHONY: build
@@ -11,29 +19,30 @@ clean-build:
 .PHONY: clean-build
 
 clean: clean-build
-	rm -rf src/node_modules nodejs
+	rm -rf src/node_modules $(NODEJS_DIR)
 .PHONY: clean
 
-nodejs/nodejs.tar.gz:
-	mkdir -p nodejs
-	wget -O nodejs/nodejs.tar.gz https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
+$(NODEJS_DIR):
+	mkdir -p $@
 
-nodejs/bin/node: nodejs/nodejs.tar.gz
-	tar -C nodejs/ -xf nodejs/nodejs.tar.gz --strip-components=1
+$(NODEJS_TARBALL): $(NODEJS_DIR)
+	wget -O $(NODEJS_TARBALL) https://nodejs.org/dist/v$(NODEJS_VERSION)/node-v$(NODEJS_VERSION)-linux-x64.tar.xz
+
+$(NODEJS_BIN)/node: $(NODEJS_TARBALL)
+	tar -C $(NODEJS_DIR) -xf $< --strip-components=1
 	@touch --no-create $@
 
-nodejs/yarn.tar.gz:
-	mkdir -p nodejs
-	wget -O nodejs/yarn.tar.gz https://github.com/yarnpkg/yarn/releases/download/v1.19.1/yarn-v1.19.1.tar.gz
+$(YARN_TARBALL): $(NODEJS_DIR)
+	wget -O $@ https://github.com/yarnpkg/yarn/releases/download/v$(YARN_VERSION)/yarn-v$(YARN_VERSION).tar.gz
 
-nodejs/bin/yarn: nodejs/bin/node nodejs/yarn.tar.gz
-	tar -C nodejs/ -xf nodejs/yarn.tar.gz --strip-components=1
+$(NODEJS_BIN)/yarn: $(YARN_TARBALL) $(NODEJS_BIN)/node
+	tar -C $(NODEJS_DIR) -xf $< --strip-components=1
 	@touch --no-create $@
 
 src/yarn.lock:
 	git submodule update --init --remote
 
-src/build: nodejs/bin/yarn src/yarn.lock
+src/build: $(NODEJS_BIN)/yarn src/yarn.lock
 	yarn --cwd src build-all
 
 build/index.html: src/build
