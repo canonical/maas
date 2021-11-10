@@ -1,5 +1,6 @@
 from urllib.parse import urlparse
 
+from netaddr import valid_ipv6
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -129,18 +130,38 @@ async def discover_and_sync_vmhost_async(vmhost, user):
     return vmhost
 
 
+def _clean_power_address(vmhost_address):
+    """Return clean power address
+
+    XXX we assume a LXD host when connecting over
+    HTTPS or the user omits the protocol. This MUST be
+    generalized to support other services.
+    """
+    vmhost_url = urlparse(vmhost_address)
+
+    lxd_schemes = ["https", ""]
+    if vmhost_url.port:
+        port = f":{vmhost_url.port}"
+    else:
+        port = ":8443" if vmhost_url.scheme in lxd_schemes else ""
+
+    # parsing just an IP as a url results in the IP stored in path
+    host = vmhost_url.hostname or vmhost_url.path
+    new_path = vmhost_url.path if vmhost_url.hostname else ""
+    if valid_ipv6(host):
+        host = f"[{host}]"
+
+    vmhost_url = vmhost_url._replace(netloc=f"{host}{port}", path=new_path)
+    vmhost_address = vmhost_url.geturl()
+
+    if vmhost_url.scheme in lxd_schemes:
+        vmhost_address = vmhost_address.split("//")[-1]
+    return vmhost_address
+
+
 def _generate_cluster_power_params(vmhost, vmhost_address, first_host):
     new_params = first_host.power_parameters.copy()
-    vmhost_url = urlparse(vmhost_address)
-    if vmhost_url.port is None:
-        # parsing just an IP as a url results in the IP stored in path
-        host = vmhost_url.hostname or vmhost_url.path
-        vmhost_address = vmhost_url._replace(netloc=host + ":8443").geturl()
-
-    if vmhost_url.scheme == "http" or vmhost_url.scheme == "https":
-        vmhost_address = vmhost_address.split("://")[1]
-
-    new_params["power_address"] = vmhost_address
+    new_params["power_address"] = _clean_power_address(vmhost_address)
     if isinstance(vmhost, DiscoveredPod):
         new_params["instance_name"] = vmhost.name
     return new_params
@@ -168,12 +189,6 @@ def _get_or_create_clustered_host(
             zone=cluster.zone,
             pool=cluster.pool,
         )
-        tag, _ = Tag.objects.get_or_create(
-            name="pod-console-logging",
-            kernel_opts="console=tty1 console=ttyS0",
-        )
-        host.add_tag(tag.name)
-        host.save()
     return host
 
 
@@ -186,20 +201,23 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
         pool=vmhost.pool,
         zone=vmhost.zone,
     )
-    new_host = vmhost
+    vmhost_pwr_addr = _clean_power_address(
+        vmhost.power_parameters["power_address"]
+    )
+
     for i, discovered_vmhost in enumerate(discovered_cluster.pods):
+        update_ret = False
         power_parameters = _generate_cluster_power_params(
             discovered_vmhost, discovered_cluster.pod_addresses[i], vmhost
         )
-        if (
-            power_parameters["power_address"]
-            not in vmhost.power_parameters["power_address"]
-            and vmhost.power_parameters["power_address"]
-            not in power_parameters["power_address"]
-        ):
+        if vmhost_pwr_addr != power_parameters["power_address"]:
             new_host = _get_or_create_clustered_host(
                 cluster, discovered_vmhost, power_parameters
             )
+        else:
+            new_host = vmhost
+            update_ret = True
+
         new_host = _update_db(
             discovered_vmhost, discovered, new_host, user, cluster
         )
@@ -209,8 +227,9 @@ def sync_vmcluster(discovered_cluster, discovered, vmhost, user):
             request_commissioning_results,
             new_host,
         )
-        if i == 0:
+        if update_ret:
             vmhost = new_host
+
     return vmhost
 
 
@@ -225,24 +244,29 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
             zone=vmhost.zone,
         )
         new_hosts = []
+        vmhost_pwr_addr = _clean_power_address(
+            vmhost.power_parameters["power_address"]
+        )
         for i, discovered_vmhost in enumerate(discovered_cluster.pods):
             power_parameters = _generate_cluster_power_params(
                 discovered, discovered_cluster.pod_addresses[i], vmhost
             )
             new_host = vmhost
-            if (
-                power_parameters["power_address"]
-                not in vmhost.power_parameters["power_address"]
-                and vmhost.power_parameters["power_address"]
-                not in power_parameters["power_address"]
-            ):
+            found = False
+            if vmhost_pwr_addr != power_parameters["power_address"]:
                 new_host = _get_or_create_clustered_host(
                     cluster, discovered_vmhost, power_parameters
                 )
+            else:
+                new_host = vmhost
+                found = True
             new_host = _update_db(
                 discovered_vmhost, discovered, new_host, user, cluster
             )
-            new_hosts.append(new_host)
+            if found:
+                new_hosts.insert(0, new_host)
+            else:
+                new_hosts.append(new_host)
         return new_hosts
 
     new_hosts = await deferToDatabase(
@@ -258,6 +282,12 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
 
 
 def _update_db(discovered_pod, discovered, vmhost, user, cluster=None):
+    tag, _ = Tag.objects.get_or_create(
+        name="pod-console-logging",
+        kernel_opts="console=tty1 console=ttyS0",
+    )
+    vmhost.add_tag(tag.name)
+
     # If this is a new instance it will be stored in the database at the end of
     # sync.
     vmhost.sync(discovered_pod, user, cluster=cluster)
