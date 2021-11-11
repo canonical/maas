@@ -1,14 +1,12 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for the `cleanup` module."""
 
 
 import os
 from random import randint
+from unittest.mock import call
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import cleanup
 
@@ -61,6 +59,21 @@ class TestCleanup(MAASTestCase):
         ]
         self.assertEqual([], remaining_snapshots)
 
+    def test_cleanup_snapshot_continue_and_log_errors(self):
+        storage = self.make_dir()
+        maaslog_warning = self.patch(cleanup.maaslog, "warning")
+        paths = [f"{storage}/not-here1", f"{storage}/not-here2"]
+        self.patch(cleanup, "list_old_snapshots").return_value = paths
+        cleanup.cleanup_snapshots(storage)
+        maaslog_warning.assert_has_calls(
+            [
+                call(
+                    f"Unable to delete {path}: [Errno 2] No such file or directory: '{path}'"
+                )
+                for path in paths
+            ]
+        )
+
     def test_list_unused_cache_files_returns_empty(self):
         storage = self.make_dir()
         self.assertEqual([], cleanup.list_unused_cache_files(storage))
@@ -91,10 +104,25 @@ class TestCleanup(MAASTestCase):
         ]
         self.assertCountEqual(cache_nlink_greater_than_1, remaining_cache)
 
+    def test_cleanup_cache_continue_and_log_errors(self):
+        storage = self.make_dir()
+        paths = [os.path.join(storage, f"file{n}") for n in range(3)]
+        self.patch(cleanup, "list_unused_cache_files").return_value = paths
+        maaslog_warning = self.patch(cleanup.maaslog, "warning")
+        cleanup.cleanup_cache(storage)
+        maaslog_warning.assert_has_calls(
+            [
+                call(
+                    f"Unable to delete {path}: [Errno 2] No such file or directory: '{path}'"
+                )
+                for path in paths
+            ]
+        )
+
     def test_cleanup_snapshots_and_cache_calls(self):
         storage = self.make_dir()
         mock_snapshots = self.patch_autospec(cleanup, "cleanup_snapshots")
         mock_cache = self.patch_autospec(cleanup, "cleanup_cache")
         cleanup.cleanup_snapshots_and_cache(storage)
-        self.assertThat(mock_snapshots, MockCalledOnceWith(storage))
-        self.assertThat(mock_cache, MockCalledOnceWith(storage))
+        mock_snapshots.assert_called_once_with(storage)
+        mock_cache.assert_called_once_with(storage)
