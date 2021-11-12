@@ -4121,10 +4121,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Clone the special filesystems.
         for filesystem in source_node.special_filesystems.all():
-            filesystem.id = None
-            filesystem.uuid = None
-            filesystem.node = self
-            filesystem.save()
+            _clone_object(filesystem, uuid=None, node=self)
 
     def _get_storage_mapping_between_nodes(self, source_node):
         """Return the mapping between which disks from this node map to disks
@@ -4237,36 +4234,32 @@ class Node(CleanSave, TimestampedModel):
             ptable = source_disk.get_partitiontable()
             if ptable is not None:
                 partitions = ptable.partitions.order_by("id")
-                ptable.id = None
-                ptable._prefetched_objects_cache = {}
-                ptable.block_device = self_disk
-                ptable.save()
+                _clone_object(ptable, block_device=self_disk)
                 for partition in partitions.all():
                     filesystems = partition.filesystem_set.filter(
                         acquired=False
                     ).order_by("id")
-                    partition.id = None
-                    partition.uuid = None
-                    partition.partition_table = ptable
-                    partition.save()
+                    _clone_object(partition, uuid=None, partition_table=ptable)
                     for filesystem in filesystems.all():
                         source_filesystem_id = filesystem.id
-                        filesystem.id = None
-                        filesystem.uuid = None
-                        filesystem.block_device = None
-                        filesystem.partition = partition
-                        filesystem.save()
+                        _clone_object(
+                            filesystem,
+                            uuid=None,
+                            block_device=None,
+                            partition=partition,
+                        )
                         filesystem_map[source_filesystem_id] = filesystem
             filesystems = source_disk.filesystem_set.filter(
                 acquired=False
             ).order_by("id")
             for filesystem in filesystems:
                 source_filesystem_id = filesystem.id
-                filesystem.id = None
-                filesystem.uuid = None
-                filesystem.block_device = self_disk
-                filesystem.partition = None
-                filesystem.save()
+                _clone_object(
+                    filesystem,
+                    uuid=None,
+                    block_device=self_disk,
+                    partition=None,
+                )
                 filesystem_map[source_filesystem_id] = filesystem
         return filesystem_map
 
@@ -4291,8 +4284,7 @@ class Node(CleanSave, TimestampedModel):
 
     def _clone_cache_set(self, cache_set, dest_filesystems):
         """Clone the `cache_set` linking to `dest_filesystems`."""
-        cache_set.id = None
-        cache_set.save()
+        _clone_object(cache_set)
         for dest_filesystem in dest_filesystems:
             cache_set.filesystems.add(dest_filesystem)
 
@@ -4305,23 +4297,19 @@ class Node(CleanSave, TimestampedModel):
         source_vds = fs_group.virtual_devices.order_by("id")
         dest_vds = fs_group.virtual_devices.order_by("id")
 
-        fs_group.id = None
-        fs_group.uuid = None
+        cache_set = None
         if fs_group.cache_set_id is not None:
-            fs_group.cache_set = cache_sets_mapping[fs_group.cache_set_id]
-        fs_group.save()
+            cache_set = cache_sets_mapping[fs_group.cache_set_id]
+        _clone_object(fs_group, uuid=None, cache_set=cache_set)
         for dest_filesystem in dest_filesystems:
             fs_group.filesystems.add(dest_filesystem)
 
         # Copy the virtual block devices for the created filesystem group.
         filesystem_map = {}
         for source_vd, dest_vd in zip(source_vds, dest_vds):
-            dest_vd.id = None
-            dest_vd.pk = None
-            dest_vd.node = self
-            dest_vd.uuid = None
-            dest_vd.filesystem_group = fs_group
-            dest_vd.save()
+            _clone_object(
+                dest_vd, uuid=None, node=self, filesystem_group=fs_group
+            )
             filesystem_map.update(
                 self._copy_between_block_device_mappings({dest_vd: source_vd})
             )
@@ -4394,9 +4382,7 @@ class Node(CleanSave, TimestampedModel):
             fstype__in=FILESYSTEM_FORMAT_TYPE_CHOICES_DICT, acquired=False
         )
         for filesystem in filesystems:
-            filesystem.id = None
-            filesystem.acquired = True
-            filesystem.save()
+            _clone_object(filesystem, acquired=True)
 
     @classmethod
     def _clear_deployment_resources(cls, node_id):
@@ -4861,9 +4847,7 @@ class Node(CleanSave, TimestampedModel):
                     self_interface.ip_addresses.add(new_ip)
                     exclude_addresses.append(new_ip.id)
                 elif ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
-                    ip_address.id = None
-                    ip_address.ip = None
-                    ip_address.save()
+                    _clone_object(ip_address, ip=None)
                     self_interface.ip_addresses.add(ip_address)
         return exclude_addresses
 
@@ -4892,16 +4876,13 @@ class Node(CleanSave, TimestampedModel):
 
     def _clone_interface(self, interface, dest_parents):
         """clone the `interface` linking to the `dest_parents`."""
-        interface.id = None
-        interface.node = self
-        interface._prefetched_objects_cache = {}
-        interface.save()
+        _clone_object(
+            interface, node=self, mac_address=dest_parents[0].mac_address
+        )
         for parent in dest_parents:
             InterfaceRelationship.objects.create(
                 child=interface, parent=parent
             )
-        interface.mac_address = dest_parents[0].mac_address
-        interface.save()
 
     def get_gateways_by_priority(self):
         """Return all possible default gateways for the Node, by priority.
@@ -6845,3 +6826,23 @@ class NodeGroupToRackController(CleanSave, Model):
     subnet = ForeignKey(
         "Subnet", null=False, blank=False, editable=True, on_delete=CASCADE
     )
+
+
+def _clone_object(obj, **update_fields):
+    """Save a new entry from the object by unsetting the primary key.
+
+    Optionally, fields can be updated before saving the new object.
+    """
+    pk = obj._meta.pk
+    setattr(obj, pk.attname, None)
+    # inherited models have their pk pointing to the parent entry. In this case
+    # we need to unset also PK fields from the parents
+    while pk.related_model:
+        pk = pk.related_model._meta.pk
+        setattr(obj, pk.attname, None)
+    obj.pk = None
+    # unlink any related prefetched object
+    obj._prefetched_objects_cache = {}
+    for attr, value in update_fields.items():
+        setattr(obj, attr, value)
+    obj.save()
