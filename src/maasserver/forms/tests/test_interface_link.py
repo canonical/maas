@@ -440,6 +440,21 @@ class TestInterfaceLinkForm(MAASServerTestCase):
         node = interface.get_node()
         self.assertEqual(ip_address, node.gateway_link_ipv6)
 
+    def test_STATIC_set_link_with_numa_on_rack_controller(self):
+        rack_controller = factory.make_RackController()
+        numa = factory.make_NUMANode(node=rack_controller)
+        iface = factory.make_Interface(node=rack_controller, numa_node=numa)
+        network = factory.make_ipv6_network()
+        subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=iface.vlan)
+        form = InterfaceLinkForm(
+            instance=iface,
+            data={
+                "mode": INTERFACE_LINK_TYPE.STATIC,
+                "subnet": subnet.id,
+            },
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
     def test_LINK_UP_not_allowed_with_other_ip_addresses(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         factory.make_StaticIPAddress(

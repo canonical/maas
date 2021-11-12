@@ -642,6 +642,20 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         interface = form.save()
         self.assertEqual({}, interface.params)
 
+    def test_update_allows_rack_controller_with_numa_node(self):
+        rack_controller = factory.make_RackController()
+        numa = factory.make_NUMANode(node=rack_controller)
+        iface = factory.make_Interface(node=rack_controller)
+        ip = factory.make_ip_address()
+        form = PhysicalInterfaceForm(
+            instance=iface,
+            data={
+                "ip_address": ip,
+                "numa_node": numa.index,
+            },
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
 
 class VLANInterfaceFormTest(MAASServerTestCase):
     def test_creates_vlan_interface(self):

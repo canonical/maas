@@ -2979,7 +2979,7 @@ class NUMANodeFormMixin:
 
     def clean_numa_node(self):
         index = self.cleaned_data["numa_node"]
-        if not self.node.is_machine:
+        if not (self.node.is_machine or self.node.is_rack_controller):
             if index is None:
                 return None
             raise ValidationError(
