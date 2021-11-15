@@ -281,6 +281,7 @@ class TestCleanPowerAddress(MAASServerTestCase):
     def test_clean_power_address(self):
         cases = [
             ("10.0.0.1", "10.0.0.1:8443"),
+            ("10.0.0.1:8443", "10.0.0.1:8443"),
             ("[2001:db8::1]", "[2001:db8::1]:8443"),
             ("lxd-1", "lxd-1:8443"),
             ("lxd.cluster.com", "lxd.cluster.com:8443"),
