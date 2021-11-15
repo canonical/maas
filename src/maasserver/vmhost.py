@@ -137,21 +137,24 @@ def _clean_power_address(vmhost_address):
     HTTPS or the user omits the protocol. This MUST be
     generalized to support other services.
     """
-    vmhost_url = urlparse(vmhost_address)
-
     lxd_schemes = ["https", ""]
+
+    # urlparse() doesn't work if scheme is missing
+    if "://" not in vmhost_address:
+        vmhost_address = f"{lxd_schemes[0]}://{vmhost_address}"
+
+    vmhost_url = urlparse(vmhost_address)
     if vmhost_url.port:
         port = f":{vmhost_url.port}"
     else:
         port = ":8443" if vmhost_url.scheme in lxd_schemes else ""
 
-    # parsing just an IP as a url results in the IP stored in path
-    host = vmhost_url.hostname or vmhost_url.path
-    new_path = vmhost_url.path if vmhost_url.hostname else ""
-    if valid_ipv6(host):
-        host = f"[{host}]"
-
-    vmhost_url = vmhost_url._replace(netloc=f"{host}{port}", path=new_path)
+    host = (
+        f"[{vmhost_url.hostname}]"
+        if valid_ipv6(vmhost_url.hostname)
+        else vmhost_url.hostname
+    )
+    vmhost_url = vmhost_url._replace(netloc=f"{host}{port}")
     vmhost_address = vmhost_url.geturl()
 
     if vmhost_url.scheme in lxd_schemes:
