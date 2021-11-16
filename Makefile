@@ -186,7 +186,6 @@ lint-shell: bin/shellcheck
 		utilities/gen-db-schema-svg \
 		utilities/ldap-setup \
 		utilities/package-version \
-		utilities/release-* \
 		utilities/run-performanced \
 		utilities/run-py-tests-ci
 .PHONY: lint-shell
