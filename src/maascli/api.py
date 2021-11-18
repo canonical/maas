@@ -198,7 +198,7 @@ class Action(Command):
             if what == "=":
                 return name, value
             elif what == "@=":
-                return name, partial(open, value)
+                return name, partial(open, value, "rb")
             else:
                 raise AssertionError("Unrecognised separator %r" % what)
         else:
@@ -222,25 +222,26 @@ class Action(Command):
             tuples (see `name_value_pair`) to pack into the body or
             query, depending on the type of request.
         """
-        params_in_qs = method in ("GET", "DELETE")
         query = [("op", op)] if op else []
 
+        headers, body = [], None
+
         def slurp(opener):
-            with opener("r" if params_in_qs else "rb") as fd:
+            with opener() as fd:
                 return fd.read()
 
-        # read content for file-based parameters
-        data = [
-            (key, slurp(value) if callable(value) else value)
-            for key, value in data
-        ]
-
-        headers, body = [], None
-        if params_in_qs:
-            query.extend(data)
-        elif data:
-            message = build_multipart_message(data)
-            headers, body = encode_multipart_message(message)
+        if method in ("GET", "DELETE"):
+            query.extend(
+                (name, slurp(value) if callable(value) else value)
+                for name, value in data
+            )
+            body, headers = None, []
+        else:
+            if data is None or len(data) == 0:
+                body, headers = None, []
+            else:
+                message = build_multipart_message(data)
+                headers, body = encode_multipart_message(message)
 
         uri = urlparse(uri)._replace(query=urlencode(query)).geturl()
         return uri, body, headers

@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from base64 import b64encode
+from functools import partial
 import http.client
 import json
 import sys
@@ -698,7 +699,7 @@ class TestPayloadPreparationWithFiles:
         # command-line causes name_value_pair() to return a `name,
         # opener` tuple, where `opener` is a callable that returns an
         # open file handle.
-        data = [(parameter, payload_file.open)]
+        data = [(parameter, partial(payload_file.open, "rb"))]
         return parameter, contents, data
 
     @pytest.mark.parametrize("op", [None, "action"])
@@ -718,7 +719,7 @@ class TestPayloadPreparationWithFiles:
             "Content-Type: application/octet-stream",
             "MIME-Version: 1.0",
             "Content-Transfer-Encoding: base64",
-            f'Content-Disposition: form-data; name="{parameter}"',
+            f'Content-Disposition: form-data; name="{parameter}"; filename="{parameter}"',
             b64encode(contents).decode("ascii"),
         ]
         for line in content_lines:
