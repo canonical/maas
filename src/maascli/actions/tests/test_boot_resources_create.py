@@ -55,9 +55,7 @@ class TestBootResourcesCreateAction(MAASTestCase):
             stream.write(data)
         sha256 = hashlib.sha256()
         sha256.update(data)
-        # the parser will create a partial function without "r" or "rb",
-        # that is then passed upon calling content
-        return size, sha256.hexdigest(), partial(open, content_path)
+        return size, sha256.hexdigest(), partial(open, content_path, "rb")
 
     def test_initial_request_returns_content(self):
         content = factory.make_name("content")
