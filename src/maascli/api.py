@@ -189,8 +189,7 @@ class Action(Command):
         However, when `string` is of the form ``name@=value``, this
         returns a ``name, opener`` tuple, where ``opener`` is a function
         that will return an open file handle when called. The file will
-        be opened for reading only, actions will open it as text by default,
-        but may use binary mode if specified.
+        be opened in binary mode for reading only.
         """
         parts = re.split(r"(=|@=)", string, 1)
         if len(parts) == 3:
