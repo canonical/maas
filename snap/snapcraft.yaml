@@ -7,7 +7,7 @@ grade: stable
 confinement: strict
 base: core20
 assumes:
-  - snapd2.41
+  - snapd2.53
 system-usernames:
   snap_daemon: shared
 # epochs:
@@ -38,29 +38,30 @@ apps:
     environment:
       LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
     plugs:
-        - avahi-observe # network discovery
-        - hardware-observe
-        - kernel-module-observe
-        - mount-observe
-        - network
-        - network-bind
-        - network-control
-        - network-observe
-        - system-observe
-        - time-control # chrony
+      - avahi-observe
+      - hardware-observe
+      - kernel-module-observe
+      - mount-observe
+      - network
+      - network-bind
+      - network-control
+      - network-observe
+      - snap-refresh-control
+      - system-observe
+      - time-control
 
   maas:
     command: bin/ld-preload $SNAP/bin/maas
     plugs:
-        - home
-        - mount-observe  # to read /proc/*/mounts
-        - network # for external authentication
-        - network-observe # to get default URL
+      - home
+      - mount-observe  # to read /proc/*/mounts
+      - network # for external authentication
+      - network-observe # to get default URL
 
   power:
     command: bin/maas-power
     plugs:
-        - network
+      - network
 
 parts:
   maas:
@@ -158,12 +159,12 @@ parts:
       - wget # DLI
       - wsmancli # AMT
     organize:
-        lib/python3.*/site-packages/etc/*: etc
-        lib/python3.*/site-packages/usr/bin/*: usr/bin
-        lib/python3.*/site-packages/usr/lib/*: usr/lib
-        lib/python3.*/site-packages/usr/sbin/*: usr/sbin
-        lib/python3.*/site-packages/usr/share/*: usr/share
-        usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers
+      lib/python3.*/site-packages/etc/*: etc
+      lib/python3.*/site-packages/usr/bin/*: usr/bin
+      lib/python3.*/site-packages/usr/lib/*: usr/lib
+      lib/python3.*/site-packages/usr/sbin/*: usr/sbin
+      lib/python3.*/site-packages/usr/share/*: usr/share
+      usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers
     filesets:
       remove:
         - -lib/python3.*/site-packages/etc
