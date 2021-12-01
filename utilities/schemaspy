@@ -1,0 +1,27 @@
+#!/bin/bash -e
+# Script to generated schemaspy output from the DB schema in the working
+# tree.
+#
+# It installs the needed packages, makes sure the the bin db/ has the
+# latest migrations, and then use bin/database run to run schemaspy on
+# the local database.
+DEPS_DIR=build/schemaspy/deps
+OUT_DIR=build/schemaspy/out
+SCHEMASPY_VERSION=6.1.0
+SCHEMASPY_JAR=schemaspy-${SCHEMASPY_VERSION}.jar
+PGJDBC_JAR=/usr/share/java/postgresql-42.2.10.jar
+PORT=4444
+
+sudo apt install graphviz openjdk-8-jre-headless libpostgresql-jdbc-java
+
+mkdir -p ${DEPS_DIR}
+wget https://github.com/schemaspy/schemaspy/releases/download/v${SCHEMASPY_VERSION}/${SCHEMASPY_JAR} -O ${DEPS_DIR}/${SCHEMASPY_JAR}
+
+make syncdb
+
+cat <<EOF > ${DEPS_DIR}/run
+socat -v tcp-l:${PORT}>,bind=localhost,reuseaddr,fork unix:db/.s.PGSQL.5432 &
+java -jar ${DEPS_DIR}/${SCHEMASPY_JAR} -t pgsql -dp ${PGJDBC_JAR} -host localhost -port ${PORT} -imageformat svg -nopages -hq -o ${OUT_DIR} -u $USER -db maas
+EOF
+trap '$(jobs -p) | xargs -r kill' EXIT
+bin/database --preserve run -- bash ${DEPS_DIR}/run

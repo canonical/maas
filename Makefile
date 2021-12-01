@@ -187,7 +187,8 @@ lint-shell: bin/shellcheck
 		utilities/ldap-setup \
 		utilities/package-version \
 		utilities/run-performanced \
-		utilities/run-py-tests-ci
+		utilities/run-py-tests-ci \
+		utilities/schemaspy 
 .PHONY: lint-shell
 
 format.parallel:
