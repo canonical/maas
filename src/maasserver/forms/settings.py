@@ -42,7 +42,10 @@ from maasserver.utils.osystems import (
     list_osystem_choices,
     release_a_newer_than_b,
 )
-from provisioningserver.drivers.power.ipmi import IPMI_PRIVILEGE_LEVEL_CHOICES
+from provisioningserver.drivers.power.ipmi import (
+    IPMI_CIPHER_SUITE_ID_CHOICES,
+    IPMI_PRIVILEGE_LEVEL_CHOICES,
+)
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.url import splithost
 
@@ -890,6 +893,26 @@ CONFIG_ITEMS = {
                 "commissioned. Any current machines that were previously "
                 "commissioned will not require this key until they are "
                 "recommissioned."
+            ),
+        },
+    },
+    "maas_auto_ipmi_cipher_suite_id": {
+        "default": "3",
+        "form": forms.ChoiceField,
+        "form_kwargs": {
+            "label": "MAAS IPMI Default Cipher Suite ID",
+            "required": False,
+            "choices": IPMI_CIPHER_SUITE_ID_CHOICES,
+            "error_messages": {
+                "invalid_choice": "Valid choices are {}".format(
+                    ",".join(
+                        choice[0] for choice in IPMI_CIPHER_SUITE_ID_CHOICES
+                    )
+                ),
+            },
+            "help_text": (
+                "The default IPMI cipher suite ID to use when connecting "
+                "to the BMC via ipmitools"
             ),
         },
     },

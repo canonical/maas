@@ -31,6 +31,10 @@ class ConfigDefaultTest(MAASServerTestCase, TestWithFixtures):
         default_config = get_default_config()
         self.assertEqual("maas", default_config["maas_auto_ipmi_user"])
 
+    def test_default_config_maas_ipmi_cipher_suite_id(self):
+        default_config = get_default_config()
+        self.assertEqual("3", default_config["maas_auto_ipmi_cipher_suite_id"])
+
     def test_defaults(self):
         expected = get_default_config()
         observed = {name: Config.objects.get_config(name) for name in expected}

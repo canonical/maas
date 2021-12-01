@@ -396,6 +396,8 @@ class IPMIPowerDriver(PowerDriver):
         if is_power_parameter_set(k_g):
             common_args.extend(("-k", k_g))
         if is_power_parameter_set(cipher_suite_id):
+            if cipher_suite_id != "17":
+                maaslog.warning("using a non-secure cipher suite id")
             common_args.extend(("-I", cipher_suite_id))
         if is_power_parameter_set(privilege_level):
             common_args.extend(("-l", privilege_level))

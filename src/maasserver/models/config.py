@@ -125,6 +125,7 @@ def get_default_config():
         "maas_auto_ipmi_user": "maas",
         "maas_auto_ipmi_user_privilege_level": "ADMIN",
         "maas_auto_ipmi_k_g_bmc_key": "",
+        "maas_auto_ipmi_cipher_suite_id": "3",
         # VMware vCenter crednetials
         "vcenter_server": "",
         "vcenter_username": "",

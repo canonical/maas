@@ -162,12 +162,13 @@ class IPMI(BMCConfig):
         password=None,
         ipmi_k_g="",
         ipmi_privilege_level="",
+        ipmi_cipher_suite_id="3",
         **kwargs
     ):
         self.username = username
         self.password = password
         self._kg = ipmi_k_g
-        self._cipher_suite_id = ""
+        self._cipher_suite_id = ipmi_cipher_suite_id
         self._privilege_level = ipmi_privilege_level
         self._bmc_config = {}
 
@@ -501,135 +502,6 @@ class IPMI(BMCConfig):
         )
         self._bmc_set_keys("Lan_Channel_Auth", ["SOL_Payload_Access"], "Yes")
 
-    def _get_ipmitool_cipher_suite_ids(self):
-        print(
-            "INFO: Gathering supported cipher suites and current configuration..."
-        )
-        supported_cipher_suite_ids = []
-        current_cipher_suite_privs = None
-        _, output = self._get_ipmitool_lan_print()
-
-        for line in output.splitlines():
-            try:
-                key, value = line.split(":", 1)
-            except ValueError:
-                continue
-            key = key.strip()
-            value = value.strip()
-            if key == "RMCP+ Cipher Suites":
-                try:
-                    # Some BMCs return an unordered list.
-                    supported_cipher_suite_ids = sorted(
-                        [int(i) for i in value.split(",")]
-                    )
-                except ValueError:
-                    print(
-                        "ERROR: ipmitool returned RMCP+ Cipher Suites with "
-                        "invalid characters: %s" % value,
-                        file=sys.stderr,
-                    )
-                    return [], None
-            elif key == "Cipher Suite Priv Max":
-                current_cipher_suite_privs = value
-            if supported_cipher_suite_ids and current_cipher_suite_privs:
-                break
-
-        return supported_cipher_suite_ids, current_cipher_suite_privs
-
-    def _configure_ipmitool_cipher_suite_ids(
-        self, cipher_suite_id, current_suite_privs
-    ):
-        new_cipher_suite_privs = ""
-        for i, c in enumerate(current_suite_privs):
-            if i == cipher_suite_id and c != "a":
-                print(
-                    "INFO: Enabling cipher suite %s for MAAS use..."
-                    % cipher_suite_id
-                )
-                new_cipher_suite_privs += "a"
-            elif i not in [17, 3, 8, 12] and c != "X":
-                print("INFO: Disabling insecure cipher suite %s..." % i)
-                new_cipher_suite_privs += "X"
-            else:
-                # Leave secure ciphers as is. Most tools default to 3 while
-                # 17 is considered the most secure.
-                new_cipher_suite_privs += c
-
-        if new_cipher_suite_privs != current_suite_privs:
-            channel, _ = self._get_ipmitool_lan_print()
-            check_call(
-                [
-                    "ipmitool",
-                    "lan",
-                    "set",
-                    channel,
-                    "cipher_privs",
-                    new_cipher_suite_privs,
-                ],
-                timeout=COMMAND_TIMEOUT,
-            )
-        return new_cipher_suite_privs
-
-    def _config_cipher_suite_id(self):
-        print("INFO: Configuring IPMI cipher suite ids...")
-
-        (
-            supported_cipher_suite_ids,
-            current_cipher_suite_privs,
-        ) = self._get_ipmitool_cipher_suite_ids()
-        print(
-            "INFO: BMC supports the following ciphers - %s"
-            % supported_cipher_suite_ids
-        )
-
-        # First find the most secure cipher suite id MAAS will use to
-        # communicate to the BMC with.
-        # 3  - HMAC-SHA1::HMAC-SHA1-96::AES-CBC-128
-        # 8  - HMAC-MD5::HMAC-MD5-128::AES-CBC-128
-        # 12 - HMAC-MD5::MD5-128::AES-CBC-128
-        # 17 - HMAC-SHA256::HMAC_SHA256_128::AES-CBC-128
-        # This is not in order as MAAS prefers to use the most secure cipher
-        # available.
-        cipher_suite_id = None
-        for i in [17, 3, 8, 12]:
-            if i in supported_cipher_suite_ids:
-                cipher_suite_id = i
-                break
-        if cipher_suite_id is None:
-            # Some BMC's don't allow this to be viewed or configured, such
-            # as the PPC64 machine in the MAAS CI.
-            print(
-                "WARNING: No IPMI supported cipher suite found! "
-                "MAAS will use freeipmi-tools default."
-            )
-            return
-
-        print(
-            "INFO: Current cipher suite configuration - %s"
-            % current_cipher_suite_privs
-        )
-        try:
-            new_cipher_suite_privs = self._configure_ipmitool_cipher_suite_ids(
-                cipher_suite_id, current_cipher_suite_privs
-            )
-        except (CalledProcessError, TimeoutExpired):
-            # Some BMC's don't allow this to be viewed or configured, such
-            # as the PPC64 machine in the MAAS CI.
-            print(
-                "WARNING: Unable to configure IPMI cipher suites! "
-                "MAAS will use freeipmi-tools default."
-            )
-        else:
-            print(
-                "INFO: New cipher suite configuration - %s"
-                % new_cipher_suite_privs
-            )
-            print(
-                'INFO: MAAS will use IPMI cipher suite id "%s" for '
-                "BMC communication" % cipher_suite_id
-            )
-            self._cipher_suite_id = str(cipher_suite_id)
-
     def _config_kg(self):
         if self._kg:
             if self._kg != self._bmc_config.get(
@@ -670,7 +542,6 @@ class IPMI(BMCConfig):
         # this one.
         self._config_ipmi_lan_channel_settings()
         self._config_lan_conf_auth()
-        self._config_cipher_suite_id()
         self._config_kg()
 
         print("INFO: Configuring IPMI Serial_Channel...")
@@ -1074,6 +945,12 @@ def main():
         choices=("USER", "OPERATOR", "ADMIN"),
         default="ADMIN",
         help="The IPMI priviledge level to create the MAAS user as.",
+    )
+    parser.add_argument(
+        "--ipmi-cipher-suite-id",
+        choices=("3", "8", "12", "17"),
+        default="3",
+        help="The IPMI cipher suite ID to use when connecting via ipmitool",
     )
     args = parser.parse_args()
 
