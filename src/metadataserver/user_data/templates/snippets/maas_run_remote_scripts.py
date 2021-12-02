@@ -29,7 +29,6 @@ import json
 import os
 from pathlib import Path
 import re
-import shlex
 import shutil
 from subprocess import (
     CalledProcessError,
@@ -633,7 +632,7 @@ def get_storage_model_from_udev(block_dev):
     non-encoded model name. LXD gives the encoded model name in LXD 4.3+. Read
     and store both from udev to ensure matching works.
     """
-    udev_path = "/run/udev/data/b%s" % block_dev["MAJ:MIN"]
+    udev_path = "/run/udev/data/b%s" % block_dev["maj:min"]
     if not os.path.exists(udev_path):
         # udev should always be available, if udev_path isn't found something
         # changed. lsblk will still give a model name, try using that.
@@ -641,14 +640,14 @@ def get_storage_model_from_udev(block_dev):
             "WARNING: Unable to read block device data from "
             "udev(%s)" % udev_path
         )
-        block_dev["MODEL_ENC"] = block_dev["MODEL"]
+        block_dev["model_enc"] = block_dev["model"]
         return block_dev
     with open(udev_path, "r") as f:
         for line in f.readlines():
             if line.startswith("E:ID_MODEL_ENC"):
-                block_dev["MODEL_ENC"] = udev_decode(line.split("=", 1)[1])
+                block_dev["model_enc"] = udev_decode(line.split("=", 1)[1])
             elif line.startswith("E:ID_MODEL"):
-                block_dev["MODEL"] = line.split("=", 1)[1].strip()
+                block_dev["model"] = line.split("=", 1)[1].strip()
     return block_dev
 
 
@@ -672,9 +671,9 @@ def get_block_devices():
                 "--exclude",
                 "1,2,7",
                 "-d",
-                "-P",
+                "-J",
                 "-o",
-                "NAME,MODEL,SERIAL,MAJ:MIN",
+                "name,model,serial,maj:min",
             ]
             block_list = check_output(cmd, timeout=60).decode("utf-8")
         except TimeoutExpired:
@@ -690,15 +689,8 @@ def get_block_devices():
             )
         else:
             block_devices = []
-            for blockdev in block_list.splitlines():
-                tokens = shlex.split(blockdev)
-                current_block = {}
-                for token in tokens:
-                    k, v = token.split("=", 1)
-                    current_block[k] = v.strip()
-                block_devices.append(
-                    get_storage_model_from_udev(current_block)
-                )
+            for blockdev in json.loads(block_list)["blockdevices"]:
+                block_devices.append(get_storage_model_from_udev(blockdev))
             # LP:1732539 - Don't fill cache until all results are proceeded.
             _block_devices = block_devices
 
@@ -825,11 +817,11 @@ def parse_parameters(script, scripts_dir):
                 # the device name may have changed since commissioning.
                 for blockdev in get_block_devices():
                     if (
-                        model == blockdev["MODEL"]
-                        or model == blockdev.get("MODEL_ENC")
-                    ) and serial == blockdev["SERIAL"]:
+                        model == blockdev["model"]
+                        or model == blockdev.get("model_enc")
+                    ) and serial == blockdev["serial"]:
                         value["path"] = value["input"] = (
-                            "/dev/%s" % blockdev["NAME"]
+                            "/dev/%s" % blockdev["name"]
                         )
             argument_format = param.get("argument_format", "--storage={path}")
             try:

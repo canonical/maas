@@ -1604,23 +1604,17 @@ class TestParseParameters(MAASTestCase):
         mock_get_storage_model_from_udev.side_effect = lambda bd: bd
         expected_blockdevs = [
             {
-                "NAME": factory.make_name("NAME"),
-                "MODEL": factory.make_name("MODEL"),
-                "SERIAL": factory.make_name("SERIAL"),
-                "MAJ:MIN": factory.make_name("MAJ:MIN"),
+                "name": factory.make_name("name"),
+                "model": factory.make_name("model"),
+                "serial": factory.make_name("serial"),
+                "maj:min": factory.make_name("maj:min"),
             }
             for _ in range(3)
         ]
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
-        mock_check_output.return_value = "".join(
-            [
-                'NAME="{NAME}" MODEL="{MODEL}" SERIAL="{SERIAL}" '
-                'MAJ:MIN="{MAJ_MIN}"\n'.format(
-                    **blockdev, MAJ_MIN=blockdev["MAJ:MIN"]
-                )
-                for blockdev in expected_blockdevs
-            ]
-        ).encode()
+        mock_check_output.return_value = json.dumps(
+            {"blockdevices": expected_blockdevs}
+        ).encode("utf-8")
         maas_run_remote_scripts._block_devices = None
 
         self.assertCountEqual(expected_blockdevs, get_block_devices())
@@ -1632,7 +1626,7 @@ class TestParseParameters(MAASTestCase):
         maas_run_remote_scripts._block_devices = block_devices
 
         self.assertCountEqual(block_devices, get_block_devices())
-        self.assertThat(mock_check_output, MockNotCalled())
+        mock_check_output.assert_not_called()
 
     def test_get_block_devices_cached_error(self):
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
@@ -1679,13 +1673,13 @@ class TestParseParameters(MAASTestCase):
                 )
             ),
         )
-        self.assertDictEqual(
+        self.assertEqual(
             {
-                "MAJ:MIN": "8:0",
-                "MODEL": "QEMU_HARDDISK",
-                "MODEL_ENC": "QEMU HARDDISK",
+                "maj:min": "8:0",
+                "model": "QEMU_HARDDISK",
+                "model_enc": "QEMU HARDDISK",
             },
-            get_storage_model_from_udev({"MAJ:MIN": "8:0"}),
+            get_storage_model_from_udev({"maj:min": "8:0"}),
         )
 
     def test_get_storage_model_from_udev_warns(self):
@@ -1693,9 +1687,9 @@ class TestParseParameters(MAASTestCase):
             maas_run_remote_scripts.sys.stderr, "write"
         )
         model = factory.make_name("model")
-        block_dev = {"MAJ:MIN": factory.make_name("MAJ:MIN"), "MODEL": model}
+        block_dev = {"maj:min": factory.make_name("maj:min"), "model": model}
         self.assertDictEqual(
-            {"MODEL_ENC": model, **block_dev},
+            {"model_enc": model, **block_dev},
             get_storage_model_from_udev(block_dev),
         )
         self.assertThat(mock_stderr_write, MockCalledOnce())
@@ -1868,13 +1862,19 @@ class TestParseParameters(MAASTestCase):
             },
         }
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
-        mock_check_output.return_value = "".join(
-            [
-                'NAME="{name}" MODEL="{model}" SERIAL="{serial}" '
-                'MAJ_MIN="8:0"\n'.format(**param["value"])
-                for param_name, param in script["parameters"].items()
-                if "storage" in param_name
-            ]
+        mock_check_output.return_value = json.dumps(
+            {
+                "blockdevices": [
+                    {
+                        "name": param["value"]["name"],
+                        "model": param["value"]["model"],
+                        "serial": param["value"]["serial"],
+                        "maj:min": "8:0",
+                    }
+                    for param_name, param in script["parameters"].items()
+                    if "storage" in param_name
+                ]
+            }
         ).encode()
         maas_run_remote_scripts._block_devices = None
         maas_run_remote_scripts._interfaces = {
@@ -1947,13 +1947,19 @@ class TestParseParameters(MAASTestCase):
             },
         }
         mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
-        mock_check_output.return_value = "".join(
-            [
-                'NAME="{name}" MODEL="{model}" SERIAL="{serial}" '
-                'MAJ:MIN="8:0"\n'.format(**param["value"])
-                for param_name, param in script["parameters"].items()
-                if "storage" in param_name
-            ]
+        mock_check_output.return_value = json.dumps(
+            {
+                "blockdevices": [
+                    {
+                        "name": param["value"]["name"],
+                        "model": param["value"]["model"],
+                        "serial": param["value"]["serial"],
+                        "maj:min": "8:0",
+                    }
+                    for param_name, param in script["parameters"].items()
+                    if "storage" in param_name
+                ]
+            }
         ).encode()
         maas_run_remote_scripts._block_devices = None
         maas_run_remote_scripts._interfaces = {
@@ -2557,8 +2563,8 @@ class TestRunScript(MAASTestCase):
     def test_run_script_errors_with_bad_param(self):
         fake_block_devices = [
             {
-                "MODEL": factory.make_name("model"),
-                "SERIAL": factory.make_name("serial"),
+                "model": factory.make_name("model"),
+                "serial": factory.make_name("serial"),
             }
             for _ in range(3)
         ]
