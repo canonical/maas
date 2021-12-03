@@ -40,7 +40,6 @@ from maasserver.api.doc_handler import describe
 from maasserver.api.domains import DomainHandler, DomainsHandler
 from maasserver.api.events import EventsHandler
 from maasserver.api.fabrics import FabricHandler, FabricsHandler
-from maasserver.api.fannetworks import FanNetworkHandler, FanNetworksHandler
 from maasserver.api.files import FileHandler, FilesHandler
 from maasserver.api.interfaces import InterfaceHandler, InterfacesHandler
 from maasserver.api.ip_addresses import IPAddressesHandler
@@ -262,12 +261,6 @@ zone_handler = RestrictedResource(ZoneHandler, authentication=api_auth)
 zones_handler = RestrictedResource(ZonesHandler, authentication=api_auth)
 fabric_handler = RestrictedResource(FabricHandler, authentication=api_auth)
 fabrics_handler = RestrictedResource(FabricsHandler, authentication=api_auth)
-fannetwork_handler = RestrictedResource(
-    FanNetworkHandler, authentication=api_auth
-)
-fannetworks_handler = RestrictedResource(
-    FanNetworksHandler, authentication=api_auth
-)
 vlan_handler = RestrictedResource(VlanHandler, authentication=api_auth)
 vlans_handler = RestrictedResource(VlansHandler, authentication=api_auth)
 space_handler = RestrictedResource(SpaceHandler, authentication=api_auth)
@@ -569,12 +562,6 @@ urlpatterns += [
         r"^fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vid>[^/]+)/$",
         vlan_handler,
         name="vlan_handler",
-    ),
-    url(r"^fannetworks/$", fannetworks_handler, name="fannetworks_handler"),
-    url(
-        r"^fannetworks/(?P<id>[^/]+)/$",
-        fannetwork_handler,
-        name="fannetwork_handler",
     ),
     url(r"^spaces/$", spaces_handler, name="spaces_handler"),
     url(r"^spaces/(?P<id>[^/]+)/$", space_handler, name="space_handler"),

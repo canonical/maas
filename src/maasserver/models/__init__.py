@@ -30,7 +30,6 @@ __all__ = [
     "Event",
     "EventType",
     "Fabric",
-    "FanNetwork",
     "FileStorage",
     "Filesystem",
     "FilesystemGroup",
@@ -128,7 +127,6 @@ from maasserver.models.domain import Domain
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
 from maasserver.models.fabric import Fabric
-from maasserver.models.fannetwork import FanNetwork
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import (
@@ -302,7 +300,6 @@ UNRESTRICTED_READ_MODELS = (
     DNSResource,
     Domain,
     Fabric,
-    FanNetwork,
     ResourcePool,
     Space,
     Subnet,

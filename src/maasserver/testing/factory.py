@@ -63,7 +63,6 @@ from maasserver.models import (
     Event,
     EventType,
     Fabric,
-    FanNetwork,
     FileStorage,
     Filesystem,
     FilesystemGroup,
@@ -1489,36 +1488,6 @@ class Factory(maastesting.factory.Factory):
             if address not in but_not:
                 return str(address)
         raise TooManyRandomRetries("Could not find available IP in IPRange")
-
-    def make_FanNetwork(
-        self,
-        name=None,
-        underlay=None,
-        overlay=None,
-        dhcp=None,
-        host_reserve=1,
-        bridge=None,
-        off=None,
-    ):
-        if name is None:
-            name = self.make_name("fan network")
-        if underlay is None:
-            underlay = factory.make_ipv4_network(slash=16)
-        if overlay is None:
-            overlay = factory.make_ipv4_network(
-                slash=8, disjoint_from=[underlay]
-            )
-        fannetwork = FanNetwork(
-            name=name,
-            underlay=underlay,
-            overlay=overlay,
-            dhcp=dhcp,
-            host_reserve=host_reserve,
-            bridge=bridge,
-            off=off,
-        )
-        fannetwork.save()
-        return fannetwork
 
     def make_Neighbour(
         self,

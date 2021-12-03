@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.8 (Ubuntu 12.8-0ubuntu0.20.04.1)
--- Dumped by pg_dump version 12.8 (Ubuntu 12.8-0ubuntu0.20.04.1)
+-- Dumped from database version 12.9 (Ubuntu 12.9-0ubuntu0.20.04.1)
+-- Dumped by pg_dump version 12.9 (Ubuntu 12.9-0ubuntu0.20.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -16,9 +16,6057 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
+--
+-- Name: bmc_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.bmc_machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  FOR node IN (
+    SELECT system_id, node_type
+    FROM maasserver_node
+    WHERE bmc_id = NEW.id)
+  LOOP
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: config_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.config_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('config_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: config_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.config_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('config_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: config_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.config_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('config_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: consumer_token_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.consumer_token_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    token RECORD;
+BEGIN
+  IF OLD.name != NEW.name THEN
+    FOR token IN (
+      SELECT id
+      FROM piston3_token
+      WHERE piston3_token.consumer_id = NEW.id)
+    LOOP
+      PERFORM pg_notify('token_update',CAST(token.id AS text));
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: controllerinfo_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.controllerinfo_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: controllerinfo_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.controllerinfo_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = OLD.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: controllerinfo_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.controllerinfo_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: device_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.device_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  pnode RECORD;
+BEGIN
+  IF NEW.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = NEW.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_create',CAST(NEW.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: device_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.device_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  pnode RECORD;
+BEGIN
+  IF OLD.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = OLD.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_delete',CAST(OLD.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: device_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.device_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  pnode RECORD;
+BEGIN
+  IF NEW.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = NEW.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(NEW.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dhcpsnippet_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dhcpsnippet_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('dhcpsnippet_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dhcpsnippet_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dhcpsnippet_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('dhcpsnippet_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dhcpsnippet_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dhcpsnippet_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('dhcpsnippet_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dnsdata_domain_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dnsdata_domain_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    dom RECORD;
+BEGIN
+  SELECT DISTINCT ON (domain_id) domain_id INTO dom
+  FROM maasserver_dnsresource AS dnsresource
+  WHERE dnsresource.id = OLD.dnsresource_id;
+  PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dnsdata_domain_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dnsdata_domain_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    dom RECORD;
+BEGIN
+  SELECT DISTINCT ON (domain_id) domain_id INTO dom
+  FROM maasserver_dnsresource AS dnsresource
+  WHERE dnsresource.id = NEW.dnsresource_id;
+  PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dnsdata_domain_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dnsdata_domain_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    dom RECORD;
+BEGIN
+  SELECT DISTINCT ON (domain_id) domain_id INTO dom
+  FROM maasserver_dnsresource AS dnsresource
+  WHERE dnsresource.id = OLD.dnsresource_id OR dnsresource.id = NEW.dnsresource_id;
+  PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dnsresource_domain_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dnsresource_domain_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    domain RECORD;
+BEGIN
+  PERFORM pg_notify('domain_update',CAST(OLD.domain_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dnsresource_domain_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dnsresource_domain_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    domain RECORD;
+BEGIN
+  PERFORM pg_notify('domain_update',CAST(NEW.domain_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: dnsresource_domain_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.dnsresource_domain_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    domain RECORD;
+BEGIN
+  PERFORM pg_notify('domain_update',CAST(OLD.domain_id AS text));
+  IF OLD.domain_id != NEW.domain_id THEN
+    PERFORM pg_notify('domain_update',CAST(NEW.domain_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: domain_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.domain_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('domain_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: domain_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.domain_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('domain_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: domain_node_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.domain_node_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  IF OLD.name != NEW.name THEN
+    FOR node IN (
+      SELECT system_id, node_type, parent_id
+      FROM maasserver_node
+      WHERE maasserver_node.domain_id = NEW.id)
+    LOOP
+      IF node.system_id IS NOT NULL THEN
+        IF node.node_type = 0 THEN
+          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+        ELSIF node.node_type IN (2, 3, 4) THEN
+          PERFORM pg_notify(
+            'controller_update',CAST(node.system_id AS text));
+        ELSIF node.parent_id IS NOT NULL THEN
+          SELECT system_id INTO pnode
+          FROM maasserver_node
+          WHERE id = node.parent_id;
+          PERFORM
+            pg_notify('machine_update',CAST(pnode.system_id AS text));
+        ELSE
+          PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        END IF;
+      END IF;
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: domain_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.domain_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('domain_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: event_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.event_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('event_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: event_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.event_machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  type RECORD;
+  node RECORD;
+BEGIN
+  SELECT level INTO type
+  FROM maasserver_eventtype
+  WHERE maasserver_eventtype.id = NEW.type_id;
+  IF type.level >= 20 THEN
+    SELECT system_id, node_type INTO node
+    FROM maasserver_node
+    WHERE maasserver_node.id = NEW.node_id;
+
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: fabric_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fabric_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('fabric_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: fabric_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fabric_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('fabric_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: fabric_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fabric_machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    node RECORD;
+    pnode RECORD;
+BEGIN
+  FOR node IN (
+    SELECT DISTINCT ON (maasserver_node.id)
+      system_id, node_type, parent_id
+    FROM
+      maasserver_node,
+      maasserver_fabric,
+      maasserver_interface,
+      maasserver_vlan
+    WHERE maasserver_fabric.id = NEW.id
+    AND maasserver_vlan.fabric_id = maasserver_fabric.id
+    AND maasserver_node.id = maasserver_interface.node_id
+    AND maasserver_vlan.id = maasserver_interface.vlan_id)
+  LOOP
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    ELSIF node.parent_id IS NOT NULL THEN
+      SELECT system_id INTO pnode
+      FROM maasserver_node
+      WHERE id = node.parent_id;
+      PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    ELSE
+      PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: fabric_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.fabric_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('fabric_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: interface_pod_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.interface_pod_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    _pod_id integer;
+BEGIN
+    IF TG_OP = 'INSERT' then
+        SELECT INTO _pod_id pod_id FROM maasserver_podhost
+            WHERE NEW.node_id = node_id;
+        IF _pod_id IS NOT NULL then
+            PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+         END IF;
+    ELSIF TG_OP = 'UPDATE' then
+        IF OLD.vlan_id IS NOT DISTINCT FROM NEW.vlan_id
+            AND OLD.node_id IS NOT DISTINCT FROM NEW.node_id then
+            -- Nothing relevant changed during interface update.
+            RETURN NULL;
+        END IF;
+        SELECT INTO _pod_id pod_id FROM maasserver_podhost
+            WHERE NEW.node_id = node_id;
+        IF _pod_id IS NOT NULL then
+            PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+         END IF;
+        IF OLD.node_id != NEW.node_id then
+            SELECT INTO _pod_id pod_id FROM maasserver_podhost
+                WHERE OLD.node_id = node_id;
+            IF _pod_id IS NOT NULL then
+                PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+            END IF;
+        END IF;
+    ELSE
+        SELECT INTO _pod_id pod_id FROM maasserver_podhost
+            WHERE OLD.node_id = node_id;
+        IF _pod_id IS NOT NULL then
+            PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+         END IF;
+    END IF;
+    RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: ipaddress_domain_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ipaddress_domain_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  dom RECORD;
+BEGIN
+  FOR dom IN (
+    SELECT DISTINCT ON (domain.id)
+      domain.id
+    FROM maasserver_staticipaddress AS staticipaddress
+    LEFT JOIN (
+      maasserver_interface_ip_addresses AS iia
+      JOIN maasserver_interface AS interface ON
+        iia.interface_id = interface.id
+      JOIN maasserver_node AS node ON
+        node.id = interface.node_id) ON
+      iia.staticipaddress_id = staticipaddress.id
+    LEFT JOIN (
+      maasserver_dnsresource_ip_addresses AS dia
+      JOIN maasserver_dnsresource AS dnsresource ON
+        dia.dnsresource_id = dnsresource.id) ON
+      dia.staticipaddress_id = staticipaddress.id
+    JOIN maasserver_domain AS domain ON
+      domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+    WHERE staticipaddress.id = OLD.id)
+  LOOP
+    PERFORM pg_notify('domain_update',CAST(dom.id AS text));
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ipaddress_domain_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ipaddress_domain_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  dom RECORD;
+BEGIN
+  FOR dom IN (
+    SELECT DISTINCT ON (domain.id)
+      domain.id
+    FROM maasserver_staticipaddress AS staticipaddress
+    LEFT JOIN (
+      maasserver_interface_ip_addresses AS iia
+      JOIN maasserver_interface AS interface ON
+        iia.interface_id = interface.id
+      JOIN maasserver_node AS node ON
+        node.id = interface.node_id) ON
+      iia.staticipaddress_id = staticipaddress.id
+    LEFT JOIN (
+      maasserver_dnsresource_ip_addresses AS dia
+      JOIN maasserver_dnsresource AS dnsresource ON
+        dia.dnsresource_id = dnsresource.id) ON
+      dia.staticipaddress_id = staticipaddress.id
+    JOIN maasserver_domain AS domain ON
+      domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+    WHERE staticipaddress.id = NEW.id)
+  LOOP
+    PERFORM pg_notify('domain_update',CAST(dom.id AS text));
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ipaddress_domain_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ipaddress_domain_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  dom RECORD;
+BEGIN
+  IF ((OLD.ip IS NULL and NEW.ip IS NOT NULL) OR
+        (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
+        OLD.ip != NEW.ip) THEN
+    FOR dom IN (
+      SELECT DISTINCT ON (domain.id)
+        domain.id
+      FROM maasserver_staticipaddress AS staticipaddress
+      LEFT JOIN (
+        maasserver_interface_ip_addresses AS iia
+        JOIN maasserver_interface AS interface ON
+          iia.interface_id = interface.id
+        JOIN maasserver_node AS node ON
+          node.id = interface.node_id) ON
+        iia.staticipaddress_id = staticipaddress.id
+      LEFT JOIN (
+        maasserver_dnsresource_ip_addresses AS dia
+        JOIN maasserver_dnsresource AS dnsresource ON
+          dia.dnsresource_id = dnsresource.id) ON
+        dia.staticipaddress_id = staticipaddress.id
+      JOIN maasserver_domain AS domain ON
+        domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+      WHERE staticipaddress.id = OLD.id OR staticipaddress.id = NEW.id)
+    LOOP
+      PERFORM pg_notify('domain_update',CAST(dom.id AS text));
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ipaddress_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ipaddress_machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    node RECORD;
+    pnode RECORD;
+BEGIN
+  FOR node IN (
+    SELECT DISTINCT ON (maasserver_node.id)
+      system_id, node_type, parent_id
+    FROM
+      maasserver_node,
+      maasserver_interface,
+      maasserver_interface_ip_addresses AS ip_link
+    WHERE ip_link.staticipaddress_id = NEW.id
+    AND ip_link.interface_id = maasserver_interface.id
+    AND maasserver_node.id = maasserver_interface.node_id)
+  LOOP
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    ELSIF node.parent_id IS NOT NULL THEN
+      SELECT system_id INTO pnode
+      FROM maasserver_node
+      WHERE id = node.parent_id;
+      PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    ELSE
+      PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ipaddress_subnet_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ipaddress_subnet_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+    END IF;
+    RETURN OLD;
+  END IF;
+  IF OLD.subnet_id != NEW.subnet_id THEN
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+    END IF;
+  END IF;
+  IF NEW.subnet_id IS NOT NULL THEN
+    PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ipaddress_subnet_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ipaddress_subnet_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+    END IF;
+    RETURN OLD;
+  END IF;
+  IF OLD.subnet_id != NEW.subnet_id THEN
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+    END IF;
+  END IF;
+  IF NEW.subnet_id IS NOT NULL THEN
+    PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ipaddress_subnet_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ipaddress_subnet_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+    END IF;
+    RETURN OLD;
+  END IF;
+  IF OLD.subnet_id != NEW.subnet_id THEN
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+    END IF;
+  END IF;
+  IF NEW.subnet_id IS NOT NULL THEN
+    PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: iprange_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.iprange_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('iprange_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: iprange_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.iprange_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('iprange_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: iprange_subnet_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.iprange_subnet_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.subnet_id IS NOT NULL THEN
+    PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: iprange_subnet_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.iprange_subnet_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.subnet_id IS NOT NULL THEN
+    PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: iprange_subnet_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.iprange_subnet_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.subnet_id != NEW.subnet_id THEN
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
+    END IF;
+  END IF;
+  IF NEW.subnet_id IS NOT NULL THEN
+    PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: iprange_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.iprange_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('iprange_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: machine_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.machine_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('machine_create',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: machine_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.machine_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('machine_delete',CAST(OLD.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: machine_device_tag_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.machine_device_tag_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: machine_device_tag_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.machine_device_tag_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = OLD.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('machine_update',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_blockdevice_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_blockdevice_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_blockdevice_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_blockdevice_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = OLD.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_blockdevice_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_blockdevice_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_cacheset_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_cacheset_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partition,
+       maasserver_partitiontable,
+       maasserver_filesystem
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id =
+      maasserver_partition.partition_table_id
+  AND maasserver_partition.id = maasserver_filesystem.partition_id
+  AND maasserver_filesystem.cache_set_id = NEW.id;
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_cacheset_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_cacheset_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partition,
+       maasserver_partitiontable,
+       maasserver_filesystem
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id =
+      maasserver_partition.partition_table_id
+  AND maasserver_partition.id = maasserver_filesystem.partition_id
+  AND maasserver_filesystem.cache_set_id = OLD.id;
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_cacheset_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_cacheset_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partition,
+       maasserver_partitiontable,
+       maasserver_filesystem
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id =
+      maasserver_partition.partition_table_id
+  AND maasserver_partition.id = maasserver_filesystem.partition_id
+  AND maasserver_filesystem.cache_set_id = NEW.id;
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_filesystem_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_filesystem_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  IF NEW.block_device_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice
+     WHERE maasserver_node.id = maasserver_blockdevice.node_id
+       AND maasserver_blockdevice.id = NEW.block_device_id;
+  ELSIF NEW.partition_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice,
+           maasserver_partition,
+           maasserver_partitiontable
+     WHERE maasserver_node.id = maasserver_blockdevice.node_id
+       AND maasserver_blockdevice.id =
+           maasserver_partitiontable.block_device_id
+       AND maasserver_partitiontable.id =
+           maasserver_partition.partition_table_id
+       AND maasserver_partition.id = NEW.partition_id;
+  ELSIF NEW.node_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node
+     WHERE maasserver_node.id = NEW.node_id;
+  END IF;
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_filesystem_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_filesystem_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  IF OLD.block_device_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice
+     WHERE maasserver_node.id = maasserver_blockdevice.node_id
+       AND maasserver_blockdevice.id = OLD.block_device_id;
+  ELSIF OLD.partition_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice,
+           maasserver_partition,
+           maasserver_partitiontable
+     WHERE maasserver_node.id = maasserver_blockdevice.node_id
+       AND maasserver_blockdevice.id =
+           maasserver_partitiontable.block_device_id
+       AND maasserver_partitiontable.id =
+           maasserver_partition.partition_table_id
+       AND maasserver_partition.id = OLD.partition_id;
+  ELSIF OLD.node_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node
+     WHERE maasserver_node.id = OLD.node_id;
+  END IF;
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_filesystem_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_filesystem_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  IF NEW.block_device_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice
+     WHERE maasserver_node.id = maasserver_blockdevice.node_id
+       AND maasserver_blockdevice.id = NEW.block_device_id;
+  ELSIF NEW.partition_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node,
+           maasserver_blockdevice,
+           maasserver_partition,
+           maasserver_partitiontable
+     WHERE maasserver_node.id = maasserver_blockdevice.node_id
+       AND maasserver_blockdevice.id =
+           maasserver_partitiontable.block_device_id
+       AND maasserver_partitiontable.id =
+           maasserver_partition.partition_table_id
+       AND maasserver_partition.id = NEW.partition_id;
+  ELSIF NEW.node_id IS NOT NULL
+  THEN
+    SELECT system_id, node_type INTO node
+      FROM maasserver_node
+     WHERE maasserver_node.id = NEW.node_id;
+  END IF;
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_filesystemgroup_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_filesystemgroup_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partition,
+       maasserver_partitiontable,
+       maasserver_filesystem
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id =
+      maasserver_partition.partition_table_id
+  AND maasserver_partition.id = maasserver_filesystem.partition_id
+  AND (maasserver_filesystem.filesystem_group_id = NEW.id
+      OR maasserver_filesystem.cache_set_id = NEW.cache_set_id);
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_filesystemgroup_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_filesystemgroup_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partition,
+       maasserver_partitiontable,
+       maasserver_filesystem
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id =
+      maasserver_partition.partition_table_id
+  AND maasserver_partition.id = maasserver_filesystem.partition_id
+  AND (maasserver_filesystem.filesystem_group_id = OLD.id
+      OR maasserver_filesystem.cache_set_id = OLD.cache_set_id);
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_filesystemgroup_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_filesystemgroup_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partition,
+       maasserver_partitiontable,
+       maasserver_filesystem
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id =
+      maasserver_partition.partition_table_id
+  AND maasserver_partition.id = maasserver_filesystem.partition_id
+  AND (maasserver_filesystem.filesystem_group_id = NEW.id
+      OR maasserver_filesystem.cache_set_id = NEW.cache_set_id);
+
+  IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_interface_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_interface_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_interface_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_interface_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = OLD.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_interface_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_interface_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  IF OLD.node_id != NEW.node_id THEN
+    SELECT system_id, node_type, parent_id INTO node
+    FROM maasserver_node
+    WHERE id = OLD.node_id;
+
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    ELSIF node.parent_id IS NOT NULL THEN
+      SELECT system_id INTO pnode
+      FROM maasserver_node
+      WHERE id = node.parent_id;
+      PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    ELSE
+      PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    END IF;
+  END IF;
+
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_partition_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_partition_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partitiontable
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id = NEW.partition_table_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_partition_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_partition_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partitiontable
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id = OLD.partition_table_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_partition_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_partition_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node,
+       maasserver_blockdevice,
+       maasserver_partitiontable
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
+  AND maasserver_partitiontable.id = NEW.partition_table_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_partitiontable_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_partitiontable_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node, maasserver_blockdevice
+    WHERE maasserver_node.id = maasserver_blockdevice.node_id
+    AND maasserver_blockdevice.id = NEW.block_device_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_partitiontable_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_partitiontable_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node, maasserver_blockdevice
+    WHERE maasserver_node.id = maasserver_blockdevice.node_id
+    AND maasserver_blockdevice.id = OLD.block_device_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_partitiontable_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_partitiontable_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node, maasserver_blockdevice
+    WHERE maasserver_node.id = maasserver_blockdevice.node_id
+    AND maasserver_blockdevice.id = NEW.block_device_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_physblockdevice_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_physblockdevice_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node, maasserver_blockdevice
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = NEW.blockdevice_ptr_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_scriptresult_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_scriptresult_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT
+    system_id, node_type INTO node
+  FROM
+    maasserver_node AS nodet,
+    metadataserver_scriptset AS scriptset
+  WHERE
+    scriptset.id = NEW.script_set_id AND
+    scriptset.node_id = nodet.id;
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify(
+      'controller_update',CAST(node.system_id AS text));
+  ELSIF node.node_type = 1 THEN
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_scriptresult_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_scriptresult_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT
+    system_id, node_type INTO node
+  FROM
+    maasserver_node AS nodet,
+    metadataserver_scriptset AS scriptset
+  WHERE
+    scriptset.id = OLD.script_set_id AND
+    scriptset.node_id = nodet.id;
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify(
+      'controller_update',CAST(node.system_id AS text));
+  ELSIF node.node_type = 1 THEN
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_scriptresult_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_scriptresult_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT
+    system_id, node_type INTO node
+  FROM
+    maasserver_node AS nodet,
+    metadataserver_scriptset AS scriptset
+  WHERE
+    scriptset.id = NEW.script_set_id AND
+    scriptset.node_id = nodet.id;
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify(
+      'controller_update',CAST(node.system_id AS text));
+  ELSIF node.node_type = 1 THEN
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_scriptset_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_scriptset_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_scriptset_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_scriptset_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = OLD.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_sipaddress_dns_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_sipaddress_dns_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain RECORD;
+BEGIN
+  SELECT maasserver_domain.id INTO domain
+  FROM maasserver_node, maasserver_interface, maasserver_domain
+  WHERE maasserver_node.id = maasserver_interface.node_id
+  AND maasserver_domain.id = maasserver_node.domain_id
+  AND maasserver_interface.id = NEW.interface_id;
+
+  IF domain.id IS NOT NULL THEN
+    PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_sipaddress_dns_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_sipaddress_dns_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain RECORD;
+BEGIN
+  SELECT maasserver_domain.id INTO domain
+  FROM maasserver_node, maasserver_interface, maasserver_domain
+  WHERE maasserver_node.id = maasserver_interface.node_id
+  AND maasserver_domain.id = maasserver_node.domain_id
+  AND maasserver_interface.id = OLD.interface_id;
+
+  IF domain.id IS NOT NULL THEN
+    PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_sipaddress_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_sipaddress_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node, maasserver_interface
+  WHERE maasserver_node.id = maasserver_interface.node_id
+  AND maasserver_interface.id = NEW.interface_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_sipaddress_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_sipaddress_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node, maasserver_interface
+  WHERE maasserver_node.id = maasserver_interface.node_id
+  AND maasserver_interface.id = OLD.interface_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nd_virtblockdevice_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nd_virtblockdevice_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+BEGIN
+  SELECT system_id, node_type INTO node
+  FROM maasserver_node, maasserver_blockdevice
+  WHERE maasserver_node.id = maasserver_blockdevice.node_id
+  AND maasserver_blockdevice.id = NEW.blockdevice_ptr_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: neighbour_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.neighbour_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('neighbour_create',CAST(NEW.ip AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: neighbour_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.neighbour_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('neighbour_delete',CAST(OLD.ip AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: neighbour_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.neighbour_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('neighbour_update',CAST(NEW.ip AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: node_pod_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_pod_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  bmc RECORD;
+BEGIN
+  IF OLD.bmc_id IS NOT NULL THEN
+    SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+    IF bmc.bmc_type = 1 THEN
+      PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
+    END IF;
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: node_pod_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_pod_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  bmc RECORD;
+BEGIN
+  IF NEW.bmc_id IS NOT NULL THEN
+    SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+    IF bmc.bmc_type = 1 THEN
+      PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: node_pod_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_pod_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  bmc RECORD;
+BEGIN
+  IF ((OLD.bmc_id IS NULL and NEW.bmc_id IS NOT NULL) OR
+      (OLD.bmc_id IS NOT NULL and NEW.bmc_id IS NULL) OR
+      OLD.bmc_id != NEW.bmc_id) THEN
+    IF OLD.bmc_id IS NOT NULL THEN
+      SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+      IF bmc.bmc_type = 1 THEN
+        PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
+      END IF;
+    END IF;
+  END IF;
+  IF NEW.bmc_id IS NOT NULL THEN
+    SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+    IF bmc.bmc_type = 1 THEN
+      PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: node_resourcepool_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_resourcepool_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.pool_id != NEW.pool_id THEN
+    IF OLD.pool_id IS NOT NULL THEN
+      PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
+    END IF;
+    IF NEW.pool_id IS NOT NULL THEN
+      PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+    END IF;
+  ELSIF OLD.node_type != NEW.node_type THEN
+    -- NODE_TYPE.MACHINE = 0
+    IF OLD.node_type = 0 OR NEW.node_type = 0 THEN
+      IF NEW.pool_id IS NOT NULL THEN
+        PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+      ELSIF OLD.pool_id IS NOT NULL THEN
+        PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS text));
+      END IF;
+    END IF;
+  ELSIF OLD.status != NEW.status THEN
+    -- NODE_STATUS.READY = 4
+    IF OLD.status = 4 OR NEW.status = 4 THEN
+      PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS text));
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: node_type_change_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_type_change_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (OLD.node_type != NEW.node_type AND NOT (
+      (
+        OLD.node_type IN (2, 3, 4)
+      ) AND (
+        NEW.node_type IN (2, 3, 4)
+      ))) THEN
+    CASE OLD.node_type
+      WHEN 0 THEN
+        PERFORM pg_notify('machine_delete',CAST(
+          OLD.system_id AS TEXT));
+      WHEN 1 THEN
+        PERFORM pg_notify('device_delete',CAST(
+          OLD.system_id AS TEXT));
+      WHEN 2 THEN
+        PERFORM pg_notify('controller_delete',CAST(
+          OLD.system_id AS TEXT));
+      WHEN 3 THEN
+        PERFORM pg_notify('controller_delete',CAST(
+          OLD.system_id AS TEXT));
+      WHEN 4 THEN
+        PERFORM pg_notify('controller_delete',CAST(
+          OLD.system_id AS TEXT));
+    END CASE;
+    CASE NEW.node_type
+      WHEN 0 THEN
+        PERFORM pg_notify('machine_create',CAST(
+          NEW.system_id AS TEXT));
+      WHEN 1 THEN
+        PERFORM pg_notify('device_create',CAST(
+          NEW.system_id AS TEXT));
+      WHEN 2 THEN
+        PERFORM pg_notify('controller_create',CAST(
+          NEW.system_id AS TEXT));
+      WHEN 3 THEN
+        PERFORM pg_notify('controller_create',CAST(
+          NEW.system_id AS TEXT));
+      WHEN 4 THEN
+        PERFORM pg_notify('controller_create',CAST(
+          NEW.system_id AS TEXT));
+    END CASE;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: node_vmcluster_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_vmcluster_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  bmc RECORD;
+  hints RECORD;
+BEGIN
+  IF OLD.bmc_id IS NOT NULL THEN
+    SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+    IF bmc.bmc_type = 1 THEN
+      SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
+      IF hints.cluster_id IS NOT NULL THEN
+        PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
+      END IF;
+    END IF;
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: node_vmcluster_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_vmcluster_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  bmc RECORD;
+  hints RECORD;
+BEGIN
+  IF NEW.bmc_id IS NOT NULL THEN
+    SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+    IF bmc.bmc_type = 1 THEN
+      SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
+      IF hints IS NOT NULL AND hints.cluster_id IS NOT NULL THEN
+        PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: node_vmcluster_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.node_vmcluster_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  bmc_type INT;
+  new_bmc RECORD;
+  old_bmc RECORD;
+  old_hints RECORD;
+  new_hints RECORD;
+BEGIN
+  bmc_type = 1;
+  IF OLD.bmc_id IS NOT NULL AND NEW.bmc_id IS NOT NULL THEN
+    IF OLD.bmc_id = NEW.bmc_id THEN
+      SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+      IF new_bmc.bmc_type = bmc_type THEN
+        SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
+        IF new_hints IS NOT NULL AND new_hints.cluster_id is NOT NULL THEN
+          PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id AS text));
+        END IF;
+      END IF;
+    ELSE
+      SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+      SELECT * INTO old_bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+      IF new_bmc.bmc_type = bmc_type THEN
+        SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
+      ELSE
+        new_hints = NULL;
+      END IF;
+      IF old_bmc.bmc_type = bmc_type THEN
+        SELECT * INTO old_hints FROM maasserver_podhints WHERE pod_id = old_bmc.id;
+      ELSE
+        old_hints = NULL;
+      END IF;
+      IF old_hints IS NOT NULL THEN
+        IF old_hints.cluster_id IS NOT NULL THEN
+          PERFORM pg_notify('vmcluster_update',CAST(old_hints.cluster_id as text));
+        END IF;
+        IF new_hints IS NOT NULL THEN
+          IF new_hints.cluster_id IS NOT NULL AND new_hints.cluster_id != old_hints.cluster_id THEN
+            PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id as text));
+          END IF;
+        END IF;
+      END IF;
+      IF new_hints IS NOT NULL THEN
+        IF new_hints.cluster_id IS NOT NULL AND old_hints IS NULL THEN
+          PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id as text));
+        END IF;
+      END IF;
+    END IF;
+  ELSE
+    IF OLD.bmc_id IS NOT NULL THEN
+      SELECT * INTO old_bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
+      IF old_bmc.bmc_type = bmc_type THEN
+        SELECT * INTO old_hints FROM maasserver_podhints WHERE pod_id = old_bmc.id;
+        IF old_hints IS NOT NULL AND old_hints.cluster_id IS NOT NULL THEN
+          PERFORM pg_notify('vmcluster_update',CAST(old_hints.cluster_id as text));
+        END IF;
+      END IF;
+    END IF;
+    IF NEW.bmc_id IS NOT NULL THEN
+      SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
+      IF new_bmc.bmc_type = bmc_type THEN
+        SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
+        IF new_hints IS NOT NULL AND new_hints.cluster_id IS NOT NULL THEN
+          PERFORM pg_notify('vmcluster_update',CAST(new_hints.cluster_id as text));
+        END IF;
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nodedevice_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nodedevice_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('nodedevice_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nodedevice_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nodedevice_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('nodedevice_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nodedevice_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nodedevice_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('nodedevice_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nodemetadata_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nodemetadata_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nodemetadata_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nodemetadata_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = OLD.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: nodemetadata_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.nodemetadata_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: notification_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notification_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('notification_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: notification_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notification_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('notification_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: notification_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notification_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('notification_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: notificationdismissal_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notificationdismissal_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify(
+      'notificationdismissal_create', CAST(NEW.notification_id AS text) || ':' ||
+      CAST(NEW.user_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ownerdata_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ownerdata_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ownerdata_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ownerdata_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = OLD.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: ownerdata_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ownerdata_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  SELECT system_id, node_type, parent_id INTO node
+  FROM maasserver_node
+  WHERE id = NEW.node_id;
+
+  IF node.node_type = 0 THEN
+    PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+  ELSIF node.node_type IN (2, 3, 4) THEN
+    PERFORM pg_notify('controller_update',CAST(
+      node.system_id AS text));
+  ELSIF node.parent_id IS NOT NULL THEN
+    SELECT system_id INTO pnode
+    FROM maasserver_node
+    WHERE id = node.parent_id;
+    PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+  ELSE
+    PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: packagerepository_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.packagerepository_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('packagerepository_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: packagerepository_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.packagerepository_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('packagerepository_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: packagerepository_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.packagerepository_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('packagerepository_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: pod_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.pod_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.bmc_type = 1 THEN
+      PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: pod_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.pod_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.bmc_type = 1 THEN
+    PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: pod_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.pod_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.bmc_type = NEW.bmc_type THEN
+    IF OLD.bmc_type = 1 THEN
+      PERFORM pg_notify('pod_update',CAST(OLD.id AS text));
+    END IF;
+  ELSIF OLD.bmc_type = 0 AND NEW.bmc_type = 1 THEN
+      PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
+  ELSIF OLD.bmc_type = 1 AND NEW.bmc_type = 0 THEN
+      PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: rack_controller_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rack_controller_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_create',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: rack_controller_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rack_controller_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_delete',CAST(OLD.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: rack_controller_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rack_controller_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_update',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: region_and_rack_controller_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.region_and_rack_controller_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_create',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: region_and_rack_controller_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.region_and_rack_controller_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_delete',CAST(OLD.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: region_and_rack_controller_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.region_and_rack_controller_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_update',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: region_controller_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.region_controller_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_create',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: region_controller_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.region_controller_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_delete',CAST(OLD.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: region_controller_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.region_controller_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('controller_update',CAST(NEW.system_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: resourcepool_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.resourcepool_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('resourcepool_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: resourcepool_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.resourcepool_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('resourcepool_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: resourcepool_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.resourcepool_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.pool_id IS NOT NULL THEN
+    PERFORM pg_notify('resourcepool_update',CAST(NEW.pool_id AS TEXT));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: resourcepool_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.resourcepool_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.pool_id IS NOT NULL THEN
+    PERFORM pg_notify('resourcepool_update',CAST(OLD.pool_id AS TEXT));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: resourcepool_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.resourcepool_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('resourcepool_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: rrset_sipaddress_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rrset_sipaddress_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain RECORD;
+BEGIN
+  SELECT maasserver_domain.id INTO domain
+  FROM maasserver_dnsresource, maasserver_domain
+  WHERE maasserver_domain.id = maasserver_dnsresource.domain_id
+  AND maasserver_dnsresource.id = NEW.dnsresource_id;
+
+  IF domain.id IS NOT NULL THEN
+    PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: rrset_sipaddress_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.rrset_sipaddress_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain RECORD;
+BEGIN
+  SELECT maasserver_domain.id INTO domain
+  FROM maasserver_dnsresource, maasserver_domain
+  WHERE maasserver_domain.id = maasserver_dnsresource.domain_id
+  AND maasserver_dnsresource.id = OLD.dnsresource_id;
+
+  IF domain.id IS NOT NULL THEN
+    PERFORM pg_notify('domain_update',CAST(domain.id AS text));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: script_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.script_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('script_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: script_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.script_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('script_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: script_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.script_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('script_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: scriptresult_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.scriptresult_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('scriptresult_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: scriptresult_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.scriptresult_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('scriptresult_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: scriptresult_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.scriptresult_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('scriptresult_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: service_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.service_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('service_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: service_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.service_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('service_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: service_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.service_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('service_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: space_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.space_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('space_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: space_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.space_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('space_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: space_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.space_machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    node RECORD;
+    pnode RECORD;
+BEGIN
+  FOR node IN (
+    SELECT DISTINCT ON (maasserver_node.id)
+      system_id, node_type, parent_id
+    FROM
+      maasserver_node,
+      maasserver_space,
+      maasserver_subnet,
+      maasserver_vlan,
+      maasserver_interface,
+      maasserver_interface_ip_addresses AS ip_link,
+      maasserver_staticipaddress
+    WHERE maasserver_space.id = NEW.id
+    AND maasserver_subnet.vlan_id = maasserver_vlan.id
+    AND maasserver_vlan.space_id IS NOT DISTINCT FROM maasserver_space.id
+    AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+    AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
+    AND ip_link.interface_id = maasserver_interface.id
+    AND maasserver_node.id = maasserver_interface.node_id)
+  LOOP
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    ELSIF node.parent_id IS NOT NULL THEN
+      SELECT system_id INTO pnode
+      FROM maasserver_node
+      WHERE id = node.parent_id;
+      PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    ELSE
+      PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: space_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.space_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('space_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sshkey_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sshkey_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('sshkey_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sshkey_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sshkey_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('sshkey_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sshkey_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sshkey_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('sshkey_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sslkey_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sslkey_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('sslkey_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sslkey_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sslkey_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('sslkey_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sslkey_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sslkey_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('sslkey_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: staticroute_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.staticroute_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('staticroute_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: staticroute_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.staticroute_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('staticroute_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: staticroute_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.staticroute_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('staticroute_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: subnet_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.subnet_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('subnet_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: subnet_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.subnet_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('subnet_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: subnet_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.subnet_machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    node RECORD;
+    pnode RECORD;
+BEGIN
+  FOR node IN (
+    SELECT DISTINCT ON (maasserver_node.id)
+      system_id, node_type, parent_id
+    FROM
+      maasserver_node,
+      maasserver_subnet,
+      maasserver_interface,
+      maasserver_interface_ip_addresses AS ip_link,
+      maasserver_staticipaddress
+    WHERE maasserver_subnet.id = NEW.id
+    AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+    AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
+    AND ip_link.interface_id = maasserver_interface.id
+    AND maasserver_node.id = maasserver_interface.node_id)
+  LOOP
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    ELSIF node.parent_id IS NOT NULL THEN
+      SELECT system_id INTO pnode
+      FROM maasserver_node
+      WHERE id = node.parent_id;
+      PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    ELSE
+      PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: subnet_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.subnet_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('subnet_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: maasserver_regioncontrollerprocess; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_regioncontrollerprocess (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    pid integer NOT NULL,
+    region_id integer NOT NULL
+);
+
+
+--
+-- Name: sys_core_get_managing_count(public.maasserver_regioncontrollerprocess); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_core_get_managing_count(process public.maasserver_regioncontrollerprocess) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN (SELECT count(*)
+    FROM maasserver_node
+    WHERE maasserver_node.managing_process_id = process.id);
+END;
+$$;
+
+
+--
+-- Name: maasserver_node; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_node (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    system_id character varying(41) NOT NULL,
+    hostname character varying(255) NOT NULL,
+    status integer NOT NULL,
+    bios_boot_method character varying(31),
+    osystem character varying(255) NOT NULL,
+    distro_series character varying(255) NOT NULL,
+    architecture character varying(31),
+    min_hwe_kernel character varying(31),
+    hwe_kernel character varying(31),
+    agent_name character varying(255),
+    error_description text NOT NULL,
+    cpu_count integer NOT NULL,
+    memory integer NOT NULL,
+    swap_size bigint,
+    power_state character varying(10) NOT NULL,
+    power_state_updated timestamp with time zone,
+    error character varying(255) NOT NULL,
+    netboot boolean NOT NULL,
+    license_key character varying(30),
+    boot_cluster_ip inet,
+    enable_ssh boolean NOT NULL,
+    skip_networking boolean NOT NULL,
+    skip_storage boolean NOT NULL,
+    boot_interface_id integer,
+    gateway_link_ipv4_id integer,
+    gateway_link_ipv6_id integer,
+    owner_id integer,
+    parent_id integer,
+    zone_id integer NOT NULL,
+    boot_disk_id integer,
+    node_type integer NOT NULL,
+    domain_id integer,
+    dns_process_id integer,
+    bmc_id integer,
+    address_ttl integer,
+    status_expires timestamp with time zone,
+    power_state_queried timestamp with time zone,
+    url character varying(255) NOT NULL,
+    managing_process_id integer,
+    last_image_sync timestamp with time zone,
+    previous_status integer NOT NULL,
+    default_user character varying(32) NOT NULL,
+    cpu_speed integer NOT NULL,
+    current_commissioning_script_set_id integer,
+    current_installation_script_set_id integer,
+    current_testing_script_set_id integer,
+    install_rackd boolean NOT NULL,
+    locked boolean NOT NULL,
+    pool_id integer,
+    instance_power_parameters jsonb NOT NULL,
+    install_kvm boolean NOT NULL,
+    hardware_uuid character varying(36),
+    ephemeral_deploy boolean NOT NULL,
+    description text NOT NULL,
+    dynamic boolean NOT NULL,
+    register_vmhost boolean NOT NULL,
+    last_applied_storage_layout character varying(50) NOT NULL,
+    CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0))
+);
+
+
+--
+-- Name: sys_core_get_num_conn(public.maasserver_node); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_core_get_num_conn(rack public.maasserver_node) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN (
+    SELECT count(*)
+    FROM
+      maasserver_regionrackrpcconnection AS connection
+    WHERE connection.rack_controller_id = rack.id);
+END;
+$$;
+
+
+--
+-- Name: sys_core_get_num_processes(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_core_get_num_processes() RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  RETURN (
+    SELECT count(*) FROM maasserver_regioncontrollerprocess);
+END;
+$$;
+
+
+--
+-- Name: sys_core_pick_new_region(public.maasserver_node); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_core_pick_new_region(rack public.maasserver_node) RETURNS public.maasserver_regioncontrollerprocess
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  selected_managing integer;
+  number_managing integer;
+  selected_process maasserver_regioncontrollerprocess;
+  process maasserver_regioncontrollerprocess;
+BEGIN
+  -- Get best region controller that can manage this rack controller.
+  -- This is identified by picking a region controller process that
+  -- at least has a connection to the rack controller and managing the
+  -- least number of rack controllers.
+  FOR process IN (
+    SELECT DISTINCT ON (maasserver_regioncontrollerprocess.id)
+      maasserver_regioncontrollerprocess.*
+    FROM
+      maasserver_regioncontrollerprocess,
+      maasserver_regioncontrollerprocessendpoint,
+      maasserver_regionrackrpcconnection
+    WHERE maasserver_regionrackrpcconnection.rack_controller_id = rack.id
+      AND maasserver_regionrackrpcconnection.endpoint_id =
+        maasserver_regioncontrollerprocessendpoint.id
+      AND maasserver_regioncontrollerprocessendpoint.process_id =
+        maasserver_regioncontrollerprocess.id)
+  LOOP
+    IF selected_process IS NULL THEN
+      -- First time through the loop so set the default.
+      selected_process = process;
+      selected_managing = sys_core_get_managing_count(process);
+    ELSE
+      -- See if the current process is managing less then the currently
+      -- selected process.
+      number_managing = sys_core_get_managing_count(process);
+      IF number_managing = 0 THEN
+        -- This process is managing zero so its the best, so we exit the
+        -- loop now to return the selected.
+        selected_process = process;
+        EXIT;
+      ELSIF number_managing < selected_managing THEN
+        -- Managing less than the currently selected; select this process
+        -- instead.
+        selected_process = process;
+        selected_managing = number_managing;
+      END IF;
+    END IF;
+  END LOOP;
+  RETURN selected_process;
+END;
+$$;
+
+
+--
+-- Name: sys_core_rpc_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_core_rpc_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  rack_controller maasserver_node;
+  region_process maasserver_regioncontrollerprocess;
+BEGIN
+  -- Connection from region <-> rack, has been removed. If that region
+  -- process was managing that rack controller then a new one needs to
+  -- be selected.
+  SELECT maasserver_node.* INTO rack_controller
+  FROM maasserver_node
+  WHERE maasserver_node.id = OLD.rack_controller_id;
+
+  -- Get the region process from the endpoint.
+  SELECT
+    process.* INTO region_process
+  FROM
+    maasserver_regioncontrollerprocess AS process,
+    maasserver_regioncontrollerprocessendpoint AS endpoint
+  WHERE process.id = endpoint.process_id
+    AND endpoint.id = OLD.endpoint_id;
+
+  -- Only perform an action if processes equal.
+  IF rack_controller.managing_process_id = region_process.id THEN
+    -- Region process was managing this rack controller. Tell it to stop
+    -- watching the rack controller.
+    PERFORM pg_notify(
+      CONCAT('sys_core_', region_process.id),
+      CONCAT('unwatch_', CAST(rack_controller.id AS text)));
+
+    -- Pick a new region process for this rack controller.
+    region_process = sys_core_pick_new_region(rack_controller);
+
+    -- Update the rack controller and inform the new process.
+    UPDATE maasserver_node
+    SET managing_process_id = region_process.id
+    WHERE maasserver_node.id = rack_controller.id;
+    IF region_process.id IS NOT NULL THEN
+      PERFORM pg_notify(
+        CONCAT('sys_core_', region_process.id),
+        CONCAT('watch_', CAST(rack_controller.id AS text)));
+    END IF;
+  END IF;
+
+  -- No connections of the rack controller requires the DNS to be
+  -- reloaded for the internal MAAS domain.
+  IF sys_core_get_num_conn(rack_controller) = 0 THEN
+    PERFORM sys_dns_publish_update(
+      'rack controller ' || rack_controller.hostname || ' disconnected');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_core_rpc_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_core_rpc_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  rack_controller maasserver_node;
+  region_process maasserver_regioncontrollerprocess;
+BEGIN
+  -- New connection from region <-> rack, check that the rack controller
+  -- has a managing region controller.
+  SELECT maasserver_node.* INTO rack_controller
+  FROM maasserver_node
+  WHERE maasserver_node.id = NEW.rack_controller_id;
+
+  IF rack_controller.managing_process_id IS NULL THEN
+    -- No managing region process for this rack controller.
+    PERFORM sys_core_set_new_region(rack_controller);
+  ELSE
+    -- Currently managed check that the managing process is not dead.
+    SELECT maasserver_regioncontrollerprocess.* INTO region_process
+    FROM maasserver_regioncontrollerprocess
+    WHERE maasserver_regioncontrollerprocess.id =
+      rack_controller.managing_process_id;
+    IF EXTRACT(EPOCH FROM region_process.updated) -
+      EXTRACT(EPOCH FROM now()) > 90 THEN
+      -- Region controller process is dead. A new region process needs to
+      -- be selected for this rack controller.
+      UPDATE maasserver_node SET managing_process_id = NULL
+      WHERE maasserver_node.id = NEW.rack_controller_id;
+      NEW.rack_controller_id = NULL;
+      PERFORM sys_core_set_new_region(rack_controller);
+    ELSE
+      -- Currently being managed but lets see if we can re-balance the
+      -- managing processes better. We only do the re-balance once the
+      -- rack controller is connected to more than half of the running
+      -- processes.
+      IF sys_core_get_num_conn(rack_controller) /
+        sys_core_get_num_processes() > 0.5 THEN
+        -- Pick a new region process for this rack controller. Only update
+        -- and perform the notification if the selection is different.
+        region_process = sys_core_pick_new_region(rack_controller);
+        IF region_process.id != rack_controller.managing_process_id THEN
+          -- Alter the old process that its no longer responsable for
+          -- this rack controller.
+          PERFORM pg_notify(
+            CONCAT('sys_core_', rack_controller.managing_process_id),
+            CONCAT('unwatch_', CAST(rack_controller.id AS text)));
+          -- Update the rack controller and alert the region controller.
+          UPDATE maasserver_node
+          SET managing_process_id = region_process.id
+          WHERE maasserver_node.id = rack_controller.id;
+          PERFORM pg_notify(
+            CONCAT('sys_core_', region_process.id),
+            CONCAT('watch_', CAST(rack_controller.id AS text)));
+        END IF;
+      END IF;
+    END IF;
+  END IF;
+
+  -- First connection of the rack controller requires the DNS to be
+  -- reloaded for the internal MAAS domain.
+  IF sys_core_get_num_conn(rack_controller) = 1 THEN
+    PERFORM sys_dns_publish_update(
+      'rack controller ' || rack_controller.hostname || ' connected');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_core_set_new_region(public.maasserver_node); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_core_set_new_region(rack public.maasserver_node) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  region_process maasserver_regioncontrollerprocess;
+BEGIN
+  -- Pick the new region process to manage this rack controller.
+  region_process = sys_core_pick_new_region(rack);
+
+  -- Update the rack controller and alert the region controller.
+  UPDATE maasserver_node SET managing_process_id = region_process.id
+  WHERE maasserver_node.id = rack.id;
+  PERFORM pg_notify(
+    CONCAT('sys_core_', region_process.id),
+    CONCAT('watch_', CAST(rack.id AS text)));
+  RETURN;
+END;
+$$;
+
+
+--
+-- Name: maasserver_vlan; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_vlan (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(256),
+    vid integer NOT NULL,
+    mtu integer NOT NULL,
+    fabric_id integer NOT NULL,
+    dhcp_on boolean NOT NULL,
+    primary_rack_id integer,
+    secondary_rack_id integer,
+    external_dhcp inet,
+    description text NOT NULL,
+    relay_vlan_id integer,
+    space_id integer
+);
+
+
+--
+-- Name: sys_dhcp_alert(public.maasserver_vlan); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_alert(vlan public.maasserver_vlan) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  relay_vlan maasserver_vlan;
+BEGIN
+  IF vlan.dhcp_on THEN
+    PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.primary_rack_id), '');
+    IF vlan.secondary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(CONCAT('sys_dhcp_', vlan.secondary_rack_id), '');
+    END IF;
+  END IF;
+  IF vlan.relay_vlan_id IS NOT NULL THEN
+    SELECT maasserver_vlan.* INTO relay_vlan
+    FROM maasserver_vlan
+    WHERE maasserver_vlan.id = vlan.relay_vlan_id;
+    IF relay_vlan.dhcp_on THEN
+      PERFORM pg_notify(CONCAT(
+        'sys_dhcp_', relay_vlan.primary_rack_id), '');
+      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+        PERFORM pg_notify(CONCAT(
+          'sys_dhcp_', relay_vlan.secondary_rack_id), '');
+      END IF;
+    END IF;
+  END IF;
+  RETURN;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_config_ntp_servers_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_config_ntp_servers_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.name IN ('ntp_servers', 'ntp_external_only') THEN
+    PERFORM sys_dhcp_update_all_vlans();
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_config_ntp_servers_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_config_ntp_servers_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.name = 'ntp_servers' THEN
+    PERFORM sys_dhcp_update_all_vlans();
+  ELSIF NEW.name = 'ntp_external_only' THEN
+    PERFORM sys_dhcp_update_all_vlans();
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_config_ntp_servers_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_config_ntp_servers_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.name IN ('ntp_servers', 'ntp_external_only')
+  OR NEW.name IN ('ntp_servers', 'ntp_external_only') THEN
+    IF OLD.value != NEW.value THEN
+      PERFORM sys_dhcp_update_all_vlans();
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_interface_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_interface_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if DHCP is enabled and the interface name or MAC
+  -- address has changed.
+  IF OLD.name != NEW.name OR OLD.mac_address != NEW.mac_address THEN
+    FOR vlan IN (
+      SELECT DISTINCT ON (maasserver_vlan.id)
+        maasserver_vlan.*
+      FROM
+        maasserver_vlan,
+        maasserver_subnet,
+        maasserver_staticipaddress,
+        maasserver_interface_ip_addresses AS ip_link
+      WHERE maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+      AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
+      AND ip_link.interface_id = NEW.id
+      AND maasserver_staticipaddress.alloc_type != 6
+      AND maasserver_staticipaddress.ip IS NOT NULL
+      AND maasserver_staticipaddress.temp_expires_on IS NULL
+      AND host(maasserver_staticipaddress.ip) != ''
+      AND maasserver_vlan.id = maasserver_subnet.vlan_id)
+    LOOP
+      PERFORM sys_dhcp_alert(vlan);
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_iprange_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_iprange_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if DHCP is enabled and was dynamic range.
+  IF OLD.type = 'dynamic' THEN
+    SELECT maasserver_vlan.* INTO vlan
+    FROM maasserver_vlan, maasserver_subnet
+    WHERE maasserver_subnet.id = OLD.subnet_id AND
+      maasserver_subnet.vlan_id = maasserver_vlan.id;
+    PERFORM sys_dhcp_alert(vlan);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_iprange_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_iprange_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if DHCP is enabled and a dynamic range.
+  IF NEW.type = 'dynamic' THEN
+    SELECT maasserver_vlan.* INTO vlan
+    FROM maasserver_vlan, maasserver_subnet
+    WHERE maasserver_subnet.id = NEW.subnet_id AND
+      maasserver_subnet.vlan_id = maasserver_vlan.id;
+    PERFORM sys_dhcp_alert(vlan);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_iprange_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_iprange_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if DHCP is enabled and was or is now a dynamic range.
+  IF OLD.type = 'dynamic' OR NEW.type = 'dynamic' THEN
+    SELECT maasserver_vlan.* INTO vlan
+    FROM maasserver_vlan, maasserver_subnet
+    WHERE maasserver_subnet.id = NEW.subnet_id AND
+      maasserver_subnet.vlan_id = maasserver_vlan.id;
+    PERFORM sys_dhcp_alert(vlan);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_node_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_node_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if on every interface on the node that is managed when
+  -- the node hostname is changed.
+  IF OLD.hostname != NEW.hostname THEN
+    FOR vlan IN (
+      SELECT DISTINCT ON (maasserver_vlan.id)
+        maasserver_vlan.*
+      FROM
+        maasserver_vlan,
+        maasserver_staticipaddress,
+        maasserver_subnet,
+        maasserver_interface,
+        maasserver_interface_ip_addresses AS ip_link
+      WHERE maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+      AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
+      AND ip_link.interface_id = maasserver_interface.id
+      AND maasserver_interface.node_id = NEW.id
+      AND maasserver_staticipaddress.alloc_type != 6
+      AND maasserver_staticipaddress.ip IS NOT NULL
+      AND maasserver_staticipaddress.temp_expires_on IS NULL
+      AND host(maasserver_staticipaddress.ip) != ''
+      AND maasserver_vlan.id = maasserver_subnet.vlan_id)
+    LOOP
+      PERFORM sys_dhcp_alert(vlan);
+    END LOOP;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_snippet_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_snippet_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.enabled THEN
+    PERFORM sys_dhcp_snippet_update_value(OLD);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_snippet_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_snippet_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.enabled THEN
+    PERFORM sys_dhcp_snippet_update_value(NEW);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_snippet_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_snippet_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.enabled = NEW.enabled AND NEW.enabled IS FALSE THEN
+    -- If the DHCP snippet is disabled don't fire any alerts
+    RETURN NEW;
+  ELSIF ((OLD.value_id != NEW.value_id) OR
+      (OLD.enabled != NEW.enabled) OR
+      (OLD.description != NEW.description)) THEN
+    PERFORM sys_dhcp_snippet_update_value(NEW);
+  ELSIF ((OLD.subnet_id IS NULL AND NEW.subnet_id IS NOT NULL) OR
+      (OLD.subnet_id IS NOT NULL AND NEW.subnet_id IS NULL) OR
+      (OLD.subnet_id != NEW.subnet_id)) THEN
+    IF NEW.subnet_id IS NOT NULL THEN
+      PERFORM sys_dhcp_snippet_update_subnet(NEW.subnet_id);
+    END IF;
+    IF OLD.subnet_id IS NOT NULL THEN
+      PERFORM sys_dhcp_snippet_update_subnet(OLD.subnet_id);
+    END IF;
+  ELSIF ((OLD.node_id IS NULL AND NEW.node_id IS NOT NULL) OR
+      (OLD.node_id IS NOT NULL AND NEW.node_id IS NULL) OR
+      (OLD.node_id != NEW.node_id)) THEN
+    IF NEW.node_id IS NOT NULL THEN
+      PERFORM sys_dhcp_snippet_update_node(NEW.node_id);
+    END IF;
+    IF OLD.node_id IS NOT NULL THEN
+      PERFORM sys_dhcp_snippet_update_node(OLD.node_id);
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_snippet_update_node(integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_snippet_update_node(_node_id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  rack INTEGER;
+BEGIN
+  FOR rack IN (
+    WITH racks AS (
+      SELECT primary_rack_id, secondary_rack_id
+      FROM maasserver_vlan, maasserver_interface
+      WHERE maasserver_interface.node_id = _node_id
+        AND maasserver_interface.vlan_id = maasserver_vlan.id
+      AND (maasserver_vlan.dhcp_on = true
+        OR maasserver_vlan.relay_vlan_id IS NOT NULL))
+    SELECT primary_rack_id FROM racks
+    WHERE primary_rack_id IS NOT NULL
+    UNION
+    SELECT secondary_rack_id FROM racks
+    WHERE secondary_rack_id IS NOT NULL)
+  LOOP
+    PERFORM pg_notify(CONCAT('sys_dhcp_', rack), '');
+  END LOOP;
+  RETURN;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_snippet_update_subnet(integer); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_snippet_update_subnet(_subnet_id integer) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  FOR vlan IN (
+    SELECT
+      maasserver_vlan.*
+    FROM
+      maasserver_vlan,
+      maasserver_subnet
+    WHERE maasserver_subnet.id = _subnet_id
+      AND maasserver_vlan.id = maasserver_subnet.vlan_id
+      AND (maasserver_vlan.dhcp_on = true
+        OR maasserver_vlan.relay_vlan_id IS NOT NULL))
+    LOOP
+      PERFORM sys_dhcp_alert(vlan);
+    END LOOP;
+  RETURN;
+END;
+$$;
+
+
+--
+-- Name: maasserver_dhcpsnippet; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_dhcpsnippet (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(255) NOT NULL,
+    description text NOT NULL,
+    enabled boolean NOT NULL,
+    node_id integer,
+    subnet_id integer,
+    value_id integer NOT NULL,
+    iprange_id integer
+);
+
+
+--
+-- Name: sys_dhcp_snippet_update_value(public.maasserver_dhcpsnippet); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_snippet_update_value(_dhcp_snippet public.maasserver_dhcpsnippet) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF _dhcp_snippet.subnet_id IS NOT NULL THEN
+    PERFORM sys_dhcp_snippet_update_subnet(_dhcp_snippet.subnet_id);
+  ELSIF _dhcp_snippet.node_id is NOT NULL THEN
+    PERFORM sys_dhcp_snippet_update_node(_dhcp_snippet.node_id);
+  ELSE
+    -- This is a global snippet, everyone has to update. This should only
+    -- be triggered when neither subnet_id or node_id are set. We verify
+    -- that only subnet_id xor node_id are set in DHCPSnippet.clean()
+    PERFORM sys_dhcp_update_all_vlans();
+  END IF;
+  RETURN;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_staticipaddress_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_staticipaddress_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if DHCP is enabled and has an IP address.
+  IF host(OLD.ip) != '' AND OLD.temp_expires_on IS NULL THEN
+    SELECT maasserver_vlan.* INTO vlan
+    FROM maasserver_vlan, maasserver_subnet
+    WHERE maasserver_subnet.id = OLD.subnet_id AND
+      maasserver_subnet.vlan_id = maasserver_vlan.id;
+    PERFORM sys_dhcp_alert(vlan);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_staticipaddress_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_staticipaddress_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if DHCP is enabled, IP is set and not DISCOVERED.
+  IF NEW.alloc_type != 6 AND NEW.ip IS NOT NULL AND host(NEW.ip) != '' AND
+    NEW.temp_expires_on IS NULL THEN
+    SELECT maasserver_vlan.* INTO vlan
+    FROM maasserver_vlan, maasserver_subnet
+    WHERE maasserver_subnet.id = NEW.subnet_id AND
+      maasserver_subnet.vlan_id = maasserver_vlan.id;
+    PERFORM sys_dhcp_alert(vlan);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_staticipaddress_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_staticipaddress_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  old_vlan maasserver_vlan;
+  new_vlan maasserver_vlan;
+BEGIN
+  -- Ignore DISCOVERED IP addresses.
+  IF NEW.alloc_type != 6 THEN
+    IF OLD.subnet_id != NEW.subnet_id THEN
+      -- Subnet has changed; update each VLAN if different.
+      SELECT maasserver_vlan.* INTO old_vlan
+      FROM maasserver_vlan, maasserver_subnet
+      WHERE maasserver_subnet.id = OLD.subnet_id AND
+        maasserver_subnet.vlan_id = maasserver_vlan.id;
+      SELECT maasserver_vlan.* INTO new_vlan
+      FROM maasserver_vlan, maasserver_subnet
+      WHERE maasserver_subnet.id = NEW.subnet_id AND
+        maasserver_subnet.vlan_id = maasserver_vlan.id;
+      IF old_vlan.id != new_vlan.id THEN
+        -- Different VLAN's; update each if DHCP enabled.
+        PERFORM sys_dhcp_alert(old_vlan);
+        PERFORM sys_dhcp_alert(new_vlan);
+      ELSE
+        -- Same VLAN so only need to update once.
+        PERFORM sys_dhcp_alert(new_vlan);
+      END IF;
+    ELSIF (OLD.ip IS NULL AND NEW.ip IS NOT NULL) OR
+      (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
+      (OLD.temp_expires_on IS NULL AND NEW.temp_expires_on IS NOT NULL) OR
+      (OLD.temp_expires_on IS NOT NULL AND NEW.temp_expires_on IS NULL) OR
+      (host(OLD.ip) != host(NEW.ip)) THEN
+      -- Assigned IP address has changed.
+      SELECT maasserver_vlan.* INTO new_vlan
+      FROM maasserver_vlan, maasserver_subnet
+      WHERE maasserver_subnet.id = NEW.subnet_id AND
+        maasserver_subnet.vlan_id = maasserver_vlan.id;
+      PERFORM sys_dhcp_alert(new_vlan);
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_subnet_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_subnet_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Update VLAN if DHCP is enabled.
+  SELECT * INTO vlan
+  FROM maasserver_vlan WHERE id = OLD.vlan_id;
+  PERFORM sys_dhcp_alert(vlan);
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_subnet_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_subnet_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  vlan maasserver_vlan;
+BEGIN
+  -- Subnet was moved to a new VLAN.
+  IF OLD.vlan_id != NEW.vlan_id THEN
+    -- Update old VLAN if DHCP is enabled.
+    SELECT * INTO vlan
+    FROM maasserver_vlan WHERE id = OLD.vlan_id;
+    PERFORM sys_dhcp_alert(vlan);
+    -- Update the new VLAN if DHCP is enabled.
+    SELECT * INTO vlan
+    FROM maasserver_vlan WHERE id = NEW.vlan_id;
+    PERFORM sys_dhcp_alert(vlan);
+  -- Related fields of subnet where changed.
+  ELSIF OLD.cidr != NEW.cidr OR
+    (OLD.gateway_ip IS NULL AND NEW.gateway_ip IS NOT NULL) OR
+    (OLD.gateway_ip IS NOT NULL AND NEW.gateway_ip IS NULL) OR
+    host(OLD.gateway_ip) != host(NEW.gateway_ip) OR
+    OLD.dns_servers != NEW.dns_servers OR
+    OLD.allow_dns != NEW.allow_dns OR
+    OLD.disabled_boot_architectures != NEW.disabled_boot_architectures THEN
+    -- Network has changed update alert DHCP if enabled.
+    SELECT * INTO vlan
+    FROM maasserver_vlan WHERE id = NEW.vlan_id;
+    PERFORM sys_dhcp_alert(vlan);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_update_all_vlans(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_update_all_vlans() RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  rack INTEGER;
+BEGIN
+  FOR rack IN (
+    WITH racks AS (
+      SELECT primary_rack_id, secondary_rack_id FROM maasserver_vlan
+      WHERE maasserver_vlan.dhcp_on = true
+    )
+    SELECT primary_rack_id FROM racks
+    WHERE primary_rack_id IS NOT NULL
+    UNION
+    SELECT secondary_rack_id FROM racks
+    WHERE secondary_rack_id IS NOT NULL)
+  LOOP
+    PERFORM pg_notify(CONCAT('sys_dhcp_', rack), '');
+  END LOOP;
+  RETURN;
+END;
+$$;
+
+
+--
+-- Name: sys_dhcp_vlan_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dhcp_vlan_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  relay_vlan maasserver_vlan;
+BEGIN
+  -- DHCP was turned off.
+  IF OLD.dhcp_on AND NOT NEW.dhcp_on THEN
+    PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
+    IF OLD.secondary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
+    END IF;
+  -- DHCP was turned on.
+  ELSIF NOT OLD.dhcp_on AND NEW.dhcp_on THEN
+    PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
+    IF NEW.secondary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
+    END IF;
+  -- MTU was changed.
+  ELSIF OLD.mtu != NEW.mtu THEN
+    PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
+    IF OLD.secondary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
+    END IF;
+  -- DHCP state was not changed but the rack controllers might have been.
+  ELSIF NEW.dhcp_on AND (
+     OLD.primary_rack_id != NEW.primary_rack_id OR (
+       OLD.secondary_rack_id IS NULL AND
+       NEW.secondary_rack_id IS NOT NULL) OR (
+       OLD.secondary_rack_id IS NOT NULL AND
+       NEW.secondary_rack_id IS NULL) OR
+     OLD.secondary_rack_id != NEW.secondary_rack_id) THEN
+    -- Send the message to the old primary if no longer the primary.
+    IF OLD.primary_rack_id != NEW.primary_rack_id THEN
+      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.primary_rack_id), '');
+    END IF;
+    -- Always send the message to the primary as it has to be set.
+    PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.primary_rack_id), '');
+    -- Send message to both old and new secondary rack controller if set.
+    IF OLD.secondary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(CONCAT('sys_dhcp_', OLD.secondary_rack_id), '');
+    END IF;
+    IF NEW.secondary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(CONCAT('sys_dhcp_', NEW.secondary_rack_id), '');
+    END IF;
+  END IF;
+
+  -- Relay VLAN was set when it was previously unset, or
+  -- the MTU has changed for a VLAN with DHCP relay enabled.
+  IF (OLD.relay_vlan_id IS NULL AND NEW.relay_vlan_id IS NOT NULL)
+     OR (OLD.mtu != NEW.mtu AND NEW.relay_vlan_id IS NOT NULL) THEN
+    SELECT maasserver_vlan.* INTO relay_vlan
+    FROM maasserver_vlan
+    WHERE maasserver_vlan.id = NEW.relay_vlan_id;
+    IF relay_vlan.primary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(
+        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+        PERFORM pg_notify(
+          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+      END IF;
+    END IF;
+  -- Relay VLAN was unset when it was previously set.
+  ELSIF OLD.relay_vlan_id IS NOT NULL AND NEW.relay_vlan_id IS NULL THEN
+    SELECT maasserver_vlan.* INTO relay_vlan
+    FROM maasserver_vlan
+    WHERE maasserver_vlan.id = OLD.relay_vlan_id;
+    IF relay_vlan.primary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(
+        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+        PERFORM pg_notify(
+          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+      END IF;
+    END IF;
+  -- Relay VLAN has changed on the VLAN.
+  ELSIF OLD.relay_vlan_id != NEW.relay_vlan_id THEN
+    -- Alert old VLAN if required.
+    SELECT maasserver_vlan.* INTO relay_vlan
+    FROM maasserver_vlan
+    WHERE maasserver_vlan.id = OLD.relay_vlan_id;
+    IF relay_vlan.primary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(
+        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+        PERFORM pg_notify(
+          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+      END IF;
+    END IF;
+    -- Alert new VLAN if required.
+    SELECT maasserver_vlan.* INTO relay_vlan
+    FROM maasserver_vlan
+    WHERE maasserver_vlan.id = NEW.relay_vlan_id;
+    IF relay_vlan.primary_rack_id IS NOT NULL THEN
+      PERFORM pg_notify(
+        CONCAT('sys_dhcp_', relay_vlan.primary_rack_id), '');
+      IF relay_vlan.secondary_rack_id IS NOT NULL THEN
+        PERFORM pg_notify(
+          CONCAT('sys_dhcp_', relay_vlan.secondary_rack_id), '');
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_config_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_config_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  -- Only care about the
+  IF (NEW.name = 'upstream_dns' OR
+      NEW.name = 'dnssec_validation' OR
+      NEW.name = 'dns_trusted_acl' OR
+      NEW.name = 'default_dns_ttl' OR
+      NEW.name = 'windows_kms_host' OR
+      NEW.name = 'maas_internal_domain')
+  THEN
+    PERFORM sys_dns_publish_update(
+      'configuration ' || NEW.name || ' set to ' ||
+      COALESCE(NEW.value, 'NULL'));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_config_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_config_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  -- Only care about the upstream_dns, default_dns_ttl,
+  -- dns_trusted_acl and windows_kms_host.
+  IF (OLD.value != NEW.value AND (
+      NEW.name = 'upstream_dns' OR
+      NEW.name = 'dnssec_validation' OR
+      NEW.name = 'dns_trusted_acl' OR
+      NEW.name = 'default_dns_ttl' OR
+      NEW.name = 'windows_kms_host' OR
+      NEW.name = 'maas_internal_domain'))
+  THEN
+    PERFORM sys_dns_publish_update(
+      'configuration ' || NEW.name || ' changed to ' || NEW.value);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsdata_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsdata_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  resource maasserver_dnsresource;
+  domain maasserver_domain;
+BEGIN
+  SELECT maasserver_dnsresource.* INTO resource
+  FROM maasserver_dnsresource
+  WHERE maasserver_dnsresource.id = OLD.dnsresource_id;
+  SELECT maasserver_domain.* INTO domain
+  FROM maasserver_domain
+  WHERE maasserver_domain.id = resource.domain_id;
+  PERFORM sys_dns_publish_update(
+    'removed ' || OLD.rrtype || ' from resource ' || resource.name ||
+    ' on zone ' || domain.name);
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsdata_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsdata_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  resource maasserver_dnsresource;
+  domain maasserver_domain;
+BEGIN
+  SELECT maasserver_dnsresource.* INTO resource
+  FROM maasserver_dnsresource
+  WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
+  SELECT maasserver_domain.* INTO domain
+  FROM maasserver_domain
+  WHERE maasserver_domain.id = resource.domain_id;
+  PERFORM sys_dns_publish_update(
+    'added ' || NEW.rrtype || ' to resource ' || resource.name ||
+    ' on zone ' || domain.name);
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsdata_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsdata_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  resource maasserver_dnsresource;
+  domain maasserver_domain;
+BEGIN
+  SELECT maasserver_dnsresource.* INTO resource
+  FROM maasserver_dnsresource
+  WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
+  SELECT maasserver_domain.* INTO domain
+  FROM maasserver_domain
+  WHERE maasserver_domain.id = resource.domain_id;
+  PERFORM sys_dns_publish_update(
+    'updated ' || NEW.rrtype || ' in resource ' || resource.name ||
+    ' on zone ' || domain.name);
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsresource_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsresource_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain maasserver_domain;
+BEGIN
+  SELECT maasserver_domain.* INTO domain
+  FROM maasserver_domain
+  WHERE maasserver_domain.id = OLD.domain_id;
+  PERFORM sys_dns_publish_update(
+    'zone ' || domain.name || ' removed resource ' ||
+    COALESCE(OLD.name, 'NULL'));
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsresource_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsresource_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain maasserver_domain;
+BEGIN
+  SELECT maasserver_domain.* INTO domain
+  FROM maasserver_domain
+  WHERE maasserver_domain.id = NEW.domain_id;
+  PERFORM sys_dns_publish_update(
+    'zone ' || domain.name || ' added resource ' ||
+    COALESCE(NEW.name, 'NULL'));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsresource_ip_link(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsresource_ip_link() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  sip maasserver_staticipaddress;
+  resource maasserver_dnsresource;
+  domain maasserver_domain;
+BEGIN
+  SELECT maasserver_staticipaddress.* INTO sip
+  FROM maasserver_staticipaddress
+  WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
+  SELECT maasserver_dnsresource.* INTO resource
+  FROM maasserver_dnsresource
+  WHERE maasserver_dnsresource.id = NEW.dnsresource_id;
+  SELECT maasserver_domain.* INTO domain
+  FROM maasserver_domain
+  WHERE maasserver_domain.id = resource.domain_id;
+  IF sip.ip IS NOT NULL THEN
+      PERFORM sys_dns_publish_update(
+        'ip ' || host(sip.ip) || ' linked to resource ' ||
+        COALESCE(resource.name, 'NULL') || ' on zone ' || domain.name);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsresource_ip_unlink(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsresource_ip_unlink() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  sip maasserver_staticipaddress;
+  resource maasserver_dnsresource;
+  domain maasserver_domain;
+BEGIN
+  SELECT maasserver_staticipaddress.* INTO sip
+  FROM maasserver_staticipaddress
+  WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
+  SELECT maasserver_dnsresource.* INTO resource
+  FROM maasserver_dnsresource
+  WHERE maasserver_dnsresource.id = OLD.dnsresource_id;
+  SELECT maasserver_domain.* INTO domain
+  FROM maasserver_domain
+  WHERE maasserver_domain.id = resource.domain_id;
+  IF sip.ip IS NOT NULL THEN
+      PERFORM sys_dns_publish_update(
+        'ip ' || host(sip.ip) || ' unlinked from resource ' ||
+        COALESCE(resource.name, 'NULL') || ' on zone ' || domain.name);
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_dnsresource_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_dnsresource_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain maasserver_domain;
+BEGIN
+  IF OLD.domain_id != NEW.domain_id THEN
+    SELECT maasserver_domain.* INTO domain
+    FROM maasserver_domain
+    WHERE maasserver_domain.id = OLD.domain_id;
+    PERFORM sys_dns_publish_update(
+      'zone ' || domain.name || ' removed resource ' ||
+      COALESCE(NEW.name, 'NULL'));
+    SELECT maasserver_domain.* INTO domain
+    FROM maasserver_domain
+    WHERE maasserver_domain.id = NEW.domain_id;
+    PERFORM sys_dns_publish_update(
+      'zone ' || domain.name || ' added resource ' ||
+      COALESCE(NEW.name, 'NULL'));
+  ELSIF ((OLD.name IS NULL AND NEW.name IS NOT NULL) OR
+      (OLD.name IS NOT NULL AND NEW.name IS NULL) OR
+      (OLD.name != NEW.name) OR
+      (OLD.address_ttl IS NULL AND NEW.address_ttl IS NOT NULL) OR
+      (OLD.address_ttl IS NOT NULL AND NEW.address_ttl IS NULL) OR
+      (OLD.address_ttl != NEW.address_ttl)) THEN
+    SELECT maasserver_domain.* INTO domain
+    FROM maasserver_domain
+    WHERE maasserver_domain.id = NEW.domain_id;
+    PERFORM sys_dns_publish_update(
+      'zone ' || domain.name || ' updated resource ' ||
+      COALESCE(NEW.name, 'NULL'));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_domain_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_domain_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.authoritative THEN
+    PERFORM sys_dns_publish_update(
+        'removed zone ' || OLD.name);
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_domain_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_domain_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF NEW.authoritative THEN
+      PERFORM sys_dns_publish_update(
+        'added zone ' || NEW.name);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_domain_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_domain_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changes text[];
+BEGIN
+  IF OLD.authoritative AND NOT NEW.authoritative THEN
+    PERFORM sys_dns_publish_update(
+        'removed zone ' || NEW.name);
+  ELSIF NOT OLD.authoritative AND NEW.authoritative THEN
+    PERFORM sys_dns_publish_update(
+        'added zone ' || NEW.name);
+  ELSIF OLD.authoritative and NEW.authoritative THEN
+    IF OLD.name != NEW.name THEN
+        changes := changes || ('renamed to ' || NEW.name);
+    END IF;
+    IF ((OLD.ttl IS NULL AND NEW.ttl IS NOT NULL) OR
+        (OLD.ttl IS NOT NULL and NEW.ttl IS NULL) OR
+        (OLD.ttl != NEW.ttl)) THEN
+        changes := changes || (
+          'ttl changed to ' || COALESCE(text(NEW.ttl), 'default'));
+    END IF;
+    IF array_length(changes, 1) != 0 THEN
+      PERFORM sys_dns_publish_update(
+        'zone ' || OLD.name || ' ' || array_to_string(changes, ' and '));
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_interface_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_interface_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node maasserver_node;
+  changes text[];
+BEGIN
+  IF OLD.name != NEW.name AND OLD.node_id = NEW.node_id THEN
+    IF NEW.node_id IS NOT NULL THEN
+        SELECT maasserver_node.* INTO node
+        FROM maasserver_node
+        WHERE maasserver_node.id = NEW.node_id;
+        IF EXISTS(
+            SELECT maasserver_domain.id
+            FROM maasserver_domain
+            WHERE
+              maasserver_domain.authoritative = TRUE AND
+              maasserver_domain.id = node.domain_id) THEN
+          PERFORM sys_dns_publish_update(
+            'node ' || node.hostname || ' renamed interface ' ||
+            OLD.name || ' to ' || NEW.name);
+        END IF;
+    END IF;
+  ELSIF OLD.node_id IS NULL and NEW.node_id IS NOT NULL THEN
+    SELECT maasserver_node.* INTO node
+    FROM maasserver_node
+    WHERE maasserver_node.id = NEW.node_id;
+    IF EXISTS(
+        SELECT maasserver_domain.id
+        FROM maasserver_domain
+        WHERE
+          maasserver_domain.authoritative = TRUE AND
+          maasserver_domain.id = node.domain_id) THEN
+      PERFORM sys_dns_publish_update(
+        'node ' || node.hostname || ' added interface ' || NEW.name);
+    END IF;
+  ELSIF OLD.node_id IS NOT NULL and NEW.node_id IS NULL THEN
+    SELECT maasserver_node.* INTO node
+    FROM maasserver_node
+    WHERE maasserver_node.id = OLD.node_id;
+    IF EXISTS(
+        SELECT maasserver_domain.id
+        FROM maasserver_domain
+        WHERE
+          maasserver_domain.authoritative = TRUE AND
+          maasserver_domain.id = node.domain_id) THEN
+      PERFORM sys_dns_publish_update(
+        'node ' || node.hostname || ' removed interface ' || NEW.name);
+    END IF;
+  ELSIF OLD.node_id != NEW.node_id THEN
+    SELECT maasserver_node.* INTO node
+    FROM maasserver_node
+    WHERE maasserver_node.id = OLD.node_id;
+    IF EXISTS(
+        SELECT maasserver_domain.id
+        FROM maasserver_domain
+        WHERE
+          maasserver_domain.authoritative = TRUE AND
+          maasserver_domain.id = node.domain_id) THEN
+      PERFORM sys_dns_publish_update(
+        'node ' || node.hostname || ' removed interface ' || NEW.name);
+    END IF;
+    SELECT maasserver_node.* INTO node
+    FROM maasserver_node
+    WHERE maasserver_node.id = NEW.node_id;
+    IF EXISTS(
+        SELECT maasserver_domain.id
+        FROM maasserver_domain
+        WHERE
+          maasserver_domain.authoritative = TRUE AND
+          maasserver_domain.id = node.domain_id) THEN
+      PERFORM sys_dns_publish_update(
+        'node ' || node.hostname || ' added interface ' || NEW.name);
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_nic_ip_link(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_nic_ip_link() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node maasserver_node;
+  nic maasserver_interface;
+  ip maasserver_staticipaddress;
+BEGIN
+  SELECT maasserver_interface.* INTO nic
+  FROM maasserver_interface
+  WHERE maasserver_interface.id = NEW.interface_id;
+  SELECT maasserver_node.* INTO node
+  FROM maasserver_node
+  WHERE maasserver_node.id = nic.node_id;
+  SELECT maasserver_staticipaddress.* INTO ip
+  FROM maasserver_staticipaddress
+  WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
+  IF (ip.ip IS NOT NULL AND ip.temp_expires_on IS NULL AND
+      host(ip.ip) != '' AND EXISTS (
+        SELECT maasserver_domain.id
+        FROM maasserver_domain
+        WHERE
+          maasserver_domain.id = node.domain_id AND
+          maasserver_domain.authoritative = TRUE))
+  THEN
+    PERFORM sys_dns_publish_update(
+      'ip ' || host(ip.ip) || ' connected to ' || node.hostname ||
+      ' on ' || nic.name);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_nic_ip_unlink(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_nic_ip_unlink() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node maasserver_node;
+  nic maasserver_interface;
+  ip maasserver_staticipaddress;
+  changes text[];
+BEGIN
+  SELECT maasserver_interface.* INTO nic
+  FROM maasserver_interface
+  WHERE maasserver_interface.id = OLD.interface_id;
+  SELECT maasserver_node.* INTO node
+  FROM maasserver_node
+  WHERE maasserver_node.id = nic.node_id;
+  SELECT maasserver_staticipaddress.* INTO ip
+  FROM maasserver_staticipaddress
+  WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
+  IF (ip.ip IS NOT NULL AND ip.temp_expires_on IS NULL AND EXISTS (
+        SELECT maasserver_domain.id
+        FROM maasserver_domain
+        WHERE
+          maasserver_domain.id = node.domain_id AND
+          maasserver_domain.authoritative = TRUE))
+  THEN
+    PERFORM sys_dns_publish_update(
+      'ip ' || host(ip.ip) || ' disconnected from ' || node.hostname ||
+      ' on ' || nic.name);
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_node_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_node_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain maasserver_domain;
+  new_domain maasserver_domain;
+  changes text[];
+BEGIN
+  IF EXISTS(
+      SELECT maasserver_domain.id
+      FROM maasserver_domain
+      WHERE
+        maasserver_domain.authoritative = TRUE AND
+        maasserver_domain.id = OLD.domain_id) THEN
+    PERFORM sys_dns_publish_update(
+      'removed node ' || OLD.hostname);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_node_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_node_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  domain maasserver_domain;
+  new_domain maasserver_domain;
+  changes text[];
+BEGIN
+  IF OLD.hostname != NEW.hostname AND OLD.domain_id = NEW.domain_id THEN
+    IF EXISTS(
+        SELECT maasserver_domain.id
+        FROM maasserver_domain
+        WHERE
+          maasserver_domain.authoritative = TRUE AND
+          maasserver_domain.id = NEW.domain_id) THEN
+      PERFORM sys_dns_publish_update(
+        'node ' || OLD.hostname || ' changed hostname to ' ||
+        NEW.hostname);
+    END IF;
+  ELSIF OLD.domain_id != NEW.domain_id THEN
+    -- Domains have changed. If either one is authoritative then DNS
+    -- needs to be updated.
+    SELECT maasserver_domain.* INTO domain
+    FROM maasserver_domain
+    WHERE maasserver_domain.id = OLD.domain_id;
+    SELECT maasserver_domain.* INTO new_domain
+    FROM maasserver_domain
+    WHERE maasserver_domain.id = NEW.domain_id;
+    IF domain.authoritative = TRUE OR new_domain.authoritative = TRUE THEN
+        PERFORM sys_dns_publish_update(
+          'node ' || NEW.hostname || ' changed zone to ' ||
+          new_domain.name);
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_publish(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_publish() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  PERFORM pg_notify('sys_dns', '');
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_publish_update(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_publish_update(reason text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  INSERT INTO maasserver_dnspublication
+    (serial, created, source)
+  VALUES
+    (nextval('maasserver_zone_serial_seq'), now(),
+     substring(reason FOR 255));
+END;
+$$;
+
+
+--
+-- Name: sys_dns_staticipaddress_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_staticipaddress_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF ((OLD.ip IS NULL and NEW.ip IS NOT NULL) OR
+      (OLD.ip IS NOT NULL and NEW.ip IS NULL) OR
+      (OLD.temp_expires_on IS NULL AND NEW.temp_expires_on IS NOT NULL) OR
+      (OLD.temp_expires_on IS NOT NULL AND NEW.temp_expires_on IS NULL) OR
+      (OLD.ip != NEW.ip)) OR
+      (OLD.alloc_type != NEW.alloc_type) THEN
+    IF EXISTS (
+        SELECT
+          domain.id
+        FROM maasserver_staticipaddress AS staticipaddress
+        LEFT JOIN (
+          maasserver_interface_ip_addresses AS iia
+          JOIN maasserver_interface AS interface ON
+            iia.interface_id = interface.id
+          JOIN maasserver_node AS node ON
+            node.id = interface.node_id) ON
+          iia.staticipaddress_id = staticipaddress.id
+        LEFT JOIN (
+          maasserver_dnsresource_ip_addresses AS dia
+          JOIN maasserver_dnsresource AS dnsresource ON
+            dia.dnsresource_id = dnsresource.id) ON
+          dia.staticipaddress_id = staticipaddress.id
+        JOIN maasserver_domain AS domain ON
+          domain.id = node.domain_id OR domain.id = dnsresource.domain_id
+        WHERE
+          domain.authoritative = TRUE AND
+          (staticipaddress.id = OLD.id OR
+           staticipaddress.id = NEW.id))
+    THEN
+      IF OLD.ip IS NULL and NEW.ip IS NOT NULL and
+        NEW.temp_expires_on IS NULL THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(NEW.ip) || ' allocated');
+        RETURN NEW;
+      ELSIF OLD.ip IS NOT NULL and NEW.ip IS NULL and
+        NEW.temp_expires_on IS NULL THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(OLD.ip) || ' released');
+        RETURN NEW;
+      ELSIF OLD.ip != NEW.ip and NEW.temp_expires_on IS NULL THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(OLD.ip) || ' changed to ' || host(NEW.ip));
+        RETURN NEW;
+      ELSIF OLD.ip = NEW.ip and OLD.temp_expires_on IS NOT NULL and
+        NEW.temp_expires_on IS NULL THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(NEW.ip) || ' allocated');
+        RETURN NEW;
+      ELSIF OLD.ip = NEW.ip and OLD.temp_expires_on IS NULL and
+        NEW.temp_expires_on IS NOT NULL THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(NEW.ip) || ' released');
+        RETURN NEW;
+      END IF;
+
+      -- Made it this far then only alloc_type has changed. Only send
+      -- a notification is the IP address is assigned.
+      IF NEW.ip IS NOT NULL and NEW.temp_expires_on IS NULL THEN
+        PERFORM sys_dns_publish_update(
+          'ip ' || host(OLD.ip) || ' alloc_type changed to ' ||
+          NEW.alloc_type);
+      END IF;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_subnet_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_subnet_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changes text[];
+BEGIN
+  IF OLD.rdns_mode != 0 THEN
+    PERFORM sys_dns_publish_update('removed subnet ' || text(OLD.cidr));
+  END IF;
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_subnet_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_subnet_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changes text[];
+BEGIN
+  IF NEW.rdns_mode != 0 THEN
+    PERFORM sys_dns_publish_update('added subnet ' || text(NEW.cidr));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_dns_subnet_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_dns_subnet_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.cidr != NEW.cidr THEN
+    PERFORM sys_dns_publish_update(
+        'subnet ' || text(OLD.cidr) || ' changed to ' || text(NEW.CIDR));
+    RETURN NEW;
+  END IF;
+  IF OLD.rdns_mode != NEW.rdns_mode THEN
+    PERFORM sys_dns_publish_update(
+        'subnet ' || text(NEW.cidr) || ' rdns changed to ' ||
+        NEW.rdns_mode);
+  END IF;
+  IF OLD.allow_dns != NEW.allow_dns THEN
+    PERFORM sys_dns_publish_update(
+        'subnet ' || text(NEW.cidr) || ' allow_dns changed to ' ||
+        NEW.allow_dns);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_proxy_config_use_peer_proxy_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_proxy_config_use_peer_proxy_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (NEW.name = 'enable_proxy' OR
+      NEW.name = 'maas_proxy_port' OR
+      NEW.name = 'use_peer_proxy' OR
+      NEW.name = 'http_proxy' OR
+      NEW.name = 'prefer_v4_proxy') THEN
+    PERFORM pg_notify('sys_proxy', '');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_proxy_config_use_peer_proxy_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_proxy_config_use_peer_proxy_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (NEW.name = 'enable_proxy' OR
+      NEW.name = 'maas_proxy_port' OR
+      NEW.name = 'use_peer_proxy' OR
+      NEW.name = 'http_proxy' OR
+      NEW.name = 'prefer_v4_proxy') THEN
+    PERFORM pg_notify('sys_proxy', '');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_proxy_subnet_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_proxy_subnet_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  PERFORM pg_notify('sys_proxy', '');
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_proxy_subnet_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_proxy_subnet_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  PERFORM pg_notify('sys_proxy', '');
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_proxy_subnet_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_proxy_subnet_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.cidr != NEW.cidr OR OLD.allow_proxy != NEW.allow_proxy THEN
+    PERFORM pg_notify('sys_proxy', '');
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_rbac_config_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_rbac_config_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (NEW.name = 'external_auth_url' OR
+      NEW.name = 'external_auth_user' OR
+      NEW.name = 'external_auth_key' OR
+      NEW.name = 'rbac_url') THEN
+    PERFORM sys_rbac_sync_update(
+      'configuration ' || NEW.name || ' set to ' ||
+      COALESCE(NEW.value, 'NULL'));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_rbac_config_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_rbac_config_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF (OLD.value != NEW.value AND (
+      NEW.name = 'external_auth_url' OR
+      NEW.name = 'external_auth_user' OR
+      NEW.name = 'external_auth_key' OR
+      NEW.name = 'rbac_url')) THEN
+    PERFORM sys_rbac_sync_update(
+      'configuration ' || NEW.name || ' changed to ' || NEW.value);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_rbac_rpool_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_rbac_rpool_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  PERFORM sys_rbac_sync_update(
+    'removed resource pool ' || OLD.name,
+    'remove', 'resource-pool', OLD.id, OLD.name);
+  RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: sys_rbac_rpool_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_rbac_rpool_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  PERFORM sys_rbac_sync_update(
+    'added resource pool ' || NEW.name,
+    'add', 'resource-pool', NEW.id, NEW.name);
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_rbac_rpool_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_rbac_rpool_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changes text[];
+BEGIN
+  IF OLD.name != NEW.name THEN
+    PERFORM sys_rbac_sync_update(
+      'renamed resource pool ' || OLD.name || ' to ' || NEW.name,
+      'update', 'resource-pool', OLD.id, NEW.name);
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_rbac_sync(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_rbac_sync() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  PERFORM pg_notify('sys_rbac', '');
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: sys_rbac_sync_update(text, text, text, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sys_rbac_sync_update(reason text, action text DEFAULT 'full'::text, resource_type text DEFAULT ''::text, resource_id integer DEFAULT NULL::integer, resource_name text DEFAULT ''::text) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  INSERT INTO maasserver_rbacsync
+    (created, source, action, resource_type, resource_id, resource_name)
+  VALUES (
+    now(), substring(reason FOR 255),
+    action, resource_type, resource_id, resource_name);
+END;
+$$;
+
+
+--
+-- Name: tag_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.tag_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('tag_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: tag_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.tag_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('tag_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: tag_update_machine_device_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.tag_update_machine_device_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  node RECORD;
+  pnode RECORD;
+BEGIN
+  FOR node IN (
+    SELECT
+      maasserver_node.system_id,
+      maasserver_node.node_type,
+      maasserver_node.parent_id
+    FROM maasserver_node_tags, maasserver_node
+    WHERE maasserver_node_tags.tag_id = NEW.id
+    AND maasserver_node_tags.node_id = maasserver_node.id)
+  LOOP
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    ELSIF node.parent_id IS NOT NULL THEN
+      SELECT system_id INTO pnode
+      FROM maasserver_node
+      WHERE id = node.parent_id;
+      PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    ELSE
+      PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: tag_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.tag_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('tag_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: token_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.token_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('token_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: token_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.token_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('token_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_sshkey_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_sshkey_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_update',CAST(NEW.user_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_sshkey_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_sshkey_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_update',CAST(OLD.user_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_sslkey_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_sslkey_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_update',CAST(NEW.user_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_sslkey_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_sslkey_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_update',CAST(OLD.user_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_token_link_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_token_link_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_update',CAST(NEW.user_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_token_unlink_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_token_unlink_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_update',CAST(OLD.user_id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: user_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.user_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('user_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: vlan_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vlan_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('vlan_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: vlan_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vlan_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('vlan_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: vlan_machine_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vlan_machine_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    node RECORD;
+    pnode RECORD;
+BEGIN
+  FOR node IN (
+    SELECT DISTINCT ON (maasserver_node.id)
+      system_id, node_type, parent_id
+    FROM maasserver_node, maasserver_interface, maasserver_vlan
+    WHERE maasserver_vlan.id = NEW.id
+    AND maasserver_node.id = maasserver_interface.node_id
+    AND maasserver_vlan.id = maasserver_interface.vlan_id)
+  LOOP
+    IF node.node_type = 0 THEN
+      PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+    ELSIF node.node_type IN (2, 3, 4) THEN
+      PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+    ELSIF node.parent_id IS NOT NULL THEN
+      SELECT system_id INTO pnode
+      FROM maasserver_node
+      WHERE id = node.parent_id;
+      PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+    ELSE
+      PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+    END IF;
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: vlan_subnet_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vlan_subnet_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    subnet RECORD;
+BEGIN
+  FOR subnet IN (
+    SELECT DISTINCT maasserver_subnet.id AS id
+    FROM maasserver_subnet, maasserver_vlan
+    WHERE maasserver_vlan.id = NEW.id)
+  LOOP
+    PERFORM pg_notify('subnet_update',CAST(subnet.id AS text));
+  END LOOP;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: vlan_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vlan_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('vlan_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: vmcluster_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vmcluster_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    PERFORM pg_notify('vmcluster_delete',CAST(OLD.id as text));
+    RETURN OLD;
+END;
+$$;
+
+
+--
+-- Name: vmcluster_insert_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vmcluster_insert_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    PERFORM pg_notify('vmcluster_create',CAST(NEW.id AS text));
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: vmcluster_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.vmcluster_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    PERFORM pg_notify('vmcluster_update',CAST(NEW.id AS text));
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: zone_create_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.zone_create_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('zone_create',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: zone_delete_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.zone_delete_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('zone_delete',CAST(OLD.id AS text));
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: zone_update_notify(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.zone_update_notify() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+BEGIN
+  PERFORM pg_notify('zone_update',CAST(NEW.id AS text));
+  RETURN NEW;
+END;
+$$;
+
 
 --
 -- Name: auth_group; Type: TABLE; Schema: public; Owner: -
@@ -427,74 +6475,6 @@ CREATE VIEW public.maas_support__configuration__excluding_rpc_shared_secret AS
 
 
 --
--- Name: maasserver_node; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_node (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    system_id character varying(41) NOT NULL,
-    hostname character varying(255) NOT NULL,
-    status integer NOT NULL,
-    bios_boot_method character varying(31),
-    osystem character varying(255) NOT NULL,
-    distro_series character varying(255) NOT NULL,
-    architecture character varying(31),
-    min_hwe_kernel character varying(31),
-    hwe_kernel character varying(31),
-    agent_name character varying(255),
-    error_description text NOT NULL,
-    cpu_count integer NOT NULL,
-    memory integer NOT NULL,
-    swap_size bigint,
-    power_state character varying(10) NOT NULL,
-    power_state_updated timestamp with time zone,
-    error character varying(255) NOT NULL,
-    netboot boolean NOT NULL,
-    license_key character varying(30),
-    boot_cluster_ip inet,
-    enable_ssh boolean NOT NULL,
-    skip_networking boolean NOT NULL,
-    skip_storage boolean NOT NULL,
-    boot_interface_id integer,
-    gateway_link_ipv4_id integer,
-    gateway_link_ipv6_id integer,
-    owner_id integer,
-    parent_id integer,
-    zone_id integer NOT NULL,
-    boot_disk_id integer,
-    node_type integer NOT NULL,
-    domain_id integer,
-    dns_process_id integer,
-    bmc_id integer,
-    address_ttl integer,
-    status_expires timestamp with time zone,
-    power_state_queried timestamp with time zone,
-    url character varying(255) NOT NULL,
-    managing_process_id integer,
-    last_image_sync timestamp with time zone,
-    previous_status integer NOT NULL,
-    default_user character varying(32) NOT NULL,
-    cpu_speed integer NOT NULL,
-    current_commissioning_script_set_id integer,
-    current_installation_script_set_id integer,
-    current_testing_script_set_id integer,
-    install_rackd boolean NOT NULL,
-    locked boolean NOT NULL,
-    pool_id integer,
-    instance_power_parameters jsonb NOT NULL,
-    install_kvm boolean NOT NULL,
-    hardware_uuid character varying(36),
-    ephemeral_deploy boolean NOT NULL,
-    description text NOT NULL,
-    dynamic boolean NOT NULL,
-    register_vmhost boolean NOT NULL,
-    CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0))
-);
-
-
---
 -- Name: maas_support__device_overview; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -534,7 +6514,10 @@ CREATE TABLE public.maasserver_bmc (
     default_storage_pool_id integer,
     power_parameters jsonb NOT NULL,
     default_macvlan_mode character varying(32),
-    version text NOT NULL
+    version text NOT NULL,
+    created_with_cert_expiration_days integer,
+    created_with_maas_generated_cert boolean,
+    created_with_trust_password boolean
 );
 
 
@@ -689,28 +6672,6 @@ CREATE TABLE public.maasserver_fabric (
     name character varying(256),
     class_type character varying(256),
     description text NOT NULL
-);
-
-
---
--- Name: maasserver_vlan; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_vlan (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(256),
-    vid integer NOT NULL,
-    mtu integer NOT NULL,
-    fabric_id integer NOT NULL,
-    dhcp_on boolean NOT NULL,
-    primary_rack_id integer,
-    secondary_rack_id integer,
-    external_dhcp inet,
-    description text NOT NULL,
-    relay_vlan_id integer,
-    space_id integer
 );
 
 
@@ -1117,24 +7078,6 @@ CREATE TABLE public.maasserver_controllerinfo (
 
 
 --
--- Name: maasserver_dhcpsnippet; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_dhcpsnippet (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    description text NOT NULL,
-    enabled boolean NOT NULL,
-    node_id integer,
-    subnet_id integer,
-    value_id integer NOT NULL,
-    iprange_id integer
-);
-
-
---
 -- Name: maasserver_dhcpsnippet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -1505,45 +7448,6 @@ CREATE SEQUENCE public.maasserver_fabric_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_fabric_id_seq OWNED BY public.maasserver_fabric.id;
-
-
---
--- Name: maasserver_fannetwork; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_fannetwork (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(256) NOT NULL,
-    "overlay" cidr NOT NULL,
-    underlay cidr NOT NULL,
-    dhcp boolean,
-    host_reserve integer,
-    bridge character varying(255),
-    off boolean,
-    CONSTRAINT maasserver_fannetwork_host_reserve_check CHECK ((host_reserve >= 0))
-);
-
-
---
--- Name: maasserver_fannetwork_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.maasserver_fannetwork_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: maasserver_fannetwork_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.maasserver_fannetwork_id_seq OWNED BY public.maasserver_fannetwork.id;
 
 
 --
@@ -2664,19 +8568,6 @@ ALTER SEQUENCE public.maasserver_rdns_id_seq OWNED BY public.maasserver_rdns.id;
 
 
 --
--- Name: maasserver_regioncontrollerprocess; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_regioncontrollerprocess (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    pid integer NOT NULL,
-    region_id integer NOT NULL
-);
-
-
---
 -- Name: maasserver_regioncontrollerprocess_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -3347,7 +9238,9 @@ CREATE TABLE public.maasserver_vmcluster (
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
     name text NOT NULL,
-    project text NOT NULL
+    project text NOT NULL,
+    pool_id integer,
+    zone_id integer NOT NULL
 );
 
 
@@ -3924,13 +9817,6 @@ ALTER TABLE ONLY public.maasserver_eventtype ALTER COLUMN id SET DEFAULT nextval
 --
 
 ALTER TABLE ONLY public.maasserver_fabric ALTER COLUMN id SET DEFAULT nextval('public.maasserver_fabric_id_seq'::regclass);
-
-
---
--- Name: maasserver_fannetwork id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_fannetwork ALTER COLUMN id SET DEFAULT nextval('public.maasserver_fannetwork_id_seq'::regclass);
 
 
 --
@@ -4972,296 +10858,301 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 --
 
 COPY public.django_migrations (id, app, name, applied) FROM stdin;
-1	contenttypes	0001_initial	2021-09-30 13:47:37.542855+00
-2	auth	0001_initial	2021-09-30 13:47:37.559981+00
-3	auth	0002_auto_20151119_1629	2021-09-30 13:47:37.605913+00
-4	auth	0003_django_1_11_update	2021-09-30 13:47:37.619584+00
-5	auth	0004_user_email_allow_null	2021-09-30 13:47:37.624509+00
-6	auth	0005_auto_20200626_1049	2021-09-30 13:47:37.633882+00
-7	contenttypes	0002_remove_content_type_name	2021-09-30 13:47:37.642214+00
-8	piston3	0001_initial	2021-09-30 13:47:37.656941+00
-9	maasserver	0001_initial	2021-09-30 13:47:38.47288+00
-10	metadataserver	0001_initial	2021-09-30 13:47:38.608961+00
-11	maasserver	0002_remove_candidate_name_model	2021-09-30 13:47:38.616438+00
-12	maasserver	0003_add_node_type_to_node	2021-09-30 13:47:38.634158+00
-13	maasserver	0004_migrate_installable_to_node_type	2021-09-30 13:47:38.669066+00
-14	maasserver	0005_delete_installable_from_node	2021-09-30 13:47:38.68862+00
-15	maasserver	0006_add_lease_time_to_staticipaddress	2021-09-30 13:47:38.702089+00
-16	maasserver	0007_create_node_proxy_models	2021-09-30 13:47:38.707002+00
-17	maasserver	0008_use_new_arrayfield	2021-09-30 13:47:38.762918+00
-18	maasserver	0009_remove_routers_field_from_node	2021-09-30 13:47:38.779974+00
-19	maasserver	0010_add_dns_models	2021-09-30 13:47:38.916759+00
-20	maasserver	0011_domain_data	2021-09-30 13:47:38.992063+00
-21	maasserver	0012_drop_dns_fields	2021-09-30 13:47:39.050837+00
-22	maasserver	0013_remove_boot_type_from_node	2021-09-30 13:47:39.068757+00
-23	maasserver	0014_add_region_models	2021-09-30 13:47:39.172289+00
-24	maasserver	0015_add_bmc_model	2021-09-30 13:47:39.243639+00
-25	maasserver	0016_migrate_power_data_node_to_bmc	2021-09-30 13:47:39.288534+00
-26	maasserver	0017_remove_node_power_type	2021-09-30 13:47:39.408372+00
-27	maasserver	0018_add_dnsdata	2021-09-30 13:47:39.452971+00
-28	maasserver	0019_add_iprange	2021-09-30 13:47:39.476804+00
-29	maasserver	0020_nodegroup_to_rackcontroller	2021-09-30 13:47:39.536716+00
-30	maasserver	0021_nodegroupinterface_to_iprange	2021-09-30 13:47:39.57495+00
-31	maasserver	0022_extract_ip_for_bmcs	2021-09-30 13:47:39.612163+00
-32	maasserver	0023_add_ttl_field	2021-09-30 13:47:39.704724+00
-33	maasserver	0024_remove_nodegroupinterface	2021-09-30 13:47:40.092857+00
-34	maasserver	0025_create_node_system_id_sequence	2021-09-30 13:47:40.099688+00
-35	maasserver	0026_create_zone_serial_sequence	2021-09-30 13:47:40.101972+00
-36	maasserver	0027_replace_static_range_with_admin_reserved_ranges	2021-09-30 13:47:40.137522+00
-37	maasserver	0028_update_default_vlan_on_interface_and_subnet	2021-09-30 13:47:40.190316+00
-38	maasserver	0029_add_rdns_mode	2021-09-30 13:47:40.201502+00
-39	maasserver	0030_drop_all_old_funcs	2021-09-30 13:47:40.23749+00
-40	maasserver	0031_add_region_rack_rpc_conn_model	2021-09-30 13:47:40.425565+00
-41	maasserver	0032_loosen_vlan	2021-09-30 13:47:40.472767+00
-42	maasserver	0033_iprange_minor_changes	2021-09-30 13:47:40.530262+00
-43	maasserver	0034_rename_mount_params_as_mount_options	2021-09-30 13:47:40.561777+00
-44	maasserver	0035_convert_ether_wake_to_manual_power_type	2021-09-30 13:47:40.601182+00
-45	maasserver	0036_add_service_model	2021-09-30 13:47:40.648467+00
-46	maasserver	0037_node_last_image_sync	2021-09-30 13:47:40.668804+00
-47	maasserver	0038_filesystem_ramfs_tmpfs_support	2021-09-30 13:47:40.717134+00
-48	maasserver	0039_create_template_and_versionedtextfile_models	2021-09-30 13:47:40.735252+00
-49	maasserver	0040_fix_id_seq	2021-09-30 13:47:40.741284+00
-50	maasserver	0041_change_bmc_on_delete_to_set_null	2021-09-30 13:47:40.768862+00
-51	maasserver	0042_add_routable_rack_controllers_to_bmc	2021-09-30 13:47:40.960092+00
-52	maasserver	0043_dhcpsnippet	2021-09-30 13:47:40.993005+00
-53	maasserver	0044_remove_di_bootresourcefiles	2021-09-30 13:47:41.045773+00
-54	maasserver	0045_add_node_to_filesystem	2021-09-30 13:47:41.082065+00
-55	maasserver	0046_add_bridge_interface_type	2021-09-30 13:47:41.107133+00
-56	maasserver	0047_fix_spelling_of_degraded	2021-09-30 13:47:41.166292+00
-57	maasserver	0048_add_subnet_allow_proxy	2021-09-30 13:47:41.175562+00
-58	maasserver	0049_add_external_dhcp_present_to_vlan	2021-09-30 13:47:41.248142+00
-59	maasserver	0050_modify_external_dhcp_on_vlan	2021-09-30 13:47:41.344067+00
-60	maasserver	0051_space_fabric_unique	2021-09-30 13:47:41.559062+00
-61	maasserver	0052_add_codename_title_eol_to_bootresourcecache	2021-09-30 13:47:41.575155+00
-62	maasserver	0053_add_ownerdata_model	2021-09-30 13:47:41.623669+00
-63	maasserver	0054_controller	2021-09-30 13:47:41.629521+00
-64	maasserver	0055_dns_publications	2021-09-30 13:47:41.634228+00
-65	maasserver	0056_zone_serial_ownership	2021-09-30 13:47:41.638896+00
-66	maasserver	0057_initial_dns_publication	2021-09-30 13:47:41.683282+00
-67	maasserver	0058_bigger_integer_for_dns_publication_serial	2021-09-30 13:47:41.69005+00
-68	maasserver	0056_add_description_to_fabric_and_space	2021-09-30 13:47:41.787397+00
-69	maasserver	0057_merge	2021-09-30 13:47:41.788867+00
-70	maasserver	0059_merge	2021-09-30 13:47:41.789959+00
-71	maasserver	0060_amt_remove_mac_address	2021-09-30 13:47:41.830962+00
-72	maasserver	0061_maas_nodegroup_worker_to_maas	2021-09-30 13:47:41.873627+00
-73	maasserver	0062_fix_bootsource_daily_label	2021-09-30 13:47:41.916775+00
-74	maasserver	0063_remove_orphaned_bmcs_and_ips	2021-09-30 13:47:42.080439+00
-75	maasserver	0064_remove_unneeded_event_triggers	2021-09-30 13:47:42.120745+00
-76	maasserver	0065_larger_osystem_and_distro_series	2021-09-30 13:47:42.164406+00
-77	maasserver	0066_allow_squashfs	2021-09-30 13:47:42.170505+00
-78	maasserver	0067_add_size_to_largefile	2021-09-30 13:47:42.215515+00
-79	maasserver	0068_drop_node_system_id_sequence	2021-09-30 13:47:42.218391+00
-80	maasserver	0069_add_previous_node_status_to_node	2021-09-30 13:47:42.240095+00
-81	maasserver	0070_allow_null_vlan_on_interface	2021-09-30 13:47:42.269906+00
-82	maasserver	0071_ntp_server_to_ntp_servers	2021-09-30 13:47:42.273005+00
-83	maasserver	0072_packagerepository	2021-09-30 13:47:42.279186+00
-84	maasserver	0073_migrate_package_repositories	2021-09-30 13:47:42.367201+00
-85	maasserver	0072_update_status_and_previous_status	2021-09-30 13:47:42.410555+00
-86	maasserver	0074_merge	2021-09-30 13:47:42.411723+00
-87	maasserver	0075_modify_packagerepository	2021-09-30 13:47:42.427735+00
-88	maasserver	0076_interface_discovery_rescue_mode	2021-09-30 13:47:42.765739+00
-89	maasserver	0077_static_routes	2021-09-30 13:47:42.805601+00
-90	maasserver	0078_remove_packagerepository_description	2021-09-30 13:47:42.812919+00
-91	maasserver	0079_add_keysource_model	2021-09-30 13:47:42.865619+00
-92	maasserver	0080_change_packagerepository_url_type	2021-09-30 13:47:42.871507+00
-93	maasserver	0081_allow_larger_bootsourcecache_fields	2021-09-30 13:47:42.894235+00
-94	maasserver	0082_add_kflavor	2021-09-30 13:47:42.987486+00
-95	maasserver	0083_device_discovery	2021-09-30 13:47:43.023193+00
-96	maasserver	0084_add_default_user_to_node_model	2021-09-30 13:47:43.051952+00
-97	maasserver	0085_no_intro_on_upgrade	2021-09-30 13:47:43.096647+00
-98	maasserver	0086_remove_powerpc_from_ports_arches	2021-09-30 13:47:43.142942+00
-99	maasserver	0087_add_completed_intro_to_userprofile	2021-09-30 13:47:43.158245+00
-100	maasserver	0088_remove_node_disable_ipv4	2021-09-30 13:47:43.185143+00
-101	maasserver	0089_active_discovery	2021-09-30 13:47:43.383296+00
-102	maasserver	0090_bootloaders	2021-09-30 13:47:43.404182+00
-103	maasserver	0091_v2_to_v3	2021-09-30 13:47:43.460451+00
-104	maasserver	0092_rolling	2021-09-30 13:47:43.466387+00
-105	maasserver	0093_add_rdns_model	2021-09-30 13:47:43.514889+00
-106	maasserver	0094_add_unmanaged_subnets	2021-09-30 13:47:43.526893+00
-107	maasserver	0095_vlan_relay_vlan	2021-09-30 13:47:43.553544+00
-108	maasserver	0096_set_default_vlan_field	2021-09-30 13:47:43.584031+00
-109	maasserver	0097_node_chassis_storage_hints	2021-09-30 13:47:43.711903+00
-110	maasserver	0098_add_space_to_vlan	2021-09-30 13:47:43.741281+00
-111	maasserver	0099_set_default_vlan_field	2021-09-30 13:47:43.772687+00
-112	maasserver	0100_migrate_spaces_from_subnet_to_vlan	2021-09-30 13:47:43.947661+00
-113	maasserver	0101_filesystem_btrfs_support	2021-09-30 13:47:43.969612+00
-114	maasserver	0102_remove_space_from_subnet	2021-09-30 13:47:44.00995+00
-115	maasserver	0103_notifications	2021-09-30 13:47:44.041737+00
-116	maasserver	0104_notifications_dismissals	2021-09-30 13:47:44.073031+00
-117	metadataserver	0002_script_models	2021-09-30 13:47:44.259376+00
-118	maasserver	0105_add_script_sets_to_node_model	2021-09-30 13:47:44.517675+00
-119	maasserver	0106_testing_status	2021-09-30 13:47:44.574014+00
-120	maasserver	0107_chassis_to_pods	2021-09-30 13:47:44.827503+00
-121	maasserver	0108_generate_bmc_names	2021-09-30 13:47:44.878351+00
-122	maasserver	0109_bmc_names_unique	2021-09-30 13:47:44.900135+00
-123	maasserver	0110_notification_category	2021-09-30 13:47:44.912868+00
-124	maasserver	0111_remove_component_error	2021-09-30 13:47:44.916349+00
-125	maasserver	0112_update_notification	2021-09-30 13:47:44.979325+00
-126	maasserver	0113_set_filepath_limit_to_linux_max	2021-09-30 13:47:45.152779+00
-127	maasserver	0114_node_dynamic_to_creation_type	2021-09-30 13:47:45.196739+00
-128	maasserver	0115_additional_boot_resource_filetypes	2021-09-30 13:47:45.202959+00
-129	maasserver	0116_add_disabled_components_for_mirrors	2021-09-30 13:47:45.207537+00
-130	maasserver	0117_add_iscsi_block_device	2021-09-30 13:47:45.238575+00
-131	maasserver	0118_add_iscsi_storage_pod	2021-09-30 13:47:45.284315+00
-132	maasserver	0119_set_default_vlan_field	2021-09-30 13:47:45.355802+00
-133	maasserver	0120_bootsourcecache_extra	2021-09-30 13:47:45.363183+00
-134	maasserver	0121_relax_staticipaddress_unique_constraint	2021-09-30 13:47:45.399628+00
-135	maasserver	0122_make_virtualblockdevice_uuid_editable	2021-09-30 13:47:45.41179+00
-136	maasserver	0123_make_iprange_comment_default_to_empty_string	2021-09-30 13:47:45.42745+00
-137	maasserver	0124_staticipaddress_address_family_index	2021-09-30 13:47:45.431375+00
-138	maasserver	0125_add_switch_model	2021-09-30 13:47:45.464291+00
-139	maasserver	0126_add_controllerinfo_model	2021-09-30 13:47:45.550535+00
-140	maasserver	0127_nodemetadata	2021-09-30 13:47:45.600799+00
-141	maasserver	0128_events_created_index	2021-09-30 13:47:45.605595+00
-142	maasserver	0129_add_install_rackd_flag	2021-09-30 13:47:45.630599+00
-143	maasserver	0130_node_locked_flag	2021-09-30 13:47:45.654706+00
-144	maasserver	0131_update_event_model_for_audit_logs	2021-09-30 13:47:45.936089+00
-145	maasserver	0132_consistent_model_name_validation	2021-09-30 13:47:45.97444+00
-146	maasserver	0133_add_resourcepool_model	2021-09-30 13:47:45.979983+00
-147	maasserver	0134_create_default_resourcepool	2021-09-30 13:47:46.03464+00
-148	maasserver	0135_add_pool_reference_to_node	2021-09-30 13:47:46.119958+00
-149	maasserver	0136_add_user_role_models	2021-09-30 13:47:46.157675+00
-150	maasserver	0137_create_default_roles	2021-09-30 13:47:46.220095+00
-151	maasserver	0138_add_ip_and_user_agent_to_event_model	2021-09-30 13:47:46.27142+00
-152	maasserver	0139_add_endpoint_and_increase_user_agent_length_for_event	2021-09-30 13:47:46.325565+00
-153	maasserver	0140_add_usergroup_model	2021-09-30 13:47:46.394351+00
-154	maasserver	0141_add_default_usergroup	2021-09-30 13:47:46.62889+00
-155	maasserver	0142_pod_default_resource_pool	2021-09-30 13:47:46.716081+00
-156	maasserver	0143_blockdevice_firmware	2021-09-30 13:47:46.728344+00
-157	maasserver	0144_filesystem_zfsroot_support	2021-09-30 13:47:46.74938+00
-158	maasserver	0145_interface_firmware	2021-09-30 13:47:46.818491+00
-159	maasserver	0146_add_rootkey	2021-09-30 13:47:46.823475+00
-160	maasserver	0147_pod_zones	2021-09-30 13:47:46.855329+00
-161	maasserver	0148_add_tags_on_pods	2021-09-30 13:47:46.878126+00
-162	maasserver	0149_userprofile_auth_last_check	2021-09-30 13:47:46.896145+00
-163	maasserver	0150_add_pod_commit_ratios	2021-09-30 13:47:46.948792+00
-164	maasserver	0151_userprofile_is_local	2021-09-30 13:47:46.961602+00
-165	maasserver	0152_add_usergroup_local	2021-09-30 13:47:46.974727+00
-166	maasserver	0153_add_skip_bmc_config	2021-09-30 13:47:47.000809+00
-167	maasserver	0154_link_usergroup_role	2021-09-30 13:47:47.095078+00
-168	maasserver	0155_add_globaldefaults_model	2021-09-30 13:47:47.413369+00
-169	maasserver	0156_drop_ssh_unique_key_index	2021-09-30 13:47:47.435235+00
-170	maasserver	0157_drop_usergroup_and_role	2021-09-30 13:47:47.687528+00
-171	maasserver	0158_pod_default_pool_to_pod	2021-09-30 13:47:47.73321+00
-172	maasserver	0159_userprofile_auth_last_check_no_now_default	2021-09-30 13:47:47.749369+00
-173	maasserver	0160_pool_only_for_machines	2021-09-30 13:47:47.801451+00
-174	maasserver	0161_pod_storage_pools	2021-09-30 13:47:48.114569+00
-175	maasserver	0162_storage_pools_notification	2021-09-30 13:47:48.174098+00
-176	maasserver	0163_create_new_power_parameters_with_jsonfield	2021-09-30 13:47:48.229699+00
-177	maasserver	0164_copy_over_existing_power_parameters	2021-09-30 13:47:48.286266+00
-178	maasserver	0165_remove_and_rename_power_parameters	2021-09-30 13:47:48.418869+00
-179	maasserver	0166_auto_select_s390x_extra_arches	2021-09-30 13:47:48.473768+00
-180	maasserver	0167_add_pod_host	2021-09-30 13:47:48.512873+00
-181	maasserver	0168_add_pod_default_macvlan_mode	2021-09-30 13:47:48.703233+00
-182	maasserver	0169_find_pod_host	2021-09-30 13:47:48.704682+00
-183	maasserver	0170_add_subnet_allow_dns	2021-09-30 13:47:48.715991+00
-184	maasserver	0171_remove_pod_host	2021-09-30 13:47:48.758305+00
-185	maasserver	0172_partition_tags	2021-09-30 13:47:48.767509+00
-186	maasserver	0173_add_node_install_kvm	2021-09-30 13:47:48.80091+00
-187	maasserver	0174_add_user_id_and_node_system_id_for_events	2021-09-30 13:47:48.855638+00
-188	maasserver	0175_copy_user_id_and_node_system_id_for_events	2021-09-30 13:47:48.911739+00
-189	maasserver	0176_rename_user_id_migrate_to_user_id_for_events	2021-09-30 13:47:48.986603+00
-190	maasserver	0177_remove_unique_together_on_bmc	2021-09-30 13:47:49.013165+00
-191	maasserver	0178_break_apart_linked_bmcs	2021-09-30 13:47:49.06861+00
-192	maasserver	0179_rbacsync	2021-09-30 13:47:49.074039+00
-193	maasserver	0180_rbaclastsync	2021-09-30 13:47:49.081568+00
-194	maasserver	0181_packagerepository_disable_sources	2021-09-30 13:47:49.08798+00
-195	maasserver	0182_remove_duplicate_null_ips	2021-09-30 13:47:49.094786+00
-196	maasserver	0183_node_uuid	2021-09-30 13:47:49.123992+00
-197	maasserver	0184_add_ephemeral_deploy_setting_to_node	2021-09-30 13:47:49.153242+00
-198	maasserver	0185_vmfs6	2021-09-30 13:47:49.18888+00
-199	maasserver	0186_node_description	2021-09-30 13:47:49.218079+00
-200	maasserver	0187_status_messages_change_event_logging_levels	2021-09-30 13:47:49.442713+00
-201	maasserver	0192_event_node_no_set_null	2021-09-30 13:47:49.482894+00
-202	maasserver	0194_machine_listing_event_index	2021-09-30 13:47:49.509139+00
-203	maasserver	0188_network_testing	2021-09-30 13:47:49.587211+00
-204	maasserver	0189_staticipaddress_temp_expires_on	2021-09-30 13:47:49.60653+00
-205	maasserver	0190_bmc_clean_duplicates	2021-09-30 13:47:49.66666+00
-206	maasserver	0191_bmc_unique_power_type_and_parameters	2021-09-30 13:47:49.670185+00
-207	maasserver	0193_merge_maasserver_0191_1092	2021-09-30 13:47:49.671386+00
-208	maasserver	0195_merge_20190902_1357	2021-09-30 13:47:49.672509+00
-209	maasserver	0196_numa_model	2021-09-30 13:47:49.875287+00
-210	maasserver	0197_remove_duplicate_physical_interfaces	2021-09-30 13:47:50.133501+00
-211	maasserver	0198_interface_physical_unique_mac	2021-09-30 13:47:50.137027+00
-212	maasserver	0199_bootresource_tbz_txz	2021-09-30 13:47:50.14413+00
-213	maasserver	0200_interface_sriov_max_vf	2021-09-30 13:47:50.174041+00
-214	maasserver	0195_event_username_max_length	2021-09-30 13:47:50.239706+00
-215	maasserver	0201_merge_20191008_1426	2021-09-30 13:47:50.241238+00
-216	maasserver	0202_event_node_on_delete	2021-09-30 13:47:50.286039+00
-217	maasserver	0203_interface_node_name_duplicates_delete	2021-09-30 13:47:50.349641+00
-218	maasserver	0204_interface_node_name_unique_together	2021-09-30 13:47:50.379301+00
-219	maasserver	0205_pod_nodes	2021-09-30 13:47:50.42097+00
-220	maasserver	0206_remove_node_token	2021-09-30 13:47:50.469635+00
-221	maasserver	0207_notification_dismissable	2021-09-30 13:47:50.484823+00
-222	maasserver	0208_no_power_query_events	2021-09-30 13:47:50.54447+00
-223	maasserver	0209_default_partitiontable_gpt	2021-09-30 13:47:50.55547+00
-224	maasserver	0210_filepathfield_to_charfield	2021-09-30 13:47:50.579767+00
-225	maasserver	0211_jsonfield_default_callable	2021-09-30 13:47:50.63308+00
-226	maasserver	0212_notifications_fields	2021-09-30 13:47:50.666244+00
-227	maasserver	0213_virtual_machine	2021-09-30 13:47:50.955208+00
-228	maasserver	0214_virtualmachine_one_to_one	2021-09-30 13:47:51.004555+00
-229	maasserver	0215_numanode_hugepages	2021-09-30 13:47:51.047378+00
-230	maasserver	0216_remove_skip_bmc_config_column	2021-09-30 13:47:51.085357+00
-231	maasserver	0217_notification_dismissal_timestamp	2021-09-30 13:47:51.112422+00
-232	maasserver	0218_images_maas_io_daily_to_stable	2021-09-30 13:47:51.170839+00
-233	maasserver	0219_vm_nic_link	2021-09-30 13:47:51.215493+00
-234	maasserver	0220_nodedevice	2021-09-30 13:47:51.26661+00
-235	maasserver	0221_track_lxd_project	2021-09-30 13:47:51.391615+00
-236	maasserver	0222_replace_node_creation_type	2021-09-30 13:47:51.691635+00
-237	maasserver	0223_virtualmachine_blank_project	2021-09-30 13:47:51.780235+00
-238	maasserver	0224_virtual_machine_disk	2021-09-30 13:47:51.885965+00
-239	maasserver	0225_drop_rsd_pod	2021-09-30 13:47:51.951754+00
-240	maasserver	0226_drop_iscsi_storage	2021-09-30 13:47:52.008634+00
-241	maasserver	0227_drop_pod_local_storage	2021-09-30 13:47:52.067612+00
-242	maasserver	0228_drop_iscsiblockdevice	2021-09-30 13:47:52.074001+00
-243	maasserver	0229_drop_physicalblockdevice_storage_pool	2021-09-30 13:47:52.119334+00
-244	maasserver	0230_tag_kernel_opts_blank_instead_of_null	2021-09-30 13:47:52.12947+00
-245	maasserver	0231_bmc_version	2021-09-30 13:47:52.159914+00
-246	maasserver	0232_drop_controllerinfo_interface_fields	2021-09-30 13:47:52.213349+00
-247	maasserver	0233_drop_switch	2021-09-30 13:47:52.217433+00
-248	maasserver	0234_node_register_vmhost	2021-09-30 13:47:52.445631+00
-249	maasserver	0235_controllerinfo_versions_details	2021-09-30 13:47:52.623325+00
-250	maasserver	0236_controllerinfo_update_first_reported	2021-09-30 13:47:52.651368+00
-251	maasserver	0237_drop_controller_version_mismatch_notifications	2021-09-30 13:47:52.711868+00
-252	maasserver	0238_disable_boot_architectures	2021-09-30 13:47:52.72356+00
-253	maasserver	0239_add_iprange_specific_dhcp_snippets	2021-09-30 13:47:52.773456+00
-254	maasserver	0240_ownerdata_key_fix	2021-09-30 13:47:52.834908+00
-255	maasserver	0241_physical_interface_default_node_numanode	2021-09-30 13:47:52.961678+00
-256	maasserver	0242_forwarddnsserver	2021-09-30 13:47:53.01112+00
-257	maasserver	0243_node_dynamic_for_controller_and_vmhost	2021-09-30 13:47:53.312611+00
-258	maasserver	0244_controller_nodes_deployed	2021-09-30 13:47:53.374785+00
-259	maasserver	0245_bmc_power_parameters_index_hash	2021-09-30 13:47:53.439919+00
-260	maasserver	0246_bootresource_custom_base_type	2021-09-30 13:47:53.446496+00
-261	maasserver	0247_auto_20210915_1545	2021-09-30 13:47:53.49428+00
-262	metadataserver	0003_remove_noderesult	2021-09-30 13:47:53.557768+00
-263	metadataserver	0004_aborted_script_status	2021-09-30 13:47:53.570585+00
-264	metadataserver	0005_store_powerstate_on_scriptset_creation	2021-09-30 13:47:53.589131+00
-265	metadataserver	0006_scriptresult_combined_output	2021-09-30 13:47:53.60235+00
-266	metadataserver	0007_migrate-commissioningscripts	2021-09-30 13:47:53.665038+00
-267	metadataserver	0008_remove-commissioningscripts	2021-09-30 13:47:53.669086+00
-268	metadataserver	0009_remove_noderesult_schema	2021-09-30 13:47:53.673162+00
-269	metadataserver	0010_scriptresult_time_and_script_title	2021-09-30 13:47:53.703727+00
-270	metadataserver	0011_script_metadata	2021-09-30 13:47:53.749311+00
-271	metadataserver	0012_store_script_results	2021-09-30 13:47:53.771506+00
-272	metadataserver	0013_scriptresult_physicalblockdevice	2021-09-30 13:47:53.86519+00
-273	metadataserver	0014_rename_dhcp_unconfigured_ifaces	2021-09-30 13:47:54.124314+00
-274	metadataserver	0015_migrate_storage_tests	2021-09-30 13:47:54.186558+00
-275	metadataserver	0016_script_model_fw_update_and_hw_config	2021-09-30 13:47:54.20924+00
-276	metadataserver	0017_store_requested_scripts	2021-09-30 13:47:54.239733+00
-277	metadataserver	0018_script_result_skipped	2021-09-30 13:47:54.257512+00
-278	metadataserver	0019_add_script_result_suppressed	2021-09-30 13:47:54.273886+00
-279	metadataserver	0020_network_testing	2021-09-30 13:47:54.338784+00
-280	metadataserver	0021_scriptresult_applying_netconf	2021-09-30 13:47:54.364163+00
-281	metadataserver	0022_internet-connectivity-network-validation	2021-09-30 13:47:54.367518+00
-282	metadataserver	0023_reorder_network_scripts	2021-09-30 13:47:54.42985+00
-283	metadataserver	0024_reorder_commissioning_scripts	2021-09-30 13:47:54.492618+00
-284	metadataserver	0025_nodedevice	2021-09-30 13:47:54.500951+00
-285	metadataserver	0026_drop_ipaddr_script	2021-09-30 13:47:54.562914+00
-286	piston3	0002_auto_20151209_1652	2021-09-30 13:47:54.57734+00
-287	piston3	0003_piston_nonce_index	2021-09-30 13:47:54.582954+00
-288	sessions	0001_initial	2021-09-30 13:47:54.587866+00
-289	sites	0001_initial	2021-09-30 13:47:54.594152+00
-290	sites	0002_alter_domain_unique	2021-09-30 13:47:54.600265+00
+1	contenttypes	0001_initial	2021-11-19 12:40:42.824414+00
+2	auth	0001_initial	2021-11-19 12:40:42.858779+00
+3	auth	0002_auto_20151119_1629	2021-11-19 12:40:42.961604+00
+4	auth	0003_django_1_11_update	2021-11-19 12:40:42.982989+00
+5	auth	0004_user_email_allow_null	2021-11-19 12:40:42.99213+00
+6	auth	0005_auto_20200626_1049	2021-11-19 12:40:43.011789+00
+7	contenttypes	0002_remove_content_type_name	2021-11-19 12:40:43.030316+00
+8	piston3	0001_initial	2021-11-19 12:40:43.062801+00
+9	maasserver	0001_initial	2021-11-19 12:40:44.340749+00
+10	metadataserver	0001_initial	2021-11-19 12:40:44.570766+00
+11	maasserver	0002_remove_candidate_name_model	2021-11-19 12:40:44.582572+00
+12	maasserver	0003_add_node_type_to_node	2021-11-19 12:40:44.617527+00
+13	maasserver	0004_migrate_installable_to_node_type	2021-11-19 12:40:44.678379+00
+14	maasserver	0005_delete_installable_from_node	2021-11-19 12:40:44.706324+00
+15	maasserver	0006_add_lease_time_to_staticipaddress	2021-11-19 12:40:44.734773+00
+16	maasserver	0007_create_node_proxy_models	2021-11-19 12:40:44.745761+00
+17	maasserver	0008_use_new_arrayfield	2021-11-19 12:40:44.879861+00
+18	maasserver	0009_remove_routers_field_from_node	2021-11-19 12:40:44.910292+00
+19	maasserver	0010_add_dns_models	2021-11-19 12:40:45.10435+00
+20	maasserver	0011_domain_data	2021-11-19 12:40:45.23398+00
+21	maasserver	0012_drop_dns_fields	2021-11-19 12:40:45.349177+00
+22	maasserver	0013_remove_boot_type_from_node	2021-11-19 12:40:45.384578+00
+23	maasserver	0014_add_region_models	2021-11-19 12:40:45.594747+00
+24	maasserver	0015_add_bmc_model	2021-11-19 12:40:45.735538+00
+25	maasserver	0016_migrate_power_data_node_to_bmc	2021-11-19 12:40:45.917089+00
+26	maasserver	0017_remove_node_power_type	2021-11-19 12:40:45.951225+00
+27	maasserver	0018_add_dnsdata	2021-11-19 12:40:46.03917+00
+28	maasserver	0019_add_iprange	2021-11-19 12:40:46.085306+00
+29	maasserver	0020_nodegroup_to_rackcontroller	2021-11-19 12:40:46.203411+00
+30	maasserver	0021_nodegroupinterface_to_iprange	2021-11-19 12:40:46.280663+00
+31	maasserver	0022_extract_ip_for_bmcs	2021-11-19 12:40:46.355619+00
+32	maasserver	0023_add_ttl_field	2021-11-19 12:40:46.52367+00
+33	maasserver	0024_remove_nodegroupinterface	2021-11-19 12:40:47.168394+00
+34	maasserver	0025_create_node_system_id_sequence	2021-11-19 12:40:47.188836+00
+35	maasserver	0026_create_zone_serial_sequence	2021-11-19 12:40:47.194285+00
+36	maasserver	0027_replace_static_range_with_admin_reserved_ranges	2021-11-19 12:40:47.266471+00
+37	maasserver	0028_update_default_vlan_on_interface_and_subnet	2021-11-19 12:40:47.364843+00
+38	maasserver	0029_add_rdns_mode	2021-11-19 12:40:47.384279+00
+39	maasserver	0030_drop_all_old_funcs	2021-11-19 12:40:47.455476+00
+40	maasserver	0031_add_region_rack_rpc_conn_model	2021-11-19 12:40:47.690756+00
+41	maasserver	0032_loosen_vlan	2021-11-19 12:40:47.77097+00
+42	maasserver	0033_iprange_minor_changes	2021-11-19 12:40:47.865484+00
+43	maasserver	0034_rename_mount_params_as_mount_options	2021-11-19 12:40:47.916277+00
+44	maasserver	0035_convert_ether_wake_to_manual_power_type	2021-11-19 12:40:47.981797+00
+45	maasserver	0036_add_service_model	2021-11-19 12:40:48.064125+00
+46	maasserver	0037_node_last_image_sync	2021-11-19 12:40:48.104895+00
+47	maasserver	0038_filesystem_ramfs_tmpfs_support	2021-11-19 12:40:48.191633+00
+48	maasserver	0039_create_template_and_versionedtextfile_models	2021-11-19 12:40:48.218415+00
+49	maasserver	0040_fix_id_seq	2021-11-19 12:40:48.238787+00
+50	maasserver	0041_change_bmc_on_delete_to_set_null	2021-11-19 12:40:48.293066+00
+51	maasserver	0042_add_routable_rack_controllers_to_bmc	2021-11-19 12:40:48.485532+00
+52	maasserver	0043_dhcpsnippet	2021-11-19 12:40:48.545241+00
+53	maasserver	0044_remove_di_bootresourcefiles	2021-11-19 12:40:48.634506+00
+54	maasserver	0045_add_node_to_filesystem	2021-11-19 12:40:48.685887+00
+55	maasserver	0046_add_bridge_interface_type	2021-11-19 12:40:48.731426+00
+56	maasserver	0047_fix_spelling_of_degraded	2021-11-19 12:40:48.830138+00
+57	maasserver	0048_add_subnet_allow_proxy	2021-11-19 12:40:48.845873+00
+58	maasserver	0049_add_external_dhcp_present_to_vlan	2021-11-19 12:40:48.970804+00
+59	maasserver	0050_modify_external_dhcp_on_vlan	2021-11-19 12:40:49.134295+00
+60	maasserver	0051_space_fabric_unique	2021-11-19 12:40:49.397372+00
+61	maasserver	0052_add_codename_title_eol_to_bootresourcecache	2021-11-19 12:40:49.424495+00
+62	maasserver	0053_add_ownerdata_model	2021-11-19 12:40:49.516296+00
+63	maasserver	0054_controller	2021-11-19 12:40:49.524257+00
+64	maasserver	0055_dns_publications	2021-11-19 12:40:49.531248+00
+65	maasserver	0056_zone_serial_ownership	2021-11-19 12:40:49.538801+00
+66	maasserver	0057_initial_dns_publication	2021-11-19 12:40:49.60903+00
+67	maasserver	0058_bigger_integer_for_dns_publication_serial	2021-11-19 12:40:49.618122+00
+68	maasserver	0056_add_description_to_fabric_and_space	2021-11-19 12:40:49.77264+00
+69	maasserver	0057_merge	2021-11-19 12:40:49.775133+00
+70	maasserver	0059_merge	2021-11-19 12:40:49.77711+00
+71	maasserver	0060_amt_remove_mac_address	2021-11-19 12:40:49.851165+00
+72	maasserver	0061_maas_nodegroup_worker_to_maas	2021-11-19 12:40:49.925509+00
+73	maasserver	0062_fix_bootsource_daily_label	2021-11-19 12:40:50.006741+00
+74	maasserver	0063_remove_orphaned_bmcs_and_ips	2021-11-19 12:40:50.202739+00
+75	maasserver	0064_remove_unneeded_event_triggers	2021-11-19 12:40:50.270623+00
+76	maasserver	0065_larger_osystem_and_distro_series	2021-11-19 12:40:50.349286+00
+77	maasserver	0066_allow_squashfs	2021-11-19 12:40:50.359214+00
+78	maasserver	0067_add_size_to_largefile	2021-11-19 12:40:50.438721+00
+79	maasserver	0068_drop_node_system_id_sequence	2021-11-19 12:40:50.443859+00
+80	maasserver	0069_add_previous_node_status_to_node	2021-11-19 12:40:50.489576+00
+81	maasserver	0070_allow_null_vlan_on_interface	2021-11-19 12:40:50.551797+00
+82	maasserver	0071_ntp_server_to_ntp_servers	2021-11-19 12:40:50.556645+00
+83	maasserver	0072_packagerepository	2021-11-19 12:40:50.565478+00
+84	maasserver	0073_migrate_package_repositories	2021-11-19 12:40:50.707607+00
+85	maasserver	0072_update_status_and_previous_status	2021-11-19 12:40:50.78421+00
+86	maasserver	0074_merge	2021-11-19 12:40:50.786449+00
+87	maasserver	0075_modify_packagerepository	2021-11-19 12:40:50.816827+00
+88	maasserver	0076_interface_discovery_rescue_mode	2021-11-19 12:40:51.29596+00
+89	maasserver	0077_static_routes	2021-11-19 12:40:51.369006+00
+90	maasserver	0078_remove_packagerepository_description	2021-11-19 12:40:51.381147+00
+91	maasserver	0079_add_keysource_model	2021-11-19 12:40:51.476509+00
+92	maasserver	0080_change_packagerepository_url_type	2021-11-19 12:40:51.489155+00
+93	maasserver	0081_allow_larger_bootsourcecache_fields	2021-11-19 12:40:51.542287+00
+94	maasserver	0082_add_kflavor	2021-11-19 12:40:51.710735+00
+95	maasserver	0083_device_discovery	2021-11-19 12:40:51.781692+00
+96	maasserver	0084_add_default_user_to_node_model	2021-11-19 12:40:51.832194+00
+97	maasserver	0085_no_intro_on_upgrade	2021-11-19 12:40:51.910638+00
+98	maasserver	0086_remove_powerpc_from_ports_arches	2021-11-19 12:40:51.990442+00
+99	maasserver	0087_add_completed_intro_to_userprofile	2021-11-19 12:40:52.015202+00
+100	maasserver	0088_remove_node_disable_ipv4	2021-11-19 12:40:52.063366+00
+101	maasserver	0089_active_discovery	2021-11-19 12:40:52.291119+00
+102	maasserver	0090_bootloaders	2021-11-19 12:40:52.330415+00
+103	maasserver	0091_v2_to_v3	2021-11-19 12:40:52.415851+00
+104	maasserver	0092_rolling	2021-11-19 12:40:52.426926+00
+105	maasserver	0093_add_rdns_model	2021-11-19 12:40:52.507603+00
+106	maasserver	0094_add_unmanaged_subnets	2021-11-19 12:40:52.527624+00
+107	maasserver	0095_vlan_relay_vlan	2021-11-19 12:40:52.575416+00
+108	maasserver	0096_set_default_vlan_field	2021-11-19 12:40:52.631384+00
+109	maasserver	0097_node_chassis_storage_hints	2021-11-19 12:40:52.852524+00
+110	maasserver	0098_add_space_to_vlan	2021-11-19 12:40:52.911629+00
+111	maasserver	0099_set_default_vlan_field	2021-11-19 12:40:52.975955+00
+112	maasserver	0100_migrate_spaces_from_subnet_to_vlan	2021-11-19 12:40:53.065011+00
+113	maasserver	0101_filesystem_btrfs_support	2021-11-19 12:40:53.234079+00
+114	maasserver	0102_remove_space_from_subnet	2021-11-19 12:40:53.304323+00
+115	maasserver	0103_notifications	2021-11-19 12:40:53.356504+00
+116	maasserver	0104_notifications_dismissals	2021-11-19 12:40:53.420674+00
+117	metadataserver	0002_script_models	2021-11-19 12:40:53.730744+00
+118	maasserver	0105_add_script_sets_to_node_model	2021-11-19 12:40:53.911179+00
+119	maasserver	0106_testing_status	2021-11-19 12:40:54.13962+00
+120	maasserver	0107_chassis_to_pods	2021-11-19 12:40:54.559838+00
+121	maasserver	0108_generate_bmc_names	2021-11-19 12:40:54.64426+00
+122	maasserver	0109_bmc_names_unique	2021-11-19 12:40:54.682417+00
+123	maasserver	0110_notification_category	2021-11-19 12:40:54.705165+00
+124	maasserver	0111_remove_component_error	2021-11-19 12:40:54.714145+00
+125	maasserver	0112_update_notification	2021-11-19 12:40:54.853551+00
+126	maasserver	0113_set_filepath_limit_to_linux_max	2021-11-19 12:40:54.904174+00
+127	maasserver	0114_node_dynamic_to_creation_type	2021-11-19 12:40:55.13626+00
+128	maasserver	0115_additional_boot_resource_filetypes	2021-11-19 12:40:55.153205+00
+129	maasserver	0116_add_disabled_components_for_mirrors	2021-11-19 12:40:55.164284+00
+130	maasserver	0117_add_iscsi_block_device	2021-11-19 12:40:55.230126+00
+131	maasserver	0118_add_iscsi_storage_pod	2021-11-19 12:40:55.305038+00
+132	maasserver	0119_set_default_vlan_field	2021-11-19 12:40:55.398439+00
+133	maasserver	0120_bootsourcecache_extra	2021-11-19 12:40:55.40932+00
+134	maasserver	0121_relax_staticipaddress_unique_constraint	2021-11-19 12:40:55.498095+00
+135	maasserver	0122_make_virtualblockdevice_uuid_editable	2021-11-19 12:40:55.525899+00
+136	maasserver	0123_make_iprange_comment_default_to_empty_string	2021-11-19 12:40:55.573294+00
+137	maasserver	0124_staticipaddress_address_family_index	2021-11-19 12:40:55.583593+00
+138	maasserver	0125_add_switch_model	2021-11-19 12:40:55.652599+00
+139	maasserver	0126_add_controllerinfo_model	2021-11-19 12:40:55.804495+00
+140	maasserver	0127_nodemetadata	2021-11-19 12:40:55.902125+00
+141	maasserver	0128_events_created_index	2021-11-19 12:40:55.910201+00
+142	maasserver	0129_add_install_rackd_flag	2021-11-19 12:40:55.958036+00
+143	maasserver	0130_node_locked_flag	2021-11-19 12:40:56.012856+00
+144	maasserver	0131_update_event_model_for_audit_logs	2021-11-19 12:40:56.575592+00
+145	maasserver	0132_consistent_model_name_validation	2021-11-19 12:40:56.705325+00
+146	maasserver	0133_add_resourcepool_model	2021-11-19 12:40:56.722044+00
+147	maasserver	0134_create_default_resourcepool	2021-11-19 12:40:56.915219+00
+148	maasserver	0135_add_pool_reference_to_node	2021-11-19 12:40:57.23517+00
+149	maasserver	0136_add_user_role_models	2021-11-19 12:40:57.359211+00
+150	maasserver	0137_create_default_roles	2021-11-19 12:40:57.494462+00
+151	maasserver	0138_add_ip_and_user_agent_to_event_model	2021-11-19 12:40:57.598659+00
+152	maasserver	0139_add_endpoint_and_increase_user_agent_length_for_event	2021-11-19 12:40:57.713103+00
+153	maasserver	0140_add_usergroup_model	2021-11-19 12:40:57.924026+00
+154	maasserver	0141_add_default_usergroup	2021-11-19 12:40:58.132156+00
+155	maasserver	0142_pod_default_resource_pool	2021-11-19 12:40:58.708092+00
+156	maasserver	0143_blockdevice_firmware	2021-11-19 12:40:58.738474+00
+157	maasserver	0144_filesystem_zfsroot_support	2021-11-19 12:40:58.787936+00
+158	maasserver	0145_interface_firmware	2021-11-19 12:40:58.942118+00
+159	maasserver	0146_add_rootkey	2021-11-19 12:40:58.955765+00
+160	maasserver	0147_pod_zones	2021-11-19 12:40:59.027306+00
+161	maasserver	0148_add_tags_on_pods	2021-11-19 12:40:59.085931+00
+162	maasserver	0149_userprofile_auth_last_check	2021-11-19 12:40:59.123072+00
+163	maasserver	0150_add_pod_commit_ratios	2021-11-19 12:40:59.210989+00
+164	maasserver	0151_userprofile_is_local	2021-11-19 12:40:59.237346+00
+165	maasserver	0152_add_usergroup_local	2021-11-19 12:40:59.273197+00
+166	maasserver	0153_add_skip_bmc_config	2021-11-19 12:40:59.34225+00
+167	maasserver	0154_link_usergroup_role	2021-11-19 12:40:59.533655+00
+168	maasserver	0155_add_globaldefaults_model	2021-11-19 12:40:59.964278+00
+169	maasserver	0156_drop_ssh_unique_key_index	2021-11-19 12:41:00.004865+00
+170	maasserver	0157_drop_usergroup_and_role	2021-11-19 12:41:00.438749+00
+171	maasserver	0158_pod_default_pool_to_pod	2021-11-19 12:41:00.517242+00
+172	maasserver	0159_userprofile_auth_last_check_no_now_default	2021-11-19 12:41:00.546172+00
+173	maasserver	0160_pool_only_for_machines	2021-11-19 12:41:00.644982+00
+174	maasserver	0161_pod_storage_pools	2021-11-19 12:41:01.024573+00
+175	maasserver	0162_storage_pools_notification	2021-11-19 12:41:01.127099+00
+176	maasserver	0163_create_new_power_parameters_with_jsonfield	2021-11-19 12:41:01.219672+00
+177	maasserver	0164_copy_over_existing_power_parameters	2021-11-19 12:41:01.320742+00
+178	maasserver	0165_remove_and_rename_power_parameters	2021-11-19 12:41:01.535613+00
+179	maasserver	0166_auto_select_s390x_extra_arches	2021-11-19 12:41:01.634578+00
+180	maasserver	0167_add_pod_host	2021-11-19 12:41:01.70175+00
+181	maasserver	0168_add_pod_default_macvlan_mode	2021-11-19 12:41:01.750756+00
+182	maasserver	0169_find_pod_host	2021-11-19 12:41:01.754893+00
+183	maasserver	0170_add_subnet_allow_dns	2021-11-19 12:41:01.777208+00
+184	maasserver	0171_remove_pod_host	2021-11-19 12:41:01.854558+00
+185	maasserver	0172_partition_tags	2021-11-19 12:41:01.8685+00
+186	maasserver	0173_add_node_install_kvm	2021-11-19 12:41:02.092937+00
+187	maasserver	0174_add_user_id_and_node_system_id_for_events	2021-11-19 12:41:02.182792+00
+188	maasserver	0175_copy_user_id_and_node_system_id_for_events	2021-11-19 12:41:02.278096+00
+189	maasserver	0176_rename_user_id_migrate_to_user_id_for_events	2021-11-19 12:41:02.405644+00
+190	maasserver	0177_remove_unique_together_on_bmc	2021-11-19 12:41:02.453066+00
+191	maasserver	0178_break_apart_linked_bmcs	2021-11-19 12:41:02.554466+00
+192	maasserver	0179_rbacsync	2021-11-19 12:41:02.563308+00
+193	maasserver	0180_rbaclastsync	2021-11-19 12:41:02.572676+00
+194	maasserver	0181_packagerepository_disable_sources	2021-11-19 12:41:02.584713+00
+195	maasserver	0182_remove_duplicate_null_ips	2021-11-19 12:41:02.600768+00
+196	maasserver	0183_node_uuid	2021-11-19 12:41:02.657634+00
+197	maasserver	0184_add_ephemeral_deploy_setting_to_node	2021-11-19 12:41:02.717017+00
+198	maasserver	0185_vmfs6	2021-11-19 12:41:02.782762+00
+199	maasserver	0186_node_description	2021-11-19 12:41:02.835891+00
+200	maasserver	0187_status_messages_change_event_logging_levels	2021-11-19 12:41:02.936874+00
+201	maasserver	0192_event_node_no_set_null	2021-11-19 12:41:03.169205+00
+202	maasserver	0194_machine_listing_event_index	2021-11-19 12:41:03.217197+00
+203	maasserver	0188_network_testing	2021-11-19 12:41:03.353922+00
+204	maasserver	0189_staticipaddress_temp_expires_on	2021-11-19 12:41:03.387202+00
+205	maasserver	0190_bmc_clean_duplicates	2021-11-19 12:41:03.494379+00
+206	maasserver	0191_bmc_unique_power_type_and_parameters	2021-11-19 12:41:03.500855+00
+207	maasserver	0193_merge_maasserver_0191_1092	2021-11-19 12:41:03.503326+00
+208	maasserver	0195_merge_20190902_1357	2021-11-19 12:41:03.505799+00
+209	maasserver	0196_numa_model	2021-11-19 12:41:03.857158+00
+210	maasserver	0197_remove_duplicate_physical_interfaces	2021-11-19 12:41:03.962039+00
+211	maasserver	0198_interface_physical_unique_mac	2021-11-19 12:41:03.968275+00
+212	maasserver	0199_bootresource_tbz_txz	2021-11-19 12:41:03.980856+00
+213	maasserver	0200_interface_sriov_max_vf	2021-11-19 12:41:04.032233+00
+214	maasserver	0195_event_username_max_length	2021-11-19 12:41:04.148037+00
+215	maasserver	0201_merge_20191008_1426	2021-11-19 12:41:04.150753+00
+216	maasserver	0202_event_node_on_delete	2021-11-19 12:41:04.415722+00
+217	maasserver	0203_interface_node_name_duplicates_delete	2021-11-19 12:41:04.513428+00
+218	maasserver	0204_interface_node_name_unique_together	2021-11-19 12:41:04.562861+00
+219	maasserver	0205_pod_nodes	2021-11-19 12:41:04.640497+00
+220	maasserver	0206_remove_node_token	2021-11-19 12:41:04.721787+00
+221	maasserver	0207_notification_dismissable	2021-11-19 12:41:04.743513+00
+222	maasserver	0208_no_power_query_events	2021-11-19 12:41:04.846899+00
+223	maasserver	0209_default_partitiontable_gpt	2021-11-19 12:41:04.867675+00
+224	maasserver	0210_filepathfield_to_charfield	2021-11-19 12:41:04.91246+00
+225	maasserver	0211_jsonfield_default_callable	2021-11-19 12:41:05.008252+00
+226	maasserver	0212_notifications_fields	2021-11-19 12:41:05.07502+00
+227	maasserver	0213_virtual_machine	2021-11-19 12:41:05.247006+00
+228	maasserver	0214_virtualmachine_one_to_one	2021-11-19 12:41:05.336279+00
+229	maasserver	0215_numanode_hugepages	2021-11-19 12:41:05.590857+00
+230	maasserver	0216_remove_skip_bmc_config_column	2021-11-19 12:41:05.661625+00
+231	maasserver	0217_notification_dismissal_timestamp	2021-11-19 12:41:05.71417+00
+232	maasserver	0218_images_maas_io_daily_to_stable	2021-11-19 12:41:05.8216+00
+233	maasserver	0219_vm_nic_link	2021-11-19 12:41:05.907892+00
+234	maasserver	0220_nodedevice	2021-11-19 12:41:06.004318+00
+235	maasserver	0221_track_lxd_project	2021-11-19 12:41:06.219817+00
+236	maasserver	0222_replace_node_creation_type	2021-11-19 12:41:06.43745+00
+237	maasserver	0223_virtualmachine_blank_project	2021-11-19 12:41:06.847243+00
+238	maasserver	0224_virtual_machine_disk	2021-11-19 12:41:07.032887+00
+239	maasserver	0225_drop_rsd_pod	2021-11-19 12:41:07.148362+00
+240	maasserver	0226_drop_iscsi_storage	2021-11-19 12:41:07.247321+00
+241	maasserver	0227_drop_pod_local_storage	2021-11-19 12:41:07.343709+00
+242	maasserver	0228_drop_iscsiblockdevice	2021-11-19 12:41:07.350424+00
+243	maasserver	0229_drop_physicalblockdevice_storage_pool	2021-11-19 12:41:07.435156+00
+244	maasserver	0230_tag_kernel_opts_blank_instead_of_null	2021-11-19 12:41:07.453178+00
+245	maasserver	0231_bmc_version	2021-11-19 12:41:07.515054+00
+246	maasserver	0232_drop_controllerinfo_interface_fields	2021-11-19 12:41:07.606905+00
+247	maasserver	0233_drop_switch	2021-11-19 12:41:07.613541+00
+248	maasserver	0234_node_register_vmhost	2021-11-19 12:41:07.675696+00
+249	maasserver	0235_controllerinfo_versions_details	2021-11-19 12:41:08.164885+00
+250	maasserver	0236_controllerinfo_update_first_reported	2021-11-19 12:41:08.237173+00
+251	maasserver	0237_drop_controller_version_mismatch_notifications	2021-11-19 12:41:08.350623+00
+252	maasserver	0238_disable_boot_architectures	2021-11-19 12:41:08.374021+00
+253	maasserver	0239_add_iprange_specific_dhcp_snippets	2021-11-19 12:41:08.467242+00
+254	maasserver	0240_ownerdata_key_fix	2021-11-19 12:41:08.576326+00
+255	maasserver	0241_physical_interface_default_node_numanode	2021-11-19 12:41:08.806888+00
+256	maasserver	0242_forwarddnsserver	2021-11-19 12:41:08.936299+00
+257	maasserver	0243_node_dynamic_for_controller_and_vmhost	2021-11-19 12:41:09.0856+00
+258	maasserver	0244_controller_nodes_deployed	2021-11-19 12:41:09.483833+00
+259	maasserver	0245_bmc_power_parameters_index_hash	2021-11-19 12:41:09.635635+00
+260	maasserver	0246_bootresource_custom_base_type	2021-11-19 12:41:09.651438+00
+261	maasserver	0247_auto_20210915_1545	2021-11-19 12:41:09.769845+00
+262	maasserver	0248_auto_20211006_1829	2021-11-19 12:41:10.011088+00
+263	maasserver	0249_lxd_auth_metrics	2021-11-19 12:41:10.193577+00
+264	maasserver	0250_node_last_applied_storage_layout	2021-11-19 12:41:10.257785+00
+265	maasserver	0251_auto_20211027_2128	2021-11-19 12:41:10.383283+00
+266	metadataserver	0003_remove_noderesult	2021-11-19 12:41:10.497317+00
+267	metadataserver	0004_aborted_script_status	2021-11-19 12:41:10.519628+00
+268	metadataserver	0005_store_powerstate_on_scriptset_creation	2021-11-19 12:41:10.555844+00
+269	metadataserver	0006_scriptresult_combined_output	2021-11-19 12:41:10.582204+00
+270	metadataserver	0007_migrate-commissioningscripts	2021-11-19 12:41:10.887103+00
+271	metadataserver	0008_remove-commissioningscripts	2021-11-19 12:41:10.894502+00
+272	metadataserver	0009_remove_noderesult_schema	2021-11-19 12:41:10.902347+00
+273	metadataserver	0010_scriptresult_time_and_script_title	2021-11-19 12:41:10.957528+00
+274	metadataserver	0011_script_metadata	2021-11-19 12:41:11.051289+00
+275	metadataserver	0012_store_script_results	2021-11-19 12:41:11.091909+00
+276	metadataserver	0013_scriptresult_physicalblockdevice	2021-11-19 12:41:11.26438+00
+277	metadataserver	0014_rename_dhcp_unconfigured_ifaces	2021-11-19 12:41:11.379168+00
+278	metadataserver	0015_migrate_storage_tests	2021-11-19 12:41:11.494202+00
+279	metadataserver	0016_script_model_fw_update_and_hw_config	2021-11-19 12:41:11.542797+00
+280	metadataserver	0017_store_requested_scripts	2021-11-19 12:41:11.607621+00
+281	metadataserver	0018_script_result_skipped	2021-11-19 12:41:11.635989+00
+282	metadataserver	0019_add_script_result_suppressed	2021-11-19 12:41:11.674488+00
+283	metadataserver	0020_network_testing	2021-11-19 12:41:11.795427+00
+284	metadataserver	0021_scriptresult_applying_netconf	2021-11-19 12:41:11.839799+00
+285	metadataserver	0022_internet-connectivity-network-validation	2021-11-19 12:41:11.848087+00
+286	metadataserver	0023_reorder_network_scripts	2021-11-19 12:41:11.955536+00
+287	metadataserver	0024_reorder_commissioning_scripts	2021-11-19 12:41:12.070671+00
+288	metadataserver	0025_nodedevice	2021-11-19 12:41:12.085411+00
+289	metadataserver	0026_drop_ipaddr_script	2021-11-19 12:41:12.40226+00
+290	piston3	0002_auto_20151209_1652	2021-11-19 12:41:12.422797+00
+291	piston3	0003_piston_nonce_index	2021-11-19 12:41:12.433498+00
+292	sessions	0001_initial	2021-11-19 12:41:12.444821+00
+293	sites	0001_initial	2021-11-19 12:41:12.455763+00
+294	sites	0002_alter_domain_unique	2021-11-19 12:41:12.467536+00
+295	maasserver	0252_drop_fannetwork	2021-11-26 17:02:43.267105+00
 \.
 
 
@@ -5294,7 +11185,7 @@ COPY public.maasserver_blockdevice (id, created, updated, name, id_path, size, b
 -- Data for Name: maasserver_bmc; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bmc (id, created, updated, power_type, ip_address_id, architectures, bmc_type, capabilities, cores, cpu_speed, local_storage, memory, name, pool_id, zone_id, tags, cpu_over_commit_ratio, memory_over_commit_ratio, default_storage_pool_id, power_parameters, default_macvlan_mode, version) FROM stdin;
+COPY public.maasserver_bmc (id, created, updated, power_type, ip_address_id, architectures, bmc_type, capabilities, cores, cpu_speed, local_storage, memory, name, pool_id, zone_id, tags, cpu_over_commit_ratio, memory_over_commit_ratio, default_storage_pool_id, power_parameters, default_macvlan_mode, version, created_with_cert_expiration_days, created_with_maas_generated_cert, created_with_trust_password) FROM stdin;
 \.
 
 
@@ -5399,7 +11290,7 @@ COPY public.maasserver_dnsdata (id, created, updated, rrtype, rrdata, dnsresourc
 --
 
 COPY public.maasserver_dnspublication (id, serial, created, source) FROM stdin;
-1	1	2021-09-30 13:47:41.681994+00	Initial publication
+1	1	2021-11-19 12:40:49.607453+00	Initial publication
 \.
 
 
@@ -5424,7 +11315,7 @@ COPY public.maasserver_dnsresource_ip_addresses (id, dnsresource_id, staticipadd
 --
 
 COPY public.maasserver_domain (id, created, updated, name, authoritative, ttl) FROM stdin;
-0	2021-09-30 13:47:38.954512+00	2021-09-30 13:47:38.954512+00	maas	t	\N
+0	2021-11-19 12:40:45.172211+00	2021-11-19 12:40:45.172211+00	maas	t	\N
 \.
 
 
@@ -5449,14 +11340,6 @@ COPY public.maasserver_eventtype (id, created, updated, name, description, level
 --
 
 COPY public.maasserver_fabric (id, created, updated, name, class_type, description) FROM stdin;
-\.
-
-
---
--- Data for Name: maasserver_fannetwork; Type: TABLE DATA; Schema: public; Owner: -
---
-
-COPY public.maasserver_fannetwork (id, created, updated, name, "overlay", underlay, dhcp, host_reserve, bridge, off) FROM stdin;
 \.
 
 
@@ -5505,7 +11388,7 @@ COPY public.maasserver_forwarddnsserver_domains (id, forwarddnsserver_id, domain
 --
 
 COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdin;
-0	2021-09-30 13:47:47.357054+00	2021-09-30 13:47:47.359701+00	0
+0	2021-11-19 12:40:59.690026+00	2021-11-19 12:40:59.694316+00	0
 \.
 
 
@@ -5585,7 +11468,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout) FROM stdin;
 \.
 
 
@@ -5666,8 +11549,8 @@ COPY public.maasserver_ownerdata (id, key, value, node_id) FROM stdin;
 --
 
 COPY public.maasserver_packagerepository (id, created, updated, name, url, components, arches, key, "default", enabled, disabled_pockets, distributions, disabled_components, disable_sources) FROM stdin;
-1	2021-09-30 13:47:42.321801+00	2021-09-30 13:47:42.321801+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
-2	2021-09-30 13:47:42.321801+00	2021-09-30 13:47:42.321801+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
+1	2021-11-19 12:40:50.636477+00	2021-11-19 12:40:50.636477+00	main_archive	http://archive.ubuntu.com/ubuntu	{}	{amd64,i386}		t	t	{}	{}	{}	t
+2	2021-11-19 12:40:50.636477+00	2021-11-19 12:40:50.636477+00	ports_archive	http://ports.ubuntu.com/ubuntu-ports	{}	{armhf,arm64,ppc64el,s390x}		t	t	{}	{}	{}	t
 \.
 
 
@@ -5772,7 +11655,7 @@ COPY public.maasserver_regionrackrpcconnection (id, created, updated, endpoint_i
 --
 
 COPY public.maasserver_resourcepool (id, created, updated, name, description) FROM stdin;
-0	2021-09-30 13:47:46.030863+00	2021-09-30 13:47:46.030863+00	default	Default pool
+0	2021-11-19 12:40:56.90477+00	2021-11-19 12:40:56.90477+00	default	Default pool
 \.
 
 
@@ -5916,7 +11799,7 @@ COPY public.maasserver_vlan (id, created, updated, name, vid, mtu, fabric_id, dh
 -- Data for Name: maasserver_vmcluster; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_vmcluster (id, created, updated, name, project) FROM stdin;
+COPY public.maasserver_vmcluster (id, created, updated, name, project, pool_id, zone_id) FROM stdin;
 \.
 
 
@@ -5925,7 +11808,7 @@ COPY public.maasserver_vmcluster (id, created, updated, name, project) FROM stdi
 --
 
 COPY public.maasserver_zone (id, created, updated, name, description) FROM stdin;
-1	2021-09-30 13:47:38.040655+00	2021-09-30 13:47:38.040655+00	default	
+1	2021-11-19 12:40:43.705399+00	2021-11-19 12:40:43.705399+00	default	
 \.
 
 
@@ -6046,7 +11929,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 106, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 290, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 295, true);
 
 
 --
@@ -6194,13 +12077,6 @@ SELECT pg_catalog.setval('public.maasserver_eventtype_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.maasserver_fabric_id_seq', 1, false);
-
-
---
--- Name: maasserver_fannetwork_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
---
-
-SELECT pg_catalog.setval('public.maasserver_fannetwork_id_seq', 1, false);
 
 
 --
@@ -6827,14 +12703,6 @@ ALTER TABLE ONLY public.maasserver_blockdevice
 
 
 --
--- Name: maasserver_bmc maasserver_bmc_name_144ffd80_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_bmc
-    ADD CONSTRAINT maasserver_bmc_name_144ffd80_uniq UNIQUE (name);
-
-
---
 -- Name: maasserver_bmc maasserver_bmc_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7072,38 +12940,6 @@ ALTER TABLE ONLY public.maasserver_fabric
 
 ALTER TABLE ONLY public.maasserver_fabric
     ADD CONSTRAINT maasserver_fabric_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_fannetwork maasserver_fannetwork_name_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_fannetwork
-    ADD CONSTRAINT maasserver_fannetwork_name_key UNIQUE (name);
-
-
---
--- Name: maasserver_fannetwork maasserver_fannetwork_overlay_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_fannetwork
-    ADD CONSTRAINT maasserver_fannetwork_overlay_key UNIQUE ("overlay");
-
-
---
--- Name: maasserver_fannetwork maasserver_fannetwork_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_fannetwork
-    ADD CONSTRAINT maasserver_fannetwork_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_fannetwork maasserver_fannetwork_underlay_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_fannetwork
-    ADD CONSTRAINT maasserver_fannetwork_underlay_key UNIQUE (underlay);
 
 
 --
@@ -8240,13 +14076,6 @@ CREATE INDEX maasserver_bmc_ip_address_id_79362d14 ON public.maasserver_bmc USIN
 
 
 --
--- Name: maasserver_bmc_name_144ffd80_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_bmc_name_144ffd80_like ON public.maasserver_bmc USING btree (name varchar_pattern_ops);
-
-
---
 -- Name: maasserver_bmc_power_type_93755dda; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8454,13 +14283,6 @@ CREATE INDEX maasserver_eventtype_name_49878f67_like ON public.maasserver_eventt
 --
 
 CREATE INDEX maasserver_fabric_name_3aaa3e4d_like ON public.maasserver_fabric USING btree (name varchar_pattern_ops);
-
-
---
--- Name: maasserver_fannetwork_name_fe247f07_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_fannetwork_name_fe247f07_like ON public.maasserver_fannetwork USING btree (name varchar_pattern_ops);
 
 
 --
@@ -9178,6 +15000,20 @@ CREATE INDEX maasserver_vmcluster_name_dbc3c69c_like ON public.maasserver_vmclus
 
 
 --
+-- Name: maasserver_vmcluster_pool_id_aad02386; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_vmcluster_pool_id_aad02386 ON public.maasserver_vmcluster USING btree (pool_id);
+
+
+--
+-- Name: maasserver_vmcluster_zone_id_07623572; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_vmcluster_zone_id_07623572 ON public.maasserver_vmcluster USING btree (zone_id);
+
+
+--
 -- Name: maasserver_zone_name_a0aef207_like; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9241,6 +15077,13 @@ CREATE INDEX metadataserver_scriptset_node_id_72b6537b ON public.metadataserver_
 
 
 --
+-- Name: name-unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX "name-unique" ON public.maasserver_bmc USING btree (name) WHERE ((power_parameters #> ARRAY['project'::text, 'exists'::text]) = 'false'::jsonb);
+
+
+--
 -- Name: piston3_consumer_user_id_ede69093; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9259,6 +15102,41 @@ CREATE INDEX piston3_token_consumer_id_b178993d ON public.piston3_token USING bt
 --
 
 CREATE INDEX piston3_token_user_id_e5cd818c ON public.piston3_token USING btree (user_id);
+
+
+--
+-- Name: piston3_consumer piston3_consumer_consumer_token_update_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER piston3_consumer_consumer_token_update_notify AFTER UPDATE ON public.piston3_consumer FOR EACH ROW WHEN (((new.name)::text IS DISTINCT FROM (old.name)::text)) EXECUTE FUNCTION public.consumer_token_update_notify();
+
+
+--
+-- Name: piston3_token piston3_token_token_create_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER piston3_token_token_create_notify AFTER INSERT ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.token_create_notify();
+
+
+--
+-- Name: piston3_token piston3_token_token_delete_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER piston3_token_token_delete_notify AFTER DELETE ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.token_delete_notify();
+
+
+--
+-- Name: piston3_token piston3_token_user_token_link_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER piston3_token_user_token_link_notify AFTER INSERT ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.user_token_link_notify();
+
+
+--
+-- Name: piston3_token piston3_token_user_token_unlink_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER piston3_token_user_token_unlink_notify AFTER DELETE ON public.piston3_token FOR EACH ROW EXECUTE FUNCTION public.user_token_unlink_notify();
 
 
 --
@@ -10227,6 +16105,22 @@ ALTER TABLE ONLY public.maasserver_vlan
 
 ALTER TABLE ONLY public.maasserver_vlan
     ADD CONSTRAINT maasserver_vlan_space_id_5e1dc51f_fk_maasserver_space_id FOREIGN KEY (space_id) REFERENCES public.maasserver_space(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_vmcluster maasserver_vmcluster_pool_id_aad02386_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_vmcluster
+    ADD CONSTRAINT maasserver_vmcluster_pool_id_aad02386_fk_maasserve FOREIGN KEY (pool_id) REFERENCES public.maasserver_resourcepool(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_vmcluster maasserver_vmcluster_zone_id_07623572_fk_maasserver_zone_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_vmcluster
+    ADD CONSTRAINT maasserver_vmcluster_zone_id_07623572_fk_maasserver_zone_id FOREIGN KEY (zone_id) REFERENCES public.maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
