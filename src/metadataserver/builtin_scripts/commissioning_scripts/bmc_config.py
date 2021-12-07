@@ -211,6 +211,28 @@ class IPMI(BMCConfig):
                 else:
                     self._bmc_config[key_value[0]] = ""
 
+    def _bmc_check_nobinary(self, section):
+        cmd = ["bmc-config", "--checkout"]
+        if section:
+            cmd += ["-S", section, ]
+        try:
+            proc = run(
+                cmd,
+                stdout=PIPE,
+                timeout=COMMAND_TIMEOUT,
+            )
+        except Exception:
+            print(
+                "ERROR: Unable to get all current IPMI settings!",
+                file=sys.stderr,
+            )
+            raise
+        try: 
+            proc.stdout.decode()
+        except Exception:
+            return False
+        return True
+
     def _bmc_set(self, section, key, value):
         """Set the value of a key via bmc-config commit.
 
@@ -663,6 +685,11 @@ class IPMI(BMCConfig):
             )
 
     def configure(self):
+        if not self._bmc_check_nobinary("Lan_Conf_Security_Keys"):
+            self._bmc_set("Lan_Conf_Security_Keys", "K_R", self._generate_random_password())
+        # Checking binary data in section "Lan_Conf_Security_Keys"  
+        # Also generate random password and replace K_R value if binary data in section
+        # This issue mentioned on https://bugs.launchpad.net/maas/+bug/1929478
         self._bmc_get_config()
         # Configure IPMI settings as suggested in http://fish2.com/ipmi/bp.pdf
         # None of these settings should effect current environments. Settings
