@@ -38,7 +38,10 @@ from jsonschema import validate
 from maasserver.config_forms import DictCharField
 from maasserver.fields import MACAddressFormField
 from maasserver.utils.forms import compose_invalid_choice_text
-from provisioningserver.drivers import SETTING_PARAMETER_FIELD_SCHEMA
+from provisioningserver.drivers import (
+    MULTIPLE_CHOICE_SETTING_PARAMETER_FIELD_SCHEMA,
+    SETTING_PARAMETER_FIELD_SCHEMA,
+)
 from provisioningserver.drivers.power import JSON_POWER_DRIVERS_SCHEMA
 from provisioningserver.drivers.power.registry import PowerDriverRegistry
 
@@ -46,6 +49,7 @@ FIELD_TYPE_MAPPINGS = {
     "string": forms.CharField,
     "mac_address": MACAddressFormField,
     "choice": forms.ChoiceField,
+    "multiple_choice": forms.MultipleChoiceField,
     # This is used on the API so a password field is just a char field.
     "password": forms.CharField,
 }
@@ -63,7 +67,7 @@ def make_form_field(json_field):
     field_class = FIELD_TYPE_MAPPINGS.get(
         json_field["field_type"], forms.CharField
     )
-    if json_field["field_type"] == "choice":
+    if json_field["field_type"] in ("choice", "multiple_choice"):
         invalid_choice_message = compose_invalid_choice_text(
             json_field["name"], json_field["choices"]
         )
@@ -128,7 +132,12 @@ def add_power_driver_parameters(
     field_set_schema = {
         "title": "Power type parameters field set schema",
         "type": "array",
-        "items": SETTING_PARAMETER_FIELD_SCHEMA,
+        "items": {
+            "anyOf": [
+                SETTING_PARAMETER_FIELD_SCHEMA,
+                MULTIPLE_CHOICE_SETTING_PARAMETER_FIELD_SCHEMA,
+            ]
+        },
     }
     validate(fields, field_set_schema)
     params = {

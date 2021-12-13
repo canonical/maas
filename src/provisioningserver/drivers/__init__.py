@@ -87,6 +87,22 @@ SETTING_PARAMETER_FIELD_SCHEMA = {
 }
 
 
+MULTIPLE_CHOICE_SETTING_PARAMETER_FIELD_SCHEMA = {
+    "title": "Multiple choice setting parameter field",
+    "type": "object",
+    "properties": {
+        "name": {"type": "string"},
+        "field_type": {"type": "string"},
+        "label": {"type": "string"},
+        "required": {"type": "boolean"},
+        "scope": {"type": "string"},
+        "choices": CHOICE_FIELD_SCHEMA,
+        "default": {"type": "array"},
+    },
+    "required": ["field_type", "label", "required"],
+}
+
+
 def make_ip_extractor(field_name, pattern=IP_EXTRACTOR_PATTERNS.IDENTITY):
     return {"field_name": field_name, "pattern": pattern}
 
@@ -126,13 +142,19 @@ def make_setting_field(
         Defaults to 'bmc'.
     :type scope: string
     """
-    if field_type not in ("string", "mac_address", "choice", "password"):
+    if field_type not in (
+        "string",
+        "mac_address",
+        "choice",
+        "multiple_choice",
+        "password",
+    ):
         field_type = "string"
     if choices is None:
         choices = []
     validate(choices, CHOICE_FIELD_SCHEMA)
     if default is None:
-        default = ""
+        default = [] if field_type == "multiple_choice" else ""
     if scope not in (SETTING_SCOPE.BMC, SETTING_SCOPE.NODE):
         scope = SETTING_SCOPE.BMC
     return {

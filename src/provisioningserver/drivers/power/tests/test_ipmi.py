@@ -23,6 +23,7 @@ from provisioningserver.drivers.power.ipmi import (
     IPMI_ERRORS,
     IPMI_PRIVILEGE_LEVEL,
     IPMI_PRIVILEGE_LEVEL_CHOICES,
+    IPMI_WORKAROUND_FLAG_CHOICES,
     IPMIPowerDriver,
 )
 from provisioningserver.utils.shell import has_command_available, ProcessResult
@@ -185,6 +186,89 @@ class TestIPMIPowerDriver(MAASTestCase):
         self.assertThat(tmpfile.write, MockCalledOnceWith(IPMI_CONFIG))
         self.assertThat(tmpfile.flush, MockCalledOnceWith())
         self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
+
+    def test_power_command_uses_default_workaround(self):
+        context = make_context()
+        driver = IPMIPowerDriver()
+        power_change = random.choice(("on", "off"))
+
+        context["mac_address"] = factory.make_mac_address()
+        context["k_g"] = None
+        context["cipher_suite_id"] = "17"
+
+        self.patch_autospec(driver, "_issue_ipmipower_command")
+
+        driver._issue_ipmi_command(power_change, **context)
+
+        expected_cmd = [
+            "ipmipower",
+            "-W",
+            "opensesspriv",
+            "--driver-type",
+            context.get("power_driver"),
+            "-h",
+            context.get("power_address"),
+            "-u",
+            context.get("power_user"),
+            "-p",
+            context.get("power_pass"),
+            "-I",
+            context.get("cipher_suite_id"),
+            "-l",
+            context.get("privilege_level", "OPERATOR"),
+        ]
+        if power_change == "on":
+            expected_cmd.extend(["--cycle", "--on-if-off"])
+        else:
+            expected_cmd.extend(["--off"])
+
+        self.assertCountEqual(
+            driver._issue_ipmipower_command.call_args[0][0], expected_cmd
+        )
+
+    def test_power_command_uses_overriden_workaround(self):
+        context = make_context()
+        driver = IPMIPowerDriver()
+        power_change = random.choice(("on", "off"))
+
+        context["mac_address"] = factory.make_mac_address()
+        context["k_g"] = None
+        context["cipher_suite_id"] = "17"
+        context["workaround_flags"] = [
+            random.choice(
+                [choice[0] for choice in IPMI_WORKAROUND_FLAG_CHOICES]
+            )
+        ]
+
+        self.patch_autospec(driver, "_issue_ipmipower_command")
+
+        driver._issue_ipmi_command(power_change, **context)
+
+        expected_cmd = [
+            "ipmipower",
+            "-W",
+            ",".join(flag for flag in context.get("workaround_flags", [])),
+            "--driver-type",
+            context.get("power_driver"),
+            "-h",
+            context.get("power_address"),
+            "-u",
+            context.get("power_user"),
+            "-p",
+            context.get("power_pass"),
+            "-I",
+            context.get("cipher_suite_id"),
+            "-l",
+            context.get("privilege_level", "OPERATOR"),
+        ]
+        if power_change == "on":
+            expected_cmd.extend(["--cycle", "--on-if-off"])
+        else:
+            expected_cmd.extend(["--off"])
+
+        self.assertCountEqual(
+            driver._issue_ipmipower_command.call_args[0][0], expected_cmd
+        )
 
     def test_issue_ipmi_chassis_config_command_raises_power_auth_error(self):
         ipmi_errors = {

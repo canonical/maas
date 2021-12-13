@@ -14,6 +14,7 @@ from twisted.internet.threads import deferToThread
 
 from provisioningserver.drivers import (
     IP_EXTRACTOR_SCHEMA,
+    MULTIPLE_CHOICE_SETTING_PARAMETER_FIELD_SCHEMA,
     SETTING_PARAMETER_FIELD_SCHEMA,
 )
 from provisioningserver.utils.twisted import IAsynchronous, pause
@@ -38,7 +39,15 @@ JSON_POWER_DRIVER_SCHEMA = {
         "can_probe": {"type": "boolean"},
         "can_set_boot_order": {"type": "boolean"},
         "description": {"type": "string"},
-        "fields": {"type": "array", "items": SETTING_PARAMETER_FIELD_SCHEMA},
+        "fields": {
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    SETTING_PARAMETER_FIELD_SCHEMA,
+                    MULTIPLE_CHOICE_SETTING_PARAMETER_FIELD_SCHEMA,
+                ],
+            },
+        },
         "ip_extractor": IP_EXTRACTOR_SCHEMA,
         "queryable": {"type": "boolean"},
         "missing_packages": {"type": "array", "items": {"type": "string"}},

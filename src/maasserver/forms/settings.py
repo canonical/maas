@@ -45,6 +45,7 @@ from maasserver.utils.osystems import (
 from provisioningserver.drivers.power.ipmi import (
     IPMI_CIPHER_SUITE_ID_CHOICES,
     IPMI_PRIVILEGE_LEVEL_CHOICES,
+    IPMI_WORKAROUND_FLAG_CHOICES,
 )
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.url import splithost
@@ -913,6 +914,26 @@ CONFIG_ITEMS = {
             "help_text": (
                 "The default IPMI cipher suite ID to use when connecting "
                 "to the BMC via ipmitools"
+            ),
+        },
+    },
+    "maas_auto_ipmi_workaround_flags": {
+        "default": ["opensesspriv"],
+        "form": forms.MultipleChoiceField,
+        "form_kwargs": {
+            "label": "IPMI Workaround Flags",
+            "required": False,
+            "choices": IPMI_WORKAROUND_FLAG_CHOICES,
+            "error_messages": {
+                "invalid_choice": "Valid choices are {}".format(
+                    ", ".join(
+                        choice[0] for choice in IPMI_WORKAROUND_FLAG_CHOICES
+                    )
+                ),
+            },
+            "help_text": (
+                "The default workaround flag (-W options) to use for "
+                "ipmipower commands"
             ),
         },
     },

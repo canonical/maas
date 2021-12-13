@@ -128,6 +128,32 @@ class TestGetPowerTypeParametersFromJSON(MAASServerTestCase):
         )
         self.assertFalse(power_type_parameters["manual"].required)
 
+    def test_parameter_with_multiple_choice(self):
+        json_parameters = [
+            {
+                "driver_type": "power",
+                "name": "ipmi",
+                "description": factory.make_name("description"),
+                "fields": [
+                    {
+                        "name": factory.make_name("field name"),
+                        "label": factory.make_name("field label"),
+                        "field_type": "multiple_choice",
+                        "choices": [
+                            [factory.make_name("choice1"), "choice1"],
+                            [factory.make_name("choice2"), "choice2"],
+                        ],
+                        "default": [factory.make_name("field default")],
+                        "required": False,
+                    }
+                ],
+            }
+        ]
+        power_type_parameters = get_driver_parameters_from_json(
+            json_parameters
+        )
+        self.assertTrue(power_type_parameters["ipmi"])
+
 
 class TestMakeFormField(MAASServerTestCase):
     """Test that make_form_field() converts JSON fields to Django."""
@@ -184,6 +210,17 @@ class TestMakeFormField(MAASServerTestCase):
         }
         django_field = make_form_field(json_field)
         self.assertIsInstance(django_field, MACAddressFormField)
+
+    def test_creates_multiple_choice_field_for_multiple_choice(self):
+        json_field = {
+            "name": "some_field",
+            "label": "Some Field",
+            "field_type": "multiple_choice",
+            "choices": [["choice_1", "choice_2"]],
+            "required": False,
+        }
+        django_field = make_form_field(json_field)
+        self.assertIsInstance(django_field, forms.MultipleChoiceField)
 
     def test_sets_properties_on_form_field(self):
         json_field = {
@@ -287,6 +324,19 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             self.getUniqueString(), self.getUniqueString()
         )
 
+    def make_multiple_choice_field(self):
+        choices = [
+            [factory.make_name("choice1"), "choice1"],
+            [factory.make_name("choice2"), "choice2"],
+        ]
+        return make_setting_field(
+            self.getUniqueString(),
+            self.getUniqueString(),
+            field_type="multiple_choice",
+            choices=choices,
+            default=[choices[0][0]],
+        )
+
     def test_adding_existing_types_is_a_no_op(self):
         existing_parameters = [
             {
@@ -370,6 +420,21 @@ class TestAddPowerTypeParameters(MAASServerTestCase):
             driver_type="power",
             name="blah",
             description="baz",
+            chassis=False,
+            can_probe=False,
+            fields=fields,
+            missing_packages=[],
+            parameters_set=parameters_set,
+        )
+        jsonschema.validate(parameters_set, JSON_POWER_DRIVERS_SCHEMA)
+
+    def test_multiple_choice_power_parameters_are_valid(self):
+        parameters_set = []
+        fields = [self.make_field(), self.make_multiple_choice_field()]
+        add_power_driver_parameters(
+            driver_type="power",
+            name=factory.make_name("name"),
+            description=factory.make_name("description"),
             chassis=False,
             can_probe=False,
             fields=fields,

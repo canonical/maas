@@ -217,6 +217,22 @@ IPMI_CIPHER_SUITE_ID_CHOICES = [
 ]
 
 
+IPMI_WORKAROUND_FLAG_CHOICES = [
+    ["opensesspriv", "Opensesspriv"],
+    ["authcap", "Authcap"],
+    ["idzero", "Idzero"],
+    ["unexpectedauth", "Unexpectedauth"],
+    ["forcepermsg", "Forcepermsg"],
+    ["endianseq", "Endianseq"],
+    ["intel20", "Intel20"],
+    ["supermicro20", "Supermicro20"],
+    ["sun20", "Sun20"],
+    ["nochecksumcheck", "Nochecksumcheck"],
+    ["integritycheckvalue", "Untegritycheckvalue"],
+    ["ipmiping", "Ipmiping"],
+]
+
+
 @enum.unique
 class IPMI_PRIVILEGE_LEVEL(enum.Enum):
 
@@ -279,6 +295,13 @@ class IPMIPowerDriver(PowerDriver):
             default=IPMI_PRIVILEGE_LEVEL.OPERATOR.name,
         ),
         make_setting_field(
+            "workaround_flags",
+            "Workaround Flags",
+            field_type="multiple_choice",
+            choices=IPMI_WORKAROUND_FLAG_CHOICES,
+            default=["opensesspriv"],
+        ),
+        make_setting_field(
             "mac_address", "Power MAC", scope=SETTING_SCOPE.NODE
         ),
     ]
@@ -289,6 +312,11 @@ class IPMIPowerDriver(PowerDriver):
         if not shell.has_command_available("ipmipower"):
             return ["freeipmi-tools"]
         return []
+
+    def _workarounds(self, workaround_flags):
+        if not workaround_flags:
+            return []
+        return ["-W", ",".join(workaround_flags)]
 
     @staticmethod
     def _issue_ipmi_chassis_config_command(
@@ -357,6 +385,7 @@ class IPMIPowerDriver(PowerDriver):
         k_g=None,
         cipher_suite_id=None,
         privilege_level=None,
+        workaround_flags=["opensesspriv"],
         **extra
     ):
         """Issue command to ipmipower, for the given system."""
@@ -373,15 +402,9 @@ class IPMIPowerDriver(PowerDriver):
         # should have no impact on BMCs that don't require it.
         # See https://bugs.launchpad.net/maas/+bug/1287964
         ipmi_chassis_config_command = [
-            "ipmi-chassis-config",
-            "-W",
-            "opensesspriv",
-        ]
-        ipmipower_command = [
-            "ipmipower",
-            "-W",
-            "opensesspriv",
-        ]
+            "ipmi-chassis-config"
+        ] + self._workarounds(workaround_flags)
+        ipmipower_command = ["ipmipower"] + self._workarounds(workaround_flags)
 
         # Arguments in common between chassis config and power control. See
         # https://launchpad.net/bugs/1053391 for details of modifying the
