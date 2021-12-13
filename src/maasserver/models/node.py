@@ -2036,12 +2036,6 @@ class Node(CleanSave, TimestampedModel):
         )
         return size / 1000 / 1000
 
-    def display_storage(self):
-        """Return storage in gigabytes."""
-        if self.storage < 1000:
-            return "%.1f" % (self.storage / 1000.0)
-        return "%d" % (self.storage / 1000)
-
     def get_boot_disk(self):
         """Return the boot disk for this node."""
         if self.boot_disk is not None:

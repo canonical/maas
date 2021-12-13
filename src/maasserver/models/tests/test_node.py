@@ -1298,16 +1298,6 @@ class TestNode(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node=node, size=50 * (1000 ** 2))
         self.assertEqual(50 * 3, node.storage)
 
-    def test_display_storage_returns_decimal_less_than_1000(self):
-        node = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node, size=500 * (1000 ** 2))
-        self.assertEqual("0.5", node.display_storage())
-
-    def test_display_storage_returns_value_divided_by_1000(self):
-        node = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(node=node, size=2000 * (1000 ** 2))
-        self.assertEqual("2", node.display_storage())
-
     def test_get_boot_disk_returns_set_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)
         # First disk.
