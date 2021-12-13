@@ -7,7 +7,11 @@
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.utils.orm import reload_object
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.tag import TagHandler
 
 
@@ -36,3 +40,83 @@ class TestTagHandler(MAASServerTestCase):
         factory.make_Tag()
         expected_tags = [self.dehydrate_tag(tag) for tag in Tag.objects.all()]
         self.assertCountEqual(expected_tags, handler.list({}))
+
+    def test_create(self):
+        mock_populate_nodes = self.patch(Tag, "populate_nodes")
+        handler = TagHandler(factory.make_admin(), {}, None)
+        result = handler.create(
+            {
+                "name": factory.make_name("name"),
+                "comment": factory.make_name("comment"),
+                "kernel_opts": factory.make_name("kernel_opts"),
+                "definition": '//node[@id="memory"]/size = 1073741824',
+            }
+        )
+        [tag] = Tag.objects.all()
+        self.assertEqual(self.dehydrate_tag(tag), result)
+        mock_populate_nodes.assert_called_once()
+
+    def test_create_no_admin(self):
+        handler = TagHandler(factory.make_User(), {}, None)
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.create,
+            {
+                "name": factory.make_name("name"),
+                "comment": factory.make_name("comment"),
+                "kernel_opts": factory.make_name("kernel_opts"),
+                "definition": '//node[@id="memory"]/size = 1073741824',
+            },
+        )
+        self.assertFalse(Tag.objects.exists())
+
+    def test_update(self):
+        mock_populate_nodes = self.patch(Tag, "populate_nodes")
+        handler = TagHandler(factory.make_admin(), {}, None)
+        tag = factory.make_Tag()
+        new_name = factory.make_name("name")
+        new_definition = '//node[@id="memory"]/size = 1073741824'
+        result = handler.update(
+            {
+                "id": tag.id,
+                "name": new_name,
+                "definition": new_definition,
+            }
+        )
+        tag = reload_object(tag)
+        self.assertEqual(self.dehydrate_tag(tag), result)
+        self.assertEqual(tag.name, new_name)
+        self.assertEqual(tag.definition, new_definition)
+        mock_populate_nodes.assert_called_once()
+
+    def test_update_no_admin(self):
+        handler = TagHandler(factory.make_User(), {}, None)
+        tag = factory.make_Tag()
+        new_name = factory.make_name("name")
+        new_definition = '//node[@id="memory"]/size = 1073741824'
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.update,
+            {
+                "id": tag.id,
+                "name": new_name,
+                "definition": new_definition,
+            },
+        )
+        tag = reload_object(tag)
+        self.assertNotEqual(tag.name, new_name)
+        self.assertNotEqual(tag.definition, new_definition)
+
+    def test_delete(self):
+        handler = TagHandler(factory.make_admin(), {}, None)
+        tag = factory.make_Tag()
+        handler.delete({"id": tag.id})
+        self.assertFalse(Tag.objects.exists())
+
+    def test_delete_no_admin(self):
+        handler = TagHandler(factory.make_User(), {}, None)
+        tag = factory.make_Tag()
+        self.assertRaises(
+            HandlerPermissionError, handler.delete, {"id": tag.id}
+        )
+        self.assertIsNotNone(reload_object(tag))

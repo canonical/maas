@@ -5,14 +5,21 @@
 
 
 from maasserver.models.tag import Tag
+from maasserver.websockets.base import AdminOnlyMixin
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
 
 
-class TagHandler(TimestampedModelHandler):
+class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
     class Meta:
         queryset = Tag.objects.all()
         pk = "id"
-        allowed_methods = ["list", "get"]
+        allowed_methods = [
+            "list",
+            "get",
+            "create",
+            "update",
+            "delete",
+        ]
         listen_channels = ["tag"]

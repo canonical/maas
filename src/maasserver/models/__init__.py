@@ -303,6 +303,7 @@ UNRESTRICTED_READ_MODELS = (
     ResourcePool,
     Space,
     Subnet,
+    Tag,
     StaticRoute,
     VLAN,
 )
