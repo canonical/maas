@@ -169,6 +169,10 @@ def print_response_content(response, content, file=None):
         file.write(b"Machine-readable output follows:\n")
     file.write(content)
     if is_tty and is_textual:
+        if not success and not content:
+            file.write(
+                f"Request failed with code {response.status}: {response.reason}".encode()
+            )
         file.write(b"\n")
 
 

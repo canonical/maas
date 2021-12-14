@@ -235,7 +235,7 @@ class TestPrintResponseContent(MAASTestCase):
         buf = io.BytesIO()
         self.patch(buf, "isatty").return_value = True
         utils.print_response_content(response, response["content"], buf)
-        self.assertEqual(response["content"] + b"\n", buf.getvalue())
+        assert buf.getvalue() == response["content"] + b"\n"
 
     def test_prints_textual_response_when_redirected(self):
         # If the response content is textual and sys.stdout is not connected
@@ -250,7 +250,7 @@ class TestPrintResponseContent(MAASTestCase):
         )
         buf = io.BytesIO()
         utils.print_response_content(response, response["content"], buf)
-        self.assertEqual(response["content"], buf.getvalue())
+        assert buf.getvalue() == response["content"]
 
     def test_writes_binary_response(self):
         # Non-textual response content is written to the output stream
@@ -265,7 +265,21 @@ class TestPrintResponseContent(MAASTestCase):
         buf = io.BytesIO()
         self.patch(buf, "isatty").return_value = True
         utils.print_response_content(response, response["content"], buf)
-        self.assertEqual(response["content"], buf.getvalue())
+        assert buf.getvalue() == response["content"]
+
+    def test_prints_request_error_if_no_content(self):
+        response = httplib2.Response(
+            {
+                "status": http.client.FORBIDDEN,
+                "content": b"",
+                "content-type": "text/plain",
+            }
+        )
+        response.reason = "Forbidden"  # can't set it at init time
+        buf = io.BytesIO()
+        self.patch(buf, "isatty").return_value = True
+        utils.print_response_content(response, response["content"], buf)
+        assert buf.getvalue() == b"Request failed with code 403: Forbidden\n"
 
     def test_prints_textual_response_with_success_msg(self):
         # When the response has a status code of 2XX, and the response body is
@@ -282,10 +296,7 @@ class TestPrintResponseContent(MAASTestCase):
         buf = io.BytesIO()
         self.patch(buf, "isatty").return_value = True
         utils.print_response_content(response, response["content"], buf)
-        self.assertEqual(
+        assert buf.getvalue() == (
             b"Success.\n"
-            b"Machine-readable output follows:\n"
-            + response["content"]
-            + b"\n",
-            buf.getvalue(),
+            b"Machine-readable output follows:\n" + response["content"] + b"\n"
         )
