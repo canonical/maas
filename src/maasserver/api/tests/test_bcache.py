@@ -60,7 +60,8 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
             factory.make_FilesystemGroup(
                 node=node,
                 group_type=factory.pick_enum(
-                    FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.BCACHE
+                    FILESYSTEM_GROUP_TYPE,
+                    but_not=[FILESYSTEM_GROUP_TYPE.BCACHE],
                 ),
             )
         uri = get_bcache_devices_uri(node)
@@ -281,7 +282,7 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
     def test_read_404_when_not_bcache(self):
         not_bcache = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.BCACHE
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.BCACHE]
             )
         )
         uri = get_bcache_device_uri(not_bcache)
@@ -333,7 +334,7 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
         not_bcache = factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.BCACHE
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.BCACHE]
             ),
         )
         uri = get_bcache_device_uri(not_bcache)

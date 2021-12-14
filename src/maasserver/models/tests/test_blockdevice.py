@@ -557,7 +557,7 @@ class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
     def test_updates_filesystem_group_name_when_not_volume_group(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             )
         )
         virtual_device = filesystem_group.virtual_device
@@ -582,7 +582,7 @@ class TestBlockDevicePostDelete(MAASServerTestCase):
     def test_deletes_filesystem_group_when_virtual_block_device_deleted(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             )
         )
         filesystem_group.virtual_device.delete()

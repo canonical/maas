@@ -596,7 +596,7 @@ class TestRegionProtocol_UpdateNodePowerState(MAASTransactionServerTestCase):
         power_state = factory.pick_enum(POWER_STATE)
         node = yield deferToDatabase(self.create_node, power_state)
 
-        new_state = factory.pick_enum(POWER_STATE, but_not=power_state)
+        new_state = factory.pick_enum(POWER_STATE, but_not=[power_state])
         yield call_responder(
             Region(),
             UpdateNodePowerState,

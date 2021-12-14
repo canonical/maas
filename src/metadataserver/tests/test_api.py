@@ -3646,7 +3646,7 @@ class TestNewAPI(MAASServerTestCase):
         response = call_signal(
             client,
             status=factory.pick_choice(
-                SIGNAL_STATUS_CHOICES, but_not=SIGNAL_STATUS.COMMISSIONING
+                SIGNAL_STATUS_CHOICES, but_not=[SIGNAL_STATUS.COMMISSIONING]
             ),
         )
 

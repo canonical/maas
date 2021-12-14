@@ -190,7 +190,7 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
     def test_GET_404_when_not_vmfs(self):
         not_vmfs = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.VMFS6]
             )
         )
         response = self.client.get(self.get_vmfs_uri(not_vmfs))
@@ -276,7 +276,7 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
         not_vmfs = factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.VMFS6]
             ),
         )
         response = self.client.delete(self.get_vmfs_uri(not_vmfs))

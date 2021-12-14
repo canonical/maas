@@ -134,7 +134,7 @@ class TestVirtualBlockDevice(MAASServerTestCase):
     def test_get_name_returns_just_name(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             )
         )
         virtual_device = filesystem_group.virtual_device
@@ -190,7 +190,7 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             ),
         )
         fs_group_disks = [

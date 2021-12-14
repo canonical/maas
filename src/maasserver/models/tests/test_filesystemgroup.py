@@ -645,7 +645,7 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_virtual_device_returns_VirtualBlockDevice_for_group(self):
         fsgroup = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             )
         )
         self.assertEqual(
@@ -656,7 +656,7 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_get_numa_node_indexes_all_same(self):
         fsgroup = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.VMFS6
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.VMFS6]
             )
         )
         self.assertEqual(fsgroup.get_numa_node_indexes(), [0])
@@ -1010,7 +1010,7 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_is_lvm_returns_false_when_not_LVM_VG(self):
         fsgroup = FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             )
         )
         self.assertFalse(fsgroup.is_lvm())
@@ -1039,7 +1039,7 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_is_bcache_returns_false_when_not_BCACHE(self):
         fsgroup = FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.BCACHE
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.BCACHE]
             )
         )
         self.assertFalse(fsgroup.is_bcache())
@@ -1680,7 +1680,7 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_delete_deletes_virtual_block_device(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             )
         )
         virtual_device = filesystem_group.virtual_device

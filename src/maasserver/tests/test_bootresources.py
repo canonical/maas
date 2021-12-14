@@ -1213,7 +1213,7 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 resource, version=product["version_name"]
             )
             other_type = factory.pick_enum(
-                BOOT_RESOURCE_FILE_TYPE, but_not=product["ftype"]
+                BOOT_RESOURCE_FILE_TYPE, but_not=[product["ftype"]]
             )
             other_file = factory.make_boot_resource_file_with_content(
                 resource_set, filename=other_type, filetype=other_type

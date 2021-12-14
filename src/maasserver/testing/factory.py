@@ -230,8 +230,6 @@ class Factory(maastesting.factory.Factory):
         """
         if but_not is None:
             but_not = []
-        else:
-            but_not = list(but_not)
         but_not.append("")
         return random.choice(
             [choice for choice in get_driver_types() if choice not in but_not]

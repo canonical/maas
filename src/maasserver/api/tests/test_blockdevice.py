@@ -1114,7 +1114,7 @@ class TestBlockDeviceAPI(APITestCase.ForUser):
         filesystem_group = factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             ),
         )
         block_device = filesystem_group.virtual_device

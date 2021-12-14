@@ -69,7 +69,8 @@ class TestVolumeGroups(APITestCase.ForUser):
             factory.make_FilesystemGroup(
                 node=node,
                 group_type=factory.pick_enum(
-                    FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                    FILESYSTEM_GROUP_TYPE,
+                    but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG],
                 ),
             )
         uri = get_volume_groups_uri(node)
@@ -285,7 +286,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
     def test_read_404_when_not_volume_group(self):
         not_volume_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             )
         )
         uri = get_volume_group_uri(not_volume_group)
@@ -319,7 +320,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         not_volume_group = factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             ),
         )
         uri = get_volume_group_uri(not_volume_group)
@@ -421,7 +422,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         not_volume_group = factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             ),
         )
         uri = get_volume_group_uri(not_volume_group)
@@ -455,7 +456,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         not_volume_group = factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             ),
         )
         uri = get_volume_group_uri(not_volume_group)
@@ -559,7 +560,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
         not_volume_group = factory.make_FilesystemGroup(
             node=node,
             group_type=factory.pick_enum(
-                FILESYSTEM_GROUP_TYPE, but_not=FILESYSTEM_GROUP_TYPE.LVM_VG
+                FILESYSTEM_GROUP_TYPE, but_not=[FILESYSTEM_GROUP_TYPE.LVM_VG]
             ),
         )
         uri = get_volume_group_uri(not_volume_group)
