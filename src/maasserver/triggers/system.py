@@ -457,6 +457,7 @@ DHCP_SUBNET_UPDATE = dedent(
         host(OLD.gateway_ip) != host(NEW.gateway_ip) OR
         OLD.dns_servers != NEW.dns_servers OR
         OLD.allow_dns != NEW.allow_dns OR
+        OLD.managed != NEW.managed OR
         OLD.disabled_boot_architectures != NEW.disabled_boot_architectures THEN
         -- Network has changed update alert DHCP if enabled.
         SELECT * INTO vlan

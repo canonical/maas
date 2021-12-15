@@ -1853,6 +1853,44 @@ class TestDHCPSubnetListener(
 
     @wait_for_reactor
     @inlineCallbacks
+    def test_sends_message_for_vlan_when_managed_changes(self):
+        yield deferToDatabase(register_system_triggers)
+        primary_rack = yield deferToDatabase(self.create_rack_controller)
+        secondary_rack = yield deferToDatabase(self.create_rack_controller)
+        vlan = yield deferToDatabase(
+            self.create_vlan,
+            {
+                "dhcp_on": True,
+                "primary_rack": primary_rack,
+                "secondary_rack": secondary_rack,
+            },
+        )
+        subnet = yield deferToDatabase(self.create_subnet, {"vlan": vlan})
+
+        primary_dv = DeferredValue()
+        secondary_dv = DeferredValue()
+        listener = self.make_listener_without_delay()
+        listener.register(
+            "sys_dhcp_%s" % primary_rack.id, lambda *args: primary_dv.set(args)
+        )
+        listener.register(
+            "sys_dhcp_%s" % secondary_rack.id,
+            lambda *args: secondary_dv.set(args),
+        )
+        yield listener.startService()
+        try:
+            yield deferToDatabase(
+                self.update_subnet,
+                subnet.id,
+                {"managed": not subnet.managed},
+            )
+            yield primary_dv.get(timeout=2)
+            yield secondary_dv.get(timeout=2)
+        finally:
+            yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
     def test_sends_message_for_vlan_when_disabled_boot_arches_changes(self):
         yield deferToDatabase(register_system_triggers)
         primary_rack = yield deferToDatabase(self.create_rack_controller)
