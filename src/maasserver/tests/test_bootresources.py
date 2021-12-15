@@ -1,8 +1,6 @@
 # Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver.bootresources."""
-
 
 from datetime import datetime
 from email.utils import format_datetime
@@ -1202,7 +1200,9 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
 
     def test_insert_deletes_mismatch_largefile_keeps_other_resource_file(self):
         self.patch(bootresources.Event.objects, "create_region_event")
-        name, architecture, product = make_product()
+        name, architecture, product = make_product(
+            ftype=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ,
+        )
         with transaction.atomic():
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -1213,7 +1213,11 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
                 resource, version=product["version_name"]
             )
             other_type = factory.pick_enum(
-                BOOT_RESOURCE_FILE_TYPE, but_not=[product["ftype"]]
+                BOOT_RESOURCE_FILE_TYPE,
+                but_not=[
+                    product["ftype"],
+                    BOOT_RESOURCE_FILE_TYPE.SQUASHFS_IMAGE,
+                ],
             )
             other_file = factory.make_boot_resource_file_with_content(
                 resource_set, filename=other_type, filetype=other_type
