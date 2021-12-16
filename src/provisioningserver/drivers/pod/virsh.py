@@ -4,6 +4,7 @@
 """Virsh pod driver."""
 
 
+from contextlib import suppress
 from math import floor
 import os
 import string
@@ -38,6 +39,7 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.enum import LIBVIRT_NETWORK
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.path import get_path
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.rpc.utils import commission_node, create_node
 from provisioningserver.utils import (
@@ -444,23 +446,8 @@ class VirshSSH(pexpect.spawn):
 
     def create_storage_pool(self):
         """Create a storage pool named `maas`."""
-        commands = [
-            [
-                "pool-define-as",
-                "maas",
-                "dir",
-                "- - - -",
-                "/var/lib/libvirt/maas-images",
-            ],
-            ["pool-build", "maas"],
-            ["pool-start", "maas"],
-            ["pool-autostart", "maas"],
-        ]
-        for command in commands:
-            try:
-                self.run(command)
-            except VirshError:
-                return None
+        with suppress(VirshError):
+            self._create_storage_pool()
 
     def list_machines(self):
         """Lists all VMs by name."""
@@ -485,17 +472,13 @@ class VirshSSH(pexpect.spawn):
 
     def get_machine_state(self, machine):
         """Gets the VM state."""
-        try:
-            return self.run(["domstate", machine])
-        except VirshError:
-            return None
+        with suppress(VirshError):
+            return self._get_machine_state(machine)
 
     def get_machine_interface_info(self, machine):
         """Gets list of mac addressess assigned to the VM."""
-        try:
-            output = self.run(["domiflist", machine])
-        except VirshError:
-            return None
+        with suppress(VirshError):
+            output = self._get_machine_interface_info(machine)
         return [
             InterfaceInfo(*entry)
             for entry in self._get_column_values(
@@ -1262,6 +1245,33 @@ class VirshSSH(pexpect.spawn):
             ],
             raise_error=False,
         )
+
+    @PROMETHEUS_METRICS.failure_counter(
+        "maas_virsh_storage_pool_creation_failure"
+    )
+    def _create_storage_pool(self):
+        commands = [
+            [
+                "pool-define-as",
+                "maas",
+                "dir",
+                "- - - -",
+                "/var/lib/libvirt/maas-images",
+            ],
+            ["pool-build", "maas"],
+            ["pool-start", "maas"],
+            ["pool-autostart", "maas"],
+        ]
+        for command in commands:
+            self.run(command)
+
+    @PROMETHEUS_METRICS.failure_counter("maas_virsh_fetch_description_failure")
+    def _get_machine_state(self, machine):
+        return self.run(["domstate", machine])
+
+    @PROMETHEUS_METRICS.failure_counter("maas_virsh_fetch_mac_failure")
+    def _get_machine_interface_info(self, machine):
+        return self.run(["domiflist", machine])
 
 
 class VirshPodDriver(PodDriver):

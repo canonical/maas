@@ -83,6 +83,31 @@ METRICS_DEFINITIONS = [
         "HTTP request query latency",
         _WEBSOCKET_CALL_LABELS,
     ),
+    MetricDefinition(
+        "Counter",
+        "maas_virsh_fetch_description_failure",
+        "dumpxml failures from virsh",
+    ),
+    MetricDefinition(
+        "Counter",
+        "maas_virsh_fetch_mac_failure",
+        "domiflist failures from virsh",
+    ),
+    MetricDefinition(
+        "Counter",
+        "maas_virsh_storage_pool_creation_failure",
+        "domiflist failures from virsh",
+    ),
+    MetricDefinition(
+        "Counter",
+        "maas_lxd_disk_creation_failure",
+        "failures of LXD disk creation",
+    ),
+    MetricDefinition(
+        "Counter",
+        "maas_lxd_fetch_machine_failure",
+        "failures for fetching LXD machines",
+    ),
     # Common metrics
     *node_metrics_definitions(),
 ]

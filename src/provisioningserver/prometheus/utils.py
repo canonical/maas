@@ -3,6 +3,7 @@ import glob
 import os
 import re
 from time import time
+from typing import Optional, Tuple
 
 import prometheus_client
 from twisted.internet.defer import Deferred
@@ -147,6 +148,34 @@ class PrometheusMetrics:
             return wrapper
 
         return wrap_func
+
+    def failure_counter(
+        self,
+        metric_name: str,
+        exceptions_filter: Optional[Tuple[Exception]] = None,
+        get_labels=lambda *args, **kwargs: {},
+    ):
+        """
+        failure_counter increments the given metric when an exception within its
+        context occurs, if a filter is provided, only exceptions of that type will
+        increment the metric.
+        """
+
+        def counter(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                labels = get_labels(*args, **kwargs)
+                try:
+                    result = func(*args, **kwargs)
+                except Exception as e:
+                    if not exceptions_filter or type(e) in exceptions_filter:
+                        self.update(metric_name, "inc", value=1, labels=labels)
+                    raise e
+                return result
+
+            return wrapper
+
+        return counter
 
 
 def create_metrics(

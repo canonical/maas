@@ -41,6 +41,7 @@ from provisioningserver.drivers.pod import (
     RequestedMachine,
 )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
@@ -562,6 +563,7 @@ class LXDPodDriver(PodDriver):
             nics[ifname] = nic
         return nics
 
+    @PROMETHEUS_METRICS.failure_counter("maas_lxd_disk_creation_failure")
     def _create_volume(self, pool, size):
         """Create a storage volume."""
         name = f"maas-{uuid.uuid4()}"
@@ -820,6 +822,7 @@ class LXDPodDriver(PodDriver):
             storage=total_storage,
         )
 
+    @PROMETHEUS_METRICS.failure_counter("maas_lxd_fetch_machine_failure")
     @typed
     @contextmanager
     def _get_machine(self, pod_id: int, context: dict, fail: bool = True):

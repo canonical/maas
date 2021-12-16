@@ -16,6 +16,10 @@ from provisioningserver.prometheus.utils import (
 )
 
 
+class FailureCounterTestException(Exception):
+    pass
+
+
 class TestPrometheusMetrics(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -151,6 +155,121 @@ class TestPrometheusMetrics(MAASTestCase):
             'histo_count{bar="BAR",foo="FOO"} 1.0',
             prometheus_metrics.generate_latest().decode("ascii"),
         )
+
+    def test_failure_counter_increments_counter_on_exception(self):
+        definitions = [
+            MetricDefinition(
+                "Counter", "test_failure", "A counter", ["foo", "bar"]
+            )
+        ]
+        prometheus_metrics = PrometheusMetrics(
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry(),
+        )
+        label_call_args = []
+
+        def get_labels(*args, **kwargs):
+            label_call_args.append((args, kwargs))
+            return {"foo": "FOO", "bar": "BAR"}
+
+        @prometheus_metrics.failure_counter(
+            "test_failure", get_labels=get_labels
+        )
+        def func(param1, param2=None):
+            raise Exception()
+
+        obj = object()
+        self.assertRaises(Exception, func, obj, param2="baz")
+        self.assertIn(
+            'test_failure_total{bar="BAR",foo="FOO"} 1.0',
+            prometheus_metrics.generate_latest().decode("ascii"),
+        )
+        self.assertEqual(label_call_args, [((obj,), {"param2": "baz"})])
+
+    def test_failure_counter_increments_with_a_specific_exception(self):
+        definitions = [
+            MetricDefinition(
+                "Counter", "test_failure", "A counter", ["foo", "bar"]
+            )
+        ]
+        prometheus_metrics = PrometheusMetrics(
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry(),
+        )
+        label_call_args = []
+
+        def get_labels(*args, **kwargs):
+            label_call_args.append((args, kwargs))
+            return {"foo": "FOO", "bar": "BAR"}
+
+        @prometheus_metrics.failure_counter(
+            "test_failure",
+            exceptions_filter=(FailureCounterTestException,),
+            get_labels=get_labels,
+        )
+        def func1(param1, param2=None):
+            raise FailureCounterTestException()
+
+        @prometheus_metrics.failure_counter(
+            "test_failure",
+            exceptions_filter=(FailureCounterTestException,),
+            get_labels=get_labels,
+        )
+        def func2(param1, param2=None):
+            raise Exception()
+
+        obj = object()
+        self.assertRaises(
+            FailureCounterTestException, func1, obj, param2="baz"
+        )
+        self.assertRaises(Exception, func2, obj, param2="baz")
+        self.assertRaises(
+            FailureCounterTestException, func1, obj, param2="baz"
+        )
+        results = prometheus_metrics.generate_latest().decode("ascii")
+        self.assertIn(
+            'test_failure_total{bar="BAR",foo="FOO"} 2.0',
+            results,
+        )
+        self.assertNotIn(
+            'test_failure_total{bar="BAR",foo="FOO"} 3.0',
+            results,
+        )
+        self.assertEqual(
+            label_call_args,
+            [
+                ((obj,), {"param2": "baz"}),
+                ((obj,), {"param2": "baz"}),
+                ((obj,), {"param2": "baz"}),
+            ],
+        )
+
+    def test_failure_counter_does_not_increment_on_success(self):
+        definitions = [
+            MetricDefinition(
+                "Counter", "test_failure", "A counter", ["foo", "bar"]
+            )
+        ]
+        prometheus_metrics = PrometheusMetrics(
+            definitions=definitions,
+            registry=prometheus_client.CollectorRegistry(),
+        )
+        label_call_args = []
+
+        def get_labels(*args, **kwargs):
+            label_call_args.append((args, kwargs))
+            return {"foo": "FOO", "bar": "BAR"}
+
+        @prometheus_metrics.failure_counter(
+            "test_failure", get_labels=get_labels
+        )
+        def func(param1, param2=None):
+            return param1
+
+        obj = object()
+        result = func(obj, param2="baz")
+        self.assertIs(obj, result)
+        self.assertEqual(label_call_args, [((obj,), {"param2": "baz"})])
 
 
 class TestCreateMetrics(MAASTestCase):
