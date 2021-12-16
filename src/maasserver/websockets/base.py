@@ -493,6 +493,10 @@ class Handler(metaclass=HandlerMetaclass):
 
     def create(self, params):
         """Create the object from data."""
+        obj = self._create(params)
+        return self.full_dehydrate(obj)
+
+    def _create(self, params):
         # Create by using form. `create_permission` is not used with form,
         # permission checks should be done in the form.
         form_class = self.get_form_class("create")
@@ -518,7 +522,7 @@ class Handler(metaclass=HandlerMetaclass):
                         raise HandlerValidationError(e.message_dict)
                     except AttributeError:
                         raise HandlerValidationError({"__all__": e.message})
-                return self.full_dehydrate(self.refetch(obj))
+                return self.refetch(obj)
             else:
                 raise HandlerValidationError(form.errors)
 
@@ -531,7 +535,7 @@ class Handler(metaclass=HandlerMetaclass):
         obj = self._meta.object_class()
         obj = self.full_hydrate(obj, params)
         obj.save()
-        return self.full_dehydrate(obj)
+        return obj
 
     def update(self, params):
         """Update the object."""

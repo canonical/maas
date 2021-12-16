@@ -1,9 +1,8 @@
 # Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.tag`"""
 
-
+from maasserver.enum import NODE_TYPE
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -25,6 +24,19 @@ class TestTagHandler(MAASServerTestCase):
             "kernel_opts": tag.kernel_opts,
             "updated": dehydrate_datetime(tag.updated),
             "created": dehydrate_datetime(tag.created),
+            "machine_count": tag.node_set.filter(
+                node_type=NODE_TYPE.MACHINE
+            ).count(),
+            "device_count": tag.node_set.filter(
+                node_type=NODE_TYPE.DEVICE
+            ).count(),
+            "controller_count": tag.node_set.filter(
+                node_type__in=(
+                    NODE_TYPE.REGION_CONTROLLER,
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                )
+            ).count(),
         }
         return data
 
@@ -33,6 +45,22 @@ class TestTagHandler(MAASServerTestCase):
         handler = TagHandler(user, {}, None)
         tag = factory.make_Tag()
         self.assertEqual(self.dehydrate_tag(tag), handler.get({"id": tag.id}))
+
+    def test_get_include_counts(self):
+        tag = factory.make_Tag()
+        tag.node_set.add(
+            factory.make_Node(),
+            factory.make_Device(),
+            factory.make_Device(),
+            factory.make_RackController(),
+            factory.make_RegionController(),
+            factory.make_RegionRackController(),
+        )
+        handler = TagHandler(factory.make_admin(), {}, None)
+        details = handler.get({"id": tag.id})
+        self.assertEqual(details["machine_count"], 1)
+        self.assertEqual(details["device_count"], 2)
+        self.assertEqual(details["controller_count"], 3)
 
     def test_list(self):
         user = factory.make_User()
