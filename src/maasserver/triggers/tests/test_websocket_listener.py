@@ -867,13 +867,17 @@ class TestNodeTagListener(
         tag = yield deferToDatabase(self.create_tag)
 
         listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register(self.listener, lambda *args: dv.set(args))
+        node_dv = DeferredValue()
+        listener.register(self.listener, lambda *args: node_dv.set(args))
+        tag_dv = DeferredValue()
+        listener.register("tag", lambda *args: tag_dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.add_node_to_tag, node, tag)
-            yield dv.get(timeout=2)
-            self.assertEqual(("update", node.system_id), dv.value)
+            yield node_dv.get(timeout=2)
+            self.assertEqual(("update", node.system_id), node_dv.value)
+            yield tag_dv.get(timeout=2)
+            self.assertEqual(("update", str(tag.id)), tag_dv.value)
         finally:
             yield listener.stopService()
 
@@ -885,13 +889,17 @@ class TestNodeTagListener(
         yield deferToDatabase(self.add_node_to_tag, node, tag)
 
         listener = self.make_listener_without_delay()
-        dv = DeferredValue()
-        listener.register(self.listener, lambda *args: dv.set(args))
+        node_dv = DeferredValue()
+        tag_dv = DeferredValue()
+        listener.register("tag", lambda *args: tag_dv.set(args))
+        listener.register(self.listener, lambda *args: node_dv.set(args))
         yield listener.startService()
         try:
             yield deferToDatabase(self.remove_node_from_tag, node, tag)
-            yield dv.get(timeout=2)
-            self.assertEqual(("update", node.system_id), dv.value)
+            yield node_dv.get(timeout=2)
+            self.assertEqual(("update", node.system_id), node_dv.value)
+            yield tag_dv.get(timeout=2)
+            self.assertEqual(("update", str(tag.id)), tag_dv.value)
         finally:
             yield listener.stopService()
 

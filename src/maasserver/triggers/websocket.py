@@ -38,27 +38,28 @@ from maasserver.utils.orm import transactional
 # the node type is node.
 NODE_TAG_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       node RECORD;
       pnode RECORD;
     BEGIN
       SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node
-      WHERE id = %s;
+      WHERE id = {field}.node_id;
 
-      IF node.node_type = %d THEN
-        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-      ELSIF node.node_type IN (%d, %d, %d) THEN
-        PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
+      IF node.node_type = {type_machine} THEN
+        PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
+      ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
+        PERFORM pg_notify('controller_update', CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
         FROM maasserver_node
         WHERE id = node.parent_id;
-        PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+        PERFORM pg_notify('machine_update', CAST(pnode.system_id AS text));
       ELSE
-        PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+        PERFORM pg_notify('device_update', CAST(node.system_id AS text));
       END IF;
+      PERFORM pg_notify('tag_update', CAST({field}.tag_id AS text));
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -85,9 +86,9 @@ TAG_NODES_NOTIFY = dedent(
         WHERE maasserver_node_tags.tag_id = NEW.id
         AND maasserver_node_tags.node_id = maasserver_node.id)
       LOOP
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -2240,25 +2241,23 @@ def register_websocket_triggers():
 
     # Node tag link table
     register_procedure(
-        NODE_TAG_NOTIFY
-        % (
-            "machine_device_tag_link_notify",
-            "NEW.node_id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        NODE_TAG_NOTIFY.format(
+            function_name="machine_device_tag_link_notify",
+            field="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_rack=NODE_TYPE.RACK_CONTROLLER,
+            type_region=NODE_TYPE.REGION_CONTROLLER,
+            type_region_rack=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         )
     )
     register_procedure(
-        NODE_TAG_NOTIFY
-        % (
-            "machine_device_tag_unlink_notify",
-            "OLD.node_id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        NODE_TAG_NOTIFY.format(
+            function_name="machine_device_tag_unlink_notify",
+            field="OLD",
+            type_machine=NODE_TYPE.MACHINE,
+            type_rack=NODE_TYPE.RACK_CONTROLLER,
+            type_region=NODE_TYPE.REGION_CONTROLLER,
+            type_region_rack=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         )
     )
     register_trigger(
@@ -2270,12 +2269,11 @@ def register_websocket_triggers():
 
     # Tag table, update to linked nodes.
     register_procedure(
-        TAG_NODES_NOTIFY
-        % (
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        TAG_NODES_NOTIFY.format(
+            type_machine=NODE_TYPE.MACHINE,
+            type_rack=NODE_TYPE.RACK_CONTROLLER,
+            type_region=NODE_TYPE.REGION_CONTROLLER,
+            type_region_rack=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         )
     )
     register_trigger(
