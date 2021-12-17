@@ -12,11 +12,7 @@ from django.http import QueryDict
 from lxml.etree import XPath
 from lxml.html import fromstring
 
-from maasserver.config_forms import (
-    DictCharField,
-    DictCharWidget,
-    get_all_prefixed_values,
-)
+from maasserver.config_forms import DictCharField, DictCharWidget
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
@@ -212,28 +208,13 @@ class TestFormWithDictCharField(MAASServerTestCase):
         )
 
 
-class TestUtilities(MAASServerTestCase):
-    def test_get_all_prefixed_values_returns_sub_dict(self):
-        inputs = [
-            {"prefix_test": "a", "key": "b", "prefix_2": "c"},
-            {},
-            {"b": factory.make_string()},
-        ]
-        prefix = "prefix_"
-        expected = [{"test": "a", "2": "c"}, {}, {}]
-        self.assertEqual(
-            expected,
-            [get_all_prefixed_values(data, prefix) for data in inputs],
-        )
-
-
 class TestDictCharWidget(MAASServerTestCase):
     def test_DictCharWidget_id_for_label_uses_first_fields_name(self):
         names = [factory.make_string()]
         initials = []
         labels = [factory.make_string()]
         widget = DictCharWidget(
-            [widgets.TextInput, widgets.TextInput], names, initials, labels
+            [widgets.TextInput(), widgets.TextInput()], names, initials, labels
         )
         self.assertEqual(" _%s" % names[0], widget.id_for_label(" "))
 
@@ -243,7 +224,11 @@ class TestDictCharWidget(MAASServerTestCase):
         labels = [factory.make_string(), factory.make_string()]
         values = [factory.make_string(), factory.make_string()]
         widget = DictCharWidget(
-            [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
+            [
+                widgets.TextInput(),
+                widgets.TextInput(),
+                widgets.CheckboxInput(),
+            ],
             names,
             initials,
             labels,
@@ -281,21 +266,12 @@ class TestDictCharWidget(MAASServerTestCase):
         field_2_value = factory.make_string()
         # Create a query string with the field2 before the field1 and another
         # (unknown) value.
+        random_key, random_value = factory.make_string(), factory.make_string()
         data = QueryDict(
-            "%s_%s=%s&%s_%s=%s&%s=%s"
-            % (
-                name,
-                names[1],
-                field_2_value,
-                name,
-                names[0],
-                field_1_value,
-                factory.make_string(),
-                factory.make_string(),
-            )
+            f"{name}_{names[1]}={field_2_value}&{name}_{names[0]}={field_1_value}&{random_key}={random_value}"
         )
         widget = DictCharWidget(
-            [widgets.TextInput, widgets.TextInput], names, initials, labels
+            [widgets.TextInput(), widgets.TextInput()], names, initials, labels
         )
         self.assertEqual(
             {names[0]: field_1_value, names[1]: field_2_value},
@@ -307,7 +283,11 @@ class TestDictCharWidget(MAASServerTestCase):
         initials = []
         labels = [factory.make_string(), factory.make_string()]
         widget = DictCharWidget(
-            [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
+            [
+                widgets.TextInput(),
+                widgets.TextInput(),
+                widgets.CheckboxInput(),
+            ],
             names,
             initials,
             labels,
@@ -334,7 +314,7 @@ class TestDictCharWidget(MAASServerTestCase):
         mock_widget = Mock()
         mock_widget.configure_mock(**{"render.return_value": ""})
         widget = DictCharWidget(
-            [mock_widget, widgets.TextInput],
+            [mock_widget, widgets.TextInput()],
             names,
             initials,
             labels,
@@ -344,4 +324,28 @@ class TestDictCharWidget(MAASServerTestCase):
 
         self.assertThat(
             mock_widget.render, MockCalledOnceWith(ANY, initials[0], ANY)
+        )
+
+    def test_multiple_values_returns_dict_with_list(self):
+        inputs = [
+            QueryDict("prefix_test=a&prefix_2=b"),
+            QueryDict("prefix_test=a&prefix_test=b&prefix_2=c"),
+        ]
+        outputs = [
+            {"test": ["a"], "2": "b"},
+            {"test": ["a", "b"], "2": "c"},
+        ]
+        widget = DictCharWidget(
+            [widgets.SelectMultiple(), widgets.TextInput()],
+            names=["test", "2"],
+            initials=[],
+            labels=["test-label", "2-label"],
+            skip_check=True,
+        )
+        self.assertEqual(
+            outputs,
+            [
+                widget.value_from_datadict(data, None, "prefix")
+                for data in inputs
+            ],
         )

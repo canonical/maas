@@ -11,6 +11,7 @@ from django.core import validators
 from django.core.exceptions import ValidationError
 from django.forms.fields import Field
 from django.forms.utils import ErrorList
+from django.forms.widgets import Widget
 from django.utils.safestring import mark_safe
 
 SKIP_CHECK_NAME = "skip_check"
@@ -208,24 +209,6 @@ class DictCharField(forms.MultiValueField):
         return out
 
 
-def get_all_prefixed_values(data, name):
-    """From a dictionary, extract a sub-dictionary of all the keys/values for
-    which the key starts with a particular prefix.  In the resulting
-    dictionary, strip the prefix from the keys::
-
-      >>> get_all_prefixed_values(
-      ...     {'prefix_test': 'a', 'key': 'b'}, 'prefix_')
-      {'test': 'a'}
-
-    """
-    result = {}
-    for key, value in data.items():
-        if key.startswith(name):
-            new_key = key[len(name) :]
-            result[new_key] = value
-    return result
-
-
 class DictCharWidget(forms.widgets.MultiWidget):
     """A widget to display the content of a dictionary.  Each key will
     correspond to a subwidget.  Although there is no harm in using this class
@@ -268,12 +251,19 @@ class DictCharWidget(forms.widgets.MultiWidget):
     """
 
     def __init__(
-        self, widgets, names, initials, labels, skip_check=False, attrs=None
+        self,
+        widgets,
+        names,
+        initials,
+        labels,
+        skip_check=False,
+        attrs=None,
     ):
         self.names = names
         self.initials = initials
         self.labels = labels
         self.skip_check = skip_check
+        self._named_widgets = dict(zip(names, widgets))
         super().__init__(widgets, attrs)
 
     def render(self, name, value, attrs=None):
@@ -347,9 +337,16 @@ class DictCharWidget(forms.widgets.MultiWidget):
         :param name: The name of the widget.
         :type name: unicode
         :return: The extracted values as a dictionary.
-        :rtype: dict or list
+        :rtype: dict
         """
-        return get_all_prefixed_values(data, name + "_")
+        prefix = name + "_"
+        result = {}
+        for key in data.keys():
+            if key.startswith(prefix):
+                new_key = key[len(prefix) :]
+                widget = self._named_widgets.get(new_key, Widget())
+                result[new_key] = widget.value_from_datadict(data, files, key)
+        return result
 
     def decompress(self, value):
         """Returns a list of decompressed values for the given compressed

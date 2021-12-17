@@ -228,8 +228,9 @@ IPMI_WORKAROUND_FLAG_CHOICES = [
     ["supermicro20", "Supermicro20"],
     ["sun20", "Sun20"],
     ["nochecksumcheck", "Nochecksumcheck"],
-    ["integritycheckvalue", "Untegritycheckvalue"],
+    ["integritycheckvalue", "Integritycheckvalue"],
     ["ipmiping", "Ipmiping"],
+    ["", "None"],
 ]
 
 
@@ -300,6 +301,7 @@ class IPMIPowerDriver(PowerDriver):
             field_type="multiple_choice",
             choices=IPMI_WORKAROUND_FLAG_CHOICES,
             default=["opensesspriv"],
+            required=False,
         ),
         make_setting_field(
             "mac_address", "Power MAC", scope=SETTING_SCOPE.NODE
