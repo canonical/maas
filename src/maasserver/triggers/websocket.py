@@ -245,13 +245,9 @@ NODE_VMCLUSTER_UPDATE_NOTIFY = dedent(
           SELECT * INTO old_bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
           IF new_bmc.bmc_type = bmc_type THEN
             SELECT * INTO new_hints FROM maasserver_podhints WHERE pod_id = new_bmc.id;
-          ELSE
-            new_hints = NULL;
           END IF;
           IF old_bmc.bmc_type = bmc_type THEN
             SELECT * INTO old_hints FROM maasserver_podhints WHERE pod_id = old_bmc.id;
-          ELSE
-            old_hints = NULL;
           END IF;
           IF old_hints IS NOT NULL THEN
             IF old_hints.cluster_id IS NOT NULL THEN

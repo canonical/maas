@@ -29,6 +29,17 @@ from provisioningserver.utils.debug import (
 
 log = LegacyLogger()
 
+PGSQL_MIN_VERSION = 1200
+
+
+class UnsupportedDBException(Exception):
+    """Unsupported PGSQL server version detected"""
+
+    def __init__(self, version, *args: object):
+        super().__init__(
+            f"Unsupported postgresql server version ({version}) detected"
+        )
+
 
 class Options(logger.VerbosityOptions):
     """Command-line options for `regiond`."""
@@ -172,6 +183,14 @@ class RegionMasterServiceMaker(RegionWorkerServiceMaker):
         while True:
             try:
                 connection.ensure_connection()
+                pg_ver = connection.cursor().connection.server_version
+                # https://www.postgresql.org/docs/current/libpq-status.html#LIBPQ-PQSERVERVERSION
+                # 'server_version' is formed by multiplying the server's major version number by
+                # 10000 and adding the minor version number. For purposes of determining feature
+                # compatibility, applications should divide the 'server_version' by 100
+                if pg_ver // 100 < PGSQL_MIN_VERSION:
+                    raise UnsupportedDBException(pg_ver)
+
             except Exception:
                 log.err(
                     _why=(
