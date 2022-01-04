@@ -199,7 +199,7 @@ class NodeHandler(TimestampedModelHandler):
         data["actions"] = list(compile_node_actions(obj, self.user).keys())
         data["node_type_display"] = obj.get_node_type_display()
         data["link_type"] = NODE_TYPE_TO_LINK_TYPE[obj.node_type]
-        data["tags"] = [tag.name for tag in obj.tags.all()]
+        data["tags"] = [tag.id for tag in obj.tags.all()]
         if obj.node_type == NODE_TYPE.MACHINE or (
             obj.is_controller and not for_list
         ):
@@ -944,28 +944,14 @@ class NodeHandler(TimestampedModelHandler):
                     return True
         return False
 
-    def update_tags(self, node_obj, tags):
-        # Loop through the nodes current tags. If the tag exists in `tags` then
-        # nothing needs to be done so its removed from `tags`. If it does not
-        # exists then the tag was removed from the node and should be removed
-        # from the nodes set of tags.
-        for tag in node_obj.tags.all():
-            if tag.name not in tags:
-                node_obj.tags.remove(tag)
-            else:
-                tags.remove(tag.name)
-
-        # All the tags remaining in `tags` are tags that are not linked to
-        # node. Get or create that tag and add the node to the tags set.
-        for tag_name in tags:
-            tag_obj, _ = Tag.objects.get_or_create(name=tag_name)
-            if tag_obj.is_defined:
+    def update_tags(self, node, tag_ids):
+        tags = list(Tag.objects.filter(id__in=tag_ids))
+        for tag in tags:
+            if tag.is_defined:
                 raise HandlerError(
-                    "Cannot add tag %s to node because it has a "
-                    "definition." % tag_name
+                    f"Cannot add tag {tag.name} to node because it has a definition"
                 )
-            tag_obj.node_set.add(node_obj)
-            tag_obj.save()
+        node.tags.set(tags)
 
     def get_grouped_storages(self, blockdevices):
         """Group storage based off of the size and type.

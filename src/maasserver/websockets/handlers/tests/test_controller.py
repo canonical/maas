@@ -392,14 +392,10 @@ class TestControllerHandler(MAASServerTestCase):
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {}, None)
         region = factory.make_RegionRackController()
-        tags = []
-        for _ in range(3):
-            tag = factory.make_Tag(definition="")
-            tag.node_set.add(region)
-            tag.save()
-            tags.append(tag.name)
-        result = handler.list({})
-        self.assertEqual(tags, result[0].get("tags"))
+        tags = [factory.make_Tag(definition="") for _ in range(3)]
+        region.tags.set(tags)
+        [result] = handler.list({})
+        self.assertCountEqual(result["tags"], [tag.id for tag in tags])
 
     def test_register_info_non_admin(self):
         user = factory.make_User()

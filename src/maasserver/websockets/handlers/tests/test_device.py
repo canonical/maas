@@ -1,8 +1,6 @@
 # Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.device`"""
-
 
 from operator import itemgetter
 from unittest.mock import ANY
@@ -22,8 +20,7 @@ from maasserver.enum import (
 from maasserver.exceptions import NodeActionError
 from maasserver.fields import MAC
 from maasserver.forms import DeviceForm, DeviceWithMACsForm
-from maasserver.models.interface import Interface
-from maasserver.models.staticipaddress import StaticIPAddress
+from maasserver.models import Interface, StaticIPAddress
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory
@@ -180,7 +177,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "locked": node.locked,
             "swap_size": node.swap_size,
             "system_id": node.system_id,
-            "tags": [tag.name for tag in node.tags.all()],
+            "tags": [tag.id for tag in node.tags.all()],
             "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
             "zone": {"id": node.zone.id, "name": node.zone.name},
@@ -1077,7 +1074,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
         new_description = factory.make_name("description")
-        new_tags = [factory.make_name("tag") for _ in range(3)]
+        new_tags = [factory.make_Tag(definition="").id for _ in range(3)]
         node_data["hostname"] = new_hostname
         node_data["description"] = new_description
         node_data["zone"] = {"name": new_zone.name}
@@ -1098,7 +1095,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         node_data = self.dehydrate_device(node, user)
         new_zone = factory.make_Zone()
         new_hostname = factory.make_name("hostname")
-        new_tags = [factory.make_name("tag") for _ in range(3)]
+        new_tags = [factory.make_Tag(definition="").id for _ in range(3)]
         node_data["hostname"] = new_hostname
         node_data["zone"] = {"name": new_zone.name}
         node_data["tags"] = new_tags

@@ -1,8 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.populate_tags`."""
-
 
 from unittest.mock import ANY, call, create_autospec
 
@@ -391,7 +389,6 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         tags = [
             factory.make_Tag("foo", "/foo", populate=False),
             Tag(name="empty", definition=""),
-            Tag(name="null", definition=None),
         ]
         populate_tags_for_single_node(tags, node)  # Look mom, no exception!
         self.assertSequenceEqual(

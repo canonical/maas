@@ -404,5 +404,4 @@ class DeviceHandler(NodeHandler):
             self.update_tags(device_obj, params["tags"])
             device_obj.save()
             return self.full_dehydrate(device_obj)
-        else:
-            return data
+        return data

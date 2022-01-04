@@ -89,7 +89,6 @@ class TestTagIsDefined(MAASServerTestCase):
     """Tests for the `Tag.is_defined` property."""
 
     scenarios = (
-        ("null", dict(definition=None, expected=False)),
         ("empty", dict(definition="", expected=False)),
         ("whitespace", dict(definition="   \t\n ", expected=False)),
         ("defined", dict(definition="//node", expected=True)),

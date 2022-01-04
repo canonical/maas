@@ -51,19 +51,25 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import NodeActionError, NodeStateViolation
 from maasserver.forms import AdminMachineWithMACAddressesForm
+from maasserver.models import (
+    Bcache,
+    CacheSet,
+    Config,
+    Filesystem,
+    Interface,
+    Machine,
+    Node,
+    OwnerData,
+    Partition,
+    RAID,
+    VolumeGroup,
+)
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
-from maasserver.models.cacheset import CacheSet
-from maasserver.models.config import Config
-from maasserver.models.filesystem import Filesystem
-from maasserver.models.filesystemgroup import Bcache, RAID, VolumeGroup
-from maasserver.models.interface import Interface
-from maasserver.models.node import Machine, Node
 from maasserver.models.nodeprobeddetails import (
     get_single_probed_details,
     script_output_nsmap,
 )
-from maasserver.models.ownerdata import OwnerData
-from maasserver.models.partition import Partition, PARTITION_ALIGNMENT_SIZE
+from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 import maasserver.node_action as node_action_module
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
@@ -359,7 +365,7 @@ class TestMachineHandler(MAASServerTestCase):
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "hardware_uuid": node.hardware_uuid,
-            "tags": [tag.name for tag in node.tags.all()],
+            "tags": [tag.id for tag in node.tags.all()],
             "node_type": node.node_type,
             "updated": dehydrate_datetime(node.updated),
             "zone": handler.dehydrate_zone(node.zone),
@@ -2646,7 +2652,7 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, architecture=architecture, power_type="manual"
         )
-        tags = [factory.make_Tag(definition="").name for _ in range(3)]
+        tags = [factory.make_Tag(definition="").id for _ in range(3)]
         node_data = self.dehydrate_node(node, handler)
         node_data["tags"] = tags
         updated_node = handler.update(node_data)
@@ -2659,30 +2665,18 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, architecture=architecture, power_type="manual"
         )
-        tags = []
+        tags = {}
         for _ in range(3):
             tag = factory.make_Tag(definition="")
             tag.node_set.add(node)
             tag.save()
-            tags.append(tag.name)
+            tags[tag.id] = tag.name
         node_data = self.dehydrate_node(node, handler)
-        removed_tag = tags.pop()
-        node_data["tags"].remove(removed_tag)
+        removed_tag_id = random.choice(list(tags))
+        tags.pop(removed_tag_id)
+        node_data["tags"].remove(removed_tag_id)
         updated_node = handler.update(node_data)
-        self.assertCountEqual(tags, updated_node["tags"])
-
-    def test_update_creates_tag_for_node(self):
-        user = factory.make_admin()
-        handler = MachineHandler(user, {}, None)
-        architecture = make_usable_architecture(self)
-        node = factory.make_Node(
-            interface=True, architecture=architecture, power_type="manual"
-        )
-        tag_name = factory.make_name("tag")
-        node_data = self.dehydrate_node(node, handler)
-        node_data["tags"].append(tag_name)
-        updated_node = handler.update(node_data)
-        self.assertEqual([tag_name], updated_node["tags"])
+        self.assertCountEqual(list(tags), updated_node["tags"])
 
     def test_update_doesnt_update_tags_for_node_if_not_set_in_parameters(self):
         user = factory.make_admin()
@@ -2694,6 +2688,22 @@ class TestMachineHandler(MAASServerTestCase):
         node_data = self.dehydrate_node(node, handler)
         updated_node = handler.update(node_data)
         self.assertEqual([], updated_node["tags"])
+
+    def test_update_fails_associating_defined_tag(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        architecture = make_usable_architecture(self)
+        node = factory.make_Node(
+            interface=True, architecture=architecture, power_type="manual"
+        )
+        tag = factory.make_Tag(definition="//foo/bar")
+        node_data = self.dehydrate_node(node, handler)
+        node_data["tags"].append(tag.id)
+        error = self.assertRaises(HandlerError, handler.update, node_data)
+        self.assertEqual(
+            str(error),
+            f"Cannot add tag {tag.name} to node because it has a definition",
+        )
 
     def test_update_disk_for_physical_block_device(self):
         user = factory.make_admin()

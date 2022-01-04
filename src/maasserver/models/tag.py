@@ -151,8 +151,4 @@ class Tag(CleanSave, TimestampedModel):
 
     @property
     def is_defined(self):
-        return (
-            self.definition is not None
-            and self.definition != ""
-            and not self.definition.isspace()
-        )
+        return bool(self.definition.strip())
