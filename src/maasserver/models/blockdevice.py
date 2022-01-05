@@ -107,6 +107,7 @@ class BlockDevice(CleanSave, TimestampedModel):
     objects = BlockDeviceManager()
 
     node = ForeignKey("Node", null=False, editable=False, on_delete=CASCADE)
+    node_config = ForeignKey("NodeConfig", null=True, on_delete=CASCADE)
 
     name = CharField(
         max_length=255,

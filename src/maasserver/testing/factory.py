@@ -1,7 +1,5 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Test object factories."""
 
 
 from datetime import datetime, timedelta
@@ -109,6 +107,7 @@ from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.bmc import BMC
 from maasserver.models.bootresourceset import XINSTALL_TYPES
 from maasserver.models.interface import Interface, InterfaceRelationship
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE, NodeConfig
 from maasserver.models.numa import NUMANode, NUMANodeHugepages
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.rdns import RDNS
@@ -3265,6 +3264,11 @@ class Factory(maastesting.factory.Factory):
             page_size=page_size,
             total=total,
         )
+
+    def make_NodeConfig(self, node=None, name=NODE_CONFIG_TYPE.DISCOVERED):
+        if node is None:
+            node = factory.make_Node()
+        return NodeConfig.objects.create(node=node, name=name)
 
     def make_VirtualMachine(
         self,

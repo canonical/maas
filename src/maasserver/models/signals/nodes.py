@@ -1,4 +1,4 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Respond to node changes."""
@@ -16,6 +16,7 @@ from maasserver.models import (
     RegionController,
     Service,
 )
+from maasserver.models.nodeconfig import create_default_nodeconfig
 from maasserver.models.numa import create_default_numanode
 from maasserver.utils.signals import SignalsManager
 from metadataserver.models.nodekey import NodeKey
@@ -135,16 +136,22 @@ for klass in NODE_CLASSES:
     signals.watch(post_save, create_services_on_create, sender=klass)
 
 
-def create_default_numanode_on_create(sender, instance, created, **kwargs):
-    """Create NUMA node "0" for a node on creation."""
-    if not created or instance.is_device:
+def create_default_related_entries_on_create(
+    sender, instance, created, **kwargs
+):
+    """Create default related entries for a node."""
+    if not created:
         return
 
-    create_default_numanode(instance)
+    if not instance.is_device:
+        create_default_numanode(instance)
+    create_default_nodeconfig(instance)
 
 
 for sender in (Machine, Node, RackController, RegionController):
-    signals.watch(post_save, create_default_numanode_on_create, sender=sender)
+    signals.watch(
+        post_save, create_default_related_entries_on_create, sender=sender
+    )
 
 
 def release_auto_ips(node, old_values, deleted=False):

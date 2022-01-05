@@ -117,6 +117,7 @@ class Filesystem(CleanSave, TimestampedModel):
         related_name="special_filesystems",
         on_delete=CASCADE,
     )
+    node_config = ForeignKey("NodeConfig", null=True, on_delete=CASCADE)
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?

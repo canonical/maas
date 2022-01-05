@@ -536,6 +536,7 @@ class Interface(CleanSave, TimestampedModel):
     node = ForeignKey(
         "Node", editable=False, null=True, blank=True, on_delete=CASCADE
     )
+    node_config = ForeignKey("NodeConfig", null=True, on_delete=CASCADE)
 
     name = CharField(
         blank=False,
