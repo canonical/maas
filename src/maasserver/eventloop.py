@@ -49,8 +49,6 @@ from provisioningserver.utils.twisted import asynchronous
 
 # Default port for regiond.
 DEFAULT_PORT = 5240
-# Default port for the prometheus exporter.
-DEFAULT_PROMETHEUS_EXPORTER_PORT = 5239
 
 reactor.addSystemEventTrigger(
     "before", "startup", disable_all_database_connections
@@ -216,11 +214,10 @@ def make_IPCWorkerService():
 def make_PrometheusExporterService():
     from maasserver.prometheus.service import (
         create_prometheus_exporter_service,
+        REGION_PROMETHEUS_PORT,
     )
 
-    return create_prometheus_exporter_service(
-        reactor, DEFAULT_PROMETHEUS_EXPORTER_PORT
-    )
+    return create_prometheus_exporter_service(reactor, REGION_PROMETHEUS_PORT)
 
 
 class MAASServices(MultiService):

@@ -27,6 +27,7 @@ from maasserver import (
     workers,
 )
 from maasserver.eventloop import DEFAULT_PORT, MAASServices
+from maasserver.prometheus.service import REGION_PROMETHEUS_PORT
 from maasserver.prometheus.stats import PrometheusService
 from maasserver.regiondservices import ntp, service_monitor_service, syslog
 from maasserver.regiondservices.version_update_check import (
@@ -608,9 +609,7 @@ class TestFactories(MAASServerTestCase):
     def test_make_PrometheusExporterService(self):
         service = eventloop.make_PrometheusExporterService()
         self.assertIsInstance(service, StreamServerEndpointService)
-        self.assertEqual(
-            service.endpoint._port, eventloop.DEFAULT_PROMETHEUS_EXPORTER_PORT
-        )
+        self.assertEqual(service.endpoint._port, REGION_PROMETHEUS_PORT)
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_PrometheusExporterService,

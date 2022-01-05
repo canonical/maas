@@ -14,6 +14,7 @@ from maasserver.bootresources import (
     simplestreams_stream_handler,
 )
 from maasserver.macaroon_auth import MacaroonDischargeRequest
+from maasserver.prometheus.service import prometheus_discovery_handler
 from maasserver.prometheus.stats import prometheus_stats_handler
 from maasserver.views.account import authenticate, csrf, login, logout
 from maasserver.views.rpc import info
@@ -48,6 +49,11 @@ urlpatterns = [
         name="maas-run-scripts",
     ),
     url(r"^metrics$", prometheus_stats_handler, name="metrics"),
+    url(
+        r"^metrics/endpoints$",
+        prometheus_discovery_handler,
+        name="metrics_endpoints",
+    ),
     url(
         r"^robots\.txt$",
         TemplateView.as_view(
