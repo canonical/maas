@@ -3572,7 +3572,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertCountEqual(
             bd_ids,
             [
-                fs.get_parent().partition_table.block_device.id
+                fs.partition.partition_table.block_device_id
                 for fs in vmfs.filesystems.all()
             ],
         )

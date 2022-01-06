@@ -187,8 +187,7 @@ class CacheSet(CleanSave, TimestampedModel):
         filesystem = self.get_filesystem()
         if filesystem is None:
             return None
-        else:
-            return filesystem.get_parent()
+        return filesystem.get_device()
 
     def get_numa_node_indexes(self):
         """Return NUMA node indexes for physical devices making up the cacheset."""

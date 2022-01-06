@@ -175,7 +175,7 @@ class Filesystem(CleanSave, TimestampedModel):
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
         devices = []
-        parent = self.get_parent()
+        parent = self.get_device()
         if isinstance(parent, PhysicalBlockDevice):
             devices.append(parent)
         elif isinstance(parent, VirtualBlockDevice):
@@ -207,17 +207,13 @@ class Filesystem(CleanSave, TimestampedModel):
             # XXX: Return None instead?
             return 0
 
-    def get_parent(self):
+    def get_device(self):
         """Return linked `BlockDevice` or linked `Partition`."""
         if self.partition is not None:
             return self.partition
         elif self.block_device is not None:
             return self.block_device.actual_instance
-        elif self.node is not None:
-            return self.node
-        else:
-            # XXX: Explode instead?
-            return None
+        return None
 
     @property
     def is_mountable(self):

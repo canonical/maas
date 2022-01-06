@@ -150,7 +150,7 @@ class VmfsDatastoreHandler(OperationsHandler):
     @classmethod
     def devices(cls, vmfs):
         return [
-            filesystem.get_parent() for filesystem in vmfs.filesystems.all()
+            filesystem.get_device() for filesystem in vmfs.filesystems.all()
         ]
 
     @classmethod

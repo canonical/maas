@@ -211,20 +211,20 @@ class TestFilesystem(MAASServerTestCase):
         fs = factory.make_Filesystem(uuid=uuid)
         self.assertEqual("%s" % uuid, fs.uuid)
 
-    def test_get_parent_returns_block_device(self):
+    def test_get_device_returns_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
         filesystem = factory.make_Filesystem(block_device=block_device)
-        self.assertEqual(block_device, filesystem.get_parent())
+        self.assertEqual(block_device, filesystem.get_device())
 
-    def test_get_parent_returns_partition(self):
+    def test_get_device_returns_partition(self):
         partition = factory.make_Partition()
         filesystem = factory.make_Filesystem(partition=partition)
-        self.assertEqual(partition, filesystem.get_parent())
+        self.assertEqual(partition, filesystem.get_device())
 
-    def test_get_parent_returns_special_filesystem_node(self):
+    def test_get_device_returns_none_for_special_fs(self):
         machine = factory.make_Node()
         filesystem = factory.make_Filesystem(node=machine)
-        self.assertEqual(machine, filesystem.get_parent())
+        self.assertIsNone(filesystem.get_device())
 
     def test_cannot_create_filesystem_directly_on_boot_disk(self):
         node = factory.make_Node(with_boot_disk=False)

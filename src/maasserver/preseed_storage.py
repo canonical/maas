@@ -459,7 +459,7 @@ class CurtinStorageGenerator:
     def _generate_format_operation(self, filesystem):
         """Generate format operation for `filesystem` and place in
         `storage_config`."""
-        device_or_partition = filesystem.get_parent()
+        device_or_partition = filesystem.get_device()
         self.storage_config.append(
             {
                 "id": "%s_format" % device_or_partition.get_name(),
@@ -487,7 +487,7 @@ class CurtinStorageGenerator:
             "devices": [],
         }
         for filesystem in filesystem_group.filesystems.all():
-            block_or_partition = filesystem.get_parent()
+            block_or_partition = filesystem.get_device()
             volume_group_operation["devices"].append(
                 block_or_partition.get_name()
             )
@@ -540,7 +540,7 @@ class CurtinStorageGenerator:
             "spare_devices": [],
         }
         for filesystem in filesystem_group.filesystems.all():
-            block_or_partition = filesystem.get_parent()
+            block_or_partition = filesystem.get_device()
             name = block_or_partition.get_name()
             if filesystem.fstype == FILESYSTEM_TYPE.RAID:
                 raid_operation["devices"].append(name)
@@ -580,7 +580,7 @@ class CurtinStorageGenerator:
             "name": filesystem_group.name,
             "type": "bcache",
             "backing_device": filesystem_group.get_bcache_backing_filesystem()
-            .get_parent()
+            .get_device()
             .get_name(),
             "cache_device": filesystem_group.cache_set.get_device().get_name(),
             "cache_mode": filesystem_group.cache_mode,
@@ -600,7 +600,7 @@ class CurtinStorageGenerator:
                     "name": vmfs.name,
                     "type": "vmfs6",
                     "devices": sorted(
-                        [fs.get_parent().name for fs in vmfs.filesystems.all()]
+                        [fs.get_device().name for fs in vmfs.filesystems.all()]
                     ),
                 }
             )
@@ -705,9 +705,17 @@ class CurtinStorageGenerator:
     def _generate_mount_operation(self, filesystem):
         """Generate mount operation for `filesystem` and place in
         `storage_config`."""
-        device_or_partition = filesystem.get_parent()
+        device = filesystem.get_device()
         stanza = {"type": "mount"}
-        if device_or_partition == self.node:
+        if device:
+            name = device.get_name()
+            stanza.update(
+                {
+                    "id": f"{name}_mount",
+                    "device": f"{name}_format",
+                }
+            )
+        else:
             # this is a special filesystem
             mount_id = filesystem.mount_point.lstrip("/").replace("/", "-")
             mount_id += "_mount"
@@ -716,13 +724,6 @@ class CurtinStorageGenerator:
                     "id": mount_id,
                     "fstype": filesystem.fstype,
                     "spec": filesystem.fstype,
-                }
-            )
-        else:
-            stanza.update(
-                {
-                    "id": "%s_mount" % device_or_partition.get_name(),
-                    "device": "%s_format" % device_or_partition.get_name(),
                 }
             )
         if filesystem.uses_mount_point:

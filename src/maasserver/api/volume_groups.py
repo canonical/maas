@@ -178,7 +178,7 @@ class VolumeGroupHandler(OperationsHandler):
     @classmethod
     def devices(cls, volume_group):
         return [
-            filesystem.get_parent()
+            filesystem.get_device()
             for filesystem in volume_group.filesystems.all()
         ]
 

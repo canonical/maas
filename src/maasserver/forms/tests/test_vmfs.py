@@ -140,7 +140,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         self.assertCountEqual(
             block_device_ids,
             [
-                fs.get_parent().partition_table.block_device.id
+                fs.partition.partition_table.block_device_id
                 for fs in vmfs.filesystems.all()
             ],
         )
@@ -163,7 +163,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         self.assertCountEqual(
             [block_device.id for block_device in block_devices],
             [
-                fs.get_parent().partition_table.block_device.id
+                fs.partition.partition_table.block_device_id
                 for fs in vmfs.filesystems.all()
             ],
         )
@@ -188,7 +188,7 @@ class TestCreateVMFSForm(MAASServerTestCase):
         vmfs = form.save()
         self.assertCountEqual(
             partition_ids,
-            [fs.get_parent().id for fs in vmfs.filesystems.all()],
+            [fs.partition_id for fs in vmfs.filesystems.all()],
         )
 
     def test_creates_with_partitions_by_name(self):

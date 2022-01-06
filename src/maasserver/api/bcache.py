@@ -162,7 +162,7 @@ class BcacheHandler(OperationsHandler):
     @classmethod
     def backing_device(cls, bcache):
         """Return the backing device for this bcache."""
-        return bcache.get_bcache_backing_filesystem().get_parent()
+        return bcache.get_bcache_backing_filesystem().get_device()
 
     def read(self, request, system_id, id):
         """@description-title Read a bcache device
