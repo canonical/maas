@@ -8,8 +8,7 @@ on the node's state, the user's privileges etc.
 
 To define a new node action, derive a class for it from :class:`NodeAction`,
 provide the missing pieces documented in the class, and add it to
-`ACTION_CLASSES`.  The actions will always appear on the page in the same
-order as they do in `ACTION_CLASSES`.
+`ACTION_CLASSES`.
 """
 
 
@@ -40,7 +39,7 @@ from maasserver.exceptions import (
     StaticIPAddressExhaustion,
 )
 from maasserver.forms.clone import CloneForm
-from maasserver.models import Config, ResourcePool, Tag, Zone
+from maasserver.models import Config, ResourcePool, Zone
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_base_osystem_series, get_curtin_config
@@ -197,17 +196,31 @@ class NodeAction(metaclass=ABCMeta):
     def _execute(self):
         """Perform this action."""
 
-    def get_permission(self):
+    @classmethod
+    def get_permission(cls, node_type):
         """Return the permission value depending on if the node_type."""
-        if self.node.is_machine and self.machine_permission is not None:
-            return self.machine_permission
-        if self.node.is_controller and self.controller_permission is not None:
-            return self.controller_permission
-        return self.permission
+        if (
+            node_type == NODE_TYPE.MACHINE
+            and cls.machine_permission is not None
+        ):
+            return cls.machine_permission
+        if (
+            node_type
+            in (
+                NODE_TYPE.REGION_CONTROLLER,
+                NODE_TYPE.RACK_CONTROLLER,
+                NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            )
+            and cls.controller_permission is not None
+        ):
+            return cls.controller_permission
+        return cls.permission
 
     def is_permitted(self):
         """Does the current user have the permission required?"""
-        return self.user.has_perm(self.get_permission(), self.node)
+        return self.user.has_perm(
+            self.get_permission(self.node.node_type), self.node
+        )
 
 
 class Delete(NodeAction):
@@ -940,19 +953,38 @@ class AddTag(NodeAction):
     permission = NodePermission.admin
     for_type = {NODE_TYPE.MACHINE}
     action_type = NODE_ACTION_TYPE.MISC
-    audit_description = "Tagging '%s'."
+    audit_description = "Tagging '{hostname}'."
 
     def get_node_action_audit_description(self, action):
         """Retrieve the node action audit description."""
-        return self.audit_description % action.node.hostname
+        return self.audit_description.format(hostname=action.node.hostname)
 
-    def _execute(self, tags=None):
-        """See `NodeAction.execute`."""
-        for tag in tags:
-            t, _ = Tag.objects.get_or_create(name=tag)
-            self.node.tags.add(t)
+    def _execute(self, tags=()):
+        if not tags:
+            return
+        self.node.tags.add(*tags)
 
-        self.node.save()
+
+class RemoveTag(NodeAction):
+    """Untag multiple machines."""
+
+    name = "untag"
+    display = "Untag"
+    display_sentence = "untagged"
+    actionable_statuses = ALL_STATUSES
+    permission = NodePermission.admin
+    for_type = {NODE_TYPE.MACHINE}
+    action_type = NODE_ACTION_TYPE.MISC
+    audit_description = "Untagging '{hostname}'."
+
+    def get_node_action_audit_description(self, action):
+        """Retrieve the node action audit description."""
+        return self.audit_description.format(hostname=action.node.hostname)
+
+    def _execute(self, tags=()):
+        if not tags:
+            return
+        self.node.tags.remove(*tags)
 
 
 class Clone(NodeAction):
@@ -1050,6 +1082,7 @@ ACTION_CLASSES = (
     Lock,
     Unlock,
     AddTag,
+    RemoveTag,
     Clone,
     SetZone,
     SetPool,

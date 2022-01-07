@@ -48,6 +48,7 @@ from maasserver.node_action import (
     PowerOff,
     PowerOn,
     Release,
+    RemoveTag,
     RescueMode,
     RPC_EXCEPTIONS,
     SetPool,
@@ -1057,14 +1058,11 @@ class TestAddTagAction(MAASServerTestCase):
         user = factory.make_admin()
         request = factory.make_fake_request("/")
         request.user = user
-        tags = ["tag1", "tag2", "tag3"]
+        tags = [factory.make_Tag(definition="") for _ in range(3)]
         node = factory.make_Node(status=NODE_STATUS.NEW)
         action = AddTag(node, user, request)
-        action.execute(tags=tags)
-        node_tags = list(reload_object(node).tags.values())
-        self.assertEqual(node_tags[0].get("name"), tags[0])
-        self.assertEqual(node_tags[1].get("name"), tags[1])
-        self.assertEqual(node_tags[2].get("name"), tags[2])
+        action.execute(tags=[tag.id for tag in tags])
+        self.assertCountEqual(tags, reload_object(node).tags.all())
 
     def test_requires_admin_permission(self):
         user = factory.make_User()
@@ -1072,6 +1070,26 @@ class TestAddTagAction(MAASServerTestCase):
         request.user = user
         node = factory.make_Node()
         self.assertFalse(AddTag(node, user, request).is_permitted())
+
+
+class TestRemoveTagAction(MAASServerTestCase):
+    def test_RemoveTag_removes_tag(self):
+        user = factory.make_admin()
+        request = factory.make_fake_request("/")
+        request.user = user
+        tags = [factory.make_Tag(definition="") for _ in range(3)]
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        node.tags.set(tags)
+        action = RemoveTag(node, user, request)
+        action.execute(tags=[tag.id for tag in tags])
+        self.assertFalse(reload_object(node).tags.exists())
+
+    def test_requires_admin_permission(self):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node()
+        self.assertFalse(RemoveTag(node, user, request).is_permitted())
 
 
 class TestPowerOnAction(MAASServerTestCase):

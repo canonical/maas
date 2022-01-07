@@ -1,8 +1,6 @@
 # Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.general`"""
-
 
 from unittest.mock import sentinel
 
@@ -180,17 +178,9 @@ class TestGeneralHandler(MAASServerTestCase):
                 "mark-broken",
                 "on",
                 "deploy",
-                "mark-fixed",
-                "commission",
-                "abort",
                 "acquire",
                 "off",
-                "rescue-mode",
-                "exit-rescue-mode",
                 "lock",
-                "tag",
-                "test",
-                "override-failed-testing",
                 "unlock",
             },
             [action["name"] for action in handler.machine_actions({})],

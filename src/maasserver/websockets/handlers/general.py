@@ -143,15 +143,14 @@ class GeneralHandler(Handler):
 
         actions = OrderedDict()
         for name, action in ACTIONS_DICT.items():
-            admin_condition = (
-                node_type == NODE_TYPE.MACHINE
-                and action.machine_permission == NodePermission.admin
-                and not self.user.is_superuser
-            )
-            if admin_condition:
+            if node_type not in action.for_type:
                 continue
-            elif node_type in action.for_type:
-                actions[name] = action
+            if (
+                action.get_permission(node_type) == NodePermission.admin
+                and not self.user.is_superuser
+            ):
+                continue
+            actions[name] = action
         return self.dehydrate_actions(actions)
 
     def machine_actions(self, params):
