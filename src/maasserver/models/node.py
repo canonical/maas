@@ -1270,6 +1270,16 @@ class Node(CleanSave, TimestampedModel):
         """Return NUMA node 0 for the node."""
         return self.numanode_set.get(index=0)
 
+    @property
+    def current_config(self):
+        """Return the current NodeConfig for the node."""
+        # XXX currently nodes are always linked to the default
+        # config. Eventually the config returned should depend on the node
+        # status.
+        from maasserver.models.nodeconfig import NODE_CONFIG_DEFAULT
+
+        return self.nodeconfig_set.get(name=NODE_CONFIG_DEFAULT)
+
     def lock(self, user, comment=None):
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_LOCK, action="lock", comment=comment

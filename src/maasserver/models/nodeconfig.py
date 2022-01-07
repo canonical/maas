@@ -15,13 +15,18 @@ class NODE_CONFIG_TYPE:
 
 NODE_CONFIG_TYPE_CHOICES = enum_choices(NODE_CONFIG_TYPE)
 
+# XXX we should eventually get rid of this as all call sites filtering by type
+# should look for a specific type
+NODE_CONFIG_DEFAULT = NODE_CONFIG_TYPE.DISCOVERED
+
 
 class NodeConfig(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         unique_together = ["node", "name"]
 
     name = TextField(
-        choices=NODE_CONFIG_TYPE_CHOICES, default=NODE_CONFIG_TYPE.DISCOVERED
+        choices=NODE_CONFIG_TYPE_CHOICES,
+        default=NODE_CONFIG_DEFAULT,
     )
     node = ForeignKey("Node", on_delete=CASCADE)
 

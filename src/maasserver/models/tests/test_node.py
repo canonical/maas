@@ -115,6 +115,7 @@ from maasserver.models.node import (
     generate_node_system_id,
     PowerInfo,
 )
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.models.partitiontable import PARTITION_TABLE_EXTRA_SPACE
 from maasserver.models.signals import power as node_query
 from maasserver.models.timestampedmodel import now
@@ -5849,6 +5850,11 @@ class TestNode(MAASServerTestCase):
         factory.make_NUMANode(node)
         self.assertIs(node.default_numanode.node, node)
         self.assertEqual(node.default_numanode.index, 0)
+
+    def test_current_config(self):
+        node = factory.make_Node()
+        factory.make_NodeConfig(node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT)
+        self.assertEqual(node.current_config.name, NODE_CONFIG_TYPE.DISCOVERED)
 
     def test_get_commissioning_resources_no_script(self):
         node = factory.make_Node()
