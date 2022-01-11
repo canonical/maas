@@ -14,6 +14,7 @@ from twisted.internet.defer import fail
 from maasserver import stats
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
+    FILESYSTEM_GROUP_TYPE,
     IPADDRESS_TYPE,
     IPRANGE_TYPE,
     NODE_STATUS,
@@ -451,6 +452,24 @@ class TestMAASStats(MAASServerTestCase):
             "storage_layouts": {},
         }
         self.assertEqual(stats, expected)
+
+    def test_get_machine_stats_only_physical_storage(self):
+        node = factory.make_Machine(with_boot_disk=False)
+        factory.make_FilesystemGroup(
+            node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_0
+        )
+        machine_stats = get_machine_stats()
+        self.assertEqual(
+            machine_stats["total_storage"],
+            sum(disk.size for disk in node.physicalblockdevice_set.all()),
+        )
+
+    def test_get_machine_stats_no_storage(self):
+        factory.make_Machine(cpu_count=4, memory=100, with_boot_disk=False)
+        self.assertEqual(
+            get_machine_stats(),
+            {"total_cpu": 4, "total_mem": 100, "total_storage": 0},
+        )
 
     def test_get_workload_annotations_stats_machines(self):
         machine1 = factory.make_Machine(status=NODE_STATUS.DEPLOYED)

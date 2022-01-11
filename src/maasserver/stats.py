@@ -57,7 +57,14 @@ def get_machine_stats():
     return Machine.objects.aggregate(
         total_cpu=NotNullSum("cpu_count"),
         total_mem=NotNullSum("memory"),
-        total_storage=NotNullSum("blockdevice__size"),
+        total_storage=NotNullSum(
+            Case(
+                When(
+                    blockdevice__physicalblockdevice__isnull=False,
+                    then=F("blockdevice__size"),
+                ),
+            )
+        ),
     )
 
 
