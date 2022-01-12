@@ -148,7 +148,7 @@ def create_default_related_entries_on_create(
     create_default_nodeconfig(instance)
 
 
-for sender in (Machine, Node, RackController, RegionController):
+for sender in (Device, Machine, Node, RackController, RegionController):
     signals.watch(
         post_save, create_default_related_entries_on_create, sender=sender
     )

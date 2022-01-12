@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import base64
@@ -5855,6 +5855,12 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         factory.make_NodeConfig(node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT)
         self.assertEqual(node.current_config.name, NODE_CONFIG_TYPE.DISCOVERED)
+
+    def test_default_node_config_for_device(self):
+        device = factory.make_Device()
+        self.assertEqual(
+            device.current_config.name, NODE_CONFIG_TYPE.DISCOVERED
+        )
 
     def test_get_commissioning_resources_no_script(self):
         node = factory.make_Node()
