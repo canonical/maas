@@ -122,6 +122,8 @@ class EVENT_TYPES:
     NETWORKING = "NETWORKING"
     # Zones events
     ZONES = "ZONES"
+    # Tag events
+    TAG = "TAG"
     # Status message events
     CONFIGURING_STORAGE = "CONFIGURING_STORAGE"
     INSTALLING_OS = "INSTALLING_OS"
@@ -347,6 +349,7 @@ EVENT_DETAILS = {
     EVENT_TYPES.NODE: EventDetail(description="Node", level=AUDIT),
     EVENT_TYPES.IMAGES: EventDetail(description="Images", level=AUDIT),
     EVENT_TYPES.POD: EventDetail(description="Pod", level=AUDIT),
+    EVENT_TYPES.TAG: EventDetail(description="Tag", level=AUDIT),
     EVENT_TYPES.NETWORKING: EventDetail(description="Networking", level=AUDIT),
     EVENT_TYPES.ZONES: EventDetail(description="Zones", level=AUDIT),
     EVENT_TYPES.CONFIGURING_STORAGE: EventDetail(

@@ -540,7 +540,10 @@ class Handler(metaclass=HandlerMetaclass):
     def update(self, params):
         """Update the object."""
         obj = self.get_object(params)
+        obj = self._update(obj, params)
+        return self.full_dehydrate(obj)
 
+    def _update(self, obj, params):
         # Update by using form. `edit_permission` is not used when form
         # is used to update. The form should define the permissions.
         form_class = self.get_form_class("update")
@@ -560,7 +563,7 @@ class Handler(metaclass=HandlerMetaclass):
                     obj = form.save()
                 except ValidationError as e:
                     raise HandlerValidationError(e.error_dict)
-                return self.full_dehydrate(obj)
+                return obj
             else:
                 raise HandlerValidationError(form.errors)
 
@@ -572,11 +575,14 @@ class Handler(metaclass=HandlerMetaclass):
         # Update by updating the fields on the object.
         obj = self.full_hydrate(obj, params)
         obj.save()
-        return self.full_dehydrate(obj)
+        return obj
 
     def delete(self, params):
         """Delete the object."""
         obj = self.get_object(params, permission=self._meta.delete_permission)
+        self._delete(obj)
+
+    def _delete(self, obj):
         obj.delete()
 
     def set_active(self, params):

@@ -1,18 +1,24 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from django.db.models import Count, Q
+from django.http import HttpRequest
 
-from maasserver.enum import NODE_TYPE
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT, NODE_TYPE
+from maasserver.forms import TagForm
 from maasserver.models.tag import Tag
 from maasserver.websockets.base import AdminOnlyMixin
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
+from provisioningserver.events import EVENT_TYPES
 
 
 class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
     class Meta:
+        form = TagForm
+        form_requires_request = False
         queryset = Tag.objects.annotate(
             machine_count=Count(
                 "node", filter=Q(node__node_type=NODE_TYPE.MACHINE)
@@ -47,9 +53,34 @@ class TagHandler(TimestampedModelHandler, AdminOnlyMixin):
         # doesn't come from the DB
         for field in ("machine_count", "device_count", "controller_count"):
             setattr(obj, field, 0)
+        self._create_audit_event(f"Tag '{obj.name}' created.")
+        return obj
+
+    def _delete(self, obj):
+        self._create_audit_event(f"Tag '{obj.name}' deleted.")
+        return super()._delete(obj)
+
+    def _update(self, obj, params):
+        name = obj.name
+        obj = super()._update(obj, params)
+
+        new_name = params.get("name")
+        action = f"renamed to '{new_name}'" if new_name else "updated"
+        self._create_audit_event(f"Tag '{name}' {action}.")
         return obj
 
     def dehydrate(self, obj, data, for_list=False):
         for field in ("machine_count", "device_count", "controller_count"):
             data[field] = getattr(obj, field)
         return data
+
+    def _create_audit_event(self, description):
+        request = HttpRequest()
+        request.user = self.user
+        create_audit_event(
+            EVENT_TYPES.TAG,
+            ENDPOINT.UI,
+            request,
+            None,
+            description=description,
+        )

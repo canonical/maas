@@ -1,7 +1,5 @@
-# Copyright 2013-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for the Tags API."""
 
 
 import http.client
@@ -16,7 +14,7 @@ from testtools.matchers import MatchesStructure
 from apiclient.creds import convert_tuple_to_string
 from maasserver import middleware
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Node, Tag
+from maasserver.models import Event, Node, Tag
 from maasserver.models.node import generate_node_system_id
 from maasserver.models.user import (
     create_auth_token,
@@ -29,6 +27,7 @@ from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
+from provisioningserver.events import AUDIT, EVENT_TYPES
 
 
 def extract_system_ids(parsed_result):
@@ -61,6 +60,14 @@ class TestTagAPI(APITestCase.ForUser):
         response = self.client.delete(self.get_tag_uri(tag))
         self.assertEqual(http.client.NO_CONTENT, response.status_code)
         self.assertFalse(Tag.objects.filter(id=tag.id).exists())
+
+    def test_DELETE_creates_event_log(self):
+        self.become_admin()
+        tag = factory.make_Tag()
+        self.client.delete(self.get_tag_uri(tag))
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(event.type.name, EVENT_TYPES.TAG)
+        self.assertEqual(event.description, f"Tag '{tag.name}' deleted.")
 
     def test_DELETE_404(self):
         self.become_admin()
@@ -110,6 +117,32 @@ class TestTagAPI(APITestCase.ForUser):
         self.assertEqual(tag.definition, parsed_result["definition"])
         self.assertFalse(Tag.objects.filter(name=tag.name).exists())
         self.assertTrue(Tag.objects.filter(name="new-tag-name").exists())
+
+    def test_PUT_creates_event_log(self):
+        self.become_admin()
+        tag = factory.make_Tag()
+        self.client.put(
+            self.get_tag_uri(tag),
+            {"comment": "A random comment"},
+        )
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(event.type.name, EVENT_TYPES.TAG)
+        self.assertEqual(event.description, f"Tag '{tag.name}' updated.")
+
+    def test_PUT_creates_event_log_rename(self):
+        self.become_admin()
+        tag = factory.make_Tag()
+        old_name = tag.name
+        new_name = factory.make_string()
+        self.client.put(
+            self.get_tag_uri(tag),
+            {"name": new_name},
+        )
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(event.type.name, EVENT_TYPES.TAG)
+        self.assertEqual(
+            event.description, f"Tag '{old_name}' renamed to '{new_name}'."
+        )
 
     def test_PUT_updates_node_associations(self):
         populate_nodes = self.patch_autospec(Tag, "populate_nodes")
@@ -848,6 +881,18 @@ class TestTagsAPI(APITestCase.ForUser):
         self.assertEqual(definition, parsed_result["definition"])
         self.assertTrue(Tag.objects.filter(name=name).exists())
         self.assertThat(Tag.populate_nodes, MockCalledOnceWith(ANY))
+
+    def test_POST_creates_event_log(self):
+        self.patch_autospec(Tag, "populate_nodes")
+        self.become_admin()
+        name = factory.make_string()
+        self.client.post(
+            reverse("tags_handler"),
+            {"name": name},
+        )
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(event.type.name, EVENT_TYPES.TAG)
+        self.assertEqual(event.description, f"Tag '{name}' created.")
 
     def test_POST_new_without_definition_creates_tag(self):
         self.become_admin()

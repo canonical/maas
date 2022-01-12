@@ -1,17 +1,18 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-
 from maasserver.enum import NODE_TYPE
-from maasserver.models.tag import Tag
+from maasserver.models import Event, Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerPermissionError,
+    HandlerValidationError,
 )
 from maasserver.websockets.handlers.tag import TagHandler
+from provisioningserver.events import AUDIT, EVENT_TYPES
 
 
 class TestTagHandler(MAASServerTestCase):
@@ -83,6 +84,10 @@ class TestTagHandler(MAASServerTestCase):
         [tag] = Tag.objects.all()
         self.assertEqual(self.dehydrate_tag(tag), result)
         mock_populate_nodes.assert_called_once()
+        # an audit log entry is created
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(event.type.name, EVENT_TYPES.TAG)
+        self.assertEqual(event.description, f"Tag '{tag.name}' created.")
 
     def test_create_no_admin(self):
         handler = TagHandler(factory.make_User(), {}, None)
@@ -102,6 +107,7 @@ class TestTagHandler(MAASServerTestCase):
         mock_populate_nodes = self.patch(Tag, "populate_nodes")
         handler = TagHandler(factory.make_admin(), {}, None)
         tag = factory.make_Tag()
+        old_name = tag.name
         new_name = factory.make_name("name")
         new_definition = '//node[@id="memory"]/size = 1073741824'
         result = handler.update(
@@ -116,6 +122,11 @@ class TestTagHandler(MAASServerTestCase):
         self.assertEqual(tag.name, new_name)
         self.assertEqual(tag.definition, new_definition)
         mock_populate_nodes.assert_called_once()
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(event.type.name, EVENT_TYPES.TAG)
+        self.assertEqual(
+            event.description, f"Tag '{old_name}' renamed to '{new_name}'."
+        )
 
     def test_update_no_admin(self):
         handler = TagHandler(factory.make_User(), {}, None)
@@ -135,11 +146,30 @@ class TestTagHandler(MAASServerTestCase):
         self.assertNotEqual(tag.name, new_name)
         self.assertNotEqual(tag.definition, new_definition)
 
+    def test_update_validate_xpath(self):
+        handler = TagHandler(factory.make_admin(), {}, None)
+        tag = factory.make_Tag()
+        error = self.assertRaises(
+            HandlerValidationError,
+            handler.update,
+            {
+                "id": tag.id,
+                "definition": "invalid::tag",
+            },
+        )
+        self.assertEqual(
+            error.message_dict,
+            {"definition": ["Invalid xpath expression: Invalid expression"]},
+        )
+
     def test_delete(self):
         handler = TagHandler(factory.make_admin(), {}, None)
         tag = factory.make_Tag()
         handler.delete({"id": tag.id})
         self.assertFalse(Tag.objects.exists())
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertEqual(event.type.name, EVENT_TYPES.TAG)
+        self.assertEqual(event.description, f"Tag '{tag.name}' deleted.")
 
     def test_delete_no_admin(self):
         handler = TagHandler(factory.make_User(), {}, None)

@@ -1,4 +1,4 @@
-# Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API handlers: `Tag`."""
@@ -18,6 +18,8 @@ from maasserver.api.utils import (
     extract_oauth_key,
     get_list_from_dict_or_multidict,
 )
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.exceptions import MAASAPIValidationError, Unauthorized
 from maasserver.forms import TagForm
 from maasserver.models import (
@@ -31,6 +33,7 @@ from maasserver.models import (
 from maasserver.models.user import get_auth_tokens
 from maasserver.permissions import NodePermission
 from maasserver.utils.orm import get_one, prefetch_queryset
+from provisioningserver.events import EVENT_TYPES
 
 
 def check_rack_controller_access(request, rack_controller):
@@ -119,17 +122,28 @@ class TagHandler(OperationsHandler):
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True
         )
+        name = tag.name
         form = TagForm(request.data, instance=tag)
-        if form.is_valid():
-            try:
-                new_tag = form.save(commit=False)
-                new_tag.save()
-                form.save_m2m()
-            except DatabaseError as e:
-                raise MAASAPIValidationError(e)
-            return new_tag
-        else:
+        if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
+
+        try:
+            new_tag = form.save(commit=False)
+            new_tag.save()
+            form.save_m2m()
+        except DatabaseError as e:
+            raise MAASAPIValidationError(e)
+
+        new_name = request.data.get("name")
+        action = f"renamed to '{new_name}'" if new_name else "updated"
+        create_audit_event(
+            EVENT_TYPES.TAG,
+            ENDPOINT.API,
+            request,
+            None,
+            description=f"Tag '{name}' {action}.",
+        )
+        return new_tag
 
     def delete(self, request, name):
         """@description-title Delete a tag
@@ -149,6 +163,13 @@ class TagHandler(OperationsHandler):
             name=name, user=request.user, to_edit=True
         )
         tag.delete()
+        create_audit_event(
+            EVENT_TYPES.TAG,
+            ENDPOINT.API,
+            request,
+            None,
+            description=f"Tag '{tag.name}' deleted.",
+        )
         return rc.DELETED
 
     def _get_node_type(self, model, request, name):
@@ -438,11 +459,20 @@ class TagsHandler(OperationsHandler):
         """
         if not request.user.is_superuser:
             raise PermissionDenied()
+
         form = TagForm(request.data)
-        if form.is_valid():
-            return form.save()
-        else:
+        if not form.is_valid():
             raise MAASAPIValidationError(form.errors)
+
+        tag = form.save()
+        create_audit_event(
+            EVENT_TYPES.TAG,
+            ENDPOINT.API,
+            request,
+            None,
+            description=f"Tag '{tag.name}' created.",
+        )
+        return tag
 
     def read(self, request):
         """@description-title List tags
