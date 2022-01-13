@@ -57,7 +57,7 @@ def is_config_present():
 
 
 @synchronous
-def write_config(write_local, forwarders=None, port=None):
+def write_config(write_local, forwarders=None, port=None, promtail_port=None):
     """Write the syslog configuration."""
     context = {
         "user": "maas",
@@ -72,6 +72,7 @@ def write_config(write_local, forwarders=None, port=None):
             if forwarders is not None
             else []
         ),
+        "promtail_port": promtail_port if promtail_port else 0,
     }
 
     # Running inside the snap rsyslog is root.

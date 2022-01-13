@@ -120,6 +120,9 @@ def get_default_config():
         "prometheus_enabled": False,
         "prometheus_push_gateway": None,
         "prometheus_push_interval": 60,
+        # Loki Promtail
+        "promtail_enabled": False,
+        "promtail_port": 5238,
         # Enlistment options
         "enlist_commissioning": True,
         "maas_auto_ipmi_user": "maas",

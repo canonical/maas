@@ -89,7 +89,10 @@ def prepareRegion(
         }
     )
     protocol.GetSyslogConfiguration.side_effect = always_succeed_with(
-        {"port": syslog_port}
+        {
+            "port": syslog_port,
+            "promtail_port": 5555,
+        }
     )
 
     def connected(teardown):
@@ -858,6 +861,7 @@ class TestRackSyslog(MAASTestCase):
                 forwarders=forwarders,
                 is_region=is_region,
                 is_rack=is_rack,
+                promtail_port=5555,
             ),
         )
 
@@ -884,7 +888,12 @@ class TestRackSyslog(MAASTestCase):
         ]
         self.assertThat(
             write_config,
-            MockCalledOnceWith(False, forwarders=expected_forwards, port=port),
+            MockCalledOnceWith(
+                False,
+                forwarders=expected_forwards,
+                port=port,
+                promtail_port=5555,
+            ),
         )
         self.assertThat(
             service_monitor.restartService, MockCalledOnceWith("syslog_rack")
@@ -894,7 +903,12 @@ class TestRackSyslog(MAASTestCase):
         yield service._orig_tryUpdate()
         self.assertThat(
             write_config,
-            MockCalledOnceWith(False, forwarders=expected_forwards, port=port),
+            MockCalledOnceWith(
+                False,
+                forwarders=expected_forwards,
+                port=port,
+                promtail_port=5555,
+            ),
         )
         self.assertThat(
             service_monitor.restartService, MockCalledOnceWith("syslog_rack")

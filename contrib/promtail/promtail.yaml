@@ -1,0 +1,119 @@
+server:
+  disable: true
+
+positions:
+  filename: ${LOG_DIR:/var/log}/positions.yaml
+
+clients:
+  - url: ${LOKI_API_URL}
+
+scrape_configs:
+  - job_name: maas-logs
+    syslog:
+      listen_address: 127.0.0.1:${PROMTAIL_LISTEN_PORT:5238}
+      labels:
+        job: "maas-logs"
+        maas_region: ${MAAS_IS_REGION:False}
+        maas_rack: ${MAAS_IS_RACK:False}
+    pipeline_stages:
+      - regex:
+          expression: "^(?s)(?P<time>\\S+?) (?P<host>\\S+?) (?P<maas_module>\\S+?): \\[(?P<severity>\\S+?)\\] (?P<content>.*)$"
+      - timestamp:
+          source: time
+          format: RFC3339Nano
+      - output:
+          source: content
+      - labels:
+          maas_module:
+          severity:
+          host:
+
+  - job_name: maas-console
+    static_configs:
+      - labels:
+          __path__: ${LOG_DIR:/var/log}/{regiond,rackd}.log
+          host: ${HOSTNAME}
+          maas_region: ${MAAS_IS_REGION:False}
+          maas_rack: ${MAAS_IS_RACK:False}
+          job: "maas-console"
+    pipeline_stages:
+      - regex:
+          expression: "^(?s)(?P<time>\\S+ \\S+?) (?P<maas_module>\\S+?): \\[(?P<severity>\\S+?)\\] (?P<content>.*)$"
+      - timestamp:
+          source: time
+          format: RFC3339
+      - labels:
+          maas_module:
+          severity:
+      - match:
+          selector: '{maas_module="regiond"}'
+          stages:
+            - regex:
+                expression: '^(?s)\\S+ \\S+ \\S+: \\[\\S+\\] (?P<remote_addr>[\w\.]+) (?P<method>[^ ]*) (?P<request>[^ ]*) (?P<protocol>[^ ]*) --> (?P<status>[\d]+).*$'
+            - labels:
+                remote_addr:
+                method:
+                request:
+                protocol:
+                status:
+      - output:
+          source: content
+
+  - job_name: maas-dhcpd
+    static_configs:
+      - labels:
+          __path__: ${LOG_DIR:/var/log}/dhcpd*.log
+          host: ${HOSTNAME}
+          maas_region: ${MAAS_IS_REGION:False}
+          maas_rack: ${MAAS_IS_RACK:False}
+          job: "maas-dhcpd"
+
+  - job_name: maas-metadata
+    static_configs:
+      - labels:
+          __path__: ${LOG_DIR:/var/log}/http/access.log
+          host: ${HOSTNAME}
+          maas_region: ${MAAS_IS_REGION:False}
+          maas_rack: ${MAAS_IS_RACK:False}
+          job: "maas-metadata"
+    pipeline_stages:
+      - regex:
+          expression: "^(?P<remote_addr>[\\w\\.]+) - (?P<remote_user>[^ ]*) \\[(?P<time_local>.*)\\] \"(?P<method>[^ ]*) (?P<request>[^ ]*) (?P<protocol>[^ ]*)\" (?P<status>[\\d]+) (?P<body_bytes_sent>[\\d]+) \"(?P<http_referer>[^\"]*)\" \"(?P<http_user_agent>[^\"]*)\"?"
+      - labels:
+          remote_addr:
+          remote_user:
+          time_local:
+          method:
+          request:
+          protocol:
+          status:
+          body_bytes_sent:
+          http_referer:
+          http_user_agent:
+
+  - job_name: maas-named
+    static_configs:
+      - labels:
+          __path__: ${LOG_DIR:/var/log}/named.log
+          host: ${HOSTNAME}
+          maas_region: ${MAAS_IS_REGION:False}
+          maas_rack: ${MAAS_IS_RACK:False}
+          job: "maas-named"
+
+  - job_name: maas-ntpd
+    static_configs:
+      - labels:
+          __path__: ${LOG_DIR:/var/log}/chrony.log
+          host: ${HOSTNAME}
+          maas_region: ${MAAS_IS_REGION:False}
+          maas_rack: ${MAAS_IS_RACK:False}
+          job: "maas-ntpd"
+
+  - job_name: maas-proxy
+    static_configs:
+      - labels:
+          __path__: ${LOG_DIR:/var/log}/proxy.log
+          host: ${HOSTNAME}
+          maas_region: ${MAAS_IS_REGION:False}
+          maas_rack: ${MAAS_IS_RACK:False}
+          job: "maas-proxy"

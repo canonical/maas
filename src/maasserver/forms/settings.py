@@ -840,6 +840,27 @@ CONFIG_ITEMS = {
             ),
         },
     },
+    "promtail_enabled": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Enable streaming logs to Promtail.",
+            "required": False,
+            "help_text": ("Whether to stream logs to Promtail"),
+        },
+    },
+    "promtail_port": {
+        "default": 5238,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "label": "TCP port of the Promtail Push API.",
+            "required": False,
+            "help_text": (
+                "Defines the TCP port of the Promtail push "
+                "API where MAAS will stream logs to."
+            ),
+        },
+    },
     "enlist_commissioning": {
         "default": True,
         "form": forms.BooleanField,

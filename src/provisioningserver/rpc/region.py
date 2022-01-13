@@ -606,7 +606,10 @@ class GetSyslogConfiguration(amp.Command):
     """
 
     arguments = [(b"system_id", amp.Unicode())]
-    response = [(b"port", amp.Integer())]
+    response = [
+        (b"port", amp.Integer()),
+        (b"promtail_port", amp.Integer(optional=True)),
+    ]
     errors = {NoSuchNode: b"NoSuchNode"}
 
 

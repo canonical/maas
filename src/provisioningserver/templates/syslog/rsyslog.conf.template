@@ -62,6 +62,14 @@ if $syslogtag contains "maas" then {
 {{endif}}
 
 
+{{if promtail_port > 0}}
+# Forward to promtail
+*.* action(type="omfwd" protocol="tcp" target="localhost" port="{{promtail_port}}" 
+           Template="RSYSLOG_SyslogProtocol23Format" 
+           TCP_Framing="octet-counted")
+{{endif}}
+
+
 {{if not write_local}}
 # rack-only controller still logs to a local maas.log.
 :syslogtag, contains, "maas" {{log_dir}}/maas.log

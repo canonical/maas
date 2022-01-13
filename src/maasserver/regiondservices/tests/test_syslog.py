@@ -121,6 +121,7 @@ class TestRegionSyslogService(MAASTransactionServerTestCase):
                     )
                 ),
                 port=port,
+                promtail_port=None,
             ),
         )
         self.assertThat(restartService, MockCalledOnceWith("syslog_region"))

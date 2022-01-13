@@ -558,7 +558,18 @@ class Region(RPCProtocol):
         @transactional
         def get_from_db():
             port = Config.objects.get_config("maas_syslog_port")
-            return {"port": port}
+
+            promtail_enabled = Config.objects.get_config("promtail_enabled")
+            promtail_port = (
+                Config.objects.get_config("promtail_port")
+                if promtail_enabled
+                else None
+            )
+
+            return {
+                "port": port,
+                "promtail_port": promtail_port,
+            }
 
         return deferToDatabase(get_from_db)
 

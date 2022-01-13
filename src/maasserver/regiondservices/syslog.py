@@ -74,7 +74,13 @@ class RegionSyslogService(TimerService):
                 peers = frozenset()
 
         port = Config.objects.get_config("maas_syslog_port")
-        return _Configuration(port, peers)
+        promtail_enabled = Config.objects.get_config("promtail_enabled")
+        promtail_port = (
+            Config.objects.get_config("promtail_port")
+            if promtail_enabled
+            else None
+        )
+        return _Configuration(port, peers, promtail_port)
 
     def _maybeApplyConfiguration(self, configuration):
         """Reconfigure the syslog server if the configuration changes.
@@ -113,6 +119,7 @@ class RegionSyslogService(TimerService):
                 for hostname, ip in configuration.peers
             ],
             port=configuration.port,
+            promtail_port=configuration.promtail_port,
         )
         d.addCallback(callOut, service_monitor.restartService, "syslog_region")
         return d
@@ -126,6 +133,20 @@ class RegionSyslogService(TimerService):
         self._configuration = configuration
 
 
+def converter_obj(expected):
+    """Convert the given value to an object of type `expected`."""
+
+    def converter(value):
+        if value is None:
+            return None
+        if isinstance(value, expected):
+            return value
+        else:
+            raise TypeError("%r is not of type %s" % (value, expected))
+
+    return converter
+
+
 @attr.s
 class _Configuration:
     """Configuration for the region's syslog servers."""
@@ -135,3 +156,6 @@ class _Configuration:
 
     # Addresses of peer region controller hosts.
     peers = attr.ib(converter=frozenset)
+
+    # Promtail syslog port
+    promtail_port = attr.ib(converter=converter_obj(int), default=None)

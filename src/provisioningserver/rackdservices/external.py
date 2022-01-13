@@ -355,6 +355,7 @@ class RackSyslog(RackOnlyExternalService):
             forwarders=forwarders,
             is_region=controller_type["is_region"],
             is_rack=controller_type["is_rack"],
+            promtail_port=syslog_configuration["promtail_port"],
         )
 
     def _applyConfiguration(self, configuration):
@@ -385,7 +386,10 @@ class RackSyslog(RackOnlyExternalService):
             for name, ip in dict(configuration.forwarders).items()
         ]
         syslog_config.write_config(
-            False, forwarders=forwarders, port=configuration.port
+            False,
+            forwarders=forwarders,
+            port=configuration.port,
+            promtail_port=configuration.promtail_port,
         )
 
 
@@ -556,6 +560,20 @@ class _ProxyConfiguration:
     is_rack = attr.ib(converter=bool)
 
 
+def converter_obj(expected):
+    """Convert the given value to an object of type `expected`."""
+
+    def converter(value):
+        if value is None:
+            return None
+        if isinstance(value, expected):
+            return value
+        else:
+            raise TypeError("%r is not of type %s" % (value, expected))
+
+    return converter
+
+
 @attr.s
 class _SyslogConfiguration:
     """Configuration for the rack's syslog server."""
@@ -570,3 +588,6 @@ class _SyslogConfiguration:
     # but check nevertheless before applying this configuration.
     is_region = attr.ib(converter=bool)
     is_rack = attr.ib(converter=bool)
+
+    # forward logs to promtail
+    promtail_port = attr.ib(converter=converter_obj(int), default=None)
