@@ -51,7 +51,7 @@ def locate_template(*path: Tuple[str]):
     )
 
 
-@lru_cache(256)
+@lru_cache(maxsize=256)
 def load_template(*path: Tuple[str]):
     """Load the template."""
     return tempita.Template.from_filename(

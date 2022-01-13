@@ -306,14 +306,14 @@ class BootMethod(metaclass=ABCMeta):
             or self.arch_octet is None
         )
         assert isinstance(self.user_class, str) or self.user_class is None
+        self.get_template_dir = lru_cache(maxsize=1)(self._get_template_dir)
+        self.get_template = lru_cache(maxsize=512)(self._get_template)
 
-    @lru_cache(1)
-    def get_template_dir(self):
+    def _get_template_dir(self):
         """Gets the template directory for the boot method."""
         return locate_template("%s" % self.template_subdir)
 
-    @lru_cache(512)
-    def get_template(self, purpose, arch, subarch):
+    def _get_template(self, purpose, arch, subarch):
         """Gets the best avaliable template for the boot method.
 
         Templates are loaded each time here so that they can be changed on

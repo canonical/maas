@@ -815,7 +815,7 @@ def is_dev_environment():
         return True
 
 
-@lru_cache(1)
+@lru_cache(maxsize=1)
 def debug_enabled():
     """Return and cache whether debug has been enabled."""
     with ClusterConfiguration.open() as config:

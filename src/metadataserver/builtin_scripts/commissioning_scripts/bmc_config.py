@@ -103,16 +103,16 @@ class BMCConfig(metaclass=ABCMeta):
     username = None
     password = None
 
-    @abstractproperty
-    def power_type(self):
-        """The power_type of the BMC."""
+    def __init__(self, *args, **kwargs):
+        pass
 
     @abstractmethod
     def __str__(self):
         """The pretty name of the BMC type."""
 
-    def __init__(self, *args, **kwargs):
-        pass
+    @abstractproperty
+    def power_type(self):
+        """The power_type of the BMC."""
 
     @abstractmethod
     def detected(self):
@@ -153,9 +153,6 @@ class IPMI(BMCConfig):
 
     power_type = "ipmi"
 
-    def __str__(self):
-        return "IPMI"
-
     def __init__(
         self,
         username=None,
@@ -171,6 +168,9 @@ class IPMI(BMCConfig):
         self._cipher_suite_id = ipmi_cipher_suite_id
         self._privilege_level = ipmi_privilege_level
         self._bmc_config = {}
+
+    def __str__(self):
+        return "IPMI"
 
     def _bmc_get_config(self, section=None):
         """Fetch and cache all BMC settings."""
@@ -251,35 +251,10 @@ class IPMI(BMCConfig):
                         % (section, key, value)
                     )
 
-    @staticmethod
-    @lru_cache(maxsize=1)
-    def _get_ipmi_locate_output():
-        return check_output(["ipmi-locate"], timeout=COMMAND_TIMEOUT).decode()
-
-    @staticmethod
-    @lru_cache(maxsize=1)
-    def _get_ipmitool_lan_print():
-        # You must specify a channel to use with ipmitool, the only
-        # way to figure this out is through trial and error.
-        for i in range(0, 9):
-            i = str(i)
-            try:
-                return (
-                    i,
-                    check_output(
-                        ["ipmitool", "lan", "print", i],
-                        stderr=DEVNULL,
-                        timeout=COMMAND_TIMEOUT,
-                    ).decode(),
-                )
-            except (CalledProcessError, TimeoutExpired):
-                pass
-        return -1, ""
-
     def detected(self):
         # Verify the BMC uses IPMI.
         try:
-            output = self._get_ipmi_locate_output()
+            output = _get_ipmi_locate_output()
         except Exception:
             return False
         else:
@@ -631,7 +606,7 @@ class IPMI(BMCConfig):
     def get_credentials(self):
         """Return the BMC credentials to use the BMC."""
         if (
-            "IPMI Version: 2.0" in self._get_ipmi_locate_output()
+            "IPMI Version: 2.0" in _get_ipmi_locate_output()
             or platform.machine() == "ppc64le"
         ):
             ipmi_version = "LAN_2_0"
@@ -803,6 +778,8 @@ class Wedge(BMCConfig):
     username = "root"
     password = "0penBmc"
 
+    _bmc_ip = None
+
     def __str__(self):
         return "Facebook Wedge"
 
@@ -835,21 +812,6 @@ class Wedge(BMCConfig):
             return "accton"
         return None
 
-    @property
-    @lru_cache(maxsize=1)
-    def _wedge_local_addr(self):
-        try:
-            # "fe80::ff:fe00:2" is the address for the device to the internal
-            # BMC network.
-            output = check_output(
-                ["ip", "-o", "a", "show", "to", "fe80::ff:fe00:2"],
-                timeout=COMMAND_TIMEOUT,
-            ).decode()
-            # fe80::1 is the BMC's LLA.
-            return "fe80::1%%%s" % output.split()[1]
-        except Exception:
-            return None
-
     def detected(self):
         # First detect this is a known switch
         try:
@@ -863,7 +825,7 @@ class Wedge(BMCConfig):
             # Second, lets verify if this is a known endpoint
             # First try to hit the API. This would work on Wedge 100.
             response = urllib.request.urlopen(
-                "http://[%s]:8080/api" % self._wedge_local_addr
+                "http://[%s]:8080/api" % _get_wedge_local_addr()
             )
             if b"Wedge RESTful API Entry" in response.read():
                 return True
@@ -874,13 +836,18 @@ class Wedge(BMCConfig):
             return True
         return False
 
-    @lru_cache(maxsize=1)
     def get_bmc_ip(self):
+        # cache the result of the IP discovery
+        if self._bmc_ip is None:
+            self._bmc_ip = self._get_bmc_ip()
+        return self._bmc_ip
+
+    def _get_bmc_ip(self):
         try:
             client = SSHClient()
             client.set_missing_host_key_policy(IgnoreHostKeyPolicy)
             client.connect(
-                self._wedge_local_addr,
+                _get_wedge_local_addr(),
                 username=self.username,
                 password=self.password,
             )
@@ -1016,6 +983,26 @@ def main():
     except TimeoutExpired:
         pass
     detect_and_configure(args, bmc_config_path)
+
+
+@lru_cache(maxsize=1)
+def _get_ipmi_locate_output():
+    return check_output(["ipmi-locate"], timeout=COMMAND_TIMEOUT).decode()
+
+
+@lru_cache(maxsize=1)
+def _get_wedge_local_addr():
+    try:
+        # "fe80::ff:fe00:2" is the address for the device to the internal
+        # BMC network.
+        output = check_output(
+            ["ip", "-o", "a", "show", "to", "fe80::ff:fe00:2"],
+            timeout=COMMAND_TIMEOUT,
+        ).decode()
+        # fe80::1 is the BMC's LLA.
+        return "fe80::1%%%s" % output.split()[1]
+    except Exception:
+        return None
 
 
 if __name__ == "__main__":

@@ -1,7 +1,5 @@
-# Copyright 2020-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2020-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Test bmc_config functions."""
 
 from collections import OrderedDict
 import io
@@ -236,61 +234,9 @@ EndSection
         )
         self.assertThat(self.mock_print, MockCalledOnce())
 
-    def test_get_ipmi_locate_output(self):
-        # Make sure we start out with a cleared cache
-        self.ipmi._get_ipmi_locate_output.cache_clear()
-        ret = factory.make_string()
-        self.mock_check_output.return_value = ret.encode()
-
-        self.assertEqual(ret, self.ipmi._get_ipmi_locate_output())
-        # Because the value is cached check_output should only be
-        # called once.
-        self.assertEqual(ret, self.ipmi._get_ipmi_locate_output())
-        self.assertThat(
-            self.mock_check_output,
-            MockCalledOnceWith(
-                ["ipmi-locate"], timeout=bmc_config.COMMAND_TIMEOUT
-            ),
-        )
-
-    def test_get_ipmitool_lan_print(self):
-        fake_output = factory.make_name("output")
-        self.mock_check_output.side_effect = (
-            CalledProcessError(cmd="cmd", returncode=random.randint(1, 255)),
-            TimeoutExpired(cmd="cmd", timeout=random.randint(1, 100)),
-            fake_output.encode(),
-        )
-
-        # Call twice to test caching
-        self.ipmi._get_ipmitool_lan_print()
-        channel, output = self.ipmi._get_ipmitool_lan_print()
-
-        self.assertEqual("2", channel)
-        self.assertEqual(fake_output, output)
-        self.assertThat(
-            self.mock_check_output,
-            MockCallsMatch(
-                call(
-                    ["ipmitool", "lan", "print", "0"],
-                    stderr=DEVNULL,
-                    timeout=bmc_config.COMMAND_TIMEOUT,
-                ),
-                call(
-                    ["ipmitool", "lan", "print", "1"],
-                    stderr=DEVNULL,
-                    timeout=bmc_config.COMMAND_TIMEOUT,
-                ),
-                call(
-                    ["ipmitool", "lan", "print", "2"],
-                    stderr=DEVNULL,
-                    timeout=bmc_config.COMMAND_TIMEOUT,
-                ),
-            ),
-        )
-
     def test_detected_true(self):
         mock_get_ipmi_locate_output = self.patch(
-            self.ipmi, "_get_ipmi_locate_output"
+            bmc_config, "_get_ipmi_locate_output"
         )
         mock_get_ipmi_locate_output.return_value = random.choice(
             [
@@ -308,7 +254,7 @@ EndSection
 
     def test_detected_false(self):
         mock_get_ipmi_locate_output = self.patch(
-            self.ipmi, "_get_ipmi_locate_output"
+            bmc_config, "_get_ipmi_locate_output"
         )
         mock_get_ipmi_locate_output.return_value = factory.make_string()
         self.assertFalse(self.ipmi.detected())
@@ -875,7 +821,7 @@ EndSection
         self.ipmi.username = factory.make_name("username")
         self.ipmi.password = factory.make_name("password")
         self.patch(
-            self.ipmi, "_get_ipmi_locate_output"
+            bmc_config, "_get_ipmi_locate_output"
         ).return_value = "IPMI Version: 2.0"
         self.patch(bmc_config.platform, "machine").return_value = "ppc64le"
         self.patch(bmc_config.os.path, "isdir").return_value = True
@@ -902,7 +848,7 @@ EndSection
         self.ipmi.username = factory.make_name("username")
         self.ipmi.password = factory.make_name("password")
         self.patch(
-            self.ipmi, "_get_ipmi_locate_output"
+            bmc_config, "_get_ipmi_locate_output"
         ).return_value = "IPMI Version: 1.0"
         self.patch(bmc_config.platform, "machine").return_value = "x86_64"
         self.patch(bmc_config.os.path, "isdir").return_value = False
@@ -930,7 +876,7 @@ EndSection
         self.ipmi.password = factory.make_name("password")
         self.ipmi._cipher_suite_id = "17"
         self.patch(
-            self.ipmi, "_get_ipmi_locate_output"
+            bmc_config, "_get_ipmi_locate_output"
         ).return_value = "IPMI Version: 1.0"
         self.patch(bmc_config.platform, "machine").return_value = "x86_64"
         self.patch(bmc_config.os.path, "isdir").return_value = False
@@ -1139,11 +1085,46 @@ class TestHPMoonshot(MAASTestCase):
         )
 
 
+class TestGetIPMILocateOutput(MAASTestCase):
+    def test_get_ipmi_locate_output(self):
+        mock_check_output = self.patch(bmc_config, "check_output")
+        ret = factory.make_string()
+        mock_check_output.return_value = ret.encode()
+        # Make sure we start out with a cleared cache
+        bmc_config._get_ipmi_locate_output.cache_clear()
+
+        self.assertEqual(ret, bmc_config._get_ipmi_locate_output())
+        # Because the value is cached check_output should only be
+        # called once.
+        self.assertEqual(ret, bmc_config._get_ipmi_locate_output())
+        mock_check_output.assert_called_once_with(
+            ["ipmi-locate"], timeout=bmc_config.COMMAND_TIMEOUT
+        )
+
+
+class TestGetWedgeLocalAddr(MAASTestCase):
+    def test_wedge_local_addr(self):
+        mock_check_output = self.patch(bmc_config, "check_output")
+        mock_check_output.return_value = (
+            b"8: eth0    inet fe80::ff:fe00:2/64 brd 10.0.0.255 scope global "
+            b"eth0\\       valid_lft forever preferred_lft forever"
+        )
+        bmc_config._get_wedge_local_addr.cache_clear()
+        self.assertEqual("fe80::1%eth0", bmc_config._get_wedge_local_addr())
+        # Call multiple times to verify caching
+        self.assertEqual(
+            bmc_config._get_wedge_local_addr(),
+            bmc_config._get_wedge_local_addr(),
+        )
+        mock_check_output.assert_called_once()
+
+
 class TestWedge(MAASTestCase):
     def setUp(self):
         super().setUp()
         self.wedge = bmc_config.Wedge()
         self.mock_check_output = self.patch(bmc_config, "check_output")
+        bmc_config._get_wedge_local_addr.cache_clear()
 
     def test_power_type(self):
         self.assertEqual("wedge", self.wedge.power_type)
@@ -1172,18 +1153,6 @@ class TestWedge(MAASTestCase):
             factory.make_name("baseboard-product-name").encode(),
         )
         self.assertIsNone(self.wedge._detect_known_switch())
-
-    def test_wedge_local_addr(self):
-        self.mock_check_output.return_value = (
-            b"8: eth0    inet fe80::ff:fe00:2/64 brd 10.0.0.255 scope global "
-            b"eth0\\       valid_lft forever preferred_lft forever"
-        )
-        self.assertEqual("fe80::1%eth0", self.wedge._wedge_local_addr)
-        # Call multiple times to verify caching
-        self.assertEqual(
-            self.wedge._wedge_local_addr, self.wedge._wedge_local_addr
-        )
-        self.assertThat(self.mock_check_output, MockCalledOnce())
 
     def test_detected_unknown_switch(self):
         self.patch(self.wedge, "_detect_known_switch").return_value = None
