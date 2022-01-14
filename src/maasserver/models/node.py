@@ -1249,6 +1249,12 @@ class Node(CleanSave, TimestampedModel):
 
     last_applied_storage_layout = CharField(max_length=50, blank=True)
 
+    # This actually always points to an entry, but can't be set to null=False
+    # since NodeConfig also has a non-nullable foreign key to Node
+    current_config = ForeignKey(
+        "NodeConfig", null=True, on_delete=CASCADE, related_name="+"
+    )
+
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
@@ -1269,16 +1275,6 @@ class Node(CleanSave, TimestampedModel):
     def default_numanode(self):
         """Return NUMA node 0 for the node."""
         return self.numanode_set.get(index=0)
-
-    @property
-    def current_config(self):
-        """Return the current NodeConfig for the node."""
-        # XXX currently nodes are always linked to the default
-        # config. Eventually the config returned should depend on the node
-        # status.
-        from maasserver.models.nodeconfig import NODE_CONFIG_DEFAULT
-
-        return self.nodeconfig_set.get(name=NODE_CONFIG_DEFAULT)
 
     def lock(self, user, comment=None):
         self._register_request_event(

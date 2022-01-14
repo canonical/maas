@@ -110,6 +110,7 @@ class ControllerHandler(MachineHandler):
             "url",
             "dns_process",
             "managing_process",
+            "current_config",
         ]
         list_fields = [
             "id",

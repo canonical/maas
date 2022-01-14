@@ -122,6 +122,7 @@ class DeviceHandler(NodeHandler):
             "install_kvm",
             "register_vmhost",
             "hardware_uuid",
+            "current_config",
         ]
         list_fields = [
             "id",

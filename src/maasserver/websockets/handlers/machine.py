@@ -227,6 +227,7 @@ class MachineHandler(NodeHandler):
             "install_rackd",
             "install_kvm",
             "register_vmhost",
+            "current_config",
         ]
         list_fields = [
             "id",

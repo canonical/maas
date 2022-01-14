@@ -14,6 +14,7 @@ class TestCreateCommissioningNodeConfig(MAASServerTestCase):
         [node_config] = node.nodeconfig_set.all()
         self.assertIs(node_config.node, node)
         self.assertEqual(node_config.name, "discovered")
+        self.assertEqual(node_config, node.current_config)
 
 
 class TestNodeConfig(MAASServerTestCase):

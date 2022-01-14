@@ -33,4 +33,6 @@ class NodeConfig(CleanSave, TimestampedModel):
 
 def create_default_nodeconfig(node):
     """Create the `discovered` NodeConfig for a Node."""
-    return NodeConfig.objects.create(node=node)
+    node_config = NodeConfig.objects.create(node=node)
+    node.current_config = node_config
+    node.save()
