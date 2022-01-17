@@ -347,7 +347,7 @@ class TestInterfaceManager(MAASServerTestCase):
             )
             # Need this line in order to cause the extra [potential] queries.
             self.assertIsNotNone(interfaces["eth0"].vlan.fabric)
-        self.assertThat(counter.num_queries, Equals(1))
+        self.assertEqual(counter.count, 1)
 
     def test_get_interface_dict_for_node__skips_prefetch_if_not_requested(
         self,
@@ -360,7 +360,7 @@ class TestInterfaceManager(MAASServerTestCase):
                 node1, fetch_fabric_vlan=False
             )
             self.assertIsNotNone(interfaces["eth0"].vlan.fabric)
-        self.assertThat(counter.num_queries, Equals(3))
+        self.assertEqual(counter.count, 3)
 
     def test_filter_by_ip(self):
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL)

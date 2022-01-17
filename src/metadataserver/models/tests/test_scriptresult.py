@@ -883,8 +883,8 @@ class TestScriptResult(MAASServerTestCase):
         script_result_many = ScriptResult.objects.get(id=script_results[-1].id)
         with queries_many:
             script_result_many.history
-        self.assertEqual(1, queries_one.num_queries)
-        self.assertEqual(1, queries_many.num_queries)
+        self.assertEqual(1, queries_one.count)
+        self.assertEqual(1, queries_many.count)
 
     def test_history_storage_device(self):
         # Regression test for LP: #1721524
