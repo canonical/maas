@@ -45,27 +45,27 @@ class TestPrometheusDiscoveryResource(MAASServerTestCase):
         self.assertCountEqual(
             [
                 {
-                    "instances": [
+                    "targets": [
                         ip + ":" + str(REGION_PROMETHEUS_PORT)
                         for ip in region_controller.ip_addresses()
                     ],
                     "labels": {
                         "__meta_prometheus_job": "maas",
                         "maas_az": region_controller.zone.name,
-                        "maas_region": True,
-                        "maas_rack": False,
+                        "maas_region": "True",
+                        "maas_rack": "False",
                     },
                 },
                 {
-                    "instances": [
+                    "targets": [
                         ip + ":" + str(RACK_PROMETHEUS_PORT)
                         for ip in rack_controller.ip_addresses()
                     ],
                     "labels": {
                         "__meta_prometheus_job": "maas",
                         "maas_az": rack_controller.zone.name,
-                        "maas_region": False,
-                        "maas_rack": True,
+                        "maas_region": "False",
+                        "maas_rack": "True",
                     },
                 },
             ],
@@ -92,27 +92,27 @@ class TestPrometheusDiscoveryResource(MAASServerTestCase):
         self.assertCountEqual(
             [
                 {
-                    "instances": [
+                    "targets": [
                         ip + ":" + str(REGION_PROMETHEUS_PORT)
                         for ip in region_rack_controller.ip_addresses()
                     ],
                     "labels": {
                         "__meta_prometheus_job": "maas",
                         "maas_az": region_rack_controller.zone.name,
-                        "maas_region": True,
-                        "maas_rack": True,
+                        "maas_region": "True",
+                        "maas_rack": "True",
                     },
                 },
                 {
-                    "instances": [
+                    "targets": [
                         ip + ":" + str(RACK_PROMETHEUS_PORT)
                         for ip in rack_controller.ip_addresses()
                     ],
                     "labels": {
                         "__meta_prometheus_job": "maas",
                         "maas_az": rack_controller.zone.name,
-                        "maas_region": False,
-                        "maas_rack": True,
+                        "maas_region": "False",
+                        "maas_rack": "True",
                     },
                 },
             ],
@@ -160,12 +160,12 @@ class TestPrometheusDiscoveryResource(MAASServerTestCase):
             if instances:
                 expected.append(
                     {
-                        "instances": instances,
+                        "targets": instances,
                         "labels": {
                             "__meta_prometheus_job": "maas",
                             "maas_az": zone.name,
-                            "maas_region": is_region,
-                            "maas_rack": is_rack,
+                            "maas_region": str(is_region),
+                            "maas_rack": str(is_rack),
                         },
                     }
                 )

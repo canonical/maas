@@ -50,7 +50,7 @@ class PrometheusDiscoveryResource(Resource):
             if instances:
                 endpoints.append(
                     {
-                        "instances": instances,
+                        "targets": instances,
                         "labels": self._get_labels(zone, is_region, is_rack),
                     }
                 )
@@ -60,8 +60,8 @@ class PrometheusDiscoveryResource(Resource):
         return {
             "__meta_prometheus_job": "maas",
             "maas_az": zone,
-            "maas_region": is_region,
-            "maas_rack": is_rack,
+            "maas_region": str(is_region),
+            "maas_rack": str(is_rack),
         }
 
     def _handle_GET(self):
