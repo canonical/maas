@@ -206,7 +206,7 @@ class TestScriptsAPI(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
 
-        self.assertEqual(
+        self.assertCountEqual(
             [script.id for script in scripts],
             [parsed_result["id"] for parsed_result in parsed_results],
         )
