@@ -1,8 +1,5 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for all forms that are used with `BlockDevice`."""
-
 
 import random
 import uuid
@@ -296,7 +293,7 @@ class TestUpdatePhysicalBlockDeviceForm(MAASServerTestCase):
 
     def test_updates_physical_block_device(self):
         block_device = factory.make_PhysicalBlockDevice()
-        node = block_device.node
+        node = block_device.node_config.node
         numa_node = factory.make_NUMANode(node=node)
         name = factory.make_name("sd")
         model = factory.make_name("model")

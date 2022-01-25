@@ -20,10 +20,12 @@ from maasserver.models.timestampedmodel import TimestampedModel
 class CacheSetManager(Manager):
     def get_cache_set_idx(self, cache_set):
         """Return the idx of this cache set for its node."""
-        node = cache_set.get_node()
+        node_config = cache_set.get_node().current_config
         cache_sets = self.filter(
-            Q(filesystems__partition__partition_table__block_device__node=node)
-            | Q(filesystems__block_device__node=node)
+            Q(
+                filesystems__partition__partition_table__block_device__node_config=node_config
+            )
+            | Q(filesystems__block_device__node_config=node_config)
         ).order_by("id")
         for idx, cset in enumerate(cache_sets):
             if cset == cache_set:
@@ -32,12 +34,14 @@ class CacheSetManager(Manager):
 
     def get_cache_sets_for_node(self, node):
         """Return the cache sets for the `node`."""
+        node_config = node.current_config
         partition_filter = {
             "filesystems__partition__partition_table__"
-            "block_device__node": node
+            "block_device__node_config": node_config,
         }
         return self.filter(
-            Q(filesystems__block_device__node=node) | Q(**partition_filter)
+            Q(filesystems__block_device__node_config=node_config)
+            | Q(**partition_filter)
         )
 
     def get_cache_set_for_block_device(self, block_device):

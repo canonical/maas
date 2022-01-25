@@ -1,7 +1,5 @@
-# Copyright 2014-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `BlockDevice`."""
 
 
 import random
@@ -50,7 +48,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
         node = factory.make_Node()
         # The call to make_Node creates a block device.  We'll pick a random id
         # larger than the Id in question, and it should fail to find it.
-        dev_id = node.blockdevice_set.first().id
+        dev_id = node.current_config.blockdevice_set.first().id
         self.assertRaises(
             Http404,
             BlockDevice.objects.get_block_device_or_404,
@@ -63,7 +61,9 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_return_block_device_by_name(self):
         user = factory.make_User()
         node = factory.make_Node()
-        device = factory.make_PhysicalBlockDevice(node=node)
+        device = factory.make_PhysicalBlockDevice(
+            node_config=node.current_config
+        )
         self.assertEqual(
             device.id,
             BlockDevice.objects.get_block_device_or_404(
@@ -74,7 +74,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_view_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
-        device = factory.make_BlockDevice(node=node)
+        device = factory.make_BlockDevice(node_config=node.current_config)
         self.assertRaises(
             PermissionDenied,
             BlockDevice.objects.get_block_device_or_404,
@@ -87,7 +87,9 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_view_returns_device_when_no_owner(self):
         user = factory.make_User()
         node = factory.make_Node()
-        device = factory.make_PhysicalBlockDevice(node=node)
+        device = factory.make_PhysicalBlockDevice(
+            node_config=node.current_config
+        )
         self.assertEqual(
             device.id,
             BlockDevice.objects.get_block_device_or_404(
@@ -98,7 +100,9 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_view_returns_device_when_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
-        device = factory.make_PhysicalBlockDevice(node=node)
+        device = factory.make_PhysicalBlockDevice(
+            node_config=node.current_config
+        )
         self.assertEqual(
             device.id,
             BlockDevice.objects.get_block_device_or_404(
@@ -109,7 +113,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_edit_raises_PermissionDenied_when_user_not_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
-        device = factory.make_BlockDevice(node=node)
+        device = factory.make_BlockDevice(node_config=node.current_config)
         self.assertRaises(
             PermissionDenied,
             BlockDevice.objects.get_block_device_or_404,
@@ -122,7 +126,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_edit_returns_device_when_user_is_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
-        device = factory.make_BlockDevice(node=node)
+        device = factory.make_BlockDevice(node_config=node.current_config)
         self.assertEqual(
             device.id,
             BlockDevice.objects.get_block_device_or_404(
@@ -133,7 +137,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_admin_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
         node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
+        device = factory.make_BlockDevice(node_config=node.current_config)
         self.assertRaises(
             PermissionDenied,
             BlockDevice.objects.get_block_device_or_404,
@@ -146,7 +150,7 @@ class TestBlockDeviceManagerGetBlockDeviceOr404(MAASServerTestCase):
     def test_admin_returns_device_when_admin(self):
         user = factory.make_admin()
         node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
+        device = factory.make_BlockDevice(node_config=node.current_config)
         self.assertEqual(
             device.id,
             BlockDevice.objects.get_block_device_or_404(
@@ -175,7 +179,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
         node = factory.make_Node()
         # The call to make_Node creates a block device.  We'll pick a random id
         # larger than the Id in question, and it should fail to find it.
-        dev_id = node.blockdevice_set.first().id
+        dev_id = node.current_config.blockdevice_set.first().id
         self.assertRaises(
             Http404,
             BlockDevice.objects.get_block_device_or_404,
@@ -188,7 +192,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
     def test_returns_device_when_admin(self):
         user = factory.make_admin()
         node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
+        device = factory.make_BlockDevice(node_config=node.current_config)
         self.assertEqual(
             device.id,
             BlockDevice.objects.get_block_device_or_404(
@@ -199,7 +203,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
     def test_raises_PermissionDenied_when_user_requests_admin(self):
         user = factory.make_User()
         node = factory.make_Node()
-        device = factory.make_BlockDevice(node=node)
+        device = factory.make_BlockDevice(node_config=node.current_config)
         self.assertRaises(
             PermissionDenied,
             BlockDevice.objects.get_block_device_or_404,
@@ -271,16 +275,19 @@ class TestBlockDeviceManager(MAASServerTestCase):
 
     def test_get_free_block_devices_for_node(self):
         node = factory.make_Node(with_boot_disk=False)
-        free_devices = [factory.make_BlockDevice(node=node) for _ in range(3)]
+        node_config = node.current_config
+        free_devices = [
+            factory.make_BlockDevice(node_config=node_config) for _ in range(3)
+        ]
         # Block devices with partition tables.
         for _ in range(3):
             factory.make_PartitionTable(
-                block_device=factory.make_BlockDevice(node=node)
+                block_device=factory.make_BlockDevice(node_config=node_config)
             )
         # Block devices with filesystems.
         for _ in range(3):
             factory.make_Filesystem(
-                block_device=factory.make_BlockDevice(node=node)
+                block_device=factory.make_BlockDevice(node_config=node_config)
             )
         self.assertCountEqual(
             free_devices,
@@ -288,7 +295,6 @@ class TestBlockDeviceManager(MAASServerTestCase):
         )
 
     def test_get_block_devices_in_filesystem_group(self):
-        node = factory.make_Node()
         filesystem_group = factory.make_FilesystemGroup(
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG
         )
@@ -298,7 +304,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
             if filesystem.block_device is not None
         ]
         block_device_with_partitions = factory.make_PhysicalBlockDevice(
-            node=node
+            node_config=factory.make_NodeConfig()
         )
         partition_table = factory.make_PartitionTable(
             block_device=block_device_with_partitions
@@ -357,12 +363,12 @@ class TestBlockDevice(MAASServerTestCase):
         self.assertIsInstance(block_device.actual_instance, BlockDevice)
 
     def test_get_effective_filesystem(self):
+        node_config = factory.make_NodeConfig()
         mock_get_effective_filesystem = self.patch_autospec(
             blockdevice_module, "get_effective_filesystem"
         )
         mock_get_effective_filesystem.return_value = sentinel.filesystem
-        node = factory.make_Node(with_boot_disk=False)
-        block_device = factory.make_BlockDevice(node=node)
+        block_device = factory.make_BlockDevice(node_config=node_config)
         self.assertEqual(
             sentinel.filesystem, block_device.get_effective_filesystem()
         )
@@ -426,28 +432,37 @@ class TestBlockDevice(MAASServerTestCase):
     def test_negative_size(self):
         node = factory.make_Node()
         blockdevice = BlockDevice(
-            node=node, name="sda", block_size=512, size=-1
+            node_config=node.current_config,
+            name="sda",
+            block_size=512,
+            size=-1,
         )
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_minimum_size(self):
         node = factory.make_Node()
         blockdevice = BlockDevice(
-            node=node, name="sda", block_size=512, size=143359
+            node_config=node.current_config,
+            name="sda",
+            block_size=512,
+            size=143359,
         )
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_negative_block_device_size(self):
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         blockdevice = BlockDevice(
-            node=node, name="sda", block_size=-1, size=143360
+            node_config=node_config, name="sda", block_size=-1, size=143360
         )
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_minimum_block_device_size(self):
         node = factory.make_Node()
         blockdevice = BlockDevice(
-            node=node, name="sda", block_size=511, size=143360
+            node_config=node.current_config,
+            name="sda",
+            block_size=511,
+            size=143360,
         )
         self.assertRaises(ValidationError, blockdevice.save)
 
@@ -472,8 +487,8 @@ class TestBlockDevice(MAASServerTestCase):
         self.assertIsNone(reload_object(block_device))
 
     def test_create_partition(self):
-        node = factory.make_Node(with_boot_disk=False)
-        disk = factory.make_PhysicalBlockDevice(node=node)
+        node_config = factory.make_NodeConfig()
+        disk = factory.make_PhysicalBlockDevice(node_config=node_config)
         partition = disk.create_partition()
         self.assertEqual(partition.partition_table.block_device, disk)
         available_size = disk.get_available_size()
@@ -483,19 +498,25 @@ class TestBlockDevice(MAASServerTestCase):
         )
 
     def test_create_partition_raises_ValueError(self):
-        disk = factory.make_PhysicalBlockDevice(node=factory.make_Node())
+        disk = factory.make_PhysicalBlockDevice(
+            node_config=factory.make_NodeConfig()
+        )
         factory.make_PartitionTable(block_device=disk)
         with ExpectedException(ValueError):
             disk.create_partition()
 
     def test_create_partition_if_boot_disk_returns_None_if_not_boot_disk(self):
-        node = factory.make_Node()
-        not_boot_disk = factory.make_PhysicalBlockDevice(node=node)
+        node_config = factory.make_NodeConfig()
+        not_boot_disk = factory.make_PhysicalBlockDevice(
+            node_config=node_config
+        )
         self.assertIsNone(not_boot_disk.create_partition_if_boot_disk())
 
     def test_create_partition_if_boot_disk_creates_partition(self):
         node = factory.make_Node(with_boot_disk=False)
-        boot_disk = factory.make_PhysicalBlockDevice(node=node, bootable=True)
+        boot_disk = factory.make_PhysicalBlockDevice(
+            node_config=node.current_config, bootable=True
+        )
         partition = boot_disk.create_partition_if_boot_disk()
         self.assertIsNotNone(partition)
         available_size = boot_disk.get_available_size()
@@ -533,7 +554,6 @@ class TestBlockDeviceBlockNameIdx(MAASTestCase):
 
 
 class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):
-    """Tests for the `BlockDevice` post_save signal to call save on group."""
 
     scenarios = [
         ("BlockDevice", {"factory": factory.make_BlockDevice}),
@@ -552,8 +572,6 @@ class TestBlockDevicePostSaveCallsSave(MAASServerTestCase):
 
 
 class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
-    """Tests for the `BlockDevice` post_save signal to update group name."""
-
     def test_updates_filesystem_group_name_when_not_volume_group(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(
@@ -577,8 +595,6 @@ class TestBlockDevicePostSaveUpdatesName(MAASServerTestCase):
 
 
 class TestBlockDevicePostDelete(MAASServerTestCase):
-    """Tests for the `BlockDevice` post_delete signal."""
-
     def test_deletes_filesystem_group_when_virtual_block_device_deleted(self):
         filesystem_group = factory.make_FilesystemGroup(
             group_type=factory.pick_enum(

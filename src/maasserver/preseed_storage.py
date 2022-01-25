@@ -33,6 +33,7 @@ class CurtinStorageGenerator:
 
     def __init__(self, node):
         self.node = node
+        self.node_config = node.current_config
         self.boot_disk = node.get_boot_disk()
         self.grub_device_ids = []
         self.boot_first_partitions = []
@@ -91,7 +92,7 @@ class CurtinStorageGenerator:
         to the node.
         """
         filesystem_group_ids = set()
-        for block_device in self.node.blockdevice_set.order_by("id"):
+        for block_device in self.node_config.blockdevice_set.order_by("id"):
             block_device = block_device.actual_instance
             if isinstance(block_device, PhysicalBlockDevice):
                 self.operations["disk"].append(block_device)
@@ -111,7 +112,7 @@ class CurtinStorageGenerator:
         # disk to the group, but it goes through a filesystem
         filesystem_groups = (
             FilesystemGroup.objects.filter(
-                filesystems__block_device__node=self.node,
+                filesystems__block_device__node_config=self.node_config,
             )
             .exclude(id__in=filesystem_group_ids)
             .annotate(block_device_id=F("filesystems__block_device_id"))
@@ -162,7 +163,7 @@ class CurtinStorageGenerator:
         These operations come from all the partitions on all block devices
         attached to the node.
         """
-        for block_device in self.node.blockdevice_set.order_by("id"):
+        for block_device in self.node_config.blockdevice_set.order_by("id"):
             requires_prep = self._requires_prep_partition(block_device)
             requires_bios_grub = self._requires_bios_grub_partition(
                 block_device
@@ -189,7 +190,7 @@ class CurtinStorageGenerator:
         These operations come from all the block devices and partitions
         attached to the node.
         """
-        for block_device in self.node.blockdevice_set.order_by("id"):
+        for block_device in self.node_config.blockdevice_set.order_by("id"):
             filesystem = block_device.get_effective_filesystem()
             if self._requires_format_operation(filesystem):
                 self.operations["format"].append(filesystem)

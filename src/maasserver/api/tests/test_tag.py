@@ -1,7 +1,6 @@
 # Copyright 2013-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-
 import http.client
 import json
 from unittest import skip

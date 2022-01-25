@@ -68,7 +68,7 @@ class PartitionTable(CleanSave, TimestampedModel):
 
     def get_node(self):
         """`Node` this partition belongs to."""
-        return self.block_device.node
+        return self.block_device.get_node()
 
     def get_size(self):
         """Total usable size of partition table."""
@@ -86,12 +86,11 @@ class PartitionTable(CleanSave, TimestampedModel):
         """Return the total amount of extra space this partition table
         requires."""
         extra_space = PARTITION_TABLE_EXTRA_SPACE
-        node_arch, _ = self.block_device.node.split_arch()
+        node_arch, _ = self.get_node().split_arch()
         if node_arch == "ppc64el":
             extra_space += PREP_PARTITION_SIZE
         elif (
-            node_arch == "amd64"
-            and self.block_device.node.bios_boot_method != "uefi"
+            node_arch == "amd64" and self.get_node().bios_boot_method != "uefi"
         ):
             extra_space += BIOS_GRUB_PARTITION_SIZE
         return extra_space

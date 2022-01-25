@@ -2581,6 +2581,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_BlockDevice(
         self,
+        node_config=None,
         node=None,
         name=None,
         id_path=None,
@@ -2588,8 +2589,11 @@ class Factory(maastesting.factory.Factory):
         block_size=None,
         tags=None,
     ):
-        if node is None:
-            node = self.make_Node()
+        if node_config is None:
+            if node is None:
+                node_config = factory.make_NodeConfig()
+            else:
+                node_config = node.current_config
         if name is None:
             name = self.make_name("name")
         if id_path is None:
@@ -2606,11 +2610,16 @@ class Factory(maastesting.factory.Factory):
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         return BlockDevice.objects.create(
-            node=node, name=name, size=size, block_size=block_size, tags=tags
+            node_config=node_config,
+            name=name,
+            size=size,
+            block_size=block_size,
+            tags=tags,
         )
 
     def make_PhysicalBlockDevice(
         self,
+        node_config=None,
         node=None,
         name=None,
         size=None,
@@ -2625,8 +2634,17 @@ class Factory(maastesting.factory.Factory):
         pcie=False,
         bootable=False,
     ):
-        if node is None and numa_node is None:
-            node = self.make_Node()
+        if node is None:
+            if node_config is not None:
+                node = node_config.node
+            elif numa_node is not None:
+                node = numa_node.node
+            else:
+                node = factory.make_Node()
+        if numa_node is None:
+            numa_node = node.default_numanode
+        if node_config is None:
+            node_config = node.current_config
         if name is None:
             name = self.make_name("name")
         if block_size is None:
@@ -2657,7 +2675,7 @@ class Factory(maastesting.factory.Factory):
         if firmware_version is None:
             firmware_version = factory.make_name("firmware_version")
         block_device = PhysicalBlockDevice.objects.create(
-            node=node,
+            node_config=node_config,
             name=name,
             size=size,
             block_size=block_size,
@@ -2674,7 +2692,7 @@ class Factory(maastesting.factory.Factory):
             self.make_NodeDevice(
                 bus=NODE_DEVICE_BUS.PCIE,
                 hardware_type=HARDWARE_TYPE.STORAGE,
-                node=node,
+                node=node_config.node,
                 numa_node=numa_node,
                 physical_blockdevice=block_device,
             )
@@ -2702,7 +2720,9 @@ class Factory(maastesting.factory.Factory):
                 else:
                     node = factory.make_Node()
             block_device = self.make_PhysicalBlockDevice(
-                node=node, size=block_device_size, bootable=bootable
+                node_config=node.current_config,
+                size=block_device_size,
+                bootable=bootable,
             )
         return PartitionTable.objects.create(
             table_type=table_type, block_device=block_device
@@ -2867,13 +2887,16 @@ class Factory(maastesting.factory.Factory):
         if filesystems is None:
             if node is None:
                 node = self.make_Node()
-            if node.physicalblockdevice_set.count() == 0:
+            node_config = node.current_config
+            if not node.physicalblockdevice_set.exists():
                 # Add the boot disk and leave it as is.
-                self.make_PhysicalBlockDevice(node=node, bootable=True)
+                self.make_PhysicalBlockDevice(
+                    node_config=node_config, bootable=True
+                )
             if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
                 for _ in range(num_lvm_devices):
                     block_device = self.make_PhysicalBlockDevice(
-                        node, size=block_device_size
+                        node_config=node_config, size=block_device_size
                     )
                     filesystem = self.make_Filesystem(
                         fstype=FILESYSTEM_TYPE.LVM_PV,
@@ -2882,26 +2905,34 @@ class Factory(maastesting.factory.Factory):
                     group.filesystems.add(filesystem)
             elif group_type == FILESYSTEM_GROUP_TYPE.RAID_0:
                 for _ in range(2):
-                    block_device = self.make_PhysicalBlockDevice(node)
+                    block_device = self.make_PhysicalBlockDevice(
+                        node_config=node_config
+                    )
                     filesystem = self.make_Filesystem(
                         fstype=FILESYSTEM_TYPE.RAID, block_device=block_device
                     )
                     group.filesystems.add(filesystem)
             elif group_type == FILESYSTEM_GROUP_TYPE.RAID_1:
                 for _ in range(2):
-                    block_device = self.make_PhysicalBlockDevice(node)
+                    block_device = self.make_PhysicalBlockDevice(
+                        node_config=node_config
+                    )
                     filesystem = self.make_Filesystem(
                         fstype=FILESYSTEM_TYPE.RAID, block_device=block_device
                     )
                     group.filesystems.add(filesystem)
             elif group_type == FILESYSTEM_GROUP_TYPE.RAID_5:
                 for _ in range(3):
-                    block_device = self.make_PhysicalBlockDevice(node)
+                    block_device = self.make_PhysicalBlockDevice(
+                        node_config=node_config
+                    )
                     filesystem = self.make_Filesystem(
                         fstype=FILESYSTEM_TYPE.RAID, block_device=block_device
                     )
                     group.filesystems.add(filesystem)
-                spare_block_device = self.make_PhysicalBlockDevice(node)
+                spare_block_device = self.make_PhysicalBlockDevice(
+                    node_config=node_config
+                )
                 spare_filesystem = self.make_Filesystem(
                     fstype=FILESYSTEM_TYPE.RAID_SPARE,
                     block_device=spare_block_device,
@@ -2909,12 +2940,16 @@ class Factory(maastesting.factory.Factory):
                 group.filesystems.add(spare_filesystem)
             elif group_type == FILESYSTEM_GROUP_TYPE.RAID_6:
                 for _ in range(4):
-                    block_device = self.make_PhysicalBlockDevice(node)
+                    block_device = self.make_PhysicalBlockDevice(
+                        node_config=node_config
+                    )
                     filesystem = self.make_Filesystem(
                         fstype=FILESYSTEM_TYPE.RAID, block_device=block_device
                     )
                     group.filesystems.add(filesystem)
-                spare_block_device = self.make_PhysicalBlockDevice(node)
+                spare_block_device = self.make_PhysicalBlockDevice(
+                    node_config=node_config
+                )
                 spare_filesystem = self.make_Filesystem(
                     fstype=FILESYSTEM_TYPE.RAID_SPARE,
                     block_device=spare_block_device,
@@ -2922,19 +2957,25 @@ class Factory(maastesting.factory.Factory):
                 group.filesystems.add(spare_filesystem)
             elif group_type == FILESYSTEM_GROUP_TYPE.RAID_10:
                 for _ in range(4):
-                    block_device = self.make_PhysicalBlockDevice(node)
+                    block_device = self.make_PhysicalBlockDevice(
+                        node_config=node_config
+                    )
                     filesystem = self.make_Filesystem(
                         fstype=FILESYSTEM_TYPE.RAID, block_device=block_device
                     )
                     group.filesystems.add(filesystem)
-                spare_block_device = self.make_PhysicalBlockDevice(node)
+                spare_block_device = self.make_PhysicalBlockDevice(
+                    node_config=node_config
+                )
                 spare_filesystem = self.make_Filesystem(
                     fstype=FILESYSTEM_TYPE.RAID_SPARE,
                     block_device=spare_block_device,
                 )
                 group.filesystems.add(spare_filesystem)
             elif group_type == FILESYSTEM_GROUP_TYPE.BCACHE:
-                backing_block_device = self.make_PhysicalBlockDevice(node)
+                backing_block_device = self.make_PhysicalBlockDevice(
+                    node_config=node_config
+                )
                 backing_filesystem = self.make_Filesystem(
                     fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                     block_device=backing_block_device,
@@ -3033,7 +3074,10 @@ class Factory(maastesting.factory.Factory):
         node=None,
     ):
         if node is None:
-            node = factory.make_Node()
+            if filesystem_group is None:
+                node = factory.make_Node()
+            else:
+                node = filesystem_group.get_node()
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if filesystem_group is None:
@@ -3072,6 +3116,7 @@ class Factory(maastesting.factory.Factory):
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         return VirtualBlockDevice.objects.create(
+            node_config=node.current_config,
             name=name,
             size=size,
             block_size=block_size,
@@ -3268,6 +3313,7 @@ class Factory(maastesting.factory.Factory):
     def make_NodeConfig(self, node=None, name=NODE_CONFIG_TYPE.DISCOVERED):
         if node is None:
             node = factory.make_Node()
+            return node.current_config
         return NodeConfig.objects.create(node=node, name=name)
 
     def make_VirtualMachine(

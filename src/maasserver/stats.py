@@ -38,6 +38,7 @@ from maasserver.models import (
     VLAN,
     VMCluster,
 )
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.models.virtualmachine import get_vm_host_used_resources
 from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import NotNullSum, transactional
@@ -53,15 +54,16 @@ log = LegacyLogger()
 
 
 def get_machine_stats():
-    # Rather overall amount of stats for machines.
-    return Machine.objects.aggregate(
+    return Machine.objects.filter(
+        nodeconfig__name=NODE_CONFIG_TYPE.DISCOVERED
+    ).aggregate(
         total_cpu=NotNullSum("cpu_count"),
         total_mem=NotNullSum("memory"),
         total_storage=NotNullSum(
             Case(
                 When(
-                    blockdevice__physicalblockdevice__isnull=False,
-                    then=F("blockdevice__size"),
+                    nodeconfig__blockdevice__physicalblockdevice__isnull=False,
+                    then=F("nodeconfig__blockdevice__size"),
                 ),
             )
         ),

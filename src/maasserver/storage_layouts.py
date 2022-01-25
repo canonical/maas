@@ -5,6 +5,7 @@
 
 
 from datetime import datetime
+from operator import attrgetter
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -65,10 +66,10 @@ class StorageLayoutBase(Form):
 
     def _load_physical_block_devices(self):
         """Load all the `PhysicalBlockDevice`'s for node."""
-        # The websocket prefetches node.blockdevice_set, creating a queryset
+        # The websocket prefetches blockdevice_set, creating a queryset
         # on node.physicalblockdevice_set adds additional queries.
         physical_bds = []
-        for bd in self.node.blockdevice_set.all():
+        for bd in self.node.current_config.blockdevice_set.all():
             try:
                 physical_bds.append(bd.physicalblockdevice)
             except Exception:
@@ -880,13 +881,11 @@ class VMFS6StorageLayout(StorageLayoutBase):
                 continue
             if pt.table_type != PARTITION_TABLE_TYPE.GPT:
                 continue
-            if len(pt.partitions.all()) < len(self.base_partitions):
+            partitions = sorted(pt.partitions.all(), key=attrgetter("id"))
+            if len(partitions) < len(self.base_partitions):
                 continue
-            ordered_partitions = sorted(
-                pt.partitions.all(), key=lambda part: part.id
-            )
             for i, (partition, base_partition) in enumerate(
-                zip(ordered_partitions, self.base_partitions)
+                zip(partitions, self.base_partitions)
             ):
                 if (i + 1) == len(self.base_partitions):
                     return bd

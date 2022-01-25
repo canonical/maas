@@ -181,15 +181,14 @@ class PartitionHandler(OperationsHandler):
             partition_id = "id"
         else:
             partition_id = partition.id
-            block_device = partition.partition_table.block_device
-            device_id = block_device.id
-            system_id = block_device.node.system_id
+            device_id = cls.device_id(partition)
+            system_id = cls.system_id(partition)
         return ("partition_handler", (system_id, device_id, partition_id))
 
     @classmethod
     def system_id(cls, partition):
         block_device = partition.partition_table.block_device
-        return block_device.node.system_id
+        return block_device.node_config.node.system_id
 
     @classmethod
     def device_id(cls, partition):

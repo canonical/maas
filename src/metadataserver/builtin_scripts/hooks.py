@@ -736,7 +736,9 @@ def _update_node_physical_block_devices(
         return block_devices
 
     previous_block_devices = list(
-        PhysicalBlockDevice.objects.filter(node=node).all()
+        PhysicalBlockDevice.objects.filter(
+            node_config=node.current_config
+        ).all()
     )
     for block_info in _condense_luns(data.get("storage", {}).get("disks", [])):
         # Skip the read-only devices or cdroms. We keep them in the output
@@ -768,7 +770,7 @@ def _update_node_physical_block_devices(
         # If so, we need to rename it. Its name will be changed back later,
         # when we loop around to it.
         existing = PhysicalBlockDevice.objects.filter(
-            node=node, name=name
+            node_config=node.current_config, name=name
         ).all()
         for device in existing:
             # Use the device ID to ensure a unique temporary name.
@@ -805,6 +807,7 @@ def _update_node_physical_block_devices(
 
             # New block device. Create it on the node.
             block_device = PhysicalBlockDevice.objects.create(
+                node_config=node.current_config,
                 numa_node=numa_nodes[numa_index],
                 name=name,
                 id_path=id_path,

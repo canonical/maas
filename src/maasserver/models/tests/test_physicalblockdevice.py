@@ -11,9 +11,9 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestPhysicalBlockDeviceManager(MAASServerTestCase):
     def test_model_serial_and_no_id_path_requirements_should_save(self):
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         blockdevice = PhysicalBlockDevice(
-            node=node,
+            node_config=node_config,
             name="sda",
             block_size=512,
             size=MIN_BLOCK_DEVICE_SIZE,
@@ -24,9 +24,9 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
         blockdevice.save()
 
     def test_id_path_and_no_model_serial_requirements_should_save(self):
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         blockdevice = PhysicalBlockDevice(
-            node=node,
+            node_config=node_config,
             name="sda",
             block_size=512,
             size=MIN_BLOCK_DEVICE_SIZE,
@@ -36,9 +36,9 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
         blockdevice.save()
 
     def test_no_id_path_and_no_serial(self):
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         blockdevice = PhysicalBlockDevice(
-            node=node,
+            node_config=node_config,
             name="sda",
             block_size=512,
             size=MIN_BLOCK_DEVICE_SIZE,
@@ -47,9 +47,9 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
         self.assertRaises(ValidationError, blockdevice.save)
 
     def test_no_id_path_and_no_model(self):
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         blockdevice = PhysicalBlockDevice(
-            node=node,
+            node_config=node_config,
             name="sda",
             block_size=512,
             size=MIN_BLOCK_DEVICE_SIZE,
@@ -65,13 +65,14 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             name="sda",
             size=MIN_BLOCK_DEVICE_SIZE,
             block_size=1024,
-            node=node,
+            node_config=node.current_config,
         )
         self.assertEqual(bdev.numa_node, node.default_numanode)
 
     def test_node_from_numa_node(self):
         numa_node = factory.make_NUMANode()
         bdev = PhysicalBlockDevice.objects.create(
+            node_config=numa_node.node.current_config,
             serial="123",
             model="disk",
             name="sda",
@@ -79,10 +80,10 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             block_size=1024,
             numa_node=numa_node,
         )
-        self.assertEqual(bdev.node, numa_node.node)
+        self.assertEqual(bdev.get_node(), numa_node.node)
 
     def test_node_and_numa_node_fail(self):
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         numa_node = factory.make_NUMANode()
         self.assertRaises(
             ValidationError,
@@ -92,7 +93,7 @@ class TestPhysicalBlockDeviceManager(MAASServerTestCase):
             name="sda",
             size=MIN_BLOCK_DEVICE_SIZE,
             block_size=1024,
-            node=node,
+            node_config=node_config,
             numa_node=numa_node,
         )
 

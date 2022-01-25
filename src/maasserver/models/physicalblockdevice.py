@@ -45,14 +45,16 @@ class PhysicalBlockDevice(BlockDevice):
             # only check when kwargs are passed, which is the normal case when
             # objects are created. If they're loaded from the DB, args get
             # passed instead.
-            node = kwargs.get("node")
+            node_config = kwargs["node_config"]
+            node = node_config.node
             numa_node = kwargs.get("numa_node")
-            if node and numa_node:
-                raise ValidationError("Can't set both node and numa_node")
-            if not numa_node:
+            if numa_node:
+                if numa_node.node != node:
+                    raise ValidationError(
+                        "Node from NUMA node is different from the one from config."
+                    )
+            else:
                 kwargs["numa_node"] = node.default_numanode
-            elif not node:
-                kwargs["node"] = numa_node.node
         super().__init__(*args, **kwargs)
 
     def clean(self):
@@ -67,7 +69,7 @@ class PhysicalBlockDevice(BlockDevice):
             model=self.model,
             serial=self.serial,
             size=human_readable_bytes(self.size),
-            node=self.node,
+            node=self.get_node(),
         )
 
     def serialize(self):

@@ -12257,11 +12257,14 @@ class TestNodeClone__Prefetches(MAASServerTestCase):
             node=destination, size=8 * 1024 ** 3, name="sda"
         )
         factory.make_Interface(node=destination, name="eth0")
-        # fetch the object again and apply prefetches
         source = Machine.objects.prefetch_related(
             (
-                "blockdevice_set__physicalblockdevice__partitiontable_set"
-                "__partitions__filesystem_set"
+                "current_config__"
+                "blockdevice_set__"
+                "physicalblockdevice__"
+                "partitiontable_set__"
+                "partitions__"
+                "filesystem_set"
             ),
             "interface_set",
         ).get(id=source.id)

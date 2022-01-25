@@ -65,7 +65,7 @@ def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
         node = Node.objects.filter(hardware_uuid__iexact=hardware_uuid)
     else:
         return None
-    node = node.select_related("boot_interface", "domain")
+    node = node.select_related("boot_interface", "domain", "current_config")
     return node.first()
 
 

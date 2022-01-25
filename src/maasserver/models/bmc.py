@@ -792,6 +792,7 @@ class Pod(BMC):
             )
 
         block_device = PhysicalBlockDevice.objects.create(
+            node_config=machine.current_config,
             numa_node=machine.default_numanode,
             name=name,
             id_path=discovered_bd.id_path,
@@ -1223,7 +1224,7 @@ class Pod(BMC):
         else:
             vmdisk = VirtualMachineDisk.objects.create(
                 name=block_device.name,
-                vm=block_device.node.virtualmachine,
+                vm=block_device.node_config.node.virtualmachine,
                 size=block_device.size,
                 backing_pool=storage_pool,
                 block_device=block_device,
@@ -1245,7 +1246,7 @@ class Pod(BMC):
         }
         existing_block_devices = map(
             lambda bd: bd.actual_instance,
-            existing_machine.blockdevice_set.all(),
+            existing_machine.current_config.blockdevice_set.all(),
         )
         disks_to_delete = []
         for block_device in existing_block_devices:
@@ -1437,8 +1438,12 @@ class Pod(BMC):
         existing_machines = list(
             Node.objects.filter(interface__mac_address__in=all_macs)
             .prefetch_related("interface_set")
-            .prefetch_related("blockdevice_set__physicalblockdevice")
-            .prefetch_related("blockdevice_set__virtualblockdevice")
+            .prefetch_related(
+                "current_config__blockdevice_set__physicalblockdevice"
+            )
+            .prefetch_related(
+                "current_config__blockdevice_set__virtualblockdevice"
+            )
             .prefetch_related("virtualmachine")
             .distinct()
         )
@@ -1614,7 +1619,7 @@ class Pod(BMC):
         # Set the hints for the Pod to the total amount for all nodes in a
         # cluster.
         for node in hints.nodes.all().prefetch_related(
-            "numanode_set", "blockdevice_set"
+            "numanode_set", "current_config__blockdevice_set"
         ):
             for numa in node.numanode_set.all():
                 hints.cores += len(numa.cores)

@@ -1,7 +1,5 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for bcache cache set API."""
 
 
 import http.client
@@ -262,7 +260,7 @@ class TestBcacheCacheSetAPI(APITestCase.ForUser):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         cache_set = factory.make_CacheSet(node=node)
-        new_device = factory.make_PhysicalBlockDevice(node)
+        new_device = factory.make_PhysicalBlockDevice(node=node)
         uri = get_bcache_cache_set_uri(cache_set)
         response = self.client.put(uri, {"cache_device": new_device.id})
         self.assertEqual(

@@ -1218,11 +1218,15 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         constraints = {
             value: key for key, value in constraint_map[node.id].items()
         }
-        disk0 = node.blockdevice_set.get(id=constraints["root"])
+        disk0 = node.current_config.blockdevice_set.get(id=constraints["root"])
         self.assertEqual(virtual.id, disk0.id)
-        disk1 = node.blockdevice_set.get(id=constraints["physical"])
+        disk1 = node.current_config.blockdevice_set.get(
+            id=constraints["physical"]
+        )
         self.assertEqual(physical.id, disk1.id)
-        disk2 = node.blockdevice_set.get(id=constraints["other"])
+        disk2 = node.current_config.blockdevice_set.get(
+            id=constraints["other"]
+        )
         self.assertEqual(other.id, disk2.id)
 
     def test_fabrics_constraint(self):

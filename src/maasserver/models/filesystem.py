@@ -36,10 +36,13 @@ class FilesystemManager(Manager):
 
     def filter_by_node(self, node):
         """Return all filesystems on this node."""
+        config_id = node.current_config_id
         return self.filter(
             Q(node=node)
-            | Q(block_device__node=node)
-            | Q(partition__partition_table__block_device__node=node)
+            | Q(block_device__node_config_id=config_id)
+            | Q(
+                partition__partition_table__block_device__node_config_id=config_id
+            )
         )
 
 
@@ -163,7 +166,7 @@ class Filesystem(CleanSave, TimestampedModel):
         if self.partition is not None:
             return self.partition.get_node()
         elif self.block_device is not None:
-            return self.block_device.node
+            return self.block_device.get_node()
         elif self.node is not None:
             return self.node
         else:
@@ -287,7 +290,7 @@ class Filesystem(CleanSave, TimestampedModel):
         # You cannot place a filesystem directly on the boot_disk. It requires
         # a partition to be used.
         if self.block_device is not None:
-            node = self.block_device.node
+            node = self.block_device.get_node()
             boot_disk = node.get_boot_disk()
             if boot_disk is not None and boot_disk.id == self.block_device.id:
                 # This is the boot disk for the node.

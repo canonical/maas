@@ -1,8 +1,5 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `Partition`."""
-
 
 import random
 from unittest.mock import sentinel
@@ -458,6 +455,9 @@ class TestPartition(MAASServerTestCase):
         )
         node.boot_disk = block_device
         node.save()
+        # replace the cached object since the node is updated earlier
+        node.current_config.node = node
+
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT
         )
@@ -465,10 +465,8 @@ class TestPartition(MAASServerTestCase):
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
         ]
-        idx = 2
-        for partition in partitions:
-            self.expectThat(idx, Equals(partition.get_partition_number()))
-            idx += 1
+        for idx, partition in enumerate(partitions, 2):
+            self.assertEqual(partition.get_partition_number(), idx)
 
     def test_get_partition_number_returns_vmfs6_order(self):
         node = factory.make_Node(with_boot_disk=False)

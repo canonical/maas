@@ -546,17 +546,20 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent(
 # the node type is node.
 PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {func_name}() RETURNS trigger AS $$
     DECLARE
       node RECORD;
     BEGIN
       SELECT system_id, node_type INTO node
-      FROM maasserver_node, maasserver_blockdevice
-      WHERE maasserver_node.id = maasserver_blockdevice.node_id
-      AND maasserver_blockdevice.id = %s;
+      FROM maasserver_node
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      JOIN maasserver_blockdevice
+        ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+      WHERE maasserver_blockdevice.id = {entry}.blockdevice_ptr_id;
 
-      IF node.node_type = %d THEN
-        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      IF node.node_type = {machine_type} THEN
+        PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -569,17 +572,20 @@ PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY = dedent(
 # updated.
 PARTITIONTABLE_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS TRIGGER AS $$
+    CREATE OR REPLACE FUNCTION {func_name}() RETURNS TRIGGER AS $$
     DECLARE
       node RECORD;
     BEGIN
       SELECT system_id, node_type INTO node
-      FROM maasserver_node, maasserver_blockdevice
-        WHERE maasserver_node.id = maasserver_blockdevice.node_id
-        AND maasserver_blockdevice.id = %s;
+      FROM maasserver_node
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      JOIN maasserver_blockdevice
+        ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+      WHERE maasserver_blockdevice.id = {entry}.block_device_id;
 
-      IF node.node_type = %d THEN
-        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      IF node.node_type = {machine_type} THEN
+        PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -591,20 +597,22 @@ PARTITIONTABLE_NODE_NOTIFY = dedent(
 # Procedure that is called when the partition on a partition table is updated.
 PARTITION_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    CREATE OR REPLACE FUNCTION {func_name}() RETURNS trigger as $$
     DECLARE
       node RECORD;
     BEGIN
       SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice,
-           maasserver_partitiontable
-      WHERE maasserver_node.id = maasserver_blockdevice.node_id
-      AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-      AND maasserver_partitiontable.id = %s;
+      FROM maasserver_node
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      JOIN maasserver_blockdevice
+        ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+      JOIN maasserver_partitiontable
+        ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+      WHERE maasserver_partitiontable.id = {entry}.partition_table_id;
 
-      IF node.node_type = %d THEN
-        PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      IF node.node_type = {machine_type} THEN
+        PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -616,38 +624,40 @@ PARTITION_NODE_NOTIFY = dedent(
 # Procedure that is called when the filesystem on a partition is updated.
 FILESYSTEM_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION {0}() RETURNS trigger as $$
+    CREATE OR REPLACE FUNCTION {func_name}() RETURNS trigger as $$
     DECLARE
       node RECORD;
     BEGIN
-      IF {1} IS NOT NULL
+      IF {entry}.block_device_id IS NOT NULL
       THEN
         SELECT system_id, node_type INTO node
-          FROM maasserver_node,
-               maasserver_blockdevice
-         WHERE maasserver_node.id = maasserver_blockdevice.node_id
-           AND maasserver_blockdevice.id = {1};
-      ELSIF {2} IS NOT NULL
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        JOIN maasserver_blockdevice
+          ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+        WHERE maasserver_blockdevice.id = {entry}.block_device_id;
+      ELSIF {entry}.partition_id IS NOT NULL
       THEN
         SELECT system_id, node_type INTO node
-          FROM maasserver_node,
-               maasserver_blockdevice,
-               maasserver_partition,
-               maasserver_partitiontable
-         WHERE maasserver_node.id = maasserver_blockdevice.node_id
-           AND maasserver_blockdevice.id =
-               maasserver_partitiontable.block_device_id
-           AND maasserver_partitiontable.id =
-               maasserver_partition.partition_table_id
-           AND maasserver_partition.id = {2};
-      ELSIF {3} IS NOT NULL
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        JOIN maasserver_blockdevice
+          ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+        JOIN maasserver_partitiontable
+          ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+        JOIN maasserver_partition
+          ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+        WHERE maasserver_partition.id = {entry}.partition_id;
+      ELSIF {entry}.node_id IS NOT NULL
       THEN
         SELECT system_id, node_type INTO node
           FROM maasserver_node
-         WHERE maasserver_node.id = {3};
+         WHERE maasserver_node.id = {entry}.node_id;
       END IF;
 
-      IF node.node_type = {4:d} THEN
+      IF node.node_type = {machine_type} THEN
           PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
       END IF;
 
@@ -661,26 +671,27 @@ FILESYSTEM_NODE_NOTIFY = dedent(
 # Procedure that is called when the filesystemgroup is updated.
 FILESYSTEMGROUP_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    CREATE OR REPLACE FUNCTION {func_name}() RETURNS trigger as $$
     DECLARE
       node RECORD;
     BEGIN
       SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice,
-           maasserver_partition,
-           maasserver_partitiontable,
-           maasserver_filesystem
-      WHERE maasserver_node.id = maasserver_blockdevice.node_id
-      AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-      AND maasserver_partitiontable.id =
-          maasserver_partition.partition_table_id
-      AND maasserver_partition.id = maasserver_filesystem.partition_id
-      AND (maasserver_filesystem.filesystem_group_id = %s
-          OR maasserver_filesystem.cache_set_id = %s);
+      FROM maasserver_node
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      JOIN maasserver_blockdevice
+        ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+      JOIN maasserver_partitiontable
+        ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+      JOIN maasserver_partition
+        ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+      JOIN maasserver_filesystem
+        ON maasserver_filesystem.partition_id = maasserver_partition.id
+      WHERE maasserver_filesystem.filesystem_group_id = {entry}.id
+        OR maasserver_filesystem.cache_set_id = {entry}.cache_set_id;
 
-      IF node.node_type = %d THEN
-          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      IF node.node_type = {machine_type} THEN
+          PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -692,25 +703,26 @@ FILESYSTEMGROUP_NODE_NOTIFY = dedent(
 # Procedure that is called when the cacheset is updated.
 CACHESET_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger as $$
+    CREATE OR REPLACE FUNCTION {func_name}() RETURNS trigger as $$
     DECLARE
       node RECORD;
     BEGIN
       SELECT system_id, node_type INTO node
-      FROM maasserver_node,
-           maasserver_blockdevice,
-           maasserver_partition,
-           maasserver_partitiontable,
-           maasserver_filesystem
-      WHERE maasserver_node.id = maasserver_blockdevice.node_id
-      AND maasserver_blockdevice.id = maasserver_partitiontable.block_device_id
-      AND maasserver_partitiontable.id =
-          maasserver_partition.partition_table_id
-      AND maasserver_partition.id = maasserver_filesystem.partition_id
-      AND maasserver_filesystem.cache_set_id = %s;
+      FROM maasserver_node
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      JOIN maasserver_blockdevice
+        ON maasserver_blockdevice.node_config_id = maasserver_nodeconfig.id
+      JOIN maasserver_partitiontable
+        ON maasserver_partitiontable.block_device_id = maasserver_blockdevice.id
+      JOIN maasserver_partition
+        ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
+      JOIN maasserver_filesystem
+        ON maasserver_filesystem.partition_id = maasserver_partition.id
+      WHERE maasserver_filesystem.cache_set_id = {entry}.id;
 
-      IF node.node_type = %d THEN
-          PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+      IF node.node_type = {machine_type} THEN
+          PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
       END IF;
       RETURN NEW;
     END;
@@ -1392,6 +1404,44 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
           SELECT system_id, node_type, parent_id INTO node
           FROM maasserver_node
           WHERE id = {node_id_relation};
+
+          IF node.node_type = {type_machine} THEN
+            PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+          ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
+            PERFORM pg_notify('controller_update',CAST(
+              node.system_id AS text));
+          ELSIF node.parent_id IS NOT NULL THEN
+            SELECT system_id INTO pnode
+            FROM maasserver_node
+            WHERE id = node.parent_id;
+            PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+          ELSE
+            PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+          END IF;
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """
+    )
+
+
+def render_node_related_notification_procedure_via_config(proc_name, entry):
+    type_machine = NODE_TYPE.MACHINE
+    type_rack = NODE_TYPE.RACK_CONTROLLER
+    type_region = NODE_TYPE.REGION_CONTROLLER
+    type_region_rack = NODE_TYPE.REGION_AND_RACK_CONTROLLER
+    return dedent(
+        f"""\
+        CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
+        DECLARE
+          node RECORD;
+          pnode RECORD;
+        BEGIN
+          SELECT system_id, node_type, parent_id INTO node
+          FROM maasserver_node
+          JOIN maasserver_nodeconfig
+            ON maasserver_nodeconfig.node_id = maasserver_node.id
+          WHERE maasserver_nodeconfig.id = {entry}.node_config_id;
 
           IF node.node_type = {type_machine} THEN
             PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -2458,34 +2508,32 @@ def register_websocket_triggers():
 
     # Block device table, update to linked node.
     register_procedure(
-        render_node_related_notification_procedure(
-            "nd_blockdevice_link_notify", "NEW.node_id"
+        render_node_related_notification_procedure_via_config(
+            "nd_blockdevice_link_notify", "NEW"
         )
     )
     register_procedure(
-        render_node_related_notification_procedure(
-            "nd_blockdevice_update_notify", "NEW.node_id"
+        render_node_related_notification_procedure_via_config(
+            "nd_blockdevice_update_notify", "NEW"
         )
     )
     register_procedure(
-        render_node_related_notification_procedure(
-            "nd_blockdevice_unlink_notify", "OLD.node_id"
+        render_node_related_notification_procedure_via_config(
+            "nd_blockdevice_unlink_notify", "OLD"
         )
     )
     register_procedure(
-        PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY
-        % (
-            "nd_physblockdevice_update_notify",
-            "NEW.blockdevice_ptr_id",
-            NODE_TYPE.MACHINE,
+        PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY.format(
+            func_name="nd_physblockdevice_update_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
-        PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY
-        % (
-            "nd_virtblockdevice_update_notify",
-            "NEW.blockdevice_ptr_id",
-            NODE_TYPE.MACHINE,
+        PHYSICAL_OR_VIRTUAL_BLOCK_DEVICE_NODE_NOTIFY.format(
+            func_name="nd_virtblockdevice_update_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_trigger(
@@ -2510,27 +2558,24 @@ def register_websocket_triggers():
 
     # Partition table, update to linked user.
     register_procedure(
-        PARTITIONTABLE_NODE_NOTIFY
-        % (
-            "nd_partitiontable_link_notify",
-            "NEW.block_device_id",
-            NODE_TYPE.MACHINE,
+        PARTITIONTABLE_NODE_NOTIFY.format(
+            func_name="nd_partitiontable_link_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
-        PARTITIONTABLE_NODE_NOTIFY
-        % (
-            "nd_partitiontable_update_notify",
-            "NEW.block_device_id",
-            NODE_TYPE.MACHINE,
+        PARTITIONTABLE_NODE_NOTIFY.format(
+            func_name="nd_partitiontable_update_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
-        PARTITIONTABLE_NODE_NOTIFY
-        % (
-            "nd_partitiontable_unlink_notify",
-            "OLD.block_device_id",
-            NODE_TYPE.MACHINE,
+        PARTITIONTABLE_NODE_NOTIFY.format(
+            func_name="nd_partitiontable_unlink_notify",
+            entry="OLD",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_trigger(
@@ -2549,27 +2594,24 @@ def register_websocket_triggers():
 
     # Partition, update to linked user.
     register_procedure(
-        PARTITION_NODE_NOTIFY
-        % (
-            "nd_partition_link_notify",
-            "NEW.partition_table_id",
-            NODE_TYPE.MACHINE,
+        PARTITION_NODE_NOTIFY.format(
+            func_name="nd_partition_link_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
-        PARTITION_NODE_NOTIFY
-        % (
-            "nd_partition_update_notify",
-            "NEW.partition_table_id",
-            NODE_TYPE.MACHINE,
+        PARTITION_NODE_NOTIFY.format(
+            func_name="nd_partition_update_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
-        PARTITION_NODE_NOTIFY
-        % (
-            "nd_partition_unlink_notify",
-            "OLD.partition_table_id",
-            NODE_TYPE.MACHINE,
+        PARTITION_NODE_NOTIFY.format(
+            func_name="nd_partition_unlink_notify",
+            entry="OLD",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_trigger(
@@ -2585,29 +2627,23 @@ def register_websocket_triggers():
     # Filesystem, update to linked user.
     register_procedure(
         FILESYSTEM_NODE_NOTIFY.format(
-            "nd_filesystem_link_notify",
-            "NEW.block_device_id",
-            "NEW.partition_id",
-            "NEW.node_id",
-            NODE_TYPE.MACHINE,
+            func_name="nd_filesystem_link_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
         FILESYSTEM_NODE_NOTIFY.format(
-            "nd_filesystem_update_notify",
-            "NEW.block_device_id",
-            "NEW.partition_id",
-            "NEW.node_id",
-            NODE_TYPE.MACHINE,
+            func_name="nd_filesystem_update_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
         FILESYSTEM_NODE_NOTIFY.format(
-            "nd_filesystem_unlink_notify",
-            "OLD.block_device_id",
-            "OLD.partition_id",
-            "OLD.node_id",
-            NODE_TYPE.MACHINE,
+            func_name="nd_filesystem_unlink_notify",
+            entry="OLD",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_trigger(
@@ -2622,30 +2658,24 @@ def register_websocket_triggers():
 
     # Filesystemgroup, update to linked user.
     register_procedure(
-        FILESYSTEMGROUP_NODE_NOTIFY
-        % (
-            "nd_filesystemgroup_link_notify",
-            "NEW.id",
-            "NEW.cache_set_id",
-            NODE_TYPE.MACHINE,
+        FILESYSTEMGROUP_NODE_NOTIFY.format(
+            func_name="nd_filesystemgroup_link_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
-        FILESYSTEMGROUP_NODE_NOTIFY
-        % (
-            "nd_filesystemgroup_update_notify",
-            "NEW.id",
-            "NEW.cache_set_id",
-            NODE_TYPE.MACHINE,
+        FILESYSTEMGROUP_NODE_NOTIFY.format(
+            func_name="nd_filesystemgroup_update_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_procedure(
-        FILESYSTEMGROUP_NODE_NOTIFY
-        % (
-            "nd_filesystemgroup_unlink_notify",
-            "OLD.id",
-            "OLD.cache_set_id",
-            NODE_TYPE.MACHINE,
+        FILESYSTEMGROUP_NODE_NOTIFY.format(
+            func_name="nd_filesystemgroup_unlink_notify",
+            entry="OLD",
+            machine_type=NODE_TYPE.MACHINE,
         )
     )
     register_trigger(
@@ -2666,16 +2696,25 @@ def register_websocket_triggers():
 
     # Cacheset, update to linked user.
     register_procedure(
-        CACHESET_NODE_NOTIFY
-        % ("nd_cacheset_link_notify", "NEW.id", NODE_TYPE.MACHINE)
+        CACHESET_NODE_NOTIFY.format(
+            func_name="nd_cacheset_link_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
+        )
     )
     register_procedure(
-        CACHESET_NODE_NOTIFY
-        % ("nd_cacheset_update_notify", "NEW.id", NODE_TYPE.MACHINE)
+        CACHESET_NODE_NOTIFY.format(
+            func_name="nd_cacheset_update_notify",
+            entry="NEW",
+            machine_type=NODE_TYPE.MACHINE,
+        )
     )
     register_procedure(
-        CACHESET_NODE_NOTIFY
-        % ("nd_cacheset_unlink_notify", "OLD.id", NODE_TYPE.MACHINE)
+        CACHESET_NODE_NOTIFY.format(
+            func_name="nd_cacheset_unlink_notify",
+            entry="OLD",
+            machine_type=NODE_TYPE.MACHINE,
+        )
     )
     register_trigger(
         "maasserver_cacheset", "nd_cacheset_link_notify", "insert"

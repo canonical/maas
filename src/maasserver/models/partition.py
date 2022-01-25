@@ -52,7 +52,8 @@ class PartitionManager(Manager):
         """Return `Partition`s for node that have no filesystems or
         partition table."""
         return self.filter(
-            partition_table__block_device__node=node, filesystem=None
+            partition_table__block_device__node_config=node.current_config,
+            filesystem=None,
         )
 
     def get_partitions_in_filesystem_group(self, filesystem_group):
@@ -226,9 +227,9 @@ class Partition(CleanSave, TimestampedModel):
             boot_disk = node.get_boot_disk()
             bios_boot_method = node.get_bios_boot_method()
             block_device = self.partition_table.block_device
-            vmfs6_layout = VMFS6StorageLayout(self.get_node())
+            vmfs6_layout = VMFS6StorageLayout(node)
             vmfs6_bd = vmfs6_layout.is_layout()
-            vmfs7_layout = VMFS7StorageLayout(self.get_node())
+            vmfs7_layout = VMFS7StorageLayout(node)
             vmfs7_bd = vmfs7_layout.is_layout()
             # VMware ESXi is a DD image but MAAS allows partitions to
             # be added to the end of the disk as well as resize the

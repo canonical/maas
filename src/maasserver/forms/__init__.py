@@ -3051,7 +3051,7 @@ class CreatePhysicalBlockDeviceForm(MAASModelForm, NUMANodeFormMixin):
 
     def save(self):
         block_device = super().save(commit=False)
-        block_device.node = self.node
+        block_device.node_config = self.node.current_config
         block_device.save()
         return block_device
 
@@ -3093,7 +3093,7 @@ class UpdatePhysicalBlockDeviceForm(
     @property
     def node(self):
         # needed by NUMANodeForm
-        return self.instance.node
+        return self.instance.node_config.node
 
     def save(self):
         block_device = super().save()

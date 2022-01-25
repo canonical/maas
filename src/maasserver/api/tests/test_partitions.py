@@ -1,7 +1,5 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for blockdevice API."""
 
 
 import http.client
@@ -29,14 +27,14 @@ def get_partitions_uri(block_device):
     """Return a BlockDevice's partitions URI on the API."""
     return reverse(
         "partitions_handler",
-        args=[block_device.node.system_id, block_device.id],
+        args=[block_device.node_config.node.system_id, block_device.id],
     )
 
 
 def get_partition_uri(partition, by_name=False):
     """Return a BlockDevice's partition URI on the API."""
     block_device = partition.partition_table.block_device
-    node = block_device.node
+    node = block_device.node_config.node
     partition_id = partition.id
     if by_name:
         partition_id = partition.name
@@ -182,7 +180,7 @@ class TestPartitions(APITestCase.ForUser):
                     "bootable": Is(True),
                     "id": Equals(partition.id),
                     "size": Equals(partition.size),
-                    "system_id": Equals(device.node.system_id),
+                    "system_id": Equals(device.node_config.node.system_id),
                     "device_id": Equals(device.id),
                 }
             ),

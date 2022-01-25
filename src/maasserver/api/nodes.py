@@ -72,7 +72,13 @@ from metadataserver.enum import (
 from metadataserver.models.scriptset import get_status_from_qs
 from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
 
-NODES_SELECT_RELATED = ("bmc", "controllerinfo", "owner", "zone")
+NODES_SELECT_RELATED = (
+    "bmc",
+    "controllerinfo",
+    "owner",
+    "zone",
+    "current_config",
+)
 
 NODES_PREFETCH = [
     "domain__dnsresource_set__ip_addresses",
@@ -83,50 +89,52 @@ NODES_PREFETCH = [
     "gateway_link_ipv4__subnet",
     "gateway_link_ipv6__subnet",
     Prefetch(
-        "blockdevice_set__filesystem_set",
+        "current_config__blockdevice_set__filesystem_set",
         queryset=Filesystem.objects.select_related(
             "cache_set", "filesystem_group"
         ),
     ),
     Prefetch(
-        "blockdevice_set__partitiontable_set__partitions__filesystem_set",
+        "current_config__blockdevice_set__partitiontable_set__partitions__filesystem_set",
         queryset=Filesystem.objects.select_related(
             "cache_set", "filesystem_group"
         ),
     ),
     Prefetch(
-        "blockdevice_set__physicalblockdevice",
-        queryset=PhysicalBlockDevice.objects.select_related("node"),
+        "current_config__blockdevice_set__physicalblockdevice",
+        queryset=PhysicalBlockDevice.objects.select_related(
+            "node_config__node"
+        ),
     ),
     Prefetch(
-        "blockdevice_set__physicalblockdevice__filesystem_set",
+        "current_config__blockdevice_set__physicalblockdevice__filesystem_set",
         queryset=Filesystem.objects.select_related(
             "cache_set", "filesystem_group"
         ),
     ),
     Prefetch(
-        "blockdevice_set__physicalblockdevice__partitiontable_set__"
-        "partitions__filesystem_set",
+        "current_config__blockdevice_set__physicalblockdevice__"
+        "partitiontable_set__partitions__filesystem_set",
         queryset=Filesystem.objects.select_related(
             "cache_set", "filesystem_group"
         ),
     ),
     Prefetch(
-        "blockdevice_set__physicalblockdevice__numa_node",
+        "current_config__blockdevice_set__physicalblockdevice__numa_node",
         queryset=NUMANode.objects.select_related("node"),
     ),
     Prefetch(
-        "blockdevice_set__virtualblockdevice",
+        "current_config__blockdevice_set__virtualblockdevice",
         queryset=VirtualBlockDevice.objects.select_related(
-            "node", "filesystem_group"
+            "node_config__node", "filesystem_group"
         ),
     ),
     Prefetch(
-        "blockdevice_set__virtualblockdevice__filesystem_set",
+        "current_config__blockdevice_set__virtualblockdevice__filesystem_set",
         queryset=Filesystem.objects.select_related("filesystem_group"),
     ),
     Prefetch(
-        "blockdevice_set__virtualblockdevice__partitiontable_set__"
+        "current_config__blockdevice_set__virtualblockdevice__partitiontable_set__"
         "partitions__filesystem_set",
         queryset=Filesystem.objects.select_related("filesystem_group"),
     ),
@@ -852,12 +860,6 @@ class NodesHandler(OperationsHandler):
             nodes = nodes.annotate(
                 virtualmachine_id=Coalesce("virtualmachine__id", None)
             )
-            # Set related node parents so no extra queries are needed.
-            for node in nodes:
-                for interface in node.interface_set.all():
-                    interface.node = node
-                for block_device in node.blockdevice_set.all():
-                    block_device.node = node
             return nodes
 
     @operation(idempotent=True)

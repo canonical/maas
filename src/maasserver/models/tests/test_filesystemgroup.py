@@ -2341,8 +2341,8 @@ class TestRAID(MAASServerTestCase):
         with ExpectedException(
             ValidationError,
             re.escape(
-                "['Device needs to be from the same node as the rest of the "
-                "array.']"
+                "['Device needs to be attached to the same node config as "
+                "the rest of the array.']"
             ),
         ):
             raid.add_device(device, FILESYSTEM_TYPE.RAID)

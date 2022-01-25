@@ -1,4 +1,4 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
@@ -2132,7 +2132,7 @@ class TestBlankStorageLayout(MAASServerTestCase):
         self.assertEqual("blank", layout.configure())
         self.assertEqual(bd, layout.is_layout())
         self.assertFalse(node.virtualblockdevice_set.exists())
-        for bd in node.blockdevice_set.all():
+        for bd in node.current_config.blockdevice_set.all():
             self.assertFalse(bd.filesystem_set.exists())
             self.assertFalse(bd.partitiontable_set.exists())
 

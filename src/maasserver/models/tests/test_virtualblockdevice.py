@@ -15,6 +15,7 @@ from testtools.matchers import MatchesStructure
 from maasserver.enum import FILESYSTEM_GROUP_TYPE
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystemgroup import RAID_SUPERBLOCK_OVERHEAD
+from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
 from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -143,17 +144,22 @@ class TestVirtualBlockDevice(MAASServerTestCase):
     def test_node_is_set_to_same_node_from_filesystem_group(self):
         block_device = factory.make_VirtualBlockDevice()
         self.assertEqual(
-            block_device.filesystem_group.get_node(), block_device.node
+            block_device.filesystem_group.get_node(), block_device.get_node()
         )
 
-    def test_cannot_save_if_node_is_not_same_node_from_filesystem_group(self):
+    def test_cannot_save_if_node_is_not_same_node_config_from_filesystem_group(
+        self,
+    ):
+        node = factory.make_Node()
         block_device = factory.make_VirtualBlockDevice()
-        block_device.node = factory.make_Node()
+        block_device.node_config = factory.make_NodeConfig(
+            node=node, name=NODE_CONFIG_TYPE.DEPLOYMENT
+        )
         with ExpectedException(
             ValidationError,
             re.escape(
-                "{'__all__': ['Node must be the same node as the "
-                "filesystem_group.']}"
+                "{'__all__': ['Node config must be the same as the "
+                "filesystem_group one.']}"
             ),
         ):
             block_device.save()

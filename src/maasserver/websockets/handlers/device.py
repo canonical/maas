@@ -49,7 +49,14 @@ class DeviceHandler(NodeHandler):
         abstract = False
         queryset = (
             Device.objects.filter(parent=None)
-            .select_related("boot_interface", "owner", "zone", "domain", "bmc")
+            .select_related(
+                "boot_interface",
+                "owner",
+                "zone",
+                "domain",
+                "bmc",
+                "current_config",
+            )
             .prefetch_related(
                 "interface_set__ip_addresses__subnet__vlan__space"
             )

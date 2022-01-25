@@ -38,8 +38,9 @@ class ControllerHandler(MachineHandler):
     class Meta(MachineHandler.Meta):
         abstract = False
         queryset = node_prefetch(
-            Controller.controllers.all().prefetch_related("service_set"),
-            "controllerinfo",
+            Controller.controllers.all()
+            .select_related("controllerinfo")
+            .prefetch_related("service_set")
         ).annotate(vlan_ids=_vlan_ids_aggr)
         list_queryset = (
             Controller.controllers.all()

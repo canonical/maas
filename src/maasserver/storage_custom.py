@@ -1,4 +1,4 @@
-# Copyright 2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2021-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Parse format for custom storage configuration."""
@@ -146,7 +146,10 @@ def apply_layout_to_machine(layout: StorageLayout, machine):
     # clear everything storage-related, except physical disks
     machine._clear_full_storage_configuration()
 
-    block_devices = {disk.name: disk for disk in machine.blockdevice_set.all()}
+    block_devices = {
+        disk.name: disk
+        for disk in machine.current_config.blockdevice_set.all()
+    }
     missing_disks = layout.disk_names() - set(
         machine.physicalblockdevice_set.values_list("name", flat=True)
     )
@@ -323,8 +326,8 @@ def _apply_layout_disk(
         return
     disk = block_devices[entry.name]
     if entry.boot:
-        disk.node.boot_disk = disk.physicalblockdevice
-        disk.node.save()
+        machine.boot_disk = disk.physicalblockdevice
+        machine.save()
     partition_table = models.PartitionTable.objects.create(
         block_device=disk,
         table_type=entry.ptable.upper(),

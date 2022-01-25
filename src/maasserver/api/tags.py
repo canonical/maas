@@ -188,7 +188,7 @@ class TagHandler(OperationsHandler):
         for node in nodes:
             for interface in node.interface_set.all():
                 interface.node = node
-            for block_device in node.blockdevice_set.all():
+            for block_device in node.current_config.blockdevice_set.all():
                 block_device.node = node
         return [node.as_self() for node in nodes]
 

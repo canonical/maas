@@ -426,11 +426,18 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             return None
 
     @classmethod
+    def blockdevice_set(handler, machine):
+        return [
+            block_device.actual_instance
+            for block_device in machine.current_config.blockdevice_set.all()
+        ]
+
+    @classmethod
     def physicalblockdevice_set(handler, machine):
         """Use precached queries instead of attribute on the object."""
         return [
             block_device.actual_instance
-            for block_device in machine.blockdevice_set.all()
+            for block_device in machine.current_config.blockdevice_set.all()
             if isinstance(block_device.actual_instance, PhysicalBlockDevice)
         ]
 
@@ -439,7 +446,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         """Use precached queries instead of attribute on the object."""
         return [
             block_device.actual_instance
-            for block_device in machine.blockdevice_set.all()
+            for block_device in machine.current_config.blockdevice_set.all()
             if isinstance(block_device.actual_instance, VirtualBlockDevice)
         ]
 
@@ -447,7 +454,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
     def _filesystem_groups(handler, machine):
         """Return the `FilesystemGroup` for `machine`."""
         fsgroup = {}
-        for block_device in machine.blockdevice_set.all():
+        for block_device in machine.current_config.blockdevice_set.all():
             for filesystem in block_device.filesystem_set.all():
                 if filesystem.filesystem_group is not None:
                     fsgroup[
@@ -492,7 +499,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
     def cache_sets(handler, machine):
         """Return the cache sets on this machine."""
         sets = {}
-        for block_device in machine.blockdevice_set.all():
+        for block_device in machine.current_config.blockdevice_set.all():
             for filesystem in block_device.filesystem_set.all():
                 if filesystem.cache_set is not None:
                     sets[filesystem.cache_set.id] = filesystem.cache_set

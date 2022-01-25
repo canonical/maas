@@ -168,7 +168,7 @@ class TestMachineHandler(MAASServerTestCase):
 
         blockdevices = [
             blockdevice.actual_instance
-            for blockdevice in node.blockdevice_set.all()
+            for blockdevice in node.current_config.blockdevice_set.all()
         ]
         disks = [
             handler.dehydrate_blockdevice(blockdevice, node)
@@ -524,7 +524,7 @@ class TestMachineHandler(MAASServerTestCase):
         """Create `number` of new nodes."""
         for counter in range(number):
             node = factory.make_Node(interface=True, status=NODE_STATUS.READY)
-            factory.make_PhysicalBlockDevice(node)
+            factory.make_PhysicalBlockDevice(node=node)
             # Make some devices.
             for _ in range(3):
                 factory.make_Node(
@@ -758,14 +758,9 @@ class TestMachineHandler(MAASServerTestCase):
 
         handler = MachineHandler(owner, {}, None)
         queries, _ = count_queries(handler.get, {"system_id": node.system_id})
-        # This check is to notify the developer that a change was made that
-        # affects the number of queries performed when doing a node get.
-        # It is important to keep this number as low as possible. A larger
-        # number means regiond has to do more work slowing down its process
-        # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            51,
+            56,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -2007,7 +2002,7 @@ class TestMachineHandler(MAASServerTestCase):
             script_name=LLDP_OUTPUT_NAME
         )
         script_result.store_result(exit_status=0, stdout=lldp_data)
-        factory.make_PhysicalBlockDevice(node)
+        factory.make_PhysicalBlockDevice(node=node)
         Config.objects.set_config(
             name="enable_third_party_drivers", value=True
         )
@@ -2106,7 +2101,7 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node()
-        factory.make_PhysicalBlockDevice(node)
+        factory.make_PhysicalBlockDevice(node=node)
         factory.make_VirtualBlockDevice(node=node)
         result = handler.get({"system_id": node.system_id})
         for disk in result["disks"]:
@@ -2251,7 +2246,7 @@ class TestMachineHandler(MAASServerTestCase):
             status=SCRIPT_STATUS.PASSED,
         )
         handler = MachineHandler(user, {}, None)
-        factory.make_PhysicalBlockDevice(node)
+        factory.make_PhysicalBlockDevice(node=node)
         self.assertNotIn(node.id, handler._script_results.keys())
         self.assertCountEqual(
             [self.dehydrate_node(node, handler, for_list=True)],
@@ -3921,7 +3916,7 @@ class TestMachineHandler(MAASServerTestCase):
             },
         )
         partition_table = (
-            destination2.blockdevice_set.first().get_partitiontable()
+            destination2.current_config.blockdevice_set.first().get_partitiontable()
         )
         self.assertIsNotNone(partition_table)
         partitions = partition_table.partitions
@@ -4533,10 +4528,12 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
         size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 ** 3)
-        ssd = factory.make_PhysicalBlockDevice(node, tags=["ssd"])
-        hdd = factory.make_PhysicalBlockDevice(node, tags=["hdd"], size=size)
+        ssd = factory.make_PhysicalBlockDevice(node=node, tags=["ssd"])
+        hdd = factory.make_PhysicalBlockDevice(
+            node=node, tags=["hdd"], size=size
+        )
         rotary = factory.make_PhysicalBlockDevice(
-            node, tags=["rotary"], size=size
+            node=node, tags=["rotary"], size=size
         )
         handler = MachineHandler(user, {}, None)
         self.assertThat(
@@ -5268,7 +5265,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, architecture=architecture, status=NODE_STATUS.READY
         )
-        blockdevice = factory.make_BlockDevice(node, tags=None)
+        blockdevice = factory.make_BlockDevice(node=node, tags=None)
         tag1 = factory.make_name()
         tag2 = factory.make_name()
         handler.update_filesystem(
@@ -5290,7 +5287,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         )
         tag1 = factory.make_name()
         tag2 = factory.make_name()
-        blockdevice = factory.make_BlockDevice(node, tags=[tag1, tag2])
+        blockdevice = factory.make_BlockDevice(node=node, tags=[tag1, tag2])
         handler.update_filesystem(
             {
                 "system_id": node.system_id,
@@ -5314,7 +5311,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         )
         tag1 = factory.make_name()
         tag2 = factory.make_name()
-        blockdevice = factory.make_BlockDevice(node, tags=[tag1, tag2])
+        blockdevice = factory.make_BlockDevice(node=node, tags=[tag1, tag2])
         handler.update_filesystem(
             {"system_id": node.system_id, "block_id": blockdevice.id}
         )
@@ -5330,7 +5327,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         )
         tag1 = factory.make_name()
         tag2 = factory.make_name()
-        blockdevice = factory.make_BlockDevice(node, tags=[])
+        blockdevice = factory.make_BlockDevice(node=node, tags=[])
         handler.update_filesystem(
             {
                 "system_id": node.system_id,

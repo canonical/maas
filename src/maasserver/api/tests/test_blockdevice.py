@@ -1,8 +1,5 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for blockdevice API."""
-
 
 import http.client
 import uuid
@@ -34,7 +31,7 @@ def get_blockdevices_uri(node):
 def get_blockdevice_uri(device, node=None, by_name=False):
     """Return a BlockDevice's URI on the API."""
     if node is None:
-        node = device.node
+        node = device.node_config.node
     device_id = device.id
     if by_name:
         device_id = device.name
@@ -313,7 +310,7 @@ class TestBlockDevices(APITestCase.ForUser):
         )
         reload_object(node)
         pbd = node.physicalblockdevice_set.first()
-        self.assertEqual(pbd.node_id, node.id)
+        self.assertEqual(pbd.node_config.node_id, node.id)
         self.assertEqual(pbd.name, "sda")
         self.assertEqual(pbd.block_size, 1024)
         self.assertEqual(pbd.size, MIN_BLOCK_DEVICE_SIZE)

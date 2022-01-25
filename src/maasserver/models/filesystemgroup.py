@@ -102,22 +102,27 @@ class BaseFilesystemGroupManager(Manager):
 
     def filter_by_node(self, node):
         """Return all `FilesystemGroup` that are related to node."""
+        if node is None:
+            # return an empty queryset
+            return self.none()
+
+        node_config = node.current_config
         cache_set_partition_query = Q(
             **{
                 "cache_set__filesystems__partition__partition_table__"
-                "block_device__node": node
+                "block_device__node_config": node_config
             }
         )
         partition_query = Q(
             **{
                 "filesystems__partition__partition_table__"
-                "block_device__node": node
+                "block_device__node_config": node_config
             }
         )
         return self.filter(
-            Q(cache_set__filesystems__block_device__node=node)
+            Q(cache_set__filesystems__block_device__node_config=node_config)
             | cache_set_partition_query
-            | Q(filesystems__block_device__node=node)
+            | Q(filesystems__block_device__node_config=node_config)
             | partition_query
         ).distinct()
 
@@ -139,7 +144,7 @@ class BaseFilesystemGroupManager(Manager):
                 pass
             else:
                 idx = max(idx, name_idx)
-        return "%s%s" % (prefix, idx + 1)
+        return f"{prefix}{idx+1}"
 
 
 class FilesystemGroupManager(BaseFilesystemGroupManager):
@@ -406,9 +411,13 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     def get_node(self):
         """`Node` this filesystem group belongs to."""
-        if self.filesystems.count() == 0:
+        from maasserver.models import Filesystem
+
+        # don't use filesystem_set as the object might not be saved yet
+        fs = Filesystem.objects.filter(filesystem_group=self).first()
+        if fs is None:
             return None
-        return self.filesystems.first().get_node()
+        return fs.get_node()
 
     def get_size(self):
         """Size of this filesystem group.
@@ -888,11 +897,10 @@ class VolumeGroup(FilesystemGroup):
 
     def create_logical_volume(self, name, size, uuid=None):
         """Create a logical volume in this volume group."""
-        # Circular imports.
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
         return VirtualBlockDevice.objects.create(
-            node=self.get_node(),
+            node_config=self.get_node().current_config,
             name=name,
             uuid=uuid,
             size=size,
@@ -916,13 +924,12 @@ class RAID(FilesystemGroup):
 
     def add_device(self, device, fstype):
         """Adds a device to the array, creates the correct filesystem."""
-        # Avoid circular import.
         from maasserver.models.filesystem import Filesystem
 
-        if device.node != self.get_node():
+        if device.node_config != self.get_node().current_config:
             raise ValidationError(
-                "Device needs to be from the same node as the rest of the "
-                "array."
+                "Device needs to be attached to the same node config "
+                "as the rest of the array."
             )
         elif device.get_effective_filesystem() is not None:
             raise ValidationError(

@@ -1,8 +1,5 @@
-# Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `Filesystem`."""
-
 
 from copy import copy
 from itertools import chain, combinations
@@ -30,7 +27,7 @@ class TestFilesystemManager(MAASServerTestCase):
 
     def test_filter_by_node(self):
         node = factory.make_Node()
-        boot_bd = node.blockdevice_set.first()
+        boot_bd = node.current_config.blockdevice_set.first()
         root_partition = boot_bd.partitiontable_set.first().partitions.first()
         root_fs = root_partition.filesystem_set.first()
         block_device = factory.make_PhysicalBlockDevice(node=node)
@@ -64,7 +61,7 @@ class TestFilesystem(MAASServerTestCase):
     def test_get_node_returns_block_device_node(self):
         block_device = factory.make_PhysicalBlockDevice()
         fs = factory.make_Filesystem(block_device=block_device)
-        self.assertEqual(fs.block_device.node, fs.get_node())
+        self.assertEqual(fs.block_device.get_node(), fs.get_node())
 
     def test_get_node_returns_special_filesystem_node(self):
         machine = factory.make_Node()

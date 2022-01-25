@@ -1478,7 +1478,8 @@ class Node(CleanSave, TimestampedModel):
     @property
     def is_diskless(self):
         """Return whether or not this node has any disks."""
-        return len(self.blockdevice_set.all()) == 0
+        # Use the queryset as it might be cached
+        return len(self.current_config.blockdevice_set.all()) == 0
 
     @property
     def ephemeral_deployment(self):
@@ -1631,7 +1632,7 @@ class Node(CleanSave, TimestampedModel):
         boot_mounted = False
         arch, _ = self.split_arch()
 
-        for block_device in self.blockdevice_set.all():
+        for block_device in self.current_config.blockdevice_set.all():
             if block_device.is_boot_disk():
                 has_boot = True
             pt = block_device.get_partitiontable()
@@ -1799,7 +1800,11 @@ class Node(CleanSave, TimestampedModel):
             return "eth%d" % ifnum
 
     def get_block_device_names(self):
-        return list(self.blockdevice_set.all().values_list("name", flat=True))
+        return list(
+            self.current_config.blockdevice_set.all().values_list(
+                "name", flat=True
+            )
+        )
 
     def get_next_block_device_name(self, block_device_names=None, prefix="sd"):
         """
@@ -2010,24 +2015,19 @@ class Node(CleanSave, TimestampedModel):
 
     @property
     def physicalblockdevice_set(self):
-        """Return `QuerySet` for all `PhysicalBlockDevice` assigned to node.
-
-        This is need as Django doesn't add this attribute to the `Node` model,
-        it only adds blockdevice_set.
-        """
-        return PhysicalBlockDevice.objects.filter(node=self)
+        """Return `QuerySet` for all `PhysicalBlockDevice` assigned to node."""
+        return PhysicalBlockDevice.objects.filter(
+            node_config=self.current_config
+        )
 
     @property
     def virtualblockdevice_set(self):
-        """Return `QuerySet` for all `VirtualBlockDevice` assigned to node.
-
-        This is need as Django doesn't add this attribute to the `Node` model,
-        it only adds blockdevice_set.
-        """
-        # Avoid circular imports.
+        """Return `QuerySet` for all `VirtualBlockDevice` assigned to node."""
         from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
-        return VirtualBlockDevice.objects.filter(node=self)
+        return VirtualBlockDevice.objects.filter(
+            node_config=self.current_config
+        )
 
     @property
     def storage(self):
@@ -2037,7 +2037,7 @@ class Node(CleanSave, TimestampedModel):
         """
         size = sum(
             block_device.size
-            for block_device in self.blockdevice_set.all()
+            for block_device in self.current_config.blockdevice_set.all()
             if isinstance(block_device.actual_instance, PhysicalBlockDevice)
         )
         return size / 1000 / 1000
@@ -2052,7 +2052,7 @@ class Node(CleanSave, TimestampedModel):
             block_devices = sorted(
                 [
                     block_device.actual_instance
-                    for block_device in self.blockdevice_set.all()
+                    for block_device in self.current_config.blockdevice_set.all()
                     if isinstance(
                         block_device.actual_instance, PhysicalBlockDevice
                     )
@@ -3187,7 +3187,7 @@ class Node(CleanSave, TimestampedModel):
         block_devices = sorted(
             [
                 bd.actual_instance.serialize()
-                for bd in self.blockdevice_set.all()
+                for bd in self.current_config.blockdevice_set.all()
                 if isinstance(bd.actual_instance, PhysicalBlockDevice)
             ],
             key=lambda bd: (
@@ -4308,7 +4308,10 @@ class Node(CleanSave, TimestampedModel):
         filesystem_map = {}
         for source_vd, dest_vd in zip(source_vds, dest_vds):
             _clone_object(
-                dest_vd, uuid=None, node=self, filesystem_group=fs_group
+                dest_vd,
+                uuid=None,
+                node_config=self.current_config,
+                filesystem_group=fs_group,
             )
             filesystem_map.update(
                 self._copy_between_block_device_mappings({dest_vd: source_vd})

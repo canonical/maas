@@ -21,16 +21,18 @@ from maasserver.enum import (
     NODE_TYPE,
     POWER_STATE,
 )
-from maasserver.models.cacheset import CacheSet
-from maasserver.models.config import Config
-from maasserver.models.event import Event
-from maasserver.models.filesystemgroup import VolumeGroup
-from maasserver.models.interface import Interface
+from maasserver.models import (
+    CacheSet,
+    Config,
+    Event,
+    Interface,
+    NUMANode,
+    PhysicalBlockDevice,
+    Tag,
+    VirtualBlockDevice,
+    VolumeGroup,
+)
 from maasserver.models.nodeprobeddetails import script_output_nsmap
-from maasserver.models.numa import NUMANode
-from maasserver.models.physicalblockdevice import PhysicalBlockDevice
-from maasserver.models.tag import Tag
-from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
@@ -69,15 +71,31 @@ NODE_TYPE_TO_LINK_TYPE = {
 }
 
 
-def node_prefetch(queryset, *args):
+def node_prefetch(queryset):
+    # this fetches two levels deep as get_node() gets called on the block
+    # device associated to each partition
+    blockdev_prefetch = (
+        "current_config__blockdevice_set__partitiontable_set__partitions__"
+        "partition_table__block_device__node_config__node__"
+        "current_config__blockdevice_set"
+    )
     return (
-        queryset.select_related(
-            "owner", "zone", "pool", "domain", "bmc", *args
+        queryset.all()
+        .select_related(
+            "owner", "zone", "pool", "domain", "bmc", "current_config"
         )
-        .prefetch_related("blockdevice_set__partitiontable_set__partitions")
-        .prefetch_related("blockdevice_set__physicalblockdevice")
-        .prefetch_related("blockdevice_set__physicalblockdevice__numa_node")
-        .prefetch_related("blockdevice_set__virtualblockdevice")
+        .prefetch_related("current_config__blockdevice_set__filesystem_set")
+        .prefetch_related(
+            "current_config__blockdevice_set__physicalblockdevice__"
+            "filesystem_set"
+        )
+        .prefetch_related(
+            f"{blockdev_prefetch}__physicalblockdevice__partitiontable_set__partitions"
+        )
+        .prefetch_related(
+            f"{blockdev_prefetch}__physicalblockdevice__numa_node"
+        )
+        .prefetch_related(f"{blockdev_prefetch}__virtualblockdevice")
         .prefetch_related(
             Prefetch(
                 "interface_set", queryset=Interface.objects.order_by("name")
@@ -922,7 +940,7 @@ class NodeHandler(TimestampedModelHandler):
         """Return only `BlockDevice`s using the prefetched query."""
         return [
             blockdevice.actual_instance
-            for blockdevice in obj.blockdevice_set.all()
+            for blockdevice in obj.current_config.blockdevice_set.all()
         ]
 
     def get_mac_addresses(self, data):

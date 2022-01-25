@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a nodes virtual block device."""
@@ -12,7 +12,6 @@ from django.db.models import CASCADE, CharField, ForeignKey
 from maasserver import DefaultMeta
 from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
 from maasserver.models.filesystemgroup import FilesystemGroup
-from maasserver.models.node import Node
 from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
 from maasserver.utils.converters import (
     human_readable_bytes,
@@ -40,7 +39,7 @@ class VirtualBlockDeviceManager(BlockDeviceManager):
             )
             if block_device is None:
                 block_device = VirtualBlockDevice(
-                    node=filesystem_group.get_node(),
+                    node_config=filesystem_group.get_node().current_config,
                     name=filesystem_group.name,
                     filesystem_group=filesystem_group,
                 )
@@ -63,12 +62,10 @@ class VirtualBlockDevice(BlockDevice):
 
     objects = VirtualBlockDeviceManager()
 
-    uuid = CharField(max_length=36, unique=True, null=False, blank=False)
+    uuid = CharField(max_length=36, unique=True)
 
     filesystem_group = ForeignKey(
         FilesystemGroup,
-        null=False,
-        blank=False,
         related_name="virtual_devices",
         on_delete=CASCADE,
     )
@@ -76,30 +73,17 @@ class VirtualBlockDevice(BlockDevice):
     def get_name(self):
         """Return the name."""
         if self.filesystem_group.is_lvm():
-            return "%s-%s" % (self.filesystem_group.name, self.name)
+            return f"{self.filesystem_group.name}-{self.name}"
         else:
             return self.name
 
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
 
-        # First time called the node might not be set, so we handle the
-        # DoesNotExist exception accordingly.
-        try:
-            node = self.node
-        except Node.DoesNotExist:
-            # Set the node of this virtual block device, to the same node from
-            # the attached filesystem group.
-            fsgroup_node = self.filesystem_group.get_node()
-            if fsgroup_node is not None:
-                self.node = fsgroup_node
-        else:
-            # The node on the virtual block device must be the same node from
-            # the attached filesystem group.
-            if node != self.filesystem_group.get_node():
-                raise ValidationError(
-                    "Node must be the same node as the filesystem_group."
-                )
+        if self.node_config != self.filesystem_group.get_node().current_config:
+            raise ValidationError(
+                "Node config must be the same as the filesystem_group one."
+            )
 
         # Check if the size of this is not larger than the free size of
         # its filesystem group if its lvm.
@@ -159,7 +143,7 @@ class VirtualBlockDevice(BlockDevice):
         parents = []
         # We need to check all of the nodes block devices in case
         # we have nested virtual block devices.
-        for block_device in self.node.blockdevice_set.all():
+        for block_device in self.node_config.blockdevice_set.all():
             if block_device.id == self.id:
                 continue
             if check_fs_group(block_device):

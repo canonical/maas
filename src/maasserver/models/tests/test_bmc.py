@@ -1451,7 +1451,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         mount_points = [
             fs.mount_point
             for fs in Filesystem.objects.filter(
-                partition__partition_table__block_device__node=machine
+                partition__partition_table__block_device__node_config=machine.current_config
             ).all()
         ]
         self.assertEqual(["/"], mount_points)
@@ -1475,7 +1475,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         mount_points = [
             fs.mount_point
             for fs in Filesystem.objects.filter(
-                partition__partition_table__block_device__node=machine
+                partition__partition_table__block_device__node_config=machine.current_config
             ).all()
         ]
         self.assertEqual(["/", "/boot/efi"], sorted(mount_points))
@@ -1909,7 +1909,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         machine = pod.create_machine(discovered_machine, factory.make_User())
         vm = machine.virtualmachine
         vmdisk1, vmdisk2 = vm.disks_set.order_by("block_device__id_path")
-        disk1, disk2 = machine.blockdevice_set.order_by("id_path")
+        disk1, disk2 = machine.current_config.blockdevice_set.order_by(
+            "id_path"
+        )
         pool1 = PodStoragePool.objects.get(pool_id=d_storage_pool1.id)
         pool2 = PodStoragePool.objects.get(pool_id=d_storage_pool2.id)
         self.assertEqual(disk1.vmdisk, vmdisk1)
@@ -2411,13 +2413,14 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         keep_path_bd = reload_object(keep_path_bd)
         delete_model_bd = reload_object(delete_model_bd)
         delete_path_bd = reload_object(delete_path_bd)
+        node_config = machine.current_config
         new_model_bd = PhysicalBlockDevice.objects.filter(
-            node=machine,
+            node_config=node_config,
             model=dnew_model_bd.model,
             serial=dnew_model_bd.serial,
         ).first()
         new_path_bd = PhysicalBlockDevice.objects.filter(
-            node=machine, id_path=dnew_path_bd.id_path
+            node_config=node_config, id_path=dnew_path_bd.id_path
         ).first()
         self.assertIsNone(delete_model_bd)
         self.assertIsNone(delete_path_bd)
@@ -2701,7 +2704,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 cores += len(numa.cores)
                 memory += numa.memory
             cpu_speeds.append(node.cpu_speed)
-            for bd in node.blockdevice_set.all():
+            for bd in node.current_config.blockdevice_set.all():
                 if bd.type == "physical":
                     local_storage += bd.size
 

@@ -1521,6 +1521,8 @@ class TestPower8NoPartitionTableLayout(
         )  # 8 GiB
         node.boot_disk = boot_disk
         node.save()
+        # replace the cached object since the node is updated earlier
+        node.current_config.node = node
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",

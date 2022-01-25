@@ -1,7 +1,5 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `PartitionTable`."""
 
 
 from django.core.exceptions import ValidationError
@@ -24,12 +22,10 @@ from maasserver.utils.converters import round_size_to_nearest_block
 
 
 class TestPartitionTable(MAASServerTestCase):
-    """Tests for the `PartitionTable` model."""
-
     def test_get_node_returns_block_device_node(self):
         partition_table = factory.make_PartitionTable()
         self.assertEqual(
-            partition_table.block_device.node, partition_table.get_node()
+            partition_table.block_device.get_node(), partition_table.get_node()
         )
 
     def test_get_size_returns_block_device_size_minus_initial_offset(self):

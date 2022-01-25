@@ -97,25 +97,26 @@ class MachineHandler(NodeHandler):
         queryset = (
             node_prefetch(Machine.objects.all())
             .prefetch_related(
-                "blockdevice_set__physicalblockdevice__"
+                "current_config__blockdevice_set__physicalblockdevice__"
                 "partitiontable_set__partitions__filesystem_set"
             )
             .prefetch_related(
-                "blockdevice_set__virtualblockdevice__"
+                "current_config__blockdevice_set__virtualblockdevice__"
                 "partitiontable_set__partitions"
             )
         )
         list_queryset = (
-            Machine.objects.select_related("owner", "zone", "domain", "bmc")
+            Machine.objects.all()
+            .select_related("owner", "zone", "domain", "bmc", "current_config")
             .prefetch_related(
-                "blockdevice_set__physicalblockdevice__"
+                "current_config__blockdevice_set__physicalblockdevice__"
                 "partitiontable_set__partitions"
             )
             .prefetch_related(
-                "blockdevice_set__physicalblockdevice__numa_node"
+                "current_config__blockdevice_set__physicalblockdevice__numa_node"
             )
             .prefetch_related(
-                "blockdevice_set__virtualblockdevice__"
+                "current_config__blockdevice_set__virtualblockdevice__"
                 "partitiontable_set__partitions"
             )
             .prefetch_related(
@@ -550,7 +551,9 @@ class MachineHandler(NodeHandler):
         # (The client sends them in from the same form.)
         blockdevice = None
         if block_id is not None:
-            blockdevice = BlockDevice.objects.get(id=block_id, node=node)
+            blockdevice = BlockDevice.objects.get(
+                id=block_id, node_config=node.current_config
+            )
             tags = params.get("tags", None)
             # If the tags parameter was left out, that means "don't touch the
             # tags". (An empty list means "clear the tags".)
@@ -561,7 +564,11 @@ class MachineHandler(NodeHandler):
                     blockdevice.save()
         if partition_id:
             self.update_partition_filesystem(
-                node, partition_id, fstype, mount_point, mount_options
+                node.current_config,
+                partition_id,
+                fstype,
+                mount_point,
+                mount_options,
             )
         elif blockdevice is not None:
             self.update_blockdevice_filesystem(
@@ -569,10 +576,11 @@ class MachineHandler(NodeHandler):
             )
 
     def update_partition_filesystem(
-        self, node, partition_id, fstype, mount_point, mount_options
+        self, node_config, partition_id, fstype, mount_point, mount_options
     ):
         partition = Partition.objects.get(
-            id=partition_id, partition_table__block_device__node=node
+            id=partition_id,
+            partition_table__block_device__node_config=node_config,
         )
         fs = partition.get_effective_filesystem()
         if not fstype:
@@ -654,7 +662,7 @@ class MachineHandler(NodeHandler):
             params, permission=self._meta.edit_permission
         )
         device = BlockDevice.objects.get(
-            id=params["block_id"], node=node
+            id=params["block_id"], node_config=node.current_config
         ).actual_instance
         if device.type == "physical":
             form = UpdatePhysicalBlockDeviceForm(instance=device, data=params)
@@ -683,17 +691,21 @@ class MachineHandler(NodeHandler):
         )
         block_id = params.get("block_id")
         if block_id is not None:
-            block_device = BlockDevice.objects.get(id=block_id, node=node)
+            block_device = BlockDevice.objects.get(
+                id=block_id, node_config=node.current_config
+            )
             block_device.delete()
 
     def delete_partition(self, params):
         node = self._get_node_or_permission_error(
             params, permission=self._meta.edit_permission
         )
+        node_config = node.current_config
         partition_id = params.get("partition_id")
         if partition_id is not None:
             partition = Partition.objects.get(
-                id=partition_id, partition_table__block_device__node=node
+                id=partition_id,
+                partition_table__block_device__node_config=node_config,
             )
             partition.delete()
 
@@ -727,7 +739,9 @@ class MachineHandler(NodeHandler):
         partition_id = params.get("partition_id")
         filesystem_id = params.get("filesystem_id")
         if partition_id is None:
-            blockdevice = BlockDevice.objects.get(node=node, id=blockdevice_id)
+            blockdevice = BlockDevice.objects.get(
+                node_config=node.current_config, id=blockdevice_id
+            )
             fs = Filesystem.objects.get(
                 block_device=blockdevice, id=filesystem_id
             )
@@ -769,7 +783,9 @@ class MachineHandler(NodeHandler):
         node = self._get_node_or_permission_error(
             params, permission=self._meta.edit_permission
         )
-        disk_obj = BlockDevice.objects.get(id=params["block_id"], node=node)
+        disk_obj = BlockDevice.objects.get(
+            id=params["block_id"], node_config=node.current_config
+        )
         form = AddPartitionForm(disk_obj, {"size": params["partition_size"]})
         if not form.is_valid():
             raise HandlerError(form.errors)
@@ -779,7 +795,7 @@ class MachineHandler(NodeHandler):
         self._update_obj_tags(partition, params)
         if "fstype" in params:
             self.update_partition_filesystem(
-                node,
+                node.current_config,
                 partition.id,
                 params.get("fstype"),
                 params.get("mount_point"),
@@ -917,7 +933,7 @@ class MachineHandler(NodeHandler):
             params, permission=self._meta.edit_permission
         )
         device = BlockDevice.objects.get(
-            id=params["block_id"], node=node
+            id=params["block_id"], node_config=node.current_config
         ).actual_instance
         if device.type != "physical":
             raise HandlerError(

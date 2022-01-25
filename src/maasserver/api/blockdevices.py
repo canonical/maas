@@ -101,7 +101,7 @@ class BlockDevicesHandler(OperationsHandler):
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.view
         )
-        return machine.blockdevice_set.all()
+        return machine.current_config.blockdevice_set.all()
 
     @admin_method
     def create(self, request, system_id):
@@ -163,12 +163,12 @@ class BlockDeviceHandler(OperationsHandler):
             device_id = "id"
         else:
             device_id = block_device.id
-            system_id = block_device.node.system_id
+            system_id = cls.system_id(block_device)
         return ("blockdevice_handler", (system_id, device_id))
 
     @classmethod
     def system_id(cls, block_device):
-        return block_device.node.system_id
+        return block_device.node_config.node.system_id
 
     @classmethod
     def name(cls, block_device):
@@ -726,8 +726,8 @@ class BlockDeviceHandler(OperationsHandler):
             raise MAASAPIBadRequest(
                 "Cannot set a %s block device as the boot disk." % device.type
             )
-        device.node.boot_disk = device
-        device.node.save()
+        node.boot_disk = device
+        node.save()
         return rc.ALL_OK
 
 

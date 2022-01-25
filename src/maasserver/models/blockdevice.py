@@ -5,6 +5,7 @@
 
 
 from collections.abc import Iterable
+from contextlib import suppress
 import re
 import string
 
@@ -58,7 +59,7 @@ class BlockDeviceManager(Manager):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        kwargs = {"node__system_id": system_id}
+        kwargs = {"node_config__node__system_id": system_id}
         try:
             blockdevice_id = int(blockdevice_id)
         except ValueError:
@@ -77,7 +78,11 @@ class BlockDeviceManager(Manager):
     def get_free_block_devices_for_node(self, node):
         """Return `BlockDevice`s for node that have no filesystems or
         partition table."""
-        return self.filter(node=node, partitiontable=None, filesystem=None)
+        return self.filter(
+            node_config=node.current_config,
+            partitiontable=None,
+            filesystem=None,
+        )
 
     def get_block_devices_in_filesystem_group(self, filesystem_group):
         """Return `BlockDevice`s for the belong to the filesystem group."""
@@ -101,13 +106,12 @@ class BlockDevice(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-        unique_together = ("node", "name")
+        unique_together = ("node_config", "name")
         ordering = ["id"]
 
     objects = BlockDeviceManager()
 
-    node = ForeignKey("Node", null=False, editable=False, on_delete=CASCADE)
-    node_config = ForeignKey("NodeConfig", null=True, on_delete=CASCADE)
+    node_config = ForeignKey("NodeConfig", on_delete=CASCADE)
 
     name = CharField(
         max_length=255,
@@ -146,13 +150,13 @@ class BlockDevice(CleanSave, TimestampedModel):
         return self.name
 
     def get_node(self):
-        """Return the name."""
-        return self.node
+        """Return the node for the device."""
+        return self.node_config.node
 
     @property
     def path(self):
         # Path is persistent and set by curtin on deploy.
-        return "/dev/disk/by-dname/%s" % self.get_name()
+        return f"/dev/disk/by-dname/{self.get_name()}"
 
     @property
     def type(self):
@@ -184,13 +188,10 @@ class BlockDevice(CleanSave, TimestampedModel):
 
         if isinstance(self, (PhysicalBlockDevice, VirtualBlockDevice)):
             return self
-        try:
+        with suppress(PhysicalBlockDevice.DoesNotExist):
             return self.physicalblockdevice
-        except PhysicalBlockDevice.DoesNotExist:
-            try:
-                return self.virtualblockdevice
-            except VirtualBlockDevice.DoesNotExist:
-                pass
+        with suppress(VirtualBlockDevice.DoesNotExist):
+            return self.virtualblockdevice
         return self
 
     def get_effective_filesystem(self):
@@ -199,10 +200,9 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     def get_partitiontable(self):
         """Returns this device's partition table (or None, if none exists."""
-        partition_tables = self.partitiontable_set.all()
-        if len(partition_tables) > 0:
-            return partition_tables[0]
-        else:
+        try:
+            return list(self.partitiontable_set.all())[0]
+        except IndexError:
             return None
 
     def display_size(self, include_suffix=True):
@@ -245,7 +245,7 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     def __str__(self):
         return "{size} attached to {node}".format(
-            size=human_readable_bytes(self.size), node=self.node
+            size=human_readable_bytes(self.size), node=self.get_node()
         )
 
     def get_block_size(self):
@@ -274,7 +274,7 @@ class BlockDevice(CleanSave, TimestampedModel):
 
     def is_boot_disk(self):
         """Return true if block device is the boot disk."""
-        boot_disk = self.node.get_boot_disk()
+        boot_disk = self.get_node().get_boot_disk()
         return boot_disk.id == self.id if boot_disk else False
 
     def create_partition(self):

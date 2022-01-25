@@ -1,7 +1,5 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Test hooks."""
 
 
 from copy import deepcopy
@@ -12,13 +10,7 @@ from distro_info import UbuntuDistroInfo
 from django.db.models import Q
 from fixtures import FakeLogger
 from netaddr import IPNetwork
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    Equals,
-    MatchesStructure,
-    Not,
-)
+from testtools.matchers import Equals, MatchesStructure
 
 from maasserver.enum import (
     FILESYSTEM_TYPE,
@@ -33,7 +25,6 @@ from maasserver.fields import MAC
 from maasserver.models import (
     NodeMetadata,
     NUMANode,
-    PhysicalBlockDevice,
     PhysicalInterface,
     Tag,
     VLAN,
@@ -1788,7 +1779,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         node_interfaces = list(
-            PhysicalBlockDevice.objects.filter(node=node).order_by("name")
+            node.physicalblockdevice_set.all().order_by("name")
         )
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
@@ -2352,7 +2343,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, numa_nodes
         )
-        devices = list(PhysicalBlockDevice.objects.filter(node=node))
+        devices = list(node.physicalblockdevice_set.all())
         created_names = []
         for index, device in enumerate(devices):
             created_names.append(device.name)
@@ -2381,8 +2372,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_names = [
-            device.name
-            for device in PhysicalBlockDevice.objects.filter(node=node)
+            device.name for device in node.physicalblockdevice_set.all()
         ]
         self.assertCountEqual(device_names, created_names)
 
@@ -2395,8 +2385,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, READ_ONLY_AND_CDROM, create_numa_nodes(node)
         )
         created_names = [
-            device.name
-            for device in PhysicalBlockDevice.objects.filter(node=node)
+            device.name for device in node.physicalblockdevice_set.all()
         ]
         self.assertCountEqual([], created_names)
 
@@ -2413,8 +2402,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
         device_names = ["sdy", "sdz"]
         created_names = [
-            device.name
-            for device in PhysicalBlockDevice.objects.filter(node=node)
+            device.name for device in node.physicalblockdevice_set.all()
         ]
         self.assertCountEqual(device_names, created_names)
 
@@ -2457,7 +2445,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
         device_names = [
             (device.name, device.serial)
-            for device in PhysicalBlockDevice.objects.filter(node=node)
+            for device in node.physicalblockdevice_set.all()
         ]
         self.assertCountEqual(
             [
@@ -2474,15 +2462,13 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_ids_one = [
-            device.id
-            for device in PhysicalBlockDevice.objects.filter(node=node)
+            device.id for device in node.physicalblockdevice_set.all()
         ]
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         created_ids_two = [
-            device.id
-            for device in PhysicalBlockDevice.objects.filter(node=node)
+            device.id for device in node.physicalblockdevice_set.all()
         ]
         self.assertCountEqual(created_ids_two, created_ids_one)
 
@@ -2491,7 +2477,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        boot_disk = PhysicalBlockDevice.objects.filter(node=node).first()
+        boot_disk = node.physicalblockdevice_set.first()
         node.boot_disk = boot_disk
         node.save()
         _update_node_physical_block_devices(
@@ -2517,9 +2503,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
         created_names = [
             device.name
-            for device in (
-                PhysicalBlockDevice.objects.filter(node=node).order_by("id")
-            )
+            for device in (node.physicalblockdevice_set.all().order_by("id"))
         ]
         self.assertEqual(device_names, created_names)
 
@@ -2538,7 +2522,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
         self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first(),
+            node.physicalblockdevice_set.first(),
             MatchesStructure.byEquality(
                 name=name,
                 id_path=id_path,
@@ -2567,7 +2551,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, SAMPLE_LXD_DEFAULT_BLOCK_SIZE, create_numa_nodes(node)
         )
         self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first(),
+            node.physicalblockdevice_set.first(),
             MatchesStructure.byEquality(
                 name=name,
                 id_path=id_path,
@@ -2594,7 +2578,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, NO_DEVICE_PATH, create_numa_nodes(node)
         )
         self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first(),
+            node.physicalblockdevice_set.first(),
             MatchesStructure.byEquality(
                 name=name,
                 id_path="/dev/%s" % name,
@@ -2619,7 +2603,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             node, NO_SERIAL, create_numa_nodes(node)
         )
         self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first(),
+            node.physicalblockdevice_set.first(),
             MatchesStructure.byEquality(
                 name=name,
                 id_path="/dev/%s" % name,
@@ -2638,7 +2622,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         )
         self.assertEqual(
             0,
-            PhysicalBlockDevice.objects.filter(node=other_node).count(),
+            other_node.physicalblockdevice_set.count(),
             "Created physical block device for the incorrect node.",
         )
 
@@ -2647,82 +2631,59 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).last().tags,
-            Contains("rotary"),
-        )
-        self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).last().tags,
-            Not(Contains("ssd")),
-        )
+        device = node.physicalblockdevice_set.last()
+        self.assertIn("rotary", device.tags)
+        self.assertNotIn("ssd", device.tags)
 
     def test_creates_physical_block_device_with_rotary_and_rpm_tags(self):
         node = factory.make_Node()
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).last().tags,
-            Contains("rotary"),
-        )
-        self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).last().tags,
-            Contains("5400rpm"),
-        )
+        device = node.physicalblockdevice_set.last()
+        self.assertIn("rotary", device.tags)
+        self.assertIn("5400rpm", device.tags)
 
     def test_creates_physical_block_device_with_ssd_tag(self):
         node = factory.make_Node()
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
-            ContainsAll(["ssd"]),
-        )
-        self.expectThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
-            Not(Contains("rotary")),
-        )
+        device = node.physicalblockdevice_set.first()
+        self.assertIn("ssd", device.tags)
+        self.assertNotIn("rotary", device.tags)
 
     def test_creates_physical_block_device_without_removable_tag(self):
         node = factory.make_Node()
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
-            Not(Contains("removable")),
-        )
+        device = node.physicalblockdevice_set.first()
+        self.assertNotIn("removable", device.tags)
 
     def test_creates_physical_block_device_with_removable_tag(self):
         node = factory.make_Node()
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).last().tags,
-            Contains("removable"),
-        )
+        device = node.physicalblockdevice_set.last()
+        self.assertIn("removable", device.tags)
 
     def test_creates_physical_block_device_without_sata_tag(self):
         node = factory.make_Node()
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).last().tags,
-            Not(Contains("sata")),
-        )
+        device = node.physicalblockdevice_set.last()
+        self.assertNotIn("sata", device.tags)
 
     def test_creates_physical_block_device_with_sata_tag(self):
         node = factory.make_Node()
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
-        self.assertThat(
-            PhysicalBlockDevice.objects.filter(node=node).first().tags,
-            Contains("sata"),
-        )
+        device = node.physicalblockdevice_set.first()
+        self.assertIn("sata", device.tags)
 
     def test_ignores_min_block_device_size_devices(self):
         UNDER_MIN_BLOCK_SIZE = deepcopy(SAMPLE_LXD_RESOURCES)
@@ -2736,7 +2697,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, UNDER_MIN_BLOCK_SIZE, create_numa_nodes(node)
         )
-        self.assertEqual(0, len(PhysicalBlockDevice.objects.filter(node=node)))
+        self.assertFalse(node.physicalblockdevice_set.exists())
 
     def test_regenerates_testing_script_set(self):
         node = factory.make_Node()
@@ -2784,6 +2745,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         _update_node_physical_block_devices(
             node, SAMPLE_LXD_RESOURCES, create_numa_nodes(node)
         )
+        # replace the cached object since the node is updated earlier
+        node.current_config.node = node
 
         _, layout = get_applied_storage_layout_for_node(node)
         self.assertEqual(

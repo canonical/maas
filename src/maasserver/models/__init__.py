@@ -424,7 +424,7 @@ class MAASAuthorizationBackend(ModelBackend):
 
         if isinstance(obj, (Node, BlockDevice, FilesystemGroup)):
             if isinstance(obj, BlockDevice):
-                obj = obj.node
+                obj = obj.get_node()
             elif isinstance(obj, FilesystemGroup):
                 obj = obj.get_node()
             if perm == NodePermission.view:
