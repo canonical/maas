@@ -1,0 +1,58 @@
+server:
+  disable: true
+
+positions:
+  filename: ${PROMTAIL_POS_DIR}/positions.yaml
+
+clients:
+  - url: ${LOKI_API_URL}
+
+scrape_configs:
+  - job_name: maas-audit
+    syslog:
+      listen_address: 127.0.0.1:${PROMTAIL_LISTEN_PORT:5238}
+      labels:
+        job: "maas-audit"
+        host: ${HOSTNAME}
+
+  - job_name: maas-console
+    static_configs:
+      - labels:
+          __path__: /var/log/maas/{regiond,rackd}.log
+          host: ${HOSTNAME}
+          job: "maas-console"
+
+  - job_name: maas-dhcpd
+    static_configs:
+      - labels:
+          __path__: /var/log/maas/dhcpd*.log
+          host: ${HOSTNAME}
+          job: "maas-dhcpd"
+
+  - job_name: maas-metadata
+    static_configs:
+      - labels:
+          __path__: /var/log/maas/http/access.log
+          host: ${HOSTNAME}
+          job: "maas-metadata"
+
+  - job_name: maas-named
+    static_configs:
+      - labels:
+          __path__: /var/log/maas/named.log
+          host: ${HOSTNAME}
+          job: "maas-named"
+
+  - job_name: maas-ntpd
+    static_configs:
+      - labels:
+          __path__: /var/log/maas/chrony.log
+          host: ${HOSTNAME}
+          job: "maas-ntpd"
+
+  - job_name: maas-proxy
+    static_configs:
+      - labels:
+          __path__: /var/log/maas/proxy.log
+          host: ${HOSTNAME}
+          job: "maas-proxy"

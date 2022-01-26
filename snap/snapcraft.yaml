@@ -31,6 +31,12 @@ plugs:
     content: db-socket
     target: $SNAP_COMMON/test-db-socket
 
+slots:
+  maas-logs:
+    interface: content
+    read:
+      - $SNAP_COMMON/log
+
 apps:
   supervisor:
     daemon: simple

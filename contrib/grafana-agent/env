@@ -1,0 +1,5 @@
+export PROMETHEUS_REMOTE_WRITE_URL=http://prometheus:9090/api/v1/write
+export LOKI_API_URL=http://loki:3100/loki/api/v1/push
+export MAAS_IS_REGION="true"
+export MAAS_IS_RACK="true"
+export MAAS_AZ="default"

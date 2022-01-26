@@ -26,6 +26,9 @@ $PrivDropToGroup {{group}}
 # Work directory.
 $WorkDirectory {{work_dir}}
 
+$ActionQueueType LinkedList # use asynchronous processing
+$ActionResumeRetryCount -1 # infinite retries on insert failure
+$ActionQueueSaveOnShutdown on # save in-memory data if rsyslog shuts down
 
 {{if write_local}}
 # Log the messages to disk based on the hostname of the log message.
@@ -55,9 +58,7 @@ if $syslogtag contains "maas" then {
 # not make it to this point because of the stop above.
 {{for server in forwarders}}
 *.* action(type="omfwd" target="{{server['ip']}}" port="{{port}}" protocol="tcp"
-           action.resumeRetryCount="-1"
-           queue.type="LinkedList" queue.filename="{{server['name']}}"
-           queue.saveonshutdown="on")
+           queue.filename="{{server['name']}}")
 {{endfor}}
 {{endif}}
 
@@ -66,7 +67,7 @@ if $syslogtag contains "maas" then {
 # Forward to promtail
 *.* action(type="omfwd" protocol="tcp" target="localhost" port="{{promtail_port}}" 
            Template="RSYSLOG_SyslogProtocol23Format" 
-           TCP_Framing="octet-counted")
+           TCP_Framing="octet-counted" queue.filename="promtail")
 {{endif}}
 
 
