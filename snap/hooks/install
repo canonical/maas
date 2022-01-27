@@ -1,50 +1,9 @@
 #!/bin/bash -e
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-# _EPOCH_: migration out of all mode. This should be dropped when bumping epoch
-# to 3
-maas_snap_mode() {
-    cat "$SNAP_COMMON/snap_mode" 2>/dev/null || echo "none"
-}
-if [ "$(maas_snap_mode)" = "all" ]; then
-    tee -a "$SNAP_COMMON/log/maas.log" <<EOF
-The snap is configured in "all" mode (running the PostgreSQL database within
-the snap), which is no longer supported.
-
-It won't be possible to refresh the snap to this new version until the
-installation is converted to a supported mode (e.g "region+rack").
-
-Please run the following script to migrate the database to the host system:
-
-  sudo /snap/maas/current/helpers/migrate-snap-database
-
-EOF
-    exit 1
-fi
-
-# _EPOCH_: data migrations in the snap. This should be dropped when bumping
-# epoch to 3
-migrate_data() {
-    # move chrony log and driftfile
-    if  [ -f "$SNAP_DATA/var/lib/chrony/chrony.drift" ]; then
-        mkdir -p "$SNAP_COMMON/chrony/"
-        mv "$SNAP_DATA/var/lib/chrony/chrony.drift" "$SNAP_COMMON/chrony/chrony.drift"
-        rm -rf "$SNAP_DATA/var/lib/chrony"
-    fi
-
-    # migrate /var/lib/maas to avoid space waste because of duplicated trees
-    # for different snap revisions
-    if [ -d "$SNAP_DATA/var/lib/maas" ]; then
-        mv "$SNAP_DATA/var/lib/maas" "$SNAP_COMMON/"
-        # shellcheck disable=SC2115
-        rm -rf "$SNAP_DATA/var"
-    fi
-    # ensure target dir always exists
-    mkdir -p "$SNAP_COMMON/maas"
-}
-
 mkdir -p \
+      "$SNAP_DATA/preseeds" \
       "$SNAP_DATA/root" \
       "$SNAP_DATA/supervisord"
 if [ ! -d "$SNAP_COMMON/log" ]; then
@@ -52,11 +11,8 @@ if [ ! -d "$SNAP_COMMON/log" ]; then
     chown snap_daemon "$SNAP_COMMON/log"
 fi
 
-migrate_data
-
 # Always overwrite sample preseeds to ensure samples are up-to-date in case we
 # make changes that need to be reflected.
-mkdir -p "$SNAP_DATA/preseeds"
 declare -a PRESEEDS=(
     curtin_userdata
     curtin_userdata_centos

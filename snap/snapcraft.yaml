@@ -15,7 +15,7 @@ system-usernames:
 # 1: (2.6) PostgreSQL 10
 # 2: (2.8) move MAAS data to $SNAP_COMMON
 # 3: (2.9) drop "all" mode and builtin PostgresSQL server
-epoch: 3*
+epoch: 3
 
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
