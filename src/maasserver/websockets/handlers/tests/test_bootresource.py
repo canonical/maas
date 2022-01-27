@@ -1,11 +1,7 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.bootresource`"""
-
-
 import datetime
-import json
 import random
 from unittest.mock import ANY
 
@@ -87,22 +83,19 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         )
         mock_get_os_info.side_effect = ConnectionError()
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertTrue(json_obj["connection_error"])
+        self.assertTrue(response["connection_error"])
 
     def test_returns_connection_error_False(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertFalse(json_obj["connection_error"])
+        self.assertFalse(response["connection_error"])
 
     def test_returns_no_ubuntu_sources(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertEqual([], json_obj["ubuntu"]["sources"])
+        self.assertEqual([], response["ubuntu"]["sources"])
 
     def test_returns_ubuntu_sources(self):
         owner = factory.make_admin()
@@ -110,7 +103,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         sources = [factory.make_BootSource() for _ in range(2)]
         self.patch_get_os_info_from_boot_sources(sources)
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertEqual(
             [
                 {
@@ -121,7 +113,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 }
                 for source in sources
             ],
-            json_obj["ubuntu"]["sources"],
+            response["ubuntu"]["sources"],
         )
 
     def test_returns_maas_io_source(self):
@@ -132,7 +124,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         )
         self.patch_get_os_info_from_boot_sources([source])
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertEqual(
             [
                 {
@@ -142,7 +133,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                     "keyring_data": "",
                 }
             ],
-            json_obj["ubuntu"]["sources"],
+            response["ubuntu"]["sources"],
         )
 
     def test_shows_ubuntu_release_options(self):
@@ -152,7 +143,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         releases = ["20.04"] + [factory.make_name("release") for _ in range(3)]
         self.patch_get_os_info_from_boot_sources(sources, releases=releases)
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertCountEqual(
             [
                 {
@@ -166,7 +156,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 }
                 for release in releases
             ],
-            json_obj["ubuntu"]["releases"],
+            response["ubuntu"]["releases"],
         )
 
     def test_shows_ubuntu_selected_and_deleted_release_options(self):
@@ -185,7 +175,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         )
         self.patch_get_os_info_from_boot_sources(sources, releases=releases)
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertCountEqual(
             [
                 {
@@ -206,7 +195,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                     "deleted": True,
                 }
             ],
-            json_obj["ubuntu"]["releases"],
+            response["ubuntu"]["releases"],
         )
 
     def test_shows_ubuntu_architecture_options(self):
@@ -216,7 +205,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         arches = [factory.make_name("arch") for _ in range(3)]
         self.patch_get_os_info_from_boot_sources(sources, arches=arches)
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertCountEqual(
             [
                 {
@@ -227,7 +215,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 }
                 for arch in arches
             ],
-            json_obj["ubuntu"]["arches"],
+            response["ubuntu"]["arches"],
         )
 
     def test_shows_ubuntu_select_and_deleted_architecture_options(self):
@@ -246,7 +234,6 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         )
         self.patch_get_os_info_from_boot_sources(sources, arches=arches)
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertCountEqual(
             [
                 {
@@ -265,7 +252,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                     "deleted": True,
                 }
             ],
-            json_obj["ubuntu"]["arches"],
+            response["ubuntu"]["arches"],
         )
 
     def test_shows_ubuntu_commissioning_release(self):
@@ -277,10 +264,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertEqual(
             commissioning_series.value,
-            json_obj["ubuntu"]["commissioning_series"],
+            response["ubuntu"]["commissioning_series"],
         )
 
     def test_returns_region_import_running_True(self):
@@ -290,8 +276,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             bootresource, "is_import_resources_running"
         ).return_value = True
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertTrue(json_obj["region_import_running"])
+        self.assertTrue(response["region_import_running"])
 
     def test_returns_region_import_running_False(self):
         owner = factory.make_admin()
@@ -300,8 +285,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             bootresource, "is_import_resources_running"
         ).return_value = False
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertFalse(json_obj["region_import_running"])
+        self.assertFalse(response["region_import_running"])
 
     def test_returns_rack_import_running_True(self):
         owner = factory.make_admin()
@@ -310,8 +294,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             bootresource, "is_import_boot_images_running"
         ).return_value = True
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertTrue(json_obj["rack_import_running"])
+        self.assertTrue(response["rack_import_running"])
 
     def test_returns_rack_import_running_False(self):
         owner = factory.make_admin()
@@ -320,8 +303,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             bootresource, "is_import_boot_images_running"
         ).return_value = False
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertFalse(json_obj["rack_import_running"])
+        self.assertFalse(response["rack_import_running"])
 
     def test_returns_resources(self):
         owner = factory.make_admin()
@@ -329,11 +311,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         resources = [factory.make_usable_boot_resource() for _ in range(3)]
         resource_ids = [resource.id for resource in resources]
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_ids = [
-            json_resource["id"] for json_resource in json_obj["resources"]
-        ]
-        self.assertCountEqual(resource_ids, json_ids)
+        ids = [resource["id"] for resource in response["resources"]]
+        self.assertCountEqual(resource_ids, ids)
 
     def test_returns_resources_datetime_format(self):
         owner = factory.make_admin()
@@ -341,23 +320,19 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         resource = factory.make_usable_boot_resource()
         resource_updated = handler.get_last_update_for_resources([resource])
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_updated = datetime.datetime.strptime(
-            json_obj["resources"][0]["lastUpdate"], "%a, %d %b. %Y %H:%M:%S"
+        updated = datetime.datetime.strptime(
+            response["resources"][0]["lastUpdate"], "%a, %d %b. %Y %H:%M:%S"
         )
-        self.assertEqual(
-            resource_updated.timetuple(), json_updated.timetuple()
-        )
+        self.assertEqual(resource_updated.timetuple(), updated.timetuple())
 
     def test_returns_resource_attributes(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         factory.make_usable_boot_resource()
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
+        resource = response["resources"][0]
         self.assertThat(
-            json_resource,
+            resource,
             ContainsAll(
                 [
                     "id",
@@ -386,9 +361,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name
         )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual(version, json_resource["title"])
+        resource = response["resources"][0]
+        self.assertEqual(version, resource["title"])
 
     def test_shows_number_of_nodes_deployed_for_resource(self):
         owner = factory.make_admin()
@@ -406,9 +380,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 architecture=resource.architecture,
             )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual(number_of_nodes, json_resource["numberOfNodes"])
+        resource = response["resources"][0]
+        self.assertEqual(number_of_nodes, resource["numberOfNodes"])
 
     def test_shows_number_of_nodes_deployed_for_resource_with_defaults(self):
         owner = factory.make_admin()
@@ -425,9 +398,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 status=NODE_STATUS.DEPLOYED, architecture=resource.architecture
             )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual(number_of_nodes, json_resource["numberOfNodes"])
+        resource = response["resources"][0]
+        self.assertEqual(number_of_nodes, resource["numberOfNodes"])
 
     def test_shows_number_of_nodes_deployed_for_ubuntu_subarch_resource(self):
         owner = factory.make_admin()
@@ -453,9 +425,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 architecture=node_architecture,
             )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual(number_of_nodes, json_resource["numberOfNodes"])
+        resource = response["resources"][0]
+        self.assertEqual(number_of_nodes, resource["numberOfNodes"])
 
     def test_combines_subarch_resources_into_one_resource(self):
         owner = factory.make_admin()
@@ -470,10 +441,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 architecture=f"{arch}/{subarch}",
             )
         response = handler.poll({})
-        json_obj = json.loads(response)
         self.assertEqual(
             1,
-            len(json_obj["resources"]),
+            len(response["resources"]),
             "More than one resource was returned.",
         )
 
@@ -493,10 +463,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
+        resource = response["resources"][0]
         self.assertEqual(
-            human_readable_bytes(largefile.total_size), json_resource["size"]
+            human_readable_bytes(largefile.total_size), resource["size"]
         )
 
     def test_combined_subarch_resource_calculates_num_of_nodes_deployed(self):
@@ -526,9 +495,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             )
 
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual(number_of_nodes, json_resource["numberOfNodes"])
+        resource = response["resources"][0]
+        self.assertEqual(number_of_nodes, resource["numberOfNodes"])
 
     def test_combined_subarch_resource_calculates_complete_True(self):
         owner = factory.make_admin()
@@ -548,9 +516,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             BootResource.objects, "get_resources_matching_boot_images"
         ).return_value = resources
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertTrue(json_resource["complete"])
+        resource = response["resources"][0]
+        self.assertTrue(resource["complete"])
 
     def test_combined_subarch_resource_calculates_complete_False(self):
         owner = factory.make_admin()
@@ -571,9 +538,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 architecture=f"{arch}/{subarch}",
             )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertFalse(json_resource["complete"])
+        resource = response["resources"][0]
+        self.assertFalse(resource["complete"])
 
     def test_combined_subarch_resource_calculates_progress(self):
         owner = factory.make_admin()
@@ -593,10 +559,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual("Downloading  50%", json_resource["status"])
-        self.assertEqual("in-progress", json_resource["icon"])
+        resource = response["resources"][0]
+        self.assertEqual("Downloading  50%", resource["status"])
+        self.assertEqual("in-progress", resource["icon"])
 
     def test_combined_subarch_resource_shows_queued_if_no_progress(self):
         owner = factory.make_admin()
@@ -614,10 +579,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual("Queued for download", json_resource["status"])
-        self.assertEqual("queued", json_resource["icon"])
+        resource = response["resources"][0]
+        self.assertEqual("Queued for download", resource["status"])
+        self.assertEqual("queued", resource["icon"])
 
     def test_combined_subarch_resource_shows_complete_status(self):
         owner = factory.make_admin()
@@ -637,10 +601,9 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             BootResource.objects, "get_resources_matching_boot_images"
         ).return_value = resources
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual("Synced", json_resource["status"])
-        self.assertEqual("succeeded", json_resource["icon"])
+        resource = response["resources"][0]
+        self.assertEqual("Synced", resource["status"])
+        self.assertEqual("succeeded", resource["icon"])
 
     def test_combined_subarch_resource_shows_waiting_for_cluster_to_sync(self):
         owner = factory.make_admin()
@@ -658,12 +621,11 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             BootResource.objects, "get_resources_matching_boot_images"
         ).return_value = []
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
+        resource = response["resources"][0]
         self.assertEqual(
-            "Waiting for rack controller(s) to sync", json_resource["status"]
+            "Waiting for rack controller(s) to sync", resource["status"]
         )
-        self.assertEqual("waiting", json_resource["icon"])
+        self.assertEqual("waiting", resource["icon"])
 
     def test_combined_subarch_resource_shows_clusters_syncing(self):
         owner = factory.make_admin()
@@ -684,20 +646,16 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             bootresource, "is_import_boot_images_running"
         ).return_value = True
         response = handler.poll({})
-        json_obj = json.loads(response)
-        json_resource = json_obj["resources"][0]
-        self.assertEqual(
-            "Syncing to rack controller(s)", json_resource["status"]
-        )
-        self.assertEqual("in-progress", json_resource["icon"])
+        resource = response["resources"][0]
+        self.assertEqual("Syncing to rack controller(s)", resource["status"])
+        self.assertEqual("in-progress", resource["icon"])
 
     def test_ubuntu_core_images_returns_images_from_cache(self):
         owner = factory.make_admin()
         handler = BootResourceHandler(owner, {}, None)
         cache = factory.make_BootSourceCache(os="ubuntu-core")
         response = handler.poll({})
-        json_obj = json.loads(response)
-        ubuntu_core_images = json_obj["ubuntu_core_images"]
+        ubuntu_core_images = response["ubuntu_core_images"]
         self.assertEqual(
             [
                 {
@@ -722,8 +680,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             release=cache.release,
         )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        ubuntu_core_images = json_obj["ubuntu_core_images"]
+        ubuntu_core_images = response["ubuntu_core_images"]
         self.assertEqual(
             [
                 {
@@ -742,8 +699,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         handler = BootResourceHandler(owner, {}, None)
         cache = factory.make_BootSourceCache()
         response = handler.poll({})
-        json_obj = json.loads(response)
-        other_images = json_obj["other_images"]
+        other_images = response["other_images"]
         self.assertEqual(
             [
                 {
@@ -768,8 +724,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             release=cache.release,
         )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        other_images = json_obj["other_images"]
+        other_images = response["other_images"]
         self.assertEqual(
             [
                 {
@@ -789,8 +744,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         factory.make_BootSourceCache(os="ubuntu")
         factory.make_BootSourceCache(os="ubuntu-core")
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertEqual([], json_obj["other_images"])
+        self.assertEqual([], response["other_images"])
 
     def test_other_images_filters_out_bootloaders(self):
         owner = factory.make_admin()
@@ -799,8 +753,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             bootloader_type=factory.make_name("bootloader-type")
         )
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertEqual([], json_obj["other_images"])
+        self.assertEqual([], response["other_images"])
 
     def test_prefers_title_from_boot_resource_extra(self):
         owner = factory.make_admin()
@@ -808,8 +761,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         title = factory.make_name("title")
         self.make_other_resource(extra={"title": title})
         response = handler.poll({})
-        json_obj = json.loads(response)
-        self.assertEqual(title, json_obj["resources"][0]["title"])
+        self.assertEqual(title, response["resources"][0]["title"])
 
 
 class TestBootResourceStopImport(MAASTransactionServerTestCase):
@@ -1254,9 +1206,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         mock_download.return_value = mapping
         url = factory.make_url(scheme=random.choice(["http", "https"]))
         keyring_data = factory.make_string()
-        observed = json.loads(
-            handler.fetch({"url": url, "keyring_data": keyring_data})
-        )
+        observed = handler.fetch({"url": url, "keyring_data": keyring_data})
         self.assertCountEqual(
             [
                 {
@@ -1303,9 +1253,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         mock_download.return_value = mapping
         url = factory.make_url(scheme=random.choice(["http", "https"]))
         keyring_data = factory.make_string()
-        observed = json.loads(
-            handler.fetch({"url": url, "keyring_data": keyring_data})
-        )
+        observed = handler.fetch({"url": url, "keyring_data": keyring_data})
         self.assertCountEqual(
             [
                 {
@@ -1350,9 +1298,7 @@ class TestBootResourceFetch(MAASServerTestCase):
         mock_download.return_value = mapping
         url = factory.make_url(scheme=random.choice(["http", "https"]))
         keyring_data = factory.make_string()
-        observed = json.loads(
-            handler.fetch({"url": url, "keyring_data": keyring_data})
-        )
+        observed = handler.fetch({"url": url, "keyring_data": keyring_data})
         self.assertCountEqual(
             [
                 {

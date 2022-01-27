@@ -1,11 +1,10 @@
-# Copyright 2016-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """The BootResource handler for the WebSocket connection."""
 
 
 from collections import defaultdict
-import json
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import ValidationError
@@ -581,48 +580,46 @@ class BootResourceHandler(Handler):
             )
         )
 
-        # Load all the resources and generate the JSON result.
-        resources = self.combine_resources(
-            BootResource.objects.filter(bootloader_type=None)
-        )
-        json_resources = [
-            dict(
-                id=resource.id,
-                rtype=resource.rtype,
-                name=resource.name,
-                title=resource.title,
-                arch=resource.arch,
-                size=resource.size,
-                complete=resource.complete,
-                status=resource.status,
-                icon=resource.icon,
-                downloading=resource.downloading,
-                numberOfNodes=resource.number_of_nodes,
-                lastUpdate=resource.last_update.strftime(
+        # Load all the resources and generate the result
+        resources = [
+            {
+                "id": resource.id,
+                "rtype": resource.rtype,
+                "name": resource.name,
+                "title": resource.title,
+                "arch": resource.arch,
+                "size": resource.size,
+                "complete": resource.complete,
+                "status": resource.status,
+                "icon": resource.icon,
+                "downloading": resource.downloading,
+                "numberOfNodes": resource.number_of_nodes,
+                "lastUpdate": resource.last_update.strftime(
                     "%a, %d %b. %Y %H:%M:%S"
                 ),
+            }
+            for resource in self.combine_resources(
+                BootResource.objects.filter(bootloader_type=None)
             )
-            for resource in resources
         ]
         commissioning_series = Config.objects.get_config(
             name="commissioning_distro_series"
         )
-        json_ubuntu = dict(
-            sources=self.format_ubuntu_sources(),
-            releases=self.format_ubuntu_releases(),
-            arches=self.format_ubuntu_arches(),
-            commissioning_series=commissioning_series,
-        )
-        data = dict(
-            connection_error=self.connection_error,
-            region_import_running=is_import_resources_running(),
-            rack_import_running=self.racks_syncing,
-            resources=json_resources,
-            ubuntu=json_ubuntu,
-            ubuntu_core_images=self.format_ubuntu_core_images(),
-            other_images=self.format_other_images(),
-        )
-        return json.dumps(data)
+        ubuntu_resources = {
+            "sources": self.format_ubuntu_sources(),
+            "releases": self.format_ubuntu_releases(),
+            "arches": self.format_ubuntu_arches(),
+            "commissioning_series": commissioning_series,
+        }
+        return {
+            "connection_error": self.connection_error,
+            "region_import_running": is_import_resources_running(),
+            "rack_import_running": self.racks_syncing,
+            "resources": resources,
+            "ubuntu": ubuntu_resources,
+            "ubuntu_core_images": self.format_ubuntu_core_images(),
+            "other_images": self.format_other_images(),
+        }
 
     def get_bootsource(self, params, from_db=False):
         source_type = params.get("source_type", "custom")
@@ -851,7 +848,7 @@ class BootResourceHandler(Handler):
                 raise HandlerError(str(error))
         items = list(descriptions.items())
         err_msg = "Mirror provides no Ubuntu images."
-        if len(items) == 0:
+        if not items:
             raise HandlerError(err_msg)
         releases = {}
         arches = {}
@@ -874,14 +871,12 @@ class BootResourceHandler(Handler):
                 "checked": False,
                 "deleted": False,
             }
-        if len(releases) == 0 or len(arches) == 0:
+        if not releases or not arches:
             raise HandlerError(err_msg)
-        return json.dumps(
-            {
-                "releases": list(releases.values()),
-                "arches": list(arches.values()),
-            }
-        )
+        return {
+            "releases": list(releases.values()),
+            "arches": list(arches.values()),
+        }
 
     def delete_image(self, params):
         """Delete `BootResource` by its ID."""
