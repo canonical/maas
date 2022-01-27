@@ -15,3 +15,5 @@
 db30bb39fa9d98bf75bcd9f7c3d525d5d9e1a21a
 # Upgrade Black and reblacken
 c5feaeb51ae224fd57d422dee960c919822e7b1e
+# Run pyupgrade for Python3.8+
+50d22fd35af7cab6530b4ad229946a3e61980a1b
