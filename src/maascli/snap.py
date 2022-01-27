@@ -153,7 +153,7 @@ def get_current_mode():
     """Gets the current mode of the snap."""
     filepath = get_mode_filepath()
     if os.path.exists(filepath):
-        with open(get_mode_filepath(), "r") as fp:
+        with open(get_mode_filepath()) as fp:
             return fp.read().strip()
     else:
         return "none"
@@ -196,7 +196,7 @@ def get_supervisord_pid():
         os.environ["SNAP_DATA"], "supervisord", "supervisord.pid"
     )
     if os.path.exists(pid_path):
-        with open(pid_path, "r") as fp:
+        with open(pid_path) as fp:
             return int(fp.read().strip())
     else:
         return None
@@ -392,7 +392,7 @@ def perform_work(msg, cmd, *args, **kwargs):
         idx = 0
         while not evnt.is_set():
             # Print the message with a spinner until the work is complete.
-            print_msg("\r[%s] %s" % (spinner[idx], msg), newline=False)
+            print_msg(f"\r[{spinner[idx]}] {msg}", newline=False)
             idx += 1
             if idx == 8:
                 idx = 0

@@ -121,7 +121,7 @@ def compose_purpose_opts(params):
 
 def compose_arch_opts(params):
     """Return any architecture-specific options required"""
-    arch_subarch = "%s/%s" % (params.arch, params.subarch)
+    arch_subarch = f"{params.arch}/{params.subarch}"
     resource = ArchitectureRegistry.get_item(arch_subarch)
     if resource is not None and resource.kernel_options is not None:
         return resource.kernel_options

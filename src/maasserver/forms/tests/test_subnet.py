@@ -213,11 +213,7 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({"cidr": cidr, "fabric": fabric.id, "vid": vlan.vid})
         self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertEqual(
-            {
-                "vid": [
-                    "No VLAN with vid %s in fabric %s." % (vlan.vid, fabric)
-                ]
-            },
+            {"vid": [f"No VLAN with vid {vlan.vid} in fabric {fabric}."]},
             dict(form.errors),
         )
 
@@ -229,7 +225,7 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({"cidr": cidr, "fabric": fabric.id, "vlan": vlan.id})
         self.assertFalse(form.is_valid(), dict(form.errors))
         self.assertEqual(
-            {"vlan": ["VLAN %s is not in fabric %s." % (vlan, fabric)]},
+            {"vlan": [f"VLAN {vlan} is not in fabric {fabric}."]},
             dict(form.errors),
         )
 
@@ -437,7 +433,7 @@ class TestSubnetForm(MAASServerTestCase):
         form.save()
         subnet = reload_object(subnet)
         self.assertEqual(
-            sorted([bm.name for bm in disabled_arches]),
+            sorted(bm.name for bm in disabled_arches),
             sorted(subnet.disabled_boot_architectures),
         )
 
@@ -466,7 +462,7 @@ class TestSubnetForm(MAASServerTestCase):
         form.save()
         subnet = reload_object(subnet)
         self.assertEqual(
-            sorted([bm.name for bm in disabled_arches]),
+            sorted(bm.name for bm in disabled_arches),
             sorted(subnet.disabled_boot_architectures),
         )
 

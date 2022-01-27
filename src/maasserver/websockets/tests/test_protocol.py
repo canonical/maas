@@ -82,7 +82,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         '/MAAS/ws?csrftoken=<csrftoken>' but in practice the code only
         cares about the presence of the CSRF token in the query string.
         """
-        url = "/%s/%s" % (
+        url = "/{}/{}".format(
             maas_factory.make_name("path"),
             maas_factory.make_name("path"),
         )
@@ -174,7 +174,7 @@ class TestWebSocketProtocol(MAASTransactionServerTestCase):
         cookies["sessionid"] = sessionid
         cookies["csrftoken"] = csrftoken
         protocol.transport.cookies = "; ".join(
-            "%s=%s" % (key, value) for key, value in cookies.items()
+            f"{key}={value}" for key, value in cookies.items()
         ).encode("ascii")
         mock_authenticate = self.patch(protocol, "authenticate")
         protocol.connectionMade()

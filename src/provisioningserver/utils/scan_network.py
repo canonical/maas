@@ -380,7 +380,7 @@ def warn_about_missing_cidrs(
     for cidr in cidrs:
         if IPNetwork(cidr) not in cidrs_on_interface:
             stderr.write(
-                "Warning: %s is not present on %s\n" % (cidr, ifname_to_scan)
+                f"Warning: {cidr} is not present on {ifname_to_scan}\n"
             )
             stderr.flush()
 

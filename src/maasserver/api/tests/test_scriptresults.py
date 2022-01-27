@@ -854,7 +854,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         ):
             dashes = "-" * int((80.0 - (2 + len(script_result.name))) / 2)
             binary.write(
-                ("%s %s %s\n" % (dashes, script_result.name, dashes)).encode()
+                (f"{dashes} {script_result.name} {dashes}\n").encode()
             )
             binary.write(script_result.output)
             binary.write(b"\n")
@@ -894,7 +894,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
 
-        root_dir = "%s-%s-%s" % (
+        root_dir = "{}-{}-{}".format(
             script_set.node.hostname,
             script_set.result_type_name.lower(),
             script_set.id,
@@ -982,24 +982,22 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
 
         binary = BytesIO()
         dashes = "-" * int((80.0 - (2 + len(script_result.name))) / 2)
-        binary.write(
-            ("%s %s %s\n" % (dashes, script_result.name, dashes)).encode()
-        )
+        binary.write(f"{dashes} {script_result.name} {dashes}\n".encode())
         binary.write(script_result.output)
         binary.write(b"\n")
         filename = "%s.out" % script_result.name
         dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
-        binary.write(("%s %s %s\n" % (dashes, filename, dashes)).encode())
+        binary.write((f"{dashes} {filename} {dashes}\n").encode())
         binary.write(script_result.stdout)
         binary.write(b"\n")
         filename = "%s.err" % script_result.name
         dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
-        binary.write(("%s %s %s\n" % (dashes, filename, dashes)).encode())
+        binary.write((f"{dashes} {filename} {dashes}\n").encode())
         binary.write(script_result.stderr)
         binary.write(b"\n")
         filename = "%s.yaml" % script_result.name
         dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
-        binary.write(("%s %s %s\n" % (dashes, filename, dashes)).encode())
+        binary.write((f"{dashes} {filename} {dashes}\n").encode())
         binary.write(script_result.result)
         binary.write(b"\n")
         self.assertEqual(binary.getvalue(), response.content)
@@ -1037,7 +1035,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
 
-        root_dir = "%s-%s-%s" % (
+        root_dir = "{}-{}-{}".format(
             script_set.node.hostname,
             script_set.result_type_name.lower(),
             script_set.id,
@@ -1135,7 +1133,7 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         self.assertCountEqual(
             re.findall(r"(name-\w+ - [\w-]+)", response.content.decode()),
             [
-                "%s - %s" % (script_result.name, script_result.interface.name)
+                f"{script_result.name} - {script_result.interface.name}"
                 for script_result in sorted(
                     script_results,
                     key=lambda script_result: (script_result.interface.name),
@@ -1164,30 +1162,26 @@ class TestNodeScriptResultAPI(APITestCase.ForUser):
         binary = BytesIO()
         dashes = "-" * int((80.0 - (2 + len(curtin_error_tarfile.name))) / 2)
         binary.write(
-            (
-                "%s %s %s\n" % (dashes, curtin_error_tarfile.name, dashes)
-            ).encode()
+            f"{dashes} {curtin_error_tarfile.name} {dashes}\n".encode()
         )
         binary.write(b"Binary file\n")
         dashes = "-" * int((80.0 - (2 + len(other_result.name))) / 2)
-        binary.write(
-            ("%s %s %s\n" % (dashes, other_result.name, dashes)).encode()
-        )
+        binary.write(f"{dashes} {other_result.name} {dashes}\n".encode())
         binary.write(other_result.output)
         binary.write(b"\n")
         filename = "%s.out" % other_result.name
         dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
-        binary.write(("%s %s %s\n" % (dashes, filename, dashes)).encode())
+        binary.write((f"{dashes} {filename} {dashes}\n").encode())
         binary.write(other_result.stdout)
         binary.write(b"\n")
         filename = "%s.err" % other_result.name
         dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
-        binary.write(("%s %s %s\n" % (dashes, filename, dashes)).encode())
+        binary.write((f"{dashes} {filename} {dashes}\n").encode())
         binary.write(other_result.stderr)
         binary.write(b"\n")
         filename = "%s.yaml" % other_result.name
         dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
-        binary.write(("%s %s %s\n" % (dashes, filename, dashes)).encode())
+        binary.write((f"{dashes} {filename} {dashes}\n").encode())
         binary.write(other_result.result)
         binary.write(b"\n")
         self.assertEqual(binary.getvalue(), response.content)

@@ -66,7 +66,7 @@ class VLANQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
     def _add_default_query(self, current_q, op, item):
@@ -207,7 +207,7 @@ class VLAN(CleanSave, TimestampedModel):
     )
 
     def __str__(self):
-        return "%s.%s" % (self.fabric.get_name(), self.get_name())
+        return f"{self.fabric.get_name()}.{self.get_name()}"
 
     def clean_vid(self):
         if self.vid is None or self.vid < 0 or self.vid > 4094:

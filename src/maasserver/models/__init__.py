@@ -251,8 +251,8 @@ def get_resource_uri_template(self):
 
     def _convert(template, params=[]):
         """URI template converter"""
-        paths = template % dict([p, "{%s}" % p] for p in params)
-        return "%s%s" % (get_script_prefix(), paths)
+        paths = template % {p: "{%s}" % p for p in params}
+        return f"{get_script_prefix()}{paths}"
 
     try:
         resource_uri = self.handler.resource_uri()

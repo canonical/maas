@@ -201,7 +201,7 @@ class DjangoDatabasesManager(TestResourceManager):
                         os.getpid(),
                         next(self._count),
                     )
-                    stmt = "CREATE DATABASE %s WITH TEMPLATE %s" % (
+                    stmt = "CREATE DATABASE {} WITH TEMPLATE {}".format(
                         dbname,
                         template,
                     )

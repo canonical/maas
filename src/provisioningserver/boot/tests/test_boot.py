@@ -75,9 +75,9 @@ class TestBootMethod(MAASTestCase):
         purpose = factory.make_name("purpose")
         arch, subarch = factory.make_names("arch", "subarch")
         expected = [
-            "config.%s.%s.%s.template" % (purpose, arch, subarch),
-            "config.%s.%s.template" % (purpose, arch),
-            "config.%s.template" % (purpose,),
+            f"config.{purpose}.{arch}.{subarch}.template",
+            f"config.{purpose}.{arch}.template",
+            f"config.{purpose}.template",
             "config.template",
         ]
         observed = gen_template_filenames(purpose, arch, subarch)
@@ -128,7 +128,7 @@ class TestBootMethod(MAASTestCase):
         self.assertRaises(
             AssertionError,
             method.get_template,
-            *factory.make_names("purpose", "arch", "subarch")
+            *factory.make_names("purpose", "arch", "subarch"),
         )
         self.assertThat(mock_try_send_rack_event, MockCalledOnce())
 
@@ -142,7 +142,7 @@ class TestBootMethod(MAASTestCase):
         self.assertRaises(
             IOError,
             method.get_template,
-            *factory.make_names("purpose", "arch", "subarch")
+            *factory.make_names("purpose", "arch", "subarch"),
         )
 
     def test_link_bootloader_links_simplestream_bootloader_files(self):
@@ -252,7 +252,7 @@ class TestBootMethod(MAASTestCase):
         template_namespace = method.compose_template_namespace(kernel_params)
 
         self.assertEqual(
-            "%s/%s" % (image_dir, kernel_params.initrd),
+            f"{image_dir}/{kernel_params.initrd}",
             template_namespace["initrd_path"](kernel_params),
         )
         self.assertEqual(
@@ -261,7 +261,7 @@ class TestBootMethod(MAASTestCase):
         )
         self.assertEqual(kernel_params, template_namespace["kernel_params"])
         self.assertEqual(
-            "%s/%s" % (image_dir, kernel_params.kernel),
+            f"{image_dir}/{kernel_params.kernel}",
             template_namespace["kernel_path"](kernel_params),
         )
         self.assertIsNone(template_namespace["dtb_path"](kernel_params))
@@ -316,7 +316,7 @@ class TestBootMethod(MAASTestCase):
         template_namespace = method.compose_template_namespace(kernel_params)
 
         self.assertEqual(
-            "%s/%s" % (image_dir, kernel_params.initrd),
+            f"{image_dir}/{kernel_params.initrd}",
             template_namespace["initrd_path"](kernel_params),
         )
         self.assertEqual(
@@ -325,11 +325,11 @@ class TestBootMethod(MAASTestCase):
         )
         self.assertEqual(kernel_params, template_namespace["kernel_params"])
         self.assertEqual(
-            "%s/%s" % (image_dir, kernel_params.kernel),
+            f"{image_dir}/{kernel_params.kernel}",
             template_namespace["kernel_path"](kernel_params),
         )
         self.assertEqual(
-            "%s/%s" % (image_dir, kernel_params.boot_dtb),
+            f"{image_dir}/{kernel_params.boot_dtb}",
             template_namespace["dtb_path"](kernel_params),
         )
 

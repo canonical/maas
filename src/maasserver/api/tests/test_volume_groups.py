@@ -495,7 +495,7 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
             logical_volume,
             ContainsDict(
                 {
-                    "name": Equals("%s-%s" % (volume_group.name, name)),
+                    "name": Equals(f"{volume_group.name}-{name}"),
                     "uuid": Equals(vguuid),
                     "size": Equals(expected_size),
                 }

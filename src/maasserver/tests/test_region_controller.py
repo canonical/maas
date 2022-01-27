@@ -408,7 +408,7 @@ class TestRegionControllerService(MAASServerTestCase):
     def test_check_serial_doesnt_raise_error_on_successful_serial_match(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
-        formatted_serial = "{0:10d}".format(result_serial)
+        formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
         # Mock pause so test runs faster.
         self.patch(region_controller, "pause").return_value = succeed(None)
@@ -439,7 +439,7 @@ class TestRegionControllerService(MAASServerTestCase):
     def test_check_serial_raise_error_after_30_tries(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
-        formatted_serial = "{0:10d}".format(result_serial)
+        formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
         # Mock pause so test runs faster.
         self.patch(region_controller, "pause").return_value = succeed(None)
@@ -454,7 +454,7 @@ class TestRegionControllerService(MAASServerTestCase):
     def test_check_serial_handles_ValueError(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
-        formatted_serial = "{0:10d}".format(result_serial)
+        formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
         # Mock pause so test runs faster.
         self.patch(region_controller, "pause").return_value = succeed(None)
@@ -469,7 +469,7 @@ class TestRegionControllerService(MAASServerTestCase):
     def test_check_serial_handles_TimeoutError(self):
         service = self.make_service(sentinel.listener)
         result_serial = random.randint(1, 1000)
-        formatted_serial = "{0:10d}".format(result_serial)
+        formatted_serial = f"{result_serial:10d}"
         dns_names = [factory.make_name("domain") for _ in range(3)]
         # Mock pause so test runs faster.
         self.patch(region_controller, "pause").return_value = succeed(None)
@@ -572,10 +572,10 @@ class TestRegionControllerServiceTransactional(MAASTransactionServerTestCase):
         return (
             rpools,
             sorted(
-                [
+                (
                     Resource(identifier=rpool.id, name=rpool.name)
                     for rpool in ResourcePool.objects.all()
-                ],
+                ),
                 key=attrgetter("identifier"),
             ),
         )

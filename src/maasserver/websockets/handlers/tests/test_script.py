@@ -47,12 +47,12 @@ class TestScriptHandler(MAASServerTestCase):
         handler = ScriptHandler(user, {}, None)
         parameters = {"interface": {"type": "interface"}}
         expected_scripts = sorted(
-            [
+            (
                 self.dehydrate_script(
                     factory.make_Script(parameters=parameters)
                 )
                 for _ in range(3)
-            ],
+            ),
             key=lambda i: i["id"],
         )
         sorted_results = sorted(handler.list({}), key=lambda i: i["id"])

@@ -60,7 +60,7 @@ key_prefix = "CHECKPOINT#"
 
 def get_time_string(time_value):
     """Convert a time value, as returned by time.time() into a string."""
-    return "%s%f" % (key_prefix, time_value)
+    return f"{key_prefix}{time_value:f}"
 
 
 def delete_old_nonces(checkpoint):

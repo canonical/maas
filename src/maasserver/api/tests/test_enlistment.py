@@ -317,7 +317,7 @@ class MachineHostnameEnlistmentTest(APITestCase.ForAnonymousAndUserAndAdmin):
             http.client.OK, response.status_code, response.content
         )
         parsed_result = json_load_bytes(response.content)
-        expected_hostname = "%s.%s" % (
+        expected_hostname = "{}.{}".format(
             hostname_without_domain,
             Domain.objects.get_default_domain().name,
         )

@@ -118,8 +118,8 @@ class TestValidateUserExternalAuthWithCandid(MAASServerTestCase):
         self.client = mock.Mock()
         self.client.get_user_details.return_value = UserDetails(
             username=self.user.username,
-            email="{}@example.com".format(self.user.username),
-            fullname="User {}".format(self.user.username),
+            email=f"{self.user.username}@example.com",
+            fullname=f"User {self.user.username}",
         )
         self.now = datetime.utcnow()
         # by default, the user has to be checked again
@@ -168,8 +168,8 @@ class TestValidateUserExternalAuthWithCandid(MAASServerTestCase):
         self.assertFalse(self.user.is_superuser)
         # user details are updated.
         username = self.user.username
-        self.assertEqual(self.user.last_name, "User {}".format(username))
-        self.assertEqual(self.user.email, "{}@example.com".format(username))
+        self.assertEqual(self.user.last_name, f"User {username}")
+        self.assertEqual(self.user.email, f"{username}@example.com")
 
     def test_valid_user_check_admin(self):
         # user exists, so group info is returned
@@ -259,8 +259,8 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         self.client = mock.Mock()
         self.client.get_user_details.return_value = UserDetails(
             username=self.user.username,
-            email="{}@example.com".format(self.user.username),
-            fullname="User {}".format(self.user.username),
+            email=f"{self.user.username}@example.com",
+            fullname=f"User {self.user.username}",
         )
         self.now = datetime.utcnow()
         # by default, the user has to be checked again
@@ -310,8 +310,8 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         self.assertFalse(self.user.is_superuser)
         # user details are updated.
         username = self.user.username
-        self.assertEqual(self.user.last_name, "User {}".format(username))
-        self.assertEqual(self.user.email, "{}@example.com".format(username))
+        self.assertEqual(self.user.last_name, f"User {username}")
+        self.assertEqual(self.user.email, f"{username}@example.com")
 
     def test_valid_user_check_has_admin_access(self):
         # admin, but no permissions on pools
@@ -335,8 +335,8 @@ class TestValidateUserExternalAuthWithRBAC(MAASServerTestCase):
         self.assertTrue(self.user.is_superuser)
         # user details are updated.
         username = self.user.username
-        self.assertEqual(self.user.last_name, "User {}".format(username))
-        self.assertEqual(self.user.email, "{}@example.com".format(username))
+        self.assertEqual(self.user.last_name, f"User {username}")
+        self.assertEqual(self.user.email, f"{username}@example.com")
 
     def test_valid_user_no_permission(self):
         # user has no permission on resources

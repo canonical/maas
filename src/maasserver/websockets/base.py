@@ -419,7 +419,7 @@ class Handler(metaclass=HandlerMetaclass):
 
                     # Force the name of the function to include the handler
                     # name so the debug logging is useful.
-                    prep_user_execute.__name__ = "%s.%s" % (
+                    prep_user_execute.__name__ = "{}.{}".format(
                         self.__class__.__name__,
                         method_name,
                     )

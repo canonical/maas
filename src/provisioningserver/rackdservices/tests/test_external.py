@@ -41,7 +41,7 @@ def prepareRegion(
     proxy_port=8000,
     proxy_allowed_cidrs=None,
     proxy_prefer_v4_proxy=False,
-    syslog_port=5247
+    syslog_port=5247,
 ):
     """Set up a mock region controller.
 
@@ -602,7 +602,7 @@ class TestRackDNS(MAASTestCase):
             region_name = factory.make_name("region")
             for _ in range(3):
                 pid = random.randint(0, 10000)
-                eventloop = "%s:pid=%s" % (region_name, pid)
+                eventloop = f"{region_name}:pid={pid}"
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
@@ -619,7 +619,7 @@ class TestRackDNS(MAASTestCase):
             region_name = factory.make_name("region")
             for _ in range(3):
                 pid = random.randint(0, 10000)
-                eventloop = "%s:pid=%s" % (region_name, pid)
+                eventloop = f"{region_name}:pid={pid}"
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
@@ -737,7 +737,7 @@ class TestRackProxy(MAASTestCase):
         yield service._orig_tryUpdate()
 
         expected_peers = sorted(
-            ["http://%s:%s" % (ip, proxy_port) for ip in region_ips]
+            f"http://{ip}:{proxy_port}" for ip in region_ips
         )
         self.assertThat(
             write_config,

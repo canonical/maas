@@ -75,9 +75,9 @@ class TestGeneralHandler(MAASServerTestCase):
                 if kflavor == "generic":
                     kernel = "hwe-%s" % style
                 else:
-                    kernel = "hwe-%s-%s" % (style, kflavor)
+                    kernel = f"hwe-{style}-{kflavor}"
                 arch = factory.make_name("arch")
-                architecture = "%s/%s" % (arch, kernel)
+                architecture = f"{arch}/{kernel}"
                 release = row["series"].split(" ")[0]
                 factory.make_usable_boot_resource(
                     name="ubuntu/" + release,
@@ -89,12 +89,14 @@ class TestGeneralHandler(MAASServerTestCase):
                 factory.make_BootSourceCache(
                     os="ubuntu", arch=arch, subarch=kernel, release=release
                 )
-                kernels.append((kernel, "%s (%s)" % (release, kernel)))
+                kernels.append((kernel, f"{release} ({kernel})"))
         return kernels
 
     def test_architectures(self):
         arches = [
-            "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
+            "{}/{}".format(
+                factory.make_name("arch"), factory.make_name("subarch")
+            )
             for _ in range(3)
         ]
         for arch in arches:
@@ -143,7 +145,10 @@ class TestGeneralHandler(MAASServerTestCase):
         handler = GeneralHandler(factory.make_User(), {}, None)
         osystem = make_osystem_with_releases(self)
         releases = [
-            ("%s/%s" % (osystem["name"], release["name"]), release["title"])
+            (
+                "{}/{}".format(osystem["name"], release["name"]),
+                release["title"],
+            )
             for release in osystem["releases"]
         ]
         self.patch(general, "list_osystem_choices").return_value = [

@@ -950,7 +950,7 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
         subnet = factory.make_Subnet(cidr="1.2.0.0/16", gateway_ip="1.2.0.254")
         for n in (10, 20, 30):
             factory.make_StaticIPAddress(
-                ip="1.2.0.{}".format(n),
+                ip=f"1.2.0.{n}",
                 alloc_type=IPADDRESS_TYPE.STICKY,
                 subnet=subnet,
             )
@@ -988,13 +988,13 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
         )
         for n in (60, 61):
             factory.make_StaticIPAddress(
-                ip="1.2.0.{}".format(n),
+                ip=f"1.2.0.{n}",
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 subnet=subnet,
             )
         for n in (80, 90, 100):
             factory.make_StaticIPAddress(
-                ip="1.2.0.{}".format(n),
+                ip=f"1.2.0.{n}",
                 alloc_type=IPADDRESS_TYPE.STICKY,
                 subnet=subnet,
             )

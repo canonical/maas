@@ -45,7 +45,7 @@ def compose_config_path(mac: str) -> TFTPPath:
     :return: Path for the corresponding iPXE config file as exposed over
         TFTP/HTTP, as a byte string.
     """
-    return "ipxe.cfg-{mac}".format(mac=mac).encode("ascii")
+    return f"ipxe.cfg-{mac}".encode("ascii")
 
 
 class TestIPXEBootMethod(MAASTestCase):

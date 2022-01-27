@@ -196,7 +196,7 @@ class ConfigBase:
     def _get_backup_name(cls, message, filename=None):
         if filename is None:
             filename = cls.DEFAULT_FILENAME
-        return "%s.%s.bak" % (filename, message)
+        return f"{filename}.{message}.bak"
 
     @classmethod
     def create_backup(cls, message, filename=None):
@@ -373,7 +373,7 @@ class ConfigurationDatabase:
                     (name, json.dumps(data)),
                 )
         else:
-            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable(f"{self}: Cannot set `{name}'.")
 
     def __delitem__(self, name):
         if self.mutable:
@@ -382,16 +382,16 @@ class ConfigurationDatabase:
                     "DELETE FROM configuration" " WHERE name = ?", (name,)
                 )
         else:
-            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable(f"{self}: Cannot set `{name}'.")
 
     def __str__(self):
         with self.cursor() as cursor:
             # https://www.sqlite.org/pragma.html#pragma_database_list
             databases = "; ".join(
-                "%s=%s" % (name, ":memory:" if path == "" else path)
+                "{}={}".format(name, ":memory:" if path == "" else path)
                 for (_, name, path) in cursor.execute("PRAGMA database_list")
             )
-        return "%s(%s)" % (self.__class__.__qualname__, databases)
+        return f"{self.__class__.__qualname__}({databases})"
 
     @classmethod
     @contextmanager
@@ -471,7 +471,7 @@ class ConfigurationFile:
             self.config[name] = data
             self.dirty = True
         else:
-            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable(f"{self}: Cannot set `{name}'.")
 
     def __delitem__(self, name):
         if self.mutable:
@@ -479,7 +479,7 @@ class ConfigurationFile:
                 del self.config[name]
                 self.dirty = True
         else:
-            raise ConfigurationImmutable("%s: Cannot set `%s'." % (self, name))
+            raise ConfigurationImmutable(f"{self}: Cannot set `{name}'.")
 
     def load(self):
         """Load the configuration."""
@@ -516,7 +516,7 @@ class ConfigurationFile:
         self.dirty = False
 
     def __str__(self):
-        return "%s(%r)" % (self.__class__.__qualname__, self.path)
+        return f"{self.__class__.__qualname__}({self.path!r})"
 
     @classmethod
     @contextmanager

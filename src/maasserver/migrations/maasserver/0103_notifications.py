@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 # -*- coding: utf-8 -*-
 from django.conf import settings
 from django.db import migrations, models

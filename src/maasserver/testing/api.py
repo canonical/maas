@@ -53,7 +53,9 @@ class APITestType(abc.ABCMeta):
 
         :param users: A mapping from a descriptive name to a user factory.
         """
-        name = "%s[for=%s]" % (cls.__name__, ",".join(sorted(userfactories)))
+        name = "{}[for={}]".format(
+            cls.__name__, ",".join(sorted(userfactories))
+        )
         return type(name, (cls,), {"userfactories": userfactories})
 
     @property
@@ -221,7 +223,7 @@ def make_worker_client(rack_controller):
 
 def explain_unexpected_response(expected_status, response):
     """Return human-readable failure message: unexpected http response."""
-    return "Unexpected http status (expected %s): %s - %s" % (
+    return "Unexpected http status (expected {}): {} - {}".format(
         expected_status,
         response.status_code,
         response.content,

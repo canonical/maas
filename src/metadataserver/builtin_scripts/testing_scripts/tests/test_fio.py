@@ -237,7 +237,7 @@ class TestFioTestRunFio(MAASTestCase):
 
         fio.run_fio(factory.make_name("blockdevice"))
 
-        with open(result_path, "r") as results_file:
+        with open(result_path) as results_file:
             results = yaml.safe_load(results_file)
 
         self.assertDictEqual(

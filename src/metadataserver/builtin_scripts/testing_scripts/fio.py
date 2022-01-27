@@ -110,7 +110,7 @@ REGEX = re.compile(
 def get_blocksize(blockdevice):
     """Return the block size of the block device."""
     blockname = os.path.basename(blockdevice)
-    with open("/sys/block/%s/queue/physical_block_size" % blockname, "r") as f:
+    with open("/sys/block/%s/queue/physical_block_size" % blockname) as f:
         return int(f.read())
 
 

@@ -63,7 +63,7 @@ class RECSAPI:
         self.password = password
 
     def build_url(self, command, params=[]):
-        url = "http://%s:%s/REST/" % (self.ip, self.port)
+        url = f"http://{self.ip}:{self.port}/REST/"
         params = filter(None, params)
         return urllib.parse.urljoin(url, command) + "?" + "&".join(params)
 
@@ -156,7 +156,7 @@ class RECSAPI:
 
     def _set_power(self, nodeid, action):
         """Set power for node."""
-        self.post("node/%s/manage/%s" % (nodeid, action))
+        self.post(f"node/{nodeid}/manage/{action}")
 
     def set_power_off_node(self, nodeid):
         """Turns power to node off."""

@@ -48,7 +48,7 @@ def make_kernel_parameters(testcase=None, **parms):
     params = KernelParameters(**parms)
 
     if testcase is not None:
-        name = "%s/%s" % (params.arch, params.subarch)
+        name = f"{params.arch}/{params.subarch}"
         if name in ArchitectureRegistry:
             # It's already there, no need to patch and risk overwriting
             # preset kernel options.

@@ -82,7 +82,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
         actual = {ip.id for ip in dnsresource.ip_addresses.all()}
-        self.assertCountEqual(set(ip.id for ip in ips), actual)
+        self.assertCountEqual({ip.id for ip in ips}, actual)
 
     def test_does_not_require_ip_addresses(self):
         name = factory.make_name("dnsresource")

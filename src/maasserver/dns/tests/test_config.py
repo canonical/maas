@@ -260,7 +260,7 @@ class TestDNSServer(MAASServerTestCase):
         # A forward lookup on the hostname returns the IP address.
         if version == -1:
             version = IPAddress(ip).version
-        fqdn = "%s.%s" % (hostname, domain)
+        fqdn = f"{hostname}.{domain}"
         # Give BIND enough time to process the rndc request.
         # XXX 2016-03-01 lamont bug=1550540 We should really query DNS for the
         # SOA that we (can) know to be the correct one, and wait for that

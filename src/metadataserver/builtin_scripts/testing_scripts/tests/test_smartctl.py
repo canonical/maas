@@ -128,7 +128,7 @@ class TestMakeDeviceName(MAASTestCase):
         blockdevice = factory.make_name("blockdevice")
         device = factory.make_name("device")
         self.assertEqual(
-            "%s %s" % (blockdevice, device),
+            f"{blockdevice} {device}",
             smartctl.make_device_name(blockdevice, device),
         )
 

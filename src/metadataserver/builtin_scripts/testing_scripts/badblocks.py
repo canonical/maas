@@ -74,7 +74,7 @@ def get_block_size(storage):
 
 def get_meminfo_key(meminfo, key):
     """Get key values from /proc/meminfo."""
-    m = re.search(r"%s:\s+(?P<%s>\d+)\s+kB" % (key, key), meminfo)
+    m = re.search(fr"{key}:\s+(?P<{key}>\d+)\s+kB", meminfo)
     if m is None or key not in m.groupdict():
         print("ERROR: Unable to find %s in /proc/meminfo" % key)
         sys.exit(1)
@@ -88,9 +88,9 @@ def get_meminfo_key(meminfo, key):
 def get_parallel_blocks(block_size):
     """Return the number of blocks to be tested in parallel."""
     print("INFO: Determining the amount of blocks to be tested in parallel")
-    with open("/proc/sys/vm/min_free_kbytes", "r") as f:
+    with open("/proc/sys/vm/min_free_kbytes") as f:
         min_free_kbytes = int(f.read())
-    with open("/proc/meminfo", "r") as f:
+    with open("/proc/meminfo") as f:
         meminfo = f.read()
     memtotal = get_meminfo_key(meminfo, "MemTotal")
     memfree = get_meminfo_key(meminfo, "MemFree")

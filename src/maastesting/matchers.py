@@ -66,10 +66,10 @@ class Matches:
         return self.matcher.match(other) is None
 
     def __str__(self):
-        return "Matches %s" % (self.matcher,)
+        return f"Matches {self.matcher}"
 
     def __repr__(self):
-        return "<Matches %s>" % (self.matcher,)
+        return f"<Matches {self.matcher}>"
 
 
 class IsCallable(Matcher):
@@ -77,7 +77,7 @@ class IsCallable(Matcher):
 
     def match(self, something):
         if not callable(something):
-            return Mismatch("%r is not callable" % (something,))
+            return Mismatch(f"{something!r} is not callable")
 
     def __str__(self):
         return self.__class__.__name__
@@ -104,11 +104,11 @@ class HasAttribute(Matcher):
             getattr(something, self.attribute)
         except AttributeError:
             return Mismatch(
-                "%r does not have a %r attribute" % (something, self.attribute)
+                f"{something!r} does not have a {self.attribute!r} attribute"
             )
 
     def __str__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.attribute)
+        return f"{self.__class__.__name__}({self.attribute!r})"
 
 
 class IsCallableMock(Matcher):
@@ -152,7 +152,7 @@ class MockCalledWith(Matcher):
         self.kwargs = kwargs
 
     def __str__(self):
-        return "%s(args=%r, kwargs=%r)" % (
+        return "{}(args={!r}, kwargs={!r})".format(
             self.__class__.__name__,
             self.args,
             self.kwargs,
@@ -241,7 +241,7 @@ class MockCallsMatch(Matcher):
         self.calls = list(calls)
 
     def __str__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.calls)
+        return f"{self.__class__.__name__}({self.calls!r})"
 
     def match(self, mock):
 
@@ -285,9 +285,9 @@ class IsFiredDeferred(Matcher):
 
     def match(self, thing):
         if not isinstance(thing, defer.Deferred):
-            return Mismatch("%r is not a Deferred" % (thing,))
+            return Mismatch(f"{thing!r} is not a Deferred")
         if not thing.called:
-            return Mismatch("%r has not been called" % (thing,))
+            return Mismatch(f"{thing!r} has not been called")
         return None
 
 
@@ -299,10 +299,10 @@ class IsUnfiredDeferred(Matcher):
 
     def match(self, thing):
         if not isinstance(thing, defer.Deferred):
-            return Mismatch("%r is not a Deferred" % (thing,))
+            return Mismatch(f"{thing!r} is not a Deferred")
         if thing.called:
             return Mismatch(
-                "%r has been called (result=%r)" % (thing, thing.result)
+                f"{thing!r} has been called (result={thing.result!r})"
             )
         return None
 
@@ -397,7 +397,7 @@ class FileContains(Matcher):
                 actual_contents = fd.read()
         else:
             # Text/Unicode match.
-            with open(path, "r", encoding=self.encoding) as fd:
+            with open(path, encoding=self.encoding) as fd:
                 actual_contents = fd.read()
         return self.matcher.match(actual_contents)
 
@@ -469,8 +469,8 @@ class ContainedBy(Matcher):
         self.haystack = haystack
 
     def __str__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.haystack)
+        return f"{self.__class__.__name__}({self.haystack!r})"
 
     def match(self, needle):
         if needle not in self.haystack:
-            return Mismatch("%r not in %r" % (needle, self.haystack))
+            return Mismatch(f"{needle!r} not in {self.haystack!r}")

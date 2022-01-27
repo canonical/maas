@@ -64,8 +64,8 @@ def node_metrics_definitions():
     definitions = [
         MetricDefinition(
             "Gauge",
-            "maas_node_mem_{}".format(field),
-            "Memory information field {}".format(field),
+            f"maas_node_mem_{field}",
+            f"Memory information field {field}",
             labels=["service_type"],
         )
         for field in MEMINFO_FIELDS
@@ -90,7 +90,7 @@ def update_memory_metrics(prometheus_metrics: PrometheusMetrics, path=None):
         value = metric_values.get(field)
         if value is not None:
             prometheus_metrics.update(
-                "maas_node_mem_{}".format(field),
+                f"maas_node_mem_{field}",
                 "set",
                 value=value,
                 labels={"service_type": GLOBAL_LABELS["service_type"]},

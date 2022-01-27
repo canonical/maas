@@ -203,7 +203,7 @@ class ARP:
             )
         if self.vid is not None:
             out.write(
-                "   802.1q VLAN ID (VID): %s (0x%03x)\n" % (self.vid, self.vid)
+                f"   802.1q VLAN ID (VID): {self.vid} (0x{self.vid:03x})\n"
             )
         if self.src_mac is not None:
             out.write(

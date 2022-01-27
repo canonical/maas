@@ -524,9 +524,7 @@ class NodeScriptHandler(OperationsHandler):
             ENDPOINT.API,
             request,
             None,
-            description=(
-                "Added tag '%s' to script '%s'." % (tag, script.name)
-            ),
+            description=(f"Added tag '{tag}' to script '{script.name}'."),
         )
         return script
 
@@ -565,8 +563,6 @@ class NodeScriptHandler(OperationsHandler):
             ENDPOINT.API,
             request,
             None,
-            description=(
-                "Removed tag '%s' from script '%s'." % (tag, script.name)
-            ),
+            description=(f"Removed tag '{tag}' from script '{script.name}'."),
         )
         return script

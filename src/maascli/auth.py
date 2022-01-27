@@ -41,7 +41,7 @@ def get_apikey_via_macaroon(url):
     url = url.strip("/")
     client = httpbakery.Client()
     resp = client.request(
-        "POST", "{}/account/?op=create_authorisation_token".format(url)
+        "POST", f"{url}/account/?op=create_authorisation_token"
     )
     if resp.status_code != 200:
         # Most likely the MAAS server doesn't support macaroons.

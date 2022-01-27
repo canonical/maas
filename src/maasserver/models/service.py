@@ -154,7 +154,7 @@ class Service(CleanSave, TimestampedModel):
     )
 
     def __str__(self):
-        info = "%s - %s" % (self.name, self.status)
+        info = f"{self.name} - {self.status}"
         if len(self.status_info) > 0 and not self.status_info.isspace():
             info += " (%s)" % self.status_info
         return info

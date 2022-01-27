@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 from django.db import migrations, models
 
 # IPs must be unique across the entire table, except DISCOVERED addresses
@@ -30,7 +27,7 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterUniqueTogether(
-            name="staticipaddress", unique_together=set([("alloc_type", "ip")])
+            name="staticipaddress", unique_together={("alloc_type", "ip")}
         ),
         migrations.RunSQL(staticipaddress_unique_index_create),
     ]

@@ -355,25 +355,25 @@ class NodeScriptResultHandler(OperationsHandler):
     def __make_file_title(self, script_result, filetype, extention=None):
         title = script_result.name
         if extention is not None:
-            title = "%s.%s" % (title, extention)
+            title = f"{title}.{extention}"
 
         if script_result.physical_blockdevice:
             if filetype == "txt":
-                title = "%s - /dev/%s" % (
+                title = "{} - /dev/{}".format(
                     title,
                     script_result.physical_blockdevice.name,
                 )
             else:
-                title = "%s-%s" % (
+                title = "{}-{}".format(
                     title,
                     script_result.physical_blockdevice.name,
                 )
 
         if script_result.interface:
             if filetype == "txt":
-                title = "%s - %s" % (title, script_result.interface.name)
+                title = f"{title} - {script_result.interface.name}"
             else:
-                title = "%s-%s" % (title, script_result.interface.name)
+                title = f"{title}-{script_result.interface.name}"
 
         return title
 
@@ -478,9 +478,7 @@ class NodeScriptResultHandler(OperationsHandler):
             binary = BytesIO()
             for filename, content in files.items():
                 dashes = "-" * int((80.0 - (2 + len(filename))) / 2)
-                binary.write(
-                    ("%s %s %s\n" % (dashes, filename, dashes)).encode()
-                )
+                binary.write((f"{dashes} {filename} {dashes}\n").encode())
                 if bin_regex.search(filename) is not None:
                     binary.write(b"Binary file")
                 else:
@@ -491,7 +489,7 @@ class NodeScriptResultHandler(OperationsHandler):
             )
         elif filetype == "tar.xz":
             binary = BytesIO()
-            root_dir = "%s-%s-%s" % (
+            root_dir = "{}-{}-{}".format(
                 script_set.node.hostname,
                 script_set.result_type_name.lower(),
                 script_set.id,

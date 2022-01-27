@@ -50,7 +50,7 @@ class TestLLDPScripts(MAASTestCase):
         mock_open = self.patch(install_lldpd, "open")
         mock_open.return_value = open(temp_file, "w", encoding="ascii")
         install_lldpd.disable_embedded_lldp_agent_in_intel_cna_cards()
-        output_expected = "lldp stop\n".encode("ascii")
+        output_expected = b"lldp stop\n"
         with open(temp_file, "rb") as fd:
             output_observed = fd.read()
         self.assertEqual(output_expected, output_observed)

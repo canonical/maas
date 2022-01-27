@@ -362,7 +362,7 @@ class ActionHelp(argparse.Action):
 def get_action_class(handler, action):
     """Return custom action handler class."""
     handler_name = handler["handler_name"].replace("-", "_")
-    action_name = "%s_%s" % (
+    action_name = "{}_{}".format(
         handler_name,
         safe_name(action["name"]).replace("-", "_"),
     )

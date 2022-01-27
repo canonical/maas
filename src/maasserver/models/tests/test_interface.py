@@ -2498,33 +2498,27 @@ class UpdateIpAddressesTest(MAASServerTestCase):
             maaslog.info,
             MockCallsMatch(
                 call(
-                    (
-                        "%s: Observed connected to %s via %s."
-                        % (
-                            interface1.get_log_string(),
-                            interface1.vlan.fabric.get_name(),
-                            subnet1.cidr,
-                        )
+                    "%s: Observed connected to %s via %s."
+                    % (
+                        interface1.get_log_string(),
+                        interface1.vlan.fabric.get_name(),
+                        subnet1.cidr,
                     )
                 ),
                 call(
-                    (
-                        "%s: Observed connected to %s via %s."
-                        % (
-                            interface2.get_log_string(),
-                            interface2.vlan.fabric.get_name(),
-                            subnet2.cidr,
-                        )
+                    "%s: Observed connected to %s via %s."
+                    % (
+                        interface2.get_log_string(),
+                        interface2.vlan.fabric.get_name(),
+                        subnet2.cidr,
                     )
                 ),
                 call(
-                    (
-                        "%s: Observed connected to %s via %s."
-                        % (
-                            interface3.get_log_string(),
-                            interface3.vlan.fabric.get_name(),
-                            subnet3.cidr,
-                        )
+                    "%s: Observed connected to %s via %s."
+                    % (
+                        interface3.get_log_string(),
+                        interface3.vlan.fabric.get_name(),
+                        subnet3.cidr,
                     )
                 ),
             ),
@@ -3715,7 +3709,7 @@ class TestClaimAutoIPs(MAASTransactionServerTestCase):
             )
             exclude = factory.pick_ip_in_Subnet(subnet)
         with transaction.atomic():
-            interface.claim_auto_ips(exclude_addresses=set([exclude]))
+            interface.claim_auto_ips(exclude_addresses={exclude})
             auto_ip = interface.ip_addresses.get(
                 alloc_type=IPADDRESS_TYPE.AUTO
             )

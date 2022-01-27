@@ -189,24 +189,24 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
 
     # Gather counter for networks
     for stype, number in stats["network_stats"].items():
-        metrics.update("maas_net_{}".format(stype), "set", value=number)
+        metrics.update(f"maas_net_{stype}", "set", value=number)
 
     # Gather overall amount of machine resources
     for resource, value in stats["machine_stats"].items():
-        metrics.update("maas_machines_{}".format(resource), "set", value=value)
+        metrics.update(f"maas_machines_{resource}", "set", value=value)
 
     # Gather all stats for vm_hosts
     metrics.update("maas_kvm_pods", "set", value=vm_hosts["vm_hosts"])
     metrics.update("maas_kvm_machines", "set", value=vm_hosts["vms"])
     for metric in ("cores", "memory", "storage"):
         metrics.update(
-            "maas_kvm_{}".format(metric),
+            f"maas_kvm_{metric}",
             "set",
             value=vm_hosts["available_resources"][metric],
             labels={"status": "available"},
         )
         metrics.update(
-            "maas_kvm_{}".format(metric),
+            f"maas_kvm_{metric}",
             "set",
             value=vm_hosts["utilized_resources"][metric],
             labels={"status": "used"},
@@ -248,12 +248,12 @@ def update_prometheus_stats(metrics: PrometheusMetrics):
             labels={"cidr": cidr},
         )
         for addr_type in ("dynamic", "reserved"):
-            metric_name = "maas_net_subnet_ip_{}".format(addr_type)
+            metric_name = f"maas_net_subnet_ip_{addr_type}"
             for status in ("available", "used"):
                 metrics.update(
                     metric_name,
                     "set",
-                    value=stats["{}_{}".format(addr_type, status)],
+                    value=stats[f"{addr_type}_{status}"],
                     labels={"cidr": cidr, "status": status},
                 )
 

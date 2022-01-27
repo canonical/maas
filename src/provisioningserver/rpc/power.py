@@ -104,7 +104,7 @@ def perform_power_driver_change(
         d = power_driver.cycle(system_id, context)
 
     def power_change_failed(failure):
-        message = "Power %s for the node failed: %s" % (
+        message = "Power {} for the node failed: {}".format(
             power_change,
             get_error_message(failure.value),
         )
@@ -251,9 +251,7 @@ def maybe_change_power_state(
         d.addErrback(eb_cancelled)
 
         # Catch-all log.
-        d.addErrback(
-            log.err, "%s: Power %s failed." % (hostname, power_change)
-        )
+        d.addErrback(log.err, f"{hostname}: Power {power_change} failed.")
 
         # LP: 1761600 - Returning d will cause d to be resolved with the
         # caller. This causes power actions in the UI/API such as deploy,

@@ -368,9 +368,7 @@ class TestSelect(MAASTestCase):
         leaf = FilePath(directory).descendant(segments)
         expected_dirs = {leaf}
         expected_dirs.update(leaf.parents())
-        self.assertThat(
-            select.dirs, Equals(set(fp.path for fp in expected_dirs))
-        )
+        self.assertThat(select.dirs, Equals({fp.path for fp in expected_dirs}))
 
     def test_wantDirectory_checks_dirs_and_thats_it(self):
         directory = self.make_dir()

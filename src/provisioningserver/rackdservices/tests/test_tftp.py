@@ -238,7 +238,7 @@ class TestTFTPBackend(MAASTestCase):
         os.mkdir(os.path.join(temp_dir, subdir))
         factory.make_file(os.path.join(temp_dir, subdir), filename, data)
 
-        path = ("\\%s\\%s" % (subdir, filename)).encode("ascii")
+        path = (f"\\{subdir}\\{filename}").encode("ascii")
         backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
         reader = yield backend.get_reader(path)
 
@@ -1221,7 +1221,7 @@ class TestLogRequest(MAASTestCase):
             log_request(file_name, clock)
             clock.advance(0.0)  # Don't leave anything in the reactor.
         self.assertThat(
-            logger.output, Equals("%s requested by %s" % (file_name, ip))
+            logger.output, Equals(f"{file_name} requested by {ip}")
         )
 
     def test_logs_when_sending_event_errors(self):

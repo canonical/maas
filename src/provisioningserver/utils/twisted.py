@@ -116,7 +116,7 @@ def asynchronous(func=undefined, *, timeout=undefined):
                 raise ValueError("timeout must be >= 0, not %d" % timeout)
         elif timeout is not FOREVER:
             raise ValueError(
-                "timeout must an int, float, or undefined, not %r" % (timeout,)
+                f"timeout must an int, float, or undefined, not {timeout!r}"
             )
 
     func_in_reactor = run_in_reactor(func)
@@ -484,9 +484,7 @@ class DeferredValue:
         object's reference to it is cleared.
         """
         if self.waiters is None:
-            raise AlreadyCalledError(
-                "Value already set to %r." % (self.value,)
-            )
+            raise AlreadyCalledError(f"Value already set to {self.value!r}.")
 
         self.value = value
         waiters, self.waiters = self.waiters, None
@@ -522,17 +520,11 @@ class DeferredValue:
             captured or observed.
         """
         if self.waiters is None:
-            raise AlreadyCalledError(
-                "Value already set to %r." % (self.value,)
-            )
+            raise AlreadyCalledError(f"Value already set to {self.value!r}.")
         if self.capturing is not None:
-            raise AlreadyCalledError(
-                "Already capturing %r." % (self.capturing,)
-            )
+            raise AlreadyCalledError(f"Already capturing {self.capturing!r}.")
         if self.observing is not None:
-            raise AlreadyCalledError(
-                "Already observing %r." % (self.observing,)
-            )
+            raise AlreadyCalledError(f"Already observing {self.observing!r}.")
 
         self.capturing = d
         return d.addCallbacks(self.set, self.fail)
@@ -549,17 +541,11 @@ class DeferredValue:
             captured or observed.
         """
         if self.waiters is None:
-            raise AlreadyCalledError(
-                "Value already set to %r." % (self.value,)
-            )
+            raise AlreadyCalledError(f"Value already set to {self.value!r}.")
         if self.capturing is not None:
-            raise AlreadyCalledError(
-                "Already capturing %r." % (self.capturing,)
-            )
+            raise AlreadyCalledError(f"Already capturing {self.capturing!r}.")
         if self.observing is not None:
-            raise AlreadyCalledError(
-                "Already observing %r." % (self.observing,)
-            )
+            raise AlreadyCalledError(f"Already observing {self.observing!r}.")
 
         def set_and_return(value):
             self.set(value)

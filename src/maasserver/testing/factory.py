@@ -710,9 +710,7 @@ class Factory(maastesting.factory.Factory):
             if ":" in ip:
                 ip = "[%s]" % ip
             if pod_type == "virsh":
-                parameters = {
-                    "power_address": "qemu+ssh://{}/system".format(ip)
-                }
+                parameters = {"power_address": f"qemu+ssh://{ip}/system"}
             elif pod_type == "lxd":
                 parameters = {"power_address": f"{ip}:8443"}
         if project:
@@ -2078,7 +2076,7 @@ class Factory(maastesting.factory.Factory):
         if missing_param is not None:
             del items[missing_param]
         return "OAuth " + ", ".join(
-            ['%s="%s"' % (key, value) for key, value in items.items()]
+            [f'{key}="{value}"' for key, value in items.items()]
         )
 
     def make_Zone(
@@ -2314,7 +2312,7 @@ class Factory(maastesting.factory.Factory):
             osystem = "ubuntu"
         if release is None:
             release = OperatingSystemRegistry[osystem].get_default_release()
-        return "%s/%s" % (osystem, release)
+        return f"{osystem}/{release}"
 
     def make_BootResource(
         self,
@@ -2338,11 +2336,11 @@ class Factory(maastesting.factory.Factory):
             else:
                 os = self.make_name("os")
                 series = self.make_name("series")
-                name = "%s/%s" % (os, series)
+                name = f"{os}/{series}"
         if architecture is None:
             arch = self.make_name("arch")
             subarch = self.make_name("subarch")
-            architecture = "%s/%s" % (arch, subarch)
+            architecture = f"{arch}/{subarch}"
         if extra is None:
             extra = {
                 self.make_name("key"): self.make_name("value")
@@ -2560,9 +2558,9 @@ class Factory(maastesting.factory.Factory):
         default_series = Config.objects.get_config(
             name="commissioning_distro_series"
         )
-        default_name = "%s/%s" % (default_osystem, default_series)
+        default_name = f"{default_osystem}/{default_series}"
         release = get_release_from_distro_info(default_series)
-        architecture = "%s/hwe-%s" % (arch, release["version"].split()[0])
+        architecture = "{}/hwe-{}".format(arch, release["version"].split()[0])
         try:
             return BootResource.objects.get(
                 name=default_name,

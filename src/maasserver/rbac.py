@@ -57,14 +57,12 @@ class RBACClient(MacaroonClient):
     def _get_resource_type_url(self, resource_type: str):
         """Return the URL for `resource_type`."""
         return self._url + quote(
-            "{}/resources/{}".format(self.API_BASE_URL, resource_type)
+            f"{self.API_BASE_URL}/resources/{resource_type}"
         )
 
     def get_user_details(self, username: str) -> UserDetails:
         """Return details about a user."""
-        url = self._url + quote(
-            "{}/user/{}".format(self.API_BASE_URL, username)
-        )
+        url = self._url + quote(f"{self.API_BASE_URL}/user/{username}")
         details = self._request("GET", url)
         return UserDetails(
             username=details["username"],
@@ -464,5 +462,5 @@ class FakeRBACUserClient(RBACUserClient):
         self.registered_services.append(service_uri)
         return {
             "url": "http://auth.example.com",
-            "username": "u-{}".format(len(self.registered_services)),
+            "username": f"u-{len(self.registered_services)}",
         }

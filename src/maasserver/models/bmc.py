@@ -292,7 +292,7 @@ class BMC(CleanSave, TimestampedModel):
     )
 
     def __str__(self):
-        return "%s (%s)" % (
+        return "{} ({})".format(
             self.id,
             self.ip_address if self.ip_address else "No IP",
         )
@@ -1235,7 +1235,7 @@ class Pod(BMC):
         """Sync the `block_devices` to the `existing_machine`."""
         block_devices = discovered_machine.block_devices
         model_mapping = {
-            "%s/%s" % (block_device.model, block_device.serial): block_device
+            f"{block_device.model}/{block_device.serial}": block_device
             for block_device in block_devices
             if block_device.model and block_device.serial
         }
@@ -1252,7 +1252,7 @@ class Pod(BMC):
         for block_device in existing_block_devices:
             if isinstance(block_device, PhysicalBlockDevice):
                 if block_device.model and block_device.serial:
-                    key = "%s/%s" % (block_device.model, block_device.serial)
+                    key = f"{block_device.model}/{block_device.serial}"
                     if key in model_mapping:
                         self._sync_block_device(
                             model_mapping.pop(key), block_device

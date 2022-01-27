@@ -169,7 +169,7 @@ class DNSDataTest(MAASServerTestCase):
         proto = factory.make_name(size=5)
         name = factory.make_name("name")
         target = factory.make_name("name")
-        srv_name = "_%s._%s.%s" % (service, proto, name)
+        srv_name = f"_{service}._{proto}.{name}"
         data = "%d %d %d %s" % (
             random.randint(0, 65535),
             random.randint(0, 65535),
@@ -316,7 +316,7 @@ class TestDNSDataMapping(MAASServerTestCase):
     def test_get_hostname_dnsdata_mapping_returns_mapping_at_domain(self):
         parent = Domain.objects.get_default_domain()
         name = factory.make_name("node")
-        d_name = "%s.%s" % (name, parent.name)
+        d_name = f"{name}.{parent.name}"
         domain = factory.make_Domain(name=d_name)
         expected_mapping = {}
         # Make a node that is at the top of the domain, and a couple others.

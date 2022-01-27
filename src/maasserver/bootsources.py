@@ -162,9 +162,9 @@ def get_product_title(item):
     release_title = item.get("release_title")
     gadget_title = item.get("gadget_title")
     if None not in (os_title, release_title, gadget_title):
-        return "%s %s %s" % (os_title, release_title, gadget_title)
+        return f"{os_title} {release_title} {gadget_title}"
     elif None not in (os_title, release_title):
-        return "%s %s" % (os_title, release_title)
+        return f"{os_title} {release_title}"
     else:
         return None
 
@@ -360,7 +360,7 @@ def cache_boot_sources():
                 descriptions = download_all_image_descriptions(
                     [source], user_agent=user_agent
                 )
-            except (IOError, ConnectionError) as error:
+            except (OSError, ConnectionError) as error:
                 msg = "Failed to import images from " "%s: %s" % (
                     source["url"],
                     error,

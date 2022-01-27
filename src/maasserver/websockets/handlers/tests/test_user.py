@@ -267,9 +267,7 @@ class TestUserHandler(MAASServerTestCase):
 
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
-        self.assertEqual(
-            event.description, "Deleted user '{}'.".format(user.username)
-        )
+        self.assertEqual(event.description, f"Deleted user '{user.username}'.")
 
     def test_update_other_as_unprivileged(self):
         unpriv_user = factory.make_User()
@@ -280,7 +278,7 @@ class TestUserHandler(MAASServerTestCase):
             {
                 "id": user.id,
                 "last_name": factory.make_name("Newname"),
-                "email": "new-{}@example.com".format(factory.make_string()),
+                "email": f"new-{factory.make_string()}@example.com",
                 "is_superuser": True,
                 "username": factory.make_name("newname"),
             }
@@ -297,7 +295,7 @@ class TestUserHandler(MAASServerTestCase):
             {
                 "id": user.id,
                 "last_name": factory.make_name("Newname"),
-                "email": "new-{}@example.com".format(factory.make_string()),
+                "email": f"new-{factory.make_string()}@example.com",
                 "is_superuser": True,
                 "username": factory.make_name("newname"),
             }
@@ -317,7 +315,7 @@ class TestUserHandler(MAASServerTestCase):
             {
                 "id": user.id,
                 "last_name": factory.make_name("Newname"),
-                "email": "new-{}@example.com".format(factory.make_string()),
+                "email": f"new-{factory.make_string()}@example.com",
                 "is_superuser": True,
                 "username": factory.make_name("newname"),
             }
@@ -338,7 +336,7 @@ class TestUserHandler(MAASServerTestCase):
             {
                 "id": user.id,
                 "last_name": factory.make_name("Newname"),
-                "email": "new-{}@example.com".format(factory.make_string()),
+                "email": f"new-{factory.make_string()}@example.com",
                 "is_superuser": True,
                 "username": factory.make_name("newname"),
             }

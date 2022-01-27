@@ -151,7 +151,7 @@ class MAASSensibleOAuthClient(MAASSensibleClient):
     def _compose_url(self, path):
         """Put together a full URL for the resource at `path`."""
         environ = self._base_environ()
-        return "%s://%s" % (environ["wsgi.url_scheme"], path)
+        return "{}://{}".format(environ["wsgi.url_scheme"], path)
 
     def request(self, **kwargs):
         url = self._compose_url(kwargs["PATH_INFO"])

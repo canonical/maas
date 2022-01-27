@@ -86,14 +86,12 @@ def disable_embedded_lldp_agent_in_intel_cna_cards():
     if not os.path.exists(addr_path):
         return
     for inner_dir in os.listdir(addr_path):
-        command_path = "{}/{}/command".format(addr_path, inner_dir)
+        command_path = f"{addr_path}/{inner_dir}/command"
         try:
             with open(command_path, "w", encoding="ascii") as command_file:
                 command_file.write("lldp stop\n")
-            print(
-                "INFO: Disabled embedded lldp agent for {}".format(inner_dir)
-            )
-        except (OSError, IOError):
+            print(f"INFO: Disabled embedded lldp agent for {inner_dir}")
+        except OSError:
             print(
                 "WARNING: Failed to disable the embedded lldp agent for {}".format(
                     inner_dir

@@ -26,7 +26,7 @@ def _create_subparser(driver_settings, parser):
             choices = None
 
         parser.add_argument(
-            "--{}".format(arg_name),
+            f"--{arg_name}",
             dest=setting["name"],
             help=setting["label"],
             required=setting["required"],

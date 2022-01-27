@@ -71,7 +71,7 @@ class LicenseKeysHandler(OperationsHandler):
                 # osystem with distro_series since that is what LicenseKeyForm
                 # expects.
                 if "osystem" in data:
-                    data["distro_series"] = "%s/%s" % (
+                    data["distro_series"] = "{}/{}".format(
                         data["osystem"],
                         data["distro_series"],
                     )

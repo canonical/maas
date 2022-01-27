@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 from django.db import migrations, models
 
 
@@ -41,6 +38,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="bootresourcefile",
-            unique_together=set([("resource_set", "filename")]),
+            unique_together={("resource_set", "filename")},
         ),
     ]

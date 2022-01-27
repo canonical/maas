@@ -58,7 +58,7 @@ class TestWriteConfig(MAASTestCase):
         config.write_config([cidr])
         matcher = Contains("acl localnet src %s" % cidr)
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_PROXY_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_PROXY_CONF_NAME}",
             FileContains(matcher=matcher),
         )
 

@@ -142,7 +142,7 @@ def converter_obj(expected):
         if isinstance(value, expected):
             return value
         else:
-            raise TypeError("%r is not of type %s" % (value, expected))
+            raise TypeError(f"{value!r} is not of type {expected}")
 
     return converter
 

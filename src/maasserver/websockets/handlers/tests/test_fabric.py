@@ -21,7 +21,7 @@ class TestFabricHandler(MAASServerTestCase):
             "class_type": fabric.class_type,
             "updated": dehydrate_datetime(fabric.updated),
             "created": dehydrate_datetime(fabric.created),
-            "vlan_ids": sorted([vlan.id for vlan in fabric.vlan_set.all()]),
+            "vlan_ids": sorted(vlan.id for vlan in fabric.vlan_set.all()),
         }
         data["default_vlan_id"] = data["vlan_ids"][0]
         return data

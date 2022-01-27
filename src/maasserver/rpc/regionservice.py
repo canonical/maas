@@ -759,7 +759,7 @@ class RegionServer(Region):
         authenticated = yield self.authenticateCluster()
         peer = self.transport.getPeer()
         if isinstance(peer, (IPv4Address, IPv6Address)):
-            client = "%s:%s" % (peer.host, peer.port)
+            client = f"{peer.host}:{peer.port}"
         else:
             client = peer.name
         if authenticated:

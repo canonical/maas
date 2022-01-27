@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import datetime
 
 from django.db import migrations, models
@@ -98,10 +96,10 @@ def migrate_staticipaddress_hostname(apps, schema_editor):
     )
     for ip in ips:
         hostname = ip.hostname.split(".")[0]
-        domains = set(
+        domains = {
             interface.node.domain
             for interface in ip.interface_set.filter(node__isnull=False)
-        )
+        }
         if len(domains):
             domain_id = domains.pop().id
         else:

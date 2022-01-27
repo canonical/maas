@@ -78,7 +78,7 @@ class UserProfile(CleanSave, Model):
         for attr, title in owned_resources:
             count = getattr(self.user, attr + "_set").count()
             if count:
-                messages.append("{} {}".format(count, title))
+                messages.append(f"{count} {title}")
 
         if messages:
             raise CannotDeleteUserException(

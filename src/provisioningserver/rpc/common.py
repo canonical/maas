@@ -89,7 +89,7 @@ class Client:
         super().__init__()
         assert IConnection.providedBy(
             conn
-        ), "%r does not provide IConnection" % (conn,)
+        ), f"{conn!r} does not provide IConnection"
         self._conn = conn
 
     @property
@@ -157,7 +157,7 @@ class Client:
             in seconds) to block on the call's completion.
         """
         if len(args) != 0:
-            receiver_name = "%s.%s" % (
+            receiver_name = "{}.{}".format(
                 self.__module__,
                 self.__class__.__name__,
             )

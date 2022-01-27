@@ -107,13 +107,13 @@ class MAASIPRange(IPRange):
         range_str = str(IPAddress(self.first))
         if not self.first == self.last:
             range_str += "-" + str(IPAddress(self.last))
-            range_str += " num_addresses={}".format(self.num_addresses)
+            range_str += f" num_addresses={self.num_addresses}"
         if self.purpose:
             range_str += " purpose=" + repr(self.purpose)
         return range_str
 
     def __repr__(self):
-        return "%s('%s', '%s'%s%s)" % (
+        return "{}('{}', '{}'{}{})".format(
             self.__class__.__name__,
             self._start,
             self._end,
@@ -338,7 +338,7 @@ class IPRangeStatistics:
     def available_percentage_string(self):
         """Returns the utilization percentage for this set of addresses.
         :return:unicode"""
-        return "{0:.0%}".format(self.available_percentage)
+        return f"{self.available_percentage:.0%}"
 
     @property
     def usage_percentage(self):
@@ -350,7 +350,7 @@ class IPRangeStatistics:
     def usage_percentage_string(self):
         """Returns the utilization percentage for this set of addresses.
         :return:unicode"""
-        return "{0:.0%}".format(self.usage_percentage)
+        return f"{self.usage_percentage:.0%}"
 
     def render_json(self, include_ranges=False, include_suggestions=False):
         """Returns a representation of the statistics suitable for rendering
@@ -594,7 +594,7 @@ class MAASIPSet(set):
         item_repr = []
         for item in self.ranges:
             item_repr.append(item)
-        return "%s(%s)" % (self.__class__.__name__, item_repr)
+        return f"{self.__class__.__name__}({item_repr})"
 
 
 def make_ipaddress(input: Optional[MaybeIPAddress]) -> Optional[IPAddress]:
@@ -650,7 +650,7 @@ def make_network(
         malformed.
     :return: An `IPNetwork` of the given base address and netmask or bit width.
     """
-    network = IPNetwork("%s/%s" % (ip_address, netmask_or_bits), **kwargs)
+    network = IPNetwork(f"{ip_address}/{netmask_or_bits}", **kwargs)
     if cidr:
         network = network.cidr
     return network
@@ -748,8 +748,7 @@ def get_all_addresses_for_interface(interface: str) -> Iterable[str]:
 def get_all_interface_addresses() -> Iterable[str]:
     """For each network interface, yield its addresses."""
     for interface in netifaces.interfaces():
-        for address in get_all_addresses_for_interface(interface):
-            yield address
+        yield from get_all_addresses_for_interface(interface)
 
 
 def resolve_host_to_addrinfo(
@@ -878,7 +877,7 @@ def hex_str_to_bytes(data):
     except ValueError as e:
         # The default execption is not really useful since it doesn't specify
         # the incorrect input.
-        raise ValueError("Invalid hex string: '%s'; %s" % (data, str(e)))
+        raise ValueError(f"Invalid hex string: '{data}'; {str(e)}")
 
 
 def ipv4_to_bytes(ipv4_address):
@@ -1188,11 +1187,11 @@ def get_all_interface_subnets():
     :return: set of IP networks
     :rtype: set of `IPNetwork`
     """
-    return set(
+    return {
         IPNetwork(link["address"])
         for interface in get_all_interfaces_definition().values()
         for link in interface["links"]
-    )
+    }
 
 
 def get_all_interface_source_addresses():

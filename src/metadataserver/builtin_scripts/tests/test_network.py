@@ -201,13 +201,11 @@ class FakeCommissioningData:
 
     def get_available_vid(self):
         available_vids = set(range(2, 4095))
-        used_vids = set(
-            [
-                network.vlan.vid
-                for network in self.networks.values()
-                if network.vlan is not None
-            ]
-        )
+        used_vids = {
+            network.vlan.vid
+            for network in self.networks.values()
+            if network.vlan is not None
+        }
         available_vids = list(available_vids.difference(used_vids))
         return random.choice(available_vids)
 
@@ -325,10 +323,10 @@ class FakeCommissioningData:
         for card in network_resources["cards"]:
             if card["ports"] is None:
                 del card["ports"]
-        networks = dict(
-            (name, dataclasses.asdict(network))
+        networks = {
+            name: dataclasses.asdict(network)
             for name, network in self.networks.items()
-        )
+        }
         old_interfaces_data = self._generate_interfaces()
         data = {
             "api_extensions": self.api_extensions,
@@ -903,7 +901,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         self.assertEqual(
             sorted([ip1, ip2]),
-            sorted([address.ip for address in discovered_addresses]),
+            sorted(address.ip for address in discovered_addresses),
         )
 
     def test_new_physical_with_resource_info(self):

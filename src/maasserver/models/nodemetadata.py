@@ -54,7 +54,7 @@ class NodeMetadata(CleanSave, TimestampedModel):
     value = TextField(null=False, blank=False)
 
     def __str__(self):
-        return "%s (%s/%s)" % (
+        return "{} ({}/{})".format(
             self.__class__.__name__,
             self.node.hostname,
             self.key,

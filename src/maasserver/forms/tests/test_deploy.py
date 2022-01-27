@@ -18,7 +18,7 @@ class TestDeployForm(MAASServerTestCase):
         # hard-coded stuff.
         osystem = factory.make_name("osystem")
         release = factory.make_name("release")
-        release_name = "%s/%s" % (osystem, release)
+        release_name = f"{osystem}/{release}"
         factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=release_name
         )
@@ -33,7 +33,7 @@ class TestDeployForm(MAASServerTestCase):
     def test_accepts_new_values(self):
         osystem = factory.make_name("osystem")
         release = factory.make_name("release")
-        release_name = "%s/%s" % (osystem, release)
+        release_name = f"{osystem}/{release}"
         factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=release_name
         )

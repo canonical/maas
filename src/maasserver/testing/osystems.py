@@ -50,7 +50,7 @@ def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
         for release in releases:
             factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.UPLOADED,
-                name=("%s/%s" % (osystem_name, release)),
+                name=(f"{osystem_name}/{release}"),
                 architecture=arch,
             )
     return make_rpc_osystem(osystem_name, releases=rpc_releases)

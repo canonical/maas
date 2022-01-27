@@ -209,16 +209,14 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
             process = RegionControllerProcess.objects.get(
                 region=region, pid=pid
             )
-            return set(
-                [
-                    (endpoint.address, endpoint.port)
-                    for endpoint in (
-                        RegionControllerProcessEndpoint.objects.filter(
-                            process=process
-                        )
+            return {
+                (endpoint.address, endpoint.port)
+                for endpoint in (
+                    RegionControllerProcessEndpoint.objects.filter(
+                        process=process
                     )
-                ]
-            )
+                )
+            }
 
         endpoints = yield deferToDatabase(getEndpoints)
         self.assertEqual(

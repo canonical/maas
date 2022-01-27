@@ -30,7 +30,7 @@ class CleanSaveModelState(ModelState):
 
     def has_any_changed(self, names):
         """Return `True` if any of the provided field names have changed."""
-        return max([name in self._changed_fields for name in names])
+        return max(name in self._changed_fields for name in names)
 
     def get_old_value(self, name):
         """
@@ -150,9 +150,7 @@ class CleanSave:
                     # related primary key for the field.
                     super().__setattr__(name, value)
                 else:
-                    raise AttributeError(
-                        "Unknown field(%s) for: %s" % (name, field)
-                    )
+                    raise AttributeError(f"Unknown field({name}) for: {field}")
             else:
                 super().__setattr__(name, value)
 
@@ -160,14 +158,12 @@ class CleanSave:
         """Perform `full_clean` before save and only save changed fields."""
         exclude_clean_fields = (
             {self._meta.pk.name}
-            | set(
-                field.name for field in self._meta.fields if field.is_relation
-            )
-            | set(
+            | {field.name for field in self._meta.fields if field.is_relation}
+            | {
                 f.attname
                 for f in self._meta.concrete_fields
                 if f.attname not in self.__dict__
-            )
+            }
         )
         if (
             "update_fields" in kwargs
@@ -196,22 +192,22 @@ class CleanSave:
 
             # Exclude the related fields and fields that didn't change
             # in the validation.
-            exclude_clean_fields |= set(
+            exclude_clean_fields |= {
                 field.name
                 for field in self._meta.fields
                 if field.attname not in kwargs["update_fields"]
-            )
+            }
             self.full_clean(
                 exclude=exclude_clean_fields, validate_unique=False
             )
 
             # Validate uniqueness only for fields that have changed and
             # never the primary key.
-            exclude_unique_fields = {self._meta.pk.name} | set(
+            exclude_unique_fields = {self._meta.pk.name} | {
                 field.name
                 for field in self._meta.fields
                 if field.attname not in kwargs["update_fields"]
-            )
+            }
             self.validate_unique(exclude=exclude_unique_fields)
 
             # Re-create the update_fields from `_changed_fields` after

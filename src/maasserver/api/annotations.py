@@ -247,7 +247,7 @@ class APIDocstringParser:
         if context != "":
             context = indent("in:\n%s" % context, "    ")
 
-        self.warnings = self.warnings + "API_WARNING: %s\n\n%s" % (
+        self.warnings = self.warnings + "API_WARNING: {}\n\n{}".format(
             msg,
             context,
         )
@@ -258,7 +258,7 @@ class APIDocstringParser:
         if context != "":
             context = indent("in:\n%s" % context, "    ")
 
-        self.warnings = self.warnings + "API_SYNTAX_ERROR: %s\n\n%s" % (
+        self.warnings = self.warnings + "API_SYNTAX_ERROR: {}\n\n{}".format(
             msg,
             context,
         )
@@ -663,7 +663,7 @@ class APIDocstringParser:
         if not os.path.isfile(json_file):
             self._warn("examples/nodes.json not found.")
         else:
-            with open(json_file, "r") as ex_db_file:
+            with open(json_file) as ex_db_file:
                 nodes_examples = json.load(ex_db_file)
 
         return nodes_examples
@@ -688,14 +688,14 @@ class APIDocstringParser:
             return examples
 
         # First, try the operation string as is:
-        json_file = "%s/examples/%s.json" % (
+        json_file = "{}/examples/{}.json".format(
             os.path.dirname(__file__),
             operation,
         )
 
         if not os.path.isfile(json_file):
             # Not available, so try adding an 's' to make it plural
-            json_file = "%s/examples/%ss.json" % (
+            json_file = "{}/examples/{}s.json".format(
                 os.path.dirname(__file__),
                 operation,
             )
@@ -704,7 +704,7 @@ class APIDocstringParser:
                 # No examples found so return base set
                 return examples
 
-        with open(json_file, "r") as ex_db_file:
+        with open(json_file) as ex_db_file:
             operation_examples = json.load(ex_db_file)
             examples.update(operation_examples)
 

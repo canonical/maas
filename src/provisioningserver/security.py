@@ -27,13 +27,13 @@ class MissingSharedSecret(RuntimeError):
 
 def to_hex(b):
     """Convert byte string to hex encoding."""
-    assert isinstance(b, bytes), "%r is not a byte string" % (b,)
+    assert isinstance(b, bytes), f"{b!r} is not a byte string"
     return b2a_hex(b).decode("ascii")
 
 
 def to_bin(u):
     """Convert ASCII-only unicode string to hex encoding."""
-    assert isinstance(u, str), "%r is not a unicode string" % (u,)
+    assert isinstance(u, str), f"{u!r} is not a unicode string"
     # Strip ASCII whitespace from u before converting.
     return a2b_hex(u.encode("ascii").strip())
 
@@ -84,9 +84,9 @@ def set_shared_secret_on_filesystem(secret):
 
 def calculate_digest(secret, message, salt):
     """Calculate a SHA-256 HMAC digest for the given data."""
-    assert isinstance(secret, bytes), "%r is not a byte string." % (secret,)
-    assert isinstance(message, bytes), "%r is not byte string." % (message,)
-    assert isinstance(salt, bytes), "%r is not a byte string." % (salt,)
+    assert isinstance(secret, bytes), f"{secret!r} is not a byte string."
+    assert isinstance(message, bytes), f"{message!r} is not byte string."
+    assert isinstance(salt, bytes), f"{salt!r} is not a byte string."
     hmacr = HMAC(secret, digestmod=sha256)
     hmacr.update(message)
     hmacr.update(salt)

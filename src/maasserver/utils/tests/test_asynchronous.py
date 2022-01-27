@@ -132,7 +132,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
             thread.join()
         self.assertThat(queues, HasLength(3))
         # Each queue is distinct (deque is unhashable; use the id() of each).
-        self.assertThat(set(id(q) for q in queues), HasLength(3))
+        self.assertThat({id(q) for q in queues}, HasLength(3))
 
     def test_add_appends_Deferred_to_queue(self):
         dhooks = DeferredHooks()

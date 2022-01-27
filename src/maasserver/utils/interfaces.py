@@ -22,7 +22,7 @@ def make_name_from_interface(interface, alias=None):
     If `interface` is `None`, or empty, a name will be made up.
     """
     if alias:
-        interface = "%s:%s" % (interface, alias)
+        interface = f"{interface}:{alias}"
     if interface is None or interface == "":
         base_name = "unnamed-%d" % randint(1000000, 9999999)
     else:

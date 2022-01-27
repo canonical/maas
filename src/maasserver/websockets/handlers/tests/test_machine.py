@@ -267,7 +267,7 @@ class TestMachineHandler(MAASServerTestCase):
             "created": dehydrate_datetime(node.created),
             "description": node.description,
             "devices": sorted(
-                [
+                (
                     {
                         "fqdn": device.fqdn,
                         "interfaces": [
@@ -278,7 +278,7 @@ class TestMachineHandler(MAASServerTestCase):
                         ],
                     }
                     for device in node.children.all().order_by("id")
-                ],
+                ),
                 key=itemgetter("fqdn"),
             ),
             "domain": handler.dehydrate_domain(node.domain),
@@ -302,13 +302,11 @@ class TestMachineHandler(MAASServerTestCase):
                 "%s" % mac_address for mac_address in node.get_extra_macs()
             ),
             "link_speeds": sorted(
-                set(
-                    [
-                        interface.link_speed
-                        for interface in node.interface_set.all()
-                        if interface.link_speed > 0
-                    ]
-                )
+                {
+                    interface.link_speed
+                    for interface in node.interface_set.all()
+                    if interface.link_speed > 0
+                }
             ),
             "fqdn": node.fqdn,
             "hwe_kernel": make_hwe_kernel_ui_text(node.hwe_kernel),
@@ -350,10 +348,8 @@ class TestMachineHandler(MAASServerTestCase):
             "status_message": node.status_message(),
             "storage": round(
                 sum(
-                    [
-                        blockdevice.size
-                        for blockdevice in node.physicalblockdevice_set.all()
-                    ]
+                    blockdevice.size
+                    for blockdevice in node.physicalblockdevice_set.all()
                 )
                 / (1000 ** 3),
                 1,
@@ -1214,9 +1210,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "serial": "",
                 "partition_table_type": "",
                 "used_for": ", ".join(
-                    sorted(
-                        [backing_device.name for backing_device in backings]
-                    )
+                    sorted(backing_device.name for backing_device in backings)
                 ),
                 "filesystem": None,
                 "partitions": None,
@@ -1825,7 +1819,7 @@ class TestMachineHandler(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner, with_empty_script_sets=True)
         handler = MachineHandler(owner, {}, None)
-        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        lldp_data = b"<foo>bar</foo>"
         script_set = node.current_commissioning_script_set
         script_result = script_set.find_script_result(
             script_name=LLDP_OUTPUT_NAME
@@ -1849,7 +1843,7 @@ class TestMachineHandler(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner, with_empty_script_sets=True)
         handler = MachineHandler(owner, {}, None)
-        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        lldp_data = b"<foo>bar</foo>"
         script_set = node.current_commissioning_script_set
         script_result = script_set.find_script_result(
             script_name=LLDP_OUTPUT_NAME
@@ -1996,7 +1990,7 @@ class TestMachineHandler(MAASServerTestCase):
         node.save()
         for _ in range(100):
             factory.make_Event(node=node)
-        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        lldp_data = b"<foo>bar</foo>"
         script_set = node.current_commissioning_script_set
         script_result = script_set.find_script_result(
             script_name=LLDP_OUTPUT_NAME
@@ -3481,7 +3475,7 @@ class TestMachineHandler(MAASServerTestCase):
         logical_volume = volume_group.virtual_devices.first()
         self.assertIsNotNone(logical_volume)
         self.assertEqual(
-            "%s-%s" % (volume_group.name, name), logical_volume.get_name()
+            f"{volume_group.name}-{name}", logical_volume.get_name()
         )
         self.assertEqual(size, logical_volume.size)
         self.assertCountEqual(tags, logical_volume.tags)
@@ -3513,7 +3507,7 @@ class TestMachineHandler(MAASServerTestCase):
         logical_volume = volume_group.virtual_devices.first()
         self.assertIsNotNone(logical_volume)
         self.assertEqual(
-            "%s-%s" % (volume_group.name, name), logical_volume.get_name()
+            f"{volume_group.name}-{name}", logical_volume.get_name()
         )
         self.assertEqual(size, logical_volume.size)
         efs = logical_volume.get_effective_filesystem()

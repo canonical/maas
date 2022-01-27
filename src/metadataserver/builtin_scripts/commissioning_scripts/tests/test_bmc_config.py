@@ -499,7 +499,7 @@ EndSection
             MockCalledOnceWith(
                 "Lan_Channel",
                 [
-                    "%s_%s" % (auth_type, volatility)
+                    f"{auth_type}_{volatility}"
                     for auth_type in [
                         "Enable_User_Level_Auth",
                         "Enable_Per_Message_Auth",
@@ -539,7 +539,7 @@ EndSection
             MockCalledOnceWith(
                 "Lan_Channel",
                 [
-                    "%s_%s" % (auth_type, volatility)
+                    f"{auth_type}_{volatility}"
                     for auth_type in [
                         "Enable_User_Level_Auth",
                         "Enable_Per_Message_Auth",
@@ -563,7 +563,7 @@ EndSection
                 call(
                     "Lan_Channel_Auth",
                     [
-                        "%s_Enable_Auth_Type_%s" % (user, enc_type)
+                        f"{user}_Enable_Auth_Type_{enc_type}"
                         for user in [
                             "Callback",
                             "User",
@@ -678,7 +678,7 @@ EndSection
                 call(
                     "Serial_Channel",
                     [
-                        "%s_%s" % (auth_type, volatility)
+                        f"{auth_type}_{volatility}"
                         for auth_type in [
                             "Enable_User_Level_Auth",
                             "Enable_Per_Message_Auth",
@@ -982,7 +982,7 @@ class TestHPMoonshot(MAASTestCase):
         )
 
     def test_get_bmc_ip_none(self):
-        self.mock_check_output.return_value = "IP Address : ".encode()
+        self.mock_check_output.return_value = b"IP Address : "
         local_address = factory.make_name("local_address")
 
         self.assertIsNone(self.hp_moonshot.get_bmc_ip(local_address))
@@ -1269,7 +1269,7 @@ class TestDetectAndConfigure(MAASTestCase):
 
         bmc_config.detect_and_configure(args, bmc_config_path)
 
-        with open(bmc_config_path, "r") as f:
+        with open(bmc_config_path) as f:
             self.assertEqual(
                 {"power_type": "moonshot", **creds}, yaml.safe_load(f)
             )
@@ -1293,7 +1293,7 @@ class TestDetectAndConfigure(MAASTestCase):
 
         bmc_config.detect_and_configure(args, bmc_config_path)
 
-        with open(bmc_config_path, "r") as f:
+        with open(bmc_config_path) as f:
             self.assertEqual(
                 {"power_type": "ipmi", **creds}, yaml.safe_load(f)
             )

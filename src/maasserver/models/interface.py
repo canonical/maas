@@ -102,7 +102,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             "hostname": "node__hostname",
             "subnet": (Subnet.objects, "staticipaddress__interface"),
             "space": self._add_space_query,
-            "subnet_cidr": "subnet{s}cidr".format(s=separator),
+            "subnet_cidr": f"subnet{separator}cidr",
             "type": "__type",
             "vlan": (VLAN.objects, "interface"),
             "vid": self._add_vlan_vid_query,
@@ -269,10 +269,10 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             else:
                 # Cache each interface's set of immediate parents, for later
                 # comparison to the set of resolved interfaces.
-                iface.parent_set = set(
+                iface.parent_set = {
                     interface.parent_id
                     for interface in iface.parent_relationships.all()
-                )
+                }
                 child_interfaces[iface.id] = iface
         resolved = set()
         for iface in root_interfaces:
@@ -676,7 +676,7 @@ class Interface(CleanSave, TimestampedModel):
         }
 
     def __str__(self):
-        return "name=%s, type=%s, mac=%s, id=%s" % (
+        return "name={}, type={}, mac={}, id={}".format(
             self.name,
             self.type,
             self.mac_address,
@@ -791,8 +791,8 @@ class Interface(CleanSave, TimestampedModel):
         ip_addresses = self.ip_addresses.exclude(
             alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
-        link_modes = set(ip.get_interface_link_type() for ip in ip_addresses)
-        return link_modes == set([INTERFACE_LINK_TYPE.LINK_UP])
+        link_modes = {ip.get_interface_link_type() for ip in ip_addresses}
+        return link_modes == {INTERFACE_LINK_TYPE.LINK_UP}
 
     def is_configured(self):
         """Return True if the interface is enabled and has at least one link
@@ -801,14 +801,14 @@ class Interface(CleanSave, TimestampedModel):
             return False
         # We do the removal of DISCOVERED here instead of in a query so that
         # prefetch_related can be used on the interface query.
-        link_modes = set(
+        link_modes = {
             ip.get_interface_link_type()
             for ip in self.ip_addresses.all()
             if ip.alloc_type != IPADDRESS_TYPE.DISCOVERED
-        )
-        return len(link_modes) != 0 and link_modes != set(
-            [INTERFACE_LINK_TYPE.LINK_UP]
-        )
+        }
+        return len(link_modes) != 0 and link_modes != {
+            INTERFACE_LINK_TYPE.LINK_UP
+        }
 
     def update_ip_addresses(self, cidr_list):
         """Update the IP addresses linked to this interface.
@@ -1464,7 +1464,7 @@ class Interface(CleanSave, TimestampedModel):
         """Returns all the ancestors of the interface (that is, including each
         parent's parents, and so on.)
         """
-        parents = set(rel.parent for rel in self.parent_relationships.all())
+        parents = {rel.parent for rel in self.parent_relationships.all()}
         parent_relationships = set(self.parent_relationships.all())
         for parent_rel in parent_relationships:
             parents |= parent_rel.parent.get_ancestors()
@@ -1474,7 +1474,7 @@ class Interface(CleanSave, TimestampedModel):
         """Returns all the ancestors of the interface (that is, including each
         child's children, and so on.)
         """
-        children = set(rel.child for rel in self.children_relationships.all())
+        children = {rel.child for rel in self.children_relationships.all()}
         children_relationships = set(self.children_relationships.all())
         for child_rel in children_relationships:
             children |= child_rel.child.get_successors()

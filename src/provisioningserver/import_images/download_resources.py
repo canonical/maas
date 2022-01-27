@@ -117,7 +117,7 @@ def extract_archive_tar(store, name, tag, checksums, size, content_source):
             for member in tar:
                 if member.isfile():
                     filename = member.name
-                    filepath = store._fullpath("%s-%s" % (filename, tag))
+                    filepath = store._fullpath(f"{filename}-{tag}")
                     fo = tar.extractfile(member)
                     store.insert(filepath, fo, mutable=False)
                     extracted_files.append((filepath, filename))

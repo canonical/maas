@@ -47,7 +47,7 @@ class DomainForm(MAASModelForm):
             raise ValidationError(
                 "a domain cannot be both authoritative and have forward dns servers"
             )
-        super(DomainForm, self).clean()
+        super().clean()
 
     def _post_clean(self):
         # ttl=None needs to make it through.  See also APIEditMixin

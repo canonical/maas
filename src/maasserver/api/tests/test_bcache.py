@@ -226,7 +226,7 @@ class TestBcacheDeviceAPI(APITestCase.ForUser):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.BCACHE
         )
         self.assertEqual(
-            "/MAAS/api/2.0/nodes/%s/bcache/%s/" % (node.system_id, bcache.id),
+            f"/MAAS/api/2.0/nodes/{node.system_id}/bcache/{bcache.id}/",
             get_bcache_device_uri(bcache, node=node),
         )
 

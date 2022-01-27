@@ -302,7 +302,7 @@ class IPCMasterService(service.Service):
         is listening on."""
         addresses = get_all_interface_source_addresses()
         if addresses:
-            return set((addr, port) for addr in addresses)
+            return {(addr, port) for addr in addresses}
         # There are no non-loopback addresses, so return loopback
         # address as a fallback.
         loopback_addresses = set()

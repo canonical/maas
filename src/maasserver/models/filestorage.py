@@ -95,5 +95,5 @@ class FileStorage(CleanSave, Model):
     def anon_resource_uri(self):
         """URI where the content of the file can be retrieved anonymously."""
         params = {"op": "get_by_key", "key": self.key}
-        url = "%s?%s" % (reverse("files_handler"), urlencode(params))
+        url = "{}?{}".format(reverse("files_handler"), urlencode(params))
         return url

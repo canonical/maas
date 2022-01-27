@@ -979,7 +979,7 @@ class FilterNodeForm(RenamableFieldsForm):
         if output is None:
             return None
         else:
-            return "%s=%s" % (field_name, output)
+            return f"{field_name}={output}"
 
     def describe_constraints(self):
         """Return a human-readable representation of the given constraints.

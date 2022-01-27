@@ -58,7 +58,7 @@ class SSHKeyValidatorTest(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_wrongly_padded_data(self):
-        key_string = "ssh-dss %s %s@%s" % (
+        key_string = "ssh-dss {} {}@{}".format(
             factory.make_string(),
             factory.make_string(),
             factory.make_string(),
@@ -67,7 +67,7 @@ class SSHKeyValidatorTest(MAASServerTestCase):
 
     def test_does_not_validate_non_ascii_key(self):
         non_ascii_key = "AAB3NzaC" + "\u2502" + "mN6Lo2I9w=="
-        key_string = "ssh-rsa %s %s@%s" % (
+        key_string = "ssh-rsa {} {}@{}".format(
             non_ascii_key,
             factory.make_string(),
             factory.make_string(),

@@ -78,7 +78,7 @@ def _update_interface_type(interfaces, sys_class_net=Path("/sys/class/net")):
         if not sys_path.is_dir():
             return "missing"
 
-        iftype_id = int(((sys_path / "type").read_text()))
+        iftype_id = int((sys_path / "type").read_text())
         # The iftype value here is defined in linux/if_arp.h.
         # The important thing here is that Ethernet maps to 1.
         # Currently, MAAS only runs on Ethernet interfaces.

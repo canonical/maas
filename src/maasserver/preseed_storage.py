@@ -601,7 +601,7 @@ class CurtinStorageGenerator:
                     "name": vmfs.name,
                     "type": "vmfs6",
                     "devices": sorted(
-                        [fs.get_device().name for fs in vmfs.filesystems.all()]
+                        fs.get_device().name for fs in vmfs.filesystems.all()
                     ),
                 }
             )

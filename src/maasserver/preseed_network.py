@@ -331,7 +331,7 @@ class InterfaceConfiguration:
                 subnet = address.subnet
                 if subnet is not None:
                     subnet_len = subnet.cidr.split("/")[1]
-                    cidr = "%s/%s" % (str(address.ip), subnet_len)
+                    cidr = f"{str(address.ip)}/{subnet_len}"
                     v1_subnet_operation = {"type": "static", "address": cidr}
                     if address.ip is not None:
                         # If the address is None, that means we're generating a

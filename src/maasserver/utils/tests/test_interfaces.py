@@ -45,7 +45,7 @@ class TestGetNameAndVlanFromClusterInterface(MAASTestCase):
     def test_returns_simple_name_unaltered(self):
         cluster = factory.make_name("cluster")
         interface = factory.make_name("iface")
-        expected_name = "%s-%s" % (cluster, interface)
+        expected_name = f"{cluster}-{interface}"
         self.assertEqual(
             (expected_name, None),
             get_name_and_vlan_from_cluster_interface(cluster, interface),

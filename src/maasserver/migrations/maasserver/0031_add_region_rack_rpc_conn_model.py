@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -61,6 +59,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="regionrackrpcconnection",
-            unique_together=set([("endpoint", "rack_controller")]),
+            unique_together={("endpoint", "rack_controller")},
         ),
     ]

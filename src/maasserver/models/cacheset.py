@@ -206,7 +206,7 @@ class CacheSet(CleanSave, TimestampedModel):
         filesystem = self.get_filesystem()
         if filesystem:
             block_devices = filesystem.get_physical_block_devices()
-            numa_ids = set(device.numa_node_id for device in block_devices)
+            numa_ids = {device.numa_node_id for device in block_devices}
             numa_node_indexes.update(
                 NUMANode.objects.filter(id__in=numa_ids)
                 .values_list("index", flat=True)

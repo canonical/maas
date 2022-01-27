@@ -67,7 +67,7 @@ def read_file(config_path):
     if not os.path.exists(config_path):
         raise ValueError("%s does not exist" % config_path)
 
-    with open(config_path, "r", encoding="ascii") as fd:
+    with open(config_path, encoding="ascii") as fd:
         options_file = fd.read()
     return options_file
 
@@ -80,9 +80,7 @@ def parse_file(config_path, options_file):
     try:
         config_dict = parse_isc_string(options_file)
     except ISCParseException as e:
-        raise ValueError(
-            "Failed to parse %s: %s" % (config_path, str(e))
-        ) from e
+        raise ValueError(f"Failed to parse {config_path}: {str(e)}") from e
     options_block = config_dict.get("options", None)
     if options_block is None:
         # Something is horribly wrong with the file; bail out rather
@@ -97,7 +95,7 @@ def parse_file(config_path, options_file):
 def set_up_include_statement(options_block, config_path):
     """Insert the 'include' directive into the parsed options."""
     dir = os.path.join(os.path.dirname(config_path), "maas")
-    options_block["include"] = '"%s%s%s"' % (
+    options_block["include"] = '"{}{}{}"'.format(
         dir,
         os.path.sep,
         MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
@@ -109,7 +107,7 @@ def back_up_existing_file(config_path):
     backup_destination = config_path + "." + now
     try:
         shutil.copyfile(config_path, backup_destination)
-    except IOError as e:
+    except OSError as e:
         raise ValueError(
             "Failed to make a backup of %s, exiting: %s"
             % (config_path, str(e))

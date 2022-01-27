@@ -176,7 +176,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         else:
             os = "custom"
             series = resource.name
-        return "maas:boot:%s:%s:%s:%s" % (os, arch, subarch, series)
+        return f"maas:boot:{os}:{arch}:{subarch}:{series}"
 
     def make_usable_product_boot_resource(
         self, kflavor=None, bootloader_type=None, rolling=False
@@ -407,7 +407,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         _, _, os, arch, subarch, series = product.split(":")
         resource_set = resource.get_latest_complete_set()
         resource_file = resource_set.files.order_by("?")[0]
-        path = "%s/%s/%s/%s/%s/%s" % (
+        path = "{}/{}/{}/{}/{}/{}".format(
             os,
             arch,
             subarch,
@@ -501,8 +501,8 @@ class TestConnectionWrapper(MAASTransactionServerTestCase):
             series = factory.make_name("series")
             arch = factory.make_name("arch")
             subarch = factory.make_name("subarch")
-            name = "%s/%s" % (os, series)
-            architecture = "%s/%s" % (arch, subarch)
+            name = f"{os}/{series}"
+            architecture = f"{arch}/{subarch}"
             version = factory.make_name("version")
             filetype = factory.pick_enum(BOOT_RESOURCE_FILE_TYPE)
             # We set the filename to the same value as filetype, as in most
@@ -635,12 +635,12 @@ def make_product(ftype=None, kflavor=None, subarch=None):
         "path": "/path/to/%s" % name,
         "rolling": factory.pick_bool(),
     }
-    name = "%s/%s" % (product["os"], product["release"])
+    name = "{}/{}".format(product["os"], product["release"])
     if kflavor == "generic":
         subarch = product["subarch"]
     else:
-        subarch = "%s-%s" % (product["subarch"], kflavor)
-    architecture = "%s/%s" % (product["arch"], subarch)
+        subarch = "{}-{}".format(product["subarch"], kflavor)
+    architecture = "{}/{}".format(product["arch"], subarch)
     return name, architecture, product
 
 
@@ -671,8 +671,8 @@ def make_boot_resource_group_from_product(product):
     for the created largefile. The calling function should use the returned
     product in place of the passed product.
     """
-    name = "%s/%s" % (product["os"], product["release"])
-    architecture = "%s/%s" % (product["arch"], product["subarch"])
+    name = "{}/{}".format(product["os"], product["release"])
+    architecture = "{}/{}".format(product["arch"], product["subarch"])
     resource = factory.make_BootResource(
         rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name, architecture=architecture
     )
@@ -697,7 +697,7 @@ class TestBootResourceStore(MAASServerTestCase):
         for resource in resources:
             os, series = resource.name.split("/")
             arch, subarch = resource.split_arch()
-            name = "%s/%s/%s/%s" % (os, arch, subarch, series)
+            name = f"{os}/{arch}/{subarch}/{series}"
             resource_names.append(name)
         return resources, resource_names
 
@@ -764,7 +764,7 @@ class TestBootResourceStore(MAASServerTestCase):
         resource = store.get_or_create_boot_resource(product)
         self.assertEqual(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
         self.assertEqual(
-            "%s/%s" % (product["os"], product["bootloader-type"]),
+            "{}/{}".format(product["os"], product["bootloader-type"]),
             resource.name,
         )
         self.assertEqual("%s/generic" % product["arch"], resource.architecture)
@@ -941,8 +941,8 @@ class TestBootResourceStore(MAASServerTestCase):
         subarch = factory.make_name("subarch")
         version = factory.make_name("version")
         filename = factory.make_name("filename")
-        name = "%s/%s" % (os, series)
-        architecture = "%s/%s" % (arch, subarch)
+        name = f"{os}/{series}"
+        architecture = f"{arch}/{subarch}"
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
@@ -1383,15 +1383,15 @@ class TestBootResourceTransactional(MAASTransactionServerTestCase):
             subarch_one = factory.make_name("subarch")
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name="%s/%s" % (selection.os, selection.release),
-                architecture="%s/%s" % (arch, subarch_one),
+                name=f"{selection.os}/{selection.release}",
+                architecture=f"{arch}/{subarch_one}",
             )
             # Create second subarch for selection.
             subarch_two = factory.make_name("subarch")
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name="%s/%s" % (selection.os, selection.release),
-                architecture="%s/%s" % (arch, subarch_two),
+                name=f"{selection.os}/{selection.release}",
+                architecture=f"{arch}/{subarch_two}",
             )
         store = BootResourceStore()
         store._resources_to_delete = [
@@ -1565,7 +1565,7 @@ class TestSetGlobalDefaultReleases(MAASServerTestCase):
     def test_sets_commissioning_release(self):
         os, release = factory.make_name("os"), factory.make_name("release")
         resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED, name="%s/%s" % (os, release)
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=f"{os}/{release}"
         )
         mock_available = self.patch(
             BootResource.objects, "get_available_commissioning_resources"
@@ -1583,7 +1583,7 @@ class TestSetGlobalDefaultReleases(MAASServerTestCase):
     def test_sets_both_commissioning_deploy_release(self):
         os, release = factory.make_name("os"), factory.make_name("release")
         resource = factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED, name="%s/%s" % (os, release)
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=f"{os}/{release}"
         )
         mock_available = self.patch(
             BootResource.objects, "get_available_commissioning_resources"
@@ -2310,7 +2310,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
             stream_version = random.choice(["v2", "v3"])
         if maas_supported is None:
             maas_supported = __version__
-        product = "com.ubuntu.maas.daily:%s:boot:%s:%s:%s" % (
+        product = "com.ubuntu.maas.daily:{}:boot:{}:{}:{}".format(
             stream_version,
             version,
             arch,

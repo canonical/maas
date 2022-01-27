@@ -240,8 +240,8 @@ class TestRackControllerService(
         dhcp_channel = f"sys_dhcp_{rack_id}"
         self.assertIn(dhcp_channel, listener.listeners)
         self.assertIn(service.dhcpHandler, listener.listeners[dhcp_channel])
-        self.assertEqual(set([rack_id]), service.watching)
-        self.assertEqual(set([rack_id]), service.needsDHCPUpdate)
+        self.assertEqual({rack_id}, service.watching)
+        self.assertEqual({rack_id}, service.needsDHCPUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
 
     def test_coreHandler_watch_doesnt_call_register(self):
@@ -250,14 +250,14 @@ class TestRackControllerService(
         listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
         service.processId = processId
-        service.watching = set([rack_id])
+        service.watching = {rack_id}
         mock_startProcessing = self.patch(service, "startProcessing")
         sys_channel = f"sys_core_{processId}"
         service.coreHandler(sys_channel, "watch_%d" % rack_id)
         self.assertNotIn(sys_channel, listener.listeners)
         self.assertNotIn(sys_channel, listener.registeredChannels)
-        self.assertEqual(set([rack_id]), service.watching)
-        self.assertEqual(set([rack_id]), service.needsDHCPUpdate)
+        self.assertEqual({rack_id}, service.watching)
+        self.assertEqual({rack_id}, service.needsDHCPUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
 
     def test_coreHandler_raises_ValueError_for_unknown_action(self):
@@ -275,10 +275,10 @@ class TestRackControllerService(
         rack_id = random.randint(0, 100)
         listener = self.make_listener_without_delay()
         service = RackControllerService(sentinel.ipcWorker, listener)
-        service.watching = set([rack_id])
+        service.watching = {rack_id}
         mock_startProcessing = self.patch(service, "startProcessing")
         service.dhcpHandler("sys_dhcp_%d" % rack_id, "")
-        self.assertEqual(set([rack_id]), service.needsDHCPUpdate)
+        self.assertEqual({rack_id}, service.needsDHCPUpdate)
         self.assertThat(mock_startProcessing, MockCalledOnceWith())
 
     def test_dhcpHandler_doesnt_add_to_needsDHCPUpdate(self):
@@ -308,8 +308,8 @@ class TestRackControllerService(
     def test_process_doesnt_call_processDHCP_when_not_running(self):
         rack_id = random.randint(0, 100)
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
-        service.watching = set([rack_id])
-        service.needsDHCPUpdate = set([rack_id])
+        service.watching = {rack_id}
+        service.needsDHCPUpdate = {rack_id}
         service.running = False
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
@@ -321,7 +321,7 @@ class TestRackControllerService(
     def test_process_doesnt_call_processDHCP_when_nothing_to_process(self):
         rack_id = random.randint(0, 100)
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
-        service.watching = set([rack_id])
+        service.watching = {rack_id}
         service.needsDHCPUpdate = set()
         service.running = True
         mock_processDHCP = self.patch(service, "processDHCP")
@@ -334,8 +334,8 @@ class TestRackControllerService(
     def test_process_calls_processDHCP_for_rack_controller(self):
         rack_id = random.randint(0, 100)
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
-        service.watching = set([rack_id])
-        service.needsDHCPUpdate = set([rack_id])
+        service.watching = {rack_id}
+        service.needsDHCPUpdate = {rack_id}
         service.running = True
         mock_processDHCP = self.patch(service, "processDHCP")
         service.startProcessing()
@@ -362,8 +362,8 @@ class TestRackControllerService(
     def test_process_calls_processDHCP_multiple_times_on_failure(self):
         rack_id = random.randint(0, 100)
         service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
-        service.watching = set([rack_id])
-        service.needsDHCPUpdate = set([rack_id])
+        service.watching = {rack_id}
+        service.needsDHCPUpdate = {rack_id}
         service.running = True
         mock_processDHCP = self.patch(service, "processDHCP")
         mock_processDHCP.side_effect = [

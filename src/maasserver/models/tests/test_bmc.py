@@ -1938,7 +1938,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         pod = factory.make_Pod()
         machine = pod.create_machine(discovered_machine, factory.make_User())
-        self.assertEquals(machine.status, NODE_STATUS.BROKEN)
+        self.assertEqual(machine.status, NODE_STATUS.BROKEN)
         machine.start_commissioning.assert_not_called()
 
     def test_create_new_machine_does_not_skip_commissioning_if_mac_is_present(
@@ -2943,7 +2943,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 cluster=cluster,
                 parameters={
                     "project": project,
-                    "power_address": "https://10.0.0.{}:8443".format(i),
+                    "power_address": f"https://10.0.0.{i}:8443",
                 },
             )
             for i in range(3)
@@ -2976,7 +2976,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 cluster=cluster,
                 parameters={
                     "project": project,
-                    "power_address": "https://10.0.0.{}:8443".format(i),
+                    "power_address": f"https://10.0.0.{i}:8443",
                 },
             )
             for i in range(3)

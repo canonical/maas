@@ -85,7 +85,7 @@ def runService(service):
         config.parseOptions(args)
     except usage.error as exc:
         print(config)
-        print("%s: %s" % (sys.argv[0], exc))
+        print(f"{sys.argv[0]}: {exc}")
     else:
         UnixApplicationRunner(config).run()
 

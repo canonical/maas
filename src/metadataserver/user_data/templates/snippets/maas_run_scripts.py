@@ -88,15 +88,15 @@ class Script:
 
     @property
     def stdout_path(self):
-        return self.paths.out / "{name}.out".format(name=self.name)
+        return self.paths.out / f"{self.name}.out"
 
     @property
     def stderr_path(self):
-        return self.paths.out / "{name}.err".format(name=self.name)
+        return self.paths.out / f"{self.name}.err"
 
     @property
     def result_path(self):
-        return self.paths.out / "{name}.yaml".format(name=self.name)
+        return self.paths.out / f"{self.name}.yaml"
 
     @property
     def environ(self):
@@ -392,13 +392,13 @@ def action_report_results(ns):
         if not script.should_run():
             continue
         print(
-            "* Running '{name}'...".format(name=script.name),
+            f"* Running '{script.name}'...",
             end="\n" if ns.debug else " ",
         )
         result = script.run(console_output=ns.debug)
         if ns.debug:
             print(
-                "* Finished running '{name}': ".format(name=script.name),
+                f"* Finished running '{script.name}': ",
                 end=" ",
             )
         if result.exit_status == 0:
@@ -461,7 +461,7 @@ def action_register_machine(ns):
     creds = get_machine_token(maas_url, ns.admin_token, system_id)
     creds_path = Path(ns.base_dir) / (hostname + "-creds.yaml")
     write_token(creds, path=creds_path)
-    print("Machine token written to {path}".format(path=creds_path))
+    print(f"Machine token written to {creds_path}")
 
 
 def action_get_machine_token(ns):

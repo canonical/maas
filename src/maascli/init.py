@@ -37,7 +37,7 @@ def deprecated_for(new_option):
 
         def __call__(self, parser, namespace, values, option_string=None):
             action = parser._option_string_actions.get(self._new_option)
-            assert action, 'unknown option "{}"'.format(self._new_option)
+            assert action, f'unknown option "{self._new_option}"'
             assert (
                 option_string
             ), '"deprecate_for" must be used with optional arguments'
@@ -178,10 +178,10 @@ def create_account_external_auth(auth_config, maas_config, bakery_client=None):
     failed_msg = ""
     try:
         resp = bakery_client.request(
-            "GET", "{}/accounts/discharge-request/".format(maas_url)
+            "GET", f"{maas_url}/accounts/discharge-request/"
         )
         if resp.status_code != 200:
-            failed_msg = "request failed with code {}".format(resp.status_code)
+            failed_msg = f"request failed with code {resp.status_code}"
     except Exception as e:
         failed_msg = str(e)
 
@@ -197,10 +197,10 @@ def create_account_external_auth(auth_config, maas_config, bakery_client=None):
     if auth_config["rbac_url"]:
         message = "Authentication is working."
         if result["is_superuser"]:
-            message += " User '{}' is an Administrator".format(username)
+            message += f" User '{username}' is an Administrator"
     else:
         if result["is_superuser"]:
-            message = "Administrator user '{}' created".format(username)
+            message = f"Administrator user '{username}' created"
         else:
             admin_group = auth_config["external_auth_admin_group"]
             message = dedent(

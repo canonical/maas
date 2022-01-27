@@ -131,7 +131,7 @@ class DatabaseLockBase(tuple):
             self.lock, self.unlock = mode
         else:
             raise AssertionError(
-                "Unsupported mode: %r is not in %r" % (mode, self.MODE_CHOICES)
+                f"Unsupported mode: {mode!r} is not in {self.MODE_CHOICES!r}"
             )
 
     def __enter__(self):

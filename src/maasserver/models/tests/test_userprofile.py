@@ -130,14 +130,12 @@ class UserProfileTest(MAASServerTestCase):
         self.assertEqual(reload_object(iprange).user, new_user)
 
     def test_manager_all_users(self):
-        users = set(factory.make_User() for _ in range(3))
+        users = {factory.make_User() for _ in range(3)}
         all_users = set(UserProfile.objects.all_users())
         self.assertEqual(users, all_users)
 
     def test_manager_all_users_no_system_user(self):
         for _ in range(3):
             factory.make_User()
-        usernames = set(
-            user.username for user in UserProfile.objects.all_users()
-        )
+        usernames = {user.username for user in UserProfile.objects.all_users()}
         self.assertTrue(set(SYSTEM_USERS).isdisjoint(usernames))

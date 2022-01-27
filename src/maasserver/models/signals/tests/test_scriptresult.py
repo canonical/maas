@@ -66,7 +66,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             (
                 EVENT_TYPES.RUNNING_TEST,
                 EVENT_DETAILS[EVENT_TYPES.RUNNING_TEST].description,
-                "%s on %s" % (script_result.name, node.boot_disk.name),
+                f"{script_result.name} on {node.boot_disk.name}",
             ),
             (
                 latest_event.type.name,
@@ -96,7 +96,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
             (
                 EVENT_TYPES.RUNNING_TEST,
                 EVENT_DETAILS[EVENT_TYPES.RUNNING_TEST].description,
-                "%s on %s" % (script_result.name, node.boot_interface.name),
+                f"{script_result.name} on {node.boot_interface.name}",
             ),
             (
                 latest_event.type.name,

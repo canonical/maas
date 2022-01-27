@@ -100,7 +100,7 @@ def get_apt_proxy(request, rack_controller=None, node=None):
 
 def make_clean_repo_name(repo):
     # Removeeany special characters
-    repo_name = "%s_%s" % (
+    repo_name = "{}_{}".format(
         repo.name.translate({ord(c): None for c in "'!@#$[]{}"}),
         repo.id,
     )
@@ -150,24 +150,26 @@ def get_archive_config(request, node, preserve_sources=False):
             if comp in archive.disabled_components:
                 components.remove(comp)
 
-    urls += "deb %s $RELEASE %s\n" % (archive.url, " ".join(components))
+    urls += "deb {} $RELEASE {}\n".format(archive.url, " ".join(components))
     if archive.disable_sources:
         urls += "# "
-    urls += "deb-src %s $RELEASE %s\n" % (archive.url, " ".join(components))
+    urls += "deb-src {} $RELEASE {}\n".format(
+        archive.url, " ".join(components)
+    )
 
     for pocket in archive.POCKETS_TO_DISABLE:
         if (
             not archive.disabled_pockets
             or pocket not in archive.disabled_pockets
         ):
-            urls += "deb %s $RELEASE-%s %s\n" % (
+            urls += "deb {} $RELEASE-{} {}\n".format(
                 archive.url,
                 pocket,
                 " ".join(components),
             )
             if archive.disable_sources:
                 urls += "# "
-            urls += "deb-src %s $RELEASE-%s %s\n" % (
+            urls += "deb-src {} $RELEASE-{} {}\n".format(
                 archive.url,
                 pocket,
                 " ".join(components),
@@ -196,11 +198,11 @@ def get_archive_config(request, node, preserve_sources=False):
             components = components.strip()
 
             if not repo.distributions:
-                url = "deb %s $RELEASE %s" % (repo.url, components)
+                url = f"deb {repo.url} $RELEASE {components}"
             else:
                 url = ""
                 for dist in repo.distributions:
-                    url += "deb %s %s %s\n" % (repo.url, dist, components)
+                    url += f"deb {repo.url} {dist} {components}\n"
 
         if "sources" not in archives["apt"].keys():
             archives["apt"]["sources"] = {}
@@ -267,12 +269,12 @@ def get_enlist_archive_config(apt_proxy=None):
         if suite not in disabled_suites:
             archives["apt"][
                 "sources_list"
-            ] += "deb $PRIMARY $RELEASE-%s %s\n" % (suite, components)
+            ] += f"deb $PRIMARY $RELEASE-{suite} {components}\n"
             if disable_sources:
                 archives["apt"]["sources_list"] += "# "
             archives["apt"][
                 "sources_list"
-            ] += "deb-src $PRIMARY $RELEASE-%s %s\n" % (suite, components)
+            ] += f"deb-src $PRIMARY $RELEASE-{suite} {components}\n"
     if "security" not in disabled_suites:
         archives["apt"]["sources_list"] += (
             "deb $SECURITY $RELEASE-security %s\n" % components

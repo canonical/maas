@@ -67,7 +67,7 @@ def generate_power_types_doc():
     )
     line()
     for _, driver in PowerDriverRegistry:
-        title = "%s (%s)" % (driver.name, driver.description)
+        title = f"{driver.name} ({driver.description})"
         line(title)
         line("=" * len(title))
         line("")
@@ -76,15 +76,14 @@ def generate_power_types_doc():
         for field in driver.settings:
             field_description = []
             field_description.append(
-                "* %s (%s)." % (field["name"], field["label"])
+                "* {} ({}).".format(field["name"], field["label"])
             )
             choices = field.get("choices", [])
             if len(choices) > 0:
                 field_description.append(
                     " Choices: %s"
                     % ", ".join(
-                        "'%s' (%s)" % (choice[0], choice[1])
-                        for choice in choices
+                        f"'{choice[0]}' ({choice[1]})" for choice in choices
                     )
                 )
             default = field.get("default", "")
@@ -115,7 +114,7 @@ def generate_pod_types_doc():
     )
     line()
     for _, driver in PodDriverRegistry:
-        title = "%s (%s)" % (driver.name, driver.description)
+        title = f"{driver.name} ({driver.description})"
         line(title)
         line("=" * len(title))
         line("")
@@ -124,15 +123,14 @@ def generate_pod_types_doc():
         for field in driver.settings:
             field_description = []
             field_description.append(
-                "* %s (%s)." % (field["name"], field["label"])
+                "* {} ({}).".format(field["name"], field["label"])
             )
             choices = field.get("choices", [])
             if len(choices) > 0:
                 field_description.append(
                     " Choices: %s"
                     % ", ".join(
-                        "'%s' (%s)" % (choice[0], choice[1])
-                        for choice in choices
+                        f"'{choice[0]}' ({choice[1]})" for choice in choices
                     )
                 )
             default = field.get("default", "")
@@ -277,12 +275,12 @@ def _describe_actions(handler):
 
                         param_description = param["description"].rstrip()
 
-                        doc += ":param %s: %s%s\n" % (
+                        doc += ":param {}: {}{}\n".format(
                             pname,
                             required,
                             param_description,
                         )
-                        doc += ":type %s: %s\n\n " % (pname, param["type"])
+                        doc += ":type {}: {}\n\n ".format(pname, param["type"])
 
         actions.append(
             {
@@ -488,7 +486,7 @@ def _key_canonical(value):
         return KeyCanonicalTuple(tuple(_key_canonical(v) for v in value))
     else:
         raise TypeError(
-            "Cannot compare %r (%s)" % (value, type(value).__qualname__)
+            f"Cannot compare {value!r} ({type(value).__qualname__})"
         )
 
 
@@ -539,7 +537,7 @@ def _describe_canonical(description):
         )
     else:
         raise TypeError(
-            "Cannot produce canonical representation for %r." % (description,)
+            f"Cannot produce canonical representation for {description!r}."
         )
 
 

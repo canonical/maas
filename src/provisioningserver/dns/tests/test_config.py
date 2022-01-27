@@ -188,7 +188,7 @@ class TestRNDCUtilities(MAASTestCase):
         )
         for filename, content in expected:
             filepath = os.path.join(dns_conf_dir, filename)
-            with open(filepath, "r", encoding="ascii") as stream:
+            with open(filepath, encoding="ascii") as stream:
                 conf_content = stream.read()
                 self.assertIn(content, conf_content)
 
@@ -294,7 +294,7 @@ class TestRNDCUtilities(MAASTestCase):
         patch_dns_default_controls(self, enable=True)
         set_up_rndc()
         rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
-        with open(rndc_file, "r", encoding="ascii") as stream:
+        with open(rndc_file, encoding="ascii") as stream:
             conf_content = stream.read()
             self.assertIn(DEFAULT_CONTROLS, conf_content)
 

@@ -75,7 +75,7 @@ class TestPrometheusHandler(MAASServerTestCase):
             "maas_vmcluster_vms",
         )
         for metric in metrics:
-            self.assertIn("TYPE {} gauge".format(metric), content)
+            self.assertIn(f"TYPE {metric} gauge", content)
 
     def test_prometheus_stats_handler_include_maas_id_label(self):
         self.patch(stats, "get_machines_by_architecture").return_value = {
@@ -186,13 +186,13 @@ class TestPrometheus(MAASServerTestCase):
         )
         for n in (60, 61):
             factory.make_StaticIPAddress(
-                ip="1.2.0.{}".format(n),
+                ip=f"1.2.0.{n}",
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 subnet=subnet,
             )
         for n in (80, 90, 100):
             factory.make_StaticIPAddress(
-                ip="1.2.0.{}".format(n),
+                ip=f"1.2.0.{n}",
                 alloc_type=IPADDRESS_TYPE.STICKY,
                 subnet=subnet,
             )

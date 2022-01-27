@@ -65,8 +65,7 @@ class BootImageMapping:
 
     def items(self):
         """Iterate over `ImageSpec` keys, and their stored values."""
-        for image_spec, item in sorted(self.mapping.items()):
-            yield image_spec, item
+        yield from sorted(self.mapping.items())
 
     def is_empty(self):
         """Is this mapping empty?"""

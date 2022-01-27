@@ -20,7 +20,7 @@ def compose_invalid_choice_text(choice_of_what, valid_choices):
         (name, value).
     :type valid_choices: sequence
     """
-    return "'%s' is not a valid %s.  It should be one of: %s." % (
+    return "'{}' is not a valid {}.  It should be one of: {}.".format(
         "%(value)s",
         choice_of_what,
         ", ".join("'%s'" % name for name, value in valid_choices),

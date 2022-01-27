@@ -160,7 +160,9 @@ class TestRunImport(MAASTestCase):
     def make_archive_url(self, name=None):
         if name is None:
             name = factory.make_name("archive")
-        return "http://%s.example.com/%s" % (name, factory.make_name("path"))
+        return "http://{}.example.com/{}".format(
+            name, factory.make_name("path")
+        )
 
     def patch_boot_resources_function(self):
         """Patch out `boot_resources.import_images`.

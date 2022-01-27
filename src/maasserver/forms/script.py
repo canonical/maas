@@ -596,7 +596,7 @@ class CommissioningScriptForm(Form):
                 self.errors["content"] = []
             for key, errors in self._form.errors.items():
                 for error in errors:
-                    self.errors["content"].append("%s: %s" % (key, error))
+                    self.errors["content"].append(f"{key}: {error}")
             return False
         else:
             return valid
@@ -607,7 +607,7 @@ class CommissioningScriptForm(Form):
             **kwargs,
             commit=False,
             request=request,
-            endpoint=ENDPOINT.UI
+            endpoint=ENDPOINT.UI,
         )
         # If the embedded script data did not set a script type,
         # set it to commissioning.
@@ -662,7 +662,7 @@ class TestingScriptForm(Form):
                 self.errors["content"] = []
             for key, errors in self._form.errors.items():
                 for error in errors:
-                    self.errors["content"].append("%s: %s" % (key, error))
+                    self.errors["content"].append(f"{key}: {error}")
             return False
         else:
             return valid
@@ -673,7 +673,7 @@ class TestingScriptForm(Form):
             **kwargs,
             commit=False,
             request=request,
-            endpoint=ENDPOINT.UI
+            endpoint=ENDPOINT.UI,
         )
         # If the embedded script data did not set a script type,
         # set it to testing.

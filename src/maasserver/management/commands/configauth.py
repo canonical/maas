@@ -45,7 +45,7 @@ def prompt_for_external_auth_url(existing_url):
     if existing_url == "":
         existing_url = "none"
     new_url = read_input(
-        "URL to external Candid server [default={}]: ".format(existing_url)
+        f"URL to external Candid server [default={existing_url}]: "
     )
     if new_url == "":
         new_url = existing_url

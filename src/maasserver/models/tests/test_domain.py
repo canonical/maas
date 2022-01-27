@@ -222,7 +222,7 @@ class DomainTest(MAASServerTestCase):
         parent = factory.make_Domain()
         name = factory.make_name()
         default_name = Domain.objects.get_default_domain().name
-        factory.make_Domain(name="%s.%s" % (name, parent.name))
+        factory.make_Domain(name=f"{name}.{parent.name}")
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
         parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
@@ -232,14 +232,14 @@ class DomainTest(MAASServerTestCase):
     def test_add_delegations_adds_nsrrset_and_glue(self):
         parent = factory.make_Domain()
         name = factory.make_name()
-        child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        child = factory.make_Domain(name=f"{name}.{parent.name}")
         default_name = Domain.objects.get_default_domain().name
         dnsrr = factory.make_DNSResource(name="@", domain=child)
         nsname = factory.make_name()
         factory.make_DNSData(
             dnsresource=dnsrr,
             rrtype="NS",
-            rrdata="%s.%s." % (nsname, child.name),
+            rrdata=f"{nsname}.{child.name}.",
         )
         nsrr = factory.make_DNSResource(name=nsname, domain=child)
         other_name = factory.make_name()
@@ -247,7 +247,7 @@ class DomainTest(MAASServerTestCase):
         factory.make_DNSData(
             dnsresource=dnsrr,
             rrtype="NS",
-            rrdata="%s.%s." % (other_name, parent.name),
+            rrdata=f"{other_name}.{parent.name}.",
         )
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
@@ -256,8 +256,8 @@ class DomainTest(MAASServerTestCase):
             name: HostnameRRsetMapping(
                 rrset={
                     (30, "NS", default_name),
-                    (30, "NS", "%s.%s." % (nsname, child.name)),
-                    (30, "NS", "%s.%s." % (other_name, parent.name)),
+                    (30, "NS", f"{nsname}.{child.name}."),
+                    (30, "NS", f"{other_name}.{parent.name}."),
                 }
             )
         }
@@ -275,16 +275,16 @@ class DomainTest(MAASServerTestCase):
     def test_add_delegations_adds_nsrrset_and_glue_in_depth(self):
         parent = factory.make_Domain()
         name = factory.make_name()
-        child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        child = factory.make_Domain(name=f"{name}.{parent.name}")
         default_name = Domain.objects.get_default_domain().name
         g_name = factory.make_name()
-        grandchild = factory.make_Domain(name="%s.%s" % (g_name, child.name))
+        grandchild = factory.make_Domain(name=f"{g_name}.{child.name}")
         dnsrr = factory.make_DNSResource(name="@", domain=child)
         nsname = factory.make_name()
         factory.make_DNSData(
             dnsresource=dnsrr,
             rrtype="NS",
-            rrdata="%s.%s." % (nsname, grandchild.name),
+            rrdata=f"{nsname}.{grandchild.name}.",
         )
         nsrr = factory.make_DNSResource(name=nsname, domain=grandchild)
         other_name = factory.make_name()
@@ -292,7 +292,7 @@ class DomainTest(MAASServerTestCase):
         factory.make_DNSData(
             dnsresource=dnsrr,
             rrtype="NS",
-            rrdata="%s.%s." % (other_name, parent.name),
+            rrdata=f"{other_name}.{parent.name}.",
         )
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
@@ -300,12 +300,12 @@ class DomainTest(MAASServerTestCase):
             name: HostnameRRsetMapping(
                 rrset={
                     (30, "NS", default_name),
-                    (30, "NS", "%s.%s." % (nsname, grandchild.name)),
-                    (30, "NS", "%s.%s." % (other_name, parent.name)),
+                    (30, "NS", f"{nsname}.{grandchild.name}."),
+                    (30, "NS", f"{other_name}.{parent.name}."),
                 }
             )
         }
-        ns_part = "%s.%s" % (nsname, g_name)
+        ns_part = f"{nsname}.{g_name}"
         for sip in nsrr.ip_addresses.all():
             if IPAddress(sip.ip).version == 6:
                 expected_map[ns_part] = HostnameRRsetMapping(
@@ -320,8 +320,8 @@ class DomainTest(MAASServerTestCase):
 
     def test_add_delegations_allows_dots(self):
         parent = factory.make_Domain()
-        name = "%s.%s" % (factory.make_name(), factory.make_name())
-        factory.make_Domain(name="%s.%s" % (name, parent.name))
+        name = f"{factory.make_name()}.{factory.make_name()}"
+        factory.make_Domain(name=f"{name}.{parent.name}")
         default_name = Domain.objects.get_default_domain().name
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
@@ -332,9 +332,9 @@ class DomainTest(MAASServerTestCase):
     def test_add_delegations_stops_at_one_deep(self):
         parent = factory.make_Domain()
         name = factory.make_name()
-        child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        child = factory.make_Domain(name=f"{name}.{parent.name}")
         default_name = Domain.objects.get_default_domain().name
-        factory.make_Domain(name="%s.%s" % (factory.make_name(), child.name))
+        factory.make_Domain(name=f"{factory.make_name()}.{child.name}")
         mappings = lazydict(get_hostname_dnsdata_mapping)
         mapping = mappings[parent]
         parent.add_delegations(mapping, default_name, [IPAddress("::1")], 30)
@@ -345,10 +345,12 @@ class DomainTest(MAASServerTestCase):
         parent = factory.make_Domain()
         name = factory.make_name()
         child = factory.make_Domain(
-            name="%s.%s" % (name, parent.name), authoritative=False
+            name=f"{name}.{parent.name}", authoritative=False
         )
         default_name = Domain.objects.get_default_domain().name
-        ns_name = "%s.%s." % (factory.make_name("h"), factory.make_name("d"))
+        ns_name = "{}.{}.".format(
+            factory.make_name("h"), factory.make_name("d")
+        )
         factory.make_DNSData(
             name="@", domain=child, rrtype="NS", rrdata=ns_name
         )
@@ -359,11 +361,11 @@ class DomainTest(MAASServerTestCase):
         self.assertEqual(expected_map, mapping[name])
 
     def test_save_migrates_dnsresource(self):
-        p_name = "%s.%s" % (factory.make_name(), factory.make_name())
+        p_name = f"{factory.make_name()}.{factory.make_name()}"
         c_name = factory.make_name()
         parent = factory.make_Domain(name=p_name)
         dnsrr = factory.make_DNSResource(name=c_name, domain=parent)
-        child = factory.make_Domain(name="%s.%s" % (c_name, p_name))
+        child = factory.make_Domain(name=f"{c_name}.{p_name}")
         dnsrr_from_db = DNSResource.objects.get(id=dnsrr.id)
         self.assertEqual("@", dnsrr_from_db.name)
         self.assertEqual(child, dnsrr_from_db.domain)
@@ -373,7 +375,7 @@ class DomainTest(MAASServerTestCase):
 
     def test_update_kms_srv_deletes_srv_records(self):
         domain = factory.make_Domain()
-        target = "%s.%s" % (factory.make_name(), factory.make_name())
+        target = f"{factory.make_name()}.{factory.make_name()}"
         factory.make_DNSData(
             domain=domain,
             name="_vlmcs._tcp",
@@ -387,7 +389,7 @@ class DomainTest(MAASServerTestCase):
 
     def test_update_kms_srv_creates_srv_records(self):
         domain = factory.make_Domain()
-        target = "%s.%s" % (factory.make_name(), factory.make_name())
+        target = f"{factory.make_name()}.{factory.make_name()}"
         domain.update_kms_srv(target)
         srvrr = DNSData.objects.get(
             rrtype="SRV",
@@ -398,7 +400,7 @@ class DomainTest(MAASServerTestCase):
 
     def test_update_kms_srv_creates_srv_records_on_all_domains(self):
         domains = [factory.make_Domain() for _ in range(random.randint(1, 10))]
-        target = "%s.%s" % (factory.make_name(), factory.make_name())
+        target = f"{factory.make_name()}.{factory.make_name()}"
         Config.objects.set_config("windows_kms_host", target)
         for domain in domains:
             srvrr = DNSData.objects.get(

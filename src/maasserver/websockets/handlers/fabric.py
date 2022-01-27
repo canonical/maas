@@ -32,7 +32,7 @@ class FabricHandler(TimestampedModelHandler):
         data["name"] = obj.get_name()
         # The default VLAN always has the lowest ID. We sort to place the
         # lowest ID first.
-        data["vlan_ids"] = sorted([vlan.id for vlan in obj.vlan_set.all()])
+        data["vlan_ids"] = sorted(vlan.id for vlan in obj.vlan_set.all())
         # Pass the default vlan id explicitly, so that we don't reproduce the
         # logic in the javascript.
         data["default_vlan_id"] = data["vlan_ids"][0]

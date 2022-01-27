@@ -75,7 +75,7 @@ class TestWindowsOS(MAASTestCase):
         if hostname is None:
             machine = factory.make_name("hostname")
             dns = factory.make_name("dns")
-            hostname = "%s.%s" % (machine, dns)
+            hostname = f"{machine}.{dns}"
         return Node(
             system_id=factory.make_name("system_id"), hostname=hostname
         )
@@ -127,7 +127,7 @@ class TestWindowsOS(MAASTestCase):
         osystem = WindowsOS()
         machine = factory.make_name("hostname")
         dns = factory.make_name("dns")
-        hostname = "%s.%s" % (machine, dns)
+        hostname = f"{machine}.{dns}"
         node = self.make_node(hostname=hostname)
         token = self.make_token()
         url = factory.make_name("url")
@@ -138,7 +138,7 @@ class TestWindowsOS(MAASTestCase):
         osystem = WindowsOS()
         machine = factory.make_name("hostname", size=20)
         dns = factory.make_name("dns")
-        hostname = "%s.%s" % (machine, dns)
+        hostname = f"{machine}.{dns}"
         node = self.make_node(hostname=hostname)
         token = self.make_token()
         url = factory.make_name("url")

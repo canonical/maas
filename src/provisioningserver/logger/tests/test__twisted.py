@@ -83,7 +83,7 @@ class TestLegacyLogger(MAASTestCase):
         self.assertThat(events[0], MatchesDict(expected))
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            Equals("<when> [%s#info] %s\n" % (namespace, message)),
+            Equals(f"<when> [{namespace}#info] {message}\n"),
         )
 
     def test_logs_multiple_messages(self):
@@ -107,7 +107,9 @@ class TestLegacyLogger(MAASTestCase):
         self.assertThat(events[0], ContainsDictByEquality(expected))
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            Equals("<when> [%s#info] %s\n" % (__name__, " ".join(messages))),
+            Equals(
+                "<when> [{}#info] {}\n".format(__name__, " ".join(messages))
+            ),
         )
 
     def test_logs_errors(self):
@@ -150,7 +152,7 @@ class TestLegacyLogger(MAASTestCase):
         # so we only match on the beginning of the string.
         self.assertThat(
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            StartsWith("<when> [%s#critical] %s\n" % (namespace, message)),
+            StartsWith(f"<when> [{namespace}#critical] {message}\n"),
         )
 
 
@@ -413,7 +415,7 @@ class TestFormatModernEvent(MAASTestCase):
             _formatModernEvent(
                 {"log_level": self.log_level, "log_namespace": log_namespace}
             ),
-            Equals("- %s: [%s] \n" % (log_namespace, self.log_level.name)),
+            Equals(f"- {log_namespace}: [{self.log_level.name}] \n"),
         )
 
     def test_uses_namespace_if_system_null(self):
@@ -426,7 +428,7 @@ class TestFormatModernEvent(MAASTestCase):
                     "log_system": None,
                 }
             ),
-            Equals("- %s: [%s] \n" % (log_namespace, self.log_level.name)),
+            Equals(f"- {log_namespace}: [{self.log_level.name}] \n"),
         )
 
 

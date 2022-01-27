@@ -238,7 +238,7 @@ class VersionedTextFileTest(MAASServerTestCase):
         updated_textfile = textfile.update(
             '#!/bin/sh\r\necho "Updated on Windows!"\r\n'
         )
-        self.assertNotEquals(textfile, updated_textfile)
+        self.assertNotEqual(textfile, updated_textfile)
         self.assertEqual(
             '#!/bin/sh\necho "Updated on Windows!"\n', updated_textfile.data
         )

@@ -159,7 +159,7 @@ class SubnetForm(MAASModelForm):
                 set_form_error(
                     self,
                     "vlan",
-                    "VLAN %s is not in fabric %s." % (vlan, fabric),
+                    f"VLAN {vlan} is not in fabric {fabric}.",
                 )
         return cleaned_data
 

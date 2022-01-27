@@ -201,7 +201,7 @@ class TestScriptsAPI(APITestCase.ForUser):
 
         response = self.client.get(
             self.get_scripts_uri(),
-            {"filters": "%s,%s" % (random.choice(tags), name_script.name)},
+            {"filters": f"{random.choice(tags)},{name_script.name}"},
         )
         self.assertThat(response, HasStatusCode(http.client.OK))
         parsed_results = json_load_bytes(response.content)
@@ -630,13 +630,13 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Added tag '%s' to script '%s'." % (new_tag, script.name),
+            f"Added tag '{new_tag}' to script '{script.name}'.",
         )
 
     def test_add_tag_disallows_comma(self):
         self.become_admin()
         script = factory.make_Script()
-        new_tag = "%s,%s" % (
+        new_tag = "{},{}".format(
             factory.make_name("tag"),
             factory.make_name("tag"),
         )
@@ -670,7 +670,7 @@ class TestScriptAPI(APITestCase.ForUser):
         self.assertIsNotNone(event)
         self.assertEqual(
             event.description,
-            "Removed tag '%s' from script '%s'." % (removed_tag, script.name),
+            f"Removed tag '{removed_tag}' from script '{script.name}'.",
         )
 
     def test_remove_tag_admin_only(self):

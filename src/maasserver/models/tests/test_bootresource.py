@@ -33,7 +33,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def make_boot_resource(self, rtype, name):
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
-        architecture = "%s/%s" % (arch, subarch)
+        architecture = f"{arch}/{subarch}"
         resource = factory.make_BootResource(
             rtype=rtype, name=name, architecture=architecture
         )
@@ -42,7 +42,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def make_synced_boot_resource(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         resource, (arch, subarch) = self.make_boot_resource(
             BOOT_RESOURCE_TYPE.SYNCED, name=name
         )
@@ -51,7 +51,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def make_generated_boot_resource(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         resource, (arch, subarch) = self.make_boot_resource(
             BOOT_RESOURCE_TYPE.GENERATED, name=name
         )
@@ -157,7 +157,9 @@ class TestBootResourceManager(MAASServerTestCase):
 
     def test_get_usable_architectures(self):
         arches = [
-            "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
+            "{}/{}".format(
+                factory.make_name("arch"), factory.make_name("subarch")
+            )
             for _ in range(4)
         ]
         incomplete_arch = arches.pop()
@@ -173,9 +175,9 @@ class TestBootResourceManager(MAASServerTestCase):
         for _ in range(3):
             arch = factory.make_name("arch")
             subarches = [factory.make_name("subarch") for _ in range(3)]
-            architecture = "%s/%s" % (arch, subarches[0])
+            architecture = f"{arch}/{subarches[0]}"
             for subarch in subarches:
-                arches.add("%s/%s" % (arch, subarch))
+                arches.add(f"{arch}/{subarch}")
             factory.make_usable_boot_resource(
                 architecture=architecture,
                 extra={"subarches": ",".join(subarches)},
@@ -206,7 +208,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_commissionable_resource_returns_iterable(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name
         )
@@ -218,7 +220,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_commissionable_resource_returns_only_commissionable(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name
         )
@@ -237,7 +239,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_commissionable_resource_returns_only_for_os_series(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name
         )
@@ -250,7 +252,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_commissionable_resource_returns_sorted_by_architecture(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         resource_b = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
@@ -276,7 +278,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_default_commissioning_resource_returns_i386_first(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         arches = ["i386/generic", "amd64/generic", "arm64/generic"]
         for arch in arches:
             factory.make_usable_boot_resource(
@@ -292,7 +294,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_default_commissioning_resource_returns_amd64_second(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         arches = ["amd64/generic", "arm64/generic"]
         for arch in arches:
             factory.make_usable_boot_resource(
@@ -308,7 +310,7 @@ class TestBootResourceManager(MAASServerTestCase):
     def test_get_default_commissioning_resource_returns_first_arch(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         arches = ["ppc64el/generic", "arm64/generic"]
         for arch in arches:
             factory.make_usable_boot_resource(
@@ -594,14 +596,14 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
     def test_returns_multiple_resource_for_hwe_resources(self):
         os = factory.make_name("os")
         series = factory.make_name("series")
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("hwe") for _ in range(3)]
         resources = [
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
             for subarch in subarches
         ]
@@ -851,7 +853,7 @@ class TestGetUsableKernels(MAASServerTestCase):
                 factory.make_usable_boot_resource(
                     name=self.name,
                     rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                    architecture="%s/%s" % (self.arch, i),
+                    architecture=f"{self.arch}/{i}",
                     kflavor=kflavor,
                     rolling=True,
                 )
@@ -867,7 +869,7 @@ class TestGetUsableKernels(MAASServerTestCase):
             factory.make_usable_boot_resource(
                 name=self.name,
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                architecture="%s/%s" % (self.arch, self.subarch),
+                architecture=f"{self.arch}/{self.subarch}",
                 rolling=True,
             )
         self.assertEqual(
@@ -997,7 +999,7 @@ class TestBootResource(MAASServerTestCase):
 
     def test_validation_raises_error_on_invalid_name_for_synced(self):
         name = factory.make_name("name")
-        arch = "%s/%s" % (
+        arch = "{}/{}".format(
             factory.make_name("arch"),
             factory.make_name("subarch"),
         )
@@ -1008,7 +1010,7 @@ class TestBootResource(MAASServerTestCase):
 
     def test_validation_raises_error_on_invalid_name_for_generated(self):
         name = factory.make_name("name")
-        arch = "%s/%s" % (
+        arch = "{}/{}".format(
             factory.make_name("arch"),
             factory.make_name("subarch"),
         )
@@ -1018,8 +1020,10 @@ class TestBootResource(MAASServerTestCase):
         self.assertRaises(ValidationError, resource.save)
 
     def test_validation_raises_error_on_invalid_name_for_uploaded(self):
-        name = "%s/%s" % (factory.make_name("os"), factory.make_name("series"))
-        arch = "%s/%s" % (
+        name = "{}/{}".format(
+            factory.make_name("os"), factory.make_name("series")
+        )
+        arch = "{}/{}".format(
             factory.make_name("arch"),
             factory.make_name("subarch"),
         )
@@ -1031,8 +1035,8 @@ class TestBootResource(MAASServerTestCase):
     def test_validation_allows_any_uploaded_name_slash_with_supported_os(self):
         osystem = factory.make_name("osystem")
         make_osystem(self, osystem)
-        name = "%s/%s" % (osystem, factory.make_name("release"))
-        arch = "%s/%s" % (
+        name = "{}/{}".format(osystem, factory.make_name("release"))
+        arch = "{}/{}".format(
             factory.make_name("arch"),
             factory.make_name("subarch"),
         )
@@ -1043,7 +1047,7 @@ class TestBootResource(MAASServerTestCase):
 
     def test_validation_allows_any_uploaded_name_without_slash(self):
         name = factory.make_name("name")
-        arch = "%s/%s" % (
+        arch = "{}/{}".format(
             factory.make_name("arch"),
             factory.make_name("subarch"),
         )
@@ -1053,8 +1057,10 @@ class TestBootResource(MAASServerTestCase):
         resource.save()
 
     def test_create_raises_error_on_not_unique(self):
-        name = "%s/%s" % (factory.make_name("os"), factory.make_name("series"))
-        arch = "%s/%s" % (
+        name = "{}/{}".format(
+            factory.make_name("os"), factory.make_name("series")
+        )
+        arch = "{}/{}".format(
             factory.make_name("arch"),
             factory.make_name("subarch"),
         )
@@ -1077,7 +1083,7 @@ class TestBootResource(MAASServerTestCase):
     def test_split_arch(self):
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
-        architecture = "%s/%s" % (arch, subarch)
+        architecture = f"{arch}/{subarch}"
         resource = factory.make_BootResource(architecture=architecture)
         self.assertEqual([arch, subarch], resource.split_arch())
 
@@ -1129,7 +1135,7 @@ class TestBootResource(MAASServerTestCase):
     def test_supports_subarch_returns_True_if_subarch_in_name_matches(self):
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
-        architecture = "%s/%s" % (arch, subarch)
+        architecture = f"{arch}/{subarch}"
         resource = factory.make_BootResource(architecture=architecture)
         self.assertTrue(resource.supports_subarch(subarch))
 

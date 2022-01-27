@@ -107,7 +107,7 @@ def get_boot_filenames(
             boot_resource_subarch = validate_hwe_kernel(
                 subarch,
                 None,
-                "%s/%s" % (arch, subarch),
+                f"{arch}/{subarch}",
                 osystem,
                 series,
                 commissioning_osystem=commissioning_osystem,
@@ -125,8 +125,8 @@ def get_boot_filenames(
         # Get the filename for the kernel, initrd, and boot_dtb the rack should
         # use when booting.
         boot_resource = BootResource.objects.get(
-            architecture="%s/%s" % (arch, boot_resource_subarch),
-            name="%s/%s" % (osystem, series),
+            architecture=f"{arch}/{boot_resource_subarch}",
+            name=f"{osystem}/{series}",
         )
         boot_resource_set = boot_resource.get_latest_complete_set()
         boot_resource_files = {
@@ -296,7 +296,7 @@ def get_base_url_for_local_ip(local_ip, internal_domain):
     if subnet is not None and not subnet.dns_servers and subnet.vlan.dhcp_on:
         # Use the MAAS internal domain to resolve the IP address of
         # the rack controllers on the subnet.
-        return "http://%s.%s:5248/" % (
+        return "http://{}.{}:5248/".format(
             get_resource_name_for_subnet(subnet),
             internal_domain,
         )
@@ -587,7 +587,7 @@ def get_config(
             min_hwe_kernel = validate_hwe_kernel(
                 None,
                 min_hwe_kernel,
-                "%s/%s" % (arch, subarch),
+                f"{arch}/{subarch}",
                 osystem,
                 series,
             )

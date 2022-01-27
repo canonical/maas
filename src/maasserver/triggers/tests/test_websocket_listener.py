@@ -258,9 +258,7 @@ class TestNodeListener(
                 domain.id,
                 {"name": factory.make_name("name")},
             )
-            results = yield DeferredList(
-                (dv.get(timeout=2) for dv in save_dvs)
-            )
+            results = yield DeferredList(dv.get(timeout=2) for dv in save_dvs)
             self.assertCountEqual(
                 {("update", node.system_id) for node in nodes},
                 {res for (suc, res) in results},
@@ -2095,9 +2093,7 @@ class TestFabricListener(
         yield listener.startService()
         try:
             fabric = yield deferToDatabase(self.create_fabric)
-            results = yield DeferredList(
-                (dv.get(timeout=2) for dv in save_dvs)
-            )
+            results = yield DeferredList(dv.get(timeout=2) for dv in save_dvs)
             self.assertCountEqual(
                 [("create", str(fabric.id)), ("update", str(fabric.id))],
                 [res for (suc, res) in results],
@@ -2841,9 +2837,7 @@ class TestSpaceListener(
         yield listener.startService()
         try:
             space = yield deferToDatabase(self.create_space)
-            results = yield DeferredList(
-                (dv.get(timeout=2) for dv in save_dvs)
-            )
+            results = yield DeferredList(dv.get(timeout=2) for dv in save_dvs)
             self.assertCountEqual(
                 [("create", str(space.id)), ("update", str(space.id))],
                 [res for (suc, res) in results],

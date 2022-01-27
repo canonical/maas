@@ -27,18 +27,18 @@ def emit_script_result_status_transition_event(
     [old_status] = old_values
 
     if script_result.physical_blockdevice and script_result.interface:
-        script_name = "%s on %s and %s" % (
+        script_name = "{} on {} and {}".format(
             script_result.name,
             script_result.physical_blockdevice.name,
             script_result.interface.name,
         )
     elif script_result.physical_blockdevice:
-        script_name = "%s on %s" % (
+        script_name = "{} on {}".format(
             script_result.name,
             script_result.physical_blockdevice.name,
         )
     elif script_result.interface:
-        script_name = "%s on %s" % (
+        script_name = "{} on {}".format(
             script_result.name,
             script_result.interface.name,
         )

@@ -818,7 +818,7 @@ class TestRaidAPI(APITestCase.ForUser):
             node=node, group_type=FILESYSTEM_GROUP_TYPE.RAID_0
         )
         self.assertEqual(
-            "/MAAS/api/2.0/nodes/%s/raid/%s/" % (node.system_id, raid.id),
+            f"/MAAS/api/2.0/nodes/{node.system_id}/raid/{raid.id}/",
             get_raid_device_uri(raid, node=node),
         )
 

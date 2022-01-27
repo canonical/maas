@@ -164,7 +164,7 @@ class PostgresListenerService(Service):
         """Remove this listener from the reactor."""
         try:
             reactor.removeReader(self)
-        except IOError as error:
+        except OSError as error:
             # ENOENT here means that the fd has already been unregistered
             # from the underlying poller. It is as yet unclear how we get
             # into this state, so for now we ignore it. See epoll_ctl(2).
@@ -337,7 +337,7 @@ class PostgresListenerService(Service):
             else:
                 # Not a system channel so listen called once for each action.
                 for action in sorted(map_enum(ACTIONS).values()):
-                    cursor.execute("LISTEN %s_%s;" % (channel, action))
+                    cursor.execute(f"LISTEN {channel}_{action};")
 
     def unregisterChannel(self, channel):
         """Unregister the channel."""
@@ -349,7 +349,7 @@ class PostgresListenerService(Service):
             else:
                 # Not a system channel so unlisten called once for each action.
                 for action in sorted(map_enum(ACTIONS).values()):
-                    cursor.execute("UNLISTEN %s_%s;" % (channel, action))
+                    cursor.execute(f"UNLISTEN {channel}_{action};")
 
     async def registerChannels(self):
         """Listen/unlisten to channels that were registered/unregistered.

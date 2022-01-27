@@ -107,11 +107,11 @@ def connect_to_field_change(callback, model, fields, delete=False):
         for signal, handler in signals:
             signal.disconnect(handler, sender=model)
 
-    connect.__doc__ = "Connect to %s for changes in %s." % (
+    connect.__doc__ = "Connect to {} for changes in {}.".format(
         model.__name__,
         " or ".join(fields),
     )
-    disconnect.__doc__ = "Disconnect from %s for changes in (%s)." % (
+    disconnect.__doc__ = "Disconnect from {} for changes in ({}).".format(
         model.__name__,
         " or ".join(fields),
     )

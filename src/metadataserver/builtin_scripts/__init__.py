@@ -209,7 +209,7 @@ for script in BUILTIN_SCRIPTS:
 def load_builtin_scripts():
     for script in BUILTIN_SCRIPTS:
         if script.inject_file:
-            with open(script.inject_path, "r") as f:
+            with open(script.inject_path) as f:
                 script.substitutes["inject_file"] = f.read()
         script_content = tempita.Template.from_filename(
             script.script_path, encoding="utf-8"

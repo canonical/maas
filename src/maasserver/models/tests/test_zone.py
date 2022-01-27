@@ -48,7 +48,7 @@ class TestZone(MAASServerTestCase):
                 node1.zone,
                 node2.zone,
             ),
-            (set([node1, node2]), name, description, zone, zone),
+            ({node1, node2}, name, description, zone, zone),
         )
 
     def test_delete_deletes_zone(self):

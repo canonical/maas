@@ -29,7 +29,7 @@ from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 
 CNAME_LABEL = r"[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}"
-CNAME_SPEC = r"^(%s\.)*%s\.?$" % (CNAME_LABEL, CNAME_LABEL)
+CNAME_SPEC = fr"^({CNAME_LABEL}\.)*{CNAME_LABEL}\.?$"
 SUPPORTED_RRTYPES = {"CNAME", "MX", "NS", "SRV", "SSHFP", "TXT"}
 INVALID_CNAME_MSG = "Invalid CNAME: Should be '<server>'."
 INVALID_MX_MSG = (
@@ -81,7 +81,7 @@ class HostnameRRsetMapping:
         self.rrset = set() if rrset is None else rrset.copy()
 
     def __repr__(self):
-        return "HostnameRRSetMapping(%r, %r, %r, %r, %r)" % (
+        return "HostnameRRSetMapping({!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.system_id,
             self.rrset,
             self.node_type,
@@ -103,7 +103,7 @@ class DNSDataQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -256,7 +256,7 @@ class DNSDataManager(Manager, DNSDataQueriesMixin):
                 # names, we should never ever be wrong in this assertion.
                 assert (
                     d_name == domain.name
-                ), "Invalid domain; expected '%s' == '%s'" % (
+                ), "Invalid domain; expected '{}' == '{}'".format(
                     d_name,
                     domain.name,
                 )
@@ -321,10 +321,10 @@ class DNSData(CleanSave, TimestampedModel):
     )
 
     def __unicode__(self):
-        return "%s %s" % (self.rrtype, self.rrdata)
+        return f"{self.rrtype} {self.rrdata}"
 
     def __str__(self):
-        return "%s %s" % (self.rrtype, self.rrdata)
+        return f"{self.rrtype} {self.rrdata}"
 
     @property
     def fqdn(self):

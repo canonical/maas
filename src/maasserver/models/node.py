@@ -666,11 +666,11 @@ class RackControllerManager(ControllerManager):
         else:
             parsed_url = urlparse(url)
         # getaddrinfo can return duplicates
-        ips = set(
+        ips = {
             address[4][0]
             for address in socket.getaddrinfo(parsed_url.hostname, None)
-        )
-        subnets = set(Subnet.objects.get_best_subnet_for_ip(ip) for ip in ips)
+        }
+        subnets = {Subnet.objects.get_best_subnet_for_ip(ip) for ip in ips}
         usable_racks = set(
             RackController.objects.filter(
                 interface__ip_addresses__subnet__in=subnets,
@@ -1267,7 +1267,7 @@ class Node(CleanSave, TimestampedModel):
 
     def __str__(self):
         if self.hostname:
-            return "%s (%s)" % (self.system_id, self.hostname)
+            return f"{self.system_id} ({self.hostname})"
         else:
             return self.system_id
 
@@ -1432,7 +1432,7 @@ class Node(CleanSave, TimestampedModel):
         Return the FQDN for this host.
         """
         if self.domain is not None:
-            return "%s.%s" % (self.hostname, self.domain.name)
+            return f"{self.hostname}.{self.domain.name}"
         else:
             return self.hostname
 
@@ -1459,7 +1459,7 @@ class Node(CleanSave, TimestampedModel):
             if len(description) == 0:
                 description = "(%s)" % user
             else:
-                description = "(%s) - %s" % (user, description)
+                description = f"({user}) - {description}"
         event_details = EVENT_DETAILS[type_name]
 
         # Avoid circular imports.
@@ -1899,7 +1899,7 @@ class Node(CleanSave, TimestampedModel):
             )
         else:
             # Transition not permitted.
-            error_text = "Invalid transition: %s -> %s." % (
+            error_text = "Invalid transition: {} -> {}.".format(
                 NODE_STATUS_CHOICES_DICT.get(old_status, "Unknown"),
                 NODE_STATUS_CHOICES_DICT.get(self.status, "Unknown"),
             )
@@ -2050,14 +2050,14 @@ class Node(CleanSave, TimestampedModel):
             # Fallback to using the first created physical block device as
             # the boot disk.
             block_devices = sorted(
-                [
+                (
                     block_device.actual_instance
                     for block_device in self.current_config.blockdevice_set.all()
                     if isinstance(
                         block_device.actual_instance, PhysicalBlockDevice
                     )
                     and block_device.size >= MIN_BOOT_PARTITION_SIZE
-                ],
+                ),
                 key=attrgetter("id"),
             )
             if len(block_devices) > 0:
@@ -2243,7 +2243,7 @@ class Node(CleanSave, TimestampedModel):
         # detection to run again.
         if skip_bmc_config or self.split_arch()[0] == "s390x":
             if self.split_arch()[0] == "s390x":
-                result = "INFO: BMC detection not supported on S390X".encode()
+                result = b"INFO: BMC detection not supported on S390X"
             else:
                 result = (
                     "INFO: User %s (%s) has choosen to skip BMC configuration "
@@ -3174,7 +3174,7 @@ class Node(CleanSave, TimestampedModel):
         # incase the system is setup in redundency(RAID or multiple NICs
         # can route to MAAS).
         interfaces = sorted(
-            [iface.serialize() for iface in self.interface_set.all()],
+            (iface.serialize() for iface in self.interface_set.all()),
             key=lambda iface: (
                 iface["id"] != self.boot_interface_id,
                 iface["id"],
@@ -3185,11 +3185,11 @@ class Node(CleanSave, TimestampedModel):
         else:
             boot_disk_id = None
         block_devices = sorted(
-            [
+            (
                 bd.actual_instance.serialize()
                 for bd in self.current_config.blockdevice_set.all()
                 if isinstance(bd.actual_instance, PhysicalBlockDevice)
-            ],
+            ),
             key=lambda bd: (
                 bd["id"] != boot_disk_id,
                 bd["id"],
@@ -4585,9 +4585,9 @@ class Node(CleanSave, TimestampedModel):
                 # no IPs to test (e.g. all IPs are statically assigned)
                 return
             # skip IPs that have been tested already
-            allocated_ips = set(
+            allocated_ips = {
                 ip for ip in allocated_ips if ip.ip not in attempted_ips
-            )
+            }
             if not allocated_ips:
                 raise StaticIPAddressExhaustion(
                     "Failed to allocate the required AUTO IP addresses"
@@ -4709,9 +4709,9 @@ class Node(CleanSave, TimestampedModel):
         discovered_addresses = boot_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.DISCOVERED, subnet__isnull=False
         )
-        subnets_to_link = set(
+        subnets_to_link = {
             ip_address.subnet for ip_address in discovered_addresses
-        )
+        }
         for subnet in subnets_to_link:
             boot_interface.link_subnet(INTERFACE_LINK_TYPE.AUTO, subnet)
             auto_set = True
@@ -5354,7 +5354,7 @@ class Node(CleanSave, TimestampedModel):
         event = self.status_event()
         if event is not None:
             if event.description:
-                return "%s - %s" % (event.type.description, event.description)
+                return f"{event.type.description} - {event.description}"
             else:
                 return event.type.description
         else:
@@ -5436,12 +5436,12 @@ class Node(CleanSave, TimestampedModel):
             )
             cidrs = subnets.values_list("cidr", flat=True)
             my_address_families = {IPNetwork(cidr).version for cidr in cidrs}
-            rack_address_families = set(
+            rack_address_families = {
                 4 if addr.is_ipv4_mapped() else addr.version
                 for addr in get_maas_facing_server_addresses(
                     self.get_boot_primary_rack_controller()
                 )
-            )
+            }
             if my_address_families & rack_address_families == set():
                 # Node doesn't have any IP addresses in common with the rack
                 # controller, unless it has a DHCP assigned without a subnet.
@@ -6662,9 +6662,9 @@ class RackController(Controller):
             # Not connected to any regions so the rackd is considered dead.
             Service.objects.mark_dead(self, dead_rack=True)
         else:
-            connected_to_processes = set(
+            connected_to_processes = {
                 conn.endpoint.process for conn in connections
-            )
+            }
             all_processes = set(RegionControllerProcess.objects.all())
             dead_regions = RegionController.objects.exclude(
                 processes__in=all_processes
@@ -6725,7 +6725,9 @@ class RackController(Controller):
                 if image["osystem"] == "custom":
                     image_name = image["release"]
                 else:
-                    image_name = "%s/%s" % (image["osystem"], image["release"])
+                    image_name = "{}/{}".format(
+                        image["osystem"], image["release"]
+                    )
                 image_arch = image["architecture"]
                 image_subarch = image["subarchitecture"]
                 downloaded_boot_images[image_name, image_arch].add(

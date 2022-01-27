@@ -130,7 +130,7 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         logical_volume = factory.make_VirtualBlockDevice(
             name=name, filesystem_group=volume_group
         )
-        self.assertEqual("%s-%s" % (vgname, name), logical_volume.get_name())
+        self.assertEqual(f"{vgname}-{name}", logical_volume.get_name())
 
     def test_get_name_returns_just_name(self):
         filesystem_group = factory.make_FilesystemGroup(

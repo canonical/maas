@@ -27,12 +27,12 @@ class XMLToYAML:
     def addText(self, element):
         if "{" in element.tag:
             new_tag = element.tag.strip("{").replace("}", ":")
-            self.new_text += "%s- %s:\n" % (self.spaces(), new_tag)
+            self.new_text += f"{self.spaces()}- {new_tag}:\n"
         else:
-            self.new_text += "%s- %s:\n" % (self.spaces(), element.tag)
+            self.new_text += f"{self.spaces()}- {element.tag}:\n"
         self.level += 1
         for key in element.keys():
-            self.new_text += "%s%s: %s\n" % (
+            self.new_text += "{}{}: {}\n".format(
                 self.spaces(),
                 key,
                 element.attrib[key],
@@ -42,7 +42,7 @@ class XMLToYAML:
         for child in element.iterchildren():
             self.addText(child)
             if child.text is not None and not child.text.isspace():
-                self.new_text += "%s%s\n" % (self.spaces(), child.text.strip())
+                self.new_text += f"{self.spaces()}{child.text.strip()}\n"
             self.recurseElement(child)
             self.level -= 1
 
@@ -66,9 +66,9 @@ def human_readable_bytes(num_bytes, include_suffix=True):
         if abs(num_bytes) < 1000.0 or unit == "YB":
             if include_suffix:
                 if unit == "bytes":
-                    return "%.0f %s" % (num_bytes, unit)
+                    return f"{num_bytes:.0f} {unit}"
                 else:
-                    return "%.1f %s" % (num_bytes, unit)
+                    return f"{num_bytes:.1f} {unit}"
             else:
                 if unit == "bytes":
                     return "%.0f" % num_bytes

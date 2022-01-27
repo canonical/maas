@@ -239,7 +239,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
             boot_image = get_boot_image(params)
             if boot_image is None:
                 # No matching boot image.
-                description = "Missing boot image %s/%s/%s/%s." % (
+                description = "Missing boot image {}/{}/{}/{}.".format(
                     params["osystem"],
                     params["arch"],
                     params["subarch"],
@@ -523,7 +523,7 @@ class TFTPService(MultiService):
         configured interfaces and bring down servers on deconfigured
         interfaces.
         """
-        addrs_established = set(service.name for service in self.getServers())
+        addrs_established = {service.name for service in self.getServers()}
         addrs_desired = set(get_all_interface_addresses())
 
         for address in addrs_desired - addrs_established:

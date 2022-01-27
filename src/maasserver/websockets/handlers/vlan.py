@@ -65,10 +65,10 @@ class VLANHandler(TimestampedModelHandler):
             if interface.node_id is not None
         }
         data["rack_sids"] = sorted(
-            [node.system_id for node in nodes if node.is_rack_controller]
+            node.system_id for node in nodes if node.is_rack_controller
         )
         if not for_list:
-            data["node_ids"] = sorted([node.id for node in nodes])
+            data["node_ids"] = sorted(node.id for node in nodes)
             data["space_ids"] = sorted(
                 list({subnet.vlan.space_id for subnet in obj.subnet_set.all()})
             )

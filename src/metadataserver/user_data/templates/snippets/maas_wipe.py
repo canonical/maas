@@ -361,7 +361,9 @@ def wipe_quickly(kname):
         wipe_error -= 1
     except subprocess.CalledProcessError as exc:
         print_flush(
-            "%s: wipefs failed (%s)" % (kname.decode("ascii"), exc.returncode)
+            "{}: wipefs failed ({})".format(
+                kname.decode("ascii"), exc.returncode
+            )
         )
         wipe_error += 1
 

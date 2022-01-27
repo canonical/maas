@@ -78,7 +78,7 @@ def get_prefixed_form_data(prefix, data):
     :param data: A dict of form parameters.
     :return: A new dict of prefixed form parameters.
     """
-    result = {"%s-%s" % (prefix, key): value for key, value in data.items()}
+    result = {f"{prefix}-{key}": value for key, value in data.items()}
     result.update({"%s_submit" % prefix: 1})
     return result
 

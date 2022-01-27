@@ -38,7 +38,7 @@ from provisioningserver.utils.twisted import asynchronous
 
 def make_node_id():
     """Make a node_id."""
-    return "c%sn%s" % (randint(1, 45), randint(1, 8))
+    return f"c{randint(1, 45)}n{randint(1, 8)}"
 
 
 NODE_LIST = dedent(

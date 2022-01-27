@@ -109,7 +109,7 @@ class TestTFTPPath(MAASTestCase):
         release = factory.make_name("release")
         label = factory.make_name("label")
         self.assertEqual(
-            "%s/%s/%s/%s/%s" % (osystem, arch, subarch, release, label),
+            f"{osystem}/{arch}/{subarch}/{release}/{label}",
             compose_image_path(osystem, arch, subarch, release, label),
         )
 

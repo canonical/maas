@@ -20,7 +20,7 @@ from provisioningserver.utils.shell import (
     has_command_available,
 )
 
-DLI_QUERY_OUTPUT = """\
+DLI_QUERY_OUTPUT = b"""\
 ...
 <!--
 function reg() {
@@ -34,9 +34,7 @@ window.open('http://www.digital-loggers.com/register.html?SN=LPC751740');
 <body alink="#0000FF" vlink="#0000FF">
 <FONT FACE="Arial, Helvetica, Sans-Serif">
 ...
-""".encode(
-    "utf-8"
-)
+"""
 
 
 class TestDLIPowerDriver(MAASTestCase):
@@ -62,7 +60,7 @@ class TestDLIPowerDriver(MAASTestCase):
         power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         power_address = factory.make_name("power_address")
-        url = "http://%s:%s@%s/outlet?%s=%s" % (
+        url = "http://{}:{}@{}/outlet?{}={}".format(
             power_user,
             power_pass,
             power_address,
@@ -106,7 +104,7 @@ class TestDLIPowerDriver(MAASTestCase):
         power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         power_address = factory.make_name("power_address")
-        url = "http://%s:%s@%s/index.htm" % (
+        url = "http://{}:{}@{}/index.htm".format(
             power_user,
             power_pass,
             power_address,
@@ -133,7 +131,7 @@ class TestDLIPowerDriver(MAASTestCase):
         power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
         power_address = factory.make_name("power_address")
-        url = "http://%s:%s@%s/index.htm" % (
+        url = "http://{}:{}@{}/index.htm".format(
             power_user,
             power_pass,
             power_address,

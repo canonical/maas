@@ -407,7 +407,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 subnet=subnet,
                 interface=boot_interface,
             )
-            full_hostname = "%s.%s" % (node.hostname, domain.name)
+            full_hostname = f"{node.hostname}.{domain.name}"
             expected_mapping[full_hostname] = HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             )
@@ -431,7 +431,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             user=user,
         )
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(domain)
-        fqdn = "{}.{}".format(node.hostname, domain.name)
+        fqdn = f"{node.hostname}.{domain.name}"
         self.assertEqual(mapping[fqdn].user_id, user.id)
 
     def test_get_hostname_ip_mapping_returns_all_mappings_for_subnet(self):
@@ -447,7 +447,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 subnet=subnet,
                 interface=boot_interface,
             )
-            full_hostname = "%s.%s" % (node.hostname, domain.name)
+            full_hostname = f"{node.hostname}.{domain.name}"
             expected_mapping[full_hostname] = HostnameIPMapping(
                 node.system_id, 30, {staticip.ip}, node.node_type
             )
@@ -462,7 +462,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         hostname = factory.make_name("hostname")
         domainname = factory.make_name("domain")
         factory.make_Domain(name=domainname)
-        full_hostname = "%s.%s" % (hostname, domainname)
+        full_hostname = f"{hostname}.{domainname}"
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
             interface=True,
@@ -1158,7 +1158,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
     def test_get_hostname_ip_mapping_returns_domain_head_ips(self):
         parent = factory.make_Domain()
         name = factory.make_name()
-        child = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        child = factory.make_Domain(name=f"{name}.{parent.name}")
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, domain=parent, hostname=name
@@ -1283,9 +1283,9 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
         if factory.pick_bool():
             Domain.objects.get_default_domain()
         domain = factory.make_Domain(name=domainname)
-        full_hostname = "%s.%s" % (hostname, domainname)
+        full_hostname = f"{hostname}.{domainname}"
         dnsrrname = factory.make_name("dnsrrname")
-        full_dnsrrname = "%s.%s" % (dnsrrname, domainname)
+        full_dnsrrname = f"{dnsrrname}.{domainname}"
 
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(
@@ -1447,7 +1447,9 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         domain1 = factory.make_Domain()
         ips = [
             factory.make_StaticIPAddress(
-                hostname="%s.%s" % (factory.make_name("host"), domain0.name),
+                hostname="{}.{}".format(
+                    factory.make_name("host"), domain0.name
+                ),
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
             )
             for _ in range(num_ips)
@@ -1478,14 +1480,18 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         ]
         ips1 = [
             factory.make_StaticIPAddress(
-                hostname="%s.%s" % (factory.make_name("host"), domain1.name),
+                hostname="{}.{}".format(
+                    factory.make_name("host"), domain1.name
+                ),
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
             )
             for _ in range(randint(6, 9))
         ]
         ips2 = [
             factory.make_StaticIPAddress(
-                hostname="%s.%s" % (factory.make_name("host"), domain2.name),
+                hostname="{}.{}".format(
+                    factory.make_name("host"), domain2.name
+                ),
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
             )
             for _ in range(randint(1, 2))
@@ -1536,13 +1542,13 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         domain2_rr_id = ip.dnsresource_set.filter(domain=domain2.id).first().id
         self.expectThat(mappings, HasLength(1))
         self.assertEqual(
-            mappings.get("%s.%s" % (name1, domain1.name)),
+            mappings.get(f"{name1}.{domain1.name}"),
             HostnameIPMapping(None, 30, {ip.ip}, None, domain1_rr_id),
         )
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain2)
         self.expectThat(mappings, HasLength(1))
         self.assertEqual(
-            mappings.get("%s.%s" % (name2, domain2.name)),
+            mappings.get(f"{name2}.{domain2.name}"),
             HostnameIPMapping(None, 30, {ip.ip}, None, domain2_rr_id),
         )
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(subnet)
@@ -1582,7 +1588,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         dnsrr = factory.make_DNSResource(
             name=rrname, domain=domain2, ip_addresses=[ip3]
         )
-        name2 = "%s.%s" % (get_ip_based_hostname(ip2.ip), domain0.name)
+        name2 = f"{get_ip_based_hostname(ip2.ip)}.{domain0.name}"
         node = factory.make_Node(
             interface=True, domain=domain1, vlan=subnet.vlan
         )
@@ -1623,7 +1629,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         domain0 = Domain.objects.get_default_domain()
         parent = factory.make_Domain(name=factory.make_name("parent"))
         name = factory.make_name("child")
-        domain = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        domain = factory.make_Domain(name=f"{name}.{parent.name}")
         subnet = factory.make_Subnet()
         ip = factory.make_StaticIPAddress(subnet=subnet)
         node = factory.make_Node(
@@ -1661,7 +1667,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         domain0 = Domain.objects.get_default_domain()
         parent = factory.make_Domain(name=factory.make_name("parent"))
         name = factory.make_name("child")
-        domain = factory.make_Domain(name="%s.%s" % (name, parent.name))
+        domain = factory.make_Domain(name=f"{name}.{parent.name}")
         subnet = factory.make_Subnet()
         ip = factory.make_StaticIPAddress(subnet=subnet)
         dnsrr = factory.make_DNSResource(

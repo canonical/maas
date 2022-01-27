@@ -22,7 +22,7 @@ class LabeledConstraintMap:
             self.error = error
 
     def __repr__(self):
-        return "%s(%s)" % (self.__class__.__name__, repr(self.value))
+        return f"{self.__class__.__name__}({repr(self.value)})"
 
     def __str__(self):
         return self.value

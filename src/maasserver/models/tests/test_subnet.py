@@ -845,7 +845,7 @@ class SubnetLabelTest(MAASServerTestCase):
         network = factory.make_ip4_or_6_network()
         subnet = Subnet(name=factory.make_string(prefix="net"), cidr=network)
         self.assertThat(
-            subnet.label, Equals("%s (%s)" % (subnet.name, str(subnet.cidr)))
+            subnet.label, Equals(f"{subnet.name} ({str(subnet.cidr)})")
         )
 
 

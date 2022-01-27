@@ -76,7 +76,7 @@ class TestS390XBootMethod(MAASTestCase):
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
         mac = factory.make_mac_address("-")
         self.assertEqual(
-            "s390x/pxelinux.cfg/%02x-%s" % (ARP_HTYPE.ETHERNET, mac),
+            f"s390x/pxelinux.cfg/{ARP_HTYPE.ETHERNET:02x}-{mac}",
             compose_config_path(mac).decode("ascii"),
         )
 

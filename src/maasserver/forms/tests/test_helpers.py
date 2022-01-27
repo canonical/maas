@@ -43,7 +43,7 @@ class TestHelpers(MAASServerTestCase):
         if subarch is None:
             subarch = factory.make_name("subarch")
         for purpose in ["install", "commissioning"]:
-            architecture = "%s/%s" % (arch, subarch)
+            architecture = f"{arch}/{subarch}"
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, architecture=architecture
             )
@@ -55,7 +55,7 @@ class TestHelpers(MAASServerTestCase):
         ]
         for arch, subarch in arches:
             self.make_usable_boot_resource(arch=arch, subarch=subarch)
-        expected = ["%s/%s" % (arch, subarch) for arch, subarch in arches]
+        expected = [f"{arch}/{subarch}" for arch, subarch in arches]
         self.assertCountEqual(expected, list_all_usable_architectures())
 
     def test_list_all_usable_architectures_sorts_output(self):
@@ -65,7 +65,7 @@ class TestHelpers(MAASServerTestCase):
         ]
         for arch, subarch in arches:
             self.make_usable_boot_resource(arch=arch, subarch=subarch)
-        expected = ["%s/%s" % (arch, subarch) for arch, subarch in arches]
+        expected = [f"{arch}/{subarch}" for arch, subarch in arches]
         self.assertEqual(sorted(expected), list_all_usable_architectures())
 
     def test_list_all_usable_architectures_returns_no_duplicates(self):
@@ -74,7 +74,7 @@ class TestHelpers(MAASServerTestCase):
         self.make_usable_boot_resource(arch=arch, subarch=subarch)
         self.make_usable_boot_resource(arch=arch, subarch=subarch)
         self.assertEqual(
-            ["%s/%s" % (arch, subarch)], list_all_usable_architectures()
+            [f"{arch}/{subarch}"], list_all_usable_architectures()
         )
 
     def test_pick_default_architecture_returns_empty_if_no_options(self):

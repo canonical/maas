@@ -31,7 +31,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         node.save()
 
         latest_event = Event.objects.filter(node=node).last()
-        description = "From '%s' to '%s'" % (
+        description = "From '{}' to '{}'".format(
             NODE_STATUS_CHOICES_DICT[old_status],
             NODE_STATUS_CHOICES_DICT[node.status],
         )
@@ -55,7 +55,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
         node.acquire(user)
 
         latest_event = Event.objects.filter(node=node).last()
-        description = "From '%s' to '%s' (to %s)" % (
+        description = "From '{}' to '{}' (to {})".format(
             NODE_STATUS_CHOICES_DICT[old_status],
             NODE_STATUS_CHOICES_DICT[node.status],
             user.username,

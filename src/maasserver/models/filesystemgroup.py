@@ -402,7 +402,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
                 for filesystem in self.filesystems.all()
             )
         )
-        numa_ids = set(device.numa_node_id for device in block_devices)
+        numa_ids = {device.numa_node_id for device in block_devices}
         return list(
             NUMANode.objects.filter(id__in=numa_ids)
             .values_list("index", flat=True)
@@ -623,7 +623,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         if not self.is_lvm():
             return
         unique_fstypes = set(self._get_all_fstypes(filesystems=filesystems))
-        if unique_fstypes != set([FILESYSTEM_TYPE.LVM_PV]):
+        if unique_fstypes != {FILESYSTEM_TYPE.LVM_PV}:
             raise ValidationError(
                 "Volume group can only contain lvm physical volumes."
             )

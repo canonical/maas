@@ -305,7 +305,7 @@ class CandidClient(MacaroonClient):
 
     def get_user_details(self, username: str) -> UserDetails:
         """Return details about a user."""
-        url = self._url + quote("/v1/u/{}".format(username))
+        url = self._url + quote(f"/v1/u/{username}")
         details = self._request("GET", url)
         return UserDetails(
             username=details["username"],
@@ -315,7 +315,7 @@ class CandidClient(MacaroonClient):
 
     def get_groups(self, username):
         """Return a list of names fro groups a user belongs to."""
-        url = self._url + quote("/v1/u/{}/groups".format(username))
+        url = self._url + quote(f"/v1/u/{username}/groups")
         return self._request("GET", url)
 
 
@@ -330,7 +330,7 @@ def validate_user_external_auth(
     candid_client=None,
     rbac_client=None,
     *,
-    force_check=False
+    force_check=False,
 ):
     """Check if a user is authenticated with external auth.
 

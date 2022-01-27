@@ -189,7 +189,9 @@ class DictCharField(forms.MultiValueField):
             # 'required' field to allow subfields to be required or not.
             if field.required and field_value in validators.EMPTY_VALUES:
                 errors.append(
-                    "%s: %s" % (field.label, self.error_messages["required"])
+                    "{}: {}".format(
+                        field.label, self.error_messages["required"]
+                    )
                 )
                 continue
             try:
@@ -199,7 +201,7 @@ class DictCharField(forms.MultiValueField):
                 # raise at the end of clean(), rather than raising a single
                 # exception for the first error we encounter.
                 errors.extend(
-                    "%s: %s" % (field.label, message) for message in e.messages
+                    f"{field.label}: {message}" for message in e.messages
                 )
         if errors:
             raise ValidationError(errors)
@@ -297,19 +299,17 @@ class DictCharWidget(forms.widgets.MultiWidget):
                     widget_value = None
             if id_:
                 final_attrs = dict(
-                    final_attrs, id="%s_%s" % (id_, self.names[index])
+                    final_attrs, id=f"{id_}_{self.names[index]}"
                 )
             # Add label to each sub-field.
             if id_:
                 label_for = ' for="%s"' % final_attrs["id"]
             else:
                 label_for = ""
-            output.append(
-                "<label%s>%s</label>" % (label_for, self.labels[index])
-            )
+            output.append(f"<label{label_for}>{self.labels[index]}</label>")
             output.append(
                 widget.render(
-                    "%s_%s" % (name, self.names[index]),
+                    f"{name}_{self.names[index]}",
                     widget_value,
                     final_attrs,
                 )

@@ -78,7 +78,7 @@ class MachineHostnameTest(APITestCase.ForUserAndAdmin):
             name=domainname, defaults={"authoritative": True}
         )
         factory.make_Node(hostname=hostname, domain=domain)
-        fqdn = "%s.%s" % (hostname, domainname)
+        fqdn = f"{hostname}.{domainname}"
         response = self.client.get(reverse("machines_handler"))
         self.assertEqual(
             http.client.OK.value, response.status_code, response.content
@@ -1680,7 +1680,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         domain_name = desired_machine.domain.name
         self.assertEqual(
-            "%s.%s" % (desired_machine.hostname, domain_name),
+            f"{desired_machine.hostname}.{domain_name}",
             parsed_result["fqdn"],
         )
 
@@ -1734,7 +1734,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(http.client.OK, response.status_code)
         domain_name = machine.domain.name
         self.assertEqual(
-            "%s.%s" % (machine.hostname, domain_name),
+            f"{machine.hostname}.{domain_name}",
             json.loads(response.content.decode(settings.DEFAULT_CHARSET))[
                 "fqdn"
             ],
@@ -2398,9 +2398,11 @@ class TestMachinesAPI(APITestCase.ForUser):
 
     def test_POST_accept_rejects_impossible_state_changes(self):
         self.become_admin()
-        acceptable_states = set(
-            [NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING, NODE_STATUS.READY]
-        )
+        acceptable_states = {
+            NODE_STATUS.NEW,
+            NODE_STATUS.COMMISSIONING,
+            NODE_STATUS.READY,
+        }
         unacceptable_states = (
             set(map_enum(NODE_STATUS).values()) - acceptable_states
         )
@@ -2650,7 +2652,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         # Awkward parsing again, because a string is returned, not JSON
         expected = [
-            "%s ('%s')" % (machine.system_id, machine.display_status())
+            f"{machine.system_id} ('{machine.display_status()}')"
             for machine in machines
             if machine.status not in acceptable_states
         ]
@@ -2912,7 +2914,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content
         )
         self.assertEqual(
-            ("You must use a password or token with Proxmox.").encode("utf-8"),
+            (b"You must use a password or token with Proxmox."),
             response.content,
         )
         self.assertEqual(chassis_mock.call_count, 0)
@@ -2938,9 +2940,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content
         )
         self.assertEqual(
-            (
-                "You may only use a password or token with Proxmox, not both."
-            ).encode("utf-8"),
+            b"You may only use a password or token with Proxmox, not both.",
             response.content,
         )
         self.assertEqual(chassis_mock.call_count, 0)
@@ -2966,9 +2966,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             http.client.BAD_REQUEST, response.status_code, response.content
         )
         self.assertEqual(
-            ("Proxmox requires both a token_name and token_secret.").encode(
-                "utf-8"
-            ),
+            (b"Proxmox requires both a token_name and token_secret."),
             response.content,
         )
         self.assertEqual(chassis_mock.call_count, 0)
@@ -3341,9 +3339,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 http.client.BAD_REQUEST, response.status_code, response.content
             )
             self.assertEqual(
-                "Invalid port: Please enter a number that is 65535 or smaller".encode(
-                    "utf-8"
-                ),
+                b"Invalid port: Please enter a number that is 65535 or smaller",
                 response.content,
             )
 
@@ -3363,9 +3359,7 @@ class TestMachinesAPI(APITestCase.ForUser):
                 http.client.BAD_REQUEST, response.status_code, response.content
             )
             self.assertEqual(
-                "Invalid port: Please enter a number that is 1 or greater".encode(
-                    "utf-8"
-                ),
+                b"Invalid port: Please enter a number that is 1 or greater",
                 response.content,
             )
 

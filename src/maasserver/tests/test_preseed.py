@@ -144,10 +144,10 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             [
                 "%s_%s_%s_%s_%s_%s"
                 % (prefix, osystem, arch, subarch, release, hostname),
-                "%s_%s_%s_%s_%s" % (prefix, osystem, arch, subarch, release),
-                "%s_%s_%s_%s" % (prefix, osystem, arch, subarch),
-                "%s_%s_%s" % (prefix, osystem, arch),
-                "%s_%s" % (prefix, osystem),
+                f"{prefix}_{osystem}_{arch}_{subarch}_{release}",
+                f"{prefix}_{osystem}_{arch}_{subarch}",
+                f"{prefix}_{osystem}_{arch}",
+                f"{prefix}_{osystem}",
                 "%s" % prefix,
                 "generic",
             ],
@@ -164,8 +164,8 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         prefix = factory.make_string()
         self.assertSequenceEqual(
             [
-                "%s_%s_%s" % (prefix, osystem, release),
-                "%s_%s" % (prefix, osystem),
+                f"{prefix}_{osystem}_{release}",
+                f"{prefix}_{osystem}",
                 "%s" % prefix,
             ],
             list(get_preseed_filenames(None, prefix, osystem, release)),
@@ -179,10 +179,10 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         arch, subarch = node.split_arch()
         self.assertSequenceEqual(
             [
-                "%s_%s_%s_%s_%s" % (osystem, arch, subarch, release, hostname),
-                "%s_%s_%s_%s" % (osystem, arch, subarch, release),
-                "%s_%s_%s" % (osystem, arch, subarch),
-                "%s_%s" % (osystem, arch),
+                f"{osystem}_{arch}_{subarch}_{release}_{hostname}",
+                f"{osystem}_{arch}_{subarch}_{release}",
+                f"{osystem}_{arch}_{subarch}",
+                f"{osystem}_{arch}",
                 "%s" % osystem,
             ],
             list(get_preseed_filenames(node, "", osystem, release)),
@@ -228,13 +228,13 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         arch, subarch = node.split_arch()
         self.assertSequenceEqual(
             [
-                "%s_%s_%s_%s_%s" % (osystem, arch, subarch, release, hostname),
-                "%s_%s_%s_%s" % (arch, subarch, release, hostname),
-                "%s_%s_%s_%s" % (osystem, arch, subarch, release),
-                "%s_%s_%s" % (arch, subarch, release),
-                "%s_%s_%s" % (osystem, arch, subarch),
-                "%s_%s" % (arch, subarch),
-                "%s_%s" % (osystem, arch),
+                f"{osystem}_{arch}_{subarch}_{release}_{hostname}",
+                f"{arch}_{subarch}_{release}_{hostname}",
+                f"{osystem}_{arch}_{subarch}_{release}",
+                f"{arch}_{subarch}_{release}",
+                f"{osystem}_{arch}_{subarch}",
+                f"{arch}_{subarch}",
+                f"{osystem}_{arch}",
                 "%s" % arch,
                 "%s" % osystem,
             ],
@@ -254,14 +254,14 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             [
                 "%s_%s_%s_%s_%s_%s"
                 % (prefix, osystem, arch, subarch, release, hostname),
-                "%s_%s_%s_%s_%s" % (prefix, arch, subarch, release, hostname),
-                "%s_%s_%s_%s_%s" % (prefix, osystem, arch, subarch, release),
-                "%s_%s_%s_%s" % (prefix, arch, subarch, release),
-                "%s_%s_%s_%s" % (prefix, osystem, arch, subarch),
-                "%s_%s_%s" % (prefix, arch, subarch),
-                "%s_%s_%s" % (prefix, osystem, arch),
-                "%s_%s" % (prefix, arch),
-                "%s_%s" % (prefix, osystem),
+                f"{prefix}_{arch}_{subarch}_{release}_{hostname}",
+                f"{prefix}_{osystem}_{arch}_{subarch}_{release}",
+                f"{prefix}_{arch}_{subarch}_{release}",
+                f"{prefix}_{osystem}_{arch}_{subarch}",
+                f"{prefix}_{arch}_{subarch}",
+                f"{prefix}_{osystem}_{arch}",
+                f"{prefix}_{arch}",
+                f"{prefix}_{osystem}",
                 "%s" % prefix,
             ],
             list(get_preseed_filenames(node, prefix, osystem, release)),
@@ -475,7 +475,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         self.create_template(self.location, GENERIC_FILENAME)
         self.create_template(self.location, prefix)
         node = factory.make_Node(hostname=factory.make_string())
-        node_template_name = "%s_%s_%s_%s_%s" % (
+        node_template_name = "{}_{}_{}_{}_{}".format(
             prefix,
             osystem,
             node.architecture.replace("/", "_"),
@@ -1279,22 +1279,22 @@ class TestCurtinUtilities(
                     components.remove(comp)
 
         components = " ".join(components)
-        sources_list = "deb %s $RELEASE %s\n" % (archive.url, components)
+        sources_list = f"deb {archive.url} $RELEASE {components}\n"
         if archive.disable_sources:
             sources_list += "# "
-        sources_list += "deb-src %s $RELEASE %s\n" % (archive.url, components)
+        sources_list += f"deb-src {archive.url} $RELEASE {components}\n"
 
         for pocket in archive.POCKETS_TO_DISABLE:
             if archive.disabled_pockets and pocket in archive.disabled_pockets:
                 continue
-            sources_list += "deb %s $RELEASE-%s %s\n" % (
+            sources_list += "deb {} $RELEASE-{} {}\n".format(
                 archive.url,
                 pocket,
                 components,
             )
             if archive.disable_sources:
                 sources_list += "# "
-            sources_list += "deb-src %s $RELEASE-%s %s\n" % (
+            sources_list += "deb-src {} $RELEASE-{} {}\n".format(
                 archive.url,
                 pocket,
                 components,
@@ -1495,7 +1495,7 @@ class TestCurtinUtilities(
         """
         if main_arch is None:
             main_arch = factory.make_name("arch")
-        arch = "%s/%s" % (main_arch, factory.make_name("subarch"))
+        arch = "{}/{}".format(main_arch, factory.make_name("subarch"))
         node = factory.make_Node_with_Interface_on_Subnet(
             primary_rack=self.rpc_rack_controller, architecture=arch
         )
@@ -1690,7 +1690,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         )
         self.assertThat(
             preseed["apt"]["sources"][repo_name]["source"],
-            ContainsAll("deb %s %s main" % (ppa.url, node.distro_series)),
+            ContainsAll(f"deb {ppa.url} {node.distro_series} main"),
         )
 
     def test_compose_curtin_archive_config_uses_multiple_ppa(self):
@@ -1799,7 +1799,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
         )
         self.assertThat(
             preseed["apt"]["sources"][repo_name]["source"],
-            ContainsAll("deb %s $RELEASE %s" % (repository.url, components)),
+            ContainsAll(f"deb {repository.url} $RELEASE {components}"),
         )
 
     def test_compose_curtin_archive_config_custom_repo_components_dists(self):
@@ -1911,7 +1911,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     def test_get_curtin_image_returns_xinstall_image_for_subarch(self):
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
-        node = factory.make_Node(architecture=("%s/%s" % (arch, subarch)))
+        node = factory.make_Node(architecture=(f"{arch}/{subarch}"))
         other_images = [make_rpc_boot_image() for _ in range(3)]
         xinstall_image = make_rpc_boot_image(
             purpose="xinstall", architecture=arch, subarchitecture=subarch
@@ -1926,7 +1926,7 @@ XJzKwRUEuJlIkVEZ72OtuoUMoBrjuADRlJQUW0ZbcmpOxjK1c6w08nhSvA==
     def test_get_curtin_image_returns_xinstall_image_for_newer(self):
         arch = factory.make_name("arch")
         subarch = factory.make_name("subarch")
-        node = factory.make_Node(architecture=("%s/%s" % (arch, subarch)))
+        node = factory.make_Node(architecture=(f"{arch}/{subarch}"))
         other_images = [make_rpc_boot_image() for _ in range(3)]
         xinstall_image = make_rpc_boot_image(
             purpose="xinstall", architecture=arch

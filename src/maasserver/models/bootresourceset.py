@@ -59,7 +59,7 @@ class BootResourceSet(CleanSave, TimestampedModel):
     label = CharField(max_length=255, editable=False)
 
     def __str__(self):
-        return "<BootResourceSet %s/%s>" % (self.version, self.label)
+        return f"<BootResourceSet {self.version}/{self.label}>"
 
     @property
     def commissionable(self):

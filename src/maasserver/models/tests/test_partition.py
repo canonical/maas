@@ -212,8 +212,7 @@ class TestPartitionManager(MAASServerTestCase):
             factory.make_Partition(tags=other_tags)
 
         def tag_generator():
-            for tag in tags:
-                yield tag
+            yield from tags
 
         self.assertCountEqual(
             devices_with_tags,

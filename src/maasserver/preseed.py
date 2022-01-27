@@ -378,7 +378,7 @@ def get_base_osystem_series(node):
         resource = BootResource.objects.get_resource_for(
             osystem, arch, subarch, release
         )
-        maaslog.info("got bootres {}".format(resource))
+        maaslog.info(f"got bootres {resource}")
         if resource is not None:
             osystem, release = resource.split_base_image()
         else:
@@ -797,9 +797,9 @@ def get_preseed_template(filenames):
         for filename in filenames:
             filepath = os.path.join(location, filename)
             try:
-                with open(filepath, "r", encoding="utf-8") as stream:
+                with open(filepath, encoding="utf-8") as stream:
                     content = stream.read()
-            except IOError:
+            except OSError:
                 pass  # Ignore.
             else:
                 return filepath, content

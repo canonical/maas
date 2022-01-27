@@ -209,7 +209,7 @@ class TestCredentials(MAASTestCase):
                     "oauth_consumer_key": Equals(consumer_key),
                     "oauth_token": Equals(token_key),
                     "oauth_signature": Equals(
-                        "%s%%26%s" % (consumer_secret, token_secret)
+                        f"{consumer_secret}%26{token_secret}"
                     ),
                 }
             ),

@@ -46,7 +46,7 @@ def refresh(
 
     if maas_url is None:
         maas_url = "http://127.0.0.1:5240/MAAS"
-    url = "%s/metadata/%s/" % (maas_url, MD_VERSION)
+    url = f"{maas_url}/metadata/{MD_VERSION}/"
 
     creds = Credentials(
         token_key=token_key,

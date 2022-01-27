@@ -307,11 +307,7 @@ class TestParametersForm(MAASServerTestCase):
         )
         self.assertFalse(form.is_valid())
         self.assertDictEqual(
-            {
-                "input": [
-                    "Unknown parameter '%s' for %s" % (bad_param, script.name)
-                ]
-            },
+            {"input": [f"Unknown parameter '{bad_param}' for {script.name}"]},
             form.errors,
         )
 
@@ -532,7 +528,7 @@ class TestParametersForm(MAASServerTestCase):
         )
         bds = list(node.physicalblockdevice_set.all())
         selected_scripts = {
-            bds[0]: "%s:%s" % (bds[0].model, bds[0].serial),
+            bds[0]: f"{bds[0].model}:{bds[0].serial}",
             bds[1]: bds[1].name,
             bds[2]: "/dev/%s" % bds[2].name,
             bds[3]: bds[3].model,
@@ -801,7 +797,7 @@ class TestParametersForm(MAASServerTestCase):
         )
         nics = list(node.interface_set.all())
         selected_scripts = {
-            nics[0]: "%s:%s" % (nics[0].vendor, nics[0].product),
+            nics[0]: f"{nics[0].vendor}:{nics[0].product}",
             nics[1]: nics[1].name,
             nics[2]: nics[2].vendor,
             nics[3]: nics[3].product,

@@ -190,7 +190,7 @@ class ScriptResult(CleanSave, TimestampedModel):
             return str(runtime - timedelta(microseconds=runtime.microseconds))
 
     def __str__(self):
-        return "%s/%s" % (self.script_set.node.system_id, self.name)
+        return f"{self.script_set.node.system_id}/{self.name}"
 
     def read_results(self):
         """Read the results YAML file and validate it."""

@@ -209,8 +209,7 @@ def gen_managed_vlans_for(rack_controller):
     interfaces = interfaces.prefetch_related("vlan__relay_vlans")
     for interface in interfaces:
         yield interface.vlan
-        for relayed_vlan in interface.vlan.relay_vlans.all():
-            yield relayed_vlan
+        yield from interface.vlan.relay_vlans.all()
 
 
 def ip_is_on_vlan(ip_address, vlan):
@@ -300,7 +299,7 @@ def make_interface_hostname(interface):
     if interface.type == INTERFACE_TYPE.UNKNOWN and interface.node is None:
         return "unknown-%d-%s" % (interface.id, interface_name)
     else:
-        return "%s-%s" % (interface.node.hostname, interface_name)
+        return f"{interface.node.hostname}-{interface_name}"
 
 
 def make_dhcp_snippet(dhcp_snippet):
@@ -1102,7 +1101,7 @@ def validate_dhcp_config(test_dhcp_snippet=None):
         if errors is None:
             continue
         for error in errors:
-            hash = "%s - %s" % (error["line"], error["error"])
+            hash = "{} - {}".format(error["line"], error["error"])
             if hash not in known_errors:
                 known_errors.append(hash)
                 unique_errors.append(error)

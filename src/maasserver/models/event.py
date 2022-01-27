@@ -206,7 +206,7 @@ class Event(CleanSave, TimestampedModel):
         return self.description % {"username": self.owner}
 
     def __str__(self):
-        return "%s (node=%s, type=%s, created=%s)" % (
+        return "{} (node={}, type={}, created={})".format(
             self.id,
             self.node,
             self.type.name,

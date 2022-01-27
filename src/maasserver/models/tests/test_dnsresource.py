@@ -128,7 +128,7 @@ class DNSResourceTest(MAASServerTestCase):
         )
 
     def test_separate_fqdn_returns_atsign_for_top_of_domain(self):
-        name = "%s.%s.%s" % (
+        name = "{}.{}.{}".format(
             factory.make_name("a"),
             factory.make_name("b"),
             factory.make_name("c"),
@@ -137,9 +137,9 @@ class DNSResourceTest(MAASServerTestCase):
         self.assertEqual(("@", name), separate_fqdn(name))
 
     def test_separate_fqdn_allows_domain_override(self):
-        parent = "%s.%s" % (factory.make_name("b"), factory.make_name("c"))
-        label = "%s.%s" % (factory.make_name("a"), factory.make_name("d"))
-        name = "%s.%s" % (label, parent)
+        parent = "{}.{}".format(factory.make_name("b"), factory.make_name("c"))
+        label = "{}.{}".format(factory.make_name("a"), factory.make_name("d"))
+        name = f"{label}.{parent}"
         factory.make_Domain(name=parent)
         self.assertEqual(
             (label, parent), separate_fqdn(name, domainname=parent)
@@ -193,7 +193,7 @@ class DNSResourceTest(MAASServerTestCase):
         dnsresource.ip_addresses.add(sip)
         with ExpectedException(
             ValidationError,
-            re.escape("{'__all__': ['Invalid dnsresource name: %s." % (name,)),
+            re.escape(f"{{'__all__': ['Invalid dnsresource name: {name}."),
         ):
             dnsresource.save(force_update=True)
 

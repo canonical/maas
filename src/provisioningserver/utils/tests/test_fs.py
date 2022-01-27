@@ -849,7 +849,7 @@ class TestWriteTextFile(MAASTestCase):
         # Test input: "registered trademark" (ringed R) symbol.
         text = "\xae"
         write_text_file(path, text)
-        with open(path, "r", encoding="utf-8") as fd:
+        with open(path, encoding="utf-8") as fd:
             self.assertThat(fd.read(), Equals(text))
 
     def test_uses_given_encoding(self):
@@ -857,7 +857,7 @@ class TestWriteTextFile(MAASTestCase):
         # Test input: "registered trademark" (ringed R) symbol.
         text = "\xae"
         write_text_file(path, text, encoding="utf-16")
-        with open(path, "r", encoding="utf-16") as fd:
+        with open(path, encoding="utf-16") as fd:
             self.assertThat(fd.read(), Equals(text))
 
 

@@ -75,7 +75,7 @@ class EventType(CleanSave, TimestampedModel):
         verbose_name = "Event type"
 
     def __str__(self):
-        return "%s (level=%s, description=%s)" % (
+        return "{} (level={}, description={})".format(
             self.name,
             self.level,
             self.description,

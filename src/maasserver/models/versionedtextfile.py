@@ -3,8 +3,6 @@
 
 """VersionedTextFile objects."""
 
-__metaclass__ = type
-
 
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, TextField

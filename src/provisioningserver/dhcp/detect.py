@@ -471,11 +471,11 @@ class DHCPRequestMonitor:
 
     @property
     def dhcp_servers(self):
-        return set(str(server.server) for server in self.servers)
+        return {str(server.server) for server in self.servers}
 
     @property
     def dhcp_addresses(self):
-        return set(str(server.address) for server in self.servers)
+        return {str(server.address) for server in self.servers}
 
 
 @attr.s(hash=True)
@@ -491,7 +491,7 @@ class DHCPServer:
         """
         if self.server == self.address:
             return str(self.server)
-        return "%s (via %s)" % (self.server, self.address)
+        return f"{self.server} (via {self.address})"
 
 
 @inlineCallbacks

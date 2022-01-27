@@ -182,7 +182,7 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
+        fqdn = f"{dnsresource_name}.{domain.name}"
         sip = factory.make_StaticIPAddress()
         uri = get_dnsresources_uri()
         response = self.client.post(
@@ -213,7 +213,7 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
+        fqdn = f"{dnsresource_name}.{domain.name}"
         sip = factory.make_StaticIPAddress()
         uri = get_dnsresources_uri()
         response = self.client.post(
@@ -244,7 +244,7 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
+        fqdn = f"{dnsresource_name}.{domain.name}"
         sip = factory.make_StaticIPAddress()
         uri = get_dnsresources_uri()
         response = self.client.post(
@@ -270,7 +270,7 @@ class TestDNSResourcesAPI(APITestCase.ForUser):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
+        fqdn = f"{dnsresource_name}.{domain.name}"
         ips = [factory.make_StaticIPAddress() for _ in range(2)]
         uri = get_dnsresources_uri()
         response = self.client.post(
@@ -354,7 +354,7 @@ class TestDNSResourceAPI(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         self.assertEqual(
-            "%s.%s" % (new_name, dnsresource.domain.name),
+            f"{new_name}.{dnsresource.domain.name}",
             json.loads(response.content.decode(settings.DEFAULT_CHARSET))[
                 "fqdn"
             ],
@@ -375,7 +375,7 @@ class TestDNSResourceAPI(APITestCase.ForUser):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (new_name, domain.name)
+        fqdn = f"{new_name}.{domain.name}"
         sip = factory.make_StaticIPAddress()
         uri = get_dnsresource_uri(dnsresource)
         response = self.client.put(
@@ -407,7 +407,7 @@ class TestDNSResourceAPI(APITestCase.ForUser):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (new_name, domain.name)
+        fqdn = f"{new_name}.{domain.name}"
         sip = factory.make_StaticIPAddress()
         uri = get_dnsresource_uri(dnsresource)
         response = self.client.put(
@@ -439,7 +439,7 @@ class TestDNSResourceAPI(APITestCase.ForUser):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (new_name, domain.name)
+        fqdn = f"{new_name}.{domain.name}"
         sip = factory.make_StaticIPAddress()
         uri = get_dnsresource_uri(dnsresource)
         response = self.client.put(
@@ -466,7 +466,7 @@ class TestDNSResourceAPI(APITestCase.ForUser):
         dnsresource = factory.make_DNSResource()
         new_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (new_name, domain.name)
+        fqdn = f"{new_name}.{domain.name}"
         ips = [factory.make_StaticIPAddress() for _ in range(2)]
         uri = get_dnsresource_uri(dnsresource)
         response = self.client.put(

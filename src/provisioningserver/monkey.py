@@ -65,7 +65,7 @@ def fix_tftp_requests():
         except Unsupported as e:
             self.transport.write(
                 ERRORDatagram.from_code(
-                    ERR_ILLEGAL_OP, u"{}".format(e).encode("ascii", "replace")
+                    ERR_ILLEGAL_OP, f"{e}".encode("ascii", "replace")
                 ).to_wire(),
                 addr,
             )
@@ -84,7 +84,7 @@ def fix_tftp_requests():
         except BackendError as e:
             self.transport.write(
                 ERRORDatagram.from_code(
-                    ERR_NOT_DEFINED, u"{}".format(e).encode("ascii", "replace")
+                    ERR_NOT_DEFINED, f"{e}".encode("ascii", "replace")
                 ).to_wire(),
                 addr,
             )

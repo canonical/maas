@@ -301,7 +301,7 @@ class Config(Model):
     objects = ConfigManager()
 
     def __str__(self):
-        return "%s: %s" % (self.name, self.value)
+        return f"{self.name}: {self.value}"
 
 
 # Connect config manager's _config_changed to Config's post-save signal.

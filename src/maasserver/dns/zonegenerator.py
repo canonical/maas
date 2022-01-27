@@ -7,7 +7,6 @@
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from itertools import chain
-import socket
 
 import attr
 from netaddr import IPAddress, IPNetwork
@@ -150,7 +149,7 @@ def get_dns_server_addresses(
             include_alternates=include_alternates,
             default_region_ip=default_region_ip,
         )
-    except socket.error as e:
+    except OSError as e:
         raise UnresolvableHost(
             "Unable to find MAAS server IP address: %s. MAAS's DNS server "
             "requires this IP address for the NS records in its zone files. "
@@ -178,13 +177,13 @@ def get_dns_server_addresses(
 
 def get_dns_search_paths():
     """Return all the search paths for the DNS server."""
-    return set(
+    return {
         name
         for name in Domain.objects.filter(authoritative=True).values_list(
             "name", flat=True
         )
         if name
-    )
+    }
 
 
 class ZoneGenerator:
@@ -428,9 +427,9 @@ class ZoneGenerator:
                 network=IPNetwork(subnet.cidr),
                 dynamic_ranges=dynamic_ranges,
                 rfc2317_ranges=glue,
-                exclude=set(
+                exclude={
                     IPNetwork(s.cidr) for s in subnets if s is not subnet
-                ),
+                },
             )
         # Now provide any remaining rfc2317 glue networks.
         for network, ranges in rfc2317_glue.items():
@@ -441,11 +440,11 @@ class ZoneGenerator:
                 network=network,
                 ns_host_name=ns_host_name,
                 rfc2317_ranges=ranges,
-                exclude=set(
+                exclude={
                     IPNetwork(s.cidr)
                     for s in subnets
                     if network in IPNetwork(s.cidr)
-                ),
+                },
             )
 
     def __iter__(self):

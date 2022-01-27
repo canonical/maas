@@ -523,11 +523,11 @@ def _set_mountpoints(entries: Dict[str, StorageEntry], config: Config):
         fs.mount = mount
         fs.mount_options = data.get("options", "")
     # all special filesystems must have a mount point
-    special_devices = set(
+    special_devices = {
         entry.name
         for entry in entries.values()
         if isinstance(entry, SpecialDevice)
-    )
+    }
     unmounted_devices = special_devices - mounted_devices
     if unmounted_devices:
         unmounted_list = ", ".join(sorted(unmounted_devices))

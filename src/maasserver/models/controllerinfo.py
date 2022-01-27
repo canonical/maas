@@ -151,7 +151,7 @@ class ControllerInfo(CleanSave, TimestampedModel):
     snap_update_revision = CharField(max_length=255, blank=True, default="")
 
     def __str__(self):
-        return "%s (%s)" % (self.__class__.__name__, self.node.hostname)
+        return f"{self.__class__.__name__} ({self.node.hostname})"
 
     def is_up_to_date(self, target_version: TargetVersion) -> bool:
         """Return whether the controller is up-to-date with the target version."""

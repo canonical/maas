@@ -32,5 +32,5 @@ def urlencode(data):
     `smart_text` in the Django documentation.
     """
     return "&".join(
-        "%s=%s" % (quote_plus(name), quote_plus(value)) for name, value in data
+        f"{quote_plus(name)}={quote_plus(value)}" for name, value in data
     )

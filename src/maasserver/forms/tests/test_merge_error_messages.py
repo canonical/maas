@@ -15,7 +15,7 @@ class TestMergeErrorMessages(MAASServerTestCase):
         errors = [factory.make_name("error") for _ in range(2)]
         result = merge_error_messages(summary, errors, 5)
         self.assertEqual(
-            "%s (%s)" % (summary, " \u2014 ".join(errors)), result
+            "{} ({})".format(summary, " \u2014 ".join(errors)), result
         )
 
     def test_merge_error_messages_includes_limited_number_of_msgs(self):

@@ -87,7 +87,7 @@ class SeaMicroAPIV09:
 
         if not json_data:
             raise SeaMicroAPIV09Error(
-                "No JSON data found from %s: got %s" % (url, text)
+                f"No JSON data found from {url}: got {text}"
             )
         json_rpc_code = int(json_data["error"]["code"])
         if json_rpc_code not in self.allowed_codes:

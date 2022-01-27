@@ -59,7 +59,7 @@ def _check_service_state_observed(state):
         SERVICE_STATE.DEAD,
         SERVICE_STATE.UNKNOWN,
     }:
-        raise AssertionError("Observed state should not be %r." % (state,))
+        raise AssertionError(f"Observed state should not be {state!r}.")
 
 
 def _check_service_state_expected(state):
@@ -69,7 +69,7 @@ def _check_service_state_expected(state):
         SERVICE_STATE.DEAD,
         SERVICE_STATE.ANY,
     }:
-        raise AssertionError("Expected state should not be %r." % (state,))
+        raise AssertionError(f"Expected state should not be {state!r}.")
 
 
 ServiceStateBase = namedtuple(
@@ -115,7 +115,7 @@ class ServiceState(ServiceStateBase):
                 if self.active_state == SERVICE_STATE.OFF:
                     return (
                         "dead",
-                        "%s is currently stopped." % (service.service_name,),
+                        f"{service.service_name} is currently stopped.",
                     )
                 else:
                     return (
@@ -555,7 +555,7 @@ class ServiceMonitor:
             exec_action, service_name, action, extra_opts=extra_opts
         )
         if exit_code != 0:
-            error_msg = "Service '%s' failed to %s: %s" % (
+            error_msg = "Service '{}' failed to {}: {}".format(
                 service.name,
                 action,
                 error,

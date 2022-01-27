@@ -82,7 +82,7 @@ class TestMachineForm(MAASServerTestCase):
         self.assertEqual({"architecture"}, form._errors.keys())
 
     def test_starts_with_default_architecture(self):
-        arches = sorted([factory.make_name("arch") for _ in range(5)])
+        arches = sorted(factory.make_name("arch") for _ in range(5))
         patch_usable_architectures(self, arches)
         form = MachineForm()
         self.assertEqual(
@@ -168,7 +168,7 @@ class TestMachineForm(MAASServerTestCase):
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
                 "osystem": osystem["name"],
-                "distro_series": "%s/%s" % (osystem["name"], release),
+                "distro_series": "{}/{}".format(osystem["name"], release),
             },
             instance=node,
         )
@@ -185,7 +185,7 @@ class TestMachineForm(MAASServerTestCase):
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
                 "osystem": osystem["name"],
-                "distro_series": "%s/%s" % (osystem["name"], release),
+                "distro_series": "{}/{}".format(osystem["name"], release),
             },
             instance=node,
         )
@@ -247,7 +247,7 @@ class TestMachineForm(MAASServerTestCase):
                 "hostname": factory.make_name("host"),
                 "architecture": make_usable_architecture(self),
                 "osystem": osystem["name"],
-                "distro_series": "%s/%s" % (invalid, release),
+                "distro_series": f"{invalid}/{release}",
             },
             instance=node,
         )
@@ -260,7 +260,7 @@ class TestMachineForm(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         osystem = factory.make_name("osystem")
         release = factory.make_name("release")
-        distro_series = "%s/%s" % (osystem, release)
+        distro_series = f"{osystem}/{release}"
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
@@ -285,7 +285,7 @@ class TestMachineForm(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         osystem = factory.make_name("osystem")
         release = factory.make_name("release")
-        distro_series = "%s/%s" % (osystem, release)
+        distro_series = f"{osystem}/{release}"
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
@@ -309,7 +309,7 @@ class TestMachineForm(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         osystem = factory.make_name("osystem")
         release = factory.make_name("release")
-        distro_series = "%s/%s" % (osystem, release)
+        distro_series = f"{osystem}/{release}"
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
@@ -333,7 +333,7 @@ class TestMachineForm(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         osystem = factory.make_name("osystem")
         release = factory.make_name("release")
-        distro_series = "%s/%s" % (osystem, release)
+        distro_series = f"{osystem}/{release}"
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")
@@ -357,7 +357,7 @@ class TestMachineForm(MAASServerTestCase):
         node = factory.make_Node(owner=user)
         osystem = factory.make_name("osystem")
         release = factory.make_name("release")
-        distro_series = "%s/%s" % (osystem, release)
+        distro_series = f"{osystem}/{release}"
         make_osystem(self, osystem, [release])
         factory.make_BootResource(name=distro_series)
         license_key = factory.make_name("key")

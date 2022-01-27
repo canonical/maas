@@ -267,16 +267,16 @@ def make_isc_string(isc_dict, terminate=True):
     isc_list = []
     for option in isc_dict:
         if type(isc_dict[option]) == bool:
-            isc_list.append("%s%s" % (option, terminator))
+            isc_list.append(f"{option}{terminator}")
         elif type(isc_dict[option]) == str or type(isc_dict[option]) == str:
-            isc_list.append("%s %s%s" % (option, isc_dict[option], terminator))
+            isc_list.append(f"{option} {isc_dict[option]}{terminator}")
         elif type(isc_dict[option]) == list:
             new_list = []
             for item in isc_dict[option]:
                 new_list.append(make_isc_string(item, terminate=False))
-            new_list[-1] = "%s%s" % (new_list[-1], terminator)
+            new_list[-1] = f"{new_list[-1]}{terminator}"
             isc_list.append(
-                "%s { %s }%s" % (option, " ".join(new_list), terminator)
+                "{} {{ {} }}{}".format(option, " ".join(new_list), terminator)
             )
         elif (
             type(isc_dict[option]) == OrderedDict
@@ -295,5 +295,5 @@ def read_isc_file(isc_file):
     :param:isc_file: the filename to read
     :return:dict: dictionary of ISC file representation
     """
-    with open(isc_file, "r", encoding="ascii") as f:
+    with open(isc_file, encoding="ascii") as f:
         return parse_isc_string(f.read())

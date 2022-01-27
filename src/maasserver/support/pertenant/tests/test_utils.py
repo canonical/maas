@@ -68,7 +68,7 @@ class TestGetBootstrapNodeOwner(MAASServerTestCase):
         self.assertIsNone(get_bootstrap_node_owner())
 
     def test_returns_None_if_invalid_yaml(self):
-        invalid_content = "%".encode("ascii")
+        invalid_content = b"%"
         factory.make_FileStorage(
             filename=PROVIDER_STATE_FILENAME, content=invalid_content
         )

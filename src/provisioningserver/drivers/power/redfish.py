@@ -49,7 +49,7 @@ class RedfishPowerDriverBase(PowerDriver):
 
     def make_auth_headers(self, power_user, power_pass, **kwargs):
         """Return authentication headers."""
-        creds = "%s:%s" % (power_user, power_pass)
+        creds = f"{power_user}:{power_pass}"
         authorization = b64encode(creds.encode("utf-8"))
         return Headers(
             {
@@ -110,7 +110,7 @@ class RedfishPowerDriverBase(PowerDriver):
                 ):
                     d = agent.request(
                         method,
-                        uri + "/".encode("utf-8"),
+                        uri + b"/",
                         headers=headers,
                         bodyProducer=bodyProducer,
                     )

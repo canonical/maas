@@ -40,7 +40,7 @@ class StacktraceFilter(logging.Filter):
             line = s[2]
             file = "/".join(s[1].split("/")[-3:])
             calling_method = s[3]
-            source_trace += "%s in %s at %s\n" % (line, file, calling_method)
+            source_trace += f"{line} in {file} at {calling_method}\n"
         record.sourcetrace = source_trace
         del stack
         return True

@@ -331,7 +331,7 @@ class BootMethod(metaclass=ABCMeta):
                 return tempita.Template.from_filename(
                     template_name, encoding="UTF-8"
                 )
-            except IOError as error:
+            except OSError as error:
                 if error.errno != ENOENT:
                     raise
         else:
@@ -374,7 +374,7 @@ class BootMethod(metaclass=ABCMeta):
                 initrd = params.initrd
             else:
                 initrd = "boot-initrd"
-            return "%s/%s" % (image_dir(params), initrd)
+            return f"{image_dir(params)}/{initrd}"
 
         def kernel_name(params):
             if params.kernel is not None:
@@ -389,7 +389,7 @@ class BootMethod(metaclass=ABCMeta):
                 kernel = params.kernel
             else:
                 kernel = "boot-kernel"
-            return "%s/%s" % (image_dir(params), kernel)
+            return f"{image_dir(params)}/{kernel}"
 
         def dtb_path(params):
             if params.subarch in dtb_subarchs:
@@ -399,7 +399,7 @@ class BootMethod(metaclass=ABCMeta):
                     boot_dtb = params.boot_dtb
                 else:
                     boot_dtb = "boot-dtb"
-                return "%s/%s" % (image_dir(params), boot_dtb)
+                return f"{image_dir(params)}/{boot_dtb}"
             else:
                 return None
 

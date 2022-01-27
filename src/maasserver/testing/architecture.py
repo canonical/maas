@@ -24,7 +24,7 @@ def make_arch(
     if with_subarch:
         if subarch_name is None:
             subarch_name = factory.make_name("sub")
-        return "%s/%s" % (arch_name, subarch_name)
+        return f"{arch_name}/{subarch_name}"
     else:
         return arch_name
 
@@ -40,7 +40,7 @@ def patch_usable_architectures(testcase, architectures=None):
     """
     if architectures is None:
         architectures = [
-            "%s/%s" % (factory.make_name("arch"), factory.make_name("sub"))
+            "{}/{}".format(factory.make_name("arch"), factory.make_name("sub"))
             for _ in range(randint(0, 2))
         ]
     patch = testcase.patch(forms, "list_all_usable_architectures")

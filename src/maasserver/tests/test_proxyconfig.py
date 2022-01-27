@@ -52,13 +52,13 @@ class TestProxyUpdateConfig(MAASTransactionServerTestCase):
         # enabled's cidr must be present
         matcher = Contains("acl localnet src %s" % enabled.cidr)
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_PROXY_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_PROXY_CONF_NAME}",
             FileContains(matcher=matcher),
         )
         # disabled's cidr must not be present
         matcher = Not(Contains("acl localnet src %s" % disabled.cidr))
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_PROXY_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_PROXY_CONF_NAME}",
             FileContains(matcher=matcher),
         )
 

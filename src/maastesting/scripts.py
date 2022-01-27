@@ -23,7 +23,7 @@ def init_asyncio_reactor():
 def inject_test_options(options):
     # set default verbosity
     options = options.copy()
-    options.append("--verbosity={}".format(1 if sys.stdout.isatty() else 2))
+    options.append(f"--verbosity={1 if sys.stdout.isatty() else 2}")
     sys.argv[1:1] = options
 
 

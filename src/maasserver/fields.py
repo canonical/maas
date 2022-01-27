@@ -204,7 +204,7 @@ class MAC:
         elif isinstance(value, str):
             self._wrapped = value
         else:
-            raise TypeError("expected MAC or string, got: %r" % (value,))
+            raise TypeError(f"expected MAC or string, got: {value!r}")
 
     def __conform__(self, protocol):
         """Tell psycopg2 that this type implements the adapter protocol."""
@@ -384,7 +384,7 @@ class LargeObjectFile:
 
     def __getattr__(self, name):
         if self._lobject is None:
-            raise IOError("LargeObjectFile is not opened.")
+            raise OSError("LargeObjectFile is not opened.")
         return getattr(self._lobject, name)
 
     def __enter__(self, *args, **kwargs):
@@ -613,7 +613,7 @@ class HostListFormField(forms.CharField):
     # additional and more robust validation ought to be done to make sure.
     pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
     pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % pt_ipv4
-    pt_ip = re.compile(r"^ (?: %s | %s ) $" % (pt_ipv4, pt_ipv6), re.VERBOSE)
+    pt_ip = re.compile(fr"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
 
     def clean(self, value):
         if value is None:
@@ -666,9 +666,9 @@ class SubnetListFormField(forms.CharField):
     # additional and more robust validation ought to be done to make sure.
     pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
     pt_ipv6 = r"(?: (|[0-9A-Fa-f]{1,4}) [:] (|[0-9A-Fa-f]{1,4}) [:] (.*))"
-    pt_ip = re.compile(r"^ (?: %s | %s ) $" % (pt_ipv4, pt_ipv6), re.VERBOSE)
+    pt_ip = re.compile(fr"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
     pt_subnet = re.compile(
-        r"^ (?: %s | %s ) \/\d+$" % (pt_ipv4, pt_ipv6), re.VERBOSE
+        fr"^ (?: {pt_ipv4} | {pt_ipv6} ) \/\d+$", re.VERBOSE
     )
 
     def clean(self, value):

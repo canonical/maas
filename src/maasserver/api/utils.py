@@ -66,7 +66,7 @@ def get_mandatory_param(data, key, validator=None):
         try:
             return validator.to_python(value)
         except Invalid as e:
-            raise MAASAPIValidationError("Invalid %s: %s" % (key, e.msg))
+            raise MAASAPIValidationError(f"Invalid {key}: {e.msg}")
     else:
         return value
 
@@ -76,7 +76,7 @@ def _validate_param(key, value, validator):
     try:
         return validator.to_python(value)
     except Invalid as e:
-        raise MAASAPIValidationError("Invalid %s: %s" % (key, e.msg))
+        raise MAASAPIValidationError(f"Invalid {key}: {e.msg}")
 
 
 def get_optional_param(data, key, default=None, validator=None):
@@ -166,7 +166,7 @@ def get_overridden_query_dict(defaults, data, fields):
             acceptable_fields.append(field_name)
             if isinstance(field, DictCharField):
                 for sub_field in field.names:
-                    acceptable_fields.append("%s_%s" % (field_name, sub_field))
+                    acceptable_fields.append(f"{field_name}_{sub_field}")
     else:
         acceptable_fields = fields
     # Missing fields will be taken from the node's current values.  This

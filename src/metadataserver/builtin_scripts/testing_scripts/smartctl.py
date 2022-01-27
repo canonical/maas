@@ -84,7 +84,7 @@ def run_storcli(args, output=False, **kwargs):
 def make_device_name(blockdevice, device=None):
     """Create a device name string for output."""
     if device:
-        return "%s %s" % (blockdevice, device)
+        return f"{blockdevice} {device}"
     else:
         return blockdevice
 
@@ -300,7 +300,7 @@ def execute_smartctl(blockdevice, test):
     if device_type:
         # Validate all drives in the RAID support SMART and start testing.
         for bus_id in bus_ids:
-            device = "%s,%s" % (device_type, bus_id)
+            device = f"{device_type},{bus_id}"
             try:
                 check_SMART_support(blockdevice, device)
                 if test != "validate":
@@ -311,7 +311,7 @@ def execute_smartctl(blockdevice, test):
         # Wait for testing to finish on all RAID drives and then print the
         # result.
         for bus_id in bus_ids:
-            device = "%s,%s" % (device_type, bus_id)
+            device = f"{device_type},{bus_id}"
             if test != "validate":
                 try:
                     wait_smartctl_selftest(blockdevice, test, device)

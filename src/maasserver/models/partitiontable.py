@@ -103,11 +103,9 @@ class PartitionTable(CleanSave, TimestampedModel):
             if partition.id is not None
         ]
         used_size = sum(
-            [
-                partition.size
-                for partition in self.partitions.all()
-                if partition.id not in ignore_ids
-            ]
+            partition.size
+            for partition in self.partitions.all()
+            if partition.id not in ignore_ids
         )
         # The extra space taken by the partition table header is used space.
         return used_size + self.get_overhead_size()
@@ -140,7 +138,7 @@ class PartitionTable(CleanSave, TimestampedModel):
         )
 
     def __str__(self):
-        return "Partition table for {bd}".format(bd=self.block_device)
+        return f"Partition table for {self.block_device}"
 
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)

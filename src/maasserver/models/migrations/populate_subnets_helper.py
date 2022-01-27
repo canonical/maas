@@ -30,7 +30,7 @@ class _NODEGROUPINTERFACE_MANAGEMENT:
 def _get_cidr(ip, subnet_mask):
     """Returns a unicode CIDR for the specified (ip, subnet mask) tuple."""
     if subnet_mask:
-        return str(IPNetwork("%s/%s" % (ip, subnet_mask)).cidr)
+        return str(IPNetwork(f"{ip}/{subnet_mask}").cidr)
 
     return None
 

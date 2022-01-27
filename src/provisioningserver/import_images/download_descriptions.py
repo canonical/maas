@@ -165,7 +165,7 @@ class RepoDumper(BasicMirrorWriter):
             # For Ubuntu Core we only want one entry per release/arch/gadget
             gadget = item.get("gadget_snap", "generic")
             kflavor = item.get("kernel_snap", "generic")
-            release = "%s-%s" % (release, gadget)
+            release = f"{release}-{gadget}"
             self.boot_images_dict.setdefault(
                 base_image._replace(
                     subarch="generic", kflavor=kflavor, release=release
@@ -199,7 +199,7 @@ class RepoDumper(BasicMirrorWriter):
     def sync(self, reader, path):
         try:
             super().sync(reader, path)
-        except IOError:
+        except OSError:
             maaslog.warning(
                 "I/O error while syncing boot images. If this problem "
                 "persists, verify network connectivity and disk usage."

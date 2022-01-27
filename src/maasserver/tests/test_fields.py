@@ -158,12 +158,12 @@ class TestMAC(MAASServerTestCase):
     def test_different_macs_hash_differently(self):
         mac1 = factory.make_MAC()
         mac2 = factory.make_MAC()
-        self.assertCountEqual(set([mac1, mac2]), [mac1, mac2])
+        self.assertCountEqual({mac1, mac2}, [mac1, mac2])
 
     def test_identical_macs_hash_identically(self):
         addr = factory.make_mac_address()
         self.assertCountEqual(
-            set([MAC(addr), MAC(addr), MAC(MAC(addr)), addr]), [addr]
+            {MAC(addr), MAC(addr), MAC(MAC(addr)), addr}, [addr]
         )
 
     def test_django_serializes_MAC_to_JSON(self):
@@ -907,7 +907,7 @@ class TestURLOrPPAValidator(MAASServerTestCase):
 
     def test_URLOrPPAValidator_validates_PPA(self):
         validator = URLOrPPAValidator()
-        good_ppa = "ppa:%s/%s" % (
+        good_ppa = "ppa:{}/{}".format(
             factory.make_hostname(),
             factory.make_hostname(),
         )
@@ -924,7 +924,7 @@ class TestURLOrPPAValidator(MAASServerTestCase):
 
     def test_URLOrPPAValidator_catches_bad_PPA_hostname(self):
         validator = URLOrPPAValidator()
-        bad_ppa = "ppa:%s/-%s" % (
+        bad_ppa = "ppa:{}/-{}".format(
             factory.make_hostname(),
             factory.make_hostname(),
         )
@@ -967,7 +967,7 @@ class TestURLOrPPAFormField(MAASServerTestCase):
         )
 
     def test_URLOrPPAFormField_validates_PPA(self):
-        url = "ppa:%s/%s" % (factory.make_hostname(), factory.make_hostname())
+        url = f"ppa:{factory.make_hostname()}/{factory.make_hostname()}"
         self.assertEqual(url, URLOrPPAFormField().clean(url))
 
     def test_URLOrPPAFormField_catches_bad_PPA_format(self):
@@ -981,7 +981,7 @@ class TestURLOrPPAFormField(MAASServerTestCase):
         )
 
     def test_URLOrPPAFormField_catches_bad_PPA_hostname(self):
-        bad_url = "ppa:%s/-%s" % (
+        bad_url = "ppa:{}/-{}".format(
             factory.make_hostname(),
             factory.make_hostname(),
         )
@@ -997,7 +997,7 @@ class TestURLOrPPAFormField(MAASServerTestCase):
 class TestURLOrPPAField(MAASServerTestCase):
     def test_create_package_repository_ppa(self):
         # PackageRepository contains a URLOrPPAField. Make one with PPA.
-        ppa_url = "ppa:%s/%s" % (
+        ppa_url = "ppa:{}/{}".format(
             factory.make_hostname(),
             factory.make_hostname(),
         )

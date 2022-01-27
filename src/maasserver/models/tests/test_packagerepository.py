@@ -56,7 +56,7 @@ class TestPackageRepositoryManager(MAASServerTestCase):
 
     def test_get_multiple_with_a_ppa(self):
         ppa_arch = "armhf"
-        ppa_url = "ppa:%s/%s" % (
+        ppa_url = "ppa:{}/{}".format(
             factory.make_hostname(),
             factory.make_hostname(),
         )

@@ -665,7 +665,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         auth_id = factory.make_name("auth_id")
-        ks = "%s:%s" % (protocol, auth_id)
+        ks = f"{protocol}:{auth_id}"
         key_string = get_data("data/test_rsa0.pub")
         mock_get_protocol_keys = self.patch(
             keysource_module, "get_protocol_keys"
@@ -690,7 +690,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         auth_id = factory.make_name("auth_id")
-        ks = "%s:%s" % (protocol, auth_id)
+        ks = f"{protocol}:{auth_id}"
         keysource = factory.make_KeySource(protocol=protocol, auth_id=auth_id)
         key_string = get_data("data/test_rsa0.pub")
         mock_get_protocol_keys = self.patch(
@@ -714,7 +714,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         auth_id = factory.make_name("auth_id")
-        ks = "%s:%s" % (protocol, auth_id)
+        ks = f"{protocol}:{auth_id}"
         mock_get_protocol_keys = self.patch(
             keysource_module, "get_protocol_keys"
         )
@@ -731,7 +731,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         auth_id = factory.make_name("auth_id")
-        ks = "%s:%s" % (protocol, auth_id)
+        ks = f"{protocol}:{auth_id}"
         mock_get_protocol_keys = self.patch(
             keysource_module, "get_protocol_keys"
         )

@@ -529,7 +529,7 @@ class TestFilesystemGroupManager(MAASServerTestCase):
         prefix = filesystem_group.get_name_prefix()
         current_idx = int(filesystem_group.name.replace(prefix, ""))
         self.assertEqual(
-            "%s%s" % (prefix, current_idx + 1),
+            f"{prefix}{current_idx + 1}",
             FilesystemGroup.objects.get_available_name_for(filesystem_group),
         )
 
@@ -539,7 +539,7 @@ class TestFilesystemGroupManager(MAASServerTestCase):
         )
         filesystem_group.save()
         prefix = filesystem_group.get_name_prefix()
-        filesystem_group.name = "%s%s" % (prefix, factory.make_name("bad"))
+        filesystem_group.name = "{}{}".format(prefix, factory.make_name("bad"))
         filesystem_group.save()
         self.assertEqual(
             "%s0" % prefix,

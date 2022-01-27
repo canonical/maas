@@ -26,7 +26,7 @@ class FileStorageTest(MAASServerTestCase):
         """
         # Note that this won't automatically insert any non-ASCII bytes.
         # Proper handling of real binary data is tested separately.
-        text = "%s %s" % (including_text, factory.make_string())
+        text = f"{including_text} {factory.make_string()}"
         return text.encode("ascii")
 
     def test_save_file_creates_storage(self):

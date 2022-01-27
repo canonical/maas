@@ -83,7 +83,7 @@ class TestPXEBootMethod(MAASTestCase):
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
         mac = factory.make_mac_address("-")
         self.assertEqual(
-            "pxelinux.cfg/%02x-%s" % (ARP_HTYPE.ETHERNET, mac),
+            f"pxelinux.cfg/{ARP_HTYPE.ETHERNET:02x}-{mac}",
             compose_config_path(mac).decode("ascii"),
         )
 
@@ -573,7 +573,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         default_section = dict(config[default_section_label])
 
         contains_arch_path = StartsWith(
-            "%s/%s/%s/%s" % (fs_host, osystem, arch, subarch)
+            f"{fs_host}/{osystem}/{arch}/{subarch}"
         )
         self.assertThat(default_section["KERNEL"], contains_arch_path)
         self.assertThat(default_section["INITRD"], contains_arch_path)
@@ -623,7 +623,7 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
                 section, ContainsAll(("KERNEL", "INITRD", "APPEND"))
             )
             contains_arch_path = StartsWith(
-                "%s/%s/%s/" % (fs_host, osystem, section_label)
+                f"{fs_host}/{osystem}/{section_label}/"
             )
             self.assertThat(section["KERNEL"], contains_arch_path)
             self.assertThat(section["INITRD"], contains_arch_path)

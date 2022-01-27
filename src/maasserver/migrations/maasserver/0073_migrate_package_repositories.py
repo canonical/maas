@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.db import migrations
 
 from maasserver.models import timestampedmodel

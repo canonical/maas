@@ -427,7 +427,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
             # If we're stripping any elements, then we just want base.name.
             if rest_limit > 1:
                 if first.version == 6:
-                    new_zone = "%x.%s" % (base, zone_rest)
+                    new_zone = f"{base:x}.{zone_rest}"
                 else:
                     new_zone = "%d.%s" % (base, zone_rest)
             # We didn't actually strip any elemnts, so base goes back with
@@ -527,7 +527,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
                     # rather than trying to calculate it.
                     rdns = "$"
                 generate_directives.add(
-                    (iterator, rdns, "%s.%s." % (hostname, domain))
+                    (iterator, rdns, f"{hostname}.{domain}.")
                 )
 
         return sorted(generate_directives, key=lambda directive: directive[2])

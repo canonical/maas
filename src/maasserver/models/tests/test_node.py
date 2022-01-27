@@ -344,12 +344,10 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             script_results.append(script_result)
 
         self.assertEqual(
-            sorted([script_result.id for script_result in script_results]),
+            sorted(script_result.id for script_result in script_results),
             sorted(
-                [
-                    script_result.id
-                    for script_result in node.get_latest_script_results
-                ]
+                script_result.id
+                for script_result in node.get_latest_script_results
             ),
         )
 
@@ -371,12 +369,10 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             script_results.append(script_result)
 
         self.assertEqual(
-            sorted([script_result.id for script_result in script_results]),
+            sorted(script_result.id for script_result in script_results),
             sorted(
-                [
-                    script_result.id
-                    for script_result in node.get_latest_script_results
-                ]
+                script_result.id
+                for script_result in node.get_latest_script_results
             ),
         )
 
@@ -512,9 +508,9 @@ class TestMachineManager(MAASServerTestCase):
     def test_get_available_machines_ignores_taken_machines(self):
         user = factory.make_User()
         available_status = NODE_STATUS.READY
-        unavailable_statuses = set(NODE_STATUS_CHOICES_DICT) - set(
-            [available_status]
-        )
+        unavailable_statuses = set(NODE_STATUS_CHOICES_DICT) - {
+            available_status
+        }
         for status in unavailable_statuses:
             factory.make_Node(status=status)
         self.assertEqual(
@@ -635,7 +631,7 @@ class TestRackControllerManager(MAASServerTestCase):
 
     def test_filter_by_url_accessible_parses_host_user_pass(self):
         hostname = factory.make_hostname()
-        url = "%s:%s@%s" % (
+        url = "{}:{}@{}".format(
             factory.make_name("username"),
             factory.make_name("password"),
             hostname,
@@ -4350,7 +4346,7 @@ class TestNode(MAASServerTestCase):
         self.assertFalse(node.ephemeral_deploy)
 
     def test_fqdn_validation_failure_if_nonexistant(self):
-        hostname_with_domain = "%s.%s" % (
+        hostname_with_domain = "{}.{}".format(
             factory.make_string(),
             factory.make_string(),
         )
@@ -4363,7 +4359,7 @@ class TestNode(MAASServerTestCase):
         domain.name = factory.make_name("domain")
         domain.save()
         hostname_without_domain = factory.make_string()
-        hostname = "%s.%s" % (hostname_without_domain, domain.name)
+        hostname = f"{hostname_without_domain}.{domain.name}"
         node = factory.make_Node(hostname=hostname_without_domain)
         self.assertEqual(hostname, node.fqdn)
 
@@ -4373,7 +4369,7 @@ class TestNode(MAASServerTestCase):
         # one for us.
         domain = factory.make_Domain()
         hostname_without_domain = factory.make_string()
-        hostname = "%s.%s" % (hostname_without_domain, domain.name)
+        hostname = f"{hostname_without_domain}.{domain.name}"
         node = factory.make_Node(hostname=hostname)
         self.assertEqual(hostname, node.fqdn)
 
@@ -4385,7 +4381,7 @@ class TestNode(MAASServerTestCase):
     def test_split_arch_returns_arch_as_tuple(self):
         main_arch = factory.make_name("arch")
         sub_arch = factory.make_name("subarch")
-        full_arch = "%s/%s" % (main_arch, sub_arch)
+        full_arch = f"{main_arch}/{sub_arch}"
         node = factory.make_Node(architecture=full_arch)
         self.assertEqual((main_arch, sub_arch), node.split_arch())
 
@@ -5329,7 +5325,7 @@ class TestNode(MAASServerTestCase):
         event_action = factory.make_name("action")
         event_details = EVENT_DETAILS[event_name]
         comment = factory.make_name("comment")
-        event_description = "(%s) - %s" % (user.username, comment)
+        event_description = f"({user.username}) - {comment}"
         node._register_request_event(user, event_name, event_action, comment)
         self.assertThat(
             log_mock,
@@ -5436,9 +5432,7 @@ class TestNode(MAASServerTestCase):
         factory.make_Event(
             type=factory.make_EventType(level=logging.DEBUG), node=node
         )
-        self.assertEqual(
-            "%s - %s" % (type_message, message), node.status_message()
-        )
+        self.assertEqual(f"{type_message} - {message}", node.status_message())
 
     def test_status_message_returns_none_for_new_node(self):
         node = factory.make_Node()
@@ -7409,24 +7403,24 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node._clear_networking_configuration()
         # Since the interfaces are not ordered, which they dont need to be
         # we extract the passed interface to each call.
-        observed_interfaces = set(
+        observed_interfaces = {
             call[0][0] for call in mock_unlink_ip_address.call_args_list
-        )
+        }
         # Since the IP address are not ordered, which they dont need to be
         # we extract the passed IP address to each call.
         observed_ip_address = [
             call[0][1] for call in mock_unlink_ip_address.call_args_list
         ]
         # Check that clearing_config is always sent as true.
-        clearing_config = set(
+        clearing_config = {
             call[1]["clearing_config"]
             for call in mock_unlink_ip_address.call_args_list
-        )
+        }
         self.assertCountEqual([nic0, nic1], observed_interfaces)
         self.assertCountEqual(
             [dhcp_ip, static_ip, auto_ip], observed_ip_address
         )
-        self.assertEqual(set([True]), clearing_config)
+        self.assertEqual({True}, clearing_config)
 
     def test_clear_networking_configuration_clears_gateways(self):
         node = factory.make_Node()
@@ -7591,9 +7585,9 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node.set_initial_networking_configuration()
         # Since the interfaces are not ordered, which they dont need to be
         # we extract the passed interface to each call.
-        observed_interfaces = set(
+        observed_interfaces = {
             call[0][0] for call in mock_ensure_link_up.call_args_list
-        )
+        }
         self.assertCountEqual(enabled_interfaces, observed_interfaces)
 
     def test_set_initial_networking_configuration_no_multiple_auto_ips(self):

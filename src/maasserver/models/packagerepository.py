@@ -35,7 +35,7 @@ class PackageRepositoryQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -135,7 +135,7 @@ class PackageRepository(CleanSave, TimestampedModel):
     enabled = BooleanField(default=True)
 
     def __str__(self):
-        return "%s (%s)" % (self.id, self.name)
+        return f"{self.id} ({self.name})"
 
     @classmethod
     def get_main_archive_url(cls):

@@ -58,7 +58,7 @@ def get_html_display_for_key(key):
     md5 = cert.digest("MD5").decode("ascii")
     cn = find_ssl_common_name(subject)
     if cn is not None:
-        key = "%s %s" % (cn, md5)
+        key = f"{cn} {md5}"
     else:
         key = "%s" % md5
     return escape(key, quote=True)

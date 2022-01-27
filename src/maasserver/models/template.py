@@ -3,8 +3,6 @@
 
 """Template objects."""
 
-__metaclass__ = type
-
 
 import sys
 

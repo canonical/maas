@@ -73,7 +73,7 @@ class Command(BaseCommand):
         with connections[database].cursor() as cursor:
             for trigger_name, table in triggers:
                 cursor.execute(
-                    "DROP TRIGGER IF EXISTS %s ON %s;" % (trigger_name, table)
+                    f"DROP TRIGGER IF EXISTS {trigger_name} ON {table};"
                 )
 
     @classmethod

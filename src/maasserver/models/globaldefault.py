@@ -51,13 +51,11 @@ class GlobalDefault(CleanSave, TimestampedModel):
             # into an ephemeral environment for commissioning, testing, or
             # rescue (since DNS changes in the middle of these could impact
             # operation).
-            status_change_exceptions = ALLOCATED_NODE_STATUSES | set(
-                [
-                    NODE_STATUS.COMMISSIONING,
-                    NODE_STATUS.TESTING,
-                    NODE_STATUS.RESCUE_MODE,
-                ]
-            )
+            status_change_exceptions = ALLOCATED_NODE_STATUSES | {
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.TESTING,
+                NODE_STATUS.RESCUE_MODE,
+            }
             unallocated_nodes = Node.objects.exclude(
                 status__in=status_change_exceptions
             )

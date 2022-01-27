@@ -303,8 +303,7 @@ class WithPowerTypeMixin:
             form, data, machine
         )
         skip_check = (
-            form.data.get("%s_%s" % (params_field_name, SKIP_CHECK_NAME))
-            == "true"
+            form.data.get(f"{params_field_name}_{SKIP_CHECK_NAME}") == "true"
         )
         form.fields[params_field_name] = get_driver_parameters(
             parameters, skip_check=skip_check
@@ -314,7 +313,7 @@ class WithPowerTypeMixin:
                 form.initial[type_field_name] = form.instance.power_type
             if form.instance.power_parameters != "":
                 for key, value in parameters.items():
-                    form.initial["%s_%s" % (params_field_name, key)] = value
+                    form.initial[f"{params_field_name}_{key}"] = value
 
     @staticmethod
     def check_driver(form, cleaned_data):
@@ -325,8 +324,7 @@ class WithPowerTypeMixin:
         type_field_name = "power_type"
         params_field_name = "power_parameters"
         skip_check = (
-            form.data.get("%s_%s" % (params_field_name, SKIP_CHECK_NAME))
-            == "true"
+            form.data.get(f"{params_field_name}_{SKIP_CHECK_NAME}") == "true"
         )
         # Try to contact the cluster controller; if it's down then we
         # prevent saving the form as we can't validate the power
@@ -911,7 +909,7 @@ class MachineForm(NodeForm):
             if osystem is not None:
                 key_required = get_release_requires_key(release)
                 self.data["osystem"] = osystem["name"]
-                self.data["distro_series"] = "%s/%s%s" % (
+                self.data["distro_series"] = "{}/{}{}".format(
                     osystem["name"],
                     release["name"],
                     key_required,
@@ -1363,7 +1361,7 @@ def merge_error_messages(summary, errors, limit=MAX_MESSAGES):
             nb_errors,
             "s" if nb_errors > 1 else "",
         )
-    return "%s (%s%s)" % (
+    return "{} ({}{})".format(
         summary,
         " \u2014 ".join(errors[:limit]),
         ellipsis_msg,
@@ -1423,7 +1421,7 @@ class WithMACAddressesMixin:
     def _mac_in_use_on_node_error(self, mac, node):
         """Returns an error string to be used wihen the specified MAC
         is already in use on the specified Node model object."""
-        return "MAC address %s already in use%s." % (
+        return "MAC address {} already in use{}.".format(
             mac,
             " on %s" % node.hostname if node else "",
         )
@@ -1816,7 +1814,7 @@ class DeployForm(ConfigForm):
         super()._load_initials()
         initial_os = self.fields["default_osystem"].initial
         initial_series = self.fields["default_distro_series"].initial
-        self.initial["default_distro_series"] = "%s/%s" % (
+        self.initial["default_distro_series"] = "{}/{}".format(
             initial_os,
             initial_series,
         )
@@ -1953,7 +1951,7 @@ class TagForm(MAASModelForm):
         try:
             etree.XPath(definition)
         except etree.XPathSyntaxError as e:
-            raise ValidationError("Invalid xpath expression: %s" % (e,))
+            raise ValidationError(f"Invalid xpath expression: {e}")
         return definition
 
 
@@ -2119,7 +2117,7 @@ class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):
     """A ModelMultipleChoiceField which shows the name of the MACs."""
 
     def label_from_instance(self, obj):
-        return "%s (%s)" % (obj.mac_address, obj.node.hostname)
+        return f"{obj.mac_address} ({obj.node.hostname})"
 
 
 class NetworksListingForm(Form):
@@ -2234,7 +2232,7 @@ class BootSourceSelectionForm(MAASModelForm):
         arches, subarches, labels = zip(*values)
 
         # Validate architectures.
-        required_arches_set = set(arch for arch in cleaned_data["arches"])
+        required_arches_set = {arch for arch in cleaned_data["arches"]}
         wildcard_arches = "*" in required_arches_set
         if not wildcard_arches and not required_arches_set <= set(arches):
             set_form_error(
@@ -2245,7 +2243,7 @@ class BootSourceSelectionForm(MAASModelForm):
             )
 
         # Validate subarchitectures.
-        required_subarches_set = set(sa for sa in cleaned_data["subarches"])
+        required_subarches_set = {sa for sa in cleaned_data["subarches"]}
         wildcard_subarches = "*" in required_subarches_set
         if not wildcard_subarches and not required_subarches_set <= set(
             subarches
@@ -2258,7 +2256,7 @@ class BootSourceSelectionForm(MAASModelForm):
             )
 
         # Validate labels.
-        required_labels_set = set(label for label in cleaned_data["labels"])
+        required_labels_set = {label for label in cleaned_data["labels"]}
         wildcard_labels = "*" in required_labels_set
         if not wildcard_labels and not required_labels_set <= set(labels):
             set_form_error(
@@ -2452,7 +2450,7 @@ class BootResourceForm(MAASModelForm):
         # Prevent the user from uploading any osystem/release or system name
         # already used in the SimpleStreams.
         reserved_names = [
-            "%s/%s" % (bsc["os"], bsc["release"])
+            "{}/{}".format(bsc["os"], bsc["release"])
             for bsc in BootSourceCache.objects.values(
                 "os", "release"
             ).distinct()

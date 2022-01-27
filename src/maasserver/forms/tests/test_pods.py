@@ -1201,7 +1201,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         non_bridge = factory.make_Interface(node=pod_host, subnet=subnet)
 
         pod = make_pod_with_hints(host=pod_host)
-        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        interfaces = f"eth0:subnet={cidr1};eth1:subnet={cidr2}"
         form = ComposeMachineForm(
             data={"interfaces": interfaces}, request=request, pod=pod
         )
@@ -1267,7 +1267,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         non_bond = factory.make_Interface(node=pod_host, subnet=subnet)
 
         pod = make_pod_with_hints(host=pod_host)
-        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        interfaces = f"eth0:subnet={cidr1};eth1:subnet={cidr2}"
         form = ComposeMachineForm(
             data={"interfaces": interfaces}, request=request, pod=pod
         )
@@ -1340,7 +1340,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         )
 
         pod = make_pod_with_hints(host=pod_host)
-        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        interfaces = f"eth0:subnet={cidr1};eth1:subnet={cidr2}"
         form = ComposeMachineForm(
             data={"interfaces": interfaces}, request=request, pod=pod
         )
@@ -1403,7 +1403,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod = make_pod_with_hints(host=pod_host)
         pod.power_type = "lxd"
         pod.save()
-        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        interfaces = f"eth0:subnet={cidr1};eth1:subnet={cidr2}"
         form = ComposeMachineForm(
             data={"interfaces": interfaces}, request=request, pod=pod
         )
@@ -1458,7 +1458,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         pod = make_pod_with_hints(host=pod_host)
         pod.power_type = "lxd"
         pod.save()
-        interfaces = "eth0:subnet=%s;eth1:subnet=%s" % (cidr1, cidr2)
+        interfaces = f"eth0:subnet={cidr1};eth1:subnet={cidr2}"
         form = ComposeMachineForm(
             data={"interfaces": interfaces}, request=request, pod=pod
         )
@@ -2082,9 +2082,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
 class TestComposeMachineForPodsForm(MAASServerTestCase):
     def make_data(self, pods):
         return {
-            "cores": random.randint(1, min([pod.hints.cores for pod in pods])),
+            "cores": random.randint(1, min(pod.hints.cores for pod in pods)),
             "memory": random.randint(
-                1024, min([pod.hints.memory for pod in pods])
+                1024, min(pod.hints.memory for pod in pods)
             ),
             "architecture": random.choice(
                 [

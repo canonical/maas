@@ -87,7 +87,9 @@ def make_script(
     SCRIPT_RESULT_ID += 1
     ret = {
         "name": name,
-        "path": "%s/%s" % (random.choice(["commissioning", "testing"]), name),
+        "path": "{}/{}".format(
+            random.choice(["commissioning", "testing"]), name
+        ),
         "script_result_id": script_result_id,
         "script_version_id": script_version_id,
         "timeout_seconds": timeout_seconds,
@@ -96,7 +98,7 @@ def make_script(
         "has_started": factory.pick_bool(),
         "apply_configured_networking": apply_configured_networking,
     }
-    ret["msg_name"] = "%s (id: %s, script_version_id: %s)" % (
+    ret["msg_name"] = "{} (id: {}, script_version_id: {})".format(
         name,
         script_result_id,
         script_version_id,
@@ -105,7 +107,7 @@ def make_script(
         if scripts_dir is None:
             scripts_dir = factory.make_name("scripts_dir")
         out_dir = os.path.join(
-            scripts_dir, "out", "%s.%s" % (name, script_result_id)
+            scripts_dir, "out", f"{name}.{script_result_id}"
         )
 
         url = factory.make_url()
@@ -119,7 +121,7 @@ def make_script(
         }
         if with_config:
             ret["config"] = config
-        ret["msg_name"] = "%s (id: %s, script_version_id: %s)" % (
+        ret["msg_name"] = "{} (id: {}, script_version_id: {})".format(
             name,
             script_result_id,
             script_version_id,
@@ -291,11 +293,9 @@ class TestOutputAndSend(MAASTestCase):
         for script in scripts:
             script_error = "%s\n" % error.format(**script)
             self.assertEqual(
-                script_error, open(script["combined_path"], "r").read()
+                script_error, open(script["combined_path"]).read()
             )
-            self.assertEqual(
-                script_error, open(script["stderr_path"], "r").read()
-            )
+            self.assertEqual(script_error, open(script["stderr_path"]).read())
 
 
 class TestInstallDependencies(MAASTestCase):
@@ -327,14 +327,10 @@ class TestInstallDependencies(MAASTestCase):
                 factory.make_name("status"),
             )
         )
+        self.assertEqual(script["stdout"], open(script["stdout_path"]).read())
+        self.assertEqual(script["stderr"], open(script["stderr_path"]).read())
         self.assertEqual(
-            script["stdout"], open(script["stdout_path"], "r").read()
-        )
-        self.assertEqual(
-            script["stderr"], open(script["stderr_path"], "r").read()
-        )
-        self.assertEqual(
-            script["combined"], open(script["combined_path"], "r").read()
+            script["combined"], open(script["combined_path"]).read()
         )
 
     def test_run_and_check_errors(self):
@@ -356,14 +352,10 @@ class TestInstallDependencies(MAASTestCase):
                 status,
             )
         )
+        self.assertEqual(script["stdout"], open(script["stdout_path"]).read())
+        self.assertEqual(script["stderr"], open(script["stderr_path"]).read())
         self.assertEqual(
-            script["stdout"], open(script["stdout_path"], "r").read()
-        )
-        self.assertEqual(
-            script["stderr"], open(script["stderr_path"], "r").read()
-        )
-        self.assertEqual(
-            script["combined"], open(script["combined_path"], "r").read()
+            script["combined"], open(script["combined_path"]).read()
         )
         for script in scripts:
             self.assertThat(
@@ -406,14 +398,10 @@ class TestInstallDependencies(MAASTestCase):
                 False,
             )
         )
+        self.assertEqual(script["stdout"], open(script["stdout_path"]).read())
+        self.assertEqual(script["stderr"], open(script["stderr_path"]).read())
         self.assertEqual(
-            script["stdout"], open(script["stdout_path"], "r").read()
-        )
-        self.assertEqual(
-            script["stderr"], open(script["stderr_path"], "r").read()
-        )
-        self.assertEqual(
-            script["combined"], open(script["combined_path"], "r").read()
+            script["combined"], open(script["combined_path"]).read()
         )
 
     def test_sudo_run_and_check(self):
@@ -1061,9 +1049,7 @@ class TestCustomNetworking(MAASTestCase):
             # Verify config files where moved into place
             self.assertEqual(
                 netplan_yaml_content,
-                open(
-                    os.path.join(self.netplan_dir, "netplan.yaml"), "r"
-                ).read(),
+                open(os.path.join(self.netplan_dir, "netplan.yaml")).read(),
             )
             self.assertFalse(
                 os.path.exists(
@@ -1076,7 +1062,6 @@ class TestCustomNetworking(MAASTestCase):
                     os.path.join(
                         self.config_dir, "netplan.bak", "50-cloud-init.yaml"
                     ),
-                    "r",
                 ).read(),
             )
             # Verify logs from netplan apply where removed
@@ -1114,9 +1099,7 @@ class TestCustomNetworking(MAASTestCase):
             # Verify config files where moved into place
             self.assertEqual(
                 netplan_yaml_content,
-                open(
-                    os.path.join(self.netplan_dir, "netplan.yaml"), "r"
-                ).read(),
+                open(os.path.join(self.netplan_dir, "netplan.yaml")).read(),
             )
             self.assertFalse(
                 os.path.exists(
@@ -1129,7 +1112,6 @@ class TestCustomNetworking(MAASTestCase):
                     os.path.join(
                         self.config_dir, "netplan.bak", "50-cloud-init.yaml"
                     ),
-                    "r",
                 ).read(),
             )
             # Verify logs from netplan apply where removed
@@ -1255,9 +1237,7 @@ class TestCustomNetworking(MAASTestCase):
         self.assertFalse(os.path.exists(backup_dir))
         self.assertEqual(
             ephemeral_config_content,
-            open(
-                os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
-            ).read(),
+            open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
         self.assertThat(mock_check_call, MockCalledOnce())
         self.assertThat(mock_signal_wrapper, MockCalledOnce())
@@ -1294,9 +1274,7 @@ class TestCustomNetworking(MAASTestCase):
         self.assertFalse(os.path.exists(backup_dir))
         self.assertEqual(
             ephemeral_config_content,
-            open(
-                os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
-            ).read(),
+            open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
         self.assertThat(mock_check_call, MockCalledOnce())
         self.assertThat(mock_signal_wrapper, MockNotCalled())
@@ -1336,9 +1314,7 @@ class TestCustomNetworking(MAASTestCase):
         self.assertFalse(os.path.exists(backup_dir))
         self.assertEqual(
             ephemeral_config_content,
-            open(
-                os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
-            ).read(),
+            open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
         self.assertThat(mock_check_call, MockCalledOnce())
         self.assertThat(mock_signal_wrapper, MockCalledOnce())
@@ -1378,9 +1354,7 @@ class TestCustomNetworking(MAASTestCase):
         self.assertFalse(os.path.exists(backup_dir))
         self.assertEqual(
             ephemeral_config_content,
-            open(
-                os.path.join(self.netplan_dir, "50-cloud-init.yaml"), "r"
-            ).read(),
+            open(os.path.join(self.netplan_dir, "50-cloud-init.yaml")).read(),
         )
         self.assertThat(mock_check_call, MockCalledOnce())
         self.assertThat(mock_signal_wrapper, MockCalledOnce())
@@ -2126,7 +2100,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        with open(script["result_path"], "r") as f:
+        with open(script["result_path"]) as f:
             self.assertDictEqual(
                 {"link_connected": False}, yaml.safe_load(f.read())
             )
@@ -2216,7 +2190,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        with open(script["result_path"], "r") as f:
+        with open(script["result_path"]) as f:
             self.assertDictEqual(
                 {"link_connected": False}, yaml.safe_load(f.read())
             )
@@ -2249,7 +2223,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        with open(script["result_path"], "r") as f:
+        with open(script["result_path"]) as f:
             self.assertEqual(nondict_result, f.read())
 
     def test_check_link_connected_does_nothing_when_link_connected_def(self):
@@ -2279,7 +2253,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        with open(script["result_path"], "r") as f:
+        with open(script["result_path"]) as f:
             self.assertDictEqual(
                 {"link_connected": True}, yaml.safe_load(f.read())
             )
@@ -2311,7 +2285,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        with open(script["result_path"], "r") as f:
+        with open(script["result_path"]) as f:
             self.assertDictEqual(
                 {"status": "passed"}, yaml.safe_load(f.read())
             )
@@ -2340,7 +2314,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        with open(script["result_path"], "r") as f:
+        with open(script["result_path"]) as f:
             self.assertDictEqual(
                 yaml.safe_load(script["result"]), yaml.safe_load(f.read())
             )
@@ -2369,7 +2343,7 @@ class TestCheckLinkConnected(MAASTestCase):
 
         _check_link_connected(script)
 
-        with open(script["result_path"], "r") as f:
+        with open(script["result_path"]) as f:
             self.assertDictEqual(
                 {"link_connected": False, **yaml.safe_load(script["result"])},
                 yaml.safe_load(f.read()),
@@ -3034,7 +3008,7 @@ class TestBMCConfig(MAASTestCase):
         self.assertEqual(
             config.credentials.token_secret, new_creds["token_secret"]
         )
-        self.assertEqual(yaml.safe_load(open(config_path, "r")), preseed)
+        self.assertEqual(yaml.safe_load(open(config_path)), preseed)
 
     def test_enlist_with_power_creds(self):
         cloud_cfg_dir = self.useFixture(TempDirectory()).path
@@ -3110,7 +3084,7 @@ class TestBMCConfig(MAASTestCase):
         self.assertEqual(
             config.credentials.token_secret, new_creds["token_secret"]
         )
-        self.assertEqual(yaml.safe_load(open(config_path, "r")), preseed)
+        self.assertEqual(yaml.safe_load(open(config_path)), preseed)
 
     def test_bmc_config_commissioning(self):
         mock_output_and_send = self.patch(
@@ -3628,7 +3602,7 @@ class TestRunScriptsFromMetadata(MAASTestCase):
     def mock_download_and_extract_tar(self, url, creds, scripts_dir):
         """Simulate redownloading a scripts tarball after finishing commiss."""
         index_path = os.path.join(scripts_dir, "index.json")
-        with open(index_path, "r") as f:
+        with open(index_path) as f:
             index_json = json.loads(f.read())
         index_json["1.0"].pop("commissioning_scripts", None)
         os.remove(index_path)

@@ -67,7 +67,7 @@ def _render_ntp_conf(includefile):
     This configuration includes the file named by `includefile`.
     """
     ntp_conf_path = get_tentative_data_path("etc", _ntp_conf_name)
-    with open(ntp_conf_path, "r", encoding="utf-8") as fd:
+    with open(ntp_conf_path, encoding="utf-8") as fd:
         lines = _render_ntp_conf_from_source(fd, includefile)
         return "".join(lines)
 
@@ -114,7 +114,7 @@ def _render_ntp_maas_conf(servers, peers, offset):
     # Chrony provides a special 'orphan' mode that is compatible
     # with ntpd's 'tos orphan' mode. (see
     # https://chrony.tuxfamily.org/doc/devel/chrony.conf.html)
-    lines.append("local stratum {:d} orphan".format(offset + 8))
+    lines.append(f"local stratum {offset + 8:d} orphan")
     # Chrony requires 'allow' option to specify which client IPs
     # or Networks can use it as a time source. For now, allow all
     # clients to be compatible to 'ntpd'. In the future, it would

@@ -344,11 +344,11 @@ class TestCleanPrometheusDir(MAASTestCase):
         pid = os.getpid()
         file1 = tmpdir / "histogram_1.db"
         file1.touch()
-        file2 = tmpdir / "histogram_{}.db".format(pid)
+        file2 = tmpdir / f"histogram_{pid}.db"
         file2.touch()
-        file3 = tmpdir / "histogram_{}.db".format(self.get_unused_pid())
+        file3 = tmpdir / f"histogram_{self.get_unused_pid()}.db"
         file3.touch()
-        file4 = tmpdir / "histogram_{}.db".format(self.get_unused_pid())
+        file4 = tmpdir / f"histogram_{self.get_unused_pid()}.db"
         file4.touch()
         clean_prometheus_dir(str(tmpdir))
         self.assertTrue(file1.exists())
@@ -366,6 +366,6 @@ class TestCleanPrometheusDir(MAASTestCase):
 
         self.patch(os, "remove", mock_os_remove)
         tmpdir = Path(self.useFixture(TempDirectory()).path)
-        file1 = tmpdir / "histogram_{}.db".format(self.get_unused_pid())
+        file1 = tmpdir / f"histogram_{self.get_unused_pid()}.db"
         file1.touch()
         self.assertIsNone(clean_prometheus_dir(str(tmpdir)))

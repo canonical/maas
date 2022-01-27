@@ -47,9 +47,7 @@ class RDNSManager(Manager):
             log.debug(
                 "Deleted reverse DNS entry: '{ip}' (resolved to {res}).",
                 ip=entry.ip,
-                res=", ".join(
-                    ("%r" % hostname for hostname in entry.hostnames)
-                ),
+                res=", ".join("%r" % hostname for hostname in entry.hostnames),
             )
             entry.delete()
 
@@ -77,7 +75,7 @@ class RDNSManager(Manager):
             log.debug(
                 "New reverse DNS entry: '{ip}' resolves to {res}.",
                 ip=ip,
-                res=", ".join(("%r" % result for result in results)),
+                res=", ".join("%r" % result for result in results),
             )
         else:
             # Always update the 'updated' date, so we know when the last time
@@ -96,7 +94,7 @@ class RDNSManager(Manager):
                 log.debug(
                     "Reverse DNS entry updated: '{ip}' resolves to {res}.",
                     ip=ip,
-                    res=", ".join(("%r" % result for result in results)),
+                    res=", ".join("%r" % result for result in results),
                 )
             entry.save(update_fields=updated)
 

@@ -998,7 +998,7 @@ class TestPowerQueryExceptions(MAASTestCase):
         expected_calls = [expected_call] * self.calls
         self.assertThat(query, MockCallsMatch(*expected_calls))
 
-        expected_message = "%s: Power state could not be queried: %s" % (
+        expected_message = "{}: Power state could not be queried: {}".format(
             hostname,
             exception_message,
         )

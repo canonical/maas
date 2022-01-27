@@ -188,7 +188,7 @@ class TestNodeDeviceAPI(APITestCase.ForUser):
         elif node_device.is_pcie:
             id = node_device.pci_address
         elif node_device.is_usb:
-            id = "%s:%s" % (node_device.bus_number, node_device.device_number)
+            id = f"{node_device.bus_number}:{node_device.device_number}"
         return reverse(
             "node_device_handler", args=[node_device.node.system_id, id]
         )

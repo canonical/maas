@@ -10,8 +10,8 @@ def forwards(apps, schema_editor):
     for pool in ResourcePool.objects.all():
         # create a role for each pool
         role = Role(
-            name="role-{}".format(pool.name),
-            description="Default role for resource pool {}".format(pool.name),
+            name=f"role-{pool.name}",
+            description=f"Default role for resource pool {pool.name}",
         )
         role.save()
         role.resource_pools.add(pool)

@@ -306,7 +306,7 @@ class TestMain(MAASTestCase):
         index_dir = os.path.join(repo, "streams", "v1")
         os.makedirs(index_dir)
         stream = "com.ubuntu.maas:daily:v2:download"
-        product = "com.ubuntu.maas:boot:%s:%s:%s" % (
+        product = "com.ubuntu.maas:boot:{}:{}:{}".format(
             os_release,
             image_spec.arch,
             image_spec.subarch,
@@ -395,7 +395,7 @@ class TestMain(MAASTestCase):
 
         # Verify the contents of the "meta" file.
         meta_file_path = os.path.join(current, "maas.meta")
-        with open(meta_file_path, "r", encoding="ascii") as meta_file:
+        with open(meta_file_path, encoding="ascii") as meta_file:
             meta_data = json.load(meta_file)
         self.assertEqual([osystem], list(meta_data))
         self.assertEqual([arch], list(meta_data[osystem]))

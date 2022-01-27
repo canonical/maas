@@ -227,7 +227,7 @@ def _catch_service_error(server, action, call, *args, **kwargs):
     `call`."""
 
     def eb(failure):
-        message = "%s server failed to %s: %s" % (
+        message = "{} server failed to {}: {}".format(
             server.descriptive_name,
             action,
             failure.value,
@@ -263,7 +263,7 @@ def _debug_hostmap_msg(hosts):
     def _inner():
         if hosts:
             return ", ".join(
-                "%s -> %s" % (host["mac"], host["ip"]) for host in hosts
+                "{} -> {}".format(host["mac"], host["ip"]) for host in hosts
             )
         else:
             return "none"

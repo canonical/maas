@@ -61,7 +61,7 @@ class S390XPartitionBootMethod(BootMethod):
             # Modify the kernel_command to inject the BOOTIF. S390X doesn't
             # support the IPAPPEND pxelinux flag.
             if mac is not None:
-                return "%s BOOTIF=%s" % (cmd_line, format_bootif(mac))
+                return f"{cmd_line} BOOTIF={format_bootif(mac)}"
             return cmd_line
 
         namespace["kernel_command"] = kernel_command

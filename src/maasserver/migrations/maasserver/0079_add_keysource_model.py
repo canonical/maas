@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 # -*- coding: utf-8 -*-
 from django.db import migrations, models
 
@@ -56,6 +54,6 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterUniqueTogether(
-            name="sshkey", unique_together=set([("user", "key", "keysource")])
+            name="sshkey", unique_together={("user", "key", "keysource")}
         ),
     ]

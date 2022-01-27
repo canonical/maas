@@ -126,7 +126,7 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         self.assertEqual(
             perms_expected,
             perms_observed,
-            "Expected %04o, got %04o." % (perms_expected, perms_observed),
+            f"Expected {perms_expected:04o}, got {perms_observed:04o}.",
         )
 
 

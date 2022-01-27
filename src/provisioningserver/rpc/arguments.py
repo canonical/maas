@@ -25,7 +25,7 @@ class Bytes(amp.Argument):
 
     def toString(self, inObject):
         if not isinstance(inObject, bytes):
-            raise TypeError("Not a byte string: %r" % (inObject,))
+            raise TypeError(f"Not a byte string: {inObject!r}")
         return inObject
 
     def fromString(self, inString):
@@ -47,7 +47,7 @@ class Choice(amp.Argument):
         """
         super().__init__(optional=optional)
         if not isinstance(choices, Mapping):
-            raise TypeError("Not a mapping: %r" % (choices,))
+            raise TypeError(f"Not a mapping: {choices!r}")
         not_byte_strings = [
             value for value in choices.values() if not isinstance(value, bytes)
         ]
@@ -85,7 +85,7 @@ class ParsedURL(amp.Argument):
         try:
             geturl = inObject.geturl
         except AttributeError:
-            raise TypeError("Not a URL-like object: %r" % (inObject,))
+            raise TypeError(f"Not a URL-like object: {inObject!r}")
         else:
             return ascii_url(geturl())
 

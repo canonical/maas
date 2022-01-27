@@ -33,7 +33,7 @@ class TestSSHKeysImportAction(MAASTestCase):
 
     def test_name_value_pair_returns_sshkey_creds_tuple(self):
         action = self.make_sshkeys_import_action()
-        ks = "%s:%s" % (
+        ks = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )

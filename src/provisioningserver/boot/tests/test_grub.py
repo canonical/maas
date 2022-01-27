@@ -55,14 +55,14 @@ def compose_config_path(
         TFTP, as a byte string.
     """
     if mac is not None:
-        return "grub/grub.cfg-{mac}".format(mac=mac).encode("ascii")
+        return f"grub/grub.cfg-{mac}".encode("ascii")
     if arch is not None:
         if subarch is None:
             subarch = "generic"
         return "grub/grub.cfg-{arch}-{subarch}".format(
             arch=arch, subarch=subarch
         ).encode("ascii")
-    return "grub/grub.cfg".encode("ascii")
+    return b"grub/grub.cfg"
 
 
 class TestUEFIAMD64BootMethodRender(MAASTestCase):
@@ -233,7 +233,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             ContainsAll(
                 [
                     "menuentry 'Ephemeral'",
-                    "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
+                    f"{params.osystem}/{params.arch}/{params.subarch}",
                     params.kernel,
                 ]
             ),
@@ -255,7 +255,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             ContainsAll(
                 [
                     "menuentry 'Ephemeral'",
-                    "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
+                    f"{params.osystem}/{params.arch}/{params.subarch}",
                     params.kernel,
                 ]
             ),

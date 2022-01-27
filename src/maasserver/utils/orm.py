@@ -587,12 +587,12 @@ def gen_description_of_hooks(hooks):
     for index, hook in enumerate(hooks):
         yield "== Hook %d: %r ==" % (index + 1, hook)
         for cb, eb in hook.callbacks:
-            yield " +- callback: %r" % (cb[0],)
-            yield " |      args: %r" % (cb[1],)
-            yield " |    kwargs: %r" % (cb[2],)
-            yield " |   errback: %r" % (eb[0],)
-            yield " |      args: %r" % (eb[1],)
-            yield " +--- kwargs: %r" % (eb[2],)
+            yield f" +- callback: {cb[0]!r}"
+            yield f" |      args: {cb[1]!r}"
+            yield f" |    kwargs: {cb[2]!r}"
+            yield f" |   errback: {eb[0]!r}"
+            yield f" |      args: {eb[1]!r}"
+            yield f" +--- kwargs: {eb[2]!r}"
 
 
 class PostCommitHooks(DeferredHooks):
@@ -643,7 +643,7 @@ def post_commit(hook=None):
     elif callable(hook):
         hook = Deferred().addBoth(hook)
     else:
-        raise AssertionError("Not a Deferred or callable: %r" % (hook,))
+        raise AssertionError(f"Not a Deferred or callable: {hook!r}")
 
     post_commit_hooks.add(hook)
     return hook
@@ -664,7 +664,7 @@ def post_commit_do(func, *args, **kwargs):
     if callable(func):
         return post_commit().addCallback(callOut, func, *args, **kwargs)
     else:
-        raise AssertionError("Not callable: %r" % (func,))
+        raise AssertionError(f"Not callable: {func!r}")
 
 
 @contextmanager
@@ -918,7 +918,7 @@ class ExclusivelyConnected:
         """Assert that no connections are yet open."""
         for alias in connections:
             if connections[alias].connection is not None:
-                raise AssertionError("Connection %s is open." % (alias,))
+                raise AssertionError(f"Connection {alias} is open.")
 
     def __exit__(self, *exc_info):
         """Close database connections in the current thread."""
@@ -1393,7 +1393,7 @@ def count_queries(log_func):
 
             # Calculate the query_time and log the number and time.
             query_time = sum(
-                [float(query.get("time", 0)) for query in connection.queries]
+                float(query.get("time", 0)) for query in connection.queries
             )
             log_func(
                 "[QUERIES] %s executed %s queries in %s seconds"

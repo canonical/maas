@@ -45,7 +45,7 @@ def get_maas_id():
         if _maas_id is None:
             maas_id_path = get_maas_data_path("maas_id")
             try:
-                with open(maas_id_path, "r", encoding="ascii") as fp:
+                with open(maas_id_path, encoding="ascii") as fp:
                     contents = fp.read().strip()
             except FileNotFoundError:
                 return None

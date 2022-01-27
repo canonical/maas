@@ -14,7 +14,9 @@ from provisioningserver.utils.url import compose_URL, get_domain, splithost
 class TestComposeURL(MAASTestCase):
     def make_path(self):
         """Return an arbitrary URL path part."""
-        return "%s/%s" % (factory.make_name("root"), factory.make_name("sub"))
+        return "{}/{}".format(
+            factory.make_name("root"), factory.make_name("sub")
+        )
 
     def make_network_interface(self):
         return "eth%d" % randint(0, 100)
@@ -23,23 +25,23 @@ class TestComposeURL(MAASTestCase):
         ip = factory.make_ipv4_address()
         path = self.make_path()
         self.assertEqual(
-            "http://%s/%s" % (ip, path), compose_URL("http:///%s" % path, ip)
+            f"http://{ip}/{path}", compose_URL("http:///%s" % path, ip)
         )
 
     def test_inserts_IPv6_with_brackets(self):
         ip = factory.make_ipv6_address()
         path = self.make_path()
         self.assertEqual(
-            "http://[%s]/%s" % (ip, path), compose_URL("http:///%s" % path, ip)
+            f"http://[{ip}]/{path}", compose_URL("http:///%s" % path, ip)
         )
 
     def test_escapes_IPv6_zone_index(self):
         ip = factory.make_ipv6_address()
         zone = self.make_network_interface()
-        hostname = "%s%%%s" % (ip, zone)
+        hostname = f"{ip}%{zone}"
         path = self.make_path()
         self.assertEqual(
-            "http://[%s%%25%s]/%s" % (ip, zone, path),
+            f"http://[{ip}%25{zone}]/{path}",
             compose_URL("http:///%s" % path, hostname),
         )
 
@@ -48,7 +50,7 @@ class TestComposeURL(MAASTestCase):
         hostname = "[%s]" % ip
         path = self.make_path()
         self.assertEqual(
-            "http://%s/%s" % (hostname, path),
+            f"http://{hostname}/{path}",
             compose_URL("http:///%s" % path, hostname),
         )
 
@@ -56,9 +58,9 @@ class TestComposeURL(MAASTestCase):
         ip = factory.make_ipv6_address()
         zone = self.make_network_interface()
         path = self.make_path()
-        hostname = "[%s%%25%s]" % (ip, zone)
+        hostname = f"[{ip}%25{zone}]"
         self.assertEqual(
-            "http://%s/%s" % (hostname, path),
+            f"http://{hostname}/{path}",
             compose_URL("http:///%s" % path, hostname),
         )
 
@@ -66,7 +68,7 @@ class TestComposeURL(MAASTestCase):
         hostname = factory.make_name("host")
         path = self.make_path()
         self.assertEqual(
-            "http://%s/%s" % (hostname, path),
+            f"http://{hostname}/{path}",
             compose_URL("http:///%s" % path, hostname),
         )
 
@@ -75,15 +77,15 @@ class TestComposeURL(MAASTestCase):
         key = factory.make_name("key")
         value = factory.make_name("value")
         self.assertEqual(
-            "https://%s?%s=%s" % (ip, key, value),
-            compose_URL("https://?%s=%s" % (key, value), ip),
+            f"https://{ip}?{key}={value}",
+            compose_URL(f"https://?{key}={value}", ip),
         )
 
     def test_preserves_port_with_IPv4(self):
         ip = factory.make_ipv4_address()
         port = factory.pick_port()
         self.assertEqual(
-            "https://%s:%s/" % (ip, port),
+            f"https://{ip}:{port}/",
             compose_URL("https://:%s/" % port, ip),
         )
 
@@ -91,7 +93,7 @@ class TestComposeURL(MAASTestCase):
         ip = factory.make_ipv6_address()
         port = factory.pick_port()
         self.assertEqual(
-            "https://[%s]:%s/" % (ip, port),
+            f"https://[{ip}]:{port}/",
             compose_URL("https://:%s/" % port, ip),
         )
 
@@ -99,7 +101,7 @@ class TestComposeURL(MAASTestCase):
         hostname = factory.make_name("host")
         port = factory.pick_port()
         self.assertEqual(
-            "https://%s:%s/" % (hostname, port),
+            f"https://{hostname}:{port}/",
             compose_URL("https://:%s/" % port, hostname),
         )
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.db import migrations
 
 sql_ntp_server_to_ntp_servers = """\

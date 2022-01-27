@@ -43,7 +43,7 @@ LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
 SRV_LABEL = r"_[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
 # SRV RRdata gets name=_SERVICE._PROTO.LABEL, otherwise, only one label
 # allowed.
-SRV_LHS = "%s.%s(.%s)?" % (SRV_LABEL, SRV_LABEL, LABEL)
+SRV_LHS = f"{SRV_LABEL}.{SRV_LABEL}(.{LABEL})?"
 NAMESPEC = r"%s" % LABEL
 NAME_VALIDATOR = RegexValidator(NAMESPEC)
 DEFAULT_DNS_TTL = 30
@@ -92,7 +92,7 @@ def separate_fqdn(fqdn, rrtype=None, domainname=None):
         spec = SRV_LHS
     else:
         spec = LABEL
-    regexp = r"^(?P<name>%s).(?P<domain>%s)$" % (spec, domain.NAMESPEC)
+    regexp = fr"^(?P<name>{spec}).(?P<domain>{domain.NAMESPEC})$"
     regex = re.compile(regexp)
     result = regex.search(fqdn)
     if result is not None:
@@ -289,7 +289,7 @@ class DNSResource(CleanSave, TimestampedModel):
         if self.name == "@":
             return self.domain.name
         else:
-            return "%s.%s" % (self.name, self.domain.name)
+            return f"{self.name}.{self.domain.name}"
 
     def has_static_ip(self):
         return self.ip_addresses.exclude(
@@ -346,14 +346,12 @@ class DNSResource(CleanSave, TimestampedModel):
         """Render json.  System_id is the system_id for the node, if one
         exists.  Addresses are rendered in the calling function."""
         return sorted(
-            [
-                {
-                    "hostname": self.name,
-                    "ttl": data.ttl,
-                    "rrtype": data.rrtype,
-                    "rrdata": data.rrdata,
-                    "system_id": system_id,
-                }
-                for data in self.dnsdata_set.all()
-            ]
+            {
+                "hostname": self.name,
+                "ttl": data.ttl,
+                "rrtype": data.rrtype,
+                "rrdata": data.rrdata,
+                "system_id": system_id,
+            }
+            for data in self.dnsdata_set.all()
         )

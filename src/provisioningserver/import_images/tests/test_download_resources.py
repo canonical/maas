@@ -167,9 +167,7 @@ class TestExtractArchiveTar(MAASTestCase):
                     content_source,
                 )
                 for f, info in files.items():
-                    cached_file = os.path.join(
-                        cache_dir, "%s-%s" % (f, sha256)
-                    )
+                    cached_file = os.path.join(cache_dir, f"{f}-{sha256}")
                     expected_cached_file = (cached_file, f)
                     self.assertIn(expected_cached_file, cached_files)
                     self.assertTrue(os.path.exists(cached_file))
@@ -202,9 +200,7 @@ class TestExtractArchiveTar(MAASTestCase):
                 )
                 self.assertThat(mocked_tar, MockNotCalled())
                 for f, info in files.items():
-                    cached_file = os.path.join(
-                        cache_dir, "%s-%s" % (f, sha256)
-                    )
+                    cached_file = os.path.join(cache_dir, f"{f}-{sha256}")
                     expected_cached_file = (cached_file, f)
                     self.assertIn(expected_cached_file, cached_files)
 
@@ -571,7 +567,7 @@ class TestLinkResources(MAASTestCase):
         links = []
         for _ in range(3):
             filename = factory.make_name("filename")
-            filename_with_tag = "%s-%s" % (filename, tag)
+            filename_with_tag = f"{filename}-{tag}"
             factory.make_file(location=path, name=filename_with_tag)
             filepath = os.path.join(path, filename_with_tag)
             links.append((filepath, filename))
@@ -579,7 +575,7 @@ class TestLinkResources(MAASTestCase):
         os.makedirs(os.path.join(path, subdir))
         for _ in range(3):
             filename = os.path.join(subdir, factory.make_name("filename"))
-            filename_with_tag = "%s-%s" % (filename, tag)
+            filename_with_tag = f"{filename}-{tag}"
             factory.make_file(location=path, name=filename_with_tag)
             filepath = os.path.join(path, filename_with_tag)
             links.append((filepath, filename))

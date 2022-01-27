@@ -160,7 +160,7 @@ class IPMI(BMCConfig):
         ipmi_k_g="",
         ipmi_privilege_level="",
         ipmi_cipher_suite_id="3",
-        **kwargs
+        **kwargs,
     ):
         self.username = username
         self.password = password
@@ -221,7 +221,7 @@ class IPMI(BMCConfig):
             [
                 "bmc-config",
                 "--commit",
-                "--key-pair=%s:%s=%s" % (section, key, value),
+                f"--key-pair={section}:{key}={value}",
             ],
             timeout=COMMAND_TIMEOUT,
         )
@@ -439,7 +439,7 @@ class IPMI(BMCConfig):
         self._bmc_set_keys(
             "Lan_Channel",
             [
-                "%s_%s" % (auth_type, volatility)
+                f"{auth_type}_{volatility}"
                 for auth_type in [
                     "Enable_User_Level_Auth",
                     "Enable_Per_Message_Auth",
@@ -460,7 +460,7 @@ class IPMI(BMCConfig):
         self._bmc_set_keys(
             "Lan_Channel_Auth",
             [
-                "%s_Enable_Auth_Type_%s" % (user, enc_type)
+                f"{user}_Enable_Auth_Type_{enc_type}"
                 for user in [
                     "Callback",
                     "User",
@@ -523,7 +523,7 @@ class IPMI(BMCConfig):
         self._bmc_set_keys(
             "Serial_Channel",
             [
-                "%s_%s" % (auth_type, volatility)
+                f"{auth_type}_{volatility}"
                 for auth_type in [
                     "Enable_User_Level_Auth",
                     "Enable_Per_Message_Auth",

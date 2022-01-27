@@ -118,7 +118,7 @@ class TestOsystems(MAASServerTestCase):
 
 class TestReleases(MAASServerTestCase):
     def make_release_choice(self, os_name, release, include_asterisk=False):
-        key = "%s/%s" % (os_name, release["name"])
+        key = "{}/{}".format(os_name, release["name"])
         title = release["title"]
         if not title:
             title = release["name"]
@@ -293,7 +293,7 @@ class TestReleases(MAASServerTestCase):
             osystem=osystem["name"], distro_series=release["name"]
         )
         self.assertEqual(
-            "%s/%s" % (osystem["name"], release["name"]),
+            "{}/{}".format(osystem["name"], release["name"]),
             get_distro_series_initial(
                 [osystem], node, with_key_required=False
             ),
@@ -309,7 +309,7 @@ class TestReleases(MAASServerTestCase):
             osystem=osystem["name"], distro_series=release["name"]
         )
         self.assertEqual(
-            "%s/%s" % (osystem["name"], release["name"]),
+            "{}/{}".format(osystem["name"], release["name"]),
             get_distro_series_initial(
                 [osystem], node, with_key_required=False
             ),
@@ -325,7 +325,7 @@ class TestReleases(MAASServerTestCase):
             osystem=osystem["name"], distro_series=release["name"]
         )
         self.assertEqual(
-            "%s/%s*" % (osystem["name"], release["name"]),
+            "{}/{}*".format(osystem["name"], release["name"]),
             get_distro_series_initial([osystem], node, with_key_required=True),
         )
 
@@ -340,7 +340,7 @@ class TestReleases(MAASServerTestCase):
             osystem=osystem["name"], distro_series=release["name"]
         )
         self.assertEqual(
-            "%s/%s" % (osystem["name"], release["name"]),
+            "{}/{}".format(osystem["name"], release["name"]),
             get_distro_series_initial([], node, with_key_required=True),
         )
 
@@ -411,7 +411,7 @@ class TestReleases(MAASServerTestCase):
             os="ubuntu/%s" % release, subarch=kernel, release=release
         )
         self.assertEqual(
-            "%s (%s)" % (release, kernel), make_hwe_kernel_ui_text(kernel)
+            f"{release} ({kernel})", make_hwe_kernel_ui_text(kernel)
         )
 
     def test_make_hwe_kernel_ui_finds_release_from_ubuntudistroinfo(self):
@@ -427,7 +427,7 @@ class TestReleases(MAASServerTestCase):
 class TestValidateOsystemAndDistroSeries(MAASServerTestCase):
     def test_raises_error_of_osystem_and_distro_series_dont_match(self):
         os = factory.make_name("os")
-        release = "%s/%s" % (
+        release = "{}/{}".format(
             factory.make_name("os"),
             factory.make_name("release"),
         )
@@ -496,7 +496,7 @@ class TestGetReleaseVersionFromString(MAASServerTestCase):
         # Remove 'LTS' from version if it exists
         version_str = release["version"].split(" ")[0]
         # Convert the version into a list of ints
-        version_tuple = tuple([int(seg) for seg in version_str.split(".")])
+        version_tuple = tuple(int(seg) for seg in version_str.split("."))
 
         self.scenarios = (
             (
@@ -893,7 +893,7 @@ class TestGetReleaseFromDB(MAASServerTestCase):
         ]
         release = random.choice(supported_releases)
         ga_or_hwe = random.choice(["hwe", "ga"])
-        subarch = "%s-%s" % (ga_or_hwe, release["version"].split(" ")[0])
+        subarch = "{}-{}".format(ga_or_hwe, release["version"].split(" ")[0])
         factory.make_BootSourceCache(
             os="ubuntu",
             arch=factory.make_name("arch"),

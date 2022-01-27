@@ -82,7 +82,7 @@ class TestGetDhclientInfo(MAASTestCase):
     def test_returns_interface_name_with_address(self):
         proc_path = self.make_dir()
         leases_path = self.make_dir()
-        running_pids = set(random.randint(2, 999) for _ in range(3))
+        running_pids = {random.randint(2, 999) for _ in range(3)}
         self.patch(
             dhclient_module, "get_running_pids_with_command"
         ).return_value = running_pids

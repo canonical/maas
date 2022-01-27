@@ -347,7 +347,7 @@ class TestDHCPRequestMonitor(MAASTestCase):
         mock_cancelAll = self.patch(DHCPRequestMonitor, "cancelAll")
 
         def raise_ioerror():
-            raise IOError()
+            raise OSError()
 
         a = deferLater(reactor, 0.0, raise_ioerror)
         b = deferLater(reactor, 6, lambda: "b")

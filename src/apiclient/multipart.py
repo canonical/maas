@@ -77,14 +77,12 @@ def make_payloads(name, content):
         yield make_file_payload(name, content)
     elif callable(content):
         with content() as content:
-            for payload in make_payloads(name, content):
-                yield payload
+            yield from make_payloads(name, content)
     elif isinstance(content, Iterable):
         for part in content:
-            for payload in make_payloads(name, part):
-                yield payload
+            yield from make_payloads(name, part)
     else:
-        raise AssertionError("%r is unrecognised: %r" % (name, content))
+        raise AssertionError(f"{name!r} is unrecognised: {content!r}")
 
 
 def build_multipart_message(data):

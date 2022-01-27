@@ -638,7 +638,7 @@ def make_lxd_host_info(
 
 def make_lxd_pcie_device(numa_node=0, pci_address=None):
     if pci_address is None:
-        pci_address = "%s:%s:%s.%s" % (
+        pci_address = "{}:{}:{}.{}".format(
             factory.make_hex_string(size=4),
             factory.make_hex_string(size=2),
             factory.make_hex_string(size=2),
@@ -1100,23 +1100,19 @@ class TestDetectHardware(MAASServerTestCase):
         parent_tag = factory.make_Tag()
         parent_tag_name = parent_tag.name
         # Need to pre-create these so the code can remove them.
-        expected_removed = set(
-            [
-                factory.make_Tag(name=self.hardware_database[index]["tag"])
-                for index in self.expected_ruled_out_indexes
-            ]
-        )
+        expected_removed = {
+            factory.make_Tag(name=self.hardware_database[index]["tag"])
+            for index in self.expected_ruled_out_indexes
+        }
         for tag in expected_removed:
             node.tags.add(tag)
         added, removed = retag_node_for_hardware_by_modalias(
             node, self.modaliases, parent_tag_name, self.hardware_database
         )
-        expected_added = set(
-            [
-                Tag.objects.get(name=self.hardware_database[index]["tag"])
-                for index in self.expected_match_indexes
-            ]
-        )
+        expected_added = {
+            Tag.objects.get(name=self.hardware_database[index]["tag"])
+            for index in self.expected_match_indexes
+        }
         if len(expected_added) > 0:
             expected_added.add(parent_tag)
         else:
@@ -1387,9 +1383,12 @@ class TestProcessLXDResults(MAASServerTestCase):
 
     def test_errors_if_missing_api_extension(self):
         node = factory.make_Node()
-        required_extensions = set(
-            ["resources", "resources_v2", "api_os", "resources_system"]
-        )
+        required_extensions = {
+            "resources",
+            "resources_v2",
+            "api_os",
+            "resources_system",
+        }
         for missing_extension in required_extensions:
             extensions = required_extensions.difference([missing_extension])
             self.assertRaises(
@@ -1814,12 +1813,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(
             usb_node_device.commissioning_driver,
             ", ".join(
-                set(
-                    [
-                        interface["driver"]
-                        for interface in usb_device["interfaces"]
-                    ]
-                )
+                {interface["driver"] for interface in usb_device["interfaces"]}
             ),
         )
         self.assertEqual(
@@ -1950,7 +1944,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         ] = pcie_device2["pci_address"]
         lxd_output["resources"]["network"]["cards"][2][
             "usb_address"
-        ] = "%s:%s" % (usb_device["bus_address"], usb_device["device_address"])
+        ] = "{}:{}".format(
+            usb_device["bus_address"], usb_device["device_address"]
+        )
         del lxd_output["resources"]["network"]["cards"][2]["pci_address"]
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
@@ -1977,7 +1973,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         ] = pcie_device["pci_address"]
         lxd_output["resources"]["storage"]["disks"][1][
             "usb_address"
-        ] = "%s:%s" % (usb_device["bus_address"], usb_device["device_address"])
+        ] = "{}:{}".format(
+            usb_device["bus_address"], usb_device["device_address"]
+        )
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
@@ -1989,7 +1987,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = factory.make_Node()
         lxd_output = make_lxd_output()
         usb_device = make_lxd_usb_device()
-        usb_device["usb_address"] = "%s:%s" % (
+        usb_device["usb_address"] = "{}:{}".format(
             usb_device["bus_address"],
             usb_device["device_address"],
         )

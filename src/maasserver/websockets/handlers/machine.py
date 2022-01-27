@@ -275,7 +275,7 @@ class MachineHandler(NodeHandler):
         # the machine.
         if hasattr(obj, "status_event_description"):
             if obj.status_event_description:
-                data["status_message"] = "%s - %s" % (
+                data["status_message"] = "{} - {}".format(
                     obj.status_event_type_description,
                     obj.status_event_description,
                 )

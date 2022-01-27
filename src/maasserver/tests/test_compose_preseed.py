@@ -431,22 +431,22 @@ class TestComposePreseed(MAASServerTestCase):
                     components.remove(comp)
 
         components = " ".join(components)
-        sources_list = "deb %s $RELEASE %s\n" % (archive.url, components)
+        sources_list = f"deb {archive.url} $RELEASE {components}\n"
         if archive.disable_sources:
             sources_list += "# "
-        sources_list += "deb-src %s $RELEASE %s\n" % (archive.url, components)
+        sources_list += f"deb-src {archive.url} $RELEASE {components}\n"
 
         for pocket in archive.POCKETS_TO_DISABLE:
             if pocket in archive.disabled_pockets:
                 continue
-            sources_list += "deb %s $RELEASE-%s %s\n" % (
+            sources_list += "deb {} $RELEASE-{} {}\n".format(
                 archive.url,
                 pocket,
                 components,
             )
             if archive.disable_sources:
                 sources_list += "# "
-            sources_list += "deb-src %s $RELEASE-%s %s\n" % (
+            sources_list += "deb-src {} $RELEASE-{} {}\n".format(
                 archive.url,
                 pocket,
                 components,
@@ -1163,19 +1163,17 @@ class TestComposePreseed(MAASServerTestCase):
             )
         )
         self.assertEqual(
-            set(
-                [
-                    "#",
-                    "deb",
-                    "deb-src",
-                    "$PRIMARY",
-                    "$RELEASE",
-                    "multiverse",
-                    "restricted",
-                    "universe",
-                    "main",
-                ]
-            ),
+            {
+                "#",
+                "deb",
+                "deb-src",
+                "$PRIMARY",
+                "$RELEASE",
+                "multiverse",
+                "restricted",
+                "universe",
+                "main",
+            },
             set(preseed["apt"]["sources_list"].split()),
         )
 

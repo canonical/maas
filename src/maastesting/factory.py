@@ -335,9 +335,7 @@ class Factory:
             random_address_factory = self.make_ipv4_address
         # Look randomly for a network that matches our criteria.
         for _ in range(100):
-            network = IPNetwork(
-                "%s/%s" % (random_address_factory(), slash)
-            ).cidr
+            network = IPNetwork(f"{random_address_factory()}/{slash}").cidr
             forbidden = False
             for excluded_network in but_not:
                 if excluded_network == network:

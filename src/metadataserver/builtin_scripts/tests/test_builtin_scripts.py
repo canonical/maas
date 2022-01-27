@@ -204,7 +204,7 @@ class TestBuiltinScripts(MAASServerTestCase):
         script = reload_object(script)
         self.assertEqual(update_script_values.name, script.name)
         self.assertEqual(new_script, script.script.data)
-        self.assertTrue(min([tag in script.tags for tag in user_tags]))
+        self.assertTrue(min(tag in script.tags for tag in user_tags))
         self.assertEqual(user_timeout, script.timeout)
         self.assertTrue(script.default)
 

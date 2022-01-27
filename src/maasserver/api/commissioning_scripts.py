@@ -45,12 +45,10 @@ class CommissioningScriptsHandler(OperationsHandler):
     def read(self, request):
         """List commissioning scripts."""
         return sorted(
-            [
-                script.name
-                for script in Script.objects.filter(
-                    script_type=SCRIPT_TYPE.COMMISSIONING
-                )
-            ]
+            script.name
+            for script in Script.objects.filter(
+                script_type=SCRIPT_TYPE.COMMISSIONING
+            )
         )
 
     def create(self, request):

@@ -5,7 +5,6 @@
 
 
 import inspect
-import io
 import logging
 import optparse
 import sys
@@ -348,7 +347,7 @@ class SelectBucket(Plugin):
         try:
             value = self._parseSelectedBucket(value)
         except ValueError as error:
-            raise optparse.OptionValueError("%s: %s" % (option_string, error))
+            raise optparse.OptionValueError(f"{option_string}: {error}")
         else:
             setattr(parser.values, option.dest, value)
 
@@ -449,7 +448,7 @@ class Subunit(Plugin):
         if self.enabled:
             # Process --${name}-fd.
             fd = getattr(options, self.option_fd)
-            self.stream = io.open(fd, "wb")
+            self.stream = open(fd, "wb")
 
     def prepareTestResult(self, result):
         from subunit import TestProtocolClient

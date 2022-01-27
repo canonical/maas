@@ -211,7 +211,7 @@ class TestHelpers(MAASServerTestCase):
         release_title = factory.make_name("release_title")
         gadget_title = factory.make_name("gadget_title")
         self.assertEqual(
-            "%s %s %s" % (os_title, release_title, gadget_title),
+            f"{os_title} {release_title} {gadget_title}",
             get_product_title(
                 {
                     "os_title": os_title,
@@ -225,7 +225,7 @@ class TestHelpers(MAASServerTestCase):
         os_title = factory.make_name("os_title")
         release_title = factory.make_name("release_title")
         self.assertEqual(
-            "%s %s" % (os_title, release_title),
+            f"{os_title} {release_title}",
             get_product_title(
                 {"os_title": os_title, "release_title": release_title}
             ),
@@ -505,7 +505,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         cache_boot_sources()
         cached = BootSourceCache.objects.filter(boot_source=source).first()
         self.assertDictEqual(
-            {"title": "%s %s" % (os_title, release_title)}, cached.extra
+            {"title": f"{os_title} {release_title}"}, cached.extra
         )
 
     def test_adds_title_with_gadget_to_extra(self):
@@ -533,7 +533,7 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
         cache_boot_sources()
         cached = BootSourceCache.objects.filter(boot_source=source).first()
         self.assertDictEqual(
-            {"title": "%s %s %s" % (os_title, release_title, gadget_title)},
+            {"title": f"{os_title} {release_title} {gadget_title}"},
             cached.extra,
         )
 

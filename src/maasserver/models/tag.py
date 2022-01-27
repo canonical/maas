@@ -132,7 +132,7 @@ class Tag(CleanSave, TimestampedModel):
             try:
                 etree.XPath(self.definition)
             except etree.XPathSyntaxError as e:
-                msg = "Invalid XPath expression: %s" % (e,)
+                msg = f"Invalid XPath expression: {e}"
                 raise ValidationError({"definition": [msg]})
 
     def clean(self):

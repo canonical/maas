@@ -98,9 +98,7 @@ def get_netplan_bond_parameters(ifenslave_params: dict):
                     % (key, value)
                 )
             else:
-                log.msg(
-                    "Warning: unknown bond option: '%s=%r'." % (key, value)
-                )
+                log.msg(f"Warning: unknown bond option: '{key}={value!r}'.")
         else:
             netplan_parameters[netplan_key] = netplan_value
     return netplan_parameters
@@ -166,9 +164,7 @@ def get_netplan_bridge_parameters(ifenslave_params: dict):
                     "'%s=%r'." % (key, value)
                 )
             else:
-                log.msg(
-                    "Warning: unknown bridge option: '%s=%r'." % (key, value)
-                )
+                log.msg(f"Warning: unknown bridge option: '{key}={value!r}'.")
         else:
             netplan_parameters[netplan_key] = netplan_value
     return netplan_parameters

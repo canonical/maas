@@ -41,7 +41,7 @@ class DiscoveryQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
     def by_unknown_mac(self):
@@ -158,7 +158,7 @@ class DiscoveryManager(Manager, DiscoveryQueriesMixin):
                     "Cleared"
                     if user is None
                     else "User '%s' cleared" % (user.username),
-                    " neighbour entry: %s (%s)" % (ip, mac),
+                    f" neighbour entry: {ip} ({mac})",
                 )
             )
         return delete_result
@@ -180,7 +180,7 @@ class Discovery(CleanSave, ViewModel):
         verbose_name_plural = "Discoveries"
 
     def __str__(self):
-        return "<Discovery: %s at %s via %s>" % (
+        return "<Discovery: {} at {} via {}>".format(
             self.ip,
             self.last_seen,
             self.observer_interface.get_log_string(),

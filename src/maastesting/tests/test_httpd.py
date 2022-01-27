@@ -48,7 +48,7 @@ class TestHTTPServerFixture(MAASTestCase):
         self.assertEqual(
             file_data_in,
             http_data_in,
-            "The content of %s differs from %s." % (url, filename),
+            f"The content of {url} differs from {filename}.",
         )
 
     def ungzip(self, content):
@@ -71,5 +71,5 @@ class TestHTTPServerFixture(MAASTestCase):
         self.assertEqual(
             file_data_in,
             http_data_decompressed,
-            "The content of %s differs from %s." % (url, filename),
+            f"The content of {url} differs from {filename}.",
         )

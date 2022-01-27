@@ -116,18 +116,14 @@ def dhcp_explore():
     # Wait up to 5s for interfaces to come up
     for _ in range(5):
         unconfigured_ifaces_4 = sorted(
-            [
-                iface
-                for iface in unconfigured_ifaces_4
-                if not has_ipv4_address(iface)
-            ]
+            iface
+            for iface in unconfigured_ifaces_4
+            if not has_ipv4_address(iface)
         )
         unconfigured_ifaces_6 = sorted(
-            [
-                iface
-                for iface in unconfigured_ifaces_6
-                if not has_ipv6_address(iface)
-            ]
+            iface
+            for iface in unconfigured_ifaces_6
+            if not has_ipv6_address(iface)
         )
         if unconfigured_ifaces_4:
             print(
@@ -144,11 +140,7 @@ def dhcp_explore():
         else:
             return
     unconfigured_ifaces_4 = sorted(
-        [
-            iface
-            for iface in unconfigured_ifaces_4
-            if not has_ipv4_address(iface)
-        ]
+        iface for iface in unconfigured_ifaces_4 if not has_ipv4_address(iface)
     )
     if unconfigured_ifaces_4:
         print(
@@ -156,11 +148,7 @@ def dhcp_explore():
             % ", ".join(unconfigured_ifaces_4)
         )
     unconfigured_ifaces_6 = sorted(
-        [
-            iface
-            for iface in unconfigured_ifaces_6
-            if not has_ipv6_address(iface)
-        ]
+        iface for iface in unconfigured_ifaces_6 if not has_ipv6_address(iface)
     )
     if unconfigured_ifaces_6:
         print(

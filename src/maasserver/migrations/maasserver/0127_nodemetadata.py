@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 from django.db import migrations, models
 
 import maasserver.models.cleansave
@@ -47,6 +44,6 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterUniqueTogether(
-            name="nodemetadata", unique_together=set([("node", "key")])
+            name="nodemetadata", unique_together={("node", "key")}
         ),
     ]

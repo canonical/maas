@@ -158,7 +158,7 @@ class Partition(CleanSave, TimestampedModel):
 
     @property
     def path(self):
-        return "%s-part%s" % (
+        return "{}-part{}".format(
             self.partition_table.block_device.path,
             self.get_partition_number(),
         )
@@ -174,7 +174,7 @@ class Partition(CleanSave, TimestampedModel):
 
     def get_name(self):
         """Return the name of the partition."""
-        return "%s-part%s" % (
+        return "{}-part{}".format(
             self.partition_table.block_device.get_name(),
             self.get_partition_number(),
         )

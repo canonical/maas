@@ -90,7 +90,7 @@ class TestPostgresListenerService(MAASServerTestCase):
     @transactional
     def send_notification(self, event, obj_id):
         cursor = connection.cursor()
-        cursor.execute("NOTIFY %s, '%s';" % (event, obj_id))
+        cursor.execute(f"NOTIFY {event}, '{obj_id}';")
         cursor.close()
 
     def mock_cursor(self, listener):
@@ -324,7 +324,7 @@ class TestPostgresListenerService(MAASServerTestCase):
                 [call("channel")], listener.registerChannel.mock_calls
             )
             self.assertEqual({"channel": [handler]}, listener.listeners)
-            self.assertEqual(set(["channel"]), listener.registeredChannels)
+            self.assertEqual({"channel"}, listener.registeredChannels)
         finally:
             yield listener.stopService()
 

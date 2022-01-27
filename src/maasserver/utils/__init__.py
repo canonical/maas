@@ -102,7 +102,7 @@ def build_absolute_uri(request, path):
         portion from `request` but the rest from `path`.
     """
     scheme = "https" if request.is_secure() else "http"
-    return "%s://%s%s" % (scheme, request.get_host(), path)
+    return f"{scheme}://{request.get_host()}{path}"
 
 
 def strip_domain(hostname):

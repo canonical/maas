@@ -136,7 +136,7 @@ def main():
     url = config.metadata_url
     if url is None:
         fail("URL must be provided either in --url or in config\n")
-    url = "%s/%s/" % (url, args.apiver)
+    url = f"{url}/{args.apiver}/"
 
     files = {}
     for fpath in args.files:

@@ -6,7 +6,6 @@
 import abc
 import argparse
 import copy
-import io
 import os
 import queue
 import re
@@ -97,7 +96,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         # Run the script in a subprocess, capturing subunit output if
         # with_subunit is set.
         pread, pwrite = os.pipe()
-        with io.open(pread, "rb") as preader:
+        with open(pread, "rb") as preader:
             try:
                 args = [self.script]
                 if self.with_subunit:
@@ -122,7 +121,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
 
     def __repr__(self, details=()):
         details = " ".join((self.script, *details))
-        return "<%s %s>" % (self.__class__.__name__, details)
+        return f"<{self.__class__.__name__} {details}>"
 
 
 class TestScriptDivisible(TestScriptBase):
@@ -281,7 +280,7 @@ def make_human_readable_result(stream):
     def print_result(test, status, start_time, stop_time, tags, details):
         testid = "<none>" if test is None else test.id()
         duration = (stop_time - start_time).total_seconds()
-        message = "%s: %s (%0.2fs)" % (status.upper(), testid, abs(duration))
+        message = f"{status.upper()}: {testid} ({abs(duration):0.2f}s)"
         print(message, file=stream, flush=True)
 
     return testtools.MultiTestResult(

@@ -144,16 +144,16 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
         pids_running_command = [random.randint(2, 999) for _ in range(3)]
         for pid in pids_running_command:
             self.make_process(proc_path, pid, command=command)
-        pids_not_running_command = set(
+        pids_not_running_command = {
             random.randint(1000, 1999) for _ in range(3)
-        )
+        }
         for pid in pids_not_running_command:
             self.make_process(
                 proc_path, pid, command=factory.make_name("command")
             )
-        pids_running_command_in_container = set(
+        pids_running_command_in_container = {
             random.randint(2000, 2999) for _ in range(3)
-        )
+        }
         for pid in pids_running_command_in_container:
             self.make_process(
                 proc_path, pid, in_container=True, command=command
@@ -189,9 +189,9 @@ class TestGetRunningPIDsWithCommand(MAASTestCase):
             self.make_process(
                 proc_path, pid, in_container=True, command=command
             )
-        pids_not_running_command = set(
+        pids_not_running_command = {
             random.randint(1000, 1999) for _ in range(3)
-        )
+        }
         for pid in pids_not_running_command:
             self.make_process(
                 proc_path,

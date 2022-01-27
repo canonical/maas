@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 # -*- coding: utf-8 -*-
 from django.db import migrations, models
 
@@ -54,6 +52,6 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterUniqueTogether(
-            name="rdns", unique_together=set([("ip", "observer")])
+            name="rdns", unique_together={("ip", "observer")}
         ),
     ]

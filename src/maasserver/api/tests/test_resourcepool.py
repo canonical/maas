@@ -47,7 +47,7 @@ class TestResourcePoolAPI(APITestCase.ForUser):
         self.assertEqual(result["description"], pool.description)
         self.assertEqual(
             result["resource_uri"],
-            "/MAAS/api/2.0/resourcepool/{}/".format(pool.id),
+            f"/MAAS/api/2.0/resourcepool/{pool.id}/",
         )
 
     def test_PUT_updates_pool(self):
@@ -159,7 +159,7 @@ class TestResourcePoolAPIWithRBAC(APITestCase.ForUser):
         self.assertEqual(result["description"], pool.description)
         self.assertEqual(
             result["resource_uri"],
-            "/MAAS/api/2.0/resourcepool/{}/".format(pool.id),
+            f"/MAAS/api/2.0/resourcepool/{pool.id}/",
         )
 
     def test_GET_returns_forbidden(self):

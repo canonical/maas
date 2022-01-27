@@ -576,7 +576,7 @@ def power_query_vmware(
             raise
         except Exception:
             raise VMwareAPIException(
-                "Failed to get power state for uuid={uuid}".format(uuid=uuid),
+                f"Failed to get power state for uuid={uuid}",
                 traceback.format_exc(),
             )
         finally:

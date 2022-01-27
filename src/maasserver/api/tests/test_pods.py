@@ -253,7 +253,7 @@ def get_pod_uri(pod):
 
 def make_pod_with_hints():
     architectures = [
-        "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
+        "{}/{}".format(factory.make_name("arch"), factory.make_name("subarch"))
         for _ in range(3)
     ]
     cores = random.randint(8, 16)

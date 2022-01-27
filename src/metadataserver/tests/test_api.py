@@ -840,7 +840,7 @@ class TestMetadataCommon(MAASServerTestCase):
     def test_meta_data_local_hostname_returns_fqdn(self):
         hostname = factory.make_string()
         domain = factory.make_Domain()
-        node = factory.make_Node(hostname="%s.%s" % (hostname, domain.name))
+        node = factory.make_Node(hostname=f"{hostname}.{domain.name}")
         client = make_node_client(node)
         view_name = self.get_metadata_name("-meta-data")
         url = reverse(view_name, args=["latest", "local-hostname"])
@@ -1533,7 +1533,7 @@ class TestMAASScripts(MAASServerTestCase):
             else:
                 md_item["has_started"] = True
                 out_path = os.path.join(
-                    "out", "%s.%s" % (script_result.name, script_result.id)
+                    "out", f"{script_result.name}.{script_result.id}"
                 )
                 self.extract_and_validate_file(
                     tar, out_path, start_time, end_time, script_result.output
@@ -2762,7 +2762,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         response = call_signal(
             client,
             script_result=random.randint(0, 255),
-            files={script_result.name: "".encode("ascii")},
+            files={script_result.name: b""},
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content

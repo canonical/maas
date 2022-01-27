@@ -169,8 +169,7 @@ def check_for_rogue_database_activity(test):
             "Rogue database activity:\n--\n"
             + "\n--\n".join(
                 "\n".join(
-                    "%s=%s" % (name, activity[name])
-                    for name in sorted(activity)
+                    f"{name}={activity[name]}" for name in sorted(activity)
                 )
                 for activity in database_activity
             )

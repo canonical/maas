@@ -414,7 +414,7 @@ class TestActionHelp(MAASTestCase):
     def test_compose_epilog_explains_documented_keyword_args(self):
         epilog = ":param foo: The amount of foo."
         self.assertEqual(
-            "\n\n%s\n%s" % (api.ActionHelp.keyword_args_help, epilog),
+            f"\n\n{api.ActionHelp.keyword_args_help}\n{epilog}",
             "\n".join(
                 api.ActionHelp.compose_epilog(ArgumentParser(epilog=epilog))
             ),

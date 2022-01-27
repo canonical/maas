@@ -200,7 +200,7 @@ class SubnetQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
     def _add_default_query(self, current_q, op, item):
@@ -408,7 +408,7 @@ class Subnet(CleanSave, TimestampedModel):
         if self.name is None or self.name == "":
             return cidr
         if cidr not in self.name:
-            return "%s (%s)" % (self.name, self.cidr)
+            return f"{self.name} ({self.cidr})"
         else:
             return self.name
 
@@ -433,7 +433,7 @@ class Subnet(CleanSave, TimestampedModel):
         self.cidr = cidr
 
     def __str__(self):
-        return "%s:%s(vid=%s)" % (self.name, self.cidr, self.vlan.vid)
+        return f"{self.name}:{self.cidr}(vid={self.vlan.vid})"
 
     def validate_gateway_ip(self):
         if self.gateway_ip is None or self.gateway_ip == "":
@@ -575,11 +575,11 @@ class Subnet(CleanSave, TimestampedModel):
             ):
                 ranges |= {make_iprange(self.gateway_ip, purpose="gateway-ip")}
             if self.dns_servers is not None:
-                ranges |= set(
+                ranges |= {
                     make_iprange(server, purpose="dns-server")
                     for server in self.dns_servers
                     if server in network
-                )
+                }
             if cached_staticroutes is not None:
                 static_routes = [
                     static_route
@@ -595,11 +595,11 @@ class Subnet(CleanSave, TimestampedModel):
             ranges |= self._get_ranges_for_allocated_ips(
                 network, ignore_discovered_ips
             )
-            ranges |= set(
+            ranges |= {
                 make_iprange(address, purpose="excluded")
                 for address in exclude_addresses
                 if address in network
-            )
+            }
         if include_reserved:
             ranges |= self.get_reserved_maasipset(
                 exclude_ip_ranges=exclude_ip_ranges
@@ -850,13 +850,13 @@ class Subnet(CleanSave, TimestampedModel):
                 "dnsresource_set__domain",
             )
         return sorted(
-            [
+            (
                 ip.render_json(
                     with_username=with_username, with_summary=with_summary
                 )
                 for ip in ip_addresses
                 if ip.ip
-            ],
+            ),
             key=lambda json: IPAddress(json["ip"]),
         )
 
@@ -897,7 +897,7 @@ class Subnet(CleanSave, TimestampedModel):
         """
         if ip not in self.get_ipnetwork():
             raise StaticIPAddressOutOfRange(
-                "%s is not within subnet CIDR: %s" % (ip, self.cidr)
+                f"{ip} is not within subnet CIDR: {self.cidr}"
             )
         for iprange in self.get_reserved_maasipset():
             if ip in iprange:

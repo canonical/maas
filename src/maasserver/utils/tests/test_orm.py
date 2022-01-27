@@ -154,8 +154,7 @@ class TestGetOne(MAASTestCase):
 
         def infinite_sequence():
             """Generator: count to infinity (more or less), then fail."""
-            for counter in range(3):
-                yield counter
+            yield from range(3)
             raise InfinityException()
 
         # Raises MultipleObjectsReturned as spec'ed.  It does not
@@ -1491,7 +1490,7 @@ class TestCountQueries(MAASServerTestCase):
         wrapped()
 
         query_time = sum(
-            [float(query.get("time", 0)) for query in connection.queries]
+            float(query.get("time", 0)) for query in connection.queries
         )
         self.assertThat(
             mock_print,
@@ -1511,13 +1510,13 @@ class TestCountQueries(MAASServerTestCase):
         # First call.
         wrapped()
         query_time_one = sum(
-            [float(query.get("time", 0)) for query in connection.queries]
+            float(query.get("time", 0)) for query in connection.queries
         )
 
         # Second call.
         wrapped()
         query_time_two = sum(
-            [float(query.get("time", 0)) for query in connection.queries]
+            float(query.get("time", 0)) for query in connection.queries
         )
 
         # Print called twice.
@@ -1545,7 +1544,7 @@ class TestCountQueries(MAASServerTestCase):
         wrapped = count_queries(mock_print)(query_func)
         wrapped()
         query_time = sum(
-            [float(query.get("time", 0)) for query in connection.queries]
+            float(query.get("time", 0)) for query in connection.queries
         )
 
         # Print called twice.

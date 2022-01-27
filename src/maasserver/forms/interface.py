@@ -157,7 +157,7 @@ class InterfaceForm(MAASModelForm):
         if self.instance is not None and self.instance.id is not None:
             node_interfaces = node_interfaces.exclude(id=self.instance.id)
         if node_interfaces.exists():
-            msg = "Node %s already has an interface named '%s'." % (
+            msg = "Node {} already has an interface named '{}'.".format(
                 self.node,
                 name,
             )
@@ -165,7 +165,7 @@ class InterfaceForm(MAASModelForm):
 
     def clean_parents_all_same_node(self, parents):
         if parents:
-            parent_nodes = set(parent.get_node() for parent in parents)
+            parent_nodes = {parent.get_node() for parent in parents}
             if len(parent_nodes) > 1:
                 msg = "Parents are related to different nodes."
                 set_form_error(self, "name", msg)
@@ -588,7 +588,7 @@ class BondInterfaceForm(ChildInterfaceForm):
         if self.instance.id is None:
             vlan = self.cleaned_data.get("vlan")
             parent_vlans = {parent.vlan for parent in parents}
-            if parent_vlans != set([vlan]):
+            if parent_vlans != {vlan}:
                 set_form_error(
                     self,
                     "parents",

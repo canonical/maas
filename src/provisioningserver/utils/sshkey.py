@@ -125,9 +125,9 @@ def normalise_openssh_public_key(keytext):
         keypath.touch()
         keypath.chmod(0o600)
         # Convert given key to RFC4716 form.
-        keypath.write_text("%s %s" % (keytype, key), "utf-8")
+        keypath.write_text(f"{keytype} {key}", "utf-8")
         try:
-            with open(os.devnull, "r") as devnull:
+            with open(os.devnull) as devnull:
                 rfc4716key = check_output(
                     ("ssh-keygen", "-e", "-f", str(keypath)),
                     stdin=devnull,
@@ -141,7 +141,7 @@ def normalise_openssh_public_key(keytext):
         # Convert RFC4716 back to OpenSSH format public key.
         keypath.write_bytes(rfc4716key)
         try:
-            with open(os.devnull, "r") as devnull:
+            with open(os.devnull) as devnull:
                 opensshkey = check_output(
                     ("ssh-keygen", "-i", "-f", str(keypath)),
                     stdin=devnull,

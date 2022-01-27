@@ -423,11 +423,11 @@ class RegionControllerService(Service):
         """Return the only the changes that need to be pushed to RBAC."""
         # Removals are calculated first. A removal is never followed by an
         # update and `resource_id` is never re-used.
-        removals = set(
+        removals = {
             change.resource_id
             for change in changes
             if change.action == RBAC_ACTION.REMOVE
-        )
+        }
         # Changes are ordered from oldest to lates. The latest change will
         # be the last item of that `resource_id` in the dictionary.
         updates = {
@@ -445,10 +445,10 @@ class RegionControllerService(Service):
                     removals.remove(change.resource_id)
         return (
             sorted(
-                [
+                (
                     Resource(identifier=res_id, name=res_name)
                     for res_id, res_name in updates.items()
-                ],
+                ),
                 key=attrgetter("identifier"),
             ),
             removals,

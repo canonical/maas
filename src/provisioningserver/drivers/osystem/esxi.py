@@ -38,13 +38,13 @@ class ESXi(OperatingSystem):
         if m is None:
             return ret
         if m.group("major"):
-            ret = "%s %s" % (ret, m.group("major"))
+            ret = "{} {}".format(ret, m.group("major"))
         if m.group("minor"):
-            ret = "%s.%s" % (ret, m.group("minor"))
+            ret = "{}.{}".format(ret, m.group("minor"))
         if m.group("micro"):
-            ret = "%s.%s" % (ret, m.group("micro"))
+            ret = "{}.{}".format(ret, m.group("micro"))
         if m.group("title"):
-            ret = "%s %s" % (ret, m.group("title"))
+            ret = "{} {}".format(ret, m.group("title"))
         return ret
 
     def get_xinstall_parameters(self, arch, subarch, release, label):

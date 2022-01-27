@@ -66,7 +66,7 @@ def remove_comment(key):
     Preserves leading and intermediate whitespace where reasonable.
     """
     match = re.match(r"\s*\S+\s+\S+", key)
-    assert match is not None, "Could not find keytype and key in %r" % (key,)
+    assert match is not None, f"Could not find keytype and key in {key!r}"
     return match.group(0)
 
 

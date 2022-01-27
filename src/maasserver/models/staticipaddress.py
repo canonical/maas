@@ -99,7 +99,7 @@ class HostnameIPMapping:
         self.user_id = user_id
 
     def __repr__(self):
-        return "HostnameIPMapping(%r, %r, %r, %r, %r, %r)" % (
+        return "HostnameIPMapping({!r}, {!r}, {!r}, {!r}, {!r}, {!r})".format(
             self.system_id,
             self.ttl,
             self.ips,
@@ -491,7 +491,7 @@ class StaticIPAddressManager(Manager):
         for result in cursor.fetchall():
             result = SpecialMappingQueryResult(*result)
             if result.fqdn is None or result.fqdn == "":
-                fqdn = "%s.%s" % (
+                fqdn = "{}.{}".format(
                     get_ip_based_hostname(result.ip),
                     default_domain.name,
                 )
@@ -748,7 +748,7 @@ class StaticIPAddressManager(Manager):
             # node, then consider adding the IP.
             if result.assigned or not assigned_ips[result.fqdn]:
                 if result.ip not in mapping[result.fqdn].ips:
-                    entry = mapping["%s.%s" % (result.iface_name, result.fqdn)]
+                    entry = mapping[f"{result.iface_name}.{result.fqdn}"]
                     entry.node_type = result.node_type
                     entry.system_id = result.system_id
                     if result.user_id is not None:
@@ -841,7 +841,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         # Attempt to show the symbolic alloc_type name if possible.
         type_names = map_enum_reverse(IPADDRESS_TYPE)
         strtype = type_names.get(self.alloc_type, "%s" % self.alloc_type)
-        return "%s:type=%s" % (self.ip, strtype)
+        return f"{self.ip}:type={strtype}"
 
     @property
     def alloc_type_name(self):
@@ -990,9 +990,9 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     def get_mac_addresses(self):
         """Return set of all MAC's linked to this ip."""
-        return set(
+        return {
             interface.mac_address for interface in self.interface_set.all()
-        )
+        }
 
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)

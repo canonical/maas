@@ -112,7 +112,7 @@ def read_sources(sources_yaml):
     # not there.
     try:
         return BootSources.load(filename=sources_yaml)
-    except IOError as ex:
+    except OSError as ex:
         if ex.errno == errno.ENOENT:
             # No config file. We have helpful error output for this.
             raise NoConfigFile(ex)

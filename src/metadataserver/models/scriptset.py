@@ -384,11 +384,10 @@ class ScriptSet(CleanSave, Model):
     )
 
     def __str__(self):
-        return "%s/%s" % (self.node.system_id, self.result_type_name)
+        return f"{self.node.system_id}/{self.result_type_name}"
 
     def __iter__(self):
-        for script_result in self.scriptresult_set.all():
-            yield script_result
+        yield from self.scriptresult_set.all()
 
     @property
     def result_type_name(self):

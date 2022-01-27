@@ -72,7 +72,7 @@ class TestAbsoluteReverse(MAASServerTestCase):
 
         parameters = {factory.make_string(): factory.make_string()}
         absolute_url = absolute_reverse("login", query=parameters)
-        reversed_url = "%s?%s" % (reverse("login"), urlencode(parameters))
+        reversed_url = "{}?{}".format(reverse("login"), urlencode(parameters))
         expected_url = self.expected_from_maas_url_and_reverse(
             maas_url, reversed_url
         )
@@ -319,7 +319,7 @@ class GetRemoteIPTest(MAASTestCase):
         proxy2 = factory.make_ipv4_address()
         request = HttpRequest()
         request.META = {
-            "HTTP_X_FORWARDED_FOR": "%s, %s, %s" % (ip_address, proxy1, proxy2)
+            "HTTP_X_FORWARDED_FOR": f"{ip_address}, {proxy1}, {proxy2}"
         }
         self.assertEqual(ip_address, get_remote_ip(request))
 

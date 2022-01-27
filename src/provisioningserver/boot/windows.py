@@ -116,9 +116,9 @@ class Bcd:
 
         # default bootloader
         mgr = self.uids[self.GUID_WINDOWS_BOOTMGR][1]
-        bootmgr_elems = dict(
-            [(self.hive.node_name(i), i) for i in self.hive.node_children(mgr)]
-        )
+        bootmgr_elems = {
+            self.hive.node_name(i): i for i in self.hive.node_children(mgr)
+        }
         self.loader = self._get_loader(bootmgr_elems)
 
     def _get_root_elements(self):
@@ -147,12 +147,10 @@ class Bcd:
         """Get elements present in default boot loader. We need this
         in order to determine the loadoptions key.
         """
-        return dict(
-            [
-                (self.hive.node_name(i), i)
-                for i in self.hive.node_children(self.uids[self.loader][1])
-            ]
-        )
+        return {
+            self.hive.node_name(i): i
+            for i in self.hive.node_children(self.uids[self.loader][1])
+        }
 
     def _get_load_options_key(self):
         """Gets the key containing the load options we want to edit."""
@@ -310,7 +308,7 @@ class WindowsPXEBootMethod(BootMethod):
         preseed_url = self.compose_preseed_url(kernel_params.preseed_url)
         release_path = "%s\\source" % kernel_params.release
         remote_path = "\\\\%s\\reminst" % local_host
-        loadoptions = "%s;%s;%s" % (remote_path, release_path, preseed_url)
+        loadoptions = f"{remote_path};{release_path};{preseed_url}"
 
         # Generate the bcd file.
         bcd_template = self.get_resource_path(kernel_params, "bcd")

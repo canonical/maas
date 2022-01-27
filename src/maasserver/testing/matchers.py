@@ -15,7 +15,7 @@ def describe_http_status(code):
     try:
         code = HTTPStatus(code)
     except ValueError:
-        return "HTTP {code}".format(code=code)
+        return f"HTTP {code}"
     else:
         return "HTTP {code.value:d} {code.name}".format(code=code)
 
@@ -42,7 +42,7 @@ class HasStatusCode(Matcher):
                 response_dump = response_dump.decode(response.charset)
                 response_dump = response_dump.encode("utf-8", "replace")
 
-            description = "Expected %s, got %s" % (
+            description = "Expected {}, got {}".format(
                 describe_http_status(self.status_code),
                 describe_http_status(response.status_code),
             )

@@ -67,8 +67,8 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             subarch = factory.make_name("subarch")
         if release is None:
             release = factory.make_name("release")
-        name = "%s/%s" % (os, release)
-        architecture = "%s/%s" % (arch, subarch)
+        name = f"{os}/{release}"
+        architecture = f"{arch}/{subarch}"
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
@@ -443,7 +443,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         resource.save()
 
         os_name, series = resource.name.split("/")
-        node_architecture = "%s/%s" % (arch, extra_subarch)
+        node_architecture = f"{arch}/{extra_subarch}"
         number_of_nodes = random.randint(1, 4)
         for _ in range(number_of_nodes):
             factory.make_Node(
@@ -467,7 +467,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
         response = handler.poll({})
         json_obj = json.loads(response)
@@ -488,7 +488,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
@@ -504,20 +504,20 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         handler = BootResourceHandler(owner, {}, None)
         osystem = "ubuntu"
         series = factory.make_name("series")
-        name = "%s/%s" % (osystem, series)
+        name = f"{osystem}/{series}"
         arch = factory.make_name("arch")
         subarches = [factory.make_name("subarch") for _ in range(3)]
         for subarch in subarches:
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
 
         number_of_nodes = random.randint(1, 4)
         for _ in range(number_of_nodes):
             subarch = random.choice(subarches)
-            node_architecture = "%s/%s" % (arch, subarch)
+            node_architecture = f"{arch}/{subarch}"
             factory.make_Node(
                 status=NODE_STATUS.DEPLOYED,
                 osystem=osystem,
@@ -540,7 +540,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
             for subarch in subarches
         ]
@@ -562,13 +562,13 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
         factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
-            architecture="%s/%s" % (arch, incomplete_subarch),
+            architecture=f"{arch}/{incomplete_subarch}",
         )
         for subarch in subarches:
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
         response = handler.poll({})
         json_obj = json.loads(response)
@@ -588,7 +588,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
@@ -609,7 +609,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
             resource_set = factory.make_BootResourceSet(resource)
             factory.make_BootResourceFile(resource_set, largefile)
@@ -629,7 +629,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
             for subarch in subarches
         ]
@@ -652,7 +652,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
         self.patch(
             BootResource.objects, "get_resources_matching_boot_images"
@@ -675,7 +675,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
                 name=name,
-                architecture="%s/%s" % (arch, subarch),
+                architecture=f"{arch}/{subarch}",
             )
         self.patch(
             BootResource.objects, "get_resources_matching_boot_images"
@@ -749,7 +749,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 {
                     "name": "%s/%s/%s/%s"
                     % (cache.os, cache.arch, cache.subarch, cache.release),
-                    "title": "%s/%s" % (cache.os, cache.release),
+                    "title": f"{cache.os}/{cache.release}",
                     "checked": False,
                     "deleted": False,
                 }
@@ -775,7 +775,7 @@ class TestBootResourcePoll(MAASServerTestCase, PatchOSInfoMixin):
                 {
                     "name": "%s/%s/%s/%s"
                     % (cache.os, cache.arch, cache.subarch, cache.release),
-                    "title": "%s/%s" % (cache.os, cache.release),
+                    "title": f"{cache.os}/{cache.release}",
                     "checked": True,
                     "deleted": False,
                 }
@@ -1054,8 +1054,8 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             subarch = factory.make_name("subarch")
         if release is None:
             release = factory.make_name("release")
-        name = "%s/%s" % (os, release)
-        architecture = "%s/%s" % (arch, subarch)
+        name = f"{os}/{release}"
+        architecture = f"{arch}/{subarch}"
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name,
@@ -1110,7 +1110,7 @@ class TestBootResourceSaveOther(MAASTransactionServerTestCase):
             factory.make_BootSourceCache(
                 boot_source=source, os=os, release=release, arch=arch
             )
-            images.append("%s/%s/subarch/%s" % (os, arch, release))
+            images.append(f"{os}/{arch}/subarch/{release}")
             self.patch_stop_import_resources()
         self.patch_import_resources()
         handler.save_other({"images": images})
@@ -1400,8 +1400,8 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         resources = [
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name="%s/%s" % (os, release),
-                architecture="%s/%s" % (arch, subarch),
+                name=f"{os}/{release}",
+                architecture=f"{arch}/{subarch}",
             )
             for subarch in subarches
         ]
@@ -1427,8 +1427,8 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         subarch = factory.make_name("subarch")
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.GENERATED,
-            name="%s/%s" % (os, release),
-            architecture="%s/%s" % (arch, subarch),
+            name=f"{os}/{release}",
+            architecture=f"{arch}/{subarch}",
         )
         handler.delete_image({"id": resource.id})
         self.assertIsNone(reload_object(resource))
@@ -1444,7 +1444,7 @@ class TestBootResourceDeleteImage(MAASServerTestCase):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
             name=name,
-            architecture="%s/%s" % (arch, subarch),
+            architecture=f"{arch}/{subarch}",
         )
         handler.delete_image({"id": resource.id})
         self.assertIsNone(reload_object(resource))

@@ -146,9 +146,7 @@ def download_and_extract_tar(url, creds, scripts_dir):
     The URL may contain a compressed or uncompressed tar. Returns false when
     there is no content.
     """
-    sys.stdout.write(
-        "Downloading and extracting %s to %s\n" % (url, scripts_dir)
-    )
+    sys.stdout.write(f"Downloading and extracting {url} to {scripts_dir}\n")
     sys.stdout.flush()
     ret = geturl(url, creds)
     if ret.status == int(http.client.NO_CONTENT):
@@ -193,7 +191,7 @@ def run_and_check(
             }
             script["result_sent"] = output_and_send(
                 "Failed installing package(s) for %s" % script["msg_name"],
-                **args
+                **args,
             )
         return False
     else:
@@ -287,7 +285,7 @@ def _install_url_dependencies(packages, scripts, send_result=True):
         # Get the filename from the captured output incase the URL does not
         # include a filename. e.g the URL 'ubuntu.com' will create an
         # index.html file.
-        with open(combined_path, "r") as combined:
+        with open(combined_path) as combined:
             m = path_regex.findall(combined.read())
             if m != []:
                 filename = m[-1]
@@ -642,7 +640,7 @@ def get_storage_model_from_udev(block_dev):
         )
         block_dev["model_enc"] = block_dev["model"]
         return block_dev
-    with open(udev_path, "r") as f:
+    with open(udev_path) as f:
         for line in f.readlines():
             if line.startswith("E:ID_MODEL_ENC"):
                 block_dev["model_enc"] = udev_decode(line.split("=", 1)[1])
@@ -732,7 +730,7 @@ def get_interfaces(clear_cache=False):
         for cfg_file in netplan_cfgs:
             cfg_path = os.path.join(NETPLAN_DIR, cfg_file)
             try:
-                with open(cfg_path, "r") as f:
+                with open(cfg_path) as f:
                     cfg = yaml.safe_load(f)
             except Exception:
                 # Ignore bad configs, non-files.
@@ -782,7 +780,7 @@ def get_interfaces(clear_cache=False):
             for dev in os.listdir("/sys/class/net"):
                 address_path = os.path.join("/sys/class/net", dev, "address")
                 if os.path.isfile(address_path):
-                    with open(address_path, "r") as f:
+                    with open(address_path) as f:
                         mac_address = f.read().strip()
                         if mac_address and mac_address != "00:00:00:00:00:00":
                             interfaces[mac_address] = dev
@@ -894,7 +892,7 @@ def _check_link_connected(script):
         return
 
     operstate_path = os.path.join("/sys/class/net", interface, "operstate")
-    with open(operstate_path, "r") as f:
+    with open(operstate_path) as f:
         link_connected = f.read().strip() == "up"
 
     # MAAS only allows testing an interface which is connected. If its still
@@ -904,7 +902,7 @@ def _check_link_connected(script):
 
     if os.path.exists(script["result_path"]):
         try:
-            with open(script["result_path"], "r") as f:
+            with open(script["result_path"]) as f:
                 result = yaml.safe_load(f.read())
         except Exception:
             # Ignore errors reading the file so MAAS can report the error
@@ -1013,7 +1011,7 @@ def bmc_config(script, send_result=True):
     # Only upload BMC config once.
     if _bmc_config_uploaded or not send_result:
         return
-    with open(script["bmc_config_path"], "r") as f:
+    with open(script["bmc_config_path"]) as f:
         config = yaml.safe_load(f)
     power_type = config.pop("power_type")
     if not output_and_send(
@@ -1022,7 +1020,7 @@ def bmc_config(script, send_result=True):
         power_type=power_type,
         power_params=config,
         status="WORKING",
-        **script["args"]
+        **script["args"],
     ):
         # If output_and_send returns false the machine is being enlisted.
         # Create the machine object and get credentials.
@@ -1079,7 +1077,7 @@ def run_script(script, scripts_dir, send_result=True):
     except KeyError as e:
         # 2 is the return code bash gives when it can't execute.
         script["exit_status"] = args["exit_status"] = 2
-        output = "Unable to run '%s': %s\n\n" % (
+        output = "Unable to run '{}': {}\n\n".format(
             script["name"],
             str(e).replace('"', "").replace("\\n", "\n"),
         )
@@ -1102,7 +1100,7 @@ def run_script(script, scripts_dir, send_result=True):
         output_and_send(
             "Failed to execute %s: %d"
             % (script["msg_name"], args["exit_status"]),
-            **args
+            **args,
         )
         return False
 
@@ -1152,7 +1150,7 @@ def run_script(script, scripts_dir, send_result=True):
         script["result_sent"] = output_and_send(
             "Failed to execute %s: %d"
             % (script["msg_name"], args["exit_status"]),
-            **args
+            **args,
         )
         sys.stdout.write("%s\n" % stderr)
         sys.stdout.flush()
@@ -1177,7 +1175,7 @@ def run_script(script, scripts_dir, send_result=True):
         script["result_sent"] = output_and_send(
             "Timeout(%s) expired on %s"
             % (str(timedelta(seconds=timeout_seconds)), script["msg_name"]),
-            **args
+            **args,
         )
         return False
     else:
@@ -1212,8 +1210,8 @@ def run_script(script, scripts_dir, send_result=True):
                 args["files"][script["combined_name"]] += bmc_config_error
                 args["files"][script["stderr_name"]] += bmc_config_error
         script["result_sent"] = output_and_send(
-            "Finished %s: %s" % (script["msg_name"], args["exit_status"]),
-            **args
+            "Finished {}: {}".format(script["msg_name"], args["exit_status"]),
+            **args,
         )
         if script["exit_status"] != 0:
             return False
@@ -1238,7 +1236,7 @@ def send_unsent_results(scripts):
         unsent_script["result_sent"] = output_and_send(
             "Finished %s: %s"
             % (unsent_script["msg_name"], unsent_script["exit_status"]),
-            **args
+            **args,
         )
 
 
@@ -1372,12 +1370,12 @@ def add_push_data(script):
     if "script_result_id" in script:
         script["args"]["script_result_id"] = script["script_result_id"]
         # The pretty name of the script with id used for debug messages.
-        script["msg_name"] = "%s (id: %s" % (
+        script["msg_name"] = "{} (id: {}".format(
             script["name"],
             script["script_result_id"],
         )
         if "script_version_id" in script:
-            script["msg_name"] = "%s, script_version_id: %s)" % (
+            script["msg_name"] = "{}, script_version_id: {})".format(
                 script["msg_name"],
                 script["script_version_id"],
             )
@@ -1431,7 +1429,8 @@ def run_scripts(
         # multiple scripts with the same name may be run.
         if "script_result_id" in script:
             script_out_dir = os.path.join(
-                out_dir, "%s.%s" % (script["name"], script["script_result_id"])
+                out_dir,
+                "{}.{}".format(script["name"], script["script_result_id"]),
             )
         else:
             # Enlistment is running so no script_result_id is included. The id

@@ -301,16 +301,14 @@ class InterfaceSetDefaultGatwayForm(forms.Form):
     def _clean_ipv4_and_ipv6_gateways(self):
         """Sets error if the interface doesn't have only one IPv4 and one
         IPv6 gateway."""
-        unique_gateways = set(link.subnet.gateway_ip for link in self.links)
+        unique_gateways = {link.subnet.gateway_ip for link in self.links}
         gateway_versions = Counter(
             IPAddress(gateway).version for gateway in unique_gateways
         )
         too_many = sorted(
-            [
-                ip_family
-                for ip_family, count in gateway_versions.items()
-                if count > 1
-            ]
+            ip_family
+            for ip_family, count in gateway_versions.items()
+            if count > 1
         )
         if len(too_many) > 0:
             set_form_error(

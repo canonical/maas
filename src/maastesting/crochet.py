@@ -72,24 +72,24 @@ class EventualResultCatchingMixin:
                     if eventual_result._deferred is None:
                         message = [
                             "*** EventualResult has not fired:\n",
-                            "%r\n" % (eventual_result,),
+                            f"{eventual_result!r}\n",
                             "*** It was not connected to a Deferred.\n",
                         ]
                     else:
                         message = [
                             "*** EventualResult has not fired:\n",
-                            "%r\n" % (eventual_result,),
+                            f"{eventual_result!r}\n",
                             "*** It was connected to a Deferred:\n",
-                            "%r\n" % (eventual_result._deferred,),
+                            f"{eventual_result._deferred!r}\n",
                         ]
                 else:
                     # A result, but nothing has collected it. This can be
                     # caused by forgetting to call wait().
                     message = [
                         "*** EventualResult has fired:\n",
-                        "%r\n" % (eventual_result,),
+                        f"{eventual_result!r}\n",
                         "*** It contained the following result:\n",
-                        "%r\n" % (result,),
+                        f"{result!r}\n",
                         "*** but it was not collected.\n",
                         "*** Was result.wait() called?\n",
                     ]

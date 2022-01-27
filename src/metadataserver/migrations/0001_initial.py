@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-
 from django.db import migrations, models
 
 import maasserver.models.cleansave
@@ -134,6 +131,6 @@ class Migration(migrations.Migration):
             bases=(maasserver.models.cleansave.CleanSave, models.Model),
         ),
         migrations.AlterUniqueTogether(
-            name="noderesult", unique_together=set([("node", "name")])
+            name="noderesult", unique_together={("node", "name")}
         ),
     ]

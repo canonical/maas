@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from datetime import datetime
 
 # Need a copy of this enum as it existed pre-migration.
@@ -76,7 +74,7 @@ def migrate_static_ranges_to_admin_reserved(apps, schema_editor):
             subnet,
             reserved_ranges,
             created_time,
-            "%s-%s" % (static_range.start_ip, static_range.end_ip),
+            f"{static_range.start_ip}-{static_range.end_ip}",
         )
         subnet.iprange_set.filter(type=IPRANGE_TYPE.MANAGED_STATIC).delete()
 

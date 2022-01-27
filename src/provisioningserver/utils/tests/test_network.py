@@ -222,7 +222,7 @@ class TestFindIPViaARP(MAASTestCase):
     def test_returns_consistent_output(self):
         mac = factory.make_mac_address()
         ips = ["10.0.0.11", "10.0.0.99"]
-        lines = ["%s ether %s C eth0" % (ip, mac) for ip in ips]
+        lines = [f"{ip} ether {mac} C eth0" for ip in ips]
         self.patch_call("\n".join(lines))
         one_result = find_ip_via_arp(mac)
         self.patch_call("\n".join(reversed(lines)))
@@ -569,7 +569,7 @@ class TestCleanUpNetifacesAddress(MAASTestCase):
         interface = factory.make_name("eth")
         self.assertEqual(
             ip,
-            clean_up_netifaces_address("%s%%%s" % (ip, interface), interface),
+            clean_up_netifaces_address(f"{ip}%{interface}", interface),
         )
 
 
@@ -1760,9 +1760,7 @@ class TestGetAllInterfacesSubnets(MAASTestCase):
             network_module, "get_all_interfaces_definition"
         ).return_value = interface_definition
         self.assertEqual(
-            set(
-                [IPNetwork("192.168.122.1/24"), IPNetwork("192.168.123.1/24")]
-            ),
+            {IPNetwork("192.168.122.1/24"), IPNetwork("192.168.123.1/24")},
             get_all_interface_subnets(),
         )
 
@@ -1771,9 +1769,10 @@ class TestGetAllInterfacesSourceAddresses(MAASTestCase):
     """Tests for `get_all_interface_source_addresses()`."""
 
     def test_includes_unique_subnets(self):
-        interface_subnets = set(
-            [IPNetwork("192.168.122.1/24"), IPNetwork("192.168.123.1/24")]
-        )
+        interface_subnets = {
+            IPNetwork("192.168.122.1/24"),
+            IPNetwork("192.168.123.1/24"),
+        }
         self.patch(
             network_module, "get_all_interface_subnets"
         ).return_value = interface_subnets
@@ -1782,7 +1781,7 @@ class TestGetAllInterfacesSourceAddresses(MAASTestCase):
             None,
         ]
         self.assertEqual(
-            set(["192.168.122.1"]), get_all_interface_source_addresses()
+            {"192.168.122.1"}, get_all_interface_source_addresses()
         )
 
 

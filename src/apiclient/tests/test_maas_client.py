@@ -435,7 +435,7 @@ class TestMAASClient(APIClientTestCase):
         client.post(path, method)
         request = client.dispatcher.last_call
         self.assertEqual(
-            client._make_url(path) + "?op=%s" % (method,),
+            client._make_url(path) + f"?op={method}",
             request["request_url"],
         )
         self.assertIn("Authorization", request["headers"])
@@ -450,7 +450,7 @@ class TestMAASClient(APIClientTestCase):
         post, _ = self.parse_headers_and_body_with_django(
             request["headers"], request["data"]
         )
-        self.assertTrue(request["request_url"].endswith("?op=%s" % (method,)))
+        self.assertTrue(request["request_url"].endswith(f"?op={method}"))
         self.assertEqual({"parameter": [param]}, post)
 
     def test_post_as_json(self):
@@ -472,7 +472,7 @@ class TestMAASClient(APIClientTestCase):
         content = self.parse_headers_and_body_with_mimer(
             request["headers"], request["data"]
         )
-        self.assertTrue(request["request_url"].endswith("?op=%s" % (method,)))
+        self.assertTrue(request["request_url"].endswith(f"?op={method}"))
         self.assertEqual({"param": param, "list_param": list_param}, content)
 
     def test_post_without_op(self):

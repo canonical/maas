@@ -33,7 +33,7 @@ class TestNotificationManagerCreateMethods(MAASServerTestCase):
     """Tests for the `NotificationManager`'s create methods."""
 
     create_methods = tuple(
-        (category, target, "create_%s_for_%s" % (category.lower(), target))
+        (category, target, f"create_{category.lower()}_for_{target}")
         for category, target in itertools.product(
             ("error", "warning", "success", "info"),
             ("user", "users", "admins"),

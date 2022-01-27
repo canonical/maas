@@ -307,10 +307,8 @@ class RackProxy(RackOnlyExternalService):
     def _configure(self, configuration):
         """Update the proxy configuration for the rack."""
         peers = sorted(
-            [
-                "http://%s:%s" % (upstream, configuration.port)
-                for upstream in configuration.upstream_proxies
-            ]
+            f"http://{upstream}:{configuration.port}"
+            for upstream in configuration.upstream_proxies
         )
         proxy_config.write_config(
             configuration.allowed_cidrs,
@@ -569,7 +567,7 @@ def converter_obj(expected):
         if isinstance(value, expected):
             return value
         else:
-            raise TypeError("%r is not of type %s" % (value, expected))
+            raise TypeError(f"{value!r} is not of type {expected}")
 
     return converter
 

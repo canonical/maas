@@ -270,7 +270,7 @@ class DetectLeakedFileDescriptors(fixtures.Fixture):
         if len(fds_new) != 0:
             message = ["File descriptor(s) leaked:"]
             message.extend(
-                "* %s --> %s" % (fd, desc) for (fd, desc) in fds_new.items()
+                f"* {fd} --> {desc}" for (fd, desc) in fds_new.items()
             )
             raise AssertionError("\n".join(message))
 

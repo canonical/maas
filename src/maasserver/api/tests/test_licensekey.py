@@ -26,7 +26,7 @@ from provisioningserver.drivers.osystem.windows import REQUIRE_LICENSE_KEY
 def make_os(testcase):
     osystem = factory.make_name("osystem")
     release = random.choice(REQUIRE_LICENSE_KEY)
-    distro_series = "%s/%s" % (osystem, release)
+    distro_series = f"{osystem}/{release}"
     drv = WindowsOS()
     drv.title = osystem
     OperatingSystemRegistry.register_item(osystem, drv)
@@ -56,7 +56,7 @@ class TestLicenseKey(APITestCase.ForUser):
         osystem = factory.make_name("osystem")
         distro_series = factory.make_name("series")
         self.assertEqual(
-            "/MAAS/api/2.0/license-key/%s/%s" % (osystem, distro_series),
+            f"/MAAS/api/2.0/license-key/{osystem}/{distro_series}",
             self.get_url(osystem, distro_series),
         )
 
@@ -233,7 +233,7 @@ class TestLicenseKeysAPI(APITestCase.ForUser):
         osystem, release = make_os(self)
         self.patch_autospec(forms, "validate_license_key").return_value = True
         params = {
-            "distro_series": "%s/%s" % (osystem, release),
+            "distro_series": f"{osystem}/{release}",
             "license_key": factory.make_name("key"),
         }
         response = self.client.post(reverse("license_keys_handler"), params)

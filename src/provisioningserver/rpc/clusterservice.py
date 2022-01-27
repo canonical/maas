@@ -1384,7 +1384,7 @@ class ClusterClientService(TimerService):
         """Return the URLs to the RPC endpoint from the saved RPC state."""
         path = self._get_saved_rpc_info_path()
         try:
-            with open(path, "r") as stream:
+            with open(path) as stream:
                 return stream.read().splitlines()
         except OSError:
             return []

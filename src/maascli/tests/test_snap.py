@@ -251,7 +251,7 @@ class TestConfigHelpers(MAASTestCase):
         value = factory.make_name("value")
         config = {key: value}
         snap.print_config_value(config, key)
-        mock_print.assert_called_once_with("{}={}".format(key, value))
+        mock_print.assert_called_once_with(f"{key}={value}")
 
     def test_print_config_value_hidden(self):
         mock_print = self.patch(snap, "print_msg")
@@ -259,7 +259,7 @@ class TestConfigHelpers(MAASTestCase):
         value = factory.make_name("value")
         config = {key: value}
         snap.print_config_value(config, key, hidden=True)
-        mock_print.assert_called_once_with("{}=(hidden)".format(key))
+        mock_print.assert_called_once_with(f"{key}=(hidden)")
 
     def test_get_rpc_secret_returns_secret(self):
         secret = factory.make_string()

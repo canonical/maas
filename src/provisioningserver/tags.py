@@ -93,7 +93,7 @@ def post_updated_nodes(
     :param added: Set of nodes to add
     :param removed: Set of nodes to remove
     """
-    path = "/MAAS/api/2.0/tags/%s/" % (tag_name,)
+    path = f"/MAAS/api/2.0/tags/{tag_name}/"
     log.debug(
         "Updating nodes for {name}, adding {adding} removing {removing}",
         name=tag_name,

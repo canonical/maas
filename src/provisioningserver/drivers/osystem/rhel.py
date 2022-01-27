@@ -41,18 +41,18 @@ class RHELOS(OperatingSystem):
         if matched is None:
             # This should never happen as is_release_supported will return
             # false but just in case it does...
-            return "%s %s" % (self.title, release)
+            return f"{self.title} {release}"
 
         ret = self.title
         major = matched.group("major")
         minor = matched.group("minor")
         title = matched.group("title")
         if None not in (major, minor):
-            ret = "%s %s.%s" % (ret, major, minor)
+            ret = f"{ret} {major}.{minor}"
         elif major is not None:
-            ret = "%s %s" % (ret, major)
+            ret = f"{ret} {major}"
 
         if title is not None:
-            ret = "%s %s" % (ret, title)
+            ret = f"{ret} {title}"
 
         return ret

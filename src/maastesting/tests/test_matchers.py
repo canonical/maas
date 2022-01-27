@@ -437,7 +437,7 @@ class TestFileContains(MAASTestCase, MockTestMixin):
         matcher = FileContains(contents=contents, encoding="ascii")
         self.assertMismatch(
             matcher.match(filename),
-            "%r != %r" % (contents.decode("ascii"), contents),
+            "{!r} != {!r}".format(contents.decode("ascii"), contents),
         )
 
     def test_does_not_match_when_comparing_text_to_binary(self):
@@ -446,7 +446,7 @@ class TestFileContains(MAASTestCase, MockTestMixin):
         matcher = FileContains(contents=contents)
         self.assertMismatch(
             matcher.match(filename),
-            "%r != %r" % (contents.encode("ascii"), contents),
+            "{!r} != {!r}".format(contents.encode("ascii"), contents),
         )
 
     def test_compares_using_matcher_without_encoding(self):

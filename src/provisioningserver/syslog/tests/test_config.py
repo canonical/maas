@@ -56,7 +56,7 @@ class TestWriteConfig(MAASTestCase):
         for line in lines:
             if match in line:
                 return
-        self.fail("%s was not present in: %s" % (match, lines))
+        self.fail(f"{match} was not present in: {lines}")
 
     def test_packaging_maas_user_group_with_drop(self):
         config.write_config(False)
@@ -67,7 +67,7 @@ class TestWriteConfig(MAASTestCase):
             Contains("$PrivDropToGroup maas"),
         ]
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(matcher=MatchesAll(*matchers)),
         )
 
@@ -76,7 +76,7 @@ class TestWriteConfig(MAASTestCase):
         config.write_config(False)
         matchers = [Contains("$FileOwner root"), Contains("$FileGroup root")]
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(matcher=MatchesAll(*matchers)),
         )
 
@@ -85,7 +85,7 @@ class TestWriteConfig(MAASTestCase):
         matcher_one = Contains('input(type="imtcp" port="5247")')
         matcher_two = Contains('input(type="imudp" port="5247")')
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
         )
 
@@ -95,7 +95,7 @@ class TestWriteConfig(MAASTestCase):
         matcher_one = Contains('input(type="imtcp" port="%d")' % port)
         matcher_two = Contains('input(type="imudp" port="%d")' % port)
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
         )
 
@@ -104,7 +104,7 @@ class TestWriteConfig(MAASTestCase):
         config.write_config([cidr])
         matcher = Contains(':inputname, isequal, "imtcp" stop')
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(matcher=matcher),
         )
 
@@ -115,7 +115,7 @@ class TestWriteConfig(MAASTestCase):
         )
         matcher_two = Contains(':fromhost-ip, !isequal, "127.0.0.1" ?MAASboot')
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(matcher=MatchesAll(matcher_one, matcher_two)),
         )
 
@@ -130,7 +130,7 @@ class TestWriteConfig(MAASTestCase):
         # maas.log is still local when no write local.
         matcher_three = Contains(':syslogtag, contains, "maas"')
         self.assertThat(
-            "%s/%s" % (self.tmpdir, config.MAAS_SYSLOG_CONF_NAME),
+            f"{self.tmpdir}/{config.MAAS_SYSLOG_CONF_NAME}",
             FileContains(
                 matcher=MatchesAll(matcher_one, matcher_two, matcher_three)
             ),

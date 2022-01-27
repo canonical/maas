@@ -262,9 +262,9 @@ def list_boot_images(tftproot):
 def get_image_metadata(tftproot):
     meta_file_path = maas_meta_file_path(tftproot)
     try:
-        with open(meta_file_path, "r", encoding="utf-8") as f:
+        with open(meta_file_path, encoding="utf-8") as f:
             metadata = f.read()
-    except IOError as e:
+    except OSError as e:
         if e.errno != errno.ENOENT:
             # Unexpected error, propagate.
             raise

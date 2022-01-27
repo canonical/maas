@@ -142,7 +142,7 @@ class TestMachineAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         domain_name = Domain.objects.get_default_domain().name
         self.assertEqual(
-            "%s.%s" % (machine.hostname, domain_name), parsed_result["fqdn"]
+            f"{machine.hostname}.{domain_name}", parsed_result["fqdn"]
         )
         self.assertEqual(machine.system_id, parsed_result["system_id"])
 
@@ -369,7 +369,7 @@ class TestMachineAPI(APITestCase.ForUser):
         response = self.client.get(self.get_machine_uri(machine))
         parsed_result = json_load_bytes(response.content)
         self.assertEqual(
-            "%s - %s" % (type_description, message),
+            f"{type_description} - {message}",
             parsed_result["status_message"],
         )
 

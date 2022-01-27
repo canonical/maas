@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 # -*- coding: utf-8 -*-
 from django.db import migrations, models
 
@@ -51,6 +49,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="staticroute",
-            unique_together=set([("source", "destination", "gateway_ip")]),
+            unique_together={("source", "destination", "gateway_ip")},
         ),
     ]

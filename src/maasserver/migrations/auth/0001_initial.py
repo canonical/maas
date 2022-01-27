@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-
 from django.core import validators
 from django.db import migrations, models
 from django.utils import timezone
@@ -43,7 +40,7 @@ class Migration(migrations.Migration):
                     "content_type__model",
                     "codename",
                 ),
-                "unique_together": set([("content_type", "codename")]),
+                "unique_together": {("content_type", "codename")},
                 "verbose_name": "permission",
                 "verbose_name_plural": "permissions",
             },

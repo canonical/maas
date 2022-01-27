@@ -31,7 +31,7 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
-NAMESPEC = r"(%s.)*%s.?" % (LABEL, LABEL)
+NAMESPEC = fr"({LABEL}.)*{LABEL}.?"
 
 
 def validate_domain_name(value):
@@ -72,7 +72,7 @@ class DomainQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -309,7 +309,7 @@ class Domain(CleanSave, TimestampedModel):
                         continue
                     if not data.rrdata.endswith("."):
                         # Non-qualified NSRR, append the domain.
-                        fqdn = "%s.%s." % (data.rrdata, subdomain.name)
+                        fqdn = f"{data.rrdata}.{subdomain.name}."
                     elif not data.rrdata.endswith("%s." % subdomain.name):
                         continue
                     else:

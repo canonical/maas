@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.db import migrations, models
 
 import maasserver.models.cleansave
@@ -72,6 +70,6 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterUniqueTogether(
-            name="service", unique_together=set([("node", "name")])
+            name="service", unique_together={("node", "name")}
         ),
     ]

@@ -59,7 +59,7 @@ class KeySource(CleanSave, TimestampedModel):
         verbose_name = "Key Source"
 
     def __str__(self):
-        return "%s:%s" % (self.protocol, self.auth_id)
+        return f"{self.protocol}:{self.auth_id}"
 
     def import_keys(self, user):
         """Save SSH keys."""

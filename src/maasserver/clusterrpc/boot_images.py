@@ -246,7 +246,7 @@ class RackControllersImporter:
         if isinstance(sources, Sequence):
             self.sources = sources
         else:
-            raise TypeError("expected sequence, got: %r" % (sources,))
+            raise TypeError(f"expected sequence, got: {sources!r}")
         if proxy is None or isinstance(proxy, ParseResult):
             self.proxy = proxy
         else:

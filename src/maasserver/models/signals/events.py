@@ -46,7 +46,7 @@ def emit_state_transition_event(instance, old_values, **kwargs):
 
     type_name = EVENT_TYPES.NODE_CHANGED_STATUS
     event_details = EVENT_DETAILS[type_name]
-    description = "From '%s' to '%s'" % (
+    description = "From '{}' to '{}'".format(
         NODE_STATUS_CHOICES_DICT[old_status],
         NODE_STATUS_CHOICES_DICT[node.status],
     )

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.db import migrations, models
 
 # This is a copy/paste from maasserver/models/subnet.py; since migrations don't

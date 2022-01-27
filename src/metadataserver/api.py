@@ -240,7 +240,7 @@ def add_event_to_node_event_log(
         type_level=EVENT_DETAILS[type_name].level,
         type_description=EVENT_DETAILS[type_name].description,
         event_action=action,
-        event_description="'%s' %s" % (origin, description),
+        event_description=f"'{origin}' {description}",
         system_id=node.system_id,
         created=created,
     )
@@ -1303,7 +1303,7 @@ class MAASScriptsHandler(OperationsHandler):
                 # received. The script runner will append these files and send
                 # them back when done.
                 out_path = os.path.join(
-                    "out", "%s.%s" % (script_result.name, script_result.id)
+                    "out", f"{script_result.name}.{script_result.id}"
                 )
                 add_file_to_tar(tar, out_path, script_result.output, mtime)
                 add_file_to_tar(

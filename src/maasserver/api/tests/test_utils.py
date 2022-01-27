@@ -99,7 +99,7 @@ class TestGetOverridedQueryDict(MAASTestCase):
         }
         fields = {field_name: DictCharField(sub_fields)}
         defaults = {
-            "%s_%s" % (field_name, field): factory.make_name("subfield")
+            f"{field_name}_{field}": factory.make_name("subfield")
             for field in sub_fields.keys()
         }
         data = {field_name: DictCharField(fields)}

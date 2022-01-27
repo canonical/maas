@@ -281,9 +281,9 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             EnvironmentVariableFixture("prometheus_multiproc_dir", str(tmpdir))
         )
         pid = os.getpid()
-        file1 = tmpdir / "histogram_{}.db".format(pid)
+        file1 = tmpdir / f"histogram_{pid}.db"
         file1.touch()
-        file2 = tmpdir / "histogram_{}.db".format(self.get_unused_pid())
+        file2 = tmpdir / f"histogram_{self.get_unused_pid()}.db"
         file2.touch()
 
         service_maker = RegionMasterServiceMaker("Harry", "Hill")

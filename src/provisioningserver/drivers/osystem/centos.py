@@ -42,7 +42,7 @@ class CentOS(OperatingSystem):
         if matched is None:
             # This should never happen as is_release_supported will return
             # false but just in case it does...
-            return "%s %s" % (self.title, release)
+            return f"{self.title} {release}"
 
         ret = self.title
         major = matched.group("major")
@@ -61,13 +61,13 @@ class CentOS(OperatingSystem):
         # we publish. As such, we ensure that we only return minor
         # if we have any other version other that X.0, 7.0 and 6.6.
         if major is not None and minor is None or minor == "0":
-            ret = "%s %s" % (ret, major)
+            ret = f"{ret} {major}"
         elif major == "6" and minor == "6":
-            ret = "%s %s" % (ret, major)
+            ret = f"{ret} {major}"
         elif None not in (major, minor):
-            ret = "%s %s.%s" % (ret, major, minor)
+            ret = f"{ret} {major}.{minor}"
 
         if title is not None:
-            ret = "%s %s" % (ret, title)
+            ret = f"{ret} {title}"
 
         return ret

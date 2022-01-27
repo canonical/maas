@@ -60,19 +60,19 @@ def used_for(model):
     filesystem = get_effective_filesystem(model)
     if filesystem is not None:
         if filesystem.is_mounted:
-            return "%s formatted filesystem mounted at %s" % (
+            return "{} formatted filesystem mounted at {}".format(
                 filesystem.fstype,
                 filesystem.mount_point,
             )
         elif filesystem.fstype == FILESYSTEM_TYPE.LVM_PV:
             return "LVM volume for %s" % filesystem.filesystem_group.name
         elif filesystem.fstype == FILESYSTEM_TYPE.RAID:
-            return "Active %s device for %s" % (
+            return "Active {} device for {}".format(
                 filesystem.filesystem_group.group_type,
                 filesystem.filesystem_group.name,
             )
         elif filesystem.fstype == FILESYSTEM_TYPE.RAID_SPARE:
-            return "Spare %s device for %s" % (
+            return "Spare {} device for {}".format(
                 filesystem.filesystem_group.group_type,
                 filesystem.filesystem_group.name,
             )

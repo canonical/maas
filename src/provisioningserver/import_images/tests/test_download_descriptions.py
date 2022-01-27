@@ -94,7 +94,7 @@ class TestValidateProduct(MAASTestCase):
             },
         ]
         for bootloader in acceptable_bootloaders:
-            product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
+            product_name = "com.ubuntu.maas.daily:1:{}:{}:{}".format(
                 bootloader["os"],
                 bootloader["bootloader-type"],
                 bootloader["arch"],
@@ -120,7 +120,7 @@ class TestValidateProduct(MAASTestCase):
             "arch": factory.make_name("arch"),
             "bootloader-type": factory.make_name("bootloader_type"),
         }
-        product_name = "com.ubuntu.maas.daily:1:%s:%s:%s" % (
+        product_name = "com.ubuntu.maas.daily:1:{}:{}:{}".format(
             bootloader["os"],
             bootloader["bootloader-type"],
             bootloader["arch"],

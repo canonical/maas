@@ -160,7 +160,7 @@ def make_hwe_kernel_ui_text(hwe_kernel):
     if ubuntu_release is None:
         return hwe_kernel
     else:
-        return "%s (%s)" % (ubuntu_release["series"], hwe_kernel)
+        return "{} ({})".format(ubuntu_release["series"], hwe_kernel)
 
 
 def list_hwe_kernel_choices(hwe_kernels):
@@ -225,7 +225,10 @@ def list_release_choices(
                 # missing.
                 title = release["name"]
             choices.append(
-                ("%s/%s%s" % (os_name, release["name"], requires_key), title)
+                (
+                    "{}/{}{}".format(os_name, release["name"], requires_key),
+                    title,
+                )
             )
     return choices
 
@@ -271,7 +274,7 @@ def get_distro_series_initial(osystems, instance, with_key_required=True):
     if osystem_name is not None and osystem_name != "":
         if series is None:
             series = ""
-        return "%s/%s%s" % (osystem_name, series, key_required)
+        return f"{osystem_name}/{series}{key_required}"
     return None
 
 
@@ -566,7 +569,7 @@ def validate_hwe_kernel(
             )
         if not release_a_newer_than_b(hwe_kernel, distro_series):
             raise ValidationError(
-                "%s is too old to use on %s." % (hwe_kernel, os_release)
+                f"{hwe_kernel} is too old to use on {os_release}."
             )
         if (min_hwe_kernel and validate_kernel_str(min_hwe_kernel)) and (
             not release_a_newer_than_b(hwe_kernel, min_hwe_kernel)

@@ -199,7 +199,7 @@ class TestRedfishPowerDriver(MAASTestCase):
     def test_make_auth_headers(self):
         power_user = factory.make_name("power_user")
         power_pass = factory.make_name("power_pass")
-        creds = "%s:%s" % (power_user, power_pass)
+        creds = f"{power_user}:{power_pass}"
         authorization = b64encode(creds.encode("utf-8"))
         attributes = {
             b"User-Agent": [b"MAAS"],
@@ -389,7 +389,7 @@ class TestRedfishPowerDriver(MAASTestCase):
             mock_agent.return_value.request,
             MockCallsMatch(
                 call(b"GET", uri, headers, None),
-                call(b"GET", uri + "/".encode("utf-8"), headers, None),
+                call(b"GET", uri + b"/", headers, None),
             ),
         )
         self.assertEqual(expected_response, response)
@@ -411,9 +411,7 @@ class TestRedfishPowerDriver(MAASTestCase):
             expected_headers
         )
         mock_readBody = self.patch(redfish_module, "readBody")
-        mock_readBody.return_value = succeed(
-            '{"invalid": "json"'.encode("utf-8")
-        )
+        mock_readBody.return_value = succeed(b'{"invalid": "json"')
         with ExpectedException(PowerActionError):
             yield driver.redfish_request(b"GET", uri, headers)
 

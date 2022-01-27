@@ -705,7 +705,7 @@ class TestAPIAnnotations(APITestCase.ForUser):
         """
         ds = self.sample_api_annotated_docstring
         template = APITemplateRenderer()
-        template_path = "%s/../%s" % (
+        template_path = "{}/../{}".format(
             os.path.dirname(__file__),
             self.api_tempita_template,
         )

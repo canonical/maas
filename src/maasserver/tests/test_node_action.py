@@ -763,7 +763,7 @@ class TestDeployAction(MAASServerTestCase):
             NodeActionError, Deploy(node, user, request).execute, **extra
         )
         self.assertEqual(
-            "{} is not a supported operating system.".format(os_name),
+            f"{os_name} is not a supported operating system.",
             str(error),
         )
 
@@ -1017,7 +1017,7 @@ class TestSetZoneAction(MAASServerTestCase):
         audit_event = Event.objects.get(type__level=AUDIT)
         self.assertEqual(
             audit_event.description,
-            "Set the zone to '%s' on '%s'." % (node.zone.name, node.hostname),
+            f"Set the zone to '{node.zone.name}' on '{node.hostname}'.",
         )
 
     def test_is_acionable_true_for_owned_device(self):

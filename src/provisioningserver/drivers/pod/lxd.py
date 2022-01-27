@@ -542,9 +542,9 @@ class LXDPodDriver(PodDriver):
             raise LXDPodError("No host network to attach VM interfaces to")
 
         nics = {}
-        ifnames = set(
+        ifnames = {
             iface.ifname for iface in request.interfaces if iface.ifname
-        )
+        }
         ifindex = 0
         for idx, interface in enumerate(request.interfaces):
             ifname = interface.ifname

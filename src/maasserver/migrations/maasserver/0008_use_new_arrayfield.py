@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import django.contrib.postgres.fields
 from django.db import migrations, models
 

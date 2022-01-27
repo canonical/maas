@@ -461,7 +461,7 @@ def _process_pcie_devices(add_func, data):
 
 def _process_usb_devices(add_func, data):
     for device in data.get("usb", {}).get("devices", []):
-        usb_address = "%s:%s" % (
+        usb_address = "{}:{}".format(
             device["bus_address"],
             device["device_address"],
         )
@@ -471,13 +471,11 @@ def _process_usb_devices(add_func, data):
         # USB devices can have different drivers for each
         # functionality. e.g a webcam has a video and audio driver.
         commissioning_driver = ", ".join(
-            set(
-                [
-                    interface["driver"]
-                    for interface in interfaces
-                    if "driver" in interface
-                ]
-            )
+            {
+                interface["driver"]
+                for interface in interfaces
+                if "driver" in interface
+            }
         )
         add_func(
             NODE_DEVICE_BUS.USB, device, usb_address, key, commissioning_driver
@@ -1110,9 +1108,7 @@ def get_dmi_data(modaliases):
     """
     for modalias in modaliases:
         if modalias.startswith("dmi:"):
-            return frozenset(
-                [data for data in modalias.split(":")[1:] if data]
-            )
+            return frozenset(data for data in modalias.split(":")[1:] if data)
     return frozenset()
 
 

@@ -35,7 +35,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
             osystem_title = osystem + "_title"
         if release is None:
             release = random.choice(REQUIRE_LICENSE_KEY)
-        distro_series = "%s/%s" % (osystem, release)
+        distro_series = f"{osystem}/{release}"
         drv = WindowsOS()
         drv.title = osystem_title
         if osystem not in OperatingSystemRegistry:
@@ -61,7 +61,9 @@ class TestLicenseKeyForm(MAASServerTestCase):
             "license_key": key,
         }
         data = definition.copy()
-        data["distro_series"] = "%s/%s" % (osystem["name"], release["name"])
+        data["distro_series"] = "{}/{}".format(
+            osystem["name"], release["name"]
+        )
         form = LicenseKeyForm(data=data)
         form.save()
         license_key_obj = LicenseKey.objects.get(
@@ -118,7 +120,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
         )
         definition = {
             "osystem": osystem["name"],
-            "distro_series": "%s/%s" % (osystem["name"], release["name"]),
+            "distro_series": "{}/{}".format(osystem["name"], release["name"]),
             "license_key": key,
         }
         form = LicenseKeyForm(data=definition)
@@ -174,7 +176,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
         ]
         factory.make_BootResource()
         choices = [
-            ("%s/%s" % (osystem, release["name"]), release["title"])
+            ("{}/{}".format(osystem, release["name"]), release["title"])
             for release in releases
         ]
         form = LicenseKeyForm()

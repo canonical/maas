@@ -68,7 +68,7 @@ class TestCommands(MAASServerTestCase):
         stdout = StringIO()
         username = factory.make_name("user")
         password = factory.make_string()
-        ssh_import = "%s:%s" % (
+        ssh_import = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
@@ -96,7 +96,7 @@ class TestCommands(MAASServerTestCase):
         stderr = StringIO()
         stdout = StringIO()
         username = factory.make_name("user")
-        ssh_import = "%s:%s" % (
+        ssh_import = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
@@ -125,7 +125,7 @@ class TestCommands(MAASServerTestCase):
         username = factory.make_name("user")
         password = factory.make_string()
         email = factory.make_email_address()
-        ssh_import = "%s:%s" % (
+        ssh_import = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
@@ -152,7 +152,7 @@ class TestCommands(MAASServerTestCase):
         username = factory.make_name("user")
         password = factory.make_string()
         email = factory.make_email_address()
-        ssh_import = "%s:%s" % (
+        ssh_import = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
@@ -198,7 +198,7 @@ class TestCommands(MAASServerTestCase):
         username = factory.make_name("user")
         password = factory.make_string()
         email = factory.make_email_address()
-        ssh_import = "%s:%s" % (
+        ssh_import = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
@@ -231,7 +231,7 @@ class TestCommands(MAASServerTestCase):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         user_id = factory.make_name("user-id")
-        ssh_import = "%s:%s" % (protocol, user_id)
+        ssh_import = f"{protocol}:{user_id}"
         key_string = get_data("data/test_rsa0.pub")
         mock_get_protocol_keys = self.patch(
             keysource_module, "get_protocol_keys"
@@ -262,7 +262,7 @@ class TestCommands(MAASServerTestCase):
         username = factory.make_string()
         password = factory.make_string()
         email = "%s@example.com" % factory.make_string()
-        ssh_import = "%s:%s" % (
+        ssh_import = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
@@ -319,7 +319,7 @@ class TestCommands(MAASServerTestCase):
         self.assertRaises(createadmin.EmptyEmail, createadmin.prompt_for_email)
 
     def test_prompt_for_ssh_import_returns_selected_creds(self):
-        ssh_import = "%s:%s" % (
+        ssh_import = "{}:{}".format(
             random.choice([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]),
             factory.make_name("user-id"),
         )
@@ -336,7 +336,7 @@ class TestCommands(MAASServerTestCase):
             [KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]
         )
         user_id = factory.make_name("user-id")
-        ssh_import = "%s:%s" % (protocol, user_id)
+        ssh_import = f"{protocol}:{user_id}"
         self.assertEqual(
             (protocol, user_id), createadmin.validate_ssh_import(ssh_import)
         )
@@ -386,7 +386,7 @@ class TestChangePasswords(MAASServerTestCase):
         user = factory.make_User(username=username, password=password)
         self.assertTrue(user.check_password(password))
         newpass = factory.make_string(size=16, spaces=True, prefix="newpass")
-        stdin = io.StringIO("%s:%s" % (username, newpass))
+        stdin = io.StringIO(f"{username}:{newpass}")
         self.patch(changepasswords, "fileinput").return_value = stdin
         call_command("changepasswords")
         self.assertTrue(reload_object(user).check_password(newpass))
@@ -399,7 +399,7 @@ class TestChangePasswords(MAASServerTestCase):
             user = factory.make_User(username=username)
             newpass = factory.make_string(spaces=True, prefix="newpass")
             users_passwords.append((user, newpass))
-            stringio.write("%s:%s\n" % (username, newpass))
+            stringio.write(f"{username}:{newpass}\n")
         stringio.seek(0)
         self.patch(changepasswords, "fileinput").return_value = stringio
         call_command("changepasswords")

@@ -78,7 +78,7 @@ def converter_obj(expected, optional=False):
         elif isinstance(value, dict):
             return expected(**value)
         else:
-            raise TypeError("%r is not of type %s or dict" % (value, expected))
+            raise TypeError(f"{value!r} is not of type {expected} or dict")
 
     return converter
 

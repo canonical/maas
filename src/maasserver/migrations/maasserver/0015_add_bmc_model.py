@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -67,8 +65,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="bmc",
-            unique_together=set(
-                [("power_type", "power_parameters", "ip_address")]
-            ),
+            unique_together={("power_type", "power_parameters", "ip_address")},
         ),
     ]

@@ -1,11 +1,10 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-""" DHCP probing service."""
+"""DHCP probing service."""
 
 
 from datetime import timedelta
-import socket
 
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks, maybeDeferred
@@ -127,7 +126,7 @@ class DHCPProbeService(TimerService):
         for interface in interfaces:
             try:
                 servers = yield maybeDeferred(probe_interface, interface)
-            except socket.error as e:
+            except OSError as e:
                 error = (
                     "Failed to probe for external DHCP servers on interface "
                     "'%s'." % interface

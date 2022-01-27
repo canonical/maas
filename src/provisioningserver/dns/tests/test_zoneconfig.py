@@ -41,7 +41,7 @@ class HostnameIPMapping:
         self.ips = ips.copy()
 
     def __repr__(self):
-        return "HostnameIPMapping(%r, %r, %r, %r)" % (
+        return "HostnameIPMapping({!r}, {!r}, {!r}, {!r})".format(
             self.system_id,
             self.ttl,
             self.ips,
@@ -62,7 +62,7 @@ class HostnameRRsetMapping:
         self.rrset = rrset.copy()
 
     def __repr__(self):
-        return "HostnameRRSetMapping(%r, %r, %r)" % (
+        return "HostnameRRSetMapping({!r}, {!r}, {!r})".format(
             self.system_id,
             self.rrset,
             self.node_type,
@@ -562,9 +562,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                 dns_zone_config = DNSReverseZoneConfig(
                     domain, network=network, exclude=other_subnets
                 )
-                zone_names = set(
-                    [z.zone_name for z in dns_zone_config.zone_info]
-                )
+                zone_names = {z.zone_name for z in dns_zone_config.zone_info}
                 for exclude in expected[idx].get("excludes", []):
                     self.assertFalse(exclude in zone_names)
                 for include in expected[idx].get("includes", []):
@@ -581,12 +579,12 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             (
                 IPAddress(ip).reverse_dns.split(".")[0],
                 30,
-                "%s.%s." % (hostname, name),
+                f"{hostname}.{name}.",
             )
             for hostname, ip in hosts.items()
         ]
         mapping = {
-            "%s.%s" % (hostname, name): HostnameIPMapping(None, 30, {ip})
+            f"{hostname}.{name}": HostnameIPMapping(None, 30, {ip})
             for hostname, ip in hosts.items()
         }
         self.assertCountEqual(
@@ -604,12 +602,12 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             (
                 IPAddress(ip).reverse_dns.split(".")[0],
                 30,
-                "%s.%s." % (hostname, name),
+                f"{hostname}.{name}.",
             )
             for hostname, ip in in_network_mapping.items()
         ]
         mapping = {
-            "%s.%s" % (hostname, name): HostnameIPMapping(None, 30, [ip])
+            f"{hostname}.{name}": HostnameIPMapping(None, 30, [ip])
             for hostname, ip in in_network_mapping.items()
         }
         extra_mapping = {
@@ -790,7 +788,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
             directives_needed = 1
         for num in range(directives_needed):
             expected_address_base = "%s-%s" % tuple(relevant_ip_parts)
-            expected_address = "%s-%s-$" % (
+            expected_address = "{}-{}-$".format(
                 expected_address_base,
                 num + second_octet_offset,
             )
@@ -799,7 +797,7 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
                 relevant_ip_parts
             )
             if network.size >= 256:
-                expected_rdns_template = "$.%s.%s" % (
+                expected_rdns_template = "$.{}.{}".format(
                     num + second_octet_offset,
                     expected_rdns_base,
                 )
@@ -807,9 +805,9 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
                 expected_rdns_template = "$"
             expected_generate_directives.append(
                 (
-                    "%s-%s" % (iterator_low, iterator_high),
+                    f"{iterator_low}-{iterator_high}",
                     expected_rdns_template,
-                    "%s.%s." % (expected_address, domain),
+                    f"{expected_address}.{domain}.",
                 )
             )
             relevant_ip_parts.reverse()
@@ -962,7 +960,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
             iterator_low = 0
             iterator_high = 255
 
-        expected_iterator_values = "%s-%s" % (iterator_low, iterator_high)
+        expected_iterator_values = f"{iterator_low}-{iterator_high}"
 
         directives_needed = network.size // 256
         if directives_needed == 0:
@@ -1006,9 +1004,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         # DNSForwardZoneConfig.get_GENERATE_directives() will return
         # one GENERATE directive for every 255 addresses in the network.
         for prefixlen in range(23, 16):
-            network = IPNetwork(
-                "%s/%s" % (factory.make_ipv4_address(), prefixlen)
-            )
+            network = IPNetwork(f"{factory.make_ipv4_address()}/{prefixlen}")
             directives = DNSForwardZoneConfig.get_GENERATE_directives(network)
             self.assertIsEqual(network.size / 256, len(directives))
 

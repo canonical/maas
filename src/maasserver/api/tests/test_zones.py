@@ -86,6 +86,6 @@ class TestZonesAPI(APITestCase.ForUser):
         )
         # Sorting is case-insensitive.
         self.assertEqual(
-            sorted([zone.name for zone in zones], key=lambda s: s.lower()),
+            sorted((zone.name for zone in zones), key=lambda s: s.lower()),
             [zone.get("name") for zone in parsed_result],
         )

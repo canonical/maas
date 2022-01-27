@@ -59,7 +59,7 @@ class DLIPowerDriver(PowerDriver):
     ):
         """Power DLI outlet ON/OFF."""
         try:
-            url = "http://%s:%s@%s/outlet?%s=%s" % (
+            url = "http://{}:{}@{}/outlet?{}={}".format(
                 power_user,
                 power_pass,
                 power_address,
@@ -104,7 +104,7 @@ class DLIPowerDriver(PowerDriver):
         ...
         """
         try:
-            url = "http://%s:%s@%s/index.htm" % (
+            url = "http://{}:{}@{}/index.htm".format(
                 power_user,
                 power_pass,
                 power_address,

@@ -326,13 +326,11 @@ class NodeHandler(TimestampedModelHandler):
                 "%s" % mac_address for mac_address in obj.get_extra_macs()
             )
             data["link_speeds"] = sorted(
-                set(
-                    [
-                        interface.link_speed
-                        for interface in obj.interface_set.all()
-                        if interface.link_speed > 0
-                    ]
-                )
+                {
+                    interface.link_speed
+                    for interface in obj.interface_set.all()
+                    if interface.link_speed > 0
+                }
             )
 
         if not for_list:
@@ -650,7 +648,7 @@ class NodeHandler(TimestampedModelHandler):
         used_size = device.get_used_size()
         available_size = device.get_available_size()
         bcache_devices = sorted(
-            [bcache.name for bcache in cache_set.filesystemgroup_set.all()]
+            bcache.name for bcache in cache_set.filesystemgroup_set.all()
         )
         return {
             "id": cache_set.id,

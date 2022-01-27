@@ -45,7 +45,7 @@ class TestCommissioningFormForm(MAASServerTestCase):
         factory.make_BootSourceCache(os=name, subarch=kernel, release=release)
         factory.make_usable_boot_resource(
             name=name,
-            architecture="%s/%s" % (arch, kernel),
+            architecture=f"{arch}/{kernel}",
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
         )
         Config.objects.set_config("commissioning_distro_series", release)
@@ -53,7 +53,7 @@ class TestCommissioningFormForm(MAASServerTestCase):
         self.assertCountEqual(
             [
                 ("", "--- No minimum kernel ---"),
-                (kernel, "%s (%s)" % (release, kernel)),
+                (kernel, f"{release} ({kernel})"),
             ],
             form.fields["default_min_hwe_kernel"].choices,
         )

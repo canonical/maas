@@ -68,10 +68,7 @@ class Credentials:
     def __repr__(self):
         return "{name}({keys})".format(
             name=self.__class__.__name__,
-            keys=", ".join(
-                "{key}={value}".format(key=key, value=getattr(self, key))
-                for key in self.KEYS
-            ),
+            keys=", ".join(f"{key}={getattr(self, key)}" for key in self.KEYS),
         )
 
     @classmethod

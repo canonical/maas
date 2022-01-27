@@ -180,7 +180,7 @@ class TestGeneratingDocs(MAASTestCase):
         resources = [self.make_resource() for _ in range(5)]
         docs = list(generate_api_docs(resources))
         sorted_handlers = sorted(
-            [type(resource.handler) for resource in resources],
+            (type(resource.handler) for resource in resources),
             key=lambda handler_class: handler_class.__name__,
         )
         self.assertEqual(sorted_handlers, [doc.handler for doc in docs])
@@ -552,7 +552,7 @@ class TestDescribeCanonical(MAASTestCase):
         self.expectThat(_describe_canonical({1: 2}), Equals(((1, 2),)))
 
     def test_recursively_calls_mapping_keys_and_values(self):
-        mapping = {"key\u1234".encode("utf-8"): ["b", "a", "r"]}
+        mapping = {"key\u1234".encode(): ["b", "a", "r"]}
         expected = (("key\u1234", ("a", "b", "r")),)
         self.expectThat(_describe_canonical(mapping), Equals(expected))
 

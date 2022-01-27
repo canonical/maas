@@ -54,7 +54,7 @@ class TestHumanReadableBytes(MAASTestCase):
 
     def test_returns_size_with_suffix(self):
         self.assertEqual(
-            "%s %s" % (self.output, self.suffix),
+            f"{self.output} {self.suffix}",
             human_readable_bytes(self.size),
         )
 

@@ -480,8 +480,7 @@ class FakeARP:
         self.vid = vid
 
     def bindings(self):
-        for binding in self.mock_bindings:
-            yield binding
+        yield from self.mock_bindings
 
 
 class TestUpdateAndPrintBindings(MAASTestCase):

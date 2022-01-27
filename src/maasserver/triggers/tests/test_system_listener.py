@@ -4036,7 +4036,7 @@ class TestDNSStaticIPAddressListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("ip %s changed to %s" % (old_ip, new_ip)),
+            Equals(f"ip {old_ip} changed to {new_ip}"),
         )
 
     @wait_for_reactor
@@ -4226,7 +4226,7 @@ class TestDNSDNSResourceListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("zone %s added resource %s" % (domain.name, resource.name)),
+            Equals(f"zone {domain.name} added resource {resource.name}"),
         )
 
     @wait_for_reactor
@@ -4253,7 +4253,7 @@ class TestDNSDNSResourceListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("zone %s updated resource %s" % (domain.name, new_name)),
+            Equals(f"zone {domain.name} updated resource {new_name}"),
         )
 
     @wait_for_reactor
@@ -4323,9 +4323,7 @@ class TestDNSDNSResourceListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals(
-                "zone %s removed resource %s" % (domain.name, resource.name)
-            ),
+            Equals(f"zone {domain.name} removed resource {resource.name}"),
         )
 
 
@@ -4567,7 +4565,7 @@ class TestDNSSubnetListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("subnet %s changed to %s" % (cidr_old, cidr_new)),
+            Equals(f"subnet {cidr_old} changed to {cidr_new}"),
         )
 
     @wait_for_reactor
@@ -4592,7 +4590,7 @@ class TestDNSSubnetListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals("subnet %s rdns changed to %s" % (subnet.cidr, rdns_new)),
+            Equals(f"subnet {subnet.cidr} rdns changed to {rdns_new}"),
         )
 
     @wait_for_reactor
@@ -4663,9 +4661,7 @@ class TestDNSNodeListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals(
-                "node %s changed hostname to %s" % (hostname_old, hostname_new)
-            ),
+            Equals(f"node {hostname_old} changed hostname to {hostname_new}"),
         )
 
     @wait_for_reactor
@@ -4689,9 +4685,7 @@ class TestDNSNodeListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals(
-                "node %s changed zone to %s" % (node.hostname, domain.name)
-            ),
+            Equals(f"node {node.hostname} changed zone to {domain.name}"),
         )
 
     @wait_for_reactor
@@ -4807,9 +4801,7 @@ class TestDNSInterfaceListener(
             yield listener.stopService()
         self.assertThat(
             self.getCapturedPublication().source,
-            Equals(
-                "node %s added interface %s" % (node.hostname, interface.name)
-            ),
+            Equals(f"node {node.hostname} added interface {interface.name}"),
         )
 
     @wait_for_reactor
@@ -4870,8 +4862,8 @@ class TestDNSInterfaceListener(
             self.assertEqual(
                 list(sources),
                 [
-                    "node %s removed interface %s" % (old_hostname, nic_name),
-                    "node %s added interface %s" % (new_hostname, nic_name),
+                    f"node {old_hostname} removed interface {nic_name}",
+                    f"node {new_hostname} added interface {nic_name}",
                 ],
             )
 
@@ -5545,7 +5537,7 @@ class TestRBACResourcePoolListener(
         change = self.getCapturedSynced()
         self.assertThat(
             change.source,
-            Equals("renamed resource pool %s to %s" % (pool.name, pool_name)),
+            Equals(f"renamed resource pool {pool.name} to {pool_name}"),
         )
         self.assertThat(change.action, Equals("update"))
         self.assertThat(change.resource_type, Equals("resource-pool"))

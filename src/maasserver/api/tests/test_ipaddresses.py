@@ -511,7 +511,7 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
         # The api doesn't autocreate the domain, so create one now.
         domain = factory.make_Domain()
         hostname = factory.make_name("host")
-        fqdn = "%s.%s" % (hostname, domain.name)
+        fqdn = f"{hostname}.{domain.name}"
         subnet = factory.make_Subnet()
         response = self.post_reservation_request(subnet, hostname=fqdn)
         self.assertEqual(http.client.OK, response.status_code)
@@ -635,7 +635,7 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
         subnet = factory.make_Subnet()
         hostname = factory.make_hostname()
         domainname = factory.make_name("domain")
-        fqdn = "%s.%s" % (hostname, domainname)
+        fqdn = f"{hostname}.{domainname}"
         response = self.post_reservation_request(subnet=subnet, hostname=fqdn)
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
 
@@ -677,9 +677,9 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
         subnet = factory.make_Subnet()
         hostname = factory.make_hostname()
         domainname = factory.make_Domain().name
-        fqdn = "%s.%s" % (hostname, domainname)
+        fqdn = f"{hostname}.{domainname}"
         response = self.post_reservation_request(
-            subnet=subnet, hostname="%s.%s" % (hostname, domainname)
+            subnet=subnet, hostname=f"{hostname}.{domainname}"
         )
         self.assertEqual(http.client.OK, response.status_code)
         [staticipaddress] = StaticIPAddress.objects.all()
@@ -694,12 +694,12 @@ class TestIPAddressesReserveAPI(APITransactionTestCase.ForUser):
         subnet = factory.make_Subnet()
         hostname = factory.make_hostname()
         domainname = factory.make_Domain().name
-        fqdn = "%s.%s" % (hostname, domainname)
+        fqdn = f"{hostname}.{domainname}"
         ip_in_network = factory.pick_ip_in_Subnet(subnet)
         response = self.post_reservation_request(
             subnet=subnet,
             ip_address=ip_in_network,
-            hostname="%s.%s" % (hostname, domainname),
+            hostname=f"{hostname}.{domainname}",
         )
         self.assertEqual(
             http.client.OK, response.status_code, response.content

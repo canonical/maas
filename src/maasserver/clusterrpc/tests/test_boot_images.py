@@ -322,8 +322,8 @@ class TestGetBootImagesFor(MAASTransactionServerTestCase):
         param = params.pop()
 
         subarches = [factory.make_name("subarch") for _ in range(3)]
-        resource_name = "%s/%s" % (param["osystem"], param["release"])
-        resource_arch = "%s/%s" % (
+        resource_name = "{}/{}".format(param["osystem"], param["release"])
+        resource_arch = "{}/{}".format(
             param["architecture"],
             param["subarchitecture"],
         )

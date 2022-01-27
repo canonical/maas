@@ -37,7 +37,7 @@ class TestForm(Form):
             choices.append((bd.name, bd.name))
             choices.append((bd.model, bd.model))
             choices.append((bd.serial, bd.serial))
-            model_serial = "%s:%s" % (bd.model, bd.serial)
+            model_serial = f"{bd.model}:{bd.serial}"
             choices.append((model_serial, model_serial))
             for tag in bd.tags:
                 choices.append((tag, tag))
@@ -54,7 +54,7 @@ class TestForm(Form):
             choices.append((mac, mac))
             choices.append((interface.vendor, interface.vendor))
             choices.append((interface.product, interface.product))
-            vendor_product = "%s:%s" % (interface.vendor, interface.product)
+            vendor_product = f"{interface.vendor}:{interface.product}"
             choices.append((vendor_product, vendor_product))
             for tag in interface.tags:
                 choices.append((tag, tag))
@@ -66,7 +66,7 @@ class TestForm(Form):
         for script in scripts:
             for pname, value in script.parameters.items():
                 ptype = value.get("type")
-                combined_name = "%s_%s" % (script.name, pname)
+                combined_name = f"{script.name}_{pname}"
                 if ptype == "storage":
                     if storage_choices is None:
                         storage_choices = self._get_storage_choices()

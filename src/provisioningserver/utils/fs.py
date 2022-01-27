@@ -129,7 +129,7 @@ def atomic_write(content, filename, overwrite=True, mode=0o600):
     :param mode: Access permissions for the file, if written.
     """
     if not isinstance(content, bytes):
-        raise TypeError("Content must be bytes, got: %r" % (content,))
+        raise TypeError(f"Content must be bytes, got: {content!r}")
 
     temp_file = _write_temp_file(content, filename)
     os.chmod(temp_file, mode)
@@ -312,7 +312,7 @@ def sudo_write_file(filename, contents, mode=0o644):
     from provisioningserver.config import is_dev_environment
 
     if not isinstance(contents, bytes):
-        raise TypeError("Content must be bytes, got: %r" % (contents,))
+        raise TypeError(f"Content must be bytes, got: {contents!r}")
     if snap.running_in_snap():
         atomic_write(contents, filename, mode=mode)
     else:

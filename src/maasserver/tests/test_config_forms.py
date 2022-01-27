@@ -241,9 +241,7 @@ class TestDictCharWidget(MAASServerTestCase):
         widget_names = XPath("fieldset/input/@name")(html_widget)
         widget_labels = XPath("fieldset/label/text()")(html_widget)
         widget_values = XPath("fieldset/input/@value")(html_widget)
-        expected_names = [
-            "%s_%s" % (name, widget_name) for widget_name in names
-        ]
+        expected_names = [f"{name}_{widget_name}" for widget_name in names]
         self.assertEqual(
             [expected_names, labels, values],
             [widget_names, widget_labels, widget_values],
@@ -299,9 +297,7 @@ class TestDictCharWidget(MAASServerTestCase):
         )
         widget_names = XPath("fieldset/input/@name")(html_widget)
         widget_labels = XPath("fieldset/label/text()")(html_widget)
-        expected_names = [
-            "%s_%s" % (name, widget_name) for widget_name in names
-        ]
+        expected_names = [f"{name}_{widget_name}" for widget_name in names]
         self.assertEqual(
             [expected_names, labels], [widget_names, widget_labels]
         )

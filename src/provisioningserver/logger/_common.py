@@ -61,7 +61,7 @@ def make_logging_level_names_consistent():
         logging.addLevelName(level, name)
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def get_module_for_file(filename):
     """Try to find the module from its file.
 

@@ -185,7 +185,7 @@ class AssertNetworkConfigMixin:
                         and not key.startswith("bridge_")
                         and key != "mtu"
                     ):
-                        ret += "  %s: %s\n" % (key, get_param_value(value))
+                        ret += f"  {key}: {get_param_value(value)}\n"
             ret += "  mtu: %s\n" % iface.get_effective_mtu()
             return ret
 
@@ -215,7 +215,7 @@ class AssertNetworkConfigMixin:
                 if iface.params:
                     for key, value in iface.params.items():
                         if key.startswith("bridge_"):
-                            ret += "    %s: %s\n" % (
+                            ret += "    {}: {}\n".format(
                                 key,
                                 get_param_value(value),
                             )
@@ -228,7 +228,7 @@ class AssertNetworkConfigMixin:
                     for key, value in iface.params.items():
                         if key.startswith("bond_"):
                             key = key.replace("bond_", "bond-")
-                            ret += "    %s: %s\n" % (
+                            ret += "    {}: {}\n".format(
                                 key,
                                 get_param_value(value),
                             )
@@ -248,7 +248,7 @@ class AssertNetworkConfigMixin:
                     subnet = address.subnet
                     if subnet is not None:
                         subnet_len = subnet.cidr.split("/")[1]
-                        ret += "  - address: %s/%s\n" % (
+                        ret += "  - address: {}/{}\n".format(
                             str(address.ip),
                             subnet_len,
                         )
@@ -282,11 +282,11 @@ class AssertNetworkConfigMixin:
                         dhcp_types.add(6)
                     else:
                         dhcp_types.add(dhcp_ip.subnet.get_ipnetwork().version)
-                if dhcp_types == set([4, 6]):
+                if dhcp_types == {4, 6}:
                     ret += "  - type: dhcp\n"
-                elif dhcp_types == set([4]):
+                elif dhcp_types == {4}:
                     ret += "  - type: dhcp4\n"
-                elif dhcp_types == set([6]):
+                elif dhcp_types == {6}:
                     ret += "  - type: dhcp6\n"
         return ret
 

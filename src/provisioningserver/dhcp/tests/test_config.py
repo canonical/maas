@@ -97,7 +97,7 @@ def _resolve(name):
 
 def read_aliases_from_etc_hosts():
     """Read all the aliases (hostnames) from /etc/hosts."""
-    with open("/etc/hosts", "r", encoding="ascii") as hosts:
+    with open("/etc/hosts", encoding="ascii") as hosts:
         for line in map(str.strip, hosts):
             if len(line) > 0 and not line.startswith("#"):
                 address, *aliases = line.split()
@@ -472,7 +472,7 @@ class TestGetConfig(MAASTestCase):
                 if self.ipv6 is True:
                     expected = "subnet6 %s" % subnet["subnet_cidr"]
                 else:
-                    expected = "subnet %s netmask %s" % (
+                    expected = "subnet {} netmask {}".format(
                         subnet["subnet"],
                         subnet["subnet_mask"],
                     )

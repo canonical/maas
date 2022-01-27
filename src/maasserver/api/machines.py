@@ -2097,7 +2097,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
             request.user, perm=NodePermission.admin, ids=system_ids
         )
         if len(machines) < len(system_ids):
-            permitted_ids = set(machine.system_id for machine in machines)
+            permitted_ids = {machine.system_id for machine in machines}
             raise PermissionDenied(
                 "You don't have the required permission to accept the "
                 "following machine(s): %s."
@@ -2172,7 +2172,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
             request.user, perm=NodePermission.edit, ids=system_ids
         )
         if len(machines) < len(system_ids):
-            permitted_ids = set(machine.system_id for machine in machines)
+            permitted_ids = {machine.system_id for machine in machines}
             raise PermissionDenied(
                 "You don't have the required permission to release the "
                 "following machine(s): %s."
@@ -2190,7 +2190,7 @@ class MachinesHandler(NodesHandler, PowersMixin):
                 released_ids.append(machine.system_id)
             else:
                 failed.append(
-                    "%s ('%s')" % (machine.system_id, machine.display_status())
+                    f"{machine.system_id} ('{machine.display_status()}')"
                 )
 
         if any(failed):

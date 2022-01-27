@@ -91,7 +91,7 @@ class TestBootResourceForm(MAASServerTestCase):
         upload_name = factory.make_name("filename")
         uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
         data = {
-            "name": "%s/%s" % (bsc.os, bsc.release),
+            "name": f"{bsc.os}/{bsc.release}",
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
@@ -165,7 +165,7 @@ class TestBootResourceForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test_prevents_unsupported_osystem(self):
-        reserved_name = "%s/%s" % (
+        reserved_name = "{}/{}".format(
             factory.make_name("osystem"),
             factory.make_name("series"),
         )
@@ -375,7 +375,7 @@ class TestBootResourceForm(MAASServerTestCase):
         series = factory.make_name("series")
         OperatingSystemRegistry.register_item(os, CustomOS())
         self.addCleanup(OperatingSystemRegistry.unregister_item, os)
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         architecture = make_usable_architecture(self)
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
@@ -410,7 +410,7 @@ class TestBootResourceForm(MAASServerTestCase):
         series = factory.make_name("series")
         OperatingSystemRegistry.register_item(os, CustomOS())
         self.addCleanup(OperatingSystemRegistry.unregister_item, os)
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         architecture = make_usable_architecture(self)
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.GENERATED,
@@ -448,7 +448,7 @@ class TestBootResourceForm(MAASServerTestCase):
         series = factory.make_name("series")
         OperatingSystemRegistry.register_item(os, CustomOS())
         self.addCleanup(OperatingSystemRegistry.unregister_item, os)
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         architecture = make_usable_architecture(self)
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
@@ -495,7 +495,7 @@ class TestBootResourceForm(MAASServerTestCase):
         series = factory.make_name("series")
         OperatingSystemRegistry.register_item(os, CustomOS())
         self.addCleanup(OperatingSystemRegistry.unregister_item, os)
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
         architecture = make_usable_architecture(self)
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,

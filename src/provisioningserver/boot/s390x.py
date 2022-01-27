@@ -64,7 +64,7 @@ def format_bootif(mac):
     the linux kernel."""
     mac = mac.replace(":", "-")
     mac = mac.lower()
-    return "%02x-%s" % (ARP_HTYPE.ETHERNET, mac)
+    return f"{ARP_HTYPE.ETHERNET:02x}-{mac}"
 
 
 class S390XBootMethod(BootMethod):
@@ -130,7 +130,7 @@ class S390XBootMethod(BootMethod):
         # support the LOCALBOOT flag. Empty config will allow it
         # to select the first device.
         if kernel_params.purpose == "local":
-            return BytesReader("".encode("utf-8"))
+            return BytesReader(b"")
 
         template = self.get_template(
             kernel_params.purpose, kernel_params.arch, kernel_params.subarch
@@ -142,7 +142,7 @@ class S390XBootMethod(BootMethod):
         def kernel_command(params):
             cmd_line = compose_kernel_command_line(params)
             if mac is not None:
-                return "%s BOOTIF=%s" % (cmd_line, format_bootif(mac))
+                return f"{cmd_line} BOOTIF={format_bootif(mac)}"
             return cmd_line
 
         namespace["kernel_command"] = kernel_command

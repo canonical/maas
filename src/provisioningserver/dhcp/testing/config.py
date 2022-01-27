@@ -97,7 +97,7 @@ def make_host(
     if dhcp_snippets is None:
         dhcp_snippets = make_host_dhcp_snippets()
     return {
-        "host": "%s-%s" % (hostname, interface_name),
+        "host": f"{hostname}-{interface_name}",
         "mac": mac_address,
         "ip": ip,
         "dhcp_snippets": dhcp_snippets,

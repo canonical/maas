@@ -236,7 +236,9 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 
     def set_usable_arch(self):
         """Produce an arbitrary, valid, architecture name."""
-        arch = "%s/%s" % (factory.make_name("arch"), factory.make_name("sub"))
+        arch = "{}/{}".format(
+            factory.make_name("arch"), factory.make_name("sub")
+        )
         patch_usable_architectures(self, [arch])
         return arch
 
@@ -1508,7 +1510,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         form = FilterNodeForm(data={"pool": pool, "zone": zone})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
-            "pool=%s zone=%s" % (pool, zone), form.describe_constraints()
+            f"pool={pool} zone={zone}", form.describe_constraints()
         )
 
     def test_describe_constraints_combines_constraint_values(self):
@@ -1575,7 +1577,9 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 
     def set_usable_arch(self):
         """Produce an arbitrary, valid, architecture name."""
-        arch = "%s/%s" % (factory.make_name("arch"), factory.make_name("sub"))
+        arch = "{}/{}".format(
+            factory.make_name("arch"), factory.make_name("sub")
+        )
         patch_usable_architectures(self, [arch])
         return arch
 
@@ -1591,13 +1595,13 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         ]
         self.assertConstrainedNodes(
             [nodes[0]],
-            {"name": "%s.%s" % (nodes[0].hostname, nodes[0].domain.name)},
+            {"name": f"{nodes[0].hostname}.{nodes[0].domain.name}"},
         )
         self.assertConstrainedNodes(
-            [], {"name": "%s.%s" % (nodes[0].hostname, "unknown-domain")}
+            [], {"name": "{}.{}".format(nodes[0].hostname, "unknown-domain")}
         )
         self.assertConstrainedNodes(
-            [], {"name": "%s.%s" % (nodes[0].hostname, nodes[1].domain.name)}
+            [], {"name": f"{nodes[0].hostname}.{nodes[1].domain.name}"}
         )
         node = factory.make_Node(hostname="host21.mydomain")
         self.assertConstrainedNodes([node], {"name": "host21.mydomain"})

@@ -98,7 +98,7 @@ class TestTestForm(MAASServerTestCase):
                 bd.name,
                 bd.model,
                 bd.serial,
-                "%s:%s" % (bd.model, bd.serial),
+                f"{bd.model}:{bd.serial}",
             ]
             + bd.tags
         )
@@ -151,7 +151,7 @@ class TestTestForm(MAASServerTestCase):
                 str(interface.mac_address),
                 interface.vendor,
                 interface.product,
-                "%s:%s" % (interface.vendor, interface.product),
+                f"{interface.vendor}:{interface.product}",
             ]
             + interface.tags
         )
@@ -348,7 +348,7 @@ class TestTestForm(MAASServerTestCase):
                 bd.name,
                 bd.model,
                 bd.serial,
-                "%s:%s" % (bd.model, bd.serial),
+                f"{bd.model}:{bd.serial}",
             ]
             + bd.tags
         )
@@ -356,7 +356,7 @@ class TestTestForm(MAASServerTestCase):
             instance=node,
             user=user,
             data={
-                "testing_scripts": "%s,%s" % (global_script.name, script.name),
+                "testing_scripts": f"{global_script.name},{script.name}",
                 "storage": "all",
                 "%s_storage" % global_script.name: input,
             },
@@ -555,7 +555,7 @@ class TestCommissionForm(MAASServerTestCase):
                 commissioning_bd.name,
                 commissioning_bd.model,
                 commissioning_bd.serial,
-                "%s:%s" % (commissioning_bd.model, commissioning_bd.serial),
+                f"{commissioning_bd.model}:{commissioning_bd.serial}",
             ]
             + commissioning_bd.tags
         )
@@ -565,7 +565,7 @@ class TestCommissionForm(MAASServerTestCase):
                 testing_bd.name,
                 testing_bd.model,
                 testing_bd.serial,
-                "%s:%s" % (testing_bd.model, testing_bd.serial),
+                f"{testing_bd.model}:{testing_bd.serial}",
             ]
             + testing_bd.tags
         )
@@ -874,7 +874,7 @@ class TestCommissionForm(MAASServerTestCase):
                 commissioning_bd.name,
                 commissioning_bd.model,
                 commissioning_bd.serial,
-                "%s:%s" % (commissioning_bd.model, commissioning_bd.serial),
+                f"{commissioning_bd.model}:{commissioning_bd.serial}",
             ]
             + commissioning_bd.tags
         )
@@ -884,7 +884,7 @@ class TestCommissionForm(MAASServerTestCase):
                 testing_bd.name,
                 testing_bd.model,
                 testing_bd.serial,
-                "%s:%s" % (testing_bd.model, testing_bd.serial),
+                f"{testing_bd.model}:{testing_bd.serial}",
             ]
             + testing_bd.tags
         )

@@ -303,7 +303,7 @@ class BootResourceHandler(Handler):
                 osystem = OperatingSystemRegistry["ubuntu-core"]
                 title = osystem.get_release_title(image.release)
             if title is None:
-                title = "%s/%s" % (image.os, image.release)
+                title = f"{image.os}/{image.release}"
             images.append(
                 {
                     "name": "%s/%s/%s/%s"
@@ -331,7 +331,7 @@ class BootResourceHandler(Handler):
                 osystem = OperatingSystemRegistry[image.os]
                 title = osystem.get_release_title(image.release)
             if not title:
-                title = "%s/%s" % (image.os, image.release)
+                title = f"{image.os}/{image.release}"
             images.append(
                 {
                     "name": "%s/%s/%s/%s"
@@ -428,10 +428,8 @@ class BootResourceHandler(Handler):
     def get_number_of_nodes_for_resources(self, resources):
         """Return the number of nodes used by all resources."""
         return sum(
-            [
-                self.get_number_of_nodes_deployed_for(resource)
-                for resource in resources
-            ]
+            self.get_number_of_nodes_deployed_for(resource)
+            for resource in resources
         )
 
     def get_progress_for_resources(self, resources):
@@ -529,7 +527,7 @@ class BootResourceHandler(Handler):
         resource_group = defaultdict(list)
         for resource in resources:
             arch = resource.split_arch()[0]
-            key = "%s/%s" % (resource.name, arch)
+            key = f"{resource.name}/{arch}"
             resource_group[key].append(resource)
         return [
             self.resource_group_to_resource(group)
@@ -734,7 +732,7 @@ class BootResourceHandler(Handler):
             selections = defaultdict(list)
             for image in params["images"]:
                 os, arch, _, release = image.split("/", 4)
-                name = "%s/%s" % (os, release)
+                name = f"{os}/{release}"
                 selections[name].append(arch)
 
             # Create each selection for the source.
@@ -789,7 +787,7 @@ class BootResourceHandler(Handler):
             selections = defaultdict(list)
             for image in params["images"]:
                 os, arch, _, release = image.split("/", 4)
-                name = "%s/%s" % (os, release)
+                name = f"{os}/{release}"
                 selections[name].append(arch)
 
             # Create each selection for the source.

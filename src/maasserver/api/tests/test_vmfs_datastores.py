@@ -131,7 +131,7 @@ class TestVMFSDatastoresAPI(APITestCase.ForUser):
         # VMFS should be using all the block devices we created.
         self.assertCountEqual(
             [bd.id for bd in block_devices] + [block_device.id],
-            set([result["device_id"] for result in parsed_results["devices"]]),
+            {result["device_id"] for result in parsed_results["devices"]},
         )
 
 
@@ -218,7 +218,7 @@ class TestVMFSDatastoreAPI(APITestCase.ForUser):
         new_bd = factory.make_PhysicalBlockDevice(node=node)
         new_partition = factory.make_Partition(node=node)
         del_partition = random.choice(vmfs.filesystems.all()).partition
-        partition_ids = set([fs.partition_id for fs in vmfs.filesystems.all()])
+        partition_ids = {fs.partition_id for fs in vmfs.filesystems.all()}
         partition_ids.add(new_partition.id)
         partition_ids.remove(del_partition.id)
 

@@ -112,7 +112,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
+        fqdn = f"{dnsresource_name}.{domain.name}"
         uri = get_dnsresourcerecords_uri()
         response = self.client.post(
             uri,
@@ -149,7 +149,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
+        fqdn = f"{dnsresource_name}.{domain.name}"
         uri = get_dnsresourcerecords_uri()
         response = self.client.post(
             uri,
@@ -186,7 +186,7 @@ class TestDNSResourceRecordsAPI(APITestCase.ForUser):
         self.become_admin()
         dnsresource_name = factory.make_name("dnsresource")
         domain = factory.make_Domain()
-        fqdn = "%s.%s" % (dnsresource_name, domain.name)
+        fqdn = f"{dnsresource_name}.{domain.name}"
         uri = get_dnsresourcerecords_uri()
         response = self.client.post(
             uri, {"fqdn": fqdn, "rrtype": "TXT", "rrdata": "Sample Text."}

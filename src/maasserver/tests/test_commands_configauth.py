@@ -450,10 +450,10 @@ class TestConfigAuthCommand(MAASServerTestCase):
 class TestIsValidUrl(unittest.TestCase):
     def test_valid_schemes(self):
         for scheme in ["http", "https"]:
-            url = "{}://example.com/candid".format(scheme)
+            url = f"{scheme}://example.com/candid"
             self.assertTrue(configauth.is_valid_url(url))
 
     def test_invalid_schemes(self):
         for scheme in ["ftp", "git+ssh"]:
-            url = "{}://example.com/candid".format(scheme)
+            url = f"{scheme}://example.com/candid"
             self.assertFalse(configauth.is_valid_url(url))

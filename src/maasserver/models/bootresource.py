@@ -46,13 +46,13 @@ class BootResourceManager(Manager):
     def _has_resource(self, rtype, name, architecture, subarchitecture):
         """Return True if `BootResource` exists with given rtype, name,
         architecture, and subarchitecture."""
-        arch = "%s/%s" % (architecture, subarchitecture)
+        arch = f"{architecture}/{subarchitecture}"
         return self.filter(rtype=rtype, name=name, architecture=arch).exists()
 
     def _get_resource(self, rtype, name, architecture, subarchitecture):
         """Return `BootResource` with given rtype, name, architecture, and
         subarchitecture."""
-        arch = "%s/%s" % (architecture, subarchitecture)
+        arch = f"{architecture}/{subarchitecture}"
         return get_one(self.filter(rtype=rtype, name=name, architecture=arch))
 
     def has_synced_resource(
@@ -60,7 +60,7 @@ class BootResourceManager(Manager):
     ):
         """Return True if `BootResource` exists with type of SYNCED, and given
         osystem, architecture, subarchitecture, and series."""
-        name = "%s/%s" % (osystem, series)
+        name = f"{osystem}/{series}"
         return self._has_resource(
             BOOT_RESOURCE_TYPE.SYNCED, name, architecture, subarchitecture
         )
@@ -70,7 +70,7 @@ class BootResourceManager(Manager):
     ):
         """Return `BootResource` with type of SYNCED, and given
         osystem, architecture, subarchitecture, and series."""
-        name = "%s/%s" % (osystem, series)
+        name = f"{osystem}/{series}"
         return self._get_resource(
             BOOT_RESOURCE_TYPE.SYNCED, name, architecture, subarchitecture
         )
@@ -80,7 +80,7 @@ class BootResourceManager(Manager):
     ):
         """Return True if `BootResource` exists with type of GENERATED, and
         given osystem, architecture, subarchitecture, and series."""
-        name = "%s/%s" % (osystem, series)
+        name = f"{osystem}/{series}"
         return self._has_resource(
             BOOT_RESOURCE_TYPE.GENERATED, name, architecture, subarchitecture
         )
@@ -90,7 +90,7 @@ class BootResourceManager(Manager):
     ):
         """Return `BootResource` with type of GENERATED, and given
         osystem, architecture, subarchitecture, and series."""
-        name = "%s/%s" % (osystem, series)
+        name = f"{osystem}/{series}"
         return self._get_resource(
             BOOT_RESOURCE_TYPE.GENERATED, name, architecture, subarchitecture
         )
@@ -132,13 +132,13 @@ class BootResourceManager(Manager):
                     arch, _ = resource.split_arch()
                     for subarch in resource.extra["subarches"].split(","):
                         if "hwe-" not in subarch and "ga-" not in subarch:
-                            arches.add("%s/%s" % (arch, subarch.strip()))
+                            arches.add(f"{arch}/{subarch.strip()}")
         return sorted(arches)
 
     def get_commissionable_resource(self, osystem, series):
         """Return generator for all commissionable resources for the
         given osystem and series."""
-        name = "%s/%s" % (osystem, series)
+        name = f"{osystem}/{series}"
         resources = self.filter(name=name).order_by("architecture")
         for resource in resources:
             resource_set = resource.get_latest_complete_set()
@@ -172,7 +172,7 @@ class BootResourceManager(Manager):
         """Return resource that support the given osystem, architecture,
         subarchitecture, and series."""
         if osystem != "custom":
-            name = "%s/%s" % (osystem, series)
+            name = f"{osystem}/{series}"
             rtype = RTYPE_REQUIRING_OS_SERIES_NAME
         else:
             name = series
@@ -206,7 +206,7 @@ class BootResourceManager(Manager):
                         BOOT_RESOURCE_TYPE.GENERATED,
                         BOOT_RESOURCE_TYPE.UPLOADED,
                     ]
-                    name = "%s/%s" % (image["osystem"], image["release"])
+                    name = "{}/{}".format(image["osystem"], image["release"])
                 else:
                     rtypes = [BOOT_RESOURCE_TYPE.UPLOADED]
                     name = image["release"]
@@ -501,7 +501,7 @@ class BootResource(CleanSave, TimestampedModel):
     extra = JSONObjectField(blank=True, default="", editable=False)
 
     def __str__(self):
-        return "<BootResource name=%s, arch=%s, kflavor=%s, base=%s>" % (
+        return "<BootResource name={}, arch={}, kflavor={}, base={}>".format(
             self.name,
             self.architecture,
             self.kflavor,

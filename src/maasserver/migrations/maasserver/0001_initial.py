@@ -1,6 +1,3 @@
-# -*- coding: utf-8 -*-
-
-
 from django.conf import settings
 import django.core.validators
 from django.db import migrations, models
@@ -1872,7 +1869,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="licensekey",
-            unique_together=set([("osystem", "distro_series")]),
+            unique_together={("osystem", "distro_series")},
         ),
         migrations.AddField(
             model_name="interface",
@@ -1978,7 +1975,7 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterUniqueTogether(
-            name="candidatename", unique_together=set([("name", "position")])
+            name="candidatename", unique_together={("name", "position")}
         ),
         migrations.AddField(
             model_name="bootresourcefile",
@@ -2001,7 +1998,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="bootresource",
-            unique_together=set([("name", "architecture")]),
+            unique_together={("name", "architecture")},
         ),
         migrations.AddField(
             model_name="blockdevice",
@@ -2079,7 +2076,7 @@ class Migration(migrations.Migration):
             bases=("maasserver.filesystemgroup",),
         ),
         migrations.AlterUniqueTogether(
-            name="vlan", unique_together=set([("vid", "fabric")])
+            name="vlan", unique_together={("vid", "fabric")}
         ),
         migrations.AddField(
             model_name="virtualblockdevice",
@@ -2091,17 +2088,17 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterUniqueTogether(
-            name="subnet", unique_together=set([("name", "space")])
+            name="subnet", unique_together={("name", "space")}
         ),
         migrations.AlterUniqueTogether(
-            name="sslkey", unique_together=set([("user", "key")])
+            name="sslkey", unique_together={("user", "key")}
         ),
         migrations.AlterUniqueTogether(
-            name="sshkey", unique_together=set([("user", "key")])
+            name="sshkey", unique_together={("user", "key")}
         ),
         migrations.AlterUniqueTogether(
             name="nodegroupinterface",
-            unique_together=set([("nodegroup", "name")]),
+            unique_together={("nodegroup", "name")},
         ),
         migrations.AddField(
             model_name="node",
@@ -2118,29 +2115,30 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="filesystem",
-            unique_together=set(
-                [("partition", "acquired"), ("block_device", "acquired")]
-            ),
+            unique_together={
+                ("partition", "acquired"),
+                ("block_device", "acquired"),
+            },
         ),
         migrations.AlterUniqueTogether(
-            name="filestorage", unique_together=set([("filename", "owner")])
+            name="filestorage", unique_together={("filename", "owner")}
         ),
         migrations.AlterIndexTogether(
-            name="event", index_together=set([("node", "id")])
+            name="event", index_together={("node", "id")}
         ),
         migrations.AlterUniqueTogether(
             name="bootsourceselection",
-            unique_together=set([("boot_source", "os", "release")]),
+            unique_together={("boot_source", "os", "release")},
         ),
         migrations.AlterUniqueTogether(
             name="bootresourceset",
-            unique_together=set([("resource", "version")]),
+            unique_together={("resource", "version")},
         ),
         migrations.AlterUniqueTogether(
             name="bootresourcefile",
-            unique_together=set([("resource_set", "filetype")]),
+            unique_together={("resource_set", "filetype")},
         ),
         migrations.AlterUniqueTogether(
-            name="blockdevice", unique_together=set([("node", "name")])
+            name="blockdevice", unique_together={("node", "name")}
         ),
     ]

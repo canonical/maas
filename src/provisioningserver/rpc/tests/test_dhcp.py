@@ -87,7 +87,7 @@ class TestDHCPState(MAASTestCase):
                 ),
                 hosts={host["mac"]: host for host in hosts},
                 interfaces=sorted(
-                    [interface["name"] for interface in interfaces]
+                    interface["name"] for interface in interfaces
                 ),
                 global_dhcp_snippets=sorted(
                     global_dhcp_snippets, key=itemgetter("name")

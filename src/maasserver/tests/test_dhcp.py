@@ -695,7 +695,7 @@ class TestGenManagedVLANsFor(MAASServerTestCase):
         # Should only contain the subnets that are managed by the rack
         # controller and the best interface should have been selected.
         self.assertEqual(
-            relay_vlans.union(set([vlan_one])),
+            relay_vlans.union({vlan_one}),
             set(dhcp.gen_managed_vlans_for(rack_controller)),
         )
 
@@ -1894,7 +1894,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
 
         expected_hosts = [
             {
-                "host": "%s-%s" % (node.hostname, auto_with_ip_interface.name),
+                "host": f"{node.hostname}-{auto_with_ip_interface.name}",
                 "mac": str(auto_with_ip_interface.mac_address),
                 "ip": str(auto_ip.ip),
                 "dhcp_snippets": [
@@ -1907,7 +1907,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 ],
             },
             {
-                "host": "%s-%s" % (node.hostname, sticky_ip_interface.name),
+                "host": f"{node.hostname}-{sticky_ip_interface.name}",
                 "mac": str(sticky_ip_interface.mac_address),
                 "ip": str(sticky_ip.ip),
                 "dhcp_snippets": [
@@ -1920,7 +1920,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
                 ],
             },
             {
-                "host": "%s-%s" % (device.hostname, device_interface.name),
+                "host": f"{device.hostname}-{device_interface.name}",
                 "mac": str(device_interface.mac_address),
                 "ip": str(device_ip.ip),
                 "dhcp_snippets": [
@@ -1972,7 +1972,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
 
         expected_hosts = [
             {
-                "host": "%s-%s" % (node.hostname, interface.name),
+                "host": f"{node.hostname}-{interface.name}",
                 "mac": str(interface.mac_address),
                 "ip": str(ip_one.ip),
                 "dhcp_snippets": [],
@@ -2062,7 +2062,7 @@ class TestMakeHostsForSubnet(MAASServerTestCase):
 
         expected_hosts = [
             {
-                "host": "%s-%s" % (node.hostname, eth0.name),
+                "host": f"{node.hostname}-{eth0.name}",
                 "mac": str(eth0.mac_address),
                 "ip": str(auto_ip.ip),
                 "dhcp_snippets": [],

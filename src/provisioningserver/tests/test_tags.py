@@ -556,7 +556,7 @@ class TestTagUpdating(MAASTestCase):
             ["remove-1", "remove-2"],
         )
         self.assertEqual({"added": 1, "removed": 2}, result)
-        url = "/MAAS/api/2.0/tags/%s/" % (name,)
+        url = f"/MAAS/api/2.0/tags/{name}/"
         post_mock.assert_called_once_with(
             url,
             op="update_nodes",
@@ -595,7 +595,7 @@ class TestTagUpdating(MAASTestCase):
             ["remove-1", "remove-2"],
         )
         # self.assertEqual({'added': 1, 'removed': 2}, result)
-        url = "/MAAS/api/2.0/tags/%s/" % (name,)
+        url = f"/MAAS/api/2.0/tags/{name}/"
         self.assertEqual({}, result)
         post_mock.assert_called_once_with(
             url,
@@ -654,7 +654,7 @@ class TestTagUpdating(MAASTestCase):
             tag_nsmap,
             self.fake_client(),
         )
-        tag_url = "/MAAS/api/2.0/tags/%s/" % (tag_name,)
+        tag_url = f"/MAAS/api/2.0/tags/{tag_name}/"
         self.assertThat(
             mock_post,
             MockCalledOnceWith(

@@ -167,7 +167,7 @@ def _formatModernEvent(event):
         try:
             traceback = event["log_failure"].getTraceback()
         except Exception:
-            traceback = u"(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
+            traceback = "(UNABLE TO OBTAIN TRACEBACK FROM EVENT)\n"
         text = "\n".join((text, traceback))
     time = event["log_time"] if "log_time" in event else None
     level = event["log_level"] if "log_level" in event else None

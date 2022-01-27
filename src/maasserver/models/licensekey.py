@@ -66,11 +66,11 @@ class LicenseKey(TimestampedModel):
     )
 
     def __repr__(self):
-        return "<LicenseKey %s/%s>" % (self.osystem, self.distro_series)
+        return f"<LicenseKey {self.osystem}/{self.distro_series}>"
 
     def unique_error_message(self, model_class, unique_check):
         if unique_check == ("osystem", "distro_series"):
-            return "%s %s" % (
+            return "{} {}".format(
                 "License key with this operating system and distro series",
                 "already exists.",
             )

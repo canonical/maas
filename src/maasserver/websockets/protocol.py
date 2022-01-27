@@ -348,7 +348,7 @@ class WebSocketProtocol(Protocol):
                 error = failure.value.message
         else:
             error = failure.getErrorMessage()
-        why = "Error on request (%s) %s.%s: %s" % (
+        why = "Error on request ({}) {}.{}: {}".format(
             request_id,
             handler._meta.handler_name,
             method,

@@ -255,7 +255,7 @@ class SimpleStreamsHandler:
         os, arch, subarch, series = self.get_boot_resource_identifiers(
             resource
         )
-        path = "%s/%s/%s/%s/%s/%s" % (
+        path = "{}/{}/{}/{}/{}/{}".format(
             os,
             arch,
             subarch,
@@ -346,8 +346,8 @@ class SimpleStreamsHandler:
         if os == "custom":
             name = series
         else:
-            name = "%s/%s" % (os, series)
-        arch = "%s/%s" % (arch, subarch)
+            name = f"{os}/{series}"
+        arch = f"{arch}/{subarch}"
         try:
             resource = BootResource.objects.get(name=name, architecture=arch)
         except BootResource.DoesNotExist:
@@ -484,7 +484,7 @@ class BootResourceStore(ObjectStore):
             release = product["release"]
             gadget = product["gadget_snap"]
             architecture = "%s/generic" % arch
-            series = "%s-%s" % (release, gadget)
+            series = f"{release}-{gadget}"
         elif bootloader_type is None:
             # The rack controller assumes the subarch is the kernel. We need to
             # include the kflavor in the subarch otherwise the rack will
@@ -499,14 +499,14 @@ class BootResourceStore(ObjectStore):
                     subarch_parts.insert(-1, kflavor)
                     subarch = "-".join(subarch_parts)
                 else:
-                    subarch = "%s-%s" % (subarch, kflavor)
-            architecture = "%s/%s" % (arch, subarch)
+                    subarch = f"{subarch}-{kflavor}"
+            architecture = f"{arch}/{subarch}"
             series = product["release"]
         else:
             architecture = "%s/generic" % arch
             series = bootloader_type
 
-        name = "%s/%s" % (os, series)
+        name = f"{os}/{series}"
 
         # Allow a generated resource to be replaced by a sycned resource. This
         # gives the ability for maas.io to start providing images that
@@ -630,7 +630,7 @@ class BootResourceStore(ObjectStore):
             resource_set = rfile.resource_set
         if resource is None:
             resource = resource_set.resource
-        return "%s/%s/%s" % (
+        return "{}/{}/{}".format(
             self.get_resource_identity(resource),
             resource_set.version,
             rfile.filename,
@@ -874,14 +874,14 @@ class BootResourceStore(ObjectStore):
             ) = deleted_ident.split("/")
             related_resources = related_resources.exclude(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name="%s/%s" % (deleted_os, deleted_series),
-                architecture="%s/%s" % (deleted_arch, deleted_subarch),
+                name=f"{deleted_os}/{deleted_series}",
+                architecture=f"{deleted_arch}/{deleted_subarch}",
             )
         # Filter the remaining resources to those related to this os,
         # arch, series.
         related_resources = related_resources.filter(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name="%s/%s" % (os, series),
+            name=f"{os}/{series}",
             architecture__startswith=arch,
         )
         return related_resources.exists()
@@ -896,8 +896,8 @@ class BootResourceStore(ObjectStore):
         ]
         for ident in self._resources_to_delete:
             os, arch, subarch, series = ident.split("/")
-            name = "%s/%s" % (os, series)
-            architecture = "%s/%s" % (arch, subarch)
+            name = f"{os}/{series}"
+            architecture = f"{arch}/{subarch}"
             delete_resource = get_one(
                 BootResource.objects.filter(
                     rtype=BOOT_RESOURCE_TYPE.SYNCED,

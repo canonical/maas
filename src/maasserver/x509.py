@@ -36,7 +36,7 @@ class WinRMX509:
         if self.upn_name is None:
             user = getpass.getuser()
             host = socket.getfqdn()
-            self.upn_name = "%s@%s" % (user, host)
+            self.upn_name = f"{user}@{host}"
 
         self.pem_file = os.path.join(self.store, "%s.pem" % self.cert_name)
         self.key_file = os.path.join(self.store, "%s.key" % self.cert_name)

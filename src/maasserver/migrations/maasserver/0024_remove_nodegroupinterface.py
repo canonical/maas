@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from django.db import migrations, models
 import django.db.models.deletion
 
@@ -14,7 +12,7 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(model_name="nodegroup", name="api_token"),
         migrations.AlterUniqueTogether(
-            name="nodegroupinterface", unique_together=set([])
+            name="nodegroupinterface", unique_together=set()
         ),
         migrations.RemoveField(
             model_name="nodegroupinterface", name="nodegroup"

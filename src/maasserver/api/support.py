@@ -173,9 +173,7 @@ class OperationsHandlerType(HandlerMetaClass):
     """
 
     def __new__(metaclass, name, bases, namespace):
-        cls = super(OperationsHandlerType, metaclass).__new__(
-            metaclass, name, bases, namespace
-        )
+        cls = super().__new__(metaclass, name, bases, namespace)
 
         # Create a signature:function mapping for CRUD operations.
         crud = {

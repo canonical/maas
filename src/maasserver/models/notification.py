@@ -256,7 +256,7 @@ class Notification(CleanSave, TimestampedModel):
 
     def __repr__(self):
         username = "None" if self.user is None else repr(self.user.username)
-        return "<Notification %s user=%s users=%r admins=%r %r>" % (
+        return "<Notification {} user={} users={!r} admins={!r} {!r}>".format(
             self.category.upper(),
             username,
             self.users,

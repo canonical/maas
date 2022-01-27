@@ -210,7 +210,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
         parsed_options = read_isc_file(
             compose_bind_config_path(NAMED_CONF_OPTIONS)
         )
-    except IOError:
+    except OSError:
         parsed_options = {}
 
     options = parsed_options.get("options", {})
@@ -269,7 +269,7 @@ def report_missing_config_dir():
     """
     try:
         yield
-    except (IOError, OSError) as e:
+    except OSError as e:
         if e.errno == errno.ENOENT:
             raise DNSConfigDirectoryMissing(
                 "The directory where the DNS config files should be "

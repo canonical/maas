@@ -255,8 +255,7 @@ class TestBlockDeviceManager(MAASServerTestCase):
             factory.make_BlockDevice(tags=other_tags)
 
         def tag_generator():
-            for tag in tags:
-                yield tag
+            yield from tags
 
         self.assertCountEqual(
             devices_with_tags,

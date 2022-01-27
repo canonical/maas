@@ -110,20 +110,20 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
 
     def dehydrate_device(self, node, user, for_list=False):
         boot_interface = node.get_boot_interface()
-        subnets = set(
+        subnets = {
             ip_address.subnet
             for interface in node.interface_set.all()
             for ip_address in interface.ip_addresses.all()
             if ip_address.subnet is not None
-        )
-        space_names = set(
+        }
+        space_names = {
             subnet.space.name for subnet in subnets if subnet.space is not None
-        )
-        fabric_names = set(
+        }
+        fabric_names = {
             iface.vlan.fabric.name
             for iface in node.interface_set.all()
             if iface.vlan is not None
-        )
+        }
         fabric_names.update({subnet.vlan.fabric.name for subnet in subnets})
         boot_interface = node.get_boot_interface()
         permissions = []
@@ -138,13 +138,11 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 for mac_address in node.get_extra_macs()
             ],
             "link_speeds": sorted(
-                set(
-                    [
-                        interface.link_speed
-                        for interface in node.interface_set.all()
-                        if interface.link_speed > 0
-                    ]
-                )
+                {
+                    interface.link_speed
+                    for interface in node.interface_set.all()
+                    if interface.link_speed > 0
+                }
             ),
             "fqdn": node.fqdn,
             "hostname": node.hostname,

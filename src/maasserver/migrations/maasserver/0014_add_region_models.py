@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import django.core.validators
 from django.db import migrations, models
 import django.db.models.deletion
@@ -121,10 +119,10 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="regioncontrollerprocessendpoint",
-            unique_together=set([("process", "address", "port")]),
+            unique_together={("process", "address", "port")},
         ),
         migrations.AlterUniqueTogether(
             name="regioncontrollerprocess",
-            unique_together=set([("region", "pid")]),
+            unique_together={("region", "pid")},
         ),
     ]

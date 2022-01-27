@@ -236,5 +236,5 @@ class SetCommand(LocalConfigCommand):
                     except formencode.Invalid as error:
                         message = str(error).rstrip(".")
                         raise CommandError(
-                            "%s: %s." % (name.replace("_", "-"), message)
+                            "{}: {}.".format(name.replace("_", "-"), message)
                         )

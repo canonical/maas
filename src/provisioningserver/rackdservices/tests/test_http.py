@@ -201,7 +201,7 @@ class TestRackHTTPService(MAASTestCase):
             region_name = factory.make_name("region")
             for _ in range(3):
                 pid = random.randint(0, 10000)
-                eventloop = "%s:pid=%s" % (region_name, pid)
+                eventloop = f"{region_name}:pid={pid}"
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
@@ -218,7 +218,7 @@ class TestRackHTTPService(MAASTestCase):
             region_name = factory.make_name("region")
             for _ in range(3):
                 pid = random.randint(0, 10000)
-                eventloop = "%s:pid=%s" % (region_name, pid)
+                eventloop = f"{region_name}:pid={pid}"
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
@@ -236,7 +236,7 @@ class TestRackHTTPService(MAASTestCase):
         for _ in range(3):
             region_name = factory.make_name("region")
             pid = random.randint(0, 10000)
-            eventloop = "%s:pid=%s" % (region_name, pid)
+            eventloop = f"{region_name}:pid={pid}"
             ip = factory.make_ipv6_address()
             ip_addresses.add("[%s]" % ip)
             mock_conn = Mock()
@@ -413,7 +413,7 @@ class TestHTTPBootResource(MAASTestCase):
             else:
                 return request.notifyFinish()
         else:
-            raise ValueError("Unexpected return value: %r" % (result,))
+            raise ValueError(f"Unexpected return value: {result!r}")
 
     @inlineCallbacks
     def test_render_GET_503_when_no_tftp_service(self):
