@@ -197,7 +197,6 @@ class StorageLayoutBase(Form):
 
         :return: The created root partition.
         """
-        # Circular imports.
         from maasserver.models.filesystem import Filesystem
         from maasserver.models.partitiontable import PartitionTable
 
@@ -217,6 +216,7 @@ class StorageLayoutBase(Form):
                 size=EFI_PARTITION_SIZE, bootable=True
             )
             Filesystem.objects.create(
+                node_config_id=self.node.current_config_id,
                 partition=efi_partition,
                 fstype=FILESYSTEM_TYPE.FAT32,
                 label="efi",
@@ -233,6 +233,7 @@ class StorageLayoutBase(Form):
                 size=MIN_BOOT_PARTITION_SIZE, bootable=True
             )
             Filesystem.objects.create(
+                node_config_id=self.node.current_config_id,
                 partition=boot_partition,
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="boot",
@@ -245,6 +246,7 @@ class StorageLayoutBase(Form):
                 size=boot_size, bootable=True
             )
             Filesystem.objects.create(
+                node_config_id=self.node.current_config_id,
                 partition=boot_partition,
                 fstype=FILESYSTEM_TYPE.EXT4,
                 label="boot",
@@ -343,6 +345,7 @@ class FlatStorageLayout(StorageLayoutBase):
 
         root_partition, _ = self.create_basic_layout()
         Filesystem.objects.create(
+            node_config_id=self.node.current_config_id,
             partition=root_partition,
             fstype=FILESYSTEM_TYPE.EXT4,
             label="root",
@@ -468,7 +471,6 @@ class LVMStorageLayout(StorageLayoutBase):
 
     def configure_storage(self, allow_fallback):
         """Create the LVM configuration."""
-        # Circular imports.
         from maasserver.models.filesystem import Filesystem
         from maasserver.models.filesystemgroup import VolumeGroup
 
@@ -491,6 +493,7 @@ class LVMStorageLayout(StorageLayoutBase):
             self.get_lv_name(), self.get_calculated_lv_size(volume_group)
         )
         Filesystem.objects.create(
+            node_config_id=self.node.current_config_id,
             block_device=logical_volume,
             fstype=FILESYSTEM_TYPE.EXT4,
             label="root",
@@ -721,6 +724,7 @@ class BcacheStorageLayout(FlatStorageLayout):
             backing_partition=root_partition,
         )
         Filesystem.objects.create(
+            node_config_id=self.node.current_config_id,
             block_device=bcache.virtual_device,
             fstype=FILESYSTEM_TYPE.EXT4,
             label="root",

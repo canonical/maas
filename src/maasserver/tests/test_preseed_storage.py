@@ -119,13 +119,13 @@ class TestSpecialFilesystems(MAASServerTestCase, AssertStorageConfigMixin):
             serial="QM00001",
         )
         factory.make_Filesystem(
-            node=node,
+            node_config=node.current_config,
             fstype="tmpfs",
             mount_options="noexec,size=1024k",
             mount_point="/mnt/tmpfs",
         )
         factory.make_Filesystem(
-            node=node,
+            node_config=node.current_config,
             fstype="ramfs",
             mount_options=None,
             mount_point="/mnt/ramfs",
@@ -2367,6 +2367,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
         vmfs = vmfs_part.get_effective_filesystem().filesystem_group
         partition = extra_disk.create_partition()
         Filesystem.objects.create(
+            node_config=node.current_config,
             fstype=FILESYSTEM_TYPE.VMFS6,
             partition=partition,
             filesystem_group=vmfs,

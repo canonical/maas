@@ -3632,7 +3632,7 @@ class TestMachineFilesystemListener(
     def test_calls_handler_with_update_on_create_special_fs(self):
         node = factory.make_Node(**self.params)
         with listenFor(self.channel) as get:
-            factory.make_Filesystem(node=node)
+            factory.make_Filesystem(node_config=node.current_config)
             self.assertEqual(("update", node.system_id), get())
 
     def test_calls_handler_with_update_on_delete_fs_on_partition(self):
@@ -3653,7 +3653,7 @@ class TestMachineFilesystemListener(
 
     def test_calls_handler_with_update_on_delete_special_fs(self):
         node = factory.make_Node(**self.params)
-        filesystem = factory.make_Filesystem(node=node)
+        filesystem = factory.make_Filesystem(node_config=node.current_config)
         with listenFor(self.channel) as get:
             filesystem.delete()
             self.assertEqual(("update", node.system_id), get())
@@ -3676,7 +3676,7 @@ class TestMachineFilesystemListener(
 
     def test_calls_handler_with_update_on_update_special_fs(self):
         node = factory.make_Node(**self.params)
-        filesystem = factory.make_Filesystem(node=node)
+        filesystem = factory.make_Filesystem(node_config=node.current_config)
         with listenFor(self.channel) as get:
             filesystem.save(force_update=True)  # A no-op update is enough.
             self.assertEqual(("update", node.system_id), get())

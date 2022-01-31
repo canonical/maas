@@ -1512,9 +1512,11 @@ class TestNode(MAASServerTestCase):
     def test_get_effective_special_filesystems_acquired(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         filesystem = factory.make_Filesystem(
-            node=node, fstype="tmpfs", acquired=True
+            node_config=node.current_config, fstype="tmpfs", acquired=True
         )
-        factory.make_Filesystem(node=node, fstype="tmpfs", acquired=False)
+        factory.make_Filesystem(
+            node_config=node.current_config, fstype="tmpfs", acquired=False
+        )
         self.assertCountEqual(
             node.get_effective_special_filesystems(), [filesystem]
         )
@@ -1525,18 +1527,22 @@ class TestNode(MAASServerTestCase):
             previous_status=NODE_STATUS.DEPLOYED,
         )
         filesystem = factory.make_Filesystem(
-            node=node, fstype="tmpfs", acquired=True
+            node_config=node.current_config, fstype="tmpfs", acquired=True
         )
-        factory.make_Filesystem(node=node, fstype="tmpfs", acquired=False)
+        factory.make_Filesystem(
+            node_config=node.current_config, fstype="tmpfs", acquired=False
+        )
         self.assertCountEqual(
             node.get_effective_special_filesystems(), [filesystem]
         )
 
     def test_get_effective_special_filesystems_not_acquired(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
-        factory.make_Filesystem(node=node, fstype="tmpfs", acquired=True)
+        factory.make_Filesystem(
+            node_config=node.current_config, fstype="tmpfs", acquired=True
+        )
         filesystem = factory.make_Filesystem(
-            node=node, fstype="tmpfs", acquired=False
+            node_config=node.current_config, fstype="tmpfs", acquired=False
         )
         self.assertCountEqual(
             node.get_effective_special_filesystems(), [filesystem]
@@ -1547,9 +1553,11 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.RESCUE_MODE,
             previous_status=NODE_STATUS.ALLOCATED,
         )
-        factory.make_Filesystem(node=node, fstype="tmpfs", acquired=True)
+        factory.make_Filesystem(
+            node_config=node.current_config, fstype="tmpfs", acquired=True
+        )
         filesystem = factory.make_Filesystem(
-            node=node, fstype="tmpfs", acquired=False
+            node_config=node.current_config, fstype="tmpfs", acquired=False
         )
         self.assertCountEqual(
             node.get_effective_special_filesystems(), [filesystem]
@@ -5076,8 +5084,12 @@ class TestNode(MAASServerTestCase):
     def test_clear_full_storage_configuration_removes_special_fs(self):
         node = factory.make_Node()
         special_filesystems = [
-            factory.make_Filesystem(node=node, fstype=FILESYSTEM_TYPE.TMPFS),
-            factory.make_Filesystem(node=node, fstype=FILESYSTEM_TYPE.TMPFS),
+            factory.make_Filesystem(
+                node_config=node.current_config, fstype=FILESYSTEM_TYPE.TMPFS
+            ),
+            factory.make_Filesystem(
+                node_config=node.current_config, fstype=FILESYSTEM_TYPE.TMPFS
+            ),
         ]
         self.assertCountEqual(
             node.special_filesystems.all(), special_filesystems
@@ -11883,13 +11895,13 @@ class TestNodeStorageClone_SpecialFilesystems(
         node = factory.make_Node(with_boot_disk=False)
         self.create_physical_disks(node)
         factory.make_Filesystem(
-            node=node,
+            node_config=node.current_config,
             fstype="tmpfs",
             mount_options="noexec,size=1024k",
             mount_point="/mnt/tmpfs",
         )
         factory.make_Filesystem(
-            node=node,
+            node_config=node.current_config,
             fstype="ramfs",
             mount_options=None,
             mount_point="/mnt/ramfs",

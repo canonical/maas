@@ -357,11 +357,10 @@ def _apply_layout_filesystem(
         "fstype": entry.type,
         "mount_point": entry.mount or None,
         "mount_options": entry.mount_options,
+        "node_config_id": machine.current_config_id,
     }
     device = block_devices[entry.on]
-    if device is None:
-        params["node"] = machine
-    elif isinstance(device, models.Partition):
+    if isinstance(device, models.Partition):
         params["partition"] = device
     else:
         params["block_device"] = device
@@ -384,6 +383,7 @@ def _apply_layout_bcache(
         params = {
             "fstype": FILESYSTEM_TYPE.BCACHE_CACHE,
             "cache_set": cache_set,
+            "node_config_id": machine.current_config_id,
         }
         if isinstance(cache_device, models.Partition):
             params["partition"] = cache_device

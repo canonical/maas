@@ -650,11 +650,12 @@ FILESYSTEM_NODE_NOTIFY = dedent(
         JOIN maasserver_partition
           ON maasserver_partition.partition_table_id = maasserver_partitiontable.id
         WHERE maasserver_partition.id = {entry}.partition_id;
-      ELSIF {entry}.node_id IS NOT NULL
-      THEN
+      ELSE
         SELECT system_id, node_type INTO node
-          FROM maasserver_node
-         WHERE maasserver_node.id = {entry}.node_id;
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        WHERE {entry}.node_config_id = maasserver_nodeconfig.id;
       END IF;
 
       IF node.node_type = {machine_type} THEN

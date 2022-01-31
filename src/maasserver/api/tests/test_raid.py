@@ -1004,6 +1004,7 @@ class TestRaidAPI(APITestCase.ForUser):
         )
         device = factory.make_PhysicalBlockDevice(node=node)
         Filesystem.objects.create(
+            node_config=node.current_config,
             block_device=device,
             filesystem_group=raid,
             fstype=FILESYSTEM_TYPE.RAID,
@@ -1066,6 +1067,7 @@ class TestRaidAPI(APITestCase.ForUser):
             block_device=factory.make_PhysicalBlockDevice(node=node)
         ).add_partition()
         Filesystem.objects.create(
+            node_config=node.current_config,
             partition=partition,
             filesystem_group=raid,
             fstype=FILESYSTEM_TYPE.RAID,
@@ -1123,6 +1125,7 @@ class TestRaidAPI(APITestCase.ForUser):
         )
         device = factory.make_PhysicalBlockDevice(node=node)
         Filesystem.objects.create(
+            node_config=node.current_config,
             block_device=device,
             filesystem_group=raid,
             fstype=FILESYSTEM_TYPE.RAID_SPARE,
@@ -1185,6 +1188,7 @@ class TestRaidAPI(APITestCase.ForUser):
             block_device=factory.make_PhysicalBlockDevice(node=node)
         ).add_partition()
         Filesystem.objects.create(
+            node_config=node.current_config,
             partition=partition,
             filesystem_group=raid,
             fstype=FILESYSTEM_TYPE.RAID_SPARE,

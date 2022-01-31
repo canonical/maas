@@ -1276,6 +1276,14 @@ class Node(CleanSave, TimestampedModel):
         """Return NUMA node 0 for the node."""
         return self.numanode_set.get(index=0)
 
+    @property
+    def special_filesystems(self):
+        """Return special filesystems (e.g. tmpfs) for the node."""
+        return self.current_config.filesystem_set.filter(
+            block_device=None,
+            partition=None,
+        )
+
     def lock(self, user, comment=None):
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_LOCK, action="lock", comment=comment
@@ -4121,7 +4129,9 @@ class Node(CleanSave, TimestampedModel):
 
         # Clone the special filesystems.
         for filesystem in source_node.special_filesystems.all():
-            _clone_object(filesystem, uuid=None, node=self)
+            _clone_object(
+                filesystem, uuid=None, node_config=self.current_config
+            )
 
     def _get_storage_mapping_between_nodes(self, source_node):
         """Return the mapping between which disks from this node map to disks
@@ -4244,6 +4254,7 @@ class Node(CleanSave, TimestampedModel):
                         source_filesystem_id = filesystem.id
                         _clone_object(
                             filesystem,
+                            node_config=ptable.block_device.node_config,
                             uuid=None,
                             block_device=None,
                             partition=partition,
@@ -4256,6 +4267,7 @@ class Node(CleanSave, TimestampedModel):
                 source_filesystem_id = filesystem.id
                 _clone_object(
                     filesystem,
+                    node_config=self_disk.node_config,
                     uuid=None,
                     block_device=self_disk,
                     partition=None,

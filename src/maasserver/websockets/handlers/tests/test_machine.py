@@ -19,7 +19,6 @@ from testtools.content import text_content
 from testtools.matchers import (
     ContainsDict,
     Equals,
-    HasLength,
     Is,
     MatchesDict,
     MatchesException,
@@ -756,7 +755,7 @@ class TestMachineHandler(MAASServerTestCase):
         queries, _ = count_queries(handler.get, {"system_id": node.system_id})
         self.assertEqual(
             queries,
-            56,
+            55,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -2110,9 +2109,13 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {}, None)
         machine = factory.make_Node(owner=owner)
         filesystem = factory.make_Filesystem(
-            node=machine, label="not-acquired", acquired=False
+            node_config=machine.current_config,
+            label="not-acquired",
+            acquired=False,
         )
-        factory.make_Filesystem(node=machine, label="acquired", acquired=True)
+        factory.make_Filesystem(
+            node_config=machine.current_config, label="acquired", acquired=True
+        )
         self.assertThat(
             handler.get({"system_id": machine.system_id}),
             ContainsDict(
@@ -2129,10 +2132,12 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(owner, {}, None)
         machine = factory.make_Node(owner=owner, status=NODE_STATUS.DEPLOYED)
         factory.make_Filesystem(
-            node=machine, label="not-acquired", acquired=False
+            node_config=machine.current_config,
+            label="not-acquired",
+            acquired=False,
         )
         filesystem = factory.make_Filesystem(
-            node=machine, label="acquired", acquired=True
+            node_config=machine.current_config, label="acquired", acquired=True
         )
         self.assertThat(
             handler.get({"system_id": machine.system_id}),
@@ -4799,14 +4804,14 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
         }
         self.assertThat(handler.mount_special(params), Is(None))
         self.assertThat(
-            list(Filesystem.objects.filter(node=machine)),
+            list(machine.special_filesystems),
             MatchesListwise(
                 [
                     MatchesStructure.byEquality(
                         fstype=self.fstype,
                         mount_point=mount_point,
                         mount_options=mount_options,
-                        node=machine,
+                        node_config=machine.current_config,
                     )
                 ]
             ),
@@ -4909,7 +4914,7 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
     def assertCanUnmountFilesystem(self, user, machine):
         handler = MachineHandler(user, {}, None)
         filesystem = factory.make_Filesystem(
-            node=machine,
+            node_config=machine.current_config,
             fstype=self.fstype,
             mount_point=factory.make_absolute_path(),
         )
@@ -4917,8 +4922,8 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
             "system_id": machine.system_id,
             "mount_point": filesystem.mount_point,
         }
-        self.assertThat(handler.unmount_special(params), Is(None))
-        self.assertThat(Filesystem.objects.filter(node=machine), HasLength(0))
+        self.assertIsNone(handler.unmount_special(params))
+        self.assertFalse(machine.special_filesystems.exists())
 
     def test_user_unmounts_non_storage_filesystem_on_allocated_machine(self):
         user = factory.make_User()
@@ -4955,7 +4960,7 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
         for status in statuses:
             machine = factory.make_Node(status=status)
             filesystem = factory.make_Filesystem(
-                node=machine,
+                node_config=machine.current_config,
                 fstype=self.fstype,
                 mount_point=factory.make_absolute_path(),
             )
@@ -4973,7 +4978,7 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
         admin = factory.make_admin()
         node = factory.make_Node(locked=True, owner=admin)
         filesystem = factory.make_Filesystem(
-            node=node,
+            node_config=node.current_config,
             fstype=self.fstype,
             mount_point=factory.make_absolute_path(),
         )

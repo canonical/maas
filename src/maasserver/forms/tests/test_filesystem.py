@@ -1,7 +1,5 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for forms relating to filesystems."""
 
 
 from testtools.matchers import Equals, Is, MatchesStructure
@@ -239,7 +237,7 @@ class TestMountNonStorageFilesystemFormScenarios(MAASServerTestCase):
         self.assertThat(
             filesystem,
             MatchesStructure.byEquality(
-                node=node,
+                node_config=node.current_config,
                 fstype=self.fstype,
                 mount_point=mount_point,
                 mount_options=mount_options,
@@ -314,7 +312,9 @@ class TestUnmountNonStorageFilesystemFormScenarios(MAASServerTestCase):
         mount_point = factory.make_absolute_path()
         mount_options = factory.make_name("options")
         filesystem = factory.make_Filesystem(
-            node=node, mount_point=mount_point, mount_options=mount_options
+            node_config=node.current_config,
+            mount_point=mount_point,
+            mount_options=mount_options,
         )
         form = UnmountNonStorageFilesystemForm(
             node, data={"mount_point": mount_point}

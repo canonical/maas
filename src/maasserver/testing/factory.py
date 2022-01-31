@@ -2789,7 +2789,7 @@ class Factory(maastesting.factory.Factory):
         fstype=None,
         partition=None,
         block_device=None,
-        node=None,
+        node_config=None,
         filesystem_group=None,
         label=None,
         create_params=None,
@@ -2799,7 +2799,7 @@ class Factory(maastesting.factory.Factory):
         acquired=False,
     ):
         if fstype is None:
-            if node is None:
+            if node_config is None:
                 # Pick a filesystem that requires storage and a mount point.
                 fstype = self.pick_filesystem_type()
             else:
@@ -2816,18 +2816,27 @@ class Factory(maastesting.factory.Factory):
                         size=block_device_size
                     )
         else:
-            if node is None:
-                node = self.make_Node()
             if mount_point is None:
                 mount_point = factory.make_absolute_path()
         if mount_options is undefined:
             mount_options = self.make_name("mount-options")
+
+        node = None
+        if partition is not None:
+            node = partition.get_node()
+        elif block_device is not None:
+            node = block_device.get_node()
+        if node_config is None:
+            if node is None:
+                node_config = self.make_NodeConfig()
+            else:
+                node_config = node.current_config
         return Filesystem.objects.create(
             uuid=uuid,
             fstype=fstype,
             partition=partition,
             block_device=block_device,
-            node=node,
+            node_config=node_config,
             filesystem_group=filesystem_group,
             label=label,
             create_params=create_params,

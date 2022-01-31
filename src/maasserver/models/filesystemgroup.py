@@ -159,18 +159,25 @@ class VolumeGroupManager(BaseFilesystemGroupManager):
     def create_volume_group(self, name, block_devices, partitions, uuid=None):
         """Create a `VolumeGroup` with the list of block devices and
         partitions."""
-        # Circual imports.
         from maasserver.models.filesystem import Filesystem
 
+        if block_devices:
+            bdev = block_devices[0]
+        else:
+            bdev = partitions[0].partition_table.block_device
+        node_config = bdev.node_config
         volume_group = VolumeGroup.objects.create(name=name, uuid=uuid)
+
         for block_device in block_devices:
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.LVM_PV,
                 block_device=block_device,
                 filesystem_group=volume_group,
             )
         for partition in partitions:
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.LVM_PV,
                 partition=partition,
                 filesystem_group=volume_group,
@@ -194,33 +201,48 @@ class RAIDManager(BaseFilesystemGroupManager):
         spare_devices=[],
         spare_partitions=[],
     ):
-        # Avoid circular import issues
         from maasserver.models.filesystem import Filesystem
 
         # Create a FilesystemGroup for this RAID
         raid = RAID(group_type=level, name=name, uuid=uuid)
         raid.save()
 
+        if block_devices:
+            bdev = block_devices[0]
+        elif spare_devices:
+            bdev = spare_devices[0]
+        elif partitions:
+            bdev = partitions[0].partition_table.block_device
+        elif spare_partitions:
+            bdev = partitions[0].partition_table.block_device
+        else:
+            bdev = None  # this only happens if there are no devices at all, in
+            # which case no filesystem is created
+        node_config = bdev.node_config if bdev else None
         for block_device in block_devices:
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.RAID,
                 block_device=block_device,
                 filesystem_group=raid,
             )
         for partition in partitions:
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.RAID,
                 partition=partition,
                 filesystem_group=raid,
             )
         for block_device in spare_devices:
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.RAID_SPARE,
                 block_device=block_device,
                 filesystem_group=raid,
             )
         for partition in spare_partitions:
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.RAID_SPARE,
                 partition=partition,
                 filesystem_group=raid,
@@ -288,11 +310,16 @@ class BcacheManager(BaseFilesystemGroupManager):
 
         if backing_device is not None:
             backing_filesystem = Filesystem(
+                node_config=backing_device.node_config,
                 block_device=backing_device,
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             )
         elif backing_partition is not None:
+            node_config = (
+                backing_partition.partition_table.block_device.node_config
+            )
             backing_filesystem = Filesystem(
+                node_config=node_config,
                 partition=backing_partition,
                 fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
             )
@@ -318,19 +345,22 @@ class VMFSManager(BaseFilesystemGroupManager):
 
     def create_vmfs(self, name, partitions, uuid=None):
         """Create a `VMFS` with the list of block devices and partitions."""
-        # Avoid circular imports.
         from maasserver.models.filesystem import Filesystem
 
+        node_config = partitions[0].partition_table.block_device.node_config
         vmfs = self.create(name=name, uuid=uuid)
         for partition in partitions:
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.VMFS6,
                 partition=partition,
                 filesystem_group=vmfs,
             )
         vmfs.save(force_update=True)
         vmfs.virtual_device.filesystem_set.create(
-            fstype=FILESYSTEM_TYPE.VMFS6, mount_point="/vmfs/volumes/%s" % name
+            node_config=node_config,
+            fstype=FILESYSTEM_TYPE.VMFS6,
+            mount_point=f"/vmfs/volumes/{name}",
         )
         return vmfs
 
@@ -868,6 +898,7 @@ class VolumeGroup(FilesystemGroup):
                 filesystem.delete()
         for new_block_device in block_devices:
             Filesystem.objects.create(
+                node_config=new_block_device.node_config,
                 fstype=FILESYSTEM_TYPE.LVM_PV,
                 block_device=new_block_device,
                 filesystem_group=self,
@@ -889,7 +920,11 @@ class VolumeGroup(FilesystemGroup):
             else:
                 filesystem.delete()
         for new_partition in partitions:
+            node_config = (
+                new_partition.partition_table.block_device.node_config
+            )
             Filesystem.objects.create(
+                node_config=node_config,
                 fstype=FILESYSTEM_TYPE.LVM_PV,
                 partition=new_partition,
                 filesystem_group=self,
@@ -937,7 +972,10 @@ class RAID(FilesystemGroup):
             )
         else:
             Filesystem.objects.create(
-                block_device=device, fstype=fstype, filesystem_group=self
+                node_config=device.node_config,
+                block_device=device,
+                fstype=fstype,
+                filesystem_group=self,
             )
         return self
 
@@ -946,7 +984,8 @@ class RAID(FilesystemGroup):
         # Avoid circular import.
         from maasserver.models.filesystem import Filesystem
 
-        if partition.get_node() != self.get_node():
+        node = self.get_node()
+        if partition.get_node() != node:
             raise ValidationError(
                 "Partition must be on a device from the same node as the rest "
                 "of the array."
@@ -957,7 +996,10 @@ class RAID(FilesystemGroup):
             )
         else:
             Filesystem.objects.create(
-                partition=partition, fstype=fstype, filesystem_group=self
+                node_config=node.current_config,
+                partition=partition,
+                fstype=fstype,
+                filesystem_group=self,
             )
         return self
 

@@ -66,7 +66,6 @@ from maasserver.utils.converters import json_load_bytes
 from maasserver.utils.orm import post_commit, reload_object
 from maastesting.matchers import (
     Equals,
-    HasLength,
     MockCalledOnce,
     MockCalledOnceWith,
     MockCallsMatch,
@@ -2869,7 +2868,10 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
     def test_machine_representation_includes_non_storage_filesystem(self):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
-        filesystem = factory.make_Filesystem(node=machine, fstype=self.fstype)
+        filesystem = factory.make_Filesystem(
+            node_config=machine.current_config,
+            fstype=self.fstype,
+        )
         response = self.client.get(self.get_machine_uri(machine))
         self.assertEqual(
             http.client.OK, response.status_code, response.content
@@ -2903,10 +2905,15 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         factory.make_Filesystem(
-            node=machine, fstype=self.fstype, label="not-acquired"
+            node_config=machine.current_config,
+            fstype=self.fstype,
+            label="not-acquired",
         )
         filesystem = factory.make_Filesystem(
-            node=machine, fstype=self.fstype, label="acquired", acquired=True
+            node_config=machine.current_config,
+            fstype=self.fstype,
+            label="acquired",
+            acquired=True,
         )
         response = self.client.get(self.get_machine_uri(machine))
         self.assertEqual(
@@ -2941,10 +2948,15 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
         self.become_admin()
         machine = factory.make_Node(status=NODE_STATUS.READY)
         filesystem = factory.make_Filesystem(
-            node=machine, fstype=self.fstype, label="not-acquired"
+            node_config=machine.current_config,
+            fstype=self.fstype,
+            label="not-acquired",
         )
         factory.make_Filesystem(
-            node=machine, fstype=self.fstype, label="acquired", acquired=True
+            node_config=machine.current_config,
+            fstype=self.fstype,
+            label="acquired",
+            acquired=True,
         )
         response = self.client.get(self.get_machine_uri(machine))
         self.assertEqual(
@@ -2991,14 +3003,14 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         self.assertThat(
-            list(Filesystem.objects.filter(node=machine)),
+            list(machine.special_filesystems),
             MatchesListwise(
                 [
                     MatchesStructure.byEquality(
                         fstype=self.fstype,
                         mount_point=mount_point,
                         mount_options=mount_options,
-                        node=machine,
+                        node_config=machine.current_config,
                     )
                 ]
             ),
@@ -3121,7 +3133,7 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
 
     def assertCanUnmountFilesystem(self, machine):
         filesystem = factory.make_Filesystem(
-            node=machine,
+            node_config=machine.current_config,
             fstype=self.fstype,
             mount_point=factory.make_absolute_path(),
         )
@@ -3132,7 +3144,7 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertThat(Filesystem.objects.filter(node=machine), HasLength(0))
+        self.assertFalse(machine.special_filesystems.exists())
 
     def test_user_unmounts_non_storage_filesystem_on_allocated_machine(self):
         self.assertCanUnmountFilesystem(
@@ -3145,7 +3157,7 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
         for status in statuses:
             machine = factory.make_Node(status=status)
             filesystem = factory.make_Filesystem(
-                node=machine,
+                node_config=machine.current_config,
                 fstype=self.fstype,
                 mount_point=factory.make_absolute_path(),
             )
@@ -3181,7 +3193,7 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
         for status in statuses:
             machine = factory.make_Node(status=status)
             filesystem = factory.make_Filesystem(
-                node=machine,
+                node_config=machine.current_config,
                 fstype=self.fstype,
                 mount_point=factory.make_absolute_path(),
             )

@@ -85,7 +85,6 @@ NODES_PREFETCH = [
     "domain__dnsresource_set__dnsdata_set",
     "domain__globaldefault_set",
     "ownerdata_set",
-    "special_filesystems",
     "gateway_link_ipv4__subnet",
     "gateway_link_ipv6__subnet",
     Prefetch(

@@ -13,7 +13,6 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
-    Q,
 )
 
 from maasserver import DefaultMeta
@@ -36,14 +35,7 @@ class FilesystemManager(Manager):
 
     def filter_by_node(self, node):
         """Return all filesystems on this node."""
-        config_id = node.current_config_id
-        return self.filter(
-            Q(node=node)
-            | Q(block_device__node_config_id=config_id)
-            | Q(
-                partition__partition_table__block_device__node_config_id=config_id
-            )
-        )
+        return self.filter(node_config_id=node.current_config_id)
 
 
 class Filesystem(CleanSave, TimestampedModel):
@@ -85,7 +77,6 @@ class Filesystem(CleanSave, TimestampedModel):
     )
 
     class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
         unique_together = (
             ("partition", "acquired"),
@@ -112,15 +103,7 @@ class Filesystem(CleanSave, TimestampedModel):
         BlockDevice, unique=False, null=True, blank=True, on_delete=CASCADE
     )
 
-    node = ForeignKey(
-        "Node",
-        unique=False,
-        null=True,
-        blank=True,
-        related_name="special_filesystems",
-        on_delete=CASCADE,
-    )
-    node_config = ForeignKey("NodeConfig", null=True, on_delete=CASCADE)
+    node_config = ForeignKey("NodeConfig", on_delete=CASCADE)
 
     # XXX: For CharField, why allow null *and* blank? Would
     # CharField(null=False, blank=True, default="") not work better?
@@ -167,11 +150,8 @@ class Filesystem(CleanSave, TimestampedModel):
             return self.partition.get_node()
         elif self.block_device is not None:
             return self.block_device.get_node()
-        elif self.node is not None:
-            return self.node
-        else:
-            # XXX: Explode instead?
-            return None
+        elif self.node_config.node is not None:
+            return self.node_config.node
 
     def get_physical_block_devices(self):
         """Return PhysicalBlockDevices backing the filesystem."""
@@ -247,22 +227,11 @@ class Filesystem(CleanSave, TimestampedModel):
 
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
-        parents = self.partition, self.block_device, self.node
-
-        # You have to specify either a partition, block device, or node.
-        if parents.count(None) == len(parents):
-            if self.uses_storage:
-                raise ValidationError(
-                    "One of partition or block device must be specified."
-                )
-            else:
-                raise ValidationError("A node must be specified.")
 
         # You can have only one of partition, block device, or node.
-        if len(parents) - parents.count(None) > 1:
+        if self.partition and self.block_device:
             raise ValidationError(
-                "Only one of partition, block device, or node can "
-                "be specified."
+                "Only one of partition, block device can be specified."
             )
 
         # If fstype is for a bcache as a cache device it needs to be in a
@@ -300,36 +269,20 @@ class Filesystem(CleanSave, TimestampedModel):
                     "format the partition."
                 )
 
-        # Only ramfs and tmpfs can have a node as a parent.
-        if self.uses_storage:
-            if self.node is not None:
-                raise ValidationError(
-                    "A %s filesystem must be placed on a "
-                    "block device or partition." % self.fstype
-                )
-        else:
-            if self.node is None:
-                raise ValidationError(
-                    "RAM-backed filesystems cannot be placed on "
-                    "block devices or partitions."
-                )
-
-        # Non-storage filesystems MUST be mounted.
-        if (not self.uses_storage) and (not self.is_mounted):
-            raise ValidationError("RAM-backed filesystems must be mounted.")
+        if not self.uses_storage and not self.is_mounted:
+            raise ValidationError("Virtual filesystems must be mounted.")
 
         # There should be no duplicate mount points.
         if self.is_mounted and self.uses_mount_point:
             # Find another filesystem that's mounted at the same point.
-            owning_node_other_matching_mount_point = (
-                Filesystem.objects.filter_by_node(self.get_node())
-                .filter(mount_point=self.mount_point, acquired=self.acquired)
-                .exclude(id=self.id)
-            )
-            if owning_node_other_matching_mount_point.exists():
+            other_filesystems = Filesystem.objects.filter(
+                node_config=self.node_config,
+                mount_point=self.mount_point,
+                acquired=self.acquired,
+            ).exclude(id=self.id)
+            if other_filesystems.exists():
                 raise ValidationError(
-                    "Another filesystem is already mounted at %s."
-                    % (self.mount_point,)
+                    f"Another filesystem is already mounted at {self.mount_point}."
                 )
 
     def save(self, *args, **kwargs):

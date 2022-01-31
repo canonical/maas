@@ -1,4 +1,4 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Forms."""
@@ -2853,6 +2853,7 @@ class FormatBlockDeviceForm(Form):
 
         # Create the new filesystem
         Filesystem.objects.create(
+            node_config_id=self.block_device.node_config_id,
             block_device=self.block_device,
             fstype=self.cleaned_data["fstype"],
             uuid=self.cleaned_data.get("uuid", None),
@@ -2941,6 +2942,7 @@ class FormatPartitionForm(Form):
 
         # Create the new filesystem
         Filesystem.objects.create(
+            node_config_id=self.node.current_config_id,
             partition=self.partition,
             fstype=self.cleaned_data["fstype"],
             uuid=self.cleaned_data.get("uuid", None),
@@ -3558,11 +3560,15 @@ class UpdateBcacheForm(Form):
             partition = device.create_partition_if_boot_disk()
             if partition is not None:
                 filesystem = Filesystem.objects.create(
-                    partition=partition, fstype=FILESYSTEM_TYPE.BCACHE_BACKING
+                    node_config_id=self.node.current_config_id,
+                    partition=partition,
+                    fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                 )
             else:
                 filesystem = Filesystem.objects.create(
-                    block_device=device, fstype=FILESYSTEM_TYPE.BCACHE_BACKING
+                    node_config_id=device.node_config_id,
+                    block_device=device,
+                    fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                 )
             self.bcache.filesystems.add(filesystem)
         elif self.cleaned_data["backing_partition"]:
@@ -3576,7 +3582,9 @@ class UpdateBcacheForm(Form):
             # Create a new one on this partition.
             self.bcache.filesystems.add(
                 Filesystem.objects.create(
-                    partition=partition, fstype=FILESYSTEM_TYPE.BCACHE_BACKING
+                    node_config_id=self.node.current_config_id,
+                    partition=partition,
+                    fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
                 )
             )
 
@@ -4274,6 +4282,7 @@ class UpdateVMFSForm(UpdateVolumeGroupForm):
         # setup is identical. As such the parent class calls the object
         # volume_group.
         vmfs = self.volume_group
+        node = vmfs.get_node()
         for block_device in BlockDevice.objects.filter(
             id__in=self.cleaned_data["add_block_devices"]
         ):
@@ -4282,6 +4291,7 @@ class UpdateVMFSForm(UpdateVolumeGroupForm):
             # form so the model reflects what will be written.
             partition = block_device.create_partition()
             Filesystem.objects.create(
+                node_config_id=node.current_config_id,
                 fstype=FILESYSTEM_TYPE.VMFS6,
                 partition=partition,
                 filesystem_group=vmfs,
@@ -4290,6 +4300,7 @@ class UpdateVMFSForm(UpdateVolumeGroupForm):
             id__in=self.cleaned_data["add_partitions"]
         ):
             Filesystem.objects.create(
+                node_config_id=node.current_config_id,
                 fstype=FILESYSTEM_TYPE.VMFS6,
                 partition=partition,
                 filesystem_group=vmfs,

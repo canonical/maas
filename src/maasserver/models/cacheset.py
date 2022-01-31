@@ -1,4 +1,4 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Model for a Bcache cache set."""
@@ -54,7 +54,6 @@ class CacheSetManager(Manager):
 
     def get_or_create_cache_set_for_block_device(self, block_device):
         """Get or create the cache set for the `block_device`."""
-        # Circular imports.
         from maasserver.models.filesystem import Filesystem
 
         existing_cache_set = self.get_cache_set_for_block_device(block_device)
@@ -63,6 +62,7 @@ class CacheSetManager(Manager):
         else:
             cache_set = self.create()
             Filesystem.objects.create(
+                node_config=block_device.node_config,
                 block_device=block_device,
                 fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
                 cache_set=cache_set,
@@ -71,7 +71,6 @@ class CacheSetManager(Manager):
 
     def get_or_create_cache_set_for_partition(self, partition):
         """Get or create the cache set for the `partition`."""
-        # Circular imports.
         from maasserver.models.filesystem import Filesystem
 
         existing_cache_set = self.get_cache_set_for_partition(partition)
@@ -79,7 +78,9 @@ class CacheSetManager(Manager):
             return existing_cache_set
         else:
             cache_set = self.create()
+            node_config = partition.partition_table.block_device.node_config
             Filesystem.objects.create(
+                node_config=node_config,
                 partition=partition,
                 fstype=FILESYSTEM_TYPE.BCACHE_CACHE,
                 cache_set=cache_set,

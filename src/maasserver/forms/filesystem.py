@@ -81,7 +81,7 @@ class MountNonStorageFilesystemForm(Form):
     @typed
     def save(self) -> Filesystem:
         filesystem = Filesystem(
-            node=self.node,
+            node_config_id=self.node.current_config_id,
             fstype=self.cleaned_data["fstype"],
             mount_options=self.cleaned_data["mount_options"],
             mount_point=self.cleaned_data["mount_point"],
@@ -106,7 +106,10 @@ class UnmountNonStorageFilesystemForm(Form):
         if "mount_point" in cleaned_data:
             try:
                 self.filesystem = Filesystem.objects.get(
-                    node=self.node, mount_point=cleaned_data["mount_point"]
+                    node_config_id=self.node.current_config_id,
+                    block_device__isnull=True,
+                    partition__isnull=True,
+                    mount_point=cleaned_data["mount_point"],
                 )
             except Filesystem.DoesNotExist:
                 self.add_error(

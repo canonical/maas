@@ -107,7 +107,6 @@ def node_prefetch(queryset):
         .prefetch_related("interface_set__vlan__fabric")
         .prefetch_related("boot_interface__vlan__fabric")
         .prefetch_related("nodemetadata_set")
-        .prefetch_related("special_filesystems")
         .prefetch_related("tags")
         .prefetch_related(
             Prefetch(

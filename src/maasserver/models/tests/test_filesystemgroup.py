@@ -2400,6 +2400,7 @@ class TestRAID(MAASServerTestCase):
         )
         device = factory.make_PhysicalBlockDevice(node=node, size=device_size)
         Filesystem.objects.create(
+            node_config=node.current_config,
             block_device=device,
             mount_point="/export/home",
             fstype=FILESYSTEM_TYPE.EXT4,
