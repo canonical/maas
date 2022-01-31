@@ -1928,16 +1928,16 @@ def render_sys_proxy_procedure(proc_name, on_delete=False):
     :param proc_name: Name of the procedure.
     :param on_delete: True when procedure will be used as a delete trigger.
     """
+    entry = "OLD" if on_delete else "NEW"
     return dedent(
-        """\
-        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        f"""\
+        CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
         BEGIN
           PERFORM pg_notify('sys_proxy', '');
-          RETURN %s;
+          RETURN {entry};
         END;
         $$ LANGUAGE plpgsql;
         """
-        % (proc_name, "NEW" if not on_delete else "OLD")
     )
 
 

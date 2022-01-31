@@ -32,6 +32,10 @@ from maasserver.utils.orm import transactional
 # the asynchronous nature of the PG events makes it easier to test in
 # test_listener where all the Twisted infrastructure is already in place.
 
+TYPE_CONTROLLERS = (
+    f"({NODE_TYPE.RACK_CONTROLLER}, {NODE_TYPE.REGION_CONTROLLER}, "
+    f"{NODE_TYPE.REGION_AND_RACK_CONTROLLER})"
+)
 
 # Procedure that is called when a tag is added or removed from a node/device.
 # Sends a notify message for machine_update or device_update depending on if
@@ -45,11 +49,11 @@ NODE_TAG_NOTIFY = dedent(
     BEGIN
       SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node
-      WHERE id = {field}.node_id;
+      WHERE id = {entry}.node_id;
 
       IF node.node_type = {type_machine} THEN
         PERFORM pg_notify('machine_update', CAST(node.system_id AS text));
-      ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
+      ELSIF node.node_type IN {type_controllers} THEN
         PERFORM pg_notify('controller_update', CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
@@ -59,7 +63,7 @@ NODE_TAG_NOTIFY = dedent(
       ELSE
         PERFORM pg_notify('device_update', CAST(node.system_id AS text));
       END IF;
-      PERFORM pg_notify('tag_update', CAST({field}.tag_id AS text));
+      PERFORM pg_notify('tag_update', CAST({entry}.tag_id AS text));
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -88,7 +92,7 @@ TAG_NODES_NOTIFY = dedent(
       LOOP
         IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -109,7 +113,7 @@ TAG_NODES_NOTIFY = dedent(
 # Procedure that is called when a VM cluster is created.
 VMCLUSTER_INSERT_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION vmcluster_insert_notify() RETURNS trigger AS $$
     BEGIN
         PERFORM pg_notify('vmcluster_create',CAST(NEW.id AS text));
         RETURN NEW;
@@ -122,7 +126,7 @@ VMCLUSTER_INSERT_NOTIFY = dedent(
 # Procedure that is called when a VM cluster is updated
 VMCLUSTER_UPDATE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION vmcluster_update_notify() RETURNS trigger AS $$
     BEGIN
         PERFORM pg_notify('vmcluster_update',CAST(NEW.id AS text));
         RETURN NEW;
@@ -135,7 +139,7 @@ VMCLUSTER_UPDATE_NOTIFY = dedent(
 # Procedure that is called when a VM cluster is deleted
 VMCLUSTER_DELETE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION vmcluster_delete_notify() RETURNS trigger AS $$
     BEGIN
         PERFORM pg_notify('vmcluster_delete',CAST(OLD.id as text));
         RETURN OLD;
@@ -147,10 +151,10 @@ VMCLUSTER_DELETE_NOTIFY = dedent(
 
 # Procedure that is called when a pod is created.
 POD_INSERT_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION pod_insert_notify() RETURNS trigger AS $$
     BEGIN
-      IF NEW.bmc_type = %d THEN
+      IF NEW.bmc_type = {BMC_TYPE.POD} THEN
         PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
       END IF;
       RETURN NEW;
@@ -162,16 +166,16 @@ POD_INSERT_NOTIFY = dedent(
 
 # Procedure that is called when a pod is updated.
 POD_UPDATE_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION pod_update_notify() RETURNS trigger AS $$
     BEGIN
       IF OLD.bmc_type = NEW.bmc_type THEN
-        IF OLD.bmc_type = %d THEN
+        IF OLD.bmc_type = {BMC_TYPE.POD} THEN
           PERFORM pg_notify('pod_update',CAST(OLD.id AS text));
         END IF;
-      ELSIF OLD.bmc_type = %d AND NEW.bmc_type = %d THEN
+      ELSIF OLD.bmc_type = {BMC_TYPE.BMC} AND NEW.bmc_type = {BMC_TYPE.POD} THEN
           PERFORM pg_notify('pod_create',CAST(NEW.id AS text));
-      ELSIF OLD.bmc_type = %d AND NEW.bmc_type = %d THEN
+      ELSIF OLD.bmc_type = {BMC_TYPE.POD} AND NEW.bmc_type = {BMC_TYPE.BMC} THEN
           PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
       END IF;
       RETURN NEW;
@@ -183,10 +187,10 @@ POD_UPDATE_NOTIFY = dedent(
 
 # Procedure that is called when a pod is deleted.
 POD_DELETE_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION pod_delete_notify() RETURNS trigger AS $$
     BEGIN
-      IF OLD.bmc_type = %d THEN
+      IF OLD.bmc_type = {BMC_TYPE.POD} THEN
           PERFORM pg_notify('pod_delete',CAST(OLD.id AS text));
       END IF;
       RETURN OLD;
@@ -199,15 +203,15 @@ POD_DELETE_NOTIFY = dedent(
 # Procedure that is called when a machine is created to update its
 # related VMCluster, if one exists
 NODE_VMCLUSTER_INSERT_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION node_vmcluster_insert_notify() RETURNS trigger AS $$
     DECLARE
       bmc RECORD;
       hints RECORD;
     BEGIN
       IF NEW.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
-        IF bmc.bmc_type = %d THEN
+        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
           SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
           IF hints IS NOT NULL AND hints.cluster_id IS NOT NULL THEN
             PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
@@ -221,8 +225,8 @@ NODE_VMCLUSTER_INSERT_NOTIFY = dedent(
 )
 
 NODE_VMCLUSTER_UPDATE_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION node_vmcluster_update_notify() RETURNS trigger AS $$
     DECLARE
       bmc_type INT;
       new_bmc RECORD;
@@ -230,7 +234,7 @@ NODE_VMCLUSTER_UPDATE_NOTIFY = dedent(
       old_hints RECORD;
       new_hints RECORD;
     BEGIN
-      bmc_type = %d;
+      bmc_type = {BMC_TYPE.POD};
       IF OLD.bmc_id IS NOT NULL AND NEW.bmc_id IS NOT NULL THEN
         IF OLD.bmc_id = NEW.bmc_id THEN
           SELECT * INTO new_bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
@@ -292,15 +296,15 @@ NODE_VMCLUSTER_UPDATE_NOTIFY = dedent(
 )
 
 NODE_VMCLUSTER_DELETE_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION node_vmcluster_delete_notify() RETURNS trigger AS $$
     DECLARE
       bmc RECORD;
       hints RECORD;
     BEGIN
       IF OLD.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
-        IF bmc.bmc_type = %d THEN
+        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
           SELECT * INTO hints FROM maasserver_podhints WHERE pod_id = bmc.id;
           IF hints.cluster_id IS NOT NULL THEN
             PERFORM pg_notify('vmcluster_update',CAST(hints.cluster_id AS text));
@@ -316,14 +320,14 @@ NODE_VMCLUSTER_DELETE_NOTIFY = dedent(
 # Procedure that is called when a machine is created to update its related
 # bmc if bmc_type is pod.
 NODE_POD_INSERT_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION node_pod_insert_notify() RETURNS trigger AS $$
     DECLARE
       bmc RECORD;
     BEGIN
       IF NEW.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
-        IF bmc.bmc_type = %d THEN
+        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
           PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
         END IF;
       END IF;
@@ -337,8 +341,8 @@ NODE_POD_INSERT_NOTIFY = dedent(
 # Procedure that is called when a machine is updated to update its related
 # bmc if bmc_type is pod.
 NODE_POD_UPDATE_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION node_pod_update_notify() RETURNS trigger AS $$
     DECLARE
       bmc RECORD;
     BEGIN
@@ -347,14 +351,14 @@ NODE_POD_UPDATE_NOTIFY = dedent(
           OLD.bmc_id != NEW.bmc_id) THEN
         IF OLD.bmc_id IS NOT NULL THEN
           SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
-          IF bmc.bmc_type = %d THEN
+          IF bmc.bmc_type = {BMC_TYPE.POD} THEN
             PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
           END IF;
         END IF;
       END IF;
       IF NEW.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = NEW.bmc_id;
-        IF bmc.bmc_type = %d THEN
+        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
           PERFORM pg_notify('pod_update',CAST(NEW.bmc_id AS text));
         END IF;
       END IF;
@@ -368,14 +372,14 @@ NODE_POD_UPDATE_NOTIFY = dedent(
 # Procedure that is called when a machine is deleted to update its related
 # bmc if bmc_type is pod.
 NODE_POD_DELETE_NOTIFY = dedent(
-    """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    f"""\
+    CREATE OR REPLACE FUNCTION node_pod_delete_notify() RETURNS trigger AS $$
     DECLARE
       bmc RECORD;
     BEGIN
       IF OLD.bmc_id IS NOT NULL THEN
         SELECT * INTO bmc FROM maasserver_bmc WHERE id = OLD.bmc_id;
-        IF bmc.bmc_type = %d THEN
+        IF bmc.bmc_type = {BMC_TYPE.POD} THEN
           PERFORM pg_notify('pod_update',CAST(OLD.bmc_id AS text));
         END IF;
       END IF;
@@ -387,7 +391,7 @@ NODE_POD_DELETE_NOTIFY = dedent(
 
 INTERFACE_POD_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS TRIGGER AS $$
+    CREATE OR REPLACE FUNCTION interface_pod_notify() RETURNS TRIGGER AS $$
     DECLARE
         _pod_id integer;
     BEGIN
@@ -432,7 +436,7 @@ INTERFACE_POD_NOTIFY = dedent(
 # an Interface. Sends a notify message for domain_update
 INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       domain RECORD;
     BEGIN
@@ -440,7 +444,7 @@ INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
       FROM maasserver_node, maasserver_interface, maasserver_domain
       WHERE maasserver_node.id = maasserver_interface.node_id
       AND maasserver_domain.id = maasserver_node.domain_id
-      AND maasserver_interface.id = %s;
+      AND maasserver_interface.id = {entry}.interface_id;
 
       IF domain.id IS NOT NULL THEN
         PERFORM pg_notify('domain_update',CAST(domain.id AS text));
@@ -457,7 +461,7 @@ INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
 # depending on if the node type is node.
 INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       node RECORD;
       pnode RECORD;
@@ -465,11 +469,11 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent(
       SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node, maasserver_interface
       WHERE maasserver_node.id = maasserver_interface.node_id
-      AND maasserver_interface.id = %s;
+      AND maasserver_interface.id = {entry}.interface_id;
 
-      IF node.node_type = %d THEN
+      IF node.node_type = {type_machine} THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-      ELSIF node.node_type IN (%d, %d, %d) THEN
+      ELSIF node.node_type IN {type_controllers} THEN
         PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
@@ -492,7 +496,7 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent(
 # depending on if the node type is node, both for the old node and the new
 # node.
 INTERFACE_UPDATE_NODE_NOTIFY = dedent(
-    """\
+    f"""\
     CREATE OR REPLACE FUNCTION nd_interface_update_notify()
     RETURNS trigger AS $$
     DECLARE
@@ -504,9 +508,9 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent(
         FROM maasserver_node
         WHERE id = OLD.node_id;
 
-        IF node.node_type = %d THEN
+        IF node.node_type = {NODE_TYPE.MACHINE} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -522,9 +526,9 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent(
       FROM maasserver_node
       WHERE id = NEW.node_id;
 
-      IF node.node_type = %d THEN
+      IF node.node_type = {NODE_TYPE.MACHINE} THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-      ELSIF node.node_type IN (%d, %d, %d) THEN
+      ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
         PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
       ELSIF node.parent_id IS NOT NULL THEN
         SELECT system_id INTO pnode
@@ -734,7 +738,7 @@ CACHESET_NODE_NOTIFY = dedent(
 # Procedure that is called when the subnet is updated.
 SUBNET_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         node RECORD;
         pnode RECORD;
@@ -748,15 +752,15 @@ SUBNET_NODE_NOTIFY = dedent(
           maasserver_interface,
           maasserver_interface_ip_addresses AS ip_link,
           maasserver_staticipaddress
-        WHERE maasserver_subnet.id = %s
+        WHERE maasserver_subnet.id = {entry}.id
         AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
         AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
         AND ip_link.interface_id = maasserver_interface.id
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -777,7 +781,7 @@ SUBNET_NODE_NOTIFY = dedent(
 # Procedure that is called when fabric is updated.
 FABRIC_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         node RECORD;
         pnode RECORD;
@@ -790,14 +794,14 @@ FABRIC_NODE_NOTIFY = dedent(
           maasserver_fabric,
           maasserver_interface,
           maasserver_vlan
-        WHERE maasserver_fabric.id = %s
+        WHERE maasserver_fabric.id = {entry}.id
         AND maasserver_vlan.fabric_id = maasserver_fabric.id
         AND maasserver_node.id = maasserver_interface.node_id
         AND maasserver_vlan.id = maasserver_interface.vlan_id)
       LOOP
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -818,7 +822,7 @@ FABRIC_NODE_NOTIFY = dedent(
 # Procedure that is called when space is updated.
 SPACE_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         node RECORD;
         pnode RECORD;
@@ -834,7 +838,7 @@ SPACE_NODE_NOTIFY = dedent(
           maasserver_interface,
           maasserver_interface_ip_addresses AS ip_link,
           maasserver_staticipaddress
-        WHERE maasserver_space.id = %s
+        WHERE maasserver_space.id = {entry}.id
         AND maasserver_subnet.vlan_id = maasserver_vlan.id
         AND maasserver_vlan.space_id IS NOT DISTINCT FROM maasserver_space.id
         AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
@@ -842,9 +846,9 @@ SPACE_NODE_NOTIFY = dedent(
         AND ip_link.interface_id = maasserver_interface.id
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -865,7 +869,7 @@ SPACE_NODE_NOTIFY = dedent(
 # Procedure that is called when vlan is updated.
 VLAN_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         node RECORD;
         pnode RECORD;
@@ -874,13 +878,13 @@ VLAN_NODE_NOTIFY = dedent(
         SELECT DISTINCT ON (maasserver_node.id)
           system_id, node_type, parent_id
         FROM maasserver_node, maasserver_interface, maasserver_vlan
-        WHERE maasserver_vlan.id = %s
+        WHERE maasserver_vlan.id = {entry}.id
         AND maasserver_node.id = maasserver_interface.node_id
         AND maasserver_vlan.id = maasserver_interface.vlan_id)
       LOOP
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -901,18 +905,18 @@ VLAN_NODE_NOTIFY = dedent(
 # Procedure that is called when BMC is updated
 BMC_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       node RECORD;
     BEGIN
       FOR node IN (
         SELECT system_id, node_type
         FROM maasserver_node
-        WHERE bmc_id = %s)
+        WHERE bmc_id = {entry}.id)
       LOOP
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         END IF;
       END LOOP;
@@ -927,22 +931,22 @@ BMC_NODE_NOTIFY = dedent(
 # events do not trigger a notification, event must be >= INFO.
 EVENT_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       type RECORD;
       node RECORD;
     BEGIN
       SELECT level INTO type
       FROM maasserver_eventtype
-      WHERE maasserver_eventtype.id = %s;
-      IF type.level >= %d THEN
+      WHERE maasserver_eventtype.id = {entry}.type_id;
+      IF type.level >= {loglevel_info} THEN
         SELECT system_id, node_type INTO node
         FROM maasserver_node
-        WHERE maasserver_node.id = %s;
+        WHERE maasserver_node.id = {entry}.node_id;
 
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         END IF;
       END IF;
@@ -956,14 +960,14 @@ EVENT_NODE_NOTIFY = dedent(
 # Procedure that is called when vlan is updated.
 VLAN_SUBNET_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         subnet RECORD;
     BEGIN
       FOR subnet IN (
         SELECT DISTINCT maasserver_subnet.id AS id
         FROM maasserver_subnet, maasserver_vlan
-        WHERE maasserver_vlan.id = %s)
+        WHERE maasserver_vlan.id = {entry}.id)
       LOOP
         PERFORM pg_notify('subnet_update',CAST(subnet.id AS text));
       END LOOP;
@@ -978,7 +982,7 @@ VLAN_SUBNET_NOTIFY = dedent(
 # node.
 STATIC_IP_ADDRESS_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         node RECORD;
         pnode RECORD;
@@ -990,13 +994,13 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent(
           maasserver_node,
           maasserver_interface,
           maasserver_interface_ip_addresses AS ip_link
-        WHERE ip_link.staticipaddress_id = %s
+        WHERE ip_link.staticipaddress_id = {entry}.id
         AND ip_link.interface_id = maasserver_interface.id
         AND maasserver_node.id = maasserver_interface.node_id)
       LOOP
-        IF node.node_type = %d THEN
+        IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-        ELSIF node.node_type IN (%d, %d, %d) THEN
+        ELSIF node.node_type IN {type_controllers} THEN
           PERFORM pg_notify('controller_update',CAST(node.system_id AS text));
         ELSIF node.parent_id IS NOT NULL THEN
           SELECT system_id INTO pnode
@@ -1017,7 +1021,7 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent(
 # subnet.
 STATIC_IP_ADDRESS_SUBNET_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     BEGIN
       IF TG_OP = 'INSERT' THEN
         IF NEW.subnet_id IS NOT NULL THEN
@@ -1049,7 +1053,7 @@ STATIC_IP_ADDRESS_SUBNET_NOTIFY = dedent(
 # domain.
 STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION ipaddress_domain_update_notify() RETURNS trigger AS $$
     DECLARE
       dom RECORD;
     BEGIN
@@ -1089,7 +1093,7 @@ STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY = dedent(
 # its related domain.
 STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       dom RECORD;
     BEGIN
@@ -1111,7 +1115,7 @@ STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
           dia.staticipaddress_id = staticipaddress.id
         JOIN maasserver_domain AS domain ON
           domain.id = node.domain_id OR domain.id = dnsresource.domain_id
-        WHERE staticipaddress.id = %s)
+        WHERE staticipaddress.id = {entry}.id)
       LOOP
         PERFORM pg_notify('domain_update',CAST(dom.id AS text));
       END LOOP;
@@ -1125,7 +1129,7 @@ STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
 # subnet.
 IP_RANGE_SUBNET_INSERT_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION iprange_subnet_insert_notify() RETURNS trigger AS $$
     BEGIN
       IF NEW.subnet_id IS NOT NULL THEN
         PERFORM pg_notify('subnet_update',CAST(NEW.subnet_id AS text));
@@ -1140,7 +1144,7 @@ IP_RANGE_SUBNET_INSERT_NOTIFY = dedent(
 # subnet.
 IP_RANGE_SUBNET_UPDATE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION iprange_subnet_update_notify() RETURNS trigger AS $$
     BEGIN
       IF OLD.subnet_id != NEW.subnet_id THEN
         IF OLD.subnet_id IS NOT NULL THEN
@@ -1160,7 +1164,7 @@ IP_RANGE_SUBNET_UPDATE_NOTIFY = dedent(
 # subnet.
 IP_RANGE_SUBNET_DELETE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION iprange_subnet_delete_notify() RETURNS trigger AS $$
     BEGIN
       IF OLD.subnet_id IS NOT NULL THEN
         PERFORM pg_notify('subnet_update',CAST(OLD.subnet_id AS text));
@@ -1174,13 +1178,13 @@ IP_RANGE_SUBNET_DELETE_NOTIFY = dedent(
 # Procedure that is called when a DNSData entry is changed.
 DNSDATA_DOMAIN_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         dom RECORD;
     BEGIN
       SELECT DISTINCT ON (domain_id) domain_id INTO dom
       FROM maasserver_dnsresource AS dnsresource
-      WHERE dnsresource.id = %s;
+      WHERE dnsresource.id = {match_expr};
       PERFORM pg_notify('domain_update',CAST(dom.domain_id AS text));
       RETURN NEW;
     END;
@@ -1191,11 +1195,11 @@ DNSDATA_DOMAIN_NOTIFY = dedent(
 # Procedure that is called when a DNSData entry is inserted/removed.
 DNSRESOURCE_DOMAIN_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
         domain RECORD;
     BEGIN
-      PERFORM pg_notify('domain_update',CAST(%s.domain_id AS text));
+      PERFORM pg_notify('domain_update',CAST({entry}.domain_id AS text));
       RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
@@ -1205,7 +1209,7 @@ DNSRESOURCE_DOMAIN_NOTIFY = dedent(
 # Procedure that is called when a DNSData entry is updated.
 DNSRESOURCE_DOMAIN_UPDATE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION dnsresource_domain_update_notify() RETURNS trigger AS $$
     DECLARE
         domain RECORD;
     BEGIN
@@ -1224,14 +1228,14 @@ DNSRESOURCE_DOMAIN_UPDATE_NOTIFY = dedent(
 # an Interface. Sends a notify message for domain_update
 DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       domain RECORD;
     BEGIN
       SELECT maasserver_domain.id INTO domain
       FROM maasserver_dnsresource, maasserver_domain
       WHERE maasserver_domain.id = maasserver_dnsresource.domain_id
-      AND maasserver_dnsresource.id = %s;
+      AND maasserver_dnsresource.id = {entry}.dnsresource_id;
 
       IF domain.id IS NOT NULL THEN
         PERFORM pg_notify('domain_update',CAST(domain.id AS text));
@@ -1247,7 +1251,7 @@ DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
 # for node_update.
 DOMAIN_NODE_NOTIFY = dedent(
     """\
-    CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION {function_name}() RETURNS trigger AS $$
     DECLARE
       node RECORD;
       pnode RECORD;
@@ -1259,9 +1263,9 @@ DOMAIN_NODE_NOTIFY = dedent(
           WHERE maasserver_node.domain_id = NEW.id)
         LOOP
           IF node.system_id IS NOT NULL THEN
-            IF node.node_type = %d THEN
+            IF node.node_type = {type_machine} THEN
               PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-            ELSIF node.node_type IN (%d, %d, %d) THEN
+            ELSIF node.node_type IN {type_controllers} THEN
               PERFORM pg_notify(
                 'controller_update',CAST(node.system_id AS text));
             ELSIF node.parent_id IS NOT NULL THEN
@@ -1391,10 +1395,6 @@ def render_device_notification_procedure(proc_name, event_name, obj):
 
 
 def render_node_related_notification_procedure(proc_name, node_id_relation):
-    type_machine = NODE_TYPE.MACHINE
-    type_rack = NODE_TYPE.RACK_CONTROLLER
-    type_region = NODE_TYPE.REGION_CONTROLLER
-    type_region_rack = NODE_TYPE.REGION_AND_RACK_CONTROLLER
     return dedent(
         f"""\
         CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
@@ -1406,9 +1406,9 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
           FROM maasserver_node
           WHERE id = {node_id_relation};
 
-          IF node.node_type = {type_machine} THEN
+          IF node.node_type = {NODE_TYPE.MACHINE} THEN
             PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-          ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
+          ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
             PERFORM pg_notify('controller_update',CAST(
               node.system_id AS text));
           ELSIF node.parent_id IS NOT NULL THEN
@@ -1427,10 +1427,6 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
 
 
 def render_node_related_notification_procedure_via_config(proc_name, entry):
-    type_machine = NODE_TYPE.MACHINE
-    type_rack = NODE_TYPE.RACK_CONTROLLER
-    type_region = NODE_TYPE.REGION_CONTROLLER
-    type_region_rack = NODE_TYPE.REGION_AND_RACK_CONTROLLER
     return dedent(
         f"""\
         CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
@@ -1444,9 +1440,9 @@ def render_node_related_notification_procedure_via_config(proc_name, entry):
             ON maasserver_nodeconfig.node_id = maasserver_node.id
           WHERE maasserver_nodeconfig.id = {entry}.node_config_id;
 
-          IF node.node_type = {type_machine} THEN
+          IF node.node_type = {NODE_TYPE.MACHINE} THEN
             PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-          ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
+          ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
             PERFORM pg_notify('controller_update',CAST(
               node.system_id AS text));
           ELSIF node.parent_id IS NOT NULL THEN
@@ -1464,71 +1460,58 @@ def render_node_related_notification_procedure_via_config(proc_name, entry):
     )
 
 
-def node_type_change():
-    type_machine = NODE_TYPE.MACHINE
-    type_device = NODE_TYPE.DEVICE
-    type_rack = NODE_TYPE.RACK_CONTROLLER
-    type_region = NODE_TYPE.REGION_CONTROLLER
-    type_region_rack = NODE_TYPE.REGION_AND_RACK_CONTROLLER
-    return dedent(
-        f"""\
-        CREATE OR REPLACE FUNCTION node_type_change_notify()
-        RETURNS trigger AS $$
-        BEGIN
-          IF (OLD.node_type != NEW.node_type AND NOT (
-              (
-                OLD.node_type IN ({type_rack}, {type_region}, {type_region_rack})
-              ) AND (
-                NEW.node_type IN ({type_rack}, {type_region}, {type_region_rack})
-              ))) THEN
-            CASE OLD.node_type
-              WHEN {type_machine} THEN
-                PERFORM pg_notify('machine_delete',CAST(
-                  OLD.system_id AS TEXT));
-              WHEN {type_device} THEN
-                PERFORM pg_notify('device_delete',CAST(
-                  OLD.system_id AS TEXT));
-              WHEN {type_rack} THEN
-                PERFORM pg_notify('controller_delete',CAST(
-                  OLD.system_id AS TEXT));
-              WHEN {type_region} THEN
-                PERFORM pg_notify('controller_delete',CAST(
-                  OLD.system_id AS TEXT));
-              WHEN {type_region_rack} THEN
-                PERFORM pg_notify('controller_delete',CAST(
-                  OLD.system_id AS TEXT));
-            END CASE;
-            CASE NEW.node_type
-              WHEN {type_machine} THEN
-                PERFORM pg_notify('machine_create',CAST(
-                  NEW.system_id AS TEXT));
-              WHEN {type_device} THEN
-                PERFORM pg_notify('device_create',CAST(
-                  NEW.system_id AS TEXT));
-              WHEN {type_rack} THEN
-                PERFORM pg_notify('controller_create',CAST(
-                  NEW.system_id AS TEXT));
-              WHEN {type_region} THEN
-                PERFORM pg_notify('controller_create',CAST(
-                  NEW.system_id AS TEXT));
-              WHEN {type_region_rack} THEN
-                PERFORM pg_notify('controller_create',CAST(
-                  NEW.system_id AS TEXT));
-            END CASE;
-          END IF;
-          RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
+NODE_TYPE_CHANGE = dedent(
+    f"""\
+    CREATE OR REPLACE FUNCTION node_type_change_notify()
+    RETURNS trigger AS $$
+    BEGIN
+      IF (OLD.node_type != NEW.node_type AND NOT (
+          (OLD.node_type IN {TYPE_CONTROLLERS}) AND
+          (NEW.node_type IN {TYPE_CONTROLLERS})
+         )) THEN
+        CASE OLD.node_type
+          WHEN {NODE_TYPE.MACHINE} THEN
+            PERFORM pg_notify('machine_delete',CAST(
+              OLD.system_id AS TEXT));
+          WHEN {NODE_TYPE.DEVICE} THEN
+            PERFORM pg_notify('device_delete',CAST(
+              OLD.system_id AS TEXT));
+          WHEN {NODE_TYPE.RACK_CONTROLLER} THEN
+            PERFORM pg_notify('controller_delete',CAST(
+              OLD.system_id AS TEXT));
+          WHEN {NODE_TYPE.REGION_CONTROLLER} THEN
+            PERFORM pg_notify('controller_delete',CAST(
+              OLD.system_id AS TEXT));
+          WHEN {NODE_TYPE.REGION_AND_RACK_CONTROLLER} THEN
+            PERFORM pg_notify('controller_delete',CAST(
+              OLD.system_id AS TEXT));
+        END CASE;
+        CASE NEW.node_type
+          WHEN {NODE_TYPE.MACHINE} THEN
+            PERFORM pg_notify('machine_create',CAST(
+              NEW.system_id AS TEXT));
+          WHEN {NODE_TYPE.DEVICE} THEN
+            PERFORM pg_notify('device_create',CAST(
+              NEW.system_id AS TEXT));
+          WHEN {NODE_TYPE.RACK_CONTROLLER} THEN
+            PERFORM pg_notify('controller_create',CAST(
+              NEW.system_id AS TEXT));
+          WHEN {NODE_TYPE.REGION_CONTROLLER} THEN
+            PERFORM pg_notify('controller_create',CAST(
+              NEW.system_id AS TEXT));
+          WHEN {NODE_TYPE.REGION_AND_RACK_CONTROLLER} THEN
+            PERFORM pg_notify('controller_create',CAST(
+              NEW.system_id AS TEXT));
+        END CASE;
+      END IF;
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
     """
-    )
+)
 
 
 def render_script_result_notify(proc_name, script_set_id):
-    type_machine = NODE_TYPE.MACHINE
-    type_device = NODE_TYPE.DEVICE
-    type_rack = NODE_TYPE.RACK_CONTROLLER
-    type_region = NODE_TYPE.REGION_CONTROLLER
-    type_region_rack = NODE_TYPE.REGION_AND_RACK_CONTROLLER
     return dedent(
         f"""\
         CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
@@ -1543,12 +1526,12 @@ def render_script_result_notify(proc_name, script_set_id):
           WHERE
             scriptset.id = {script_set_id} AND
             scriptset.node_id = nodet.id;
-          IF node.node_type = {type_machine} THEN
+          IF node.node_type = {NODE_TYPE.MACHINE} THEN
             PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
-          ELSIF node.node_type IN ({type_rack}, {type_region}, {type_region_rack}) THEN
+          ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
             PERFORM pg_notify(
               'controller_update',CAST(node.system_id AS text));
-          ELSIF node.node_type = {type_device} THEN
+          ELSIF node.node_type = {NODE_TYPE.DEVICE} THEN
             PERFORM pg_notify('device_update',CAST(node.system_id AS text));
           END IF;
           RETURN NEW;
@@ -1910,14 +1893,11 @@ def register_websocket_triggers():
 
     # Subnet node notifications
     register_procedure(
-        SUBNET_NODE_NOTIFY
-        % (
-            "subnet_machine_update_notify",
-            "NEW.id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        SUBNET_NODE_NOTIFY.format(
+            function_name="subnet_machine_update_notify",
+            entry="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -1926,14 +1906,11 @@ def register_websocket_triggers():
 
     # Fabric node notifications
     register_procedure(
-        FABRIC_NODE_NOTIFY
-        % (
-            "fabric_machine_update_notify",
-            "NEW.id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        FABRIC_NODE_NOTIFY.format(
+            function_name="fabric_machine_update_notify",
+            entry="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -1942,14 +1919,11 @@ def register_websocket_triggers():
 
     # Space node notifications
     register_procedure(
-        SPACE_NODE_NOTIFY
-        % (
-            "space_machine_update_notify",
-            "NEW.id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        SPACE_NODE_NOTIFY.format(
+            function_name="space_machine_update_notify",
+            entry="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -1958,44 +1932,34 @@ def register_websocket_triggers():
 
     # VLAN node notifications
     register_procedure(
-        VLAN_NODE_NOTIFY
-        % (
-            "vlan_machine_update_notify",
-            "NEW.id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        VLAN_NODE_NOTIFY.format(
+            function_name="vlan_machine_update_notify",
+            entry="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger("maasserver_vlan", "vlan_machine_update_notify", "update")
 
     # BMC node notifications
     register_procedure(
-        BMC_NODE_NOTIFY
-        % (
-            "bmc_machine_update_notify",
-            "NEW.id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        BMC_NODE_NOTIFY.format(
+            function_name="bmc_machine_update_notify",
+            entry="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger("maasserver_bmc", "bmc_machine_update_notify", "update")
 
     # Event node notifications
     register_procedure(
-        EVENT_NODE_NOTIFY
-        % (
-            "event_machine_update_notify",
-            "NEW.type_id",
-            logging.INFO,
-            "NEW.node_id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        EVENT_NODE_NOTIFY.format(
+            function_name="event_machine_update_notify",
+            entry="NEW",
+            loglevel_info=logging.INFO,
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -2004,20 +1968,20 @@ def register_websocket_triggers():
 
     # VLAN subnet notifications
     register_procedure(
-        VLAN_SUBNET_NOTIFY % ("vlan_subnet_update_notify", "NEW.id")
+        VLAN_SUBNET_NOTIFY.format(
+            function_name="vlan_subnet_update_notify",
+            entry="NEW",
+        )
     )
     register_trigger("maasserver_vlan", "vlan_subnet_update_notify", "update")
 
     # IP address node notifications
     register_procedure(
-        STATIC_IP_ADDRESS_NODE_NOTIFY
-        % (
-            "ipaddress_machine_update_notify",
-            "NEW.id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        STATIC_IP_ADDRESS_NODE_NOTIFY.format(
+            function_name="ipaddress_machine_update_notify",
+            entry="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -2028,13 +1992,19 @@ def register_websocket_triggers():
 
     # IP address subnet notifications
     register_procedure(
-        STATIC_IP_ADDRESS_SUBNET_NOTIFY % "ipaddress_subnet_update_notify"
+        STATIC_IP_ADDRESS_SUBNET_NOTIFY.format(
+            function_name="ipaddress_subnet_update_notify"
+        )
     )
     register_procedure(
-        STATIC_IP_ADDRESS_SUBNET_NOTIFY % "ipaddress_subnet_insert_notify"
+        STATIC_IP_ADDRESS_SUBNET_NOTIFY.format(
+            function_name="ipaddress_subnet_insert_notify"
+        )
     )
     register_procedure(
-        STATIC_IP_ADDRESS_SUBNET_NOTIFY % "ipaddress_subnet_delete_notify"
+        STATIC_IP_ADDRESS_SUBNET_NOTIFY.format(
+            function_name="ipaddress_subnet_delete_notify"
+        )
     )
     register_triggers(
         "maasserver_staticipaddress", "ipaddress_subnet", events=EVENTS_IUD
@@ -2042,87 +2012,55 @@ def register_websocket_triggers():
 
     # IP address domain notifications
     register_procedure(
-        STATIC_IP_ADDRESS_DOMAIN_NOTIFY
-        % ("ipaddress_domain_insert_notify", "NEW.id")
+        STATIC_IP_ADDRESS_DOMAIN_NOTIFY.format(
+            function_name="ipaddress_domain_insert_notify", entry="NEW"
+        )
     )
+    register_procedure(STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY)
     register_procedure(
-        STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY
-        % "ipaddress_domain_update_notify"
-    )
-    register_procedure(
-        STATIC_IP_ADDRESS_DOMAIN_NOTIFY
-        % ("ipaddress_domain_delete_notify", "OLD.id")
+        STATIC_IP_ADDRESS_DOMAIN_NOTIFY.format(
+            function_name="ipaddress_domain_delete_notify", entry="OLD"
+        )
     )
     register_triggers(
         "maasserver_staticipaddress", "ipaddress_domain", events=EVENTS_IUD
     )
 
     # IP range subnet notifications
-    register_procedure(
-        IP_RANGE_SUBNET_INSERT_NOTIFY % "iprange_subnet_insert_notify"
-    )
-    register_procedure(
-        IP_RANGE_SUBNET_UPDATE_NOTIFY % "iprange_subnet_update_notify"
-    )
-    register_procedure(
-        IP_RANGE_SUBNET_DELETE_NOTIFY % "iprange_subnet_delete_notify"
-    )
+    register_procedure(IP_RANGE_SUBNET_INSERT_NOTIFY)
+    register_procedure(IP_RANGE_SUBNET_UPDATE_NOTIFY)
+    register_procedure(IP_RANGE_SUBNET_DELETE_NOTIFY)
     register_triggers(
         "maasserver_iprange", "iprange_subnet", events=EVENTS_IUD
     )
 
     # VMCluster notifications
-    register_procedure(VMCLUSTER_INSERT_NOTIFY % ("vmcluster_insert_notify"))
-    register_procedure(VMCLUSTER_UPDATE_NOTIFY % ("vmcluster_update_notify"))
-    register_procedure(VMCLUSTER_DELETE_NOTIFY % ("vmcluster_delete_notify"))
+    register_procedure(VMCLUSTER_INSERT_NOTIFY)
+    register_procedure(VMCLUSTER_UPDATE_NOTIFY)
+    register_procedure(VMCLUSTER_DELETE_NOTIFY)
     register_triggers("maasserver_vmcluster", "vmcluster", events=EVENTS_IUD)
 
     # NODE VMCluster notifications
-    register_procedure(
-        NODE_VMCLUSTER_INSERT_NOTIFY
-        % ("node_vmcluster_insert_notify", BMC_TYPE.POD)
-    )
-    register_procedure(
-        NODE_VMCLUSTER_UPDATE_NOTIFY
-        % ("node_vmcluster_update_notify", BMC_TYPE.POD)
-    )
-    register_procedure(
-        NODE_VMCLUSTER_DELETE_NOTIFY
-        % ("node_vmcluster_delete_notify", BMC_TYPE.POD)
-    )
+    register_procedure(NODE_VMCLUSTER_INSERT_NOTIFY)
+    register_procedure(NODE_VMCLUSTER_UPDATE_NOTIFY)
+    register_procedure(NODE_VMCLUSTER_DELETE_NOTIFY)
     register_triggers("maasserver_node", "node_vmcluster", events=EVENTS_IUD)
 
     # Pod notifications
-    register_procedure(POD_INSERT_NOTIFY % ("pod_insert_notify", BMC_TYPE.POD))
-    register_procedure(
-        POD_UPDATE_NOTIFY
-        % (
-            "pod_update_notify",
-            BMC_TYPE.POD,
-            BMC_TYPE.BMC,
-            BMC_TYPE.POD,
-            BMC_TYPE.POD,
-            BMC_TYPE.BMC,
-        )
-    )
-    register_procedure(POD_DELETE_NOTIFY % ("pod_delete_notify", BMC_TYPE.POD))
+    register_procedure(POD_INSERT_NOTIFY)
+    register_procedure(POD_UPDATE_NOTIFY)
+    register_procedure(POD_DELETE_NOTIFY)
     register_triggers("maasserver_bmc", "pod", events=EVENTS_IUD)
 
     # Node pod notifications
-    register_procedure(
-        NODE_POD_INSERT_NOTIFY % ("node_pod_insert_notify", BMC_TYPE.POD)
-    )
-    register_procedure(
-        NODE_POD_UPDATE_NOTIFY
-        % ("node_pod_update_notify", BMC_TYPE.POD, BMC_TYPE.POD)
-    )
-    register_procedure(
-        NODE_POD_DELETE_NOTIFY % ("node_pod_delete_notify", BMC_TYPE.POD)
-    )
+    register_procedure(NODE_POD_INSERT_NOTIFY)
+    register_procedure(NODE_POD_UPDATE_NOTIFY)
+    register_procedure(NODE_POD_DELETE_NOTIFY)
     register_triggers(
         "maasserver_node", "node_pod", events=EVENTS_IUD, fields=node_fields
     )
-    register_procedure(INTERFACE_POD_NOTIFY % "interface_pod_notify")
+
+    register_procedure(INTERFACE_POD_NOTIFY)
     register_trigger(
         "maasserver_interface",
         "interface_pod_notify",
@@ -2131,19 +2069,22 @@ def register_websocket_triggers():
 
     # DNSData table
     register_procedure(
-        DNSDATA_DOMAIN_NOTIFY
-        % ("dnsdata_domain_insert_notify", "NEW.dnsresource_id")
-    )
-    register_procedure(
-        DNSDATA_DOMAIN_NOTIFY
-        % (
-            "dnsdata_domain_update_notify",
-            "OLD.dnsresource_id OR dnsresource.id = NEW.dnsresource_id",
+        DNSDATA_DOMAIN_NOTIFY.format(
+            function_name="dnsdata_domain_insert_notify",
+            match_expr="NEW.dnsresource_id",
         )
     )
     register_procedure(
-        DNSDATA_DOMAIN_NOTIFY
-        % ("dnsdata_domain_delete_notify", "OLD.dnsresource_id")
+        DNSDATA_DOMAIN_NOTIFY.format(
+            function_name="dnsdata_domain_update_notify",
+            match_expr="OLD.dnsresource_id OR dnsresource.id = NEW.dnsresource_id",
+        )
+    )
+    register_procedure(
+        DNSDATA_DOMAIN_NOTIFY.format(
+            function_name="dnsdata_domain_delete_notify",
+            match_expr="OLD.dnsresource_id",
+        )
     )
     register_triggers(
         "maasserver_dnsdata", "dnsdata_domain", events=EVENTS_IUD
@@ -2151,13 +2092,15 @@ def register_websocket_triggers():
 
     # DNSResource table
     register_procedure(
-        DNSRESOURCE_DOMAIN_NOTIFY % ("dnsresource_domain_insert_notify", "NEW")
+        DNSRESOURCE_DOMAIN_NOTIFY.format(
+            function_name="dnsresource_domain_insert_notify", entry="NEW"
+        )
     )
+    register_procedure(DNSRESOURCE_DOMAIN_UPDATE_NOTIFY)
     register_procedure(
-        DNSRESOURCE_DOMAIN_UPDATE_NOTIFY % "dnsresource_domain_update_notify"
-    )
-    register_procedure(
-        DNSRESOURCE_DOMAIN_NOTIFY % ("dnsresource_domain_delete_notify", "OLD")
+        DNSRESOURCE_DOMAIN_NOTIFY.format(
+            function_name="dnsresource_domain_delete_notify", entry="OLD"
+        )
     )
     register_triggers(
         "maasserver_dnsresource", "dnsresource_domain", events=EVENTS_IUD
@@ -2165,13 +2108,10 @@ def register_websocket_triggers():
 
     # Domain table
     register_procedure(
-        DOMAIN_NODE_NOTIFY
-        % (
-            "domain_node_update_notify",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        DOMAIN_NODE_NOTIFY.format(
+            function_name="domain_node_update_notify",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_procedure(
@@ -2196,12 +2136,14 @@ def register_websocket_triggers():
 
     # MAC static ip address table, update to linked domain via dnsresource
     register_procedure(
-        DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY
-        % ("rrset_sipaddress_link_notify", "NEW.dnsresource_id")
+        DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY.format(
+            function_name="rrset_sipaddress_link_notify", entry="NEW"
+        )
     )
     register_procedure(
-        DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY
-        % ("rrset_sipaddress_unlink_notify", "OLD.dnsresource_id")
+        DNSRESOURCE_IP_ADDRESS_DOMAIN_NOTIFY.format(
+            function_name="rrset_sipaddress_unlink_notify", entry="OLD"
+        )
     )
     register_trigger(
         "maasserver_dnsresource_ip_addresses",
@@ -2290,21 +2232,17 @@ def register_websocket_triggers():
     register_procedure(
         NODE_TAG_NOTIFY.format(
             function_name="machine_device_tag_link_notify",
-            field="NEW",
+            entry="NEW",
             type_machine=NODE_TYPE.MACHINE,
-            type_rack=NODE_TYPE.RACK_CONTROLLER,
-            type_region=NODE_TYPE.REGION_CONTROLLER,
-            type_region_rack=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_procedure(
         NODE_TAG_NOTIFY.format(
             function_name="machine_device_tag_unlink_notify",
-            field="OLD",
+            entry="OLD",
             type_machine=NODE_TYPE.MACHINE,
-            type_rack=NODE_TYPE.RACK_CONTROLLER,
-            type_region=NODE_TYPE.REGION_CONTROLLER,
-            type_region_rack=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -2318,9 +2256,7 @@ def register_websocket_triggers():
     register_procedure(
         TAG_NODES_NOTIFY.format(
             type_machine=NODE_TYPE.MACHINE,
-            type_rack=NODE_TYPE.RACK_CONTROLLER,
-            type_region=NODE_TYPE.REGION_CONTROLLER,
-            type_region_rack=NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -2355,25 +2291,19 @@ def register_websocket_triggers():
 
     # MAC static ip address table, update to linked node.
     register_procedure(
-        INTERFACE_IP_ADDRESS_NODE_NOTIFY
-        % (
-            "nd_sipaddress_link_notify",
-            "NEW.interface_id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        INTERFACE_IP_ADDRESS_NODE_NOTIFY.format(
+            function_name="nd_sipaddress_link_notify",
+            entry="NEW",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_procedure(
-        INTERFACE_IP_ADDRESS_NODE_NOTIFY
-        % (
-            "nd_sipaddress_unlink_notify",
-            "OLD.interface_id",
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        INTERFACE_IP_ADDRESS_NODE_NOTIFY.format(
+            function_name="nd_sipaddress_unlink_notify",
+            entry="OLD",
+            type_machine=NODE_TYPE.MACHINE,
+            type_controllers=TYPE_CONTROLLERS,
         )
     )
     register_trigger(
@@ -2389,12 +2319,14 @@ def register_websocket_triggers():
 
     # MAC static ip address table, update to linked domain via node.
     register_procedure(
-        INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY
-        % ("nd_sipaddress_dns_link_notify", "NEW.interface_id")
+        INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY.format(
+            function_name="nd_sipaddress_dns_link_notify", entry="NEW"
+        )
     )
     register_procedure(
-        INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY
-        % ("nd_sipaddress_dns_unlink_notify", "OLD.interface_id")
+        INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY.format(
+            function_name="nd_sipaddress_dns_unlink_notify", entry="OLD"
+        )
     )
     register_trigger(
         "maasserver_interface_ip_addresses",
@@ -2484,19 +2416,7 @@ def register_websocket_triggers():
             "nd_interface_unlink_notify", "OLD.node_id"
         )
     )
-    register_procedure(
-        INTERFACE_UPDATE_NODE_NOTIFY
-        % (
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-            NODE_TYPE.MACHINE,
-            NODE_TYPE.RACK_CONTROLLER,
-            NODE_TYPE.REGION_CONTROLLER,
-            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-        )
-    )
+    register_procedure(INTERFACE_UPDATE_NODE_NOTIFY)
     register_trigger(
         "maasserver_interface", "nd_interface_link_notify", "insert"
     )
@@ -2878,7 +2798,7 @@ def register_websocket_triggers():
     register_triggers("maasserver_packagerepository", "packagerepository")
 
     # Node type change.
-    register_procedure(node_type_change())
+    register_procedure(NODE_TYPE_CHANGE)
     register_trigger(
         "maasserver_node",
         "node_type_change_notify",
