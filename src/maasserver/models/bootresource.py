@@ -41,6 +41,8 @@ RTYPE_REQUIRING_OS_SERIES_NAME = (
     BOOT_RESOURCE_TYPE.GENERATED,
 )
 
+LINUX_OSYSTEMS = ("ubuntu", "centos", "rhel")
+
 
 class BootResourceManager(Manager):
     def _has_resource(self, rtype, name, architecture, subarchitecture):

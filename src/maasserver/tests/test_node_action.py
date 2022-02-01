@@ -683,7 +683,11 @@ class TestDeployAction(MAASServerTestCase):
         self.expectThat(
             mock_node_start,
             MockCalledOnceWith(
-                user, user_data=None, install_kvm=False, register_vmhost=False
+                user,
+                user_data=None,
+                install_kvm=False,
+                register_vmhost=False,
+                enable_hw_sync=False,
             ),
         )
         audit_event = Event.objects.get(type__level=AUDIT)
@@ -718,6 +722,7 @@ class TestDeployAction(MAASServerTestCase):
                 user_data=expected,
                 install_kvm=False,
                 register_vmhost=False,
+                enable_hw_sync=False,
             ),
         )
 
@@ -835,7 +840,11 @@ class TestDeployAction(MAASServerTestCase):
         self.assertThat(
             mock_node_start,
             MockCalledOnceWith(
-                user, user_data=None, install_kvm=True, register_vmhost=False
+                user,
+                user_data=None,
+                install_kvm=True,
+                register_vmhost=False,
+                enable_hw_sync=False,
             ),
         )
 
@@ -942,6 +951,24 @@ class TestDeployAction(MAASServerTestCase):
 
         self.expectThat(user, Equals(node.owner))
         self.expectThat(NODE_STATUS.ALLOCATED, Equals(node.status))
+
+    def test_Deploy_raises_an_error_when_enable_hw_sync_is_True_for_non_linux(
+        self,
+    ):
+        user = factory.make_User()
+        request = factory.make_fake_request("/")
+        request.user = user
+        node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
+        self.patch(node_action_module, "get_curtin_config")
+        self.patch(node, "start")
+        osystem = make_usable_osystem(self, osystem_name="windows")
+        os_name = osystem["name"]
+        release_name = osystem["releases"][0]["name"]
+        Config.objects.set_config("default_osystem", os_name)
+        Config.objects.set_config("default_distro_series", release_name)
+        extra = {"enable_hw_sync": True}
+        action = Deploy(node, user, request)
+        self.assertRaises(NodeActionError, action.execute, **extra)
 
 
 class TestDeployActionTransactional(MAASTransactionServerTestCase):

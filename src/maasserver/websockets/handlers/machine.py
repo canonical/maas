@@ -229,6 +229,7 @@ class MachineHandler(NodeHandler):
             "install_kvm",
             "register_vmhost",
             "current_config",
+            "enable_hw_sync",
         ]
         list_fields = [
             "id",

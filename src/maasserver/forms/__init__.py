@@ -152,6 +152,7 @@ from maasserver.models import (
     Zone,
 )
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
+from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.models.partition import MIN_PARTITION_SIZE
 from maasserver.models.partitiontable import PARTITION_TABLE_TYPE_CHOICES
 from maasserver.permissions import NodePermission, ResourcePoolPermission
@@ -548,6 +549,8 @@ def clean_distro_series_field(form, field, os_field):
                 "%s in %s does not match with "
                 "operating system %s" % (release, field, os)
             )
+    else:
+        form.cleaned_data[os_field] = os
     return release
 
 
@@ -843,8 +846,19 @@ class MachineForm(NodeForm):
                 f"Can't set power type to {power_type} without network interfaces",
             )
 
+        osystem = cleaned_data.get("osystem") or self.instance.osystem
+        enable_hw_sync = cleaned_data.get("enable_hw_sync")
+
+        if enable_hw_sync and (
+            osystem not in LINUX_OSYSTEMS and osystem != "custom"
+        ):
+            set_form_error(
+                self,
+                "enable_hw_sync",
+                "Hardware sync is only supported for Linux based image deploys.",
+            )
+
         if not self.instance.hwe_kernel:
-            osystem = cleaned_data.get("osystem")
             distro_series = cleaned_data.get("distro_series")
             architecture = cleaned_data.get("architecture")
             min_hwe_kernel = cleaned_data.get("min_hwe_kernel")
@@ -937,6 +951,10 @@ class MachineForm(NodeForm):
         self.is_bound = True
         self.data["ephemeral_deploy"] = ephemeral_deploy
 
+    def set_enable_hw_sync(self, enable_hw_sync=False):
+        self.is_bound = True
+        self.data["enable_hw_sync"] = enable_hw_sync
+
     def save(self, *args, **kwargs):
         # Prevent circular imports
         from metadataserver.models import ScriptSet
@@ -964,7 +982,6 @@ class MachineForm(NodeForm):
             )
             machine.current_commissioning_script_set = script_set
             machine.save(update_fields=["current_commissioning_script_set"])
-
         return machine
 
     commission = forms.BooleanField(required=False, widget=forms.HiddenInput())
@@ -981,6 +998,7 @@ class MachineForm(NodeForm):
             "hwe_kernel",
             "install_rackd",
             "ephemeral_deploy",
+            "enable_hw_sync",
             "commission",
         )
 
@@ -2524,7 +2542,7 @@ class BootResourceForm(MAASModelForm):
                 "custom images require a valid base image name"
             )
         else:
-            if base_osystem not in ("ubuntu", "centos", "rhel"):
+            if base_osystem not in LINUX_OSYSTEMS:
                 raise ValidationError(
                     "custom images require a valid non-custom OS type base image"
                 )

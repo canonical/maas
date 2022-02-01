@@ -130,6 +130,7 @@ class DeviceHandler(NodeHandler):
             "register_vmhost",
             "hardware_uuid",
             "current_config",
+            "enable_hw_sync",
         ]
         list_fields = [
             "id",

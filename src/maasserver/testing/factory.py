@@ -394,6 +394,7 @@ class Factory(maastesting.factory.Factory):
         with_empty_script_sets=False,
         bmc=None,
         ephemeral_deploy=False,
+        enable_hw_sync=False,
         **kwargs,
     ):
         """Make a :class:`Node`.
@@ -445,6 +446,7 @@ class Factory(maastesting.factory.Factory):
             bmc=bmc,
             hardware_uuid=hardware_uuid,
             ephemeral_deploy=ephemeral_deploy,
+            enable_hw_sync=enable_hw_sync,
             cpu_speed=random.randint(1000, 5000),
             **kwargs,
         )

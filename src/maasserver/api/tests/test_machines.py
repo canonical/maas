@@ -3827,6 +3827,7 @@ class TestGetAllocationOptions(MAASTestCase):
             install_kvm=False,
             register_vmhost=False,
             ephemeral_deploy=False,
+            enable_hw_sync=False,
         )
         self.assertThat(options, Equals(expected_options))
 
@@ -3846,6 +3847,7 @@ class TestGetAllocationOptions(MAASTestCase):
             install_kvm=True,
             register_vmhost=False,
             ephemeral_deploy=False,
+            enable_hw_sync=False,
         )
         self.assertThat(options, Equals(expected_options))
 
@@ -3868,6 +3870,7 @@ class TestGetAllocationOptions(MAASTestCase):
                 install_kvm=False,
                 register_vmhost=True,
                 ephemeral_deploy=False,
+                enable_hw_sync=False,
             ),
         )
 
@@ -3885,6 +3888,7 @@ class TestGetAllocationOptions(MAASTestCase):
                 agent_name="maas",
                 comment="don't panic",
                 ephemeral_deploy="true",
+                enable_hw_sync="true",
             ),
         )
         options = get_allocation_options(request)
@@ -3899,5 +3903,6 @@ class TestGetAllocationOptions(MAASTestCase):
             install_kvm=True,
             register_vmhost=True,
             ephemeral_deploy=True,
+            enable_hw_sync=True,
         )
         self.assertThat(options, Equals(expected_options))

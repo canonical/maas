@@ -1321,6 +1321,51 @@ class TestMachineAPI(APITestCase.ForUser):
             machine.system_id, json_load_bytes(response.content)["system_id"]
         )
 
+    def test_POST_deploy_enable_hw_sync_defaults_to_False(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            power_type="manual",
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self),
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {"op": "deploy", "distro_series": "ubuntu/focal"},
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        machine.refresh_from_db()
+        self.assertFalse(machine.enable_hw_sync)
+
+    def test_POST_deploy_set_enable_hardware_sync(self):
+        self.patch(node_module.Node, "_start")
+        self.patch(machines_module, "get_curtin_merged_config")
+        machine = factory.make_Node(
+            owner=self.user,
+            interface=True,
+            power_type="manual",
+            status=NODE_STATUS.READY,
+            architecture=make_usable_architecture(self),
+        )
+        osystem = make_usable_osystem(
+            self, osystem_name="ubuntu", releases=["focal"]
+        )
+        response = self.client.post(
+            self.get_machine_uri(machine),
+            {
+                "op": "deploy",
+                "distro_series": "{}/{}".format(
+                    osystem["name"], osystem["default_release"]
+                ),
+                "enable_hw_sync": True,
+            },
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+        machine.refresh_from_db()
+        self.assertTrue(machine.enable_hw_sync)
+
     def test_POST_release_releases_owned_machine(self):
         self.patch(node_module.Machine, "_stop")
         owned_statuses = [NODE_STATUS.RESERVED, NODE_STATUS.ALLOCATED]

@@ -58,6 +58,7 @@ class TestMachineForm(MAASServerTestCase):
                 "hwe_kernel",
                 "install_rackd",
                 "ephemeral_deploy",
+                "enable_hw_sync",
                 "commission",
             },
             form.fields.keys(),
@@ -254,6 +255,49 @@ class TestMachineForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertEqual({"distro_series"}, form._errors.keys())
 
+    def test_rejects_enable_hw_sync_on_non_linux_osystem(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        machine = factory.make_Machine(owner=user)
+        osystem = make_usable_osystem(self)
+        release = osystem["default_release"]
+        form = MachineForm(
+            data={
+                "hostname": factory.make_name("host"),
+                "architecture": make_usable_architecture(self),
+                "enable_hw_sync": True,
+                "osystem": osystem["name"],
+                "distro_series": "{}/{}".format(osystem["name"], release),
+            },
+            instance=machine,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual({"enable_hw_sync"}, form._errors.keys())
+
+    def test_accepts_enable_hw_sync_on_linux_osystem(self):
+        user = factory.make_User()
+        self.client.login(user=user)
+        machine = factory.make_Machine(owner=user)
+        release_names = ("focal", "8", "8", "my-custom")
+        osystem_names = ("ubuntu", "centos", "rhel", "custom")
+        for osystem_name, release_name in zip(osystem_names, release_names):
+            make_usable_osystem(
+                self, osystem_name=osystem_name, releases=[release_name]
+            )
+            form = MachineForm(
+                data={
+                    "hostname": factory.make_name("host"),
+                    "architecture": make_usable_architecture(self),
+                    "enable_hw_sync": True,
+                    "osystem": osystem_name,
+                    "distro_series": "{}/{}".format(
+                        osystem_name, release_name
+                    ),
+                },
+                instance=machine,
+            )
+            self.assertTrue(form.is_valid(), form._errors.keys())
+
     def test_rejects_when_validate_license_key_returns_False(self):
         user = factory.make_User()
         self.client.login(user=user)
@@ -405,6 +449,7 @@ class TestAdminMachineForm(MAASServerTestCase):
                 "power_type",
                 "pool",
                 "commission",
+                "enable_hw_sync",
             },
             form.fields.keys(),
         )

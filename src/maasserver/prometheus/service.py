@@ -34,7 +34,6 @@ class PrometheusDiscoveryResource(Resource):
     def _format(self, bucketed_controllers):
         endpoints = []
         for key, controllers in bucketed_controllers.items():
-            print(key)
             zone, is_region, is_rack = key
             instances = [
                 ip

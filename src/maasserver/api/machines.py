@@ -224,6 +224,7 @@ AllocationOptions = namedtuple(
         "install_kvm",
         "register_vmhost",
         "ephemeral_deploy",
+        "enable_hw_sync",
     ),
 )
 
@@ -294,6 +295,11 @@ def get_allocation_options(request) -> AllocationOptions:
     bridge_fd = get_optional_param(
         request.POST, "bridge_fd", default=0, validator=Int
     )
+
+    enable_hw_sync = get_optional_param(
+        request.POST, "enable_hw_sync", default=False, validator=StringBool
+    )
+
     agent_name = request.data.get("agent_name", "")
     return AllocationOptions(
         agent_name,
@@ -306,6 +312,7 @@ def get_allocation_options(request) -> AllocationOptions:
         install_kvm,
         register_vmhost,
         ephemeral_deploy,
+        enable_hw_sync,
     )
 
 
@@ -733,6 +740,10 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @param (boolean) "vcenter_registration" [required=false] If false, do
         not send globally defined VMware vCenter credentials to the machine.
 
+        @param (boolean) "enable_hw_sync" [required=false] If true, machine
+        will be deployed with a small agent periodically pushing hardware data to detect
+        any change in devices.
+
         @success (http-status-code) "200" 200
         @success (json) "success-json" A JSON object containing information
         about the deployed machine.
@@ -820,6 +831,8 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
             form.set_ephemeral_deploy(
                 ephemeral_deploy=options.ephemeral_deploy
             )
+        if options.enable_hw_sync:
+            form.set_enable_hw_sync(enable_hw_sync=options.enable_hw_sync)
         if form.is_valid():
             form.save()
         else:

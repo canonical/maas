@@ -1255,6 +1255,8 @@ class Node(CleanSave, TimestampedModel):
         "NodeConfig", null=True, on_delete=CASCADE, related_name="+"
     )
 
+    enable_hw_sync = BooleanField(default=False)
+
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
     # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
@@ -3675,6 +3677,7 @@ class Node(CleanSave, TimestampedModel):
         self.install_rackd = False
         self.install_kvm = False
         self.register_vmhost = False
+        self.enable_hw_sync = False
         self.save()
 
         # Create a status message for RELEASING.
@@ -5398,6 +5401,7 @@ class Node(CleanSave, TimestampedModel):
         bridge_type=None,
         bridge_stp=None,
         bridge_fd=None,
+        enable_hw_sync=None,
     ):
         # Avoid circular imports
         from maasserver.utils.osystems import release_a_newer_than_b
@@ -5411,6 +5415,8 @@ class Node(CleanSave, TimestampedModel):
             updates["install_kvm"] = True
         if not self.register_vmhost and register_vmhost:
             updates["register_vmhost"] = True
+        if not self.enable_hw_sync and enable_hw_sync:
+            updates["enable_hw_sync"] = True
         if updates:
             for key, value in updates.items():
                 setattr(self, key, value)

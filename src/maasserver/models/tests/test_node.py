@@ -2855,6 +2855,16 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertEqual(node.status, NODE_STATUS.READY)
 
+    def test_release_sets_enable_hw_sync_to_False(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, enable_hw_sync=True
+        )
+        self.patch(node, "_stop")
+        self.patch(node, "_set_status_expires")
+        with post_commit_hooks:
+            node.release()
+        self.assertFalse(node.enable_hw_sync)
+
     def test_dynamic_ip_addresses_from_ip_address_table(self):
         node = factory.make_Node()
         interfaces = [

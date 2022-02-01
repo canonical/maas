@@ -40,6 +40,7 @@ from maasserver.exceptions import (
 )
 from maasserver.forms.clone import CloneForm
 from maasserver.models import Config, ResourcePool, Zone
+from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.node_status import is_failed_status, NON_MONITORED_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_base_osystem_series, get_curtin_config
@@ -513,6 +514,7 @@ class Deploy(NodeAction):
         install_kvm=False,
         register_vmhost=False,
         user_data=None,
+        enable_hw_sync=False,
     ):
         """See `NodeAction.execute`."""
         if install_kvm or register_vmhost:
@@ -574,12 +576,21 @@ class Deploy(NodeAction):
         except Exception as e:
             raise NodeActionError("Failed to retrieve curtin config: %s" % e)
 
+        if enable_hw_sync and (
+            self.node.osystem not in LINUX_OSYSTEMS
+            and self.node.osystem != "custom"
+        ):
+            raise NodeActionError(
+                "enable_hw_sync can only be set on Linux based deploys"
+            )
+
         try:
             self.node.start(
                 self.user,
                 user_data=user_data,
                 install_kvm=install_kvm,
                 register_vmhost=register_vmhost,
+                enable_hw_sync=enable_hw_sync,
             )
         except StaticIPAddressExhaustion:
             raise NodeActionError(
