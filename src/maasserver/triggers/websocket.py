@@ -1394,7 +1394,7 @@ def render_device_notification_procedure(proc_name, event_name, obj):
     )
 
 
-def render_node_related_notification_procedure(proc_name, node_id_relation):
+def render_node_related_notification_procedure(proc_name, entry):
     return dedent(
         f"""\
         CREATE OR REPLACE FUNCTION {proc_name}() RETURNS trigger AS $$
@@ -1404,20 +1404,28 @@ def render_node_related_notification_procedure(proc_name, node_id_relation):
         BEGIN
           SELECT system_id, node_type, parent_id INTO node
           FROM maasserver_node
-          WHERE id = {node_id_relation};
+          WHERE id = {entry}.node_id;
 
           IF node.node_type = {NODE_TYPE.MACHINE} THEN
-            PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
+            PERFORM pg_notify(
+              'machine_update', CAST(node.system_id AS text)
+            );
           ELSIF node.node_type IN {TYPE_CONTROLLERS} THEN
-            PERFORM pg_notify('controller_update',CAST(
-              node.system_id AS text));
+            PERFORM pg_notify(
+              'controller_update', CAST(node.system_id AS text)
+            );
           ELSIF node.parent_id IS NOT NULL THEN
             SELECT system_id INTO pnode
             FROM maasserver_node
             WHERE id = node.parent_id;
-            PERFORM pg_notify('machine_update',CAST(pnode.system_id AS text));
+
+            PERFORM pg_notify(
+              'machine_update', CAST(pnode.system_id AS text)
+            );
           ELSE
-            PERFORM pg_notify('device_update',CAST(node.system_id AS text));
+            PERFORM pg_notify(
+              'device_update', CAST(node.system_id AS text)
+            );
           END IF;
           RETURN NEW;
         END;
@@ -1646,17 +1654,17 @@ def register_websocket_triggers():
     # ControllerInfo notifications
     register_procedure(
         render_node_related_notification_procedure(
-            "controllerinfo_link_notify", "NEW.node_id"
+            "controllerinfo_link_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "controllerinfo_update_notify", "NEW.node_id"
+            "controllerinfo_update_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "controllerinfo_unlink_notify", "OLD.node_id"
+            "controllerinfo_unlink_notify", "OLD"
         )
     )
     register_triggers(
@@ -1668,17 +1676,17 @@ def register_websocket_triggers():
     # NodeMetadata notifications
     register_procedure(
         render_node_related_notification_procedure(
-            "nodemetadata_link_notify", "NEW.node_id"
+            "nodemetadata_link_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "nodemetadata_update_notify", "NEW.node_id"
+            "nodemetadata_update_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "nodemetadata_unlink_notify", "OLD.node_id"
+            "nodemetadata_unlink_notify", "OLD"
         )
     )
     register_triggers(
@@ -1688,17 +1696,17 @@ def register_websocket_triggers():
     # workload annotations notifications
     register_procedure(
         render_node_related_notification_procedure(
-            "ownerdata_link_notify", "NEW.node_id"
+            "ownerdata_link_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "ownerdata_update_notify", "NEW.node_id"
+            "ownerdata_update_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "ownerdata_unlink_notify", "OLD.node_id"
+            "ownerdata_unlink_notify", "OLD"
         )
     )
     register_triggers("maasserver_ownerdata", "ownerdata", events=EVENTS_LUU)
@@ -2342,12 +2350,12 @@ def register_websocket_triggers():
     # Node result table, update to linked node.
     register_procedure(
         render_node_related_notification_procedure(
-            "nd_scriptset_link_notify", "NEW.node_id"
+            "nd_scriptset_link_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "nd_scriptset_unlink_notify", "OLD.node_id"
+            "nd_scriptset_unlink_notify", "OLD"
         )
     )
     register_trigger(
@@ -2408,12 +2416,12 @@ def register_websocket_triggers():
     # Interface address table, update to linked node.
     register_procedure(
         render_node_related_notification_procedure(
-            "nd_interface_link_notify", "NEW.node_id"
+            "nd_interface_link_notify", "NEW"
         )
     )
     register_procedure(
         render_node_related_notification_procedure(
-            "nd_interface_unlink_notify", "OLD.node_id"
+            "nd_interface_unlink_notify", "OLD"
         )
     )
     register_procedure(INTERFACE_UPDATE_NODE_NOTIFY)
