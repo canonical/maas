@@ -1,4 +1,4 @@
-# Copyright 2017 Canonical Ltd.  This software is licensed under the
+# Copyright 2017-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """
@@ -17,25 +17,29 @@ from django.db import connection
 from maasserver.utils.orm import transactional
 
 
-def _drop_view_if_exists(view_name):
-    """Re-registers the specified view."""
-    view_sql = "DROP VIEW IF EXISTS %s;" % view_name
-    with closing(connection.cursor()) as cursor:
-        cursor.execute(view_sql)
+@transactional
+def register_all_views():
+    """Register all views into the database."""
+    for view_name, view_sql in _ALL_VIEWS.items():
+        _register_view(view_name, view_sql)
 
 
-def _register_view(view_name, view_sql):
-    """Re-registers the specified view."""
-    view_sql = (
-        dedent(
-            """\
-        CREATE OR REPLACE VIEW %s AS (%s);
-        """
-        )
-        % (view_name, view_sql)
-    )
-    with closing(connection.cursor()) as cursor:
-        cursor.execute(view_sql)
+@transactional
+def drop_all_views():
+    """Drop all views from the database.
+
+    This is intended to be called before the database is upgraded, so that the
+    schema can be freely changed without worrying about whether or not the
+    views depend on the schema.
+    """
+    for view_name in _ALL_VIEWS.keys():
+        _drop_view_if_exists(view_name)
+
+
+@transactional
+def register_view(view_name):
+    """Register a view by name. CAUTION: this is only for use in tests."""
+    _register_view(view_name, _ALL_VIEWS[view_name])
 
 
 # Note that the `Discovery` model object is backed by this view. Any
@@ -83,9 +87,9 @@ maasserver_discovery = dedent(
     JOIN maasserver_node node ON node.id = iface.node_id
     JOIN maasserver_vlan vlan ON iface.vlan_id = vlan.id
     JOIN maasserver_fabric fabric ON vlan.fabric_id = fabric.id
-    LEFT OUTER JOIN maasserver_mdns mdns ON mdns.ip = neigh.ip
-    LEFT OUTER JOIN maasserver_rdns rdns ON rdns.ip = neigh.ip
-    LEFT OUTER JOIN maasserver_subnet subnet ON (
+    LEFT JOIN maasserver_mdns mdns ON mdns.ip = neigh.ip
+    LEFT JOIN maasserver_rdns rdns ON rdns.ip = neigh.ip
+    LEFT JOIN maasserver_subnet subnet ON (
         vlan.id = subnet.vlan_id
         -- This checks if the IP address is within a known subnet.
         AND neigh.ip << subnet.cidr
@@ -175,231 +179,30 @@ maasserver_podhost = dedent(
             ip.id AS staticipaddress_id,
             ip.ip
         FROM maasserver_bmc pod
-        LEFT OUTER JOIN maasserver_staticipaddress ip
+        LEFT JOIN maasserver_staticipaddress ip
             ON pod.ip_address_id = ip.id AND pod.bmc_type = 1
-        LEFT OUTER JOIN maasserver_interface_ip_addresses ifip
+        LEFT JOIN maasserver_interface_ip_addresses ifip
              ON ifip.staticipaddress_id = ip.id
-        LEFT OUTER JOIN maasserver_interface if ON if.id = ifip.interface_id
-        LEFT OUTER JOIN maasserver_node node ON node.id = if.node_id
+        LEFT JOIN maasserver_interface if ON if.id = ifip.interface_id
+        LEFT JOIN maasserver_node node ON node.id = if.node_id
 """
 )
 
-# Views that are helpful for supporting MAAS.
-# These can be batch-run using the maas-region-support-dump script.
-maas_support__node_overview = dedent(
-    """\
-    SELECT
-        hostname,
-        system_id,
-        cpu_count "cpu",
-        memory
-    FROM maasserver_node
-    WHERE
-        node_type = 0 -- Machine
-    ORDER BY hostname
-    """
-)
 
-maas_support__device_overview = dedent(
-    """\
-    SELECT
-        node.hostname,
-        node.system_id,
-        parent.hostname "parent"
-    FROM maasserver_node node
-    LEFT OUTER JOIN maasserver_node parent
-        on node.parent_id = parent.id
-    WHERE
-        node.node_type = 1
-    ORDER BY hostname
-    """
-)
-
-maas_support__node_networking = dedent(
-    """\
-    SELECT
-        node.hostname,
-        iface.id "ifid",
-        iface.name,
-        iface.type,
-        iface.mac_address,
-        sip.ip,
-        CASE
-            WHEN sip.alloc_type = 0 THEN 'AUTO'
-            WHEN sip.alloc_type = 1 THEN 'STICKY'
-            WHEN sip.alloc_type = 4 THEN 'USER_RESERVED'
-            WHEN sip.alloc_type = 5 THEN 'DHCP'
-            WHEN sip.alloc_type = 6 THEN 'DISCOVERED'
-            ELSE CAST(sip.alloc_type as CHAR)
-        END "alloc_type",
-        subnet.cidr,
-        vlan.vid,
-        fabric.name fabric
-    FROM maasserver_interface iface
-        LEFT OUTER JOIN maasserver_interface_ip_addresses ifip
-            on ifip.interface_id = iface.id
-        LEFT OUTER JOIN maasserver_staticipaddress sip
-            on ifip.staticipaddress_id = sip.id
-        LEFT OUTER JOIN maasserver_subnet subnet
-            on sip.subnet_id = subnet.id
-        LEFT OUTER JOIN maasserver_node node
-            on node.id = iface.node_id
-        LEFT OUTER JOIN maasserver_vlan vlan
-            on vlan.id = subnet.vlan_id
-        LEFT OUTER JOIN maasserver_fabric fabric
-            on fabric.id = vlan.fabric_id
-        ORDER BY
-            node.hostname, iface.name, sip.alloc_type
-    """
-)
-
-maas_support__ip_allocation = dedent(
-    """\
-    SELECT
-        sip.ip,
-        CASE
-            WHEN sip.alloc_type = 0 THEN 'AUTO'
-            WHEN sip.alloc_type = 1 THEN 'STICKY'
-            WHEN sip.alloc_type = 4 THEN 'USER_RESERVED'
-            WHEN sip.alloc_type = 5 THEN 'DHCP'
-            WHEN sip.alloc_type = 6 THEN 'DISCOVERED'
-            ELSE CAST(sip.alloc_type as CHAR)
-        END "alloc_type",
-        subnet.cidr,
-        node.hostname,
-        iface.id AS "ifid",
-        iface.name AS "ifname",
-        iface.type AS "iftype",
-        iface.mac_address,
-        bmc.power_type
-        FROM maasserver_staticipaddress sip
-            LEFT OUTER JOIN maasserver_subnet subnet
-                ON subnet.id = sip.subnet_id
-            LEFT OUTER JOIN maasserver_interface_ip_addresses ifip
-                ON sip.id = ifip.staticipaddress_id
-            LEFT OUTER JOIN maasserver_interface iface
-                ON iface.id = ifip.interface_id
-            LEFT OUTER JOIN maasserver_node node
-                ON iface.node_id = node.id
-            LEFT OUTER JOIN maasserver_bmc bmc
-                ON bmc.ip_address_id = sip.id
-        ORDER BY sip.ip
-    """
-)
-
-maas_support__boot_source_selections = dedent(
-    """\
-    SELECT
-        bs.url,
-        bss.release,
-        bss.arches,
-        bss.subarches,
-        bss.labels,
-        bss.os
-    FROM
-        maasserver_bootsource bs
-    LEFT OUTER JOIN maasserver_bootsourceselection bss
-        ON bss.boot_source_id = bs.id
-     """
-)
-
-maas_support__boot_source_cache = dedent(
-    """\
-    SELECT
-        bs.url,
-        bsc.label,
-        bsc.os,
-        bsc.release,
-        bsc.arch,
-        bsc.subarch
-    FROM
-        maasserver_bootsource bs
-    LEFT OUTER JOIN maasserver_bootsourcecache bsc
-        ON bsc.boot_source_id = bs.id
-    ORDER BY
-        bs.url,
-        bsc.label,
-        bsc.os,
-        bsc.release,
-        bsc.arch,
-        bsc.subarch
-     """
-)
-
-maas_support__configuration__excluding_rpc_shared_secret = dedent(
-    """\
-    SELECT
-        name,
-        value
-    FROM
-        maasserver_config
-    WHERE
-        name != 'rpc_shared_secret'
-    """
-)
-
-maas_support__license_keys_present__excluding_key_material = dedent(
-    """\
-    SELECT
-        osystem,
-        distro_series
-    FROM
-        maasserver_licensekey
-    """
-)
-
-maas_support__ssh_keys__by_user = dedent(
-    """\
-    SELECT
-        u.username,
-        sshkey.key
-    FROM
-        auth_user u
-    LEFT OUTER JOIN maasserver_sshkey sshkey
-        ON u.id = sshkey.user_id
-    ORDER BY
-        u.username,
-        sshkey.key
-    """
-)
-
-# Dictionary of view_name: view_sql tuples which describe the database views.
 _ALL_VIEWS = {
     "maasserver_discovery": maasserver_discovery,
     "maasserver_routable_pairs": maasserver_routable_pairs,
     "maasserver_podhost": maasserver_podhost,
-    "maas_support__node_overview": maas_support__node_overview,
-    "maas_support__device_overview": maas_support__device_overview,
-    "maas_support__node_networking": maas_support__node_networking,
-    "maas_support__ip_allocation": maas_support__ip_allocation,
-    "maas_support__boot_source_selections": maas_support__boot_source_selections,
-    "maas_support__boot_source_cache": maas_support__boot_source_cache,
-    "maas_support__configuration__excluding_rpc_shared_secret": maas_support__configuration__excluding_rpc_shared_secret,
-    "maas_support__license_keys_present__excluding_key_material": maas_support__license_keys_present__excluding_key_material,
-    "maas_support__ssh_keys__by_user": maas_support__ssh_keys__by_user,
 }
 
 
-@transactional
-def register_all_views():
-    """Register all views into the database."""
-    for view_name, view_sql in _ALL_VIEWS.items():
-        _register_view(view_name, view_sql)
+def _drop_view_if_exists(view_name):
+    """Re-registers the specified view."""
+    with closing(connection.cursor()) as cursor:
+        cursor.execute(f"DROP VIEW IF EXISTS {view_name}")
 
 
-@transactional
-def drop_all_views():
-    """Drop all views from the database.
-
-    This is intended to be called before the database is upgraded, so that the
-    schema can be freely changed without worrying about whether or not the
-    views depend on the schema.
-    """
-    for view_name in _ALL_VIEWS.keys():
-        _drop_view_if_exists(view_name)
-
-
-@transactional
-def register_view(view_name):
-    """Register a view by name. CAUTION: this is only for use in tests."""
-    _register_view(view_name, _ALL_VIEWS[view_name])
+def _register_view(view_name, view_sql):
+    """Re-registers the specified view."""
+    with closing(connection.cursor()) as cursor:
+        cursor.execute(f"CREATE OR REPLACE VIEW {view_name} AS ({view_sql})")
