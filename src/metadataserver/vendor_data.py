@@ -8,9 +8,11 @@ from base64 import b64encode
 from crypt import crypt
 from itertools import chain
 from os import urandom
+import pkgutil
 from textwrap import dedent
 
 from netaddr import IPAddress
+import tempita
 import yaml
 
 from maasserver import ntp
@@ -29,6 +31,9 @@ from provisioningserver.utils.text import make_gecos_field
 LXD_CERTIFICATE_METADATA_KEY = "lxd_certificate"
 VIRSH_PASSWORD_METADATA_KEY = "virsh_password"
 
+HARDWARE_SYNC_TIMER_TEMPLATE = "hardware_sync_timer.template"
+HARDWARE_SYNC_SERVICE_TEMPLATE = "hardware_sync_service.template"
+
 
 def get_vendor_data(node, proxy):
     generators = (
@@ -40,6 +45,7 @@ def get_vendor_data(node, proxy):
         generate_ephemeral_netplan_lock_removal(node),
         generate_ephemeral_deployment_network_configuration(node),
         generate_vcenter_configuration(node),
+        generate_hardware_sync_systemd_configuration(node),
     )
     vendor_data = {}
     for key, value in chain(*generators):
@@ -348,6 +354,47 @@ def generate_vcenter_configuration(node):
                 "path": "/altbootbank/maas/vcenter.yaml",
             }
         ]
+
+
+def _get_metadataserver_template(template_name):
+    """Returns the contents of a given template in metadataserver/vendor_data/templates/"""
+    return pkgutil.get_data(
+        "metadataserver.vendor_data", "templates/" + template_name
+    ).decode("utf-8")
+
+
+def generate_hardware_sync_systemd_configuration(node):
+    """generate systemd unit files for hardware sync"""
+    if not node.enable_hw_sync:
+        return
+
+    hardware_sync_interval = Config.objects.get_configs(
+        ["hardware_sync_interval"]
+    )
+    hardware_sync_timer_tmpl = tempita.Template(
+        _get_metadataserver_template(HARDWARE_SYNC_TIMER_TEMPLATE)
+    )
+    hardware_sync_service_tmpl = tempita.Template(
+        _get_metadataserver_template(HARDWARE_SYNC_SERVICE_TEMPLATE)
+    )
+
+    hardware_sync_timer = hardware_sync_timer_tmpl.substitute(
+        hardware_sync_interval=hardware_sync_interval
+    )
+    hardware_sync_service = (
+        hardware_sync_service_tmpl.substitute()
+    )  # TODO substitute node architecture for executable
+
+    yield "write_files", [
+        {
+            "content": hardware_sync_timer,
+            "path": "/lib/systemd/system/maas_hardware_sync.timer",
+        },
+        {
+            "content": hardware_sync_service,
+            "path": "/lib/systemd/system/maas_hardware_sync.service",
+        },
+    ]
 
 
 def _generate_password():

@@ -134,6 +134,8 @@ def get_default_config():
         "vcenter_username": "",
         "vcenter_password": "",
         "vcenter_datacenter": "",
+        # Hardware Sync options
+        "hardware_sync_interval": "15m",
     }
 
 

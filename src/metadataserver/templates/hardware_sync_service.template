@@ -1,0 +1,9 @@
+[Unit]
+Description=MAAS Hardware Sync Service
+Documentation=https://maas.io
+Want=network.target
+After=network.target
+
+[Service]
+type=oneshot
+ExecStart=/bin/echo "TODO add hardware sync executable"

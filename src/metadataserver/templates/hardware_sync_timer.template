@@ -1,0 +1,11 @@
+[Unit]
+Description=Timer for periodically running MAAS hardware sync
+Documentation=https://maas.io
+Want=network.target
+After=network.target
+
+[Install]
+WantedBy=timers.target
+
+[Timer]
+OnActiveSec={{ hardware_sync_interval }}

@@ -1006,6 +1006,18 @@ CONFIG_ITEMS = {
             ),
         },
     },
+    "hardware_sync_interval": {
+        "default": "15m",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "Hardware Sync Interval",
+            "required": False,
+            "help_text": (
+                "The interval to send hardware info to MAAS from"
+                "hardware sync enabled machines, in systemd time span syntax."
+            ),
+        },
+    },
 }
 
 

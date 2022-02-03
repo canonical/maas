@@ -5,6 +5,7 @@ import random
 from textwrap import dedent
 
 from netaddr import IPAddress
+import tempita
 from testtools.matchers import (
     Contains,
     ContainsDict,
@@ -27,14 +28,18 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
 from metadataserver.vendor_data import (
+    _get_metadataserver_template,
     generate_ephemeral_deployment_network_configuration,
     generate_ephemeral_netplan_lock_removal,
+    generate_hardware_sync_systemd_configuration,
     generate_kvm_pod_configuration,
     generate_ntp_configuration,
     generate_rack_controller_configuration,
     generate_snap_configuration,
     generate_system_info,
     get_vendor_data,
+    HARDWARE_SYNC_SERVICE_TEMPLATE,
+    HARDWARE_SYNC_TIMER_TEMPLATE,
 )
 from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 
@@ -683,3 +688,50 @@ class TestGenerateVcenterConfiguration(MAASServerTestCase):
             Config.objects.set_config(key, factory.make_name(key))
         config = get_vendor_data(node, None)
         self.assertNotIn("write_files", config)
+
+
+class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
+    def _get_timer_template(self):
+        return tempita.Template(
+            _get_metadataserver_template(HARDWARE_SYNC_TIMER_TEMPLATE),
+        )
+
+    def _get_service_template(self):
+        return tempita.Template(
+            _get_metadataserver_template(HARDWARE_SYNC_SERVICE_TEMPLATE),
+        )
+
+    def test_returns_nothing_if_node_enable_hw_sync_is_False(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING,
+        )
+        config = generate_hardware_sync_systemd_configuration(node)
+        self.assertRaises(StopIteration, next, config)
+
+    def test_returns_timer_and_service_when_node_enable_hw_sync_is_True(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING,
+            enable_hw_sync=True,
+        )
+        config = generate_hardware_sync_systemd_configuration(node)
+        expected_interval = Config.objects.get_configs(
+            ["hardware_sync_interval"]
+        )
+
+        expected = (
+            "write_files",
+            [
+                {
+                    "content": self._get_timer_template().substitute(
+                        hardware_sync_interval=expected_interval
+                    ),
+                    "path": "/lib/systemd/system/maas_hardware_sync.timer",
+                },
+                {
+                    "content": self._get_service_template().substitute(),
+                    "path": "/lib/systemd/system/maas_hardware_sync.service",
+                },
+            ],
+        )
+
+        self.assertCountEqual(next(config), expected)
