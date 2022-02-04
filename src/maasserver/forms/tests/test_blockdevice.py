@@ -36,7 +36,8 @@ class TestFormatBlockDeviceForm(MAASServerTestCase):
     def test_is_not_valid_if_block_device_has_partition_table(self):
         fstype = factory.pick_filesystem_type()
         block_device = factory.make_PhysicalBlockDevice()
-        factory.make_PartitionTable(block_device=block_device)
+        pt = factory.make_PartitionTable(block_device=block_device)
+        pt.add_partition()
         data = {"fstype": fstype}
         form = FormatBlockDeviceForm(block_device, data=data)
         self.assertFalse(

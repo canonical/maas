@@ -201,6 +201,7 @@ class RAIDManager(BaseFilesystemGroupManager):
         spare_devices=[],
         spare_partitions=[],
     ):
+        from maasserver.models import PartitionTable
         from maasserver.models.filesystem import Filesystem
 
         # Create a FilesystemGroup for this RAID
@@ -248,6 +249,9 @@ class RAIDManager(BaseFilesystemGroupManager):
                 filesystem_group=raid,
             )
         raid.save(force_update=True)
+
+        PartitionTable.objects.create(block_device=raid.virtual_device)
+
         return raid
 
 

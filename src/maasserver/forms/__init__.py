@@ -2838,10 +2838,10 @@ class FormatBlockDeviceForm(Form):
         cleaned_data = super().clean()
         if "fstype" not in cleaned_data:
             return cleaned_data
-        partition_table = PartitionTable.objects.filter(
-            block_device=self.block_device
+        partitions = Partition.objects.filter(
+            partition_table__block_device=self.block_device
         )
-        if partition_table.exists():
+        if partitions.exists():
             raise ValidationError(
                 "Cannot format block device with a partition table."
             )

@@ -91,6 +91,7 @@ from maasserver.models import (
 )
 from maasserver.models import (
     OwnerData,
+    PartitionTable,
     PhysicalInterface,
     RackController,
     RAID,
@@ -11822,10 +11823,10 @@ class TestNodeStorageClone_ComplexDiskLayout(
             block_devices=[raid_5_disk_1, raid_5_disk_2, raid_5_disk_3],
             spare_devices=[raid_5_disk_4, raid_5_disk_5],
         )
-        raid_5_partition_table = factory.make_PartitionTable(
-            table_type=PARTITION_TABLE_TYPE.GPT,
-            block_device=raid_5.virtual_device,
+        raid_5_partition_table = PartitionTable.objects.get(
+            block_device=raid_5.virtual_device
         )
+
         raid_5_partition = factory.make_Partition(
             partition_table=raid_5_partition_table,
             uuid="18a6e885-3e6d-4505-8a0d-cf34df11a8b0",
