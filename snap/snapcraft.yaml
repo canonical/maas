@@ -232,9 +232,9 @@ parts:
     make-parameters:
       - BUILD_TYPE=snap
 
-  machine-resources:
+  host-info:
     plugin: make
-    source: src/machine-resources
+    source: src/host-info
     build-packages:
       - golang-go
 

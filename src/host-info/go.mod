@@ -1,4 +1,4 @@
-module machine-resources
+module host-info
 
 go 1.13
 

@@ -45,8 +45,8 @@
 /snap/.snapcraft
 /src/maasui/build
 /src/maasui/nodejs
-/src/machine-resources/bin
-/src/machine-resources/vendor
+/src/host-info/bin
+/src/host-info/vendor
 /stage
 /TAGS
 /tags

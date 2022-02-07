@@ -1,18 +1,17 @@
-// Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
+// Copyright 2022 Canonical Ltd.  This software is licensed under the
 // GNU Affero General Public License version 3 (see the file LICENSE).
 
-package main
+package info
 
 import (
 	"bufio"
-	"encoding/json"
-	"fmt"
 	"net"
 	"os"
 	"strings"
 
 	"github.com/lxc/lxd/lxd/resources"
 	"github.com/lxc/lxd/shared"
+	lxdapi "github.com/lxc/lxd/shared/api"
 	"github.com/lxc/lxd/shared/version"
 )
 
@@ -41,16 +40,8 @@ type HostInfo struct {
 
 type AllInfo struct {
 	HostInfo
-	Resources interface{} `json:"resources" yaml:"resources"`
-	Networks  interface{} `json:"networks" yaml:"networks"`
-}
-
-func checkError(err error) {
-	if err == nil {
-		return
-	}
-	fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
-	os.Exit(1)
+	Resources *lxdapi.Resources      `json:"resources" yaml:"resources"`
+	Networks  map[string]interface{} `json:"networks" yaml:"networks"`
 }
 
 func parseKeyValueFile(path string) (map[string]string, error) {
@@ -113,14 +104,18 @@ func getOSNameVersion() OSInfo {
 	}
 }
 
-func GetHostInfo() HostInfo {
+func GetHostInfo() (*HostInfo, error) {
 	hostname, err := os.Hostname()
-	checkError(err)
+	if err != nil {
+		return nil, err
+	}
 
 	uname, err := shared.Uname()
-	checkError(err)
+	if err != nil {
+		return nil, err
+	}
 
-	return HostInfo{
+	return &HostInfo{
 		// These are the API extensions machine-resources reproduces.
 		APIExtensions: []string{
 			"resources",
@@ -155,36 +150,48 @@ func GetHostInfo() HostInfo {
 			// there.
 			ServerVersion: version.Version,
 		},
-	}
+	}, nil
 }
 
-func GetResources() interface{} {
-	data, err := resources.GetResources()
-	checkError(err)
-	return data
+func GetResources() (*lxdapi.Resources, error) {
+	return resources.GetResources()
 }
 
-func GetNetworks() interface{} {
+func GetNetworks() (map[string]interface{}, error) {
 	ifaces, err := net.Interfaces()
-	checkError(err)
+	if err != nil {
+		return nil, err
+	}
 	data := make(map[string]interface{}, len(ifaces))
 	for _, iface := range ifaces {
 		netDetails, err := resources.GetNetworkState(iface.Name)
-		checkError(err)
+		if err != nil {
+			return nil, err
+		}
 		data[iface.Name] = netDetails
 	}
-	return data
+	return data, nil
 }
 
-func main() {
-	data := AllInfo{
-		HostInfo:  GetHostInfo(),
-		Resources: GetResources(),
-		Networks:  GetNetworks(),
+func GetInfo() (*AllInfo, error) {
+	hostInfo, err := GetHostInfo()
+	if err != nil {
+		return nil, err
 	}
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetEscapeHTML(false)
-	encoder.SetIndent("", "    ")
-	err := encoder.Encode(data)
-	checkError(err)
+
+	resInfo, err := GetResources()
+	if err != nil {
+		return nil, err
+	}
+
+	netInfo, err := GetNetworks()
+	if err != nil {
+		return nil, err
+	}
+
+	return &AllInfo{
+		HostInfo:  *hostInfo,
+		Resources: resInfo,
+		Networks:  netInfo,
+	}, nil
 }

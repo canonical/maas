@@ -64,7 +64,7 @@ build: \
   bin/py
 .PHONY: build
 
-all: build ui machine-resources doc
+all: build ui go-bins doc
 .PHONY: all
 
 REQUIRED_DEPS_FILES = base build dev doc
@@ -115,13 +115,13 @@ $(UI_BUILD):
 $(OFFLINE_DOCS):
 	$(MAKE) -C src/maas-offline-docs
 
-machine-resources-vendor:
-	$(MAKE) -C src/machine-resources vendor
-.PHONY: machine-resources-vendor
+go-bin-vendor:
+	$(MAKE) -C src/host-info vendor
+.PHONY: go-bin-vendor
 
-machine-resources: machine-resources-vendor
-	$(MAKE) -C src/machine-resources build
-.PHONY: machine-resources
+go-bins: go-bin-vendor
+	$(MAKE) -C src/host-info build
+.PHONY: go-bins
 
 test: test-missing-migrations test-py
 .PHONY: test
@@ -204,7 +204,7 @@ format-py:
 .PHONY: format-py
 
 format-go:
-	@$(MAKE) -C src/machine-resources format
+	@$(MAKE) -C src/host-info format
 .PHONY: format-go
 
 check: clean test
@@ -213,7 +213,7 @@ check: clean test
 api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_api_doc > $@
 
-sampledata: bin/maas-region bin/database syncdb machine-resources
+sampledata: bin/maas-region bin/database syncdb go-bins
 	$(dbrun) bin/maas-region generate_sample_data
 .PHONY: sampledata
 
@@ -231,11 +231,11 @@ clean-ui-build:
 	$(MAKE) -C src/maasui clean-build
 .PHONY: clean-build
 
-clean-machine-resources:
-	$(MAKE) -C src/machine-resources clean
-.PHONY: clean-machine-resources
+clean-go-bins:
+	$(MAKE) -C src/host-info clean
+.PHONY: clean-go-bins
 
-clean: clean-ui clean-machine-resources
+clean: clean-ui clean-go-bins
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
 	find . -type d -name '__pycache__' -print0 | xargs -r0 $(RM) -r
 	find . -type f -name '*~' -print0 | xargs -r0 $(RM)
@@ -294,7 +294,7 @@ packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
 
-machine_resources_vendor := src/machine-resources/vendor
+go_bins_vendor := src/host-info/vendor
 
 -packaging-clean:
 	rm -rf $(packaging-build-area)
@@ -307,8 +307,8 @@ machine_resources_vendor := src/machine-resources/vendor
 	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) machine-resources-vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
+	$(MAKE) go-bin-vendor
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go_bins_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 .PHONY: -packaging-export-orig
@@ -318,8 +318,8 @@ machine_resources_vendor := src/machine-resources/vendor
 	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) machine-resources-vendor
-	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(machine_resources_vendor) \
+	$(MAKE) go-bin-vendor
+	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go_bins_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
 .PHONY: -packaging-export-orig-uncommitted
@@ -428,7 +428,7 @@ snap-prime: $(DEV_SNAP_PRIME_MARKER)
 sync-dev-snap: RSYNC := rsync -v -r -u -l -t -W -L
 sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
-		--exclude 'maasui' --exclude 'machine-resources' --exclude 'maas-offline-docs' \
+		--exclude 'maasui' --exclude 'machine-resources' --exclude 'host-info' --exclude 'maas-offline-docs' \
 		--exclude '*.pyc' --exclude '__pycache__' \
 		src/ $(DEV_SNAP_PRIME_DIR)/lib/python3.8/site-packages/
 	$(RSYNC) \
@@ -436,6 +436,8 @@ sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) \
 		$(OFFLINE_DOCS)/production-html-snap/ $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/docs/
 	$(RSYNC) snap/local/tree/ $(DEV_SNAP_PRIME_DIR)/
-	$(RSYNC) src/machine-resources/bin/ \
+	$(RSYNC) src/host-info/bin/machine-resources/ \
 		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/machine-resources/
+	$(RSYNC) src/host-info/bin/hardware-sync/ \
+		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/hardware-sync/
 .PHONY: sync-dev-snap
