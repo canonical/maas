@@ -2070,10 +2070,7 @@ class Node(CleanSave, TimestampedModel):
                 ),
                 key=attrgetter("id"),
             )
-            if len(block_devices) > 0:
-                return block_devices[0]
-            else:
-                return None
+            return block_devices[0] if block_devices else None
 
     def get_bios_boot_method(self):
         """Return the boot method the node's BIOS booted."""
@@ -3275,7 +3272,14 @@ class Node(CleanSave, TimestampedModel):
             self.status in testing_statuses
             and self.previous_status in before_testing_statuses
         )
-        return self.special_filesystems.filter(acquired=acquired)
+        # loop over full queryset since it's usually prefetched:
+        return [
+            fs
+            for fs in self.current_config.filesystem_set.all()
+            if fs.block_device_id is None
+            and fs.partition_id is None
+            and fs.acquired == acquired
+        ]
 
     @staticmethod
     @asynchronous

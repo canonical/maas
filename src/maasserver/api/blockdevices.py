@@ -231,11 +231,7 @@ class BlockDeviceHandler(OperationsHandler):
     @classmethod
     def partitions(cls, block_device):
         partition_table = block_device.get_partitiontable()
-        if partition_table is not None:
-            return partition_table.partitions.all()
-        else:
-            # No partitions on the block device.
-            return []
+        return partition_table.partitions.all() if partition_table else []
 
     @classmethod
     def storage_pool(cls, block_device):

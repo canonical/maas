@@ -1,11 +1,10 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
 import http.client
 import json
 import random
-from unittest import skip
 
 from django.conf import settings
 from django.test import RequestFactory
@@ -44,7 +43,7 @@ from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object
-from maastesting.djangotestcase import count_queries
+from maastesting.djangotestcase import CountQueries
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
@@ -536,7 +535,6 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertIsNone(parsed_result[0]["pod"])
 
-    @skip("LP:1840491")
     def test_GET_machines_issues_constant_number_of_queries(self):
         # Patch middleware so it does not affect query counting.
         self.patch(
@@ -544,47 +542,42 @@ class TestMachinesAPI(APITestCase.ForUser):
             "_check_rack_controller_connectivity",
         )
 
+        queries_count = []
+        machines_count = []
+
+        def exec_request():
+            with CountQueries(reset=True) as counter:
+                response = self.client.get(reverse("machines_handler"))
+            self.assertEqual(response.status_code, http.client.OK)
+            result = json.loads(response.content)
+            queries_count.append(counter.count)
+            machines_count.append(len(result))
+
         for _ in range(10):
             node = factory.make_Node_with_Interface_on_Subnet()
             factory.make_VirtualBlockDevice(node=node)
-
-        num_queries1, response1 = count_queries(
-            self.client.get, reverse("machines_handler")
-        )
+        exec_request()
 
         for _ in range(10):
             node = factory.make_Node_with_Interface_on_Subnet()
             factory.make_VirtualBlockDevice(node=node)
-        Node.objects.update(boot_disk=None)
-        num_queries2, response2 = count_queries(
-            self.client.get, reverse("machines_handler")
-        )
+        exec_request()
 
-        # Make sure the responses are ok as it's not useful to compare the
-        # number of queries if they are not.
-        parsed_result_1 = json.loads(
-            response1.content.decode(settings.DEFAULT_CHARSET)
-        )
-        parsed_result_2 = json.loads(
-            response2.content.decode(settings.DEFAULT_CHARSET)
-        )
+        for _ in range(10):
+            node = factory.make_Node_with_Interface_on_Subnet()
+            factory.make_VirtualBlockDevice(node=node)
+        exec_request()
+
+        expected_counts = [10, 20, 30]
+        self.assertEqual(machines_count, expected_counts)
+        base_count = 98
         self.assertEqual(
-            [http.client.OK, http.client.OK, 10, 20],
+            queries_count,
             [
-                response1.status_code,
-                response2.status_code,
-                len(extract_system_ids(parsed_result_1)),
-                len(extract_system_ids(parsed_result_2)),
+                base_count + (machine_count * 30)
+                for machine_count in machines_count
             ],
         )
-
-        # Because of fields `status_action`, `status_message`,
-        # `default_gateways`, `health_status`, 'special_filesystems' and
-        # 'resource_pool' the number of queries is not the same but it is
-        # proportional to the number of machines.
-        DEFAULT_NUM = 66
-        self.assertEqual(DEFAULT_NUM + (10 * 7), num_queries1)
-        self.assertEqual(DEFAULT_NUM + (20 * 7), num_queries2)
 
     def test_GET_without_machines_returns_empty_list(self):
         # If there are no machines to list, the "read" op still works but

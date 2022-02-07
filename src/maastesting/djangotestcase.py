@@ -45,9 +45,14 @@ HttpResponseBase.__init__ = patched_HttpResponseBase__init__
 
 
 class CountQueries:
-    """Context manager for counting database queries issued in context."""
+    """Context manager for counting database queries issued in context.
 
-    def __init__(self):
+    If `reset` is true, also reset query count at enter.
+
+    """
+
+    def __init__(self, reset=False):
+        self.reset = reset
         self.connection = connections[DEFAULT_DB_ALIAS]
         self._start_count = 0
         self._end_count = 0
@@ -55,6 +60,8 @@ class CountQueries:
     def __enter__(self):
         self.force_debug_cursor = self.connection.force_debug_cursor
         self.connection.force_debug_cursor = True
+        if self.reset:
+            reset_queries()
         self._start_count = self._end_count = len(self.connection.queries)
         request_started.disconnect(reset_queries)
         return self

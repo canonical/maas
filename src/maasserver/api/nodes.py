@@ -49,15 +49,7 @@ from maasserver.exceptions import (
 from maasserver.fields import MAC_RE
 from maasserver.forms import BulkNodeSetZoneForm
 from maasserver.forms.ephemeral import TestForm
-from maasserver.models import (
-    Filesystem,
-    Interface,
-    Node,
-    NUMANode,
-    OwnerData,
-    PhysicalBlockDevice,
-    VirtualBlockDevice,
-)
+from maasserver.models import Filesystem, Interface, Node, OwnerData
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
@@ -77,8 +69,36 @@ NODES_SELECT_RELATED = (
     "controllerinfo",
     "owner",
     "zone",
+    "boot_disk__node_config__node",
+    "domain",
+    "pool",
     "current_config",
+    "boot_interface__node",
+    "virtualmachine",
 )
+
+
+def blockdev_prefetch(expression):
+    for device in (
+        expression,
+        f"{expression}__physicalblockdevice",
+        f"{expression}__virtualblockdevice",
+    ):
+        for filesystem_set in (
+            "filesystem_set",
+            "partitiontable_set__partitions__filesystem_set",
+        ):
+            yield Prefetch(
+                f"{device}__{filesystem_set}",
+                queryset=Filesystem.objects.select_related(
+                    "cache_set",
+                    "filesystem_group",
+                ),
+            )
+        yield f"{device}__vmdisk__backing_pool"
+
+    yield f"{expression}__physicalblockdevice__numa_node"
+
 
 NODES_PREFETCH = [
     "domain__dnsresource_set__ip_addresses",
@@ -87,57 +107,16 @@ NODES_PREFETCH = [
     "ownerdata_set",
     "gateway_link_ipv4__subnet",
     "gateway_link_ipv6__subnet",
-    Prefetch(
-        "current_config__blockdevice_set__filesystem_set",
-        queryset=Filesystem.objects.select_related(
-            "cache_set", "filesystem_group"
-        ),
+    # storage prefetches
+    *blockdev_prefetch("current_config__blockdevice_set"),
+    *blockdev_prefetch(
+        "current_config__blockdevice_set__partitiontable_set__partitions__"
+        "partition_table__block_device__node_config__node__"
+        "current_config__blockdevice_set"
     ),
-    Prefetch(
-        "current_config__blockdevice_set__partitiontable_set__partitions__filesystem_set",
-        queryset=Filesystem.objects.select_related(
-            "cache_set", "filesystem_group"
-        ),
-    ),
-    Prefetch(
-        "current_config__blockdevice_set__physicalblockdevice",
-        queryset=PhysicalBlockDevice.objects.select_related(
-            "node_config__node"
-        ),
-    ),
-    Prefetch(
-        "current_config__blockdevice_set__physicalblockdevice__filesystem_set",
-        queryset=Filesystem.objects.select_related(
-            "cache_set", "filesystem_group"
-        ),
-    ),
-    Prefetch(
-        "current_config__blockdevice_set__physicalblockdevice__"
-        "partitiontable_set__partitions__filesystem_set",
-        queryset=Filesystem.objects.select_related(
-            "cache_set", "filesystem_group"
-        ),
-    ),
-    Prefetch(
-        "current_config__blockdevice_set__physicalblockdevice__numa_node",
-        queryset=NUMANode.objects.select_related("node"),
-    ),
-    Prefetch(
-        "current_config__blockdevice_set__virtualblockdevice",
-        queryset=VirtualBlockDevice.objects.select_related(
-            "node_config__node", "filesystem_group"
-        ),
-    ),
-    Prefetch(
-        "current_config__blockdevice_set__virtualblockdevice__filesystem_set",
-        queryset=Filesystem.objects.select_related("filesystem_group"),
-    ),
-    Prefetch(
-        "current_config__blockdevice_set__virtualblockdevice__partitiontable_set__"
-        "partitions__filesystem_set",
-        queryset=Filesystem.objects.select_related("filesystem_group"),
-    ),
-    "boot_interface__node",
+    *blockdev_prefetch("boot_disk"),
+    "current_config__filesystem_set",
+    # boot interface prefetches
     "boot_interface__vlan__primary_rack",
     "boot_interface__vlan__secondary_rack",
     "boot_interface__vlan__fabric__vlan_set",
@@ -169,7 +148,6 @@ NODES_PREFETCH = [
     "tags",
     "nodemetadata_set",
     "numanode_set__hugepages_set",
-    "virtualmachine",
 ]
 
 
