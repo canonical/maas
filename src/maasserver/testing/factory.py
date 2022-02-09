@@ -1655,6 +1655,7 @@ class Factory(maastesting.factory.Factory):
     def make_Interface(
         self,
         iftype=INTERFACE_TYPE.PHYSICAL,
+        node_config=None,
         node=None,
         mac_address=None,
         vlan=None,
@@ -1678,12 +1679,25 @@ class Factory(maastesting.factory.Factory):
         neighbour_discovery_state=False,
         mdns_discovery_state=False,
     ):
+        if numa_node is not None:
+            node = numa_node.node
+        # ensure node_config and node are either both set or both unset
+        if node_config is None:
+            if node is not None:
+                node_config = node.current_config
+            elif parents:
+                node_config = parents[0].get_node().current_config
+        if node_config is not None:
+            node = node_config.node
+        if iftype == INTERFACE_TYPE.PHYSICAL and node_config is None:
+            # physical interfaces must have a node
+            node_config = factory.make_NodeConfig()
+            node = node_config.node
+
         if subnet is None and cluster_interface is not None:
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
             vlan = subnet.vlan
-        if iftype is None:
-            iftype = INTERFACE_TYPE.PHYSICAL
         if link_connected:
             if vlan is None:
                 if fabric is not None:
@@ -1731,17 +1745,6 @@ class Factory(maastesting.factory.Factory):
             INTERFACE_TYPE.UNKNOWN,
         ]:
             mac_address = self.make_MAC()
-        if (
-            node is None
-            and numa_node is None
-            and iftype == INTERFACE_TYPE.PHYSICAL
-        ):
-            node = self.make_Node()
-        elif node is None and parents is not None and len(parents) > 0:
-            node = parents[0].get_node()
-        elif numa_node is not None:
-            node = numa_node.node
-
         if tags is None:
             tags = [self.make_name("tag") for _ in range(3)]
         link_speeds = [10, 100, 1000, 10000, 20000, 40000, 50000, 100000]
@@ -1765,12 +1768,11 @@ class Factory(maastesting.factory.Factory):
         if (
             iftype == INTERFACE_TYPE.PHYSICAL
             and numa_node is None
-            and node is not None
             and node.is_machine
         ):
-            numa_node = node.default_numanode
+            numa_node = node_config.node.default_numanode
         interface = Interface(
-            node=node,
+            node_config=node_config,
             mac_address=mac_address,
             type=iftype,
             name=name,

@@ -313,11 +313,11 @@ class VLAN(CleanSave, TimestampedModel):
             to this VLAN.
         """
         query = self.interface_set.filter(
-            node__node_type__in=[
+            node_config__node__node_type__in=[
                 NODE_TYPE.RACK_CONTROLLER,
                 NODE_TYPE.REGION_AND_RACK_CONTROLLER,
             ]
         )
         if exclude_racks is not None:
-            query = query.exclude(node__in=exclude_racks)
-        return [nic.node.as_rack_controller() for nic in query]
+            query = query.exclude(node_config__node__in=exclude_racks)
+        return [nic.node_config.node.as_rack_controller() for nic in query]

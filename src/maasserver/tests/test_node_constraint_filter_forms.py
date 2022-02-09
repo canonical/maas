@@ -1924,7 +1924,7 @@ class TestReadNodesForm(MAASServerTestCase, FilterConstraintsMixin):
         if2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         self.assertConstrainedNodes(
-            [if1.node, if2.node],
+            [if1.node_config.node, if2.node_config.node],
             {"mac_address": [if1.mac_address, if2.mac_address]},
         )
 

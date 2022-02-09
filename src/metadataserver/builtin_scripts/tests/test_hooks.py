@@ -1508,7 +1508,10 @@ class TestProcessLXDResults(MAASServerTestCase):
         # Verify network device information was collected
         self.assertEqual(
             ["Intel Corporation", "Intel Corporation", "Intel Corporation"],
-            [iface.vendor for iface in node.interface_set.all()],
+            [
+                iface.vendor
+                for iface in node.current_config.interface_set.all()
+            ],
         )
 
     def test_updates_memory(self):
@@ -1766,7 +1769,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, make_lxd_output_json(), 0)
         numa_nodes = NUMANode.objects.filter(node=node).order_by("index")
         node_interfaces = list(
-            Interface.objects.filter(node=node).order_by("name")
+            Interface.objects.filter(node_config=node.current_config).order_by(
+                "name"
+            )
         )
         self.assertEqual(2, len(numa_nodes))
         self.assertEqual(node_interfaces[0].numa_node, numa_nodes[0])
@@ -2225,7 +2230,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertIsNone(reload_object(node_device))
-        iface = Interface.objects.get(node=node, name=iface.name)
+        iface = Interface.objects.get(
+            node_config=node.current_config, name=iface.name
+        )
         new_node_device = iface.node_device
         self.assertIsNotNone(new_node_device)
         self.assertEqual("0000:01:00.0", new_node_device.pci_address)
@@ -2245,7 +2252,7 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(1000, iface1.interface_speed)
         # other interfaces get created
         iface2, iface3 = (
-            Interface.objects.filter(node=node)
+            Interface.objects.filter(node_config=node.current_config)
             .exclude(mac_address=iface.mac_address)
             .order_by("mac_address")
         )
@@ -3137,7 +3144,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         appropriate, given Node's interfaces. (and an optional list of
         expected interfaces which must exist)
         """
-        node_interfaces = list(Interface.objects.filter(node=node))
+        node_interfaces = list(
+            Interface.objects.filter(node_config=node.current_config)
+        )
 
         expected_interfaces = expected_interfaces.copy()
 
@@ -3174,7 +3183,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
         )
@@ -3197,7 +3206,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         del cards[1:]
 
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
         update_node_network_information(
             node, lxd_output, create_numa_nodes(node)
         )
@@ -3209,7 +3218,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """Vendor, product and firmware version details are added."""
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
 
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
@@ -3223,7 +3232,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test_adds_sriov_info(self):
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
 
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
@@ -3235,7 +3244,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test_adds_sriov_tag_if_sriov(self):
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
 
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
@@ -3253,7 +3262,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         pod.hints.nodes.add(node)
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
 
         data = make_lxd_output()
         data["resources"]["network"]["cards"].append(
@@ -3301,7 +3310,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
     def test_adds_ifaces_under_sriov_if_not_deployed(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
 
         data = make_lxd_output()
         port = {
@@ -3358,7 +3367,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         """
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
 
         data = make_lxd_output()
         card_info = data["resources"]["network"]["cards"][0]
@@ -3388,7 +3397,8 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node)
 
         db_macaddresses = [
-            iface.mac_address for iface in node.interface_set.all()
+            iface.mac_address
+            for iface in node.current_config.interface_set.all()
         ]
         self.assertNotIn(MAC("01:23:45:67:89:ab"), db_macaddresses)
 
@@ -3410,7 +3420,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
         # Ensure the MAC object moved over to node2.
-        self.assertCountEqual([], Interface.objects.filter(node=node1))
+        self.assertCountEqual(
+            [], Interface.objects.filter(node_config=node1.current_config)
+        )
 
     def test_reassign_interfaces(self):
         """Test whether we can assign interfaces previously connected to a
@@ -3425,7 +3437,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node1)
 
         # Grab the id from one of the created interfaces.
-        interface_id = PhysicalInterface.objects.filter(node=node1).first().id
+        interface_id = (
+            PhysicalInterface.objects.filter(node_config=node1.current_config)
+            .first()
+            .id
+        )
 
         # Now make sure the second node has them all.
         node2 = factory.make_Node()
@@ -3436,7 +3452,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         self.assert_expected_interfaces_and_macs_exist_for_node(node2)
 
         # Now make sure all the objects moved to the second node.
-        self.assertCountEqual([], Interface.objects.filter(node=node1))
+        self.assertCountEqual(
+            [], Interface.objects.filter(node_config=node1.current_config)
+        )
 
         # ... and ensure that the interface was deleted.
         self.assertCountEqual([], Interface.objects.filter(id=interface_id))
@@ -3597,7 +3615,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
         )
-        eth0 = Interface.objects.get(node=node, name="eth0")
+        eth0 = Interface.objects.get(
+            node_config=node.current_config, name="eth0"
+        )
         address = str(IPNetwork(cidr).ip)
         ipv4_ip = eth0.ip_addresses.get(ip=address)
         self.assertThat(
@@ -3612,7 +3632,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(
             node, make_lxd_output(), create_numa_nodes(node)
         )
-        eth1 = Interface.objects.get(node=node, name="eth1")
+        eth1 = Interface.objects.get(
+            node_config=node.current_config, name="eth1"
+        )
         self.assertIsNone(eth1.vlan)
 
     def test_disconnects_previously_connected_interface(self):
@@ -3629,7 +3651,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         data = make_lxd_output()
         data["networks"]["eth1"]["addresses"] = []
         update_node_network_information(node, data, create_numa_nodes(node))
-        eth1 = Interface.objects.get(node=node, name="eth1")
+        eth1 = Interface.objects.get(
+            node_config=node.current_config, name="eth1"
+        )
         self.assertIsNone(eth1.vlan)
 
     def test_ignores_openbmc_interface(self):
@@ -3637,7 +3661,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         SWITCH_OPENBMC_MAC = "02:00:00:00:00:02"
         node = factory.make_Node()
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
 
         data = make_lxd_output()
         open_bmc_port = data["resources"]["network"]["cards"][0]["ports"][0]
@@ -3647,7 +3671,9 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         update_node_network_information(node, data, create_numa_nodes(node))
 
         # Specifically, there is no OpenBMC interface with a fixed MAC address.
-        node_interfaces = Interface.objects.filter(node=node)
+        node_interfaces = Interface.objects.filter(
+            node_config=node.current_config
+        )
         all_macs = [interface.mac_address for interface in node_interfaces]
         self.assertNotIn(SWITCH_OPENBMC_MAC, all_macs)
 
@@ -3657,7 +3683,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         node = factory.make_Node()
 
         # Delete all Interfaces created by factory attached to this node.
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
         node.boot_interface = None
         node.boot_cluster_ip = "192.168.0.1"
         node.save()
@@ -3720,7 +3746,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
         # 2 devices configured, one for IPv4 one for IPv6.
         self.assertEqual(
             2,
-            node.interface_set.filter(
+            node.current_config.interface_set.filter(
                 ip_addresses__alloc_type=IPADDRESS_TYPE.AUTO
             ).count(),
         )
@@ -3733,7 +3759,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
 
     def test_sets_boot_interface_bootif(self):
         node = factory.make_Node()
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
         nic1 = factory.make_Interface(node=node)
         nic2 = factory.make_Interface(node=node)
         kernel_cmdline1 = KERNEL_CMDLINE_OUTPUT.format(
@@ -3753,7 +3779,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
 
     def test_boot_interface_bootif_no_such_mac(self):
         node = factory.make_Node()
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
         kernel_cmdline = KERNEL_CMDLINE_OUTPUT.format(
             mac_address="11-22-33-44-55-66"
         )
@@ -3768,7 +3794,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
 
     def test_no_bootif(self):
         node = factory.make_Node()
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
         nic = factory.make_Interface(node=node)
         node.boot_interface = nic
         node.save()
@@ -3780,7 +3806,7 @@ class TestUpdateBootInterface(MAASServerTestCase):
 
     def test_non_zero_exit_status(self):
         node = factory.make_Node()
-        Interface.objects.filter(node_id=node.id).delete()
+        Interface.objects.filter(node_config=node.current_config).delete()
         nic = factory.make_Interface(node=node)
         node.boot_interface = None
         node.save()

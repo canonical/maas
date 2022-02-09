@@ -123,12 +123,12 @@ class PodHandler(TimestampedModelHandler):
         if not for_list:
             if obj.host:
                 data["attached_vlans"] = list(
-                    obj.host.interface_set.filter(
+                    obj.host.current_config.interface_set.filter(
                         vlan_id__isnull=False
                     ).values_list("vlan_id", flat=True)
                 )
                 boot_vlans = []
-                query = obj.host.interface_set.all().prefetch_related(
+                query = obj.host.current_config.interface_set.all().prefetch_related(
                     "vlan__relay_vlan"
                 )
                 for interface in query:

@@ -58,12 +58,12 @@ class DeviceHandler(NodeHandler):
                 "current_config",
             )
             .prefetch_related(
-                "interface_set__ip_addresses__subnet__vlan__space"
+                "current_config__interface_set__ip_addresses__subnet__vlan__space"
             )
             .prefetch_related(
-                "interface_set__ip_addresses__subnet__vlan__fabric"
+                "current_config__interface_set__ip_addresses__subnet__vlan__fabric"
             )
-            .prefetch_related("interface_set__vlan__fabric")
+            .prefetch_related("current_config__interface_set__vlan__fabric")
             .prefetch_related("tags")
         )
         allowed_methods = [
@@ -188,7 +188,9 @@ class DeviceHandler(NodeHandler):
         else:
             data["interfaces"] = [
                 self.dehydrate_interface(interface, obj)
-                for interface in obj.interface_set.all().order_by("name")
+                for interface in obj.current_config.interface_set.all().order_by(
+                    "name"
+                )
             ]
             # Propogate the boot interface ip assignment/address to the device.
             for iface_data in data["interfaces"]:
@@ -309,7 +311,7 @@ class DeviceHandler(NodeHandler):
         # based on the users choices.
         data = super().create(params)
         device_obj = Device.objects.get(system_id=data["system_id"])
-        interfaces = list(device_obj.interface_set.all())
+        interfaces = list(device_obj.current_config.interface_set.all())
 
         # Acquire all of the needed ip address based on the user selection.
         for nic in params["interfaces"]:
@@ -336,7 +338,7 @@ class DeviceHandler(NodeHandler):
         """Update the interface."""
         device = self.get_object(params, permission=self._meta.edit_permission)
         interface = Interface.objects.get(
-            node=device, id=params["interface_id"]
+            node_config=device.current_config, id=params["interface_id"]
         )
         interface_form = InterfaceForm.get_interface_form(interface.type)
         form = interface_form(instance=interface, data=params)
@@ -350,13 +352,17 @@ class DeviceHandler(NodeHandler):
     def delete_interface(self, params):
         """Delete the interface."""
         node = self.get_object(params, permission=self._meta.edit_permission)
-        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface = Interface.objects.get(
+            node_config=node.current_config, id=params["interface_id"]
+        )
         interface.delete()
 
     def link_subnet(self, params):
         """Create or update the link."""
         node = self.get_object(params, permission=self._meta.edit_permission)
-        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface = Interface.objects.get(
+            node_config=node.current_config, id=params["interface_id"]
+        )
         if params["ip_assignment"] == DEVICE_IP_ASSIGNMENT_TYPE.STATIC:
             mode = INTERFACE_LINK_TYPE.STATIC
         elif params["ip_assignment"] == DEVICE_IP_ASSIGNMENT_TYPE.DYNAMIC:
@@ -389,7 +395,9 @@ class DeviceHandler(NodeHandler):
     def unlink_subnet(self, params):
         """Delete the link."""
         node = self.get_object(params, permission=self._meta.edit_permission)
-        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface = Interface.objects.get(
+            node_config=node.current_config, id=params["interface_id"]
+        )
         interface.unlink_subnet_by_id(params["link_id"])
 
     def action(self, params):

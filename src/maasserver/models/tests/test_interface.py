@@ -17,7 +17,6 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
-    Is,
     MatchesDict,
     MatchesListwise,
     MatchesStructure,
@@ -149,16 +148,16 @@ class TestInterfaceManager(MAASServerTestCase):
         )
 
     def test_get_or_create_without_parents(self):
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         mac_address = factory.make_mac_address()
         name = factory.make_name("eth")
         interface, created = PhysicalInterface.objects.get_or_create(
-            node=node, mac_address=mac_address, name=name
+            node_config=node_config, mac_address=mac_address, name=name
         )
         self.assertTrue(created)
         self.assertIsNotNone(interface)
         retrieved_interface, created = PhysicalInterface.objects.get_or_create(
-            node=node, mac_address=mac_address
+            node_config=node_config, mac_address=mac_address
         )
         self.assertFalse(created)
         self.assertEqual(interface, retrieved_interface)
@@ -166,10 +165,10 @@ class TestInterfaceManager(MAASServerTestCase):
     def test_get_or_create_with_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node
+            INTERFACE_TYPE.PHYSICAL, node_config=parent1.node_config
         )
         interface, created = BondInterface.objects.get_or_create(
-            node=parent1.node,
+            node_config=parent1.node_config,
             mac_address=parent1.mac_address,
             name="bond0",
             parents=[parent1, parent2],
@@ -177,7 +176,7 @@ class TestInterfaceManager(MAASServerTestCase):
         self.assertTrue(created)
         self.assertIsNotNone(interface)
         retrieved_interface, created = BondInterface.objects.get_or_create(
-            node=parent1.node, parents=[parent1, parent2]
+            node_config=parent1.node_config, parents=[parent1, parent2]
         )
         self.assertFalse(created)
         self.assertEqual(interface, retrieved_interface)
@@ -382,10 +381,10 @@ class TestInterfaceManager(MAASServerTestCase):
         )
         iface.mac_address = None
         iface.save()
-        self.assertEqual(iface.node.status, NODE_STATUS.BROKEN)
+        self.assertEqual(iface.node_config.node.status, NODE_STATUS.BROKEN)
         iface.mac_address = factory.make_mac_address()
         PhysicalInterface.objects.resolve_missing_mac_address(iface)
-        self.assertEqual(iface.node.status, NODE_STATUS.READY)
+        self.assertEqual(iface.node_config.node.status, NODE_STATUS.READY)
 
     def test_resolve_missing_mac_address_raises_error_on_no_new_mac_address(
         self,
@@ -396,7 +395,7 @@ class TestInterfaceManager(MAASServerTestCase):
         )
         iface.mac_address = None
         iface.save()
-        self.assertEqual(iface.node.status, NODE_STATUS.BROKEN)
+        self.assertEqual(iface.node_config.node.status, NODE_STATUS.BROKEN)
         self.assertRaises(
             ValidationError,
             PhysicalInterface.objects.resolve_missing_mac_address,
@@ -945,7 +944,7 @@ class TestAllInterfacesParentsFirst(MAASServerTestCase):
         n2_eth0 = factory.make_Interface(node=node2, name="eth0")
         n2_eth1 = factory.make_Interface(node=node2, name="eth1")
         ifaces = Interface.objects.all_interfaces_parents_first(node1)
-        self.expectThat(isinstance(ifaces, Iterable), Is(True))
+        self.assertIsInstance(ifaces, Iterable)
         iface_list = list(ifaces)
         # Expect alphabetical interface order, interleaved with a parents-first
         # search for each child interface. That is, child interfaces will
@@ -984,7 +983,7 @@ class TestAllInterfacesParentsFirst(MAASServerTestCase):
         )
         # Use the QuerySet update() to avoid calling the post-save handler,
         # which would otherwise automatically work around this.
-        Interface.objects.filter(id=eth0_vlan.id).update(node=None)
+        Interface.objects.filter(id=eth0_vlan.id).update(node_config=None)
         iface_list = list(Interface.objects.all_interfaces_parents_first(node))
         self.expectThat(iface_list, Equals([eth0]))
 
@@ -1035,16 +1034,19 @@ class InterfaceTest(MAASServerTestCase):
 
     def test_creates_interface(self):
         name = factory.make_name("name")
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         mac = factory.make_MAC()
         interface = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, name=name, node=node, mac_address=mac
+            INTERFACE_TYPE.PHYSICAL,
+            name=name,
+            node_config=node_config,
+            mac_address=mac,
         )
         self.assertThat(
             interface,
             MatchesStructure.byEquality(
                 name=name,
-                node=node,
+                node_config=node_config,
                 mac_address=mac,
                 type=INTERFACE_TYPE.PHYSICAL,
             ),
@@ -1052,12 +1054,12 @@ class InterfaceTest(MAASServerTestCase):
 
     def test_allows_null_vlan(self):
         name = factory.make_name("name")
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         mac = factory.make_MAC()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL,
             name=name,
-            node=node,
+            node_config=node_config,
             mac_address=mac,
             link_connected=False,
         )
@@ -1065,7 +1067,7 @@ class InterfaceTest(MAASServerTestCase):
             interface,
             MatchesStructure.byEquality(
                 name=name,
-                node=node,
+                node_config=node_config,
                 mac_address=mac,
                 type=INTERFACE_TYPE.PHYSICAL,
                 vlan=None,
@@ -1602,13 +1604,16 @@ class TestPhysicalInterface(MAASServerTestCase):
         )
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEqual(
-            {"node": ["This field cannot be blank."]}, error.message_dict
+            {"node_config": ["This field cannot be blank."]},
+            error.message_dict,
         )
 
     def test_requires_mac_address(self):
         interface = PhysicalInterface(
             name=factory.make_name("eth"),
-            node=factory.make_Node(bmc=factory.make_BMC()),
+            node_config=factory.make_Node(
+                bmc=factory.make_BMC()
+            ).current_config,
         )
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEqual(
@@ -1619,7 +1624,9 @@ class TestPhysicalInterface(MAASServerTestCase):
     def test_virtual_machine_does_not_require_mac_address(self):
         interface = PhysicalInterface(
             name=factory.make_name("eth"),
-            node=factory.make_Node(bmc=factory.make_Pod()),
+            node_config=factory.make_Node(
+                bmc=factory.make_Pod()
+            ).current_config,
         )
         interface.save()
         self.assertIsNone(interface.mac_address)
@@ -1627,28 +1634,35 @@ class TestPhysicalInterface(MAASServerTestCase):
     def test_virtual_machine_with_no_mac_sets_node_broken(self):
         interface = PhysicalInterface(
             name=factory.make_name("eth"),
-            node=factory.make_Node(bmc=factory.make_Pod()),
+            node_config=factory.make_Node(
+                bmc=factory.make_Pod()
+            ).current_config,
         )
         interface.save()
-        self.assertEqual(interface.node.status, NODE_STATUS.BROKEN)
+        self.assertEqual(interface.node_config.node.status, NODE_STATUS.BROKEN)
 
     def test_virtual_machine_with_no_mac_can_set_node_to_fixed_when_mac_is_provided(
         self,
     ):
         interface = PhysicalInterface(
             name=factory.make_name("eth"),
-            node=factory.make_Node(bmc=factory.make_Pod()),
+            node_config=factory.make_Node(
+                bmc=factory.make_Pod()
+            ).current_config,
         )
         interface.save()
-        self.assertEqual(interface.node.status, NODE_STATUS.BROKEN)
+        self.assertEqual(interface.node_config.node.status, NODE_STATUS.BROKEN)
         interface.mac_address = factory.make_mac_address()
         interface.save()
-        self.assertEqual(interface.node.status, NODE_STATUS.READY)
+        self.assertEqual(interface.node_config.node.status, NODE_STATUS.READY)
 
     def test_mac_address_must_be_unique(self):
-        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        node_config = factory.make_NodeConfig()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
         bad_interface = PhysicalInterface(
-            node=interface.node,
+            node_config=node_config,
             mac_address=interface.mac_address,
             name=factory.make_name("eth"),
         )
@@ -1698,7 +1712,7 @@ class TestPhysicalInterface(MAASServerTestCase):
             ValidationError,
             factory.make_Interface,
             INTERFACE_TYPE.PHYSICAL,
-            node=parent.node,
+            node_config=parent.node_config,
             parents=[parent],
         )
         self.assertEqual(
@@ -1810,7 +1824,7 @@ class InterfaceMTUTest(MAASServerTestCase):
             MatchesStructure(
                 name=Equals("%s" % parent.get_default_bridge_name()),
                 mac_address=Equals(parent.mac_address),
-                node=Equals(parent.node),
+                node_config=Equals(parent.node_config),
                 vlan=Equals(parent.vlan),
                 enabled=Equals(True),
                 acquired=Equals(True),
@@ -1830,14 +1844,14 @@ class InterfaceMTUTest(MAASServerTestCase):
 class VLANInterfaceTest(MAASServerTestCase):
     def test_vlan_has_supplied_name(self):
         name = factory.make_name("eth", size=2)
-        node = factory.make_Node()
+        node_config = factory.make_NodeConfig()
         parent = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, name=name, node=node
+            INTERFACE_TYPE.PHYSICAL, name=name, node_config=node_config
         )
         vlan = factory.make_VLAN()
         vlan_ifname = factory.make_name()
         interface = VLANInterface(
-            node=node,
+            node_config=node_config,
             mac_address=factory.make_mac_address(),
             type=INTERFACE_TYPE.VLAN,
             name=vlan_ifname,
@@ -1921,12 +1935,12 @@ class VLANInterfaceTest(MAASServerTestCase):
             error.message_dict,
         )
 
-    def test_node_set_to_parent_node(self):
+    def test_node_config_set_to_parent_node_config(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface = factory.make_Interface(
             INTERFACE_TYPE.VLAN, parents=[parent]
         )
-        self.assertEqual(parent.node, interface.node)
+        self.assertEqual(parent.node_config, interface.node_config)
 
     def test_mac_address_set_to_parent_mac_address(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
@@ -2047,7 +2061,8 @@ class BondInterfaceTest(MAASServerTestCase):
 
     def test_requires_mac_address(self):
         interface = BondInterface(
-            name=factory.make_name("bond"), node=factory.make_Node()
+            name=factory.make_name("bond"),
+            node_config=factory.make_NodeConfig(),
         )
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEqual(
@@ -2125,16 +2140,20 @@ class BondInterfaceTest(MAASServerTestCase):
             ),
         )
 
-    def test_node_is_set_to_parents_node(self):
-        node = factory.make_Node()
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+    def test_node_config_is_set_to_parents_node_config(self):
+        node_config = factory.make_NodeConfig()
+        parent1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
         interface = factory.make_Interface(
             INTERFACE_TYPE.BOND,
             mac_address=factory.make_mac_address(),
             parents=[parent1, parent2],
         )
-        self.assertEqual(interface.node, parent1.node)
+        self.assertEqual(interface.node_config, parent1.node_config)
 
     def test_disable_one_parent_doesnt_disable_the_bond(self):
         node = factory.make_Node()
@@ -2200,7 +2219,8 @@ class BridgeInterfaceTest(MAASServerTestCase):
 
     def test_requires_mac_address(self):
         interface = BridgeInterface(
-            name=factory.make_name("bridge"), node=factory.make_Node()
+            name=factory.make_name("bridge"),
+            node_config=factory.make_NodeConfig(),
         )
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEqual(
@@ -2273,16 +2293,20 @@ class BridgeInterfaceTest(MAASServerTestCase):
             ),
         )
 
-    def test_node_is_set_to_parents_node(self):
-        node = factory.make_Node()
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
-        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+    def test_node_config_is_set_to_parents_node_config(self):
+        node_config = factory.make_NodeConfig()
+        parent1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
+        parent2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
         interface = factory.make_Interface(
             INTERFACE_TYPE.BRIDGE,
             mac_address=factory.make_mac_address(),
             parents=[parent1, parent2],
         )
-        self.assertEqual(interface.node, parent1.node)
+        self.assertEqual(interface.node_config, parent1.node_config)
 
     def test_disable_one_parent_doesnt_disable_the_bridge(self):
         node = factory.make_Node()
@@ -2324,15 +2348,15 @@ class UnknownInterfaceTest(MAASServerTestCase):
         interface = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
         self.assertIsNone(interface.get_node())
 
-    def test_doesnt_allow_node(self):
+    def test_doesnt_allow_node_config(self):
         interface = UnknownInterface(
             name="eth0",
-            node=factory.make_Node(),
+            node_config=factory.make_NodeConfig(),
             mac_address=factory.make_mac_address(),
         )
         error = self.assertRaises(ValidationError, interface.save)
         self.assertEqual(
-            {"node": ["This field must be blank."]}, error.message_dict
+            {"node_config": ["This field must be blank."]}, error.message_dict
         )
 
     def test_warns_for_non_unique_unknown_mac(self):
@@ -2715,7 +2739,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 "from the dynamic range.",
                 ip.get_log_name_for_alloc_type(),
                 address,
-                " on " + other_interface.node.fqdn,
+                " on " + other_interface.node_config.node.fqdn,
             ),
         )
 
@@ -2747,7 +2771,7 @@ class UpdateIpAddressesTest(MAASServerTestCase):
                 "server.",
                 ip.get_log_name_for_alloc_type(),
                 address,
-                " on " + other_interface.node.fqdn,
+                " on " + other_interface.node_config.node.fqdn,
             ),
         )
 
@@ -3791,7 +3815,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             MatchesStructure(
                 name=Equals("%s" % parent.get_default_bridge_name()),
                 mac_address=Equals(parent.mac_address),
-                node=Equals(parent.node),
+                node_config=Equals(parent.node_config),
                 vlan=Equals(parent.vlan),
                 enabled=Equals(True),
                 acquired=Equals(True),
@@ -3819,7 +3843,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             MatchesStructure(
                 name=Equals("%s" % parent.get_default_bridge_name()),
                 mac_address=Equals(parent.mac_address),
-                node=Equals(parent.node),
+                node_config=Equals(parent.node_config),
                 vlan=Equals(parent.vlan),
                 enabled=Equals(True),
                 acquired=Equals(True),
@@ -3848,7 +3872,7 @@ class TestCreateAcquiredBridge(MAASServerTestCase):
             MatchesStructure(
                 name=Equals("%s" % parent.get_default_bridge_name()),
                 mac_address=Equals(parent.mac_address),
-                node=Equals(parent.node),
+                node_config=Equals(parent.node_config),
                 vlan=Equals(parent.vlan),
                 enabled=Equals(True),
                 acquired=Equals(True),

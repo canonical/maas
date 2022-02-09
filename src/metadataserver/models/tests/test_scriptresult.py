@@ -565,7 +565,7 @@ class TestScriptResult(MAASServerTestCase):
 
     def test_save_purges_orphaned_script_results_interface(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
-        iface = node.interface_set.first()
+        iface = node.current_config.interface_set.first()
         script = factory.make_Script(
             parameters={"interface": {"type": "interface"}}
         )

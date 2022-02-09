@@ -1,8 +1,5 @@
-# Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `maasserver.websockets.handlers.subnet`"""
-
 
 import re
 from unittest.mock import sentinel
@@ -112,7 +109,7 @@ class TestSubnetHandler(MAASServerTestCase):
                 node = factory.make_Node_with_Interface_on_Subnet(
                     subnet=subnet, status=NODE_STATUS.READY
                 )
-                iface = node.interface_set.first()
+                iface = node.current_config.interface_set.first()
                 factory.make_StaticIPAddress(
                     alloc_type=IPADDRESS_TYPE.STICKY,
                     subnet=subnet,

@@ -187,7 +187,7 @@ class Fabric(CleanSave, TimestampedModel):
             )
         if Interface.objects.filter(vlan__fabric=self).exists():
             interfaces = Interface.objects.filter(vlan__fabric=self).order_by(
-                "node", "name"
+                "node_config__node", "name"
             )
             descriptions = [iface.get_log_string() for iface in interfaces]
             raise ValidationError(

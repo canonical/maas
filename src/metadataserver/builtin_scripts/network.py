@@ -77,7 +77,8 @@ def update_node_interfaces(node, data):
         address_extra = {}
 
     current_interfaces = {
-        interface.id: interface for interface in node.interface_set.all()
+        interface.id: interface
+        for interface in node.current_config.interface_set.all()
     }
 
     # Update the interfaces in dependency order. This make sure that the
@@ -204,19 +205,19 @@ def update_physical_interface(
     # machine, delete it. Interface names are unique on a machine, so this
     # might be an old interface which was removed and recreated with a
     # different MAC.
-    PhysicalInterface.objects.filter(node=node, name=name).exclude(
-        mac_address=mac_address
-    ).delete()
+    PhysicalInterface.objects.filter(
+        node_config=node.current_config, name=name
+    ).exclude(mac_address=mac_address).delete()
     interface, created = PhysicalInterface.objects.get_or_create(
         mac_address=mac_address,
         defaults={
-            "node": node,
+            "node_config": node.current_config,
             "name": name,
             "enabled": True,
             "acquired": not node.is_commissioning(),
         },
     )
-    if not created and interface.node != node:
+    if not created and interface.node_config_id != node.current_config_id:
         # MAC address was on a different node. We need to move
         # it to its new owner. In the process we delete all of its
         # current links because they are completely wrong.
@@ -236,13 +237,13 @@ def update_physical_interface(
             interface.vlan = new_vlan
             update_fields.add("vlan")
     if not created:
-        if interface.node.id != node.id:
+        if interface.node_config_id != node.current_config_id:
             # MAC address was on a different node. We need to move
             # it to its new owner. In the process we delete all of its
             # current links because they are completely wrong.
             interface.ip_addresses.all().delete()
-            interface.node = node
-            update_fields.add("node")
+            interface.node_config = node.current_config
+            update_fields.add("node_config")
         if interface.name != name:
             interface.name = name
             update_fields.add("name")
@@ -320,7 +321,9 @@ def update_vlan_interface(node, name, network, links):
     """
     vid = network["vlan"]["vid"]
     parent_name = network["vlan"]["lower_device"]
-    parent_nic = Interface.objects.get(node=node, name=parent_name)
+    parent_nic = Interface.objects.get(
+        node_config=node.current_config, name=parent_name
+    )
     links_vlan = get_interface_vlan_from_links(node, links)
     if links_vlan:
         vlan = links_vlan
@@ -342,11 +345,14 @@ def update_vlan_interface(node, name, network, links):
         )
 
     interface = VLANInterface.objects.filter(
-        node=node, name=name, parents__id=parent_nic.id, vlan__vid=vid
+        node_config=node.current_config,
+        name=name,
+        parents__id=parent_nic.id,
+        vlan__vid=vid,
     ).first()
     if interface is None:
         interface, _ = VLANInterface.objects.get_or_create(
-            node=node,
+            node_config=node.current_config,
             name=name,
             parents=[parent_nic],
             vlan=vlan,
@@ -486,7 +492,7 @@ def find_related_interface(
     if related_mac is not None:
         filter_args["mac_address"] = related_mac
     if own_interface:
-        filter_args["node"] = node
+        filter_args["node_config"] = node.current_config
     related_interface = PhysicalInterface.objects.filter(**filter_args).first()
     if related_interface is None and related_mac is not None:
         # Couldn't find a physical interface; it could be a private
@@ -661,7 +667,8 @@ def update_links(
             # Update the properties and make sure all interfaces
             # assigned to the address belong to this node.
             for attached_nic in ip_address.interface_set.all():
-                if attached_nic.node != node:
+                config = attached_nic.node_config
+                if config is None or config.node_id != node.id:
                     attached_nic.ip_addresses.remove(ip_address)
 
             # Add this IP address to the interface.

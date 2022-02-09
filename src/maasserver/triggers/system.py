@@ -710,21 +710,23 @@ DHCP_NODE_UPDATE = dedent(
         FOR vlan IN (
           SELECT DISTINCT ON (maasserver_vlan.id)
             maasserver_vlan.*
-          FROM
-            maasserver_vlan,
-            maasserver_staticipaddress,
-            maasserver_subnet,
-            maasserver_interface,
-            maasserver_interface_ip_addresses AS ip_link
-          WHERE maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-          AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-          AND ip_link.interface_id = maasserver_interface.id
-          AND maasserver_interface.node_id = NEW.id
+          FROM maasserver_vlan
+            JOIN maasserver_subnet
+              ON maasserver_subnet.vlan_id = maasserver_vlan.id
+            JOIN maasserver_staticipaddress
+              ON maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+            JOIN maasserver_interface_ip_addresses
+              ON maasserver_interface_ip_addresses.staticipaddress_id = maasserver_staticipaddress.id
+            JOIN maasserver_interface
+              ON maasserver_interface.id = maasserver_interface_ip_addresses.interface_id
+            JOIN maasserver_nodeconfig
+              ON maasserver_nodeconfig.id = maasserver_interface.node_config_id
+          WHERE maasserver_nodeconfig.node_id = NEW.id
           AND maasserver_staticipaddress.alloc_type != 6
           AND maasserver_staticipaddress.ip IS NOT NULL
           AND maasserver_staticipaddress.temp_expires_on IS NULL
           AND host(maasserver_staticipaddress.ip) != ''
-          AND maasserver_vlan.id = maasserver_subnet.vlan_id)
+        )
         LOOP
           PERFORM sys_dhcp_alert(vlan);
         END LOOP;
@@ -798,9 +800,12 @@ DHCP_SNIPPET_UPDATE_NODE = dedent(
       FOR rack IN (
         WITH racks AS (
           SELECT primary_rack_id, secondary_rack_id
-          FROM maasserver_vlan, maasserver_interface
-          WHERE maasserver_interface.node_id = _node_id
-            AND maasserver_interface.vlan_id = maasserver_vlan.id
+          FROM maasserver_vlan
+            JOIN maasserver_interface
+              ON maasserver_interface.vlan_id = maasserver_vlan.id
+            JOIN maasserver_nodeconfig
+              ON maasserver_nodeconfig.id = maasserver_interface.node_config_id
+          WHERE maasserver_nodeconfig.node_id = _node_id
           AND (maasserver_vlan.dhcp_on = true
             OR maasserver_vlan.relay_vlan_id IS NOT NULL))
         SELECT primary_rack_id FROM racks
@@ -1079,8 +1084,10 @@ DNS_STATICIPADDRESS_UPDATE = dedent(
               maasserver_interface_ip_addresses AS iia
               JOIN maasserver_interface AS interface ON
                 iia.interface_id = interface.id
+              JOIN maasserver_nodeconfig AS nodeconfig ON
+                nodeconfig.id = interface.node_config_id
               JOIN maasserver_node AS node ON
-                node.id = interface.node_id) ON
+                node.id = nodeconfig.node_id) ON
               iia.staticipaddress_id = staticipaddress.id
             LEFT JOIN (
               maasserver_dnsresource_ip_addresses AS dia
@@ -1150,9 +1157,13 @@ DNS_NIC_IP_LINK = dedent(
       SELECT maasserver_interface.* INTO nic
       FROM maasserver_interface
       WHERE maasserver_interface.id = NEW.interface_id;
+
       SELECT maasserver_node.* INTO node
       FROM maasserver_node
-      WHERE maasserver_node.id = nic.node_id;
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      WHERE maasserver_nodeconfig.id = nic.node_config_id;
+
       SELECT maasserver_staticipaddress.* INTO ip
       FROM maasserver_staticipaddress
       WHERE maasserver_staticipaddress.id = NEW.staticipaddress_id;
@@ -1190,9 +1201,13 @@ DNS_NIC_IP_UNLINK = dedent(
       SELECT maasserver_interface.* INTO nic
       FROM maasserver_interface
       WHERE maasserver_interface.id = OLD.interface_id;
+
       SELECT maasserver_node.* INTO node
       FROM maasserver_node
-      WHERE maasserver_node.id = nic.node_id;
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      WHERE maasserver_nodeconfig.id = nic.node_config_id;
+
       SELECT maasserver_staticipaddress.* INTO ip
       FROM maasserver_staticipaddress
       WHERE maasserver_staticipaddress.id = OLD.staticipaddress_id;
@@ -1367,11 +1382,13 @@ DNS_INTERFACE_UPDATE = dedent(
       node maasserver_node;
       changes text[];
     BEGIN
-      IF OLD.name != NEW.name AND OLD.node_id = NEW.node_id THEN
-        IF NEW.node_id IS NOT NULL THEN
+      IF OLD.name != NEW.name AND OLD.node_config_id = NEW.node_config_id THEN
+        IF NEW.node_config_id IS NOT NULL THEN
             SELECT maasserver_node.* INTO node
             FROM maasserver_node
-            WHERE maasserver_node.id = NEW.node_id;
+            JOIN maasserver_nodeconfig
+              on maasserver_nodeconfig.node_id = maasserver_node.id
+            WHERE maasserver_nodeconfig.id = NEW.node_config_id;
             IF EXISTS(
                 SELECT maasserver_domain.id
                 FROM maasserver_domain
@@ -1383,10 +1400,12 @@ DNS_INTERFACE_UPDATE = dedent(
                 OLD.name || ' to ' || NEW.name);
             END IF;
         END IF;
-      ELSIF OLD.node_id IS NULL and NEW.node_id IS NOT NULL THEN
+      ELSIF OLD.node_config_id IS NULL and NEW.node_config_id IS NOT NULL THEN
         SELECT maasserver_node.* INTO node
         FROM maasserver_node
-        WHERE maasserver_node.id = NEW.node_id;
+        JOIN maasserver_nodeconfig
+          on maasserver_nodeconfig.node_id = maasserver_node.id
+        WHERE maasserver_nodeconfig.id = NEW.node_config_id;
         IF EXISTS(
             SELECT maasserver_domain.id
             FROM maasserver_domain
@@ -1396,10 +1415,12 @@ DNS_INTERFACE_UPDATE = dedent(
           PERFORM sys_dns_publish_update(
             'node ' || node.hostname || ' added interface ' || NEW.name);
         END IF;
-      ELSIF OLD.node_id IS NOT NULL and NEW.node_id IS NULL THEN
+      ELSIF OLD.node_config_id IS NOT NULL and NEW.node_config_id IS NULL THEN
         SELECT maasserver_node.* INTO node
         FROM maasserver_node
-        WHERE maasserver_node.id = OLD.node_id;
+        JOIN maasserver_nodeconfig
+          on maasserver_nodeconfig.node_id = maasserver_node.id
+        WHERE maasserver_nodeconfig.id = OLD.node_config_id;
         IF EXISTS(
             SELECT maasserver_domain.id
             FROM maasserver_domain
@@ -1409,10 +1430,12 @@ DNS_INTERFACE_UPDATE = dedent(
           PERFORM sys_dns_publish_update(
             'node ' || node.hostname || ' removed interface ' || NEW.name);
         END IF;
-      ELSIF OLD.node_id != NEW.node_id THEN
+      ELSIF OLD.node_config_id != NEW.node_config_id THEN
         SELECT maasserver_node.* INTO node
         FROM maasserver_node
-        WHERE maasserver_node.id = OLD.node_id;
+        JOIN maasserver_nodeconfig
+          on maasserver_nodeconfig.node_id = maasserver_node.id
+        WHERE maasserver_nodeconfig.id = OLD.node_config_id;
         IF EXISTS(
             SELECT maasserver_domain.id
             FROM maasserver_domain
@@ -1422,9 +1445,12 @@ DNS_INTERFACE_UPDATE = dedent(
           PERFORM sys_dns_publish_update(
             'node ' || node.hostname || ' removed interface ' || NEW.name);
         END IF;
+
         SELECT maasserver_node.* INTO node
         FROM maasserver_node
-        WHERE maasserver_node.id = NEW.node_id;
+        JOIN maasserver_nodeconfig
+          on maasserver_nodeconfig.node_id = maasserver_node.id
+        WHERE maasserver_nodeconfig.id = NEW.node_config_id;
         IF EXISTS(
             SELECT maasserver_domain.id
             FROM maasserver_domain

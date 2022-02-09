@@ -50,7 +50,7 @@ class ParametersForm(Form):
         """Return a list of configured interfaces."""
         ifaces = [
             interface
-            for interface in self._node.interface_set.filter(
+            for interface in self._node.current_config.interface_set.filter(
                 children_relationships=None, enabled=True, *args, **kwargs
             ).prefetch_related("ip_addresses")
             if interface.is_configured()

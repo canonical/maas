@@ -29,7 +29,7 @@ class VLANHandler(TimestampedModelHandler):
             VLAN.objects.all()
             .select_related("primary_rack", "secondary_rack")
             .prefetch_related("interface_set")
-            .prefetch_related("interface_set__node")
+            .prefetch_related("interface_set__node_config__node")
             .prefetch_related("subnet_set")
         )
         pk = "id"
@@ -60,9 +60,9 @@ class VLANHandler(TimestampedModelHandler):
 
     def dehydrate(self, obj, data, for_list=False):
         nodes = {
-            interface.node
+            interface.node_config.node
             for interface in obj.interface_set.all()
-            if interface.node_id is not None
+            if interface.node_config_id is not None
         }
         data["rack_sids"] = sorted(
             node.system_id for node in nodes if node.is_rack_controller

@@ -102,13 +102,13 @@ def get_maas_facing_server_addresses(
                     subnet = Subnet.objects.get_best_subnet_for_ip(ip)
                     region_ips = StaticIPAddress.objects.filter(
                         subnet=subnet,
-                        interface__node__node_type__in=(
+                        interface__node_config__node__node_type__in=(
                             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                             NODE_TYPE.REGION_CONTROLLER,
                         ),
                     ).exclude(ip__isnull=True)
                     region_ips = region_ips.prefetch_related(
-                        "interface_set__node"
+                        "interface_set__node_config__node"
                     )
                     region_ips = region_ips.order_by("ip")
                     for region_ip in region_ips:
@@ -117,7 +117,7 @@ def get_maas_facing_server_addresses(
                             # Pick at most one alternate IP address for each
                             # region, per address family.
                             id_plus_family = (
-                                iface.node.system_id,
+                                iface.node_config.node.system_id,
                                 ip_addr.version,
                             )
                             if id_plus_family in regions:

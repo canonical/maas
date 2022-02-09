@@ -240,7 +240,7 @@ class TestMachineAPI(APITestCase.ForUser):
 
     def test_GET_returns_boot_interface(self):
         machine = factory.make_Node(interface=True)
-        machine.boot_interface = machine.interface_set.first()
+        machine.boot_interface = machine.current_config.interface_set.first()
         machine.save()
         response = self.client.get(self.get_machine_uri(machine))
         self.assertEqual(http.client.OK, response.status_code)
@@ -790,7 +790,7 @@ class TestMachineAPI(APITestCase.ForUser):
         ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
         auto_ip.ip = ip
         auto_ip.save()
-        rack_if = rack_controller.interface_set.first()
+        rack_if = rack_controller.current_config.interface_set.first()
         rack_if.link_subnet(
             INTERFACE_LINK_TYPE.STATIC,
             auto_ip.subnet,
@@ -845,7 +845,7 @@ class TestMachineAPI(APITestCase.ForUser):
         ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
         auto_ip.ip = ip
         auto_ip.save()
-        rack_if = rack_controller.interface_set.first()
+        rack_if = rack_controller.current_config.interface_set.first()
         rack_if.link_subnet(
             INTERFACE_LINK_TYPE.STATIC,
             auto_ip.subnet,

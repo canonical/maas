@@ -537,7 +537,7 @@ def _get_global_vm_host_resources(pod):
     host_interfaces = {}
     if pod.host:
         interfaces = (
-            Interface.objects.filter(node=pod.host)
+            Interface.objects.filter(node_config=pod.host.current_config)
             .values("id", "name", "sriov_max_vf")
             .annotate(
                 numa_index=F("numa_node__index"),

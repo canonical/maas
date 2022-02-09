@@ -208,7 +208,8 @@ def _prefetch_racks():
     """
     return list(
         RackController.objects.all().prefetch_related(
-            "interface_set", "interface_set__vlan__subnet_set"
+            "current_config__interface_set",
+            "current_config__interface_set__vlan__subnet_set",
         )
     )
 

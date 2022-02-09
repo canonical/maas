@@ -793,7 +793,9 @@ class TestInterfacesAPIForControllers(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         output_content = json_load_bytes(response.content)
-        expected_ids = [nic.id for nic in node.interface_set.all()]
+        expected_ids = [
+            nic.id for nic in node.current_config.interface_set.all()
+        ]
         result_ids = [nic["id"] for nic in output_content]
         self.assertCountEqual(expected_ids, result_ids)
         for nic in output_content:

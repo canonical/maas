@@ -113,7 +113,10 @@ class TransactionalHelpersMixin:
         if params is None:
             params = {}
         vlan = factory.make_VLAN(space=factory.make_Space())
-        return factory.make_Node(vlan=vlan, **params)
+        node = factory.make_Node(vlan=vlan, **params)
+        # prefetch the config so it doesn't cause queries in main thread
+        node.current_config
+        return node
 
     @transactional
     def create_node_with_interface(self, params=None):
@@ -146,6 +149,8 @@ class TransactionalHelpersMixin:
         params["node_type"] = NODE_TYPE.DEVICE
         params["parent"] = parent
         device = factory.make_Node(vlan=vlan, **params)
+        # prefetch the config so it doesn't cause queries in main thread
+        device.current_config
         return device, parent
 
     @transactional

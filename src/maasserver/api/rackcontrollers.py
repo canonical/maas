@@ -7,7 +7,6 @@ from django.http import HttpResponse
 from formencode.validators import StringBool
 from piston3.utils import rc
 
-from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
@@ -41,7 +40,7 @@ DISPLAYED_RACK_CONTROLLER_FIELDS = (
     "power_type",
     "power_state",
     "ip_addresses",
-    ("interface_set", DISPLAYED_INTERFACE_FIELDS),
+    "interface_set",
     "zone",
     "status_action",
     "node_type",

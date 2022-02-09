@@ -112,7 +112,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         boot_interface = node.get_boot_interface()
         subnets = {
             ip_address.subnet
-            for interface in node.interface_set.all()
+            for interface in node.current_config.interface_set.all()
             for ip_address in interface.ip_addresses.all()
             if ip_address.subnet is not None
         }
@@ -121,7 +121,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         }
         fabric_names = {
             iface.vlan.fabric.name
-            for iface in node.interface_set.all()
+            for iface in node.current_config.interface_set.all()
             if iface.vlan is not None
         }
         fabric_names.update({subnet.vlan.fabric.name for subnet in subnets})
@@ -140,7 +140,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "link_speeds": sorted(
                 {
                     interface.link_speed
-                    for interface in node.interface_set.all()
+                    for interface in node.current_config.interface_set.all()
                     if interface.link_speed > 0
                 }
             ),
@@ -165,7 +165,9 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             ),
             "interfaces": [
                 self.dehydrate_interface(interface, node)
-                for interface in node.interface_set.all().order_by("name")
+                for interface in node.current_config.interface_set.all().order_by(
+                    "name"
+                )
             ],
             "subnets": [subnet.cidr for subnet in subnets],
             "fabrics": list(fabric_names),
@@ -915,7 +917,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         )
         self.assertEqual(
             1,
-            node.interface_set.count(),
+            node.current_config.interface_set.count(),
             "Should have one interface on the node.",
         )
 
@@ -938,7 +940,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "subnet": subnet.id,
             }
         )
-        new_interface = node.interface_set.first()
+        new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
@@ -963,7 +965,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
                 "ip_address": ip_address,
             }
         )
-        new_interface = node.interface_set.first()
+        new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.USER_RESERVED
@@ -994,7 +996,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             ip_address = factory.make_ip_address()
             params["ip_address"] = ip_address
         handler.create_interface(params)
-        interface = node.interface_set.first()
+        interface = node.current_config.interface_set.first()
         self.assertIsNotNone(interface)
         new_name = factory.make_name("eth")
         new_ip_assignment = factory.pick_enum(DEVICE_IP_ASSIGNMENT_TYPE)
@@ -1037,7 +1039,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             "ip_assignment": ip_assignment,
         }
         handler.create_interface(params)
-        interface = node.interface_set.first()
+        interface = node.current_config.interface_set.first()
         self.assertIsNotNone(interface)
         new_mac_address = factory.make_mac_address()
         new_params = {

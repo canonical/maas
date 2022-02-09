@@ -1,9 +1,6 @@
 # Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the metadata API."""
-
-
 import base64
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -173,13 +170,16 @@ class TestHelpers(MAASServerTestCase):
     def test_get_node_for_mac_finds_node_by_mac(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         iface = node.get_boot_interface()
-        self.assertEqual(iface.node, get_node_for_mac(iface.mac_address))
+        self.assertEqual(
+            iface.node_config.node, get_node_for_mac(iface.mac_address)
+        )
 
     def test_get_queried_node_looks_up_by_mac_if_given(self):
         node = factory.make_Node_with_Interface_on_Subnet()
         iface = node.get_boot_interface()
         self.assertEqual(
-            iface.node, get_queried_node(object(), for_mac=iface.mac_address)
+            iface.node_config.node,
+            get_queried_node(object(), for_mac=iface.mac_address),
         )
 
     def test_get_queried_node_looks_up_oauth_key_by_default(self):
@@ -3773,7 +3773,7 @@ class TestByMACMetadataAPI(MAASServerTestCase):
         )
         response = self.client.get(url)
         self.assertEqual(
-            (http.client.OK.value, iface.node.system_id),
+            (http.client.OK.value, iface.node_config.node.system_id),
             (
                 response.status_code,
                 response.content.decode(settings.DEFAULT_CHARSET),
@@ -3786,7 +3786,7 @@ class TestByMACMetadataAPI(MAASServerTestCase):
         )
         iface = node.get_boot_interface()
         user_data = factory.make_string().encode("ascii")
-        NodeUserData.objects.set_user_data(iface.node, user_data)
+        NodeUserData.objects.set_user_data(iface.node_config.node, user_data)
         url = reverse(
             "metadata-user-data-by-mac", args=["latest", iface.mac_address]
         )

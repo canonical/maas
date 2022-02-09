@@ -120,13 +120,13 @@ class MachineHandler(NodeHandler):
                 "partitiontable_set__partitions"
             )
             .prefetch_related(
-                "interface_set__ip_addresses__subnet__vlan__space"
+                "current_config__interface_set__ip_addresses__subnet__vlan__space"
             )
             .prefetch_related(
-                "interface_set__ip_addresses__subnet__vlan__fabric"
+                "current_config__interface_set__ip_addresses__subnet__vlan__fabric"
             )
-            .prefetch_related("interface_set__numa_node")
-            .prefetch_related("interface_set__vlan__fabric")
+            .prefetch_related("current_config__interface_set__numa_node")
+            .prefetch_related("current_config__interface_set__vlan__fabric")
             .prefetch_related("boot_interface__vlan__fabric")
             .prefetch_related("tags")
             .prefetch_related("pool")
@@ -149,7 +149,7 @@ class MachineHandler(NodeHandler):
                 numa_nodes_count=Count("numanode"),
                 sriov_support=Exists(
                     Interface.objects.filter(
-                        node=OuterRef("pk"), sriov_max_vf__gt=0
+                        node_config__node=OuterRef("pk"), sriov_max_vf__gt=0
                     )
                 ),
             )
@@ -403,7 +403,7 @@ class MachineHandler(NodeHandler):
             "fqdn": device.fqdn,
             "interfaces": [
                 self.dehydrate_interface(interface, device)
-                for interface in device.interface_set.all()
+                for interface in device.current_config.interface_set.all()
             ],
         }
 
@@ -1059,7 +1059,9 @@ class MachineHandler(NodeHandler):
         node = self._get_node_or_permission_error(
             params, permission=self._meta.edit_permission
         )
-        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface = Interface.objects.get(
+            node_config__node=node, id=params["interface_id"]
+        )
         if node.status == NODE_STATUS.DEPLOYED:
             interface_form = DeployedInterfaceForm
         else:
@@ -1079,7 +1081,9 @@ class MachineHandler(NodeHandler):
         node = self._get_node_or_permission_error(
             params, permission=self._meta.edit_permission
         )
-        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface = Interface.objects.get(
+            node_config__node=node, id=params["interface_id"]
+        )
         interface.delete()
 
     def link_subnet(self, params):
@@ -1087,7 +1091,9 @@ class MachineHandler(NodeHandler):
         node = self._get_node_or_permission_error(
             params, permission=self._meta.edit_permission
         )
-        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface = Interface.objects.get(
+            node_config__node=node, id=params["interface_id"]
+        )
         subnet = None
         if "subnet" in params:
             subnet = Subnet.objects.get(id=params["subnet"])
@@ -1114,7 +1120,9 @@ class MachineHandler(NodeHandler):
         node = self._get_node_or_permission_error(
             params, permission=self._meta.edit_permission
         )
-        interface = Interface.objects.get(node=node, id=params["interface_id"])
+        interface = Interface.objects.get(
+            node_config__node=node, id=params["interface_id"]
+        )
         interface.unlink_subnet_by_id(params["link_id"])
 
     @asynchronous(timeout=45)

@@ -1,8 +1,5 @@
-# Copyright 2014-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `ZoneGenerator` and supporting cast."""
-
 
 import random
 import socket
@@ -572,7 +569,9 @@ class TestZoneGenerator(MAASServerTestCase):
         )
         dnsdata = factory.make_DNSData(domain=domain)
         boot_iface = node.boot_interface
-        interfaces = list(node.interface_set.all().exclude(id=boot_iface.id))
+        interfaces = list(
+            node.current_config.interface_set.all().exclude(id=boot_iface.id)
+        )
         # Now go add IP addresses to the boot interface, and one other
         boot_ip = factory.make_StaticIPAddress(
             interface=boot_iface, subnet=subnet

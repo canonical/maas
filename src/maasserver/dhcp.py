@@ -159,7 +159,9 @@ def get_interfaces_with_ip_on_vlan(rack_controller, vlan, ip_version):
     """
     interfaces_with_static = []
     interfaces_with_discovered = []
-    for interface in rack_controller.interface_set.all().prefetch_related(
+    for (
+        interface
+    ) in rack_controller.current_config.interface_set.all().prefetch_related(
         "ip_addresses__subnet__vlan__relay_vlans",
         "ip_addresses__subnet__iprange_set",
     ):
@@ -199,7 +201,7 @@ def gen_managed_vlans_for(rack_controller):
     """Yeilds each `VLAN` for the `rack_controller` when DHCP is enabled and
     `rack_controller` is either the `primary_rack` or the `secondary_rack`.
     """
-    interfaces = rack_controller.interface_set.filter(
+    interfaces = rack_controller.current_config.interface_set.filter(
         Q(vlan__dhcp_on=True)
         & (
             Q(vlan__primary_rack=rack_controller)
@@ -236,8 +238,10 @@ def get_ip_address_for_rack_controller(rack_controller, vlan):
     # First we build a list of all interfaces that have an IP address
     # on that vlan. Then we pick the best interface for that vlan
     # based on the `get_best_interface` function.
-    interfaces = rack_controller.interface_set.all().prefetch_related(
-        "ip_addresses__subnet"
+    interfaces = (
+        rack_controller.current_config.interface_set.all().prefetch_related(
+            "ip_addresses__subnet"
+        )
     )
     matching_interfaces = set()
     for interface in interfaces:
@@ -261,7 +265,7 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
     """
     rack_addresses = StaticIPAddress.objects.filter(
         interface__enabled=True,
-        interface__node=rack,
+        interface__node_config__node=rack,
         alloc_type__in={IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED},
     )
     rack_addresses = rack_addresses.exclude(subnet__isnull=True)
@@ -296,10 +300,13 @@ def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
 def make_interface_hostname(interface):
     """Return the host decleration name for DHCPD for this `interface`."""
     interface_name = interface.name.replace(".", "-")
-    if interface.type == INTERFACE_TYPE.UNKNOWN and interface.node is None:
+    if (
+        interface.type == INTERFACE_TYPE.UNKNOWN
+        and interface.node_config is None
+    ):
         return "unknown-%d-%s" % (interface.id, interface_name)
     else:
-        return f"{interface.node.hostname}-{interface_name}"
+        return f"{interface.node_config.node.hostname}-{interface_name}"
 
 
 def make_dhcp_snippet(dhcp_snippet):
@@ -321,7 +328,10 @@ def make_hosts_for_subnets(subnets, nodes_dhcp_snippets: list = None):
     def get_dhcp_snippets_for_interface(interface):
         dhcp_snippets = list()
         for dhcp_snippet in nodes_dhcp_snippets:
-            if dhcp_snippet.node == interface.node:
+            iface_node = (
+                interface.node_config.node if interface.node_config else None
+            )
+            if dhcp_snippet.node == iface_node:
                 dhcp_snippets.append(make_dhcp_snippet(dhcp_snippet))
         return dhcp_snippets
 
@@ -552,13 +562,13 @@ def get_dns_server_addresses_for_rack(
         subnet=subnet,
         alloc_type__in={IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED},
         interface__enabled=True,
-        interface__node__node_type__in={
+        interface__node_config__node__node_type__in={
             NODE_TYPE.RACK_CONTROLLER,
             NODE_TYPE.REGION_AND_RACK_CONTROLLER,
         },
     )
     addresses = addresses.distinct()
-    addresses = addresses.values_list("ip", "interface__node_id")
+    addresses = addresses.values_list("ip", "interface__node_config__node_id")
 
     def sort_key__rack__ip(record):
         ip, node_id = record
@@ -982,7 +992,7 @@ def get_racks_by_subnet(subnet):
     specified subnet.
     """
     racks = RackController.objects.filter(
-        interface__ip_addresses__subnet__in=[subnet]
+        current_config__interface__ip_addresses__subnet__in=[subnet]
     )
 
     if subnet.vlan.relay_vlan_id:

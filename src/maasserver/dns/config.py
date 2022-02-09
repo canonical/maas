@@ -168,7 +168,7 @@ def get_resource_name_for_subnet(subnet):
 
 def _get_controller_ips_by_resource_name(controller):
     ips_by_resource = defaultdict(set)
-    for interface in controller.interface_set.all():
+    for interface in controller.current_config.interface_set.all():
         found_static = False
         # Order by alloc_type here because DHCP and DISCOVERED IP addresses
         # are last in the numeric ordering.
@@ -222,7 +222,7 @@ def get_internal_domain():
     # one connection are used in the calculation.
     controllers = RackController.objects.filter(connections__isnull=False)
     controllers = controllers.prefetch_related(
-        "interface_set__ip_addresses__subnet"
+        "current_config__interface_set__ip_addresses__subnet"
     )
 
     ips_by_resource = _get_ips_by_resource_name(controllers)

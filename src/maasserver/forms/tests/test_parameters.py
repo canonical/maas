@@ -1,9 +1,6 @@
 # Copyright 2017-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for Parameters form."""
-
-
 import random
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE, NODE_STATUS
@@ -712,7 +709,9 @@ class TestParametersForm(MAASServerTestCase):
         script = factory.make_Script(
             parameters={"interface": {"type": "interface"}}
         )
-        interface = random.choice(list(node.interface_set.all()))
+        interface = random.choice(
+            list(node.current_config.interface_set.all())
+        )
         form = ParametersForm(
             data={
                 "interface": random.choice([interface.id, str(interface.id)])
@@ -795,7 +794,7 @@ class TestParametersForm(MAASServerTestCase):
         script = factory.make_Script(
             parameters={"interface": {"type": "interface"}}
         )
-        nics = list(node.interface_set.all())
+        nics = list(node.current_config.interface_set.all())
         selected_scripts = {
             nics[0]: f"{nics[0].vendor}:{nics[0].product}",
             nics[1]: nics[1].name,

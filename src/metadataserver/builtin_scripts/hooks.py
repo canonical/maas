@@ -200,7 +200,9 @@ def update_boot_interface(node, output, exit_status):
         return None
 
     try:
-        node.boot_interface = node.interface_set.get(mac_address=boot_mac)
+        node.boot_interface = node.current_config.interface_set.get(
+            mac_address=boot_mac
+        )
     except Interface.DoesNotExist:
         logger.error(
             f"'BOOTIF interface {boot_mac} doesn't exist for " f"{node.fqdn}"
@@ -255,7 +257,7 @@ def update_node_network_information(node, data, numa_nodes):
     if node.boot_interface is None and node.boot_cluster_ip is not None:
         subnet = Subnet.objects.get_best_subnet_for_ip(node.boot_cluster_ip)
         if subnet:
-            node.boot_interface = node.interface_set.filter(
+            node.boot_interface = node.current_config.interface_set.filter(
                 vlan=subnet.vlan,
             ).first()
             node.save(update_fields=["boot_interface"])
@@ -499,7 +501,7 @@ def update_node_devices(
                     mac_to_dev_ids[port["address"]] = card["pci_address"]
                 elif "usb_address" in card:
                     mac_to_dev_ids[port["address"]] = card["usb_address"]
-        for iface in node.interface_set.filter(
+        for iface in node.current_config.interface_set.filter(
             mac_address__in=mac_to_dev_ids.keys()
         ):
             network_devices[mac_to_dev_ids[iface.mac_address]] = iface

@@ -19,8 +19,6 @@ from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     HasLength,
-    Is,
-    IsInstance,
     MatchesSetwise,
     MatchesStructure,
 )
@@ -44,7 +42,6 @@ from maasserver.models.bmc import (
 )
 from maasserver.models.fabric import Fabric
 from maasserver.models.filesystem import Filesystem
-from maasserver.models.interface import Interface
 from maasserver.models.node import Controller, Machine, Node
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.podstoragepool import PodStoragePool
@@ -90,11 +87,13 @@ SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 class TestBMC(MAASServerTestCase):
     @staticmethod
     def get_machine_ip_address(machine):
-        return machine.interface_set.all()[0].ip_addresses.all()[0]
+        return machine.current_config.interface_set.all()[
+            0
+        ].ip_addresses.all()[0]
 
     def make_machine_and_bmc_with_shared_ip(self):
         machine = factory.make_Node(interface=False)
-        machine.interface_set.clear()
+        machine.current_config.interface_set.clear()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         interface = factory.make_Interface(
@@ -105,7 +104,7 @@ class TestBMC(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        self.assertEqual(1, machine.interface_set.count())
+        self.assertEqual(1, machine.current_config.interface_set.count())
 
         bmc = factory.make_BMC(
             power_type="virsh",
@@ -122,7 +121,7 @@ class TestBMC(MAASServerTestCase):
 
     def make_machine_and_bmc_differing_ips(self):
         machine = factory.make_Node(interface=False)
-        machine.interface_set.clear()
+        machine.current_config.interface_set.clear()
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(vlan=vlan)
         interface = factory.make_Interface(
@@ -133,7 +132,7 @@ class TestBMC(MAASServerTestCase):
             subnet=subnet,
             interface=interface,
         )
-        self.assertEqual(1, machine.interface_set.count())
+        self.assertEqual(1, machine.current_config.interface_set.count())
 
         ip_address = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet
@@ -1050,89 +1049,76 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             for machine in discovered.machines
         ]
         created_machines = Machine.objects.filter(
-            interface__mac_address__in=machine_macs
+            current_config__interface__mac_address__in=machine_macs
         ).distinct()
         default_vlan = Fabric.objects.get_default_fabric().get_default_vlan()
-        self.assertThat(
-            created_machines,
-            MatchesSetwise(
-                *[
-                    MatchesStructure(
-                        architecture=Equals(machine.architecture),
-                        bmc=Equals(pod),
-                        cpu_count=Equals(machine.cores),
-                        cpu_speed=Equals(machine.cpu_speed),
-                        memory=Equals(machine.memory),
-                        power_state=Equals(machine.power_state),
-                        instance_power_parameters=Equals(
-                            machine.power_parameters
-                        ),
-                        dynamic=Equals(False),
-                        tags=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(name=Equals(tag))
-                                for tag in machine.tags
-                            ]
-                        ),
-                        physicalblockdevice_set=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(
-                                    name=Equals(
-                                        BlockDevice._get_block_name_from_idx(
-                                            idx
-                                        )
-                                    ),
-                                    id_path=Equals(bd.id_path),
-                                    model=Equals(bd.model),
-                                    serial=Equals(bd.serial),
-                                    size=Equals(bd.size),
-                                    block_size=Equals(bd.block_size),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in bd.tags]
-                                    ),
-                                )
-                                for idx, bd in enumerate(machine.block_devices)
-                            ]
-                        ),
-                        boot_interface=IsInstance(Interface),
-                        interface_set=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(
-                                    name=Equals("eth%d" % idx),
-                                    mac_address=Equals(nic.mac_address),
-                                    vlan=Equals(default_vlan),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in nic.tags]
-                                    ),
-                                )
-                                for idx, nic in enumerate(machine.interfaces)
-                                if nic.boot
-                            ]
-                            + [
-                                MatchesStructure(
-                                    name=Equals("eth%d" % idx),
-                                    mac_address=Equals(nic.mac_address),
-                                    vlan=Is(None),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in nic.tags]
-                                    ),
-                                )
-                                for idx, nic in enumerate(machine.interfaces)
-                                if not nic.boot
-                            ]
-                        ),
-                    )
-                    for machine in discovered.machines
-                ]
-            ),
-        )
-        self.assertThat(mock_set_default_storage_layout.call_count, Equals(0))
-        self.assertThat(
-            mock_set_initial_networking_configuration.call_count, Equals(0)
-        )
-        self.assertThat(
+        for created_machine, discovered_machine in zip(
+            created_machines, discovered.machines
+        ):
+            self.assertEqual(
+                created_machine.architecture, discovered_machine.architecture
+            )
+            self.assertEqual(created_machine.bmc, pod)
+            self.assertEqual(
+                created_machine.cpu_count, discovered_machine.cores
+            )
+            self.assertEqual(
+                created_machine.cpu_speed, discovered_machine.cpu_speed
+            )
+            self.assertEqual(created_machine.memory, discovered_machine.memory)
+            self.assertEqual(
+                created_machine.power_state, discovered_machine.power_state
+            )
+            self.assertEqual(
+                created_machine.instance_power_parameters,
+                discovered_machine.power_parameters,
+            )
+            self.assertFalse(created_machine.dynamic)
+            self.assertCountEqual(
+                [tag.name for tag in created_machine.tags.all()],
+                discovered_machine.tags,
+            )
+            self.assertIsNotNone(created_machine.boot_interface)
+            for created_device, (idx, discovered_device) in zip(
+                created_machine.physicalblockdevice_set,
+                enumerate(discovered_machine.block_devices),
+            ):
+                self.assertEqual(
+                    created_device.name,
+                    BlockDevice._get_block_name_from_idx(idx),
+                )
+                self.assertEqual(
+                    created_device.id_path, discovered_device.id_path
+                )
+                self.assertEqual(created_device.model, discovered_device.model)
+                self.assertEqual(
+                    created_device.serial, discovered_device.serial
+                )
+                self.assertEqual(created_device.size, discovered_device.size)
+                self.assertEqual(
+                    created_device.block_size, discovered_device.block_size
+                )
+                self.assertCountEqual(
+                    created_device.tags, discovered_device.tags
+                )
+            for created_if, (idx, discovered_if) in zip(
+                created_machine.current_config.interface_set.all(),
+                enumerate(discovered_machine.interfaces),
+            ):
+                self.assertEqual(created_if.name, f"eth{idx}")
+                self.assertEqual(
+                    created_if.mac_address, discovered_if.mac_address
+                )
+                self.assertEqual(
+                    created_if.vlan,
+                    default_vlan if discovered_if.boot else None,
+                )
+                self.assertEqual(created_if.tags, discovered_if.tags)
+        mock_set_default_storage_layout.assert_not_called()
+        mock_set_initial_networking_configuration.assert_not_called()
+        self.assertEqual(
             mock_start_commissioning.call_count,
-            Equals(len(discovered.machines)),
+            len(discovered.machines),
         )
 
     def test_sync_creates_vms_all_projects(self):
@@ -1279,7 +1265,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         [machine] = Machine.objects.all()
         self.assertIsNotNone(machine.default_numanode)
         [bdev] = machine.physicalblockdevice_set.all()
-        [iface] = machine.interface_set.all()
+        [iface] = machine.current_config.interface_set.all()
         self.assertEqual(bdev.numa_node, machine.default_numanode)
         self.assertEqual(iface.numa_node, machine.default_numanode)
 
@@ -1548,9 +1534,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(
             ["maas0", "maas1", "maas2"],
             list(
-                machine.interface_set.order_by("id").values_list(
-                    "name", flat=True
-                )
+                machine.current_config.interface_set.order_by(
+                    "id"
+                ).values_list("name", flat=True)
             ),
         )
 
@@ -1603,11 +1589,11 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             requested_machine=requested_machine,
         )
         sip = StaticIPAddress.objects.filter(ip=ip).first()
-        self.assertThat(sip.get_interface().node, Equals(machine))
+        self.assertEqual(sip.get_interface().node_config.node, machine)
         sip2 = StaticIPAddress.objects.filter(ip=ip2).first()
-        self.assertThat(sip2.get_interface().node, Equals(machine))
+        self.assertEqual(sip2.get_interface().node_config.node, machine)
         sip3 = StaticIPAddress.objects.filter(ip=ip3).first()
-        self.assertThat(sip3.get_interface().node, Equals(machine))
+        self.assertEqual(sip3.get_interface().node_config.node, machine)
 
     def test_create_machine_unconfigures_ips_upon_request(self):
         discovered_machine = self.make_discovered_machine()
@@ -1667,18 +1653,18 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         sip = StaticIPAddress.objects.filter(
             interface__name=rmi.ifname
         ).first()
-        self.assertThat(sip.get_interface().node, Equals(machine))
-        self.assertThat(sip.ip, Is(None))
+        self.assertEqual(sip.get_interface().node_config.node, machine)
+        self.assertIsNone(sip.ip)
         sip2 = StaticIPAddress.objects.filter(
             interface__name=rmi2.ifname
         ).first()
-        self.assertThat(sip2.get_interface().node, Equals(machine))
-        self.assertThat(sip2.ip, Is(None))
+        self.assertEqual(sip2.get_interface().node_config.node, machine)
+        self.assertIsNone(sip2.ip)
         sip3 = StaticIPAddress.objects.filter(
             interface__name=rmi3.ifname
         ).first()
-        self.assertThat(sip3.get_interface().node, Equals(machine))
-        self.assertThat(sip3.ip, Is(None))
+        self.assertEqual(sip3.get_interface().node_config.node, machine)
+        self.assertIsNone(sip3.ip)
 
     def test_create_machine_sets_up_interface_vlans_correctly(self):
         discovered_machine = self.make_discovered_machine()
@@ -1736,7 +1722,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         interfaces = {
             interface.name: interface
-            for interface in machine.interface_set.all()
+            for interface in machine.current_config.interface_set.all()
         }
         self.assertThat(interfaces["eth0"].vlan, Equals(vlan))
         self.assertThat(interfaces["eth1"].vlan, Equals(vlan2))
@@ -1807,7 +1793,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         )
         interfaces = {
             interface.name: interface
-            for interface in machine.interface_set.all()
+            for interface in machine.current_config.interface_set.all()
         }
         self.assertCountEqual(["eth0", "eth1", "eth2"], interfaces.keys())
         self.assertEqual(vlan1, interfaces["eth0"].vlan)
@@ -1853,9 +1839,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(
             ["eth0", "eth1", "eth2"],
             list(
-                machine.interface_set.order_by("id").values_list(
-                    "name", flat=True
-                )
+                machine.current_config.interface_set.order_by(
+                    "id"
+                ).values_list("name", flat=True)
             ),
         )
 
@@ -1877,9 +1863,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(
             ["eth0", "eth1", "eth2"],
             list(
-                machine.interface_set.order_by("id").values_list(
-                    "name", flat=True
-                )
+                machine.current_config.interface_set.order_by(
+                    "id"
+                ).values_list("name", flat=True)
             ),
         )
 
@@ -1980,88 +1966,75 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             for machine in discovered.machines
         ]
         created_machines = Machine.objects.filter(
-            interface__mac_address__in=machine_macs
+            current_config__interface__mac_address__in=machine_macs
         ).distinct()
-        self.assertThat(
-            created_machines,
-            MatchesSetwise(
-                *[
-                    MatchesStructure(
-                        architecture=Equals(machine.architecture),
-                        bmc=Equals(pod),
-                        cpu_count=Equals(machine.cores),
-                        cpu_speed=Equals(machine.cpu_speed),
-                        memory=Equals(machine.memory),
-                        power_state=Equals(machine.power_state),
-                        instance_power_parameters=Equals(
-                            machine.power_parameters
-                        ),
-                        dynamic=Equals(False),
-                        tags=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(name=Equals(tag))
-                                for tag in machine.tags
-                            ]
-                        ),
-                        physicalblockdevice_set=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(
-                                    name=Equals(
-                                        BlockDevice._get_block_name_from_idx(
-                                            idx
-                                        )
-                                    ),
-                                    id_path=Equals(bd.id_path),
-                                    model=Equals(bd.model),
-                                    serial=Equals(bd.serial),
-                                    size=Equals(bd.size),
-                                    block_size=Equals(bd.block_size),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in bd.tags]
-                                    ),
-                                )
-                                for idx, bd in enumerate(machine.block_devices)
-                            ]
-                        ),
-                        boot_interface=IsInstance(Interface),
-                        interface_set=MatchesSetwiseWithAll(
-                            *[
-                                MatchesStructure(
-                                    name=Equals("eth%d" % idx),
-                                    mac_address=Equals(nic.mac_address),
-                                    vlan=Equals(vlan),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in nic.tags]
-                                    ),
-                                )
-                                for idx, nic in enumerate(machine.interfaces)
-                                if nic.boot
-                            ]
-                            + [
-                                MatchesStructure(
-                                    name=Equals("eth%d" % idx),
-                                    mac_address=Equals(nic.mac_address),
-                                    vlan=Is(None),
-                                    tags=MatchesSetwise(
-                                        *[Equals(tag) for tag in nic.tags]
-                                    ),
-                                )
-                                for idx, nic in enumerate(machine.interfaces)
-                                if not nic.boot
-                            ]
-                        ),
-                    )
-                    for machine in discovered.machines
-                ]
-            ),
-        )
-        self.assertThat(mock_set_default_storage_layout.call_count, Equals(0))
-        self.assertThat(
-            mock_set_initial_networking_configuration.call_count, Equals(0)
-        )
-        self.assertThat(
+        for created_machine, discovered_machine in zip(
+            created_machines, discovered.machines
+        ):
+            self.assertEqual(
+                created_machine.architecture, discovered_machine.architecture
+            )
+            self.assertEqual(created_machine.bmc, pod)
+            self.assertEqual(
+                created_machine.cpu_count, discovered_machine.cores
+            )
+            self.assertEqual(
+                created_machine.cpu_speed, discovered_machine.cpu_speed
+            )
+            self.assertEqual(created_machine.memory, discovered_machine.memory)
+            self.assertEqual(
+                created_machine.power_state, discovered_machine.power_state
+            )
+            self.assertEqual(
+                created_machine.instance_power_parameters,
+                discovered_machine.power_parameters,
+            )
+            self.assertFalse(created_machine.dynamic)
+            self.assertCountEqual(
+                [tag.name for tag in created_machine.tags.all()],
+                discovered_machine.tags,
+            )
+            self.assertIsNotNone(created_machine.boot_interface)
+            for created_device, (idx, discovered_device) in zip(
+                created_machine.physicalblockdevice_set,
+                enumerate(discovered_machine.block_devices),
+            ):
+                self.assertEqual(
+                    created_device.name,
+                    BlockDevice._get_block_name_from_idx(idx),
+                )
+                self.assertEqual(
+                    created_device.id_path, discovered_device.id_path
+                )
+                self.assertEqual(created_device.model, discovered_device.model)
+                self.assertEqual(
+                    created_device.serial, discovered_device.serial
+                )
+                self.assertEqual(created_device.size, discovered_device.size)
+                self.assertEqual(
+                    created_device.block_size, discovered_device.block_size
+                )
+                self.assertCountEqual(
+                    created_device.tags, discovered_device.tags
+                )
+            for created_if, (idx, discovered_if) in zip(
+                created_machine.current_config.interface_set.all(),
+                enumerate(discovered_machine.interfaces),
+            ):
+                self.assertEqual(created_if.name, f"eth{idx}")
+                self.assertEqual(
+                    created_if.mac_address, discovered_if.mac_address
+                )
+                self.assertEqual(
+                    created_if.vlan,
+                    vlan if discovered_if.boot else None,
+                )
+                self.assertEqual(created_if.tags, discovered_if.tags)
+        mock_set_default_storage_layout.assert_not_called()
+        mock_set_initial_networking_configuration.assert_not_called()
+        self.assertEqual(
             mock_start_commissioning.call_count,
-            Equals(len(discovered.machines)),
+            len(discovered.machines),
         )
 
     def test_create_machine_with_bad_physical_block_device(self):
@@ -2081,7 +2054,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod()
         pod.create_machine(machine, factory.make_User())
         created_machine = Machine.objects.get(
-            interface__mac_address=machine.interfaces[0].mac_address
+            current_config__interface__mac_address=machine.interfaces[
+                0
+            ].mac_address
         )
         self.assertThat(
             created_machine,
@@ -2140,7 +2115,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod()
         machine = factory.make_Node(interface=True)
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address
+            mac_address=machine.current_config.interface_set.first().mac_address
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2156,7 +2131,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod()
         controller = factory.make_RackController(interface=True)
         discovered_interface = self.make_discovered_interface(
-            mac_address=controller.interface_set.first().mac_address
+            mac_address=controller.current_config.interface_set.first().mac_address
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2174,7 +2149,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod()
         machine = factory.make_Node(interface=True, dynamic=True)
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address
+            mac_address=machine.current_config.interface_set.first().mac_address
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2208,7 +2183,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod()
         machine = factory.make_Node(interface=True, dynamic=False)
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address
+            mac_address=machine.current_config.interface_set.first().mac_address
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2243,7 +2218,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod(pod_type="lxd", parameters={"project": project})
         machine = factory.make_Node(interface=True)
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address,
+            mac_address=machine.current_config.interface_set.first().mac_address,
         )
         discovered_machine = self.make_discovered_machine(
             project=project, interfaces=[discovered_interface]
@@ -2264,7 +2239,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod(pod_type="virsh")
         machine = factory.make_Node(interface=True)
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address,
+            mac_address=machine.current_config.interface_set.first().mac_address,
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2292,7 +2267,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             hugepages_backed=False,
         )
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address,
+            mac_address=machine.current_config.interface_set.first().mac_address,
         )
         discovered_machine = self.make_discovered_machine(
             project=project, interfaces=[discovered_interface]
@@ -2316,7 +2291,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         machine.bmc = old_bmc
         machine.save()
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address
+            mac_address=machine.current_config.interface_set.first().mac_address
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2350,7 +2325,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         other_machine.save()
 
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address
+            mac_address=machine.current_config.interface_set.first().mac_address
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2473,7 +2448,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod = factory.make_Pod(pod_type="virsh")
         machine = factory.make_Node(interface=True, cpu_count=2, memory=1024)
         discovered_interface = self.make_discovered_interface(
-            mac_address=machine.interface_set.first().mac_address,
+            mac_address=machine.current_config.interface_set.first().mac_address,
         )
         discovered_machine = self.make_discovered_machine(
             interfaces=[discovered_interface]
@@ -2513,7 +2488,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         machine = reload_object(machine)
         keep_interface = reload_object(keep_interface)
         delete_interface = reload_object(delete_interface)
-        new_interface = machine.interface_set.filter(
+        new_interface = machine.current_config.interface_set.filter(
             mac_address=dnew_interface.mac_address
         ).first()
         self.assertIsNone(delete_interface)
@@ -2624,7 +2599,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 name=node.hostname,
                 mac_addresses=[
                     str(iface.mac_address)
-                    for iface in node.interface_set.all()
+                    for iface in node.current_config.interface_set.all()
                 ],
             ),
             factory.make_User(),
@@ -2645,7 +2620,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 name=device.hostname,
                 mac_addresses=[
                     str(iface.mac_address)
-                    for iface in device.interface_set.all()
+                    for iface in device.current_config.interface_set.all()
                 ],
             ),
             factory.make_User(),
@@ -2676,7 +2651,10 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         self.assertEqual(sync_user, node.owner)
         self.assertCountEqual(
             mac_addresses,
-            [str(iface.mac_address) for iface in node.interface_set.all()],
+            [
+                str(iface.mac_address)
+                for iface in node.current_config.interface_set.all()
+            ],
         )
         self.assertIsNotNone(node.current_commissioning_script_set)
         self.assertTrue(node.dynamic)
@@ -3137,7 +3115,9 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
             lambda: factory.make_Machine_with_Interface_on_Subnet()
         )
         machine_mac = await deferToDatabase(
-            lambda: str(machine.interface_set.first().mac_address)
+            lambda: str(
+                machine.current_config.interface_set.first().mac_address
+            )
         )
         discovered = self.make_discovered_pod(mac_addresses=[machine_mac])
         # Create a subset of the discovered pod's tags
@@ -3158,7 +3138,9 @@ class TestPodDelete(MAASTransactionServerTestCase, PodTestMixin):
     async def test_dont_deletes_dynamically_created_controllers(self):
         controller = await deferToDatabase(lambda: factory.make_Controller())
         controller_mac = await deferToDatabase(
-            lambda: str(controller.interface_set.first().mac_address)
+            lambda: str(
+                controller.current_config.interface_set.first().mac_address
+            )
         )
         self.assertTrue(controller.should_be_dynamically_deleted())
         discovered = self.make_discovered_pod(mac_addresses=[controller_mac])

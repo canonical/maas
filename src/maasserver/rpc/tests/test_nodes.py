@@ -87,7 +87,10 @@ class TestCreateNode(MAASTransactionServerTestCase):
         self.assertIsNotNone(node.id)
         self.assertCountEqual(
             mac_addresses,
-            [nic.mac_address for nic in node.interface_set.all()],
+            [
+                nic.mac_address
+                for nic in node.current_config.interface_set.all()
+            ],
         )
 
     def test_creates_node_with_explicit_hostname(self):
@@ -113,7 +116,10 @@ class TestCreateNode(MAASTransactionServerTestCase):
         self.assertIsNotNone(node.id)
         self.assertCountEqual(
             mac_addresses,
-            [nic.mac_address for nic in node.interface_set.all()],
+            [
+                nic.mac_address
+                for nic in node.current_config.interface_set.all()
+            ],
         )
 
     def test_create_node_fails_with_invalid_hostname(self):
@@ -164,7 +170,10 @@ class TestCreateNode(MAASTransactionServerTestCase):
         self.assertIsNotNone(node.id)
         self.assertCountEqual(
             mac_addresses,
-            [nic.mac_address for nic in node.interface_set.all()],
+            [
+                nic.mac_address
+                for nic in node.current_config.interface_set.all()
+            ],
         )
 
     def test_create_node_fails_with_invalid_domain(self):
@@ -332,7 +341,7 @@ class TestRequestNodeInfoByMACAddress(MAASServerTestCase):
         node, boot_purpose = request_node_info_by_mac_address(
             interface.mac_address.get_raw()
         )
-        self.assertEqual(node, interface.node)
+        self.assertEqual(node, interface.node_config.node)
 
 
 class TestListClusterNodesPowerParameters(MAASServerTestCase):

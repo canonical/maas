@@ -1,7 +1,5 @@
-# Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for the Region Controller API."""
 
 import http.client
 from unittest.mock import call
@@ -59,7 +57,7 @@ class TestRegionControllerAPI(APITestCase.ForUser):
             node_type=NODE_TYPE.REGION_CONTROLLER, subnet=subnet, vlan=vlan
         )
         ip = factory.make_StaticIPAddress(
-            interface=region.interface_set.first()
+            interface=region.current_config.interface_set.first()
         )
         factory.make_Pod(ip_address=ip)
         mock_async_delete = self.patch(Pod, "async_delete")
@@ -79,7 +77,9 @@ class TestRegionControllerAPI(APITestCase.ForUser):
         vlan = factory.make_VLAN()
         factory.make_Subnet(vlan=vlan)
         rack = factory.make_RegionRackController(vlan=vlan)
-        ip = factory.make_StaticIPAddress(interface=rack.interface_set.first())
+        ip = factory.make_StaticIPAddress(
+            interface=rack.current_config.interface_set.first()
+        )
         factory.make_Pod(ip_address=ip)
         mock_async_delete = self.patch(Pod, "async_delete")
         response = self.client.delete(
@@ -101,7 +101,7 @@ class TestRegionControllerAPI(APITestCase.ForUser):
             node_type=NODE_TYPE.REGION_CONTROLLER, subnet=subnet, vlan=vlan
         )
         ip = factory.make_StaticIPAddress(
-            interface=region.interface_set.first()
+            interface=region.current_config.interface_set.first()
         )
         factory.make_Pod(ip_address=ip)
         mock_async_delete = self.patch(Pod, "async_delete")

@@ -189,7 +189,9 @@ def create_node(
     """
     # Check that there isn't already a node with one of our MAC
     # addresses, and bail out early if there is.
-    nodes = Node.objects.filter(interface__mac_address__in=mac_addresses)
+    nodes = Node.objects.filter(
+        current_config__interface__mac_address__in=mac_addresses
+    )
     if nodes.count() > 0:
         raise NodeAlreadyExists(
             "One of the MACs %s is already in use by a node." % mac_addresses
@@ -252,7 +254,11 @@ def request_node_info_by_mac_address(mac_address):
         from.
     """
     try:
-        node = PhysicalInterface.objects.get(mac_address=mac_address).node
+        node = (
+            PhysicalInterface.objects.prefetch_related("node_config__node")
+            .get(mac_address=mac_address)
+            .node_config.node
+        )
     except PhysicalInterface.DoesNotExist:
         raise NoSuchNode.from_mac_address(mac_address)
     return (node, node.get_boot_purpose())

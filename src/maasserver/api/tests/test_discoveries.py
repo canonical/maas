@@ -1,8 +1,6 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for Discoveries API."""
-
 
 from datetime import datetime
 import http.client
@@ -97,7 +95,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
 
     def test_read(self):
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         discoveries = make_discoveries(interface=iface)
         results = self.get_api_results()
         self.assertThat(results, HasLength(3))
@@ -107,7 +105,7 @@ class TestDiscoveriesAPI(APITestCase.ForUser):
 
     def test_read_sorts_by_last_seen(self):
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface)
         results = self.get_api_results()
         self.assertTrue(results[0]["last_seen"] >= results[2]["last_seen"])
@@ -274,7 +272,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
 
     def test_clear_not_allowed_for_non_admin(self):
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         uri = get_discoveries_uri()
         response = self.client.post(uri, {"op": "clear"})
@@ -285,7 +283,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
     def test_clear_requires_parameters(self):
         self.become_admin()
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         uri = get_discoveries_uri()
         response = self.client.post(uri, {"op": "clear"})
@@ -296,7 +294,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
     def test_clear_all_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         uri = get_discoveries_uri()
         response = self.client.post(uri, {"op": "clear", "all": "true"})
@@ -305,7 +303,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
     def test_clear_mdns_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         uri = get_discoveries_uri()
         response = self.client.post(uri, {"op": "clear", "mdns": "true"})
@@ -314,7 +312,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
     def test_clear_neighbours_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         uri = get_discoveries_uri()
         response = self.client.post(uri, {"op": "clear", "neighbours": "true"})
@@ -324,7 +322,7 @@ class TestDiscoveriesScanAPI(APITestCase.ForUser):
 class TestDiscoveriesClearByMACandIP(APITestCase.ForUser):
     def test_clear_by_mac_and_ip_not_allowed_for_non_admin(self):
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         uri = get_discoveries_uri()
         response = self.client.post(
@@ -342,7 +340,7 @@ class TestDiscoveriesClearByMACandIP(APITestCase.ForUser):
     def test_clear_by_mac_and_ip_requires_parameters(self):
         self.become_admin()
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         uri = get_discoveries_uri()
         response = self.client.post(uri, {"op": "clear_by_mac_and_ip"})
@@ -353,7 +351,7 @@ class TestDiscoveriesClearByMACandIP(APITestCase.ForUser):
     def test_clear_by_mac_and_ip_allowed_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         make_discoveries(interface=iface, count=3)
         neigh = factory.make_Discovery()
         uri = get_discoveries_uri()
@@ -388,7 +386,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
 
     def test_read(self):
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         discoveries = make_discoveries(interface=iface)
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
@@ -416,7 +414,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
 
     def test_read_by_specifiers(self):
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         [discovery] = make_discoveries(interface=iface, count=1)
         uri = get_discovery_uri_by_specifiers("ip:" + str(discovery.ip))
         response = self.client.get(uri)
@@ -431,7 +429,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
 
     def test_update_not_allowed(self):
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         discoveries = make_discoveries(interface=iface)
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
@@ -443,7 +441,7 @@ class TestDiscoveryAPI(APITestCase.ForUser):
     def test_delete_not_allowed_even_for_admin(self):
         self.become_admin()
         rack = factory.make_RackController()
-        iface = rack.interface_set.first()
+        iface = rack.current_config.interface_set.first()
         discoveries = make_discoveries(interface=iface, count=3)
         discovery = discoveries[1]
         uri = get_discovery_uri(discovery)
@@ -599,7 +597,7 @@ class TestScanAllRackNetworksInterpretsRPCResults(MAASServerTestCase):
 
     def test_calls_racks_synchronously_with_cidrs(self):
         subnet_query = Subnet.objects.filter(
-            staticipaddress__interface__node__in=self.started
+            staticipaddress__interface__node_config__node__in=self.started
         )
         cidrs = [
             IPNetwork(cidr)

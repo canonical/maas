@@ -89,7 +89,7 @@ def send_event_mac_address(mac_address, type_name, description, timestamp):
         )
     else:
         Event.objects.create(
-            node=interface.node,
+            node_id=interface.node_config.node_id,
             type=event_type,
             description=description,
             created=timestamp,
@@ -108,7 +108,9 @@ def send_event_ip_address(ip_address, type_name, description, timestamp):
     except EventType.DoesNotExist:
         raise NoSuchEventType.from_name(type_name)
 
-    node = Node.objects.filter(interface__ip_addresses__ip=ip_address).first()
+    node = Node.objects.filter(
+        current_config__interface__ip_addresses__ip=ip_address
+    ).first()
     if node is None:
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a node

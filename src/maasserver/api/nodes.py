@@ -73,7 +73,7 @@ NODES_SELECT_RELATED = (
     "domain",
     "pool",
     "current_config",
-    "boot_interface__node",
+    "boot_interface__node_config__node",
     "virtualmachine",
 )
 
@@ -116,7 +116,7 @@ NODES_PREFETCH = [
     ),
     *blockdev_prefetch("boot_disk"),
     "current_config__filesystem_set",
-    # boot interface prefetches
+    # interface prefetches
     "boot_interface__vlan__primary_rack",
     "boot_interface__vlan__secondary_rack",
     "boot_interface__vlan__fabric__vlan_set",
@@ -127,21 +127,21 @@ NODES_PREFETCH = [
         "boot_interface__children_relationships__child__"
         "children_relationships__child"
     ),
-    "interface_set__vlan__primary_rack",
-    "interface_set__vlan__secondary_rack",
-    "interface_set__vlan__fabric__vlan_set",
-    "interface_set__vlan__space",
-    "interface_set__parents",
-    "interface_set__ip_addresses__subnet",
-    "interface_set__numa_node",
+    "current_config__interface_set__vlan__primary_rack",
+    "current_config__interface_set__vlan__secondary_rack",
+    "current_config__interface_set__vlan__fabric__vlan_set",
+    "current_config__interface_set__vlan__space",
+    "current_config__interface_set__parents",
+    "current_config__interface_set__ip_addresses__subnet",
+    "current_config__interface_set__numa_node",
     # Prefetch 3 levels deep, anything more will require extra queries.
-    "interface_set__children_relationships__child__vlan",
+    "current_config__interface_set__children_relationships__child__vlan",
     (
-        "interface_set__children_relationships__child__"
+        "current_config__interface_set__children_relationships__child__"
         "children_relationships__child__vlan"
     ),
     (
-        "interface_set__children_relationships__child__"
+        "current_config__interface_set__children_relationships__child__"
         "children_relationships__child__"
         "children_relationships__child__vlan"
     ),
@@ -229,7 +229,9 @@ def filtered_nodes_list_from_request(request, model=None):
         request.user, NodePermission.view, ids=match_ids
     )
     if match_macs is not None:
-        nodes = nodes.filter(interface__mac_address__in=match_macs)
+        nodes = nodes.filter(
+            current_config__interface__mac_address__in=match_macs
+        )
     match_hostnames = get_optional_list(request.GET, "hostname")
     if match_hostnames is not None:
         nodes = nodes.filter(hostname__in=match_hostnames)
@@ -253,10 +255,12 @@ def is_registered(request, ignore_statuses=None):
     """Used by both `NodesHandler` and `AnonNodesHandler`."""
     mac_address = get_mandatory_param(request.GET, "mac_address")
     interfaces = Interface.objects.filter(mac_address=mac_address)
-    interfaces = interfaces.exclude(node__isnull=True)
+    interfaces = interfaces.exclude(node_config__node__isnull=True)
     if ignore_statuses is None:
         ignore_statuses = [NODE_STATUS.RETIRED]
-    interfaces = interfaces.exclude(node__status__in=ignore_statuses)
+    interfaces = interfaces.exclude(
+        node_config__node__status__in=ignore_statuses
+    )
     return interfaces.exists()
 
 
@@ -443,6 +447,10 @@ class NodeHandler(OperationsHandler):
     @classmethod
     def interface_test_status_name(handler, node):
         return get_script_status_name(handler.interface_test_status(node))
+
+    @classmethod
+    def interface_set(handler, node):
+        return node.current_config.interface_set.all()
 
     @classmethod
     def hardware_info(handler, node):
@@ -690,7 +698,10 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         mac_address = get_mandatory_param(request.GET, "mac_address")
         interfaces = Interface.objects.filter(mac_address=mac_address)
         interfaces = interfaces.filter(
-            node__status__in=[NODE_STATUS.COMMISSIONING, NODE_STATUS.DEPLOYING]
+            node_config__node__status__in=[
+                NODE_STATUS.COMMISSIONING,
+                NODE_STATUS.DEPLOYING,
+            ]
         )
         return interfaces.exists()
 

@@ -1,7 +1,5 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for the region's remote procedure calls."""
 
 
 from datetime import datetime, timedelta
@@ -42,7 +40,6 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
-from maasserver.utils import ignore_unused
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
 from maastesting.matchers import MockCalledOnceWith, MockCalledWith
@@ -867,7 +864,9 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
         # runs in the event-loop and this can't dereference related
         # objects (unless they have been prefetched).
         all_events_qs = Event.objects.all().select_related("node", "type")
-        node = PhysicalInterface.objects.get(mac_address=mac_address).node
+        node = PhysicalInterface.objects.get(
+            mac_address=mac_address
+        ).node_config.node
         event = all_events_qs.get(node=node, type__name=type_name)
         return event
 
@@ -879,10 +878,9 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
 
     @transactional
     def make_interface(self):
-        # Precache the node. So a database query is not made in the event-loop.
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
-        node = interface.node
-        ignore_unused(node)
+        # Precache the node. So a database query is not made in the event-loop.
+        interface.node_config.node
         return interface
 
     @wait_for_reactor
@@ -912,9 +910,11 @@ class TestRegionProtocol_SendEventMACAddress(MAASTransactionServerTestCase):
 
         self.assertEqual({}, response)
         event = yield deferToDatabase(self.get_event, mac_address, name)
-        self.expectThat(event.node.system_id, Equals(interface.node.system_id))
-        self.expectThat(event.description, Equals(event_description))
-        self.expectThat(event.type.name, Equals(name))
+        self.assertEqual(
+            event.node.system_id, interface.node_config.node.system_id
+        )
+        self.assertEqual(event.description, event_description)
+        self.assertEqual(event.type.name, name)
 
     @wait_for_reactor
     @inlineCallbacks

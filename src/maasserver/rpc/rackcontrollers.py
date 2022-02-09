@@ -54,7 +54,7 @@ def handle_upgrade(rack_controller, nodegroup_uuid):
         )
         vlans = [ng_to_rack.subnet.vlan for ng_to_rack in ng_to_racks]
         # The VLAN object can only be related to a RackController
-        for nic in rack_controller.interface_set.all():
+        for nic in rack_controller.current_config.interface_set.all():
             if nic.vlan in vlans:
                 nic.vlan.primary_rack = rack_controller
                 nic.vlan.dhcp_on = True
@@ -193,7 +193,7 @@ def find(system_id: Optional[str], hostname: str, interfaces: dict):
     query = (
         Q(system_id=system_id)
         | Q(hostname=hostname)
-        | Q(interface__mac_address__in=mac_addresses)
+        | Q(current_config__interface__mac_address__in=mac_addresses)
     )
     return Node.objects.filter(query).first()
 
@@ -208,7 +208,9 @@ def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
     """
     rack_controller = RackController.objects.get(system_id=system_id)
     interface = (
-        rack_controller.interface_set.filter(name=interface_name)
+        rack_controller.current_config.interface_set.filter(
+            name=interface_name
+        )
         .select_related("vlan")
         .first()
     )
@@ -219,7 +221,7 @@ def update_foreign_dhcp(system_id, interface_name, dhcp_ip=None):
                 # Check that its not an IP address of a rack controller
                 # providing that DHCP service.
                 rack_interfaces_serving_dhcp = sip.interface_set.filter(
-                    node__node_type__in=[
+                    node_config__node__node_type__in=[
                         NODE_TYPE.RACK_CONTROLLER,
                         NODE_TYPE.REGION_AND_RACK_CONTROLLER,
                     ],

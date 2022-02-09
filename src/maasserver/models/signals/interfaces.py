@@ -17,7 +17,7 @@ from maasserver.models import (
     Controller,
     Fabric,
     Interface,
-    Node,
+    NodeConfig,
     PhysicalInterface,
     StaticIPAddress,
     UnknownInterface,
@@ -222,12 +222,13 @@ def interface_vlan_update(instance, old_values, **kwargs):
     if new_vlan_id == old_vlan_id:
         # Nothing changed do nothing.
         return
-    if instance.node is None:
+    if instance.node_config is None:
         # Not assigned to a node. Nothing to do.
         return
 
     new_vlan = instance.vlan
-    if not instance.node.is_commissioning():
+    node = instance.node_config.node
+    if not node.is_commissioning():
         if old_vlan_id is None:
             return
         # Interface VLAN was changed on a controller. Move all linked subnets
@@ -361,10 +362,11 @@ def remove_gateway_link_when_ip_address_removed_from_interface(
     the gateway links on the node model."""
     if model == StaticIPAddress and action == "post_remove":
         try:
-            node = instance.node
-        except Node.DoesNotExist:
+            node_config = instance.node_config
+        except NodeConfig.DoesNotExist:
             return
-        if node is not None:
+        if node_config is not None:
+            node = node_config.node
             for pk in pk_set:
                 if node.gateway_link_ipv4_id == pk:
                     node.gateway_link_ipv4_id = None

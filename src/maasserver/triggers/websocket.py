@@ -393,38 +393,56 @@ INTERFACE_POD_NOTIFY = dedent(
     """\
     CREATE OR REPLACE FUNCTION interface_pod_notify() RETURNS TRIGGER AS $$
     DECLARE
+        _node_id integer;
         _pod_id integer;
     BEGIN
         IF TG_OP = 'INSERT' then
-            SELECT INTO _pod_id pod_id FROM maasserver_podhost
-                WHERE NEW.node_id = node_id;
+            SELECT INTO _pod_id pod_id
+            FROM maasserver_podhost
+            JOIN maasserver_nodeconfig
+              ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+            WHERE maasserver_nodeconfig.id = NEW.node_config_id;
+
             IF _pod_id IS NOT NULL then
-                PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-             END IF;
+              PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+            END IF;
         ELSIF TG_OP = 'UPDATE' then
             IF OLD.vlan_id IS NOT DISTINCT FROM NEW.vlan_id
-                AND OLD.node_id IS NOT DISTINCT FROM NEW.node_id then
+                AND OLD.node_config_id IS NOT DISTINCT FROM NEW.node_config_id then
                 -- Nothing relevant changed during interface update.
                 RETURN NULL;
             END IF;
-            SELECT INTO _pod_id pod_id FROM maasserver_podhost
-                WHERE NEW.node_id = node_id;
+
+            SELECT INTO _pod_id pod_id
+            FROM maasserver_podhost
+            JOIN maasserver_nodeconfig
+              ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+            WHERE maasserver_nodeconfig.id = NEW.node_config_id;
+
             IF _pod_id IS NOT NULL then
+              PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+            END IF;
+            IF OLD.node_config_id != NEW.node_config_id then
+              SELECT INTO _pod_id pod_id
+              FROM maasserver_podhost
+              JOIN maasserver_nodeconfig
+                ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+              WHERE maasserver_nodeconfig.id = OLD.node_config_id;
+
+              IF _pod_id IS NOT NULL then
                 PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-             END IF;
-            IF OLD.node_id != NEW.node_id then
-                SELECT INTO _pod_id pod_id FROM maasserver_podhost
-                    WHERE OLD.node_id = node_id;
-                IF _pod_id IS NOT NULL then
-                    PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-                END IF;
+              END IF;
             END IF;
         ELSE
-            SELECT INTO _pod_id pod_id FROM maasserver_podhost
-                WHERE OLD.node_id = node_id;
+            SELECT INTO _pod_id pod_id
+            FROM maasserver_podhost
+            JOIN maasserver_nodeconfig
+              ON maasserver_nodeconfig.node_id = maasserver_podhost.node_id
+            WHERE maasserver_nodeconfig.id = OLD.node_config_id;
+
             IF _pod_id IS NOT NULL then
-                PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
-             END IF;
+              PERFORM pg_notify('pod_update',CAST(_pod_id AS text));
+            END IF;
         END IF;
         RETURN NULL;
     END;
@@ -441,10 +459,14 @@ INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
       domain RECORD;
     BEGIN
       SELECT maasserver_domain.id INTO domain
-      FROM maasserver_node, maasserver_interface, maasserver_domain
-      WHERE maasserver_node.id = maasserver_interface.node_id
-      AND maasserver_domain.id = maasserver_node.domain_id
-      AND maasserver_interface.id = {entry}.interface_id;
+      FROM maasserver_interface
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.id = maasserver_interface.node_config_id
+      JOIN maasserver_node
+        ON maasserver_node.id = maasserver_nodeconfig.node_id
+      JOIN maasserver_domain
+        ON maasserver_domain.id = maasserver_node.domain_id
+      WHERE maasserver_interface.id = {entry}.interface_id;
 
       IF domain.id IS NOT NULL THEN
         PERFORM pg_notify('domain_update',CAST(domain.id AS text));
@@ -467,9 +489,12 @@ INTERFACE_IP_ADDRESS_NODE_NOTIFY = dedent(
       pnode RECORD;
     BEGIN
       SELECT system_id, node_type, parent_id INTO node
-      FROM maasserver_node, maasserver_interface
-      WHERE maasserver_node.id = maasserver_interface.node_id
-      AND maasserver_interface.id = {entry}.interface_id;
+      FROM maasserver_node
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      JOIN maasserver_interface
+        ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+      WHERE maasserver_interface.id = {entry}.interface_id;
 
       IF node.node_type = {type_machine} THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -503,10 +528,12 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent(
       node RECORD;
       pnode RECORD;
     BEGIN
-      IF OLD.node_id != NEW.node_id THEN
+      IF OLD.node_config_id != NEW.node_config_id THEN
         SELECT system_id, node_type, parent_id INTO node
         FROM maasserver_node
-        WHERE id = OLD.node_id;
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        WHERE maasserver_nodeconfig.id = OLD.node_config_id;
 
         IF node.node_type = {NODE_TYPE.MACHINE} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -524,7 +551,9 @@ INTERFACE_UPDATE_NODE_NOTIFY = dedent(
 
       SELECT system_id, node_type, parent_id INTO node
       FROM maasserver_node
-      WHERE id = NEW.node_id;
+      JOIN maasserver_nodeconfig
+        ON maasserver_nodeconfig.node_id = maasserver_node.id
+      WHERE maasserver_nodeconfig.id = NEW.node_config_id;
 
       IF node.node_type = {NODE_TYPE.MACHINE} THEN
         PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -746,17 +775,17 @@ SUBNET_NODE_NOTIFY = dedent(
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
           system_id, node_type, parent_id
-        FROM
-          maasserver_node,
-          maasserver_subnet,
-          maasserver_interface,
-          maasserver_interface_ip_addresses AS ip_link,
-          maasserver_staticipaddress
-        WHERE maasserver_subnet.id = {entry}.id
-        AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-        AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-        AND ip_link.interface_id = maasserver_interface.id
-        AND maasserver_node.id = maasserver_interface.node_id)
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        JOIN maasserver_interface
+          ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+        JOIN maasserver_interface_ip_addresses
+          ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id
+        JOIN maasserver_staticipaddress
+          ON maasserver_staticipaddress.id = maasserver_interface_ip_addresses.staticipaddress_id
+        WHERE maasserver_staticipaddress.subnet_id = {entry}.id
+      )
       LOOP
         IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -789,15 +818,17 @@ FABRIC_NODE_NOTIFY = dedent(
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
           system_id, node_type, parent_id
-        FROM
-          maasserver_node,
-          maasserver_fabric,
-          maasserver_interface,
-          maasserver_vlan
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        JOIN maasserver_interface
+          ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+        JOIN maasserver_vlan
+          ON maasserver_vlan.id = maasserver_interface.vlan_id
+        JOIN maasserver_fabric
+          ON maasserver_vlan.fabric_id = maasserver_fabric.id
         WHERE maasserver_fabric.id = {entry}.id
-        AND maasserver_vlan.fabric_id = maasserver_fabric.id
-        AND maasserver_node.id = maasserver_interface.node_id
-        AND maasserver_vlan.id = maasserver_interface.vlan_id)
+      )
       LOOP
         IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -830,21 +861,23 @@ SPACE_NODE_NOTIFY = dedent(
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
           system_id, node_type, parent_id
-        FROM
-          maasserver_node,
-          maasserver_space,
-          maasserver_subnet,
-          maasserver_vlan,
-          maasserver_interface,
-          maasserver_interface_ip_addresses AS ip_link,
-          maasserver_staticipaddress
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        JOIN maasserver_interface
+          ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+        JOIN maasserver_interface_ip_addresses
+          ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id
+        JOIN maasserver_staticipaddress
+          ON maasserver_staticipaddress.id = maasserver_interface_ip_addresses.staticipaddress_id
+        JOIN maasserver_subnet
+          ON maasserver_staticipaddress.subnet_id = maasserver_subnet.id
+        JOIN maasserver_vlan
+          ON maasserver_vlan.id = maasserver_subnet.vlan_id
+        JOIN maasserver_space
+          ON maasserver_vlan.space_id IS NOT DISTINCT FROM maasserver_space.id
         WHERE maasserver_space.id = {entry}.id
-        AND maasserver_subnet.vlan_id = maasserver_vlan.id
-        AND maasserver_vlan.space_id IS NOT DISTINCT FROM maasserver_space.id
-        AND maasserver_staticipaddress.subnet_id = maasserver_subnet.id
-        AND ip_link.staticipaddress_id = maasserver_staticipaddress.id
-        AND ip_link.interface_id = maasserver_interface.id
-        AND maasserver_node.id = maasserver_interface.node_id)
+      )
       LOOP
         IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -877,10 +910,13 @@ VLAN_NODE_NOTIFY = dedent(
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
           system_id, node_type, parent_id
-        FROM maasserver_node, maasserver_interface, maasserver_vlan
-        WHERE maasserver_vlan.id = {entry}.id
-        AND maasserver_node.id = maasserver_interface.node_id
-        AND maasserver_vlan.id = maasserver_interface.vlan_id)
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        JOIN maasserver_interface
+          ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+        WHERE maasserver_interface.vlan_id = {entry}.id
+      )
       LOOP
         IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -990,13 +1026,15 @@ STATIC_IP_ADDRESS_NODE_NOTIFY = dedent(
       FOR node IN (
         SELECT DISTINCT ON (maasserver_node.id)
           system_id, node_type, parent_id
-        FROM
-          maasserver_node,
-          maasserver_interface,
-          maasserver_interface_ip_addresses AS ip_link
-        WHERE ip_link.staticipaddress_id = {entry}.id
-        AND ip_link.interface_id = maasserver_interface.id
-        AND maasserver_node.id = maasserver_interface.node_id)
+        FROM maasserver_node
+        JOIN maasserver_nodeconfig
+          ON maasserver_nodeconfig.node_id = maasserver_node.id
+        JOIN maasserver_interface
+          ON maasserver_interface.node_config_id = maasserver_nodeconfig.id
+        JOIN maasserver_interface_ip_addresses
+          ON maasserver_interface_ip_addresses.interface_id = maasserver_interface.id
+        WHERE maasserver_interface_ip_addresses.staticipaddress_id = {entry}.id
+      )
       LOOP
         IF node.node_type = {type_machine} THEN
           PERFORM pg_notify('machine_update',CAST(node.system_id AS text));
@@ -1066,10 +1104,12 @@ STATIC_IP_ADDRESS_DOMAIN_UPDATE_NOTIFY = dedent(
           FROM maasserver_staticipaddress AS staticipaddress
           LEFT JOIN (
             maasserver_interface_ip_addresses AS iia
-            JOIN maasserver_interface AS interface ON
-              iia.interface_id = interface.id
-            JOIN maasserver_node AS node ON
-              node.id = interface.node_id) ON
+            JOIN maasserver_interface AS interface
+              ON iia.interface_id = interface.id
+            JOIN maasserver_nodeconfig AS nodeconfig
+              ON interface.node_config_id = nodeconfig.id
+            JOIN maasserver_node AS node
+              ON node.id = nodeconfig.node_id) ON
             iia.staticipaddress_id = staticipaddress.id
           LEFT JOIN (
             maasserver_dnsresource_ip_addresses AS dia
@@ -1103,10 +1143,12 @@ STATIC_IP_ADDRESS_DOMAIN_NOTIFY = dedent(
         FROM maasserver_staticipaddress AS staticipaddress
         LEFT JOIN (
           maasserver_interface_ip_addresses AS iia
-          JOIN maasserver_interface AS interface ON
-            iia.interface_id = interface.id
-          JOIN maasserver_node AS node ON
-            node.id = interface.node_id) ON
+          JOIN maasserver_interface AS interface
+            ON iia.interface_id = interface.id
+          JOIN maasserver_nodeconfig
+            ON maasserver_nodeconfig.id = interface.node_config_id
+          JOIN maasserver_node AS node
+            ON node.id = maasserver_nodeconfig.node_id) ON
           iia.staticipaddress_id = staticipaddress.id
         LEFT JOIN (
           maasserver_dnsresource_ip_addresses AS dia
@@ -2328,12 +2370,14 @@ def register_websocket_triggers():
     # MAC static ip address table, update to linked domain via node.
     register_procedure(
         INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY.format(
-            function_name="nd_sipaddress_dns_link_notify", entry="NEW"
+            function_name="nd_sipaddress_dns_link_notify",
+            entry="NEW",
         )
     )
     register_procedure(
         INTERFACE_IP_ADDRESS_DOMAIN_NOTIFY.format(
-            function_name="nd_sipaddress_dns_unlink_notify", entry="OLD"
+            function_name="nd_sipaddress_dns_unlink_notify",
+            entry="OLD",
         )
     )
     register_trigger(
@@ -2415,12 +2459,12 @@ def register_websocket_triggers():
 
     # Interface address table, update to linked node.
     register_procedure(
-        render_node_related_notification_procedure(
+        render_node_related_notification_procedure_via_config(
             "nd_interface_link_notify", "NEW"
         )
     )
     register_procedure(
-        render_node_related_notification_procedure(
+        render_node_related_notification_procedure_via_config(
             "nd_interface_unlink_notify", "OLD"
         )
     )

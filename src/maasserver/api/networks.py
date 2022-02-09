@@ -117,7 +117,7 @@ class NetworkHandler(OperationsHandler):
             request.user, NodePermission.view, from_nodes=Node.objects.all()
         )
         interfaces = Interface.objects.filter(
-            node__in=visible_nodes, ip_addresses__subnet=subnet
+            node_config__node__in=visible_nodes, ip_addresses__subnet=subnet
         )
         existing_macs = set()
         unique_interfaces_by_mac = [
@@ -130,7 +130,10 @@ class NetworkHandler(OperationsHandler):
         ]
         unique_interfaces_by_mac = sorted(
             unique_interfaces_by_mac,
-            key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()),
+            key=lambda x: (
+                x.node_config.node.hostname.lower(),
+                x.mac_address.get_raw(),
+            ),
         )
         return [
             {"mac_address": str(interface.mac_address)}

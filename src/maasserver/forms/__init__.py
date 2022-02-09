@@ -830,9 +830,9 @@ class MachineForm(NodeForm):
         cleaned_data = super().clean()
 
         power_type = cleaned_data.get("power_type")
-        have_interfaces = (
-            cleaned_data.get("mac_addresses")
-            or self.instance.interface_set.exists()
+        have_interfaces = cleaned_data.get("mac_addresses") or (
+            self.instance.current_config is not None
+            and self.instance.current_config.interface_set.exists()
         )
         if (
             power_type != self.instance.power_type
@@ -1451,7 +1451,7 @@ class WithMACAddressesMixin:
             if self.instance.id is not None:
                 query = (
                     Interface.objects.filter(mac_address=mac.lower())
-                    .exclude(node=self.instance)
+                    .exclude(node_config__node=self.instance)
                     .exclude(type=INTERFACE_TYPE.UNKNOWN)
                 )
             else:
@@ -1461,7 +1461,7 @@ class WithMACAddressesMixin:
                     mac_address=mac.lower()
                 ).exclude(type=INTERFACE_TYPE.UNKNOWN)
             for iface in query:
-                node = iface.node
+                node = iface.node_config.node
                 errors.append(self._mac_in_use_on_node_error(mac, node))
         if errors:
             raise ValidationError(errors)
@@ -2164,7 +2164,9 @@ class NetworksListingForm(Form):
         nodes = self.cleaned_data.get("node")
         if nodes is not None:
             for node in nodes:
-                subnets = subnets.filter(staticipaddress__interface__node=node)
+                subnets = subnets.filter(
+                    staticipaddress__interface__node_config__node=node
+                )
         return subnets.order_by("id")
 
 

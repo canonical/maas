@@ -825,7 +825,10 @@ class TestRegionControllerManagerGetOrCreateRunningController(
         node_module.gethostname.return_value = node.hostname
 
     def set_mac_address_to_match(self, node):
-        raw_macs = [nic.mac_address.raw for nic in node.interface_set.all()]
+        raw_macs = [
+            nic.mac_address.raw
+            for nic in node.current_config.interface_set.all()
+        ]
         node_module.get_mac_addresses.return_value = [random.choice(raw_macs)]
 
     def prepare_existing_host(self):
@@ -1384,7 +1387,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node()
         node.add_physical_interface(mac)
         interfaces = PhysicalInterface.objects.filter(
-            node=node, mac_address=mac
+            node_config=node.current_config, mac_address=mac
         ).count()
         self.assertEqual(1, interfaces)
 
@@ -1392,7 +1395,9 @@ class TestNode(MAASServerTestCase):
         mac = factory.make_mac_address()
         node = factory.make_Node()
         node.add_physical_interface(mac)
-        interface = PhysicalInterface.objects.get(node=node, mac_address=mac)
+        interface = PhysicalInterface.objects.get(
+            node_config=node.current_config, mac_address=mac
+        )
         self.assertIsNotNone(interface.numa_node)
         self.assertEqual(interface.numa_node, node.default_numanode)
 
@@ -1400,7 +1405,9 @@ class TestNode(MAASServerTestCase):
         mac = factory.make_mac_address()
         node = factory.make_Device()
         node.add_physical_interface(mac)
-        interface = PhysicalInterface.objects.get(node=node, mac_address=mac)
+        interface = PhysicalInterface.objects.get(
+            node_config=node.current_config, mac_address=mac
+        )
         self.assertIsNone(interface.numa_node)
 
     def test_add_already_attached_mac_address_doesnt_raise_error(self):
@@ -2955,7 +2962,8 @@ class TestNode(MAASServerTestCase):
         vlan_bond = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[bond])
 
         self.assertCountEqual(
-            [phy1, phy2, phy3, vlan, bond, vlan_bond], node.interface_set.all()
+            [phy1, phy2, phy3, vlan, bond, vlan_bond],
+            node.current_config.interface_set.all(),
         )
 
     def test_get_interfaces_ignores_interface_on_other_nodes(self):
@@ -2965,7 +2973,9 @@ class TestNode(MAASServerTestCase):
         phy = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         vlan = factory.make_Interface(INTERFACE_TYPE.VLAN, parents=[phy])
 
-        self.assertCountEqual([phy, vlan], node.interface_set.all())
+        self.assertCountEqual(
+            [phy, vlan], node.current_config.interface_set.all()
+        )
 
     def test_get_interface_names_returns_interface_name(self):
         node = factory.make_Node()
@@ -4933,7 +4943,7 @@ class TestNode(MAASServerTestCase):
         for _ in range(3):
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         self.assertEqual(
-            node.interface_set.order_by("id").first(),
+            node.current_config.interface_set.order_by("id").first(),
             node.get_boot_interface(),
         )
 
@@ -6279,7 +6289,7 @@ class TestDecomposeMachineTransactional(
         pod, machine, hints, client = self.create_pod_machine_and_hints(
             interface=True
         )
-        interface = transactional(machine.interface_set.first)()
+        interface = transactional(machine.current_config.interface_set.first)()
         with post_commit_hooks:
             machine.delete()
         self.assertThat(
@@ -6328,7 +6338,7 @@ class TestDecomposeMachineTransactional(
             power_state=POWER_STATE.OFF,
             interface=True,
         )
-        interface = transactional(machine.interface_set.first)()
+        interface = transactional(machine.current_config.interface_set.first)()
         with post_commit_hooks:
             machine.release()
         self.assertThat(
@@ -7315,7 +7325,7 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         mock_claim_auto_ips = self.patch_autospec(Interface, "claim_auto_ips")
         node = (
             Node.objects.filter(id=node.id)
-            .prefetch_related("interface_set")
+            .prefetch_related("current_config__interface_set")
             .first()
         )
         # Add in the third interface after we create the node with the cached
@@ -7657,7 +7667,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node.restore_network_interfaces()
         self.assertEqual(
             ["eth0", "eth1", "eth2"],
-            sorted(interface.name for interface in node.interface_set.all()),
+            sorted(
+                interface.name
+                for interface in node.current_config.interface_set.all()
+            ),
         )
 
     def test_restore_commissioned_network_interfaces_missing_data(self):
@@ -7717,7 +7730,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node.restore_network_interfaces()
         self.assertEqual(
             ["eth0", "eth1", "eth2"],
-            sorted(interface.name for interface in node.interface_set.all()),
+            sorted(
+                interface.name
+                for interface in node.current_config.interface_set.all()
+            ),
         )
 
     def test_restore_network_interfaces_extra(self):
@@ -7747,7 +7763,9 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         # If extra interfaces are added, they will be removed when
         # calling restore_network_interfaces().
         # Order the interfaces, so that the first interface has a VLAN.
-        parents = list(node.interface_set.all().order_by("vlan"))
+        parents = list(
+            node.current_config.interface_set.all().order_by("vlan")
+        )
         factory.make_Interface(
             INTERFACE_TYPE.VLAN, node=node, parents=[parents[0]]
         )
@@ -7759,7 +7777,10 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         node.restore_network_interfaces()
         self.assertEqual(
             ["eth0", "eth1", "eth2"],
-            sorted(interface.name for interface in node.interface_set.all()),
+            sorted(
+                interface.name
+                for interface in node.current_config.interface_set.all()
+            ),
         )
 
 
@@ -8265,7 +8286,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
 
         resolve_hostname = self.patch(server_address, "resolve_hostname")
         resolve_hostname.side_effect = get_address
-        rack.interface_set.all().delete()
+        rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=vlan, node=rack)
         if ipv4:
             rackif.link_subnet(INTERFACE_LINK_TYPE.STATIC, v4_subnet, rack_v4)
@@ -8287,7 +8308,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         other_rack = factory.make_RackController()
         vlan = node.boot_interface.vlan
         subnet = vlan.subnet_set.first()
-        other_rack.interface_set.all().delete()
+        other_rack.current_config.interface_set.all().delete()
         other_rackif = factory.make_Interface(vlan=vlan, node=other_rack)
         other_rackif_ip = factory.pick_ip_in_Subnet(subnet)
         other_rackif.link_subnet(
@@ -8504,7 +8525,7 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         )
         vlan = node.boot_interface.vlan
         rack = vlan.primary_rack
-        rackif = rack.interface_set.first()
+        rackif = rack.current_config.interface_set.first()
         rack_ips = [rack_v4]
         for _ in range(3):
             subnet = factory.make_Subnet(vlan=vlan, version=4)
@@ -8823,8 +8844,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             bridge_fd=bridge_fd,
         )
         node = reload_object(node)
-        bridge = BridgeInterface.objects.get(node=node)
-        interface = node.interface_set.first()
+        bridge = BridgeInterface.objects.get(node_config=node.current_config)
+        interface = node.current_config.interface_set.first()
         self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
         self.assertEqual(bridge.mac_address, interface.mac_address)
         self.assertEqual(bridge.params["bridge_type"], bridge_type)
@@ -8848,8 +8869,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
             bridge_fd=bridge_fd,
         )
         node = reload_object(node)
-        bridge = BridgeInterface.objects.get(node=node)
-        interface = node.interface_set.first()
+        bridge = BridgeInterface.objects.get(node_config=node.current_config)
+        interface = node.current_config.interface_set.first()
         self.assertEqual(NODE_STATUS.DEPLOYING, node.status)
         self.assertEqual(bridge.mac_address, interface.mac_address)
         self.assertEqual(bridge.params["bridge_type"], bridge_type)
@@ -8924,7 +8945,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Create a rack controller that has an interface on the same subnet
         # as the node.
         rack = factory.make_RackController()
-        rack.interface_set.all().delete()
+        rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
         rackif.save()
@@ -9014,7 +9035,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Create a rack controller that has an interface on the same subnet
         # as the node. Don't enable neighbour discovery
         rack = factory.make_RackController()
-        rack.interface_set.all().delete()
+        rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif_ip = factory.pick_ip_in_Subnet(auto_ip.subnet)
         rackif.link_subnet(
@@ -9082,7 +9103,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Create a rack controller that has an interface on the same subnet
         # as the node.
         rack = factory.make_RackController()
-        rack.interface_set.all().delete()
+        rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
         rackif.save()
@@ -9132,7 +9153,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Create a rack controller that has an interface on the same subnet
         # as the node.
         rack = factory.make_RackController()
-        rack.interface_set.all().delete()
+        rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
         rackif.save()
@@ -9181,7 +9202,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Create a rack controller that has an interface on the same subnet
         # as the node.
         rack = factory.make_RackController()
-        rack.interface_set.all().delete()
+        rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
         rackif.save()
@@ -9263,7 +9284,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         # Create a rack controller that has an interface on the same subnet
         # as the node.
         rack = factory.make_RackController()
-        rack.interface_set.all().delete()
+        rack.current_config.interface_set.all().delete()
         rackif = factory.make_Interface(vlan=node_interface.vlan, node=rack)
         rackif.neighbour_discovery_state = True
         rackif.save()
@@ -12074,7 +12095,7 @@ class TestNodeInterfaceClone_SimpleNetworkLayout(
     MAASServerTestCase, AssertNetworkConfigMixin
 ):
     def create_staticipaddresses(self, node):
-        for iface in node.interface_set.filter(enabled=True):
+        for iface in node.current_config.interface_set.filter(enabled=True):
             factory.make_StaticIPAddress(
                 interface=iface, subnet=iface.vlan.subnet_set.first()
             )
@@ -12084,7 +12105,7 @@ class TestNodeInterfaceClone_SimpleNetworkLayout(
                 "autoconf": factory.pick_bool(),
             }
             iface.save()
-        extra_interface = node.interface_set.all()[1]
+        extra_interface = node.current_config.interface_set.all()[1]
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip="",
@@ -12140,8 +12161,8 @@ class TestNodeInterfaceClone_VLANOnBondNetworkLayout(
             extra_ifnames=["eth1"],
             domain=domain,
         )
-        phys_ifaces = list(node.interface_set.all())
-        phys_vlan = node.interface_set.first().vlan
+        phys_ifaces = list(node.current_config.interface_set.all())
+        phys_vlan = node.current_config.interface_set.first().vlan
         bond_iface = factory.make_Interface(
             iftype=INTERFACE_TYPE.BOND,
             node=node,
@@ -12283,7 +12304,7 @@ class TestNodeClone__Prefetches(MAASServerTestCase):
                 "partitions__"
                 "filesystem_set"
             ),
-            "interface_set",
+            "current_config__interface_set",
         ).get(id=source.id)
         destination.set_storage_configuration_from_node(source)
         destination.set_networking_configuration_from_node(source)

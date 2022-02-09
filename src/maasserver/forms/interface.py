@@ -102,13 +102,16 @@ class InterfaceForm(MAASModelForm):
             raise ValueError(
                 "instance or node is required for the InterfaceForm"
             )
-        self.fields["parents"].queryset = self.node.interface_set.all()
+        self.fields[
+            "parents"
+        ].queryset = self.node.current_config.interface_set.all()
 
     def _get_validation_exclusions(self):
         # The instance is created just before this in django. The only way to
         # get the validation to pass on a newly created interface is to set the
         # node in the interface here.
-        self.instance.node = self.node
+        if self.node:
+            self.instance.node_config = self.node.current_config
         return super()._get_validation_exclusions()
 
     def save(self, *args, **kwargs):
@@ -153,7 +156,9 @@ class InterfaceForm(MAASModelForm):
         return parents
 
     def clean_interface_name_uniqueness(self, name):
-        node_interfaces = self.node.interface_set.filter(name=name)
+        node_interfaces = self.node.current_config.interface_set.filter(
+            name=name
+        )
         if self.instance is not None and self.instance.id is not None:
             node_interfaces = node_interfaces.exclude(id=self.instance.id)
         if node_interfaces.exists():
@@ -335,10 +340,7 @@ class PhysicalInterfaceForm(InterfaceForm, NUMANodeFormMixin):
         self.fields["name"].required = False
 
     def clean_parents(self):
-        parents = self.get_clean_parents()
-        if parents is None:
-            return
-        if len(parents) > 0:
+        if self.get_clean_parents():
             raise ValidationError("A physical interface cannot have parents.")
 
     def clean(self):

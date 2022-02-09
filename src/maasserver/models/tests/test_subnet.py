@@ -1049,7 +1049,7 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(
             subnet=subnet, status=NODE_STATUS.READY
         )
-        iface = node.interface_set.first()
+        iface = node.current_config.interface_set.first()
         ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=subnet, interface=iface
         )
@@ -1087,7 +1087,7 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             subnet=subnet,
-            interface=node.interface_set.first(),
+            interface=node.current_config.interface_set.first(),
         )
         subnet = reload_object(subnet)
         json = subnet.render_json_for_related_ips(
@@ -1158,7 +1158,7 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
             node = factory.make_Node_with_Interface_on_Subnet(
                 subnet=subnet, status=NODE_STATUS.READY
             )
-            iface = node.interface_set.first()
+            iface = node.current_config.interface_set.first()
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.STICKY,
                 subnet=subnet,
@@ -1175,10 +1175,10 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
             factory.make_StaticIPAddress(
                 alloc_type=IPADDRESS_TYPE.STICKY,
                 subnet=subnet,
-                interface=node.interface_set.first(),
+                interface=node.current_config.interface_set.first(),
             )
         count, _ = count_queries(subnet.render_json_for_related_ips)
-        self.assertEqual(9, count)
+        self.assertEqual(10, count)
 
 
 class TestSubnetGetRelatedRanges(MAASServerTestCase):

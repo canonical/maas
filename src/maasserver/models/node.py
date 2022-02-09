@@ -290,7 +290,7 @@ class NodeQueriesMixin(MAASQueriesMixin):
         spaces.
         """
         return self.filter(
-            interface__ip_addresses__subnet__vlan__space__in=spaces
+            current_config__interface__ip_addresses__subnet__vlan__space__in=spaces
         )
 
     def exclude_spaces(self, spaces):
@@ -298,27 +298,29 @@ class NodeQueriesMixin(MAASQueriesMixin):
         spaces.
         """
         return self.exclude(
-            interface__ip_addresses__subnet__vlan__space__in=spaces
+            current_config__interface__ip_addresses__subnet__vlan__space__in=spaces
         )
 
     def filter_by_fabrics(self, fabrics):
         """Return the set of nodes with at least one interface in the specified
         fabrics.
         """
-        return self.filter(interface__vlan__fabric__in=fabrics)
+        return self.filter(current_config__interface__vlan__fabric__in=fabrics)
 
     def exclude_fabrics(self, fabrics):
         """Return the set of nodes without any interfaces in the specified
         fabrics.
         """
-        return self.exclude(interface__vlan__fabric__in=fabrics)
+        return self.exclude(
+            current_config__interface__vlan__fabric__in=fabrics
+        )
 
     def filter_by_fabric_classes(self, fabric_classes):
         """Return the set of nodes with at least one interface in the specified
         fabric classes.
         """
         return self.filter(
-            interface__vlan__fabric__class_type__in=fabric_classes
+            current_config__interface__vlan__fabric__class_type__in=fabric_classes
         )
 
     def exclude_fabric_classes(self, fabric_classes):
@@ -326,39 +328,43 @@ class NodeQueriesMixin(MAASQueriesMixin):
         fabric classes.
         """
         return self.exclude(
-            interface__vlan__fabric__class_type__in=fabric_classes
+            current_config__interface__vlan__fabric__class_type__in=fabric_classes
         )
 
     def filter_by_vids(self, vids):
         """Return the set of nodes with at least one interface whose VLAN has
         one of the specified VIDs.
         """
-        return self.filter(interface__vlan__vid__in=vids)
+        return self.filter(current_config__interface__vlan__vid__in=vids)
 
     def exclude_vids(self, vids):
         """Return the set of nodes without any interfaces whose VLAN has one of
         the specified VIDs.
         """
-        return self.exclude(interface__vlan__vid__in=vids)
+        return self.exclude(current_config__interface__vlan__vid__in=vids)
 
     def filter_by_subnets(self, subnets):
         """Return the set of nodes with at least one interface configured on
         one of the specified subnets.
         """
-        return self.filter(interface__ip_addresses__subnet__in=subnets)
+        return self.filter(
+            current_config__interface__ip_addresses__subnet__in=subnets
+        )
 
     def exclude_subnets(self, subnets):
         """Return the set of nodes without any interfaces configured on one of
         the specified subnets.
         """
-        return self.exclude(interface__ip_addresses__subnet__in=subnets)
+        return self.exclude(
+            current_config__interface__ip_addresses__subnet__in=subnets
+        )
 
     def filter_by_subnet_cidrs(self, subnet_cidrs):
         """Return the set of nodes with at least one interface configured on
         one of the specified subnet with the given CIDRs.
         """
         return self.filter(
-            interface__ip_addresses__subnet__cidr__in=subnet_cidrs
+            current_config__interface__ip_addresses__subnet__cidr__in=subnet_cidrs
         )
 
     def exclude_subnet_cidrs(self, subnet_cidrs):
@@ -366,7 +372,7 @@ class NodeQueriesMixin(MAASQueriesMixin):
         the specified subnet with the given CIDRs.
         """
         return self.exclude(
-            interface__ip_addresses__subnet__cidr__in=subnet_cidrs
+            current_config__interface__ip_addresses__subnet__cidr__in=subnet_cidrs
         )
 
     def filter_by_domains(self, domain_names):
@@ -374,7 +380,7 @@ class NodeQueriesMixin(MAASQueriesMixin):
         one of the specified dns zone names.
         """
         return self.filter(
-            interface__ip_addresses__dnsresource_set__domain__name__in=(
+            current_config__interface__ip_addresses__dnsresource_set__domain__name__in=(
                 domain_names
             )
         )
@@ -384,7 +390,7 @@ class NodeQueriesMixin(MAASQueriesMixin):
         one of the specified dns zone names.
         """
         return self.exclude(
-            interface__ip_addresses__dnsresource_set__domain__name__in=(
+            current_config__interface__ip_addresses__dnsresource_set__domain__name__in=(
                 domain_names
             )
         )
@@ -673,8 +679,8 @@ class RackControllerManager(ControllerManager):
         subnets = {Subnet.objects.get_best_subnet_for_ip(ip) for ip in ips}
         usable_racks = set(
             RackController.objects.filter(
-                interface__ip_addresses__subnet__in=subnets,
-                interface__ip_addresses__ip__isnull=False,
+                current_config__interface__ip_addresses__subnet__in=subnets,
+                current_config__interface__ip_addresses__ip__isnull=False,
             )
         )
         # There is no MAAS defined subnet for loop back so if its in our list
@@ -792,7 +798,9 @@ class RegionControllerManager(ControllerManager):
         """
         hostname = gethostname()
         filter_hostname = Q(hostname=hostname)
-        filter_macs = Q(interface__mac_address__in=get_mac_addresses())
+        filter_macs = Q(
+            current_config__interface__mac_address__in=get_mac_addresses()
+        )
         # Look at all nodes, not just controllers; we might have to upgrade.
         nodes = Node.objects.filter(filter_hostname | filter_macs)
         # Select distinct because the join to MACs might yield duplicates.
@@ -1698,7 +1706,7 @@ class Node(CleanSave, TimestampedModel):
 
     def on_network(self):
         """Return true if the node is connected to a managed network."""
-        for interface in self.interface_set.all():
+        for interface in self.current_config.interface_set.all():
             for link in interface.get_links():
                 if (
                     link["mode"] != INTERFACE_LINK_TYPE.LINK_UP
@@ -1763,7 +1771,7 @@ class Node(CleanSave, TimestampedModel):
         # just set randomly by the lease parser.
         return [
             ip_address.get_ip()
-            for interface in self.interface_set.all()
+            for interface in self.current_config.interface_set.all()
             for ip_address in interface.ip_addresses.all()
             if ip_address.ip
             and ip_address.alloc_type
@@ -1779,7 +1787,7 @@ class Node(CleanSave, TimestampedModel):
         """Dynamic IP addresses allocated to this node."""
         return [
             ip_address.ip
-            for interface in self.interface_set.all()
+            for interface in self.current_config.interface_set.all()
             for ip_address in interface.ip_addresses.all()
             if (
                 ip_address.ip
@@ -1788,7 +1796,11 @@ class Node(CleanSave, TimestampedModel):
         ]
 
     def get_interface_names(self):
-        return list(self.interface_set.all().values_list("name", flat=True))
+        return list(
+            self.current_config.interface_set.all().values_list(
+                "name", flat=True
+            )
+        )
 
     def get_next_ifname(self, ifnames=None):
         """
@@ -1884,7 +1896,7 @@ class Node(CleanSave, TimestampedModel):
         if (
             self.boot_interface is not None
             and self.id is not None
-            and self.id != self.boot_interface.node_id
+            and self.id != self.boot_interface.node_config.node_id
         ):
             raise ValidationError(
                 {"boot_interface": ["Must be one of the node's interfaces."]}
@@ -2106,13 +2118,17 @@ class Node(CleanSave, TimestampedModel):
         numa_node = self.default_numanode if self.is_machine else None
         iface, created = PhysicalInterface.objects.get_or_create(
             mac_address=mac,
-            defaults={"node": self, "name": name, "numa_node": numa_node},
+            defaults={
+                "node_config": self.current_config,
+                "name": name,
+                "numa_node": numa_node,
+            },
         )
-        if not created and iface.node != self:
+        if not created and iface.node_config != self.current_config:
             # This MAC address is already registered to a different node.
             raise ValidationError(
-                "MAC address %s already in use on %s."
-                % (mac_address, iface.node.hostname)
+                f"MAC address {mac_address} already in use "
+                f"on {iface.node_config.node.hostname}."
             )
         return iface
 
@@ -2947,9 +2963,7 @@ class Node(CleanSave, TimestampedModel):
                 machine = Machine.objects.filter(id=machine_id).first()
                 if machine is not None:
                     maaslog.info("%s: Deleting machine", machine.hostname)
-                    # Delete the related interfaces. This will remove all of IP
-                    # addresses that are linked to those interfaces.
-                    self.interface_set.all().delete()
+                    self._delete_related_interfaces()
                     # delete related VirtualMachine, if any
                     from maasserver.models.virtualmachine import VirtualMachine
 
@@ -2987,9 +3001,7 @@ class Node(CleanSave, TimestampedModel):
         else:
             maaslog.info("%s: Deleting node", self.hostname)
 
-            # Delete the related interfaces. This will remove all of IP
-            # addresses that are linked to those interfaces.
-            self.interface_set.all().delete()
+            self._delete_related_interfaces()
 
             # Delete my BMC if no other Nodes are using it.
             if (
@@ -3181,7 +3193,10 @@ class Node(CleanSave, TimestampedModel):
         # incase the system is setup in redundency(RAID or multiple NICs
         # can route to MAAS).
         interfaces = sorted(
-            (iface.serialize() for iface in self.interface_set.all()),
+            (
+                iface.serialize()
+                for iface in self.current_config.interface_set.all()
+            ),
             key=lambda iface: (
                 iface["id"] != self.boot_interface_id,
                 iface["id"],
@@ -4422,7 +4437,9 @@ class Node(CleanSave, TimestampedModel):
         self, bridge_type=None, bridge_stp=None, bridge_fd=None
     ):
         """Create an acquired bridge on all configured interfaces."""
-        interfaces = self.interface_set.exclude(type=INTERFACE_TYPE.BRIDGE)
+        interfaces = self.current_config.interface_set.exclude(
+            type=INTERFACE_TYPE.BRIDGE
+        )
         interfaces = interfaces.prefetch_related("ip_addresses")
         for interface in interfaces:
             if interface.is_configured():
@@ -4441,7 +4458,9 @@ class Node(CleanSave, TimestampedModel):
         # Query for the interfaces again here; if we use the cached
         # interface_set, we could skip a newly-created bridge if it was created
         # at deployment time.
-        for interface in Interface.objects.filter(node=self):
+        for interface in Interface.objects.filter(
+            node_config=self.current_config
+        ):
             maaslog.debug(f"Claiming IP for {self.system_id}:{interface.name}")
             claimed_ips = interface.claim_auto_ips(
                 temp_expires_after=temp_expires_after,
@@ -4492,8 +4511,8 @@ class Node(CleanSave, TimestampedModel):
             for subnet_id in subnets_to_ips.keys():
                 usable_racks = set(
                     RackController.objects.filter(
-                        interface__ip_addresses__subnet=subnet_id,
-                        interface__ip_addresses__ip__isnull=False,
+                        current_config__interface__ip_addresses__subnet=subnet_id,
+                        current_config__interface__ip_addresses__ip__isnull=False,
                     )
                 )
                 subnets_to_clients[subnet_id] = [
@@ -4571,7 +4590,7 @@ class Node(CleanSave, TimestampedModel):
                             # Create a Neighbour reference to the IP address
                             # so the next loop will not use that IP address.
                             rack_interface = Interface.objects.filter(
-                                node__system_id=rack_id,
+                                node_config__node__system_id=rack_id,
                                 ip_addresses__subnet_id=ip_obj.subnet_id,
                             )
                             rack_interface = rack_interface.order_by("id")
@@ -4640,7 +4659,7 @@ class Node(CleanSave, TimestampedModel):
     def release_interface_config(self):
         """Release IP addresses on all interface links set to AUTO and
         remove all acquired interfaces."""
-        for interface in self.interface_set.all():
+        for interface in self.current_config.interface_set.all():
             interface.release_auto_ips()
             if not interface.acquired:
                 continue
@@ -4668,7 +4687,7 @@ class Node(CleanSave, TimestampedModel):
         """
         self.gateway_link_ipv4 = None
         self.gateway_link_ipv6 = None
-        interfaces = self.interface_set.all()
+        interfaces = self.current_config.interface_set.all()
         for interface in interfaces:
             interface.clear_all_links(clearing_config=True)
 
@@ -4742,7 +4761,7 @@ class Node(CleanSave, TimestampedModel):
             boot_interface.force_auto_or_dhcp_link()
 
         # Set LINK_UP mode on all the other enabled interfaces.
-        for interface in self.interface_set.all():
+        for interface in self.current_config.interface_set.all():
             if interface == boot_interface:
                 # Skip the boot interface as it has already been configured.
                 continue
@@ -4760,13 +4779,15 @@ class Node(CleanSave, TimestampedModel):
         # that have already been cloned to make up the next layer of
         # interfaces.
         source_interfaces = list(
-            source_node.interface_set.exclude(type=INTERFACE_TYPE.PHYSICAL)
+            source_node.current_config.interface_set.exclude(
+                type=INTERFACE_TYPE.PHYSICAL
+            )
         )
         # Get another copy of interface objects since they will be modified
         # during cloning.
         interfaces_map = {
             interface.id: interface
-            for interface in source_node.interface_set.exclude(
+            for interface in source_node.current_config.interface_set.exclude(
                 type=INTERFACE_TYPE.PHYSICAL
             )
         }
@@ -4820,12 +4841,12 @@ class Node(CleanSave, TimestampedModel):
         """
         self_interfaces = {
             interface.name: interface
-            for interface in self.interface_set.all()
+            for interface in self.current_config.interface_set.all()
             if interface.type == INTERFACE_TYPE.PHYSICAL
         }
         missing = []
         mapping = {}
-        for interface in source_node.interface_set.all():
+        for interface in source_node.current_config.interface_set.all():
             if interface.type == INTERFACE_TYPE.PHYSICAL:
                 self_interface = self_interfaces.get(interface.name, None)
                 if self_interface is not None:
@@ -4899,7 +4920,9 @@ class Node(CleanSave, TimestampedModel):
     def _clone_interface(self, interface, dest_parents):
         """clone the `interface` linking to the `dest_parents`."""
         _clone_object(
-            interface, node=self, mac_address=dest_parents[0].mac_address
+            interface,
+            node_config=self.current_config,
+            mac_address=dest_parents[0].mac_address,
         )
         for parent in dest_parents:
             InterfaceRelationship.objects.create(
@@ -4933,8 +4956,10 @@ class Node(CleanSave, TimestampedModel):
             SELECT
                 interface.id, subnet.id, subnet.gateway_ip
             FROM maasserver_node AS node
+            JOIN maasserver_nodeconfig AS nodeconfig ON
+                nodeconfig.node_id = node.id
             JOIN maasserver_interface AS interface ON
-                interface.node_id = node.id
+                interface.node_config_id = nodeconfig.id
             JOIN maasserver_interface_ip_addresses AS link ON
                 link.interface_id = interface.id
             JOIN maasserver_staticipaddress AS staticip ON
@@ -4983,7 +5008,9 @@ class Node(CleanSave, TimestampedModel):
     def _get_best_interface_from_gateway_link(self, gateway_link):
         """Return the best interface for the `gateway_link` and this node."""
         return (
-            gateway_link.interface_set.filter(node=self)
+            gateway_link.interface_set.filter(
+                node_config_id=self.current_config_id
+            )
             .order_by("type", "id")
             .first()
             .id
@@ -5256,7 +5283,9 @@ class Node(CleanSave, TimestampedModel):
 
         # Only use "all" and perform the sorting manually to stop extra queries
         # when the `interface_set` is prefetched.
-        interfaces = sorted(self.interface_set.all(), key=attrgetter("id"))
+        interfaces = sorted(
+            self.current_config.interface_set.all(), key=attrgetter("id")
+        )
         if len(interfaces) == 0:
             return None
         return interfaces[0]
@@ -5271,7 +5300,7 @@ class Node(CleanSave, TimestampedModel):
         rack_controller = None
         if self.boot_cluster_ip is not None:
             rack_controller = RackController.objects.filter(
-                interface__ip_addresses__ip=self.boot_cluster_ip
+                current_config__interface__ip_addresses__ip=self.boot_cluster_ip
             ).first()
         if rack_controller is None:
             return self.get_boot_primary_rack_controller()
@@ -5336,7 +5365,7 @@ class Node(CleanSave, TimestampedModel):
         # Use all here and not filter on type so the precache is used.
         return [
             interface.mac_address
-            for interface in self.interface_set.all()
+            for interface in self.current_config.interface_set.all()
             if (
                 interface != boot_interface
                 and interface.type == INTERFACE_TYPE.PHYSICAL
@@ -5448,7 +5477,7 @@ class Node(CleanSave, TimestampedModel):
         # rack controller, the deploy will be rejected in any case.
         if self.get_boot_primary_rack_controller() is not None:
             subnets = Subnet.objects.filter(
-                staticipaddress__interface__node=self,
+                staticipaddress__interface__node_config_id=self.current_config_id,
                 staticipaddress__alloc_type__in=[
                     IPADDRESS_TYPE.AUTO,
                     IPADDRESS_TYPE.STICKY,
@@ -5468,7 +5497,7 @@ class Node(CleanSave, TimestampedModel):
                 # Node doesn't have any IP addresses in common with the rack
                 # controller, unless it has a DHCP assigned without a subnet.
                 dhcp_ips_exist = StaticIPAddress.objects.filter(
-                    interface__node=self,
+                    interface__node_config_id=self.current_config_id,
                     alloc_type=IPADDRESS_TYPE.DHCP,
                     subnet__isnull=True,
                 ).exists()
@@ -6261,7 +6290,7 @@ class Node(CleanSave, TimestampedModel):
         # Node's aren't created for Virsh or Intel Pods so the pod.hints.nodes
         # association isn't created. LXD Pods always have this association.
         our_static_ips = StaticIPAddress.objects.filter(
-            interface__node=self
+            interface__node_config_id=self.current_config_id
         ).values_list("ip")
         return Pod.objects.filter(
             Q(hints__nodes__in=[self]) | Q(ip_address__ip__in=our_static_ips)
@@ -6282,6 +6311,15 @@ class Node(CleanSave, TimestampedModel):
         machine anyway.
         """
         return self.dynamic and self.bmc_id is None
+
+    def _delete_related_interfaces(self):
+        """Delete the related interfaces.
+
+        This will remove all of IP addresses that are linked to those
+        interfaces.
+        """
+        for node_config in self.nodeconfig_set.all():
+            node_config.interface_set.all().delete()
 
 
 # Piston serializes objects based on the object class.
@@ -6370,7 +6408,7 @@ class Controller(Node):
         The returned object must be suitable to serialize into JSON for RPC
         purposes.
         """
-        interfaces = self.interface_set.all()
+        interfaces = self.current_config.interface_set.all()
         return {
             interface.name: interface.get_discovery_state()
             for interface in interfaces
@@ -6512,7 +6550,7 @@ class RackController(Controller):
         """
         subnet_ids = (
             StaticIPAddress.objects.filter(
-                interface__in=self.interface_set.all()
+                interface__node_config_id=self.current_config_id
             )
             .exclude(ip__isnull=True)
             .exclude(subnet_id__isnull=True)

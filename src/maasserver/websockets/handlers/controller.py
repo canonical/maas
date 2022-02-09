@@ -28,9 +28,11 @@ from maasserver.websockets.handlers.node import node_prefetch
 
 # return the list of VLAN ids connected to a controller
 _vlan_ids_aggr = ArrayAgg(
-    "interface__ip_addresses__subnet__vlan__id",
+    "current_config__interface__ip_addresses__subnet__vlan__id",
     distinct=True,
-    filter=Q(interface__ip_addresses__subnet__vlan__isnull=False),
+    filter=Q(
+        current_config__interface__ip_addresses__subnet__vlan__isnull=False
+    ),
 )
 
 
@@ -48,7 +50,9 @@ class ControllerHandler(MachineHandler):
             .prefetch_related("service_set")
             .prefetch_related("tags")
             .prefetch_related("ownerdata_set")
-            .prefetch_related("interface_set__ip_addresses__subnet__vlan")
+            .prefetch_related(
+                "current_config__interface_set__ip_addresses__subnet__vlan"
+            )
             .annotate(
                 status_event_type_description=Subquery(
                     Event.objects.filter(
@@ -165,7 +169,8 @@ class ControllerHandler(MachineHandler):
         )
         if not for_list:
             data["vlan_ids"] = [
-                interface.vlan_id for interface in obj.interface_set.all()
+                interface.vlan_id
+                for interface in obj.current_config.interface_set.all()
             ]
         return data
 

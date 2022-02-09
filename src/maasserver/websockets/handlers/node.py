@@ -98,13 +98,18 @@ def node_prefetch(queryset):
         .prefetch_related(f"{blockdev_prefetch}__virtualblockdevice")
         .prefetch_related(
             Prefetch(
-                "interface_set", queryset=Interface.objects.order_by("name")
+                "current_config__interface_set",
+                queryset=Interface.objects.order_by("name"),
             )
         )
-        .prefetch_related("interface_set__ip_addresses__subnet__vlan__space")
-        .prefetch_related("interface_set__ip_addresses__subnet__vlan__fabric")
-        .prefetch_related("interface_set__numa_node")
-        .prefetch_related("interface_set__vlan__fabric")
+        .prefetch_related(
+            "current_config__interface_set__ip_addresses__subnet__vlan__space"
+        )
+        .prefetch_related(
+            "current_config__interface_set__ip_addresses__subnet__vlan__fabric"
+        )
+        .prefetch_related("current_config__interface_set__numa_node")
+        .prefetch_related("current_config__interface_set__vlan__fabric")
         .prefetch_related("boot_interface__vlan__fabric")
         .prefetch_related("nodemetadata_set")
         .prefetch_related("tags")
@@ -327,7 +332,7 @@ class NodeHandler(TimestampedModelHandler):
             data["link_speeds"] = sorted(
                 {
                     interface.link_speed
-                    for interface in obj.interface_set.all()
+                    for interface in obj.current_config.interface_set.all()
                     if interface.link_speed > 0
                 }
             )
@@ -351,7 +356,7 @@ class NodeHandler(TimestampedModelHandler):
                 # Network
                 data["interfaces"] = [
                     self.dehydrate_interface(interface, obj)
-                    for interface in obj.interface_set.all()
+                    for interface in obj.current_config.interface_set.all()
                 ]
                 data["dhcp_on"] = self.get_providing_dhcp(obj)
 
@@ -806,7 +811,7 @@ class NodeHandler(TimestampedModelHandler):
         ip_addresses = [
             {"ip": ip_address.get_ip(), "is_boot": interface == boot_interface}
             for interface in sorted(
-                obj.interface_set.all(), key=attrgetter("name")
+                obj.current_config.interface_set.all(), key=attrgetter("name")
             )
             for ip_address in interface.ip_addresses.all()
             if ip_address.ip
@@ -823,7 +828,8 @@ class NodeHandler(TimestampedModelHandler):
             ip_addresses = [
                 {"ip": ip_address.ip, "is_boot": interface == boot_interface}
                 for interface in sorted(
-                    obj.interface_set.all(), key=attrgetter("name")
+                    obj.current_config.interface_set.all(),
+                    key=attrgetter("name"),
                 )
                 for ip_address in interface.ip_addresses.all()
                 if (
@@ -911,7 +917,7 @@ class NodeHandler(TimestampedModelHandler):
 
     def get_all_subnets(self, obj):
         subnets = set()
-        for interface in obj.interface_set.all():
+        for interface in obj.current_config.interface_set.all():
             for ip_address in interface.ip_addresses.all():
                 if ip_address.subnet is not None:
                     subnets.add(ip_address.subnet)
@@ -919,7 +925,7 @@ class NodeHandler(TimestampedModelHandler):
 
     def get_all_fabric_names(self, obj, subnets):
         fabric_names = set()
-        for interface in obj.interface_set.all():
+        for interface in obj.current_config.interface_set.all():
             if interface.vlan is not None:
                 fabric_names.add(interface.vlan.fabric.name)
         for subnet in subnets:
@@ -953,7 +959,7 @@ class NodeHandler(TimestampedModelHandler):
 
     def get_providing_dhcp(self, obj):
         """Return if providing DHCP using the prefetched query."""
-        for interface in obj.interface_set.all():
+        for interface in obj.current_config.interface_set.all():
             if interface.vlan is not None:
                 if interface.vlan.dhcp_on:
                     return True

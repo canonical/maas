@@ -192,13 +192,18 @@ class TestListConnectedMACs(APITestCase.ForUser):
         # Create MACs connected to the same node.
         interfaces = interfaces + [
             self.make_interface(
-                subnets=[subnet], owner=self.user, node=interfaces[0].node
+                subnets=[subnet],
+                owner=self.user,
+                node=interfaces[0].node_config.node,
             )
             for _ in range(3)
         ]
         sorted_interfaces = sorted(
             interfaces,
-            key=lambda x: (x.node.hostname.lower(), x.mac_address.get_raw()),
+            key=lambda x: (
+                x.node_config.node.hostname.lower(),
+                x.mac_address.get_raw(),
+            ),
         )
         self.assertEqual(
             [nic.mac_address.get_raw() for nic in sorted_interfaces],

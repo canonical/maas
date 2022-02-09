@@ -418,8 +418,10 @@ class StaticIPAddressManager(Manager):
                 FROM maasserver_interface_ip_addresses AS iia
                 JOIN maasserver_interface AS iface ON
                     iia.interface_id = iface.id
+                JOIN maasserver_nodeconfig AS nodeconfig ON
+                    nodeconfig.id = iface.node_config_id
                 JOIN maasserver_node AS nd ON
-                    iface.node_id = nd.id
+                    nd.id = nodeconfig.node_id
                 JOIN maasserver_domain AS dom ON
                     nd.domain_id = dom.id
                 LEFT JOIN maasserver_domain AS dom2 ON
@@ -590,8 +592,10 @@ class StaticIPAddressManager(Manager):
                 parent.id = parent_rel.child_id
             LEFT OUTER JOIN maasserver_interface AS parent_parent ON
                 parent_rel.parent_id = parent_parent.id
+            JOIN maasserver_nodeconfig as nodeconfig ON
+                nodeconfig.id = interface.node_config_id
             JOIN maasserver_node AS node ON
-                node.id = interface.node_id
+                node.id = nodeconfig.node_id
             JOIN maasserver_domain AS domain ON
                 domain.id = node.domain_id
             JOIN maasserver_interface_ip_addresses AS link ON
@@ -668,8 +672,10 @@ class StaticIPAddressManager(Manager):
                 alloc_type != 6 /* DISCOVERED */ AS assigned
             FROM
                 maasserver_interface AS interface
+            JOIN maasserver_nodeconfig AS nodeconfig ON
+                nodeconfig.id = interface.node_config_id
             JOIN maasserver_node AS node ON
-                node.id = interface.node_id
+                node.id = nodeconfig.node_id
             JOIN maasserver_domain AS domain ON
                 domain.id = node.domain_id
             JOIN maasserver_interface_ip_addresses AS link ON

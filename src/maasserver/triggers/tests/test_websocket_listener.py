@@ -1,9 +1,5 @@
-# Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Use the `PostgresListenerService` to test all of the triggers from for
-`maasserver.triggers.websocket`"""
-
 
 from contextlib import contextmanager
 import logging
@@ -1958,7 +1954,9 @@ class TestNodeInterfaceListener(
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_interface, interface.id, {"node": node2}
+                self.update_interface,
+                interface.id,
+                {"node_config": node2.current_config},
             )
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
@@ -2062,7 +2060,9 @@ class TestDeviceWithParentInterfaceListener(
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_interface, interface.id, {"node": device2}
+                self.update_interface,
+                interface.id,
+                {"node_config": device2.current_config},
             )
             yield dvs[0].get(timeout=2)
             yield dvs[1].get(timeout=2)
@@ -4883,7 +4883,7 @@ class TestPodListener(
 
         def _change_interface_node(interface):
             node2 = factory.make_Node()
-            interface.node = node2
+            interface.node_config = node2.current_config
             interface.save()
 
         listener = self.make_listener_without_delay()

@@ -1,8 +1,6 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the DNSResource model."""
-
 
 from datetime import datetime, timedelta
 import re
@@ -247,7 +245,7 @@ class DNSResourceTest(MAASServerTestCase):
             subnet=subnet, hostname=name, domain=domain
         )
         sip1 = factory.make_StaticIPAddress()
-        node.interface_set.first().ip_addresses.add(sip1)
+        node.current_config.interface_set.first().ip_addresses.add(sip1)
         sip2 = factory.make_StaticIPAddress()
         dnsresource.ip_addresses.add(sip2)
         self.assertCountEqual(

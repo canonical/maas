@@ -346,9 +346,8 @@ def get_known_host_interfaces(pod: Pod) -> list:
     host = pod.host
     if host is None:
         return []
-    interfaces = host.interface_set.all()
     result = []
-    for interface in interfaces:
+    for interface in host.current_config.interface_set.all():
         ifname = interface.name
         attach_name = ifname
         attach_vlan = None
@@ -544,7 +543,7 @@ class ComposeMachineForm(forms.Form):
         result = nodes_by_interface(
             interfaces_label_map,
             preconfigured=False,
-            include_filter=dict(node__id=self.pod.host.id),
+            include_filter={"node_config__node_id": self.pod.host.id},
         )
         pod_node_id = self.pod.host.id
         if pod_node_id not in result.node_ids:

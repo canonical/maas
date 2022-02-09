@@ -186,8 +186,6 @@ class TagHandler(OperationsHandler):
         nodes = prefetch_queryset(nodes, NODES_PREFETCH).order_by("id")
         # Set related node parents so no extra queries are needed.
         for node in nodes:
-            for interface in node.interface_set.all():
-                interface.node = node
             for block_device in node.current_config.blockdevice_set.all():
                 block_device.node = node
         return [node.as_self() for node in nodes]

@@ -4089,7 +4089,9 @@ class TestDNSInterfaceStaticIPAddressListener(
     def test_sends_message_for_interface_staticipaddress_link(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        node = yield deferToDatabase(lambda nic: nic.node, interface)
+        node = yield deferToDatabase(
+            lambda nic: nic.node_config.node, interface
+        )
         subnet = yield deferToDatabase(self.create_subnet)
         yield self.capturePublication()
         dv = DeferredValue()
@@ -4145,7 +4147,9 @@ class TestDNSInterfaceStaticIPAddressListener(
     def test_sends_message_for_interface_staticipaddress_unlink(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        node = yield deferToDatabase(lambda nic: nic.node, interface)
+        node = yield deferToDatabase(
+            lambda nic: nic.node_config.node, interface
+        )
         subnet = yield deferToDatabase(self.create_subnet)
         sip = yield deferToDatabase(
             self.create_staticipaddress,
@@ -4739,7 +4743,7 @@ class TestDNSInterfaceListener(
     def migrate_unknown_to_physical(self, id, node):
         nic = Interface.objects.get(id=id)
         nic.type = INTERFACE_TYPE.PHYSICAL
-        nic.node = node
+        nic.node_config = node.current_config
         nic.__class__ = PhysicalInterface
         nic.save()
 
@@ -4747,7 +4751,7 @@ class TestDNSInterfaceListener(
     def migrate_physical_to_unknown(self, id):
         nic = Interface.objects.get(id=id)
         nic.type = INTERFACE_TYPE.UNKNOWN
-        nic.node = None
+        nic.node_config = None
         nic.__class__ = UnknownInterface
         nic.save()
 
@@ -4756,7 +4760,9 @@ class TestDNSInterfaceListener(
     def test_sends_message_for_interface_update_name(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        node = yield deferToDatabase(lambda nic: nic.node, interface)
+        node = yield deferToDatabase(
+            lambda nic: nic.node_config.node, interface
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -4809,7 +4815,9 @@ class TestDNSInterfaceListener(
     def test_sends_message_for_physical_to_unknown(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        node = yield deferToDatabase(lambda nic: nic.node, interface)
+        node = yield deferToDatabase(
+            lambda nic: nic.node_config.node, interface
+        )
         yield self.capturePublication()
         dv = DeferredValue()
         listener = self.make_listener_without_delay()
@@ -4836,7 +4844,9 @@ class TestDNSInterfaceListener(
     def test_sends_message_for_interface_changing_to_new_node(self):
         yield deferToDatabase(register_system_triggers)
         interface = yield deferToDatabase(self.create_interface)
-        old_node = yield deferToDatabase(lambda nic: nic.node, interface)
+        old_node = yield deferToDatabase(
+            lambda nic: nic.node_config.node, interface
+        )
         new_node = yield deferToDatabase(self.create_node)
         yield self.capturePublication()
         dv = DeferredValue()
@@ -4845,7 +4855,9 @@ class TestDNSInterfaceListener(
         yield listener.startService()
         try:
             yield deferToDatabase(
-                self.update_interface, interface.id, {"node": new_node}
+                self.update_interface,
+                interface.id,
+                {"node_config": new_node.current_config},
             )
             yield dv.get(timeout=2)
             yield self.assertPublicationUpdated()

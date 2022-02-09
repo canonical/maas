@@ -1,8 +1,6 @@
 # Copyright 2015-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test `maasserver.preseed_network`."""
-
 
 from collections import OrderedDict
 import random
@@ -138,7 +136,9 @@ class AssertNetworkConfigMixin:
         self.assertThat(output_network, MatchesListwise(expected_equals))
 
     def collect_interface_config(self, node, filter="physical"):
-        interfaces = node.interface_set.filter(enabled=True).order_by("name")
+        interfaces = node.current_config.interface_set.filter(
+            enabled=True
+        ).order_by("name")
         if filter:
             interfaces = interfaces.filter(type=filter)
 
@@ -337,7 +337,7 @@ class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         node = factory.make_Node_with_Interface_on_Subnet(
             interface_count=2, subnet=subnet, domain=domain
         )
-        for iface in node.interface_set.filter(enabled=True):
+        for iface in node.current_config.interface_set.filter(enabled=True):
             factory.make_StaticIPAddress(
                 interface=iface, subnet=iface.vlan.subnet_set.first()
             )
@@ -347,7 +347,7 @@ class TestSingleAddrFamilyLayout(MAASServerTestCase, AssertNetworkConfigMixin):
                 "autoconf": factory.pick_bool(),
             }
             iface.save()
-        extra_interface = node.interface_set.all()[1]
+        extra_interface = node.current_config.interface_set.all()[1]
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip="",
@@ -375,7 +375,7 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         node = factory.make_Node_with_Interface_on_Subnet(
             interface_count=2, domain=domain
         )
-        for iface in node.interface_set.filter(enabled=True):
+        for iface in node.current_config.interface_set.filter(enabled=True):
             factory.make_StaticIPAddress(
                 interface=iface, subnet=iface.vlan.subnet_set.first()
             )
@@ -385,7 +385,7 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
                 "autoconf": factory.pick_bool(),
             }
             iface.save()
-        extra_interface = node.interface_set.all()[1]
+        extra_interface = node.current_config.interface_set.all()[1]
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip="",
@@ -404,8 +404,8 @@ class TestSimpleNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
     def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(interface_count=2)
-        interfaces = list(node.interface_set.all())
-        vlan = node.interface_set.first().vlan
+        interfaces = list(node.current_config.interface_set.all())
+        vlan = node.current_config.interface_set.first().vlan
         bond_iface = factory.make_Interface(
             iftype=INTERFACE_TYPE.BOND,
             node=node,
@@ -429,7 +429,7 @@ class TestBondNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
 class TestVLANNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
     def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(interface_count=1)
-        interfaces = node.interface_set.all()
+        interfaces = node.current_config.interface_set.all()
         vlan_iface = factory.make_Interface(
             iftype=INTERFACE_TYPE.VLAN, node=node, parents=interfaces
         )
@@ -447,8 +447,8 @@ class TestVLANOnBondNetworkLayout(
 ):
     def test_renders_expected_output(self):
         node = factory.make_Node_with_Interface_on_Subnet(interface_count=2)
-        phys_ifaces = list(node.interface_set.all())
-        phys_vlan = node.interface_set.first().vlan
+        phys_ifaces = list(node.current_config.interface_set.all())
+        phys_vlan = node.current_config.interface_set.first().vlan
         bond_iface = factory.make_Interface(
             iftype=INTERFACE_TYPE.BOND,
             node=node,
@@ -481,7 +481,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         node = factory.make_Node_with_Interface_on_Subnet(
             ip_version=self.ip_version, subnet=subnet
         )
-        iface = node.interface_set.first()
+        iface = node.current_config.interface_set.first()
         factory.make_StaticIPAddress(
             ip=None,
             alloc_type=IPADDRESS_TYPE.DHCP,
@@ -527,7 +527,7 @@ class TestDHCPNetworkLayout(MAASServerTestCase, AssertNetworkConfigMixin):
         node = factory.make_Node_with_Interface_on_Subnet(
             ip_version=self.ip_version, subnet=subnet
         )
-        iface = node.interface_set.first()
+        iface = node.current_config.interface_set.first()
         factory.make_StaticIPAddress(
             ip=None,
             alloc_type=IPADDRESS_TYPE.DHCP,
@@ -1905,7 +1905,7 @@ class TestNetplan(MAASServerTestCase):
         vlan = factory.make_VLAN()
         subnet = factory.make_Subnet(dns_servers=[], vlan=vlan)
         rack = factory.make_RackController(subnet=subnet)
-        rack_iface = rack.interface_set.first()
+        rack_iface = rack.current_config.interface_set.first()
         rack_ip = factory.make_StaticIPAddress(
             subnet=subnet, interface=rack_iface
         )
@@ -1914,7 +1914,7 @@ class TestNetplan(MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING, subnet=subnet
         )
-        iface = node.interface_set.first()
+        iface = node.current_config.interface_set.first()
         factory.make_StaticIPAddress(subnet=subnet, interface=iface)
         v2 = self._render_netplan_dict(node)
         self.assertDictEqual(
@@ -1930,14 +1930,14 @@ class TestNetplan(MAASServerTestCase):
             dns_servers=[nameserver], vlan=vlan, allow_dns=False
         )
         rack = factory.make_RackController(subnet=subnet)
-        rack_iface = rack.interface_set.first()
+        rack_iface = rack.current_config.interface_set.first()
         factory.make_StaticIPAddress(subnet=subnet, interface=rack_iface)
         vlan.primary_rack = rack
         vlan.save()
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING, subnet=subnet
         )
-        iface = node.interface_set.first()
+        iface = node.current_config.interface_set.first()
         factory.make_StaticIPAddress(subnet=subnet, interface=iface)
         v2 = self._render_netplan_dict(node)
         self.assertDictEqual(
@@ -1953,7 +1953,7 @@ class TestNetplan(MAASServerTestCase):
         )
         subnet2 = factory.make_Subnet(dns_servers=[], vlan=vlan, version=4)
         rack = factory.make_RackController(subnet=subnet1)
-        rack_iface = rack.interface_set.first()
+        rack_iface = rack.current_config.interface_set.first()
         rack_ip1 = factory.make_StaticIPAddress(
             subnet=subnet1, interface=rack_iface
         )
@@ -1963,7 +1963,7 @@ class TestNetplan(MAASServerTestCase):
         node = factory.make_Node_with_Interface_on_Subnet(
             status=NODE_STATUS.DEPLOYING, subnet=subnet1
         )
-        iface = node.interface_set.first()
+        iface = node.current_config.interface_set.first()
         factory.make_StaticIPAddress(subnet=subnet1, interface=iface)
         v2 = self._render_netplan_dict(node)
         self.assertDictEqual(

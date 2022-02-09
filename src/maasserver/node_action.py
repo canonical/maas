@@ -169,7 +169,7 @@ class NodeAction(metaclass=ABCMeta):
 
     def has_networking(self):
         """Whether the node has networking access for the purpose of the action."""
-        return self.node.interface_set.exists()
+        return self.node.current_config.interface_set.exists()
 
     @abstractmethod
     def get_node_action_audit_description(self, action):

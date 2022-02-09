@@ -28,7 +28,6 @@ from piston3.utils import rc
 import yaml
 
 from maasserver import locks
-from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
     AnonNodeHandler,
@@ -149,7 +148,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "tag_names",
     "address_ttl",
     "ip_addresses",
-    ("interface_set", DISPLAYED_INTERFACE_FIELDS),
+    "interface_set",
     "zone",
     "pool",
     "disable_ipv4",
@@ -355,7 +354,8 @@ def get_allocated_composed_machine(
                 storage = {}
             if interfaces:
                 result = nodes_by_interface(
-                    interfaces, include_filter=dict(node__id=machine.id)
+                    interfaces,
+                    include_filter=dict(node_config__node_id=machine.id),
                 )
                 interfaces = result.label_map
             else:
@@ -1881,15 +1881,15 @@ class AnonMachinesHandler(AnonNodesHandler):
             if macs_valid:
                 interface = Interface.objects.filter(
                     mac_address__in=mac_addresses,
-                    node__node_type=NODE_TYPE.MACHINE,
-                    node__status__in=[
+                    node_config__node__node_type=NODE_TYPE.MACHINE,
+                    node_config__node__status__in=[
                         NODE_STATUS.NEW,
                         NODE_STATUS.COMMISSIONING,
                     ],
                 ).first()
             if interface is not None:
                 machine = self._update_new_node(
-                    interface.node.as_self(),
+                    interface.node_config.node.as_self(),
                     architecture,
                     power_type,
                     power_parameters,

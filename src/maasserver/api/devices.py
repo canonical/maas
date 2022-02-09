@@ -5,7 +5,6 @@
 from django.core.exceptions import PermissionDenied
 from piston3.utils import rc
 
-from maasserver.api.interfaces import DISPLAYED_INTERFACE_FIELDS
 from maasserver.api.logger import maaslog
 from maasserver.api.nodes import (
     NodeHandler,
@@ -32,7 +31,7 @@ DISPLAYED_DEVICE_FIELDS = (
     "tag_names",
     "address_ttl",
     "ip_addresses",
-    ("interface_set", DISPLAYED_INTERFACE_FIELDS),
+    "interface_set",
     "zone",
     "node_type",
     "node_type_name",

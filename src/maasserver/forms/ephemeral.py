@@ -45,7 +45,7 @@ class TestForm(Form):
 
     def _get_interface_choices(self):
         choices = [("all", "all")]
-        for interface in self.instance.interface_set.filter(
+        for interface in self.instance.current_config.interface_set.filter(
             children_relationships=None
         ):
             choices.append((interface.id, interface.id))

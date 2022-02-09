@@ -115,7 +115,8 @@ class IPAddressesHandler(OperationsHandler):
                 raise MAASAPIBadRequest(
                     "MAC address %s already belongs to %s. Use of the "
                     "interface API is required, for an interface that belongs "
-                    "to a node." % (nic.mac_address, nic.node.hostname)
+                    "to a node."
+                    % (nic.mac_address, nic.node_config.node.hostname)
                 )
 
             # Link the new interface on the same subnet as the
@@ -310,7 +311,7 @@ class IPAddressesHandler(OperationsHandler):
         # Delete any interfaces that no longer have any IP addresses and have
         # no associated nodes.
         for interface in interfaces:
-            if interface.node is None and interface.only_has_link_up():
+            if interface.node_config is None and interface.only_has_link_up():
                 interface.delete()
 
         maaslog.info(

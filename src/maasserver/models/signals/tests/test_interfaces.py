@@ -169,18 +169,24 @@ class TestUpdateChildInterfaceParents(MAASServerTestCase):
     )
 
     def test_updates_interface_parents(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        node_config = factory.make_NodeConfig()
+        parent1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
         )
         child = factory.make_Interface(self.iftype, parents=[parent1, parent2])
         self.assertEqual(child.vlan, reload_object(parent1).vlan)
         self.assertEqual(child.vlan, reload_object(parent2).vlan)
 
     def test_update_interface_clears_parent_links(self):
-        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        node_config = factory.make_NodeConfig()
+        parent1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node=parent1.node
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
         )
         static_ip = factory.make_StaticIPAddress(interface=parent1)
         factory.make_Interface(self.iftype, parents=[parent1, parent2])

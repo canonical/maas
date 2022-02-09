@@ -1057,14 +1057,14 @@ class FilterNodeForm(RenamableFieldsForm):
         )
         if fabric_classes is not None and len(fabric_classes) > 0:
             filtered_nodes = filtered_nodes.filter(
-                interface__vlan__fabric__class_type__in=fabric_classes
+                current_config__interface__vlan__fabric__class_type__in=fabric_classes
             )
         not_fabric_classes = self.cleaned_data.get(
             self.get_field_name("not_fabric_classes")
         )
         if not_fabric_classes is not None and len(not_fabric_classes) > 0:
             filtered_nodes = filtered_nodes.exclude(
-                interface__vlan__fabric__class_type__in=not_fabric_classes
+                current_config__interface__vlan__fabric__class_type__in=not_fabric_classes
             )
         return filtered_nodes
 
@@ -1074,14 +1074,14 @@ class FilterNodeForm(RenamableFieldsForm):
             # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
             # is null (fabric-<id>).
             filtered_nodes = filtered_nodes.filter(
-                interface__vlan__fabric__name__in=fabrics
+                current_config__interface__vlan__fabric__name__in=fabrics
             )
         not_fabrics = self.cleaned_data.get(self.get_field_name("not_fabrics"))
         if not_fabrics is not None and len(not_fabrics) > 0:
             # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
             # is null (fabric-<id>).
             filtered_nodes = filtered_nodes.exclude(
-                interface__vlan__fabric__name__in=not_fabrics
+                current_config__interface__vlan__fabric__name__in=not_fabrics
             )
         return filtered_nodes
 
@@ -1089,12 +1089,14 @@ class FilterNodeForm(RenamableFieldsForm):
         vlans = self.cleaned_data.get(self.get_field_name("vlans"))
         if vlans is not None and len(vlans) > 0:
             for vlan in set(vlans):
-                filtered_nodes = filtered_nodes.filter(interface__vlan=vlan)
+                filtered_nodes = filtered_nodes.filter(
+                    current_config__interface__vlan=vlan
+                )
         not_vlans = self.cleaned_data.get(self.get_field_name("not_vlans"))
         if not_vlans is not None and len(not_vlans) > 0:
             for not_vlan in set(not_vlans):
                 filtered_nodes = filtered_nodes.exclude(
-                    interface__vlan=not_vlan
+                    current_config__interface__vlan=not_vlan
                 )
         return filtered_nodes
 
@@ -1103,13 +1105,13 @@ class FilterNodeForm(RenamableFieldsForm):
         if subnets is not None and len(subnets) > 0:
             for subnet in set(subnets):
                 filtered_nodes = filtered_nodes.filter(
-                    interface__ip_addresses__subnet=subnet
+                    current_config__interface__ip_addresses__subnet=subnet
                 )
         not_subnets = self.cleaned_data.get(self.get_field_name("not_subnets"))
         if not_subnets is not None and len(not_subnets) > 0:
             for not_subnet in set(not_subnets):
                 filtered_nodes = filtered_nodes.exclude(
-                    interface__ip_addresses__subnet=not_subnet
+                    current_config__interface__ip_addresses__subnet=not_subnet
                 )
         return filtered_nodes
 
@@ -1117,7 +1119,7 @@ class FilterNodeForm(RenamableFieldsForm):
         link_speed = self.cleaned_data.get(self.get_field_name("link_speed"))
         if link_speed:
             filtered_nodes = filtered_nodes.filter(
-                interface__link_speed__gte=link_speed
+                current_config__interface__link_speed__gte=link_speed
             )
         return filtered_nodes
 
@@ -1330,7 +1332,7 @@ class ReadNodesForm(FilterNodeForm):
         )
         if mac_addresses:
             filtered_nodes = filtered_nodes.filter(
-                interface__mac_address__in=mac_addresses
+                current_config__interface__mac_address__in=mac_addresses
             )
         return filtered_nodes
 

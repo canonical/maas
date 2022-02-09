@@ -164,13 +164,9 @@ class InterfacesHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id, request.user, NodePermission.view
         )
-        interfaces = prefetch_queryset(
-            node.interface_set.all(), INTERFACES_PREFETCH
+        return prefetch_queryset(
+            node.current_config.interface_set.all(), INTERFACES_PREFETCH
         )
-        # Preload the node on the interface, no need for another query.
-        for interface in interfaces:
-            interface.node = node
-        return interfaces
 
     @operation(idempotent=False)
     def create_physical(self, request, system_id):
@@ -800,7 +796,7 @@ class InterfaceHandler(OperationsHandler):
             # This node needs to be in the correct state to modify
             # the interface.
             raise_error_for_invalid_state_on_allocated_operations(
-                interface.node, request.user, "delete interface"
+                interface.node_config.node, request.user, "delete interface"
             )
         interface.delete()
         return rc.DELETED

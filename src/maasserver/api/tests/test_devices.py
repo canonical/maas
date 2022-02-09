@@ -57,7 +57,11 @@ class TestDevicesAPI(APITestCase.ForUser):
         self.assertEqual(device.node_type, NODE_TYPE.DEVICE)
         self.assertEqual(self.user, device.owner)
         self.assertEqual(
-            macs, {nic.mac_address for nic in device.interface_set.all()}
+            macs,
+            {
+                nic.mac_address
+                for nic in device.current_config.interface_set.all()
+            },
         )
 
     def test_POST_creates_device_with_parent(self):
@@ -150,7 +154,7 @@ class TestDevicesAPI(APITestCase.ForUser):
             },
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(
+        self.assertCountEqual(
             {
                 "address_ttl",
                 "hostname",

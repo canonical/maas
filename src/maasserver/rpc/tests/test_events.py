@@ -1,7 +1,5 @@
-# Copyright 2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2018-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for :py:module:`~maasserver.rpc.events`."""
 
 
 import datetime
@@ -98,7 +96,7 @@ class TestSendEventMACAddress(MAASServerTestCase):
         node = factory.make_Node(interface=True)
         description = factory.make_name("description")
         timestamp = datetime.datetime.utcnow()
-        mac_address = node.interface_set.first().mac_address
+        mac_address = node.current_config.interface_set.first().mac_address
         events.send_event_mac_address(
             mac_address, event_type.name, description, timestamp
         )
@@ -140,7 +138,9 @@ class TestSendEventIPAddress(MAASServerTestCase):
         node = factory.make_Node(interface=True)
         description = factory.make_name("description")
         timestamp = datetime.datetime.utcnow()
-        ip = factory.make_StaticIPAddress(interface=node.interface_set.first())
+        ip = factory.make_StaticIPAddress(
+            interface=node.current_config.interface_set.first()
+        )
         events.send_event_ip_address(
             ip.ip, event_type.name, description, timestamp
         )
@@ -166,7 +166,7 @@ class TestSendEventIPAddress(MAASServerTestCase):
         description = factory.make_name("description")
         timestamp = datetime.datetime.utcnow()
         ip = factory.make_StaticIPAddress()
-        for interface in node.interface_set.all():
+        for interface in node.current_config.interface_set.all():
             ip.interface_set.add(interface)
         events.send_event_ip_address(
             ip.ip, event_type.name, description, timestamp

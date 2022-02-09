@@ -107,7 +107,7 @@ class TestNetworksAPI(APITestCase.ForUser):
     def test_GET_filters_by_node(self):
         subnets = [factory.make_Subnet() for _ in range(5)]
         interface = self.make_interface(subnets=subnets[1:3])
-        node = interface.node
+        node = interface.node_config.node
         response = self.client.get(
             reverse("networks_handler"), {"node": [node.system_id]}
         )
@@ -124,8 +124,8 @@ class TestNetworksAPI(APITestCase.ForUser):
         subnets = [factory.make_Subnet() for _ in range(5)]
         interface1 = self.make_interface(subnets=subnets[1:3])
         interface2 = self.make_interface(subnets=subnets[2:4])
-        node1 = interface1.node
-        node2 = interface2.node
+        node1 = interface1.node_config.node
+        node2 = interface2.node_config.node
         # Attach another interface to node1.
         self.make_interface(subnets=subnets[1:2], node=node1)
 
@@ -156,7 +156,7 @@ class TestNetworksAPI(APITestCase.ForUser):
     def test_GET_ignores_duplicates(self):
         subnet = factory.make_Subnet()
         interface = self.make_interface(subnets=[subnet])
-        node = interface.node
+        node = interface.node_config.node
         response = self.client.get(
             reverse("networks_handler"),
             {"node": [node.system_id, node.system_id]},

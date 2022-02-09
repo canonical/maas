@@ -477,7 +477,9 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             subnet=subnet,
             interface=boot_interface,
         )
-        iface2 = node.interface_set.exclude(id=boot_interface.id).first()
+        iface2 = node.current_config.interface_set.exclude(
+            id=boot_interface.id
+        ).first()
         sip2 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_Subnet(subnet),
@@ -1164,7 +1166,7 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             subnet=subnet, domain=parent, hostname=name
         )
         sip1 = factory.make_StaticIPAddress(subnet=subnet)
-        node.interface_set.first().ip_addresses.add(sip1)
+        node.current_config.interface_set.first().ip_addresses.add(sip1)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(parent)
         self.assertEqual(
             {
@@ -1301,7 +1303,9 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             subnet=subnet,
             interface=boot_interface,
         )
-        iface2 = node.interface_set.exclude(id=boot_interface.id).first()
+        iface2 = node.current_config.interface_set.exclude(
+            id=boot_interface.id
+        ).first()
         sip2 = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip=factory.pick_ip_in_Subnet(subnet),
@@ -1592,7 +1596,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, domain=domain1, vlan=subnet.vlan
         )
-        node.interface_set.first().ip_addresses.add(ip1)
+        node.current_config.interface_set.first().ip_addresses.add(ip1)
         expected0 = {name2: HostnameIPMapping(None, 30, {ip2.ip}, None)}
         expected1 = {
             node.fqdn: HostnameIPMapping(
@@ -1635,7 +1639,7 @@ class TestUserReservedStaticIPAddress(MAASServerTestCase):
         node = factory.make_Node(
             interface=True, domain=parent, hostname=name, vlan=subnet.vlan
         )
-        node.interface_set.first().ip_addresses.add(ip)
+        node.current_config.interface_set.first().ip_addresses.add(ip)
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(domain0)
         self.expectThat(mappings, HasLength(0))
         mappings = StaticIPAddress.objects.get_hostname_ip_mapping(parent)
@@ -1741,8 +1745,8 @@ class TestRenderJSON(MAASServerTestCase):
         user = factory.make_User()
         subnet = factory.make_Subnet()
         node = factory.make_Node_with_Interface_on_Subnet(subnet=subnet)
-        self.expectThat(node.interface_set.count(), Equals(1))
-        iface = node.interface_set.first()
+        self.assertEqual(node.current_config.interface_set.count(), 1)
+        iface = node.current_config.interface_set.first()
         ip = factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_Subnet(subnet),
             user=user,

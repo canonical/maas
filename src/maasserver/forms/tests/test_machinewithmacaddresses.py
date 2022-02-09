@@ -198,7 +198,11 @@ class TestMachineWithMACAddressesForm(MAASServerTestCase):
         self.assertIsNotNone(node.id)  # The node is persisted.
         self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertCountEqual(
-            macs, [nic.mac_address for nic in node.interface_set.all()]
+            macs,
+            [
+                nic.mac_address
+                for nic in node.current_config.interface_set.all()
+            ],
         )
 
     def test_form_without_hostname_generates_hostname(self):

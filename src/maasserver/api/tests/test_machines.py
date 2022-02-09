@@ -173,7 +173,10 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.expectThat(machine.hostname, Equals(hostname))
         self.expectThat(machine.architecture, Equals(architecture))
         self.expectThat(
-            {nic.mac_address for nic in machine.interface_set.all()},
+            {
+                nic.mac_address
+                for nic in machine.current_config.interface_set.all()
+            },
             Equals(macs),
         )
 
@@ -228,7 +231,10 @@ class TestMachinesAPI(APITestCase.ForUser):
         machine = Machine.objects.get(system_id=system_id)
         self.expectThat(machine.hostname, Equals(hostname))
         self.expectThat(
-            {nic.mac_address for nic in machine.interface_set.all()},
+            {
+                nic.mac_address
+                for nic in machine.current_config.interface_set.all()
+            },
             Equals(set()),
         )
         self.assertEqual(
@@ -535,7 +541,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         self.assertIsNone(parsed_result[0]["pod"])
 
-    def test_GET_machines_issues_constant_number_of_queries(self):
+    def test_GET_machines_issues_linear_number_of_queries(self):
         # Patch middleware so it does not affect query counting.
         self.patch(
             middleware.ExternalComponentsMiddleware,
@@ -672,7 +678,7 @@ class TestMachinesAPI(APITestCase.ForUser):
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL) for _ in range(3)
         ]
         matching_mac = interfaces[0].mac_address
-        matching_system_id = interfaces[0].node.system_id
+        matching_system_id = interfaces[0].node_config.node.system_id
         response = self.client.get(
             reverse("machines_handler"), {"mac_address": [matching_mac]}
         )

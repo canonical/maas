@@ -147,10 +147,14 @@ def get_node_for_mac(mac):
         raise PermissionDenied(
             "Unauthenticated metadata access is not allowed on this MAAS."
         )
-    match = get_one(Interface.objects.filter(mac_address=mac))
+    match = get_one(
+        Interface.objects.prefetch_related("node_config__node").filter(
+            mac_address=mac
+        )
+    )
     if match is None:
         raise MAASAPINotFound()
-    return match.node
+    return match.node_config.node
 
 
 def get_queried_node(request, for_mac=None):

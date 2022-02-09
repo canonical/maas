@@ -1,8 +1,6 @@
 # Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test the behaviour of node signals."""
-
 
 import random
 
@@ -267,7 +265,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
         )
-        for interface in machine.interface_set.all():
+        for interface in machine.current_config.interface_set.all():
             interface.claim_auto_ips()
 
         # Hack to get around node transition model
@@ -277,7 +275,8 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine.save()
 
         for ip in StaticIPAddress.objects.filter(
-            interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO
+            interface__node_config__node=machine,
+            alloc_type=IPADDRESS_TYPE.AUTO,
         ):
             self.assertIsNone(ip.ip)
 
@@ -286,7 +285,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
         )
-        for interface in machine.interface_set.all():
+        for interface in machine.current_config.interface_set.all():
             interface.claim_auto_ips()
 
         # Hack to get around node transition model
@@ -298,7 +297,8 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine.save()
 
         for ip in StaticIPAddress.objects.filter(
-            interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO
+            interface__node_config__node=machine,
+            alloc_type=IPADDRESS_TYPE.AUTO,
         ):
             self.assertIsNotNone(ip.ip)
 
@@ -306,7 +306,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine = factory.make_Machine_with_Interface_on_Subnet(
             status=self.status, power_state=POWER_STATE.ON
         )
-        for interface in machine.interface_set.all():
+        for interface in machine.current_config.interface_set.all():
             interface.claim_auto_ips()
 
         # Hack to get around node transition model
@@ -318,7 +318,8 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         machine.save()
 
         for ip in StaticIPAddress.objects.filter(
-            interface__node=machine, alloc_type=IPADDRESS_TYPE.AUTO
+            interface__node_config__node=machine,
+            alloc_type=IPADDRESS_TYPE.AUTO,
         ):
             self.assertIsNotNone(ip.ip)
 
@@ -330,7 +331,7 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
             status=random.choice(self.reserved_statuses),
             power_state=POWER_STATE.ON,
         )
-        for interface in node.interface_set.all():
+        for interface in node.current_config.interface_set.all():
             interface.claim_auto_ips()
 
         # Hack to get around node transition model
@@ -340,6 +341,6 @@ class TestNodeReleasesAutoIPs(MAASServerTestCase):
         node.save()
 
         for ip in StaticIPAddress.objects.filter(
-            interface__node=node, alloc_type=IPADDRESS_TYPE.AUTO
+            interface__node_config__node=node, alloc_type=IPADDRESS_TYPE.AUTO
         ):
             self.assertIsNotNone(ip.ip)

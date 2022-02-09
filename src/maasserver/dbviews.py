@@ -84,7 +84,7 @@ maasserver_discovery = dedent(
         MASKLEN(subnet.cidr) AS subnet_prefixlen
     FROM maasserver_neighbour neigh
     JOIN maasserver_interface iface ON neigh.interface_id = iface.id
-    JOIN maasserver_node node ON node.id = iface.node_id
+    JOIN maasserver_node node ON node.current_config_id = iface.node_config_id
     JOIN maasserver_vlan vlan ON iface.vlan_id = vlan.id
     JOIN maasserver_fabric fabric ON vlan.fabric_id = fabric.id
     LEFT JOIN maasserver_mdns mdns ON mdns.ip = neigh.ip
@@ -113,14 +113,14 @@ maasserver_routable_pairs = dedent(
     """\
     SELECT
            -- "Left" node.
-           if_left.node_id AS left_node_id,
+           n_left.id AS left_node_id,
            if_left.id AS left_interface_id,
            subnet_left.id AS left_subnet_id,
            vlan_left.id AS left_vlan_id,
            sip_left.ip AS left_ip,
 
            -- "Right" node.
-           if_right.node_id AS right_node_id,
+           n_right.id AS right_node_id,
            if_right.id AS right_interface_id,
            subnet_right.id AS right_subnet_id,
            vlan_right.id AS right_vlan_id,
@@ -131,7 +131,7 @@ maasserver_routable_pairs = dedent(
 
            -- Relative metric; lower is better.
            CASE
-             WHEN if_left.node_id = if_right.node_id THEN 0
+             WHEN if_left.node_config_id = if_right.node_config_id THEN 0
              WHEN subnet_left.id = subnet_right.id THEN 1
              WHEN vlan_left.id = vlan_right.id THEN 2
              WHEN vlan_left.space_id IS NOT NULL THEN 3
@@ -139,6 +139,8 @@ maasserver_routable_pairs = dedent(
            END AS metric
 
       FROM maasserver_interface AS if_left
+      JOIN maasserver_node AS n_left
+        ON n_left.current_config_id = if_left.node_config_id
       JOIN maasserver_interface_ip_addresses AS ifia_left
         ON if_left.id = ifia_left.interface_id
       JOIN maasserver_staticipaddress AS sip_left
@@ -157,6 +159,8 @@ maasserver_routable_pairs = dedent(
         ON sip_right.id = ifia_right.staticipaddress_id
       JOIN maasserver_interface AS if_right
         ON ifia_right.interface_id = if_right.id
+      JOIN maasserver_node AS n_right
+        ON if_right.node_config_id = n_right.current_config_id
      WHERE if_left.enabled AND sip_left.ip IS NOT NULL
        AND if_right.enabled AND sip_right.ip IS NOT NULL
        AND family(sip_left.ip) = family(sip_right.ip)
@@ -182,9 +186,10 @@ maasserver_podhost = dedent(
         LEFT JOIN maasserver_staticipaddress ip
             ON pod.ip_address_id = ip.id AND pod.bmc_type = 1
         LEFT JOIN maasserver_interface_ip_addresses ifip
-             ON ifip.staticipaddress_id = ip.id
+            ON ifip.staticipaddress_id = ip.id
         LEFT JOIN maasserver_interface if ON if.id = ifip.interface_id
-        LEFT JOIN maasserver_node node ON node.id = if.node_id
+        LEFT JOIN maasserver_node node
+            ON node.current_config_id = if.node_config_id
 """
 )
 

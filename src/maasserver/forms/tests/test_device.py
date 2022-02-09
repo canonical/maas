@@ -1,8 +1,6 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for device forms."""
-
 
 from django.http import HttpRequest
 from django.http.request import QueryDict
@@ -101,7 +99,7 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         device = get_one(Device.objects.filter(hostname=hostname))
         self.assertThat(device.hostname, Equals(hostname))
         iface = get_one(Interface.objects.filter(mac_address=mac))
-        self.assertThat(iface.node, Equals(device))
+        self.assertEqual(iface.node_config.node, device)
 
     def test_creates_device_with_macs(self):
         hostname = factory.make_name("device")
@@ -118,9 +116,9 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         device = get_one(Device.objects.filter(hostname=hostname))
         self.assertThat(device.hostname, Equals(hostname))
         iface = get_one(Interface.objects.filter(mac_address=mac1))
-        self.assertThat(iface.node, Equals(device))
+        self.assertEqual(iface.node_config.node, device)
         iface = get_one(Interface.objects.filter(mac_address=mac2))
-        self.assertThat(iface.node, Equals(device))
+        self.assertEqual(iface.node_config.node, device)
 
     def test_creates_device_with_parent_inherits_parents_domain(self):
         parent = factory.make_Node()
@@ -143,9 +141,9 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         self.assertThat(device.hostname, Equals(hostname))
         self.assertThat(device.domain, Equals(parent.domain))
         iface = get_one(Interface.objects.filter(mac_address=mac1))
-        self.assertThat(iface.node, Equals(device))
+        self.assertEqual(iface.node_config.node, device)
         iface = get_one(Interface.objects.filter(mac_address=mac2))
-        self.assertThat(iface.node, Equals(device))
+        self.assertEqual(iface.node_config.node, device)
 
     def test_creates_device_with_domain_and_parent(self):
         parent = factory.make_Node()
@@ -170,6 +168,6 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         self.assertThat(device.hostname, Equals(hostname))
         self.assertThat(device.domain, Equals(domain))
         iface = get_one(Interface.objects.filter(mac_address=mac1))
-        self.assertThat(iface.node, Equals(device))
+        self.assertEqual(iface.node_config.node, device)
         iface = get_one(Interface.objects.filter(mac_address=mac2))
-        self.assertThat(iface.node, Equals(device))
+        self.assertEqual(iface.node_config.node, device)

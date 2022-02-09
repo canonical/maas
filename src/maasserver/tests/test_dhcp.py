@@ -2905,8 +2905,12 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
         )
-        primary_interface = primary_rack.interface_set.get(vlan=vlan)
-        secondary_interface = secondary_rack.interface_set.get(vlan=vlan)
+        primary_interface = primary_rack.current_config.interface_set.get(
+            vlan=vlan
+        )
+        secondary_interface = secondary_rack.current_config.interface_set.get(
+            vlan=vlan
+        )
 
         subnet_v4 = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         subnet_v6 = factory.make_Subnet(
@@ -3039,8 +3043,12 @@ class TestValidateDHCPConfig(MAASTransactionServerTestCase):
         vlan = factory.make_VLAN(
             primary_rack=disconnected_rack, secondary_rack=rack_controller
         )
-        disconnected_interface = disconnected_rack.interface_set.get(vlan=vlan)
-        secondary_interface = rack_controller.interface_set.get(vlan=vlan)
+        disconnected_interface = (
+            disconnected_rack.current_config.interface_set.get(vlan=vlan)
+        )
+        secondary_interface = rack_controller.current_config.interface_set.get(
+            vlan=vlan
+        )
         subnet = factory.make_ipv4_Subnet_with_IPRanges(vlan=vlan)
         factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.AUTO,

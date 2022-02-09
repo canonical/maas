@@ -271,7 +271,7 @@ class TestMachineHandler(MAASServerTestCase):
                         "fqdn": device.fqdn,
                         "interfaces": [
                             handler.dehydrate_interface(interface, device)
-                            for interface in device.interface_set.all().order_by(
+                            for interface in device.current_config.interface_set.all().order_by(
                                 "id"
                             )
                         ],
@@ -303,7 +303,7 @@ class TestMachineHandler(MAASServerTestCase):
             "link_speeds": sorted(
                 {
                     interface.link_speed
-                    for interface in node.interface_set.all()
+                    for interface in node.current_config.interface_set.all()
                     if interface.link_speed > 0
                 }
             ),
@@ -313,7 +313,9 @@ class TestMachineHandler(MAASServerTestCase):
             "id": node.id,
             "interfaces": [
                 handler.dehydrate_interface(interface, node)
-                for interface in node.interface_set.all().order_by("name")
+                for interface in node.current_config.interface_set.all().order_by(
+                    "name"
+                )
             ],
             "on_network": node.on_network(),
             "license_key": node.license_key,
@@ -433,7 +435,7 @@ class TestMachineHandler(MAASServerTestCase):
             _, applied_layout = get_applied_storage_layout_for_node(node)
             data.update(
                 {
-                    "dhcp_on": node.interface_set.filter(
+                    "dhcp_on": node.current_config.interface_set.filter(
                         vlan__dhcp_on=True
                     ).exists(),
                     "grouped_storages": handler.get_grouped_storages(
@@ -3944,7 +3946,7 @@ class TestMachineHandler(MAASServerTestCase):
         )
         self.assertEqual(
             1,
-            node.interface_set.count(),
+            node.current_config.interface_set.count(),
             "Should have one interface on the node.",
         )
 
@@ -3966,7 +3968,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "subnet": subnet.id,
             }
         )
-        new_interface = node.interface_set.first()
+        new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         auto_ip = new_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.AUTO, subnet=subnet
@@ -3989,7 +3991,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "mode": INTERFACE_LINK_TYPE.LINK_UP,
             }
         )
-        new_interface = node.interface_set.first()
+        new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         link_up_ip = new_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY, subnet=None
@@ -4014,7 +4016,7 @@ class TestMachineHandler(MAASServerTestCase):
                 "subnet": subnet.id,
             }
         )
-        new_interface = node.interface_set.first()
+        new_interface = node.current_config.interface_set.first()
         self.assertIsNotNone(new_interface)
         link_up_ip = new_interface.ip_addresses.filter(
             alloc_type=IPADDRESS_TYPE.STICKY, ip=None, subnet=subnet
@@ -4038,7 +4040,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         vlan_interface = get_one(
             Interface.objects.filter(
-                node=node, type=INTERFACE_TYPE.VLAN, parents=interface
+                node_config=node.current_config,
+                type=INTERFACE_TYPE.VLAN,
+                parents=interface,
             )
         )
         self.assertIsNotNone(vlan_interface)
@@ -4078,7 +4082,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         vlan_interface = get_one(
             Interface.objects.filter(
-                node=node, type=INTERFACE_TYPE.VLAN, parents=interface
+                node_config=node.current_config,
+                type=INTERFACE_TYPE.VLAN,
+                parents=interface,
             )
         )
         self.assertIsNotNone(vlan_interface)
@@ -4105,7 +4111,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         vlan_interface = get_one(
             Interface.objects.filter(
-                node=node, type=INTERFACE_TYPE.VLAN, parents=interface
+                node_config=node.current_config,
+                type=INTERFACE_TYPE.VLAN,
+                parents=interface,
             )
         )
         self.assertIsNotNone(vlan_interface)
@@ -4134,7 +4142,9 @@ class TestMachineHandler(MAASServerTestCase):
         )
         vlan_interface = get_one(
             Interface.objects.filter(
-                node=node, type=INTERFACE_TYPE.VLAN, parents=interface
+                node_config=node.current_config,
+                type=INTERFACE_TYPE.VLAN,
+                parents=interface,
             )
         )
         self.assertIsNotNone(vlan_interface)
@@ -4183,7 +4193,7 @@ class TestMachineHandler(MAASServerTestCase):
         )
         bond_interface = get_one(
             Interface.objects.filter(
-                node=node,
+                node_config=node.current_config,
                 type=INTERFACE_TYPE.BOND,
                 parents=nic1,
                 name=name,
@@ -4248,7 +4258,7 @@ class TestMachineHandler(MAASServerTestCase):
         )
         bridge_interface = get_one(
             Interface.objects.filter(
-                node=node,
+                node_config=node.current_config,
                 type=INTERFACE_TYPE.BRIDGE,
                 parents=nic1,
                 name=name,

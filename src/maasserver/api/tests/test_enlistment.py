@@ -186,7 +186,10 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         diane = get_one(Machine.objects.filter(hostname="diane"))
         self.assertCountEqual(
             ["aa:bb:cc:dd:ee:ff", "22:bb:cc:dd:ee:ff"],
-            [interface.mac_address for interface in diane.interface_set.all()],
+            [
+                interface.mac_address
+                for interface in diane.current_config.interface_set.all()
+            ],
         )
 
     def test_POST_create_with_no_hostname_auto_populates_hostname(self):

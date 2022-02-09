@@ -1565,7 +1565,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                                     ),
                                 ),
                             )
-                            for interface in pod.host.interface_set.all()
+                            for interface in pod.host.current_config.interface_set.all()
                         ]
                     )
                 ),
@@ -1662,7 +1662,9 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
         machine = form.compose()
         ip = StaticIPAddress.objects.filter(ip=expected_ip).first()
-        self.assertThat(ip.get_interface().node, Equals(machine))
+        self.assertEqual(
+            ip.get_interface().node_config, machine.current_config
+        )
         self.assertThat(mock_post_commit_do, MockCalledOnce())
 
     def test_compose_with_commissioning(self):
@@ -2225,14 +2227,14 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
 
     def test_returns_empty_list_if_no_interfaces(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         interfaces = get_known_host_interfaces(factory.make_Pod(host=node))
         self.assertThat(interfaces, HasLength(0))
 
     def test_bridge_attach_type(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=False)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         bridge = factory.make_Interface(
             iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan
         )
@@ -2253,7 +2255,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
     def test_macvlan_physical_attach_type(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=False)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL, node=node, vlan=vlan
         )
@@ -2274,7 +2276,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
     def test_sriov_physical_attach_type_lxd(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=False)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL,
             node=node,
@@ -2300,7 +2302,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
     def test_sriov_physical_attach_type_virsh(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=False)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL,
             node=node,
@@ -2327,7 +2329,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan1 = factory.make_VLAN(dhcp_on=False)
         vlan2 = factory.make_VLAN(dhcp_on=False, fabric=vlan1.fabric)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL,
             node=node,
@@ -2367,7 +2369,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan1 = factory.make_VLAN(dhcp_on=False)
         vlan2 = factory.make_VLAN(dhcp_on=False, fabric=vlan1.fabric)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         physical = factory.make_Interface(
             iftype=INTERFACE_TYPE.PHYSICAL,
             node=node,
@@ -2404,7 +2406,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
 
     def test_behaves_correctly_when_vlan_is_none(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         bridge = factory.make_Interface(
             iftype=INTERFACE_TYPE.BRIDGE, node=node, link_connected=False
         )
@@ -2435,7 +2437,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
     def test_gets_dhcp_status_for_directly_enabled_vlan(self):
         node = factory.make_Machine_with_Interface_on_Subnet()
         vlan = factory.make_VLAN(dhcp_on=True)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         bridge = factory.make_Interface(
             iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan
         )
@@ -2467,7 +2469,7 @@ class TestGetKnownHostInterfaces(MAASServerTestCase):
         node = factory.make_Machine_with_Interface_on_Subnet()
         relay_vlan = factory.make_VLAN(dhcp_on=True)
         vlan = factory.make_VLAN(dhcp_on=False, relay_vlan=relay_vlan)
-        node.interface_set.all().delete()
+        node.current_config.interface_set.all().delete()
         bridge = factory.make_Interface(
             iftype=INTERFACE_TYPE.BRIDGE, node=node, vlan=vlan
         )

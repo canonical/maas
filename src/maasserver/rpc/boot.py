@@ -52,14 +52,15 @@ def get_node_from_mac_or_hardware_uuid(mac=None, hardware_uuid=None):
     if mac and hardware_uuid:
         node = Node.objects.filter(
             Q(
-                interface__type=INTERFACE_TYPE.PHYSICAL,
-                interface__mac_address=mac,
+                current_config__interface__type=INTERFACE_TYPE.PHYSICAL,
+                current_config__interface__mac_address=mac,
             )
             | Q(hardware_uuid__iexact=hardware_uuid)
         )
     elif mac:
         node = Node.objects.filter(
-            interface__type=INTERFACE_TYPE.PHYSICAL, interface__mac_address=mac
+            current_config__interface__type=INTERFACE_TYPE.PHYSICAL,
+            current_config__interface__mac_address=mac,
         )
     elif hardware_uuid:
         node = Node.objects.filter(hardware_uuid__iexact=hardware_uuid)
@@ -405,7 +406,7 @@ def get_config(
             machine.bios_boot_method = bios_boot_method
 
         try:
-            machine.boot_interface = machine.interface_set.get(
+            machine.boot_interface = machine.current_config.interface_set.get(
                 type=INTERFACE_TYPE.PHYSICAL, mac_address=mac
             )
         except ObjectDoesNotExist:
@@ -417,15 +418,19 @@ def get_config(
                 # This might choose the wrong interface, but we don't
                 # have enough information to decide which interface is
                 # the boot one.
-                machine.boot_interface = machine.interface_set.filter(
-                    vlan=subnet.vlan
-                ).first()
+                machine.boot_interface = (
+                    machine.current_config.interface_set.filter(
+                        vlan=subnet.vlan
+                    ).first()
+                )
         else:
             # Update the VLAN of the boot interface to be the same VLAN for the
             # interface on the rack controller that the machine communicated
             # with, unless the VLAN is being relayed.
             rack_interface = (
-                rack_controller.interface_set.filter(ip_addresses__ip=local_ip)
+                rack_controller.current_config.interface_set.filter(
+                    ip_addresses__ip=local_ip
+                )
                 .select_related("vlan")
                 .first()
             )

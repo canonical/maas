@@ -158,10 +158,11 @@ class InterfaceConfiguration:
     def _get_dhcp_type(self):
         """Return the DHCP type for the interface."""
         dhcp_types = set()
+        node = self.iface.node_config.node
         if (
-            self.iface == self.iface.node.boot_interface
+            self.iface == node.boot_interface
             and NODE_STATUS.COMMISSIONING
-            in {self.iface.node.status, self.iface.node.previous_status}
+            in {node.status, node.previous_status}
             and self.iface.ip_addresses.exclude(
                 alloc_type=IPADDRESS_TYPE.DISCOVERED, ip=None
             ).exists()
@@ -376,7 +377,7 @@ class InterfaceConfiguration:
 
                     if subnet.allow_dns:
                         for ip in StaticIPAddress.objects.filter(
-                            interface__node__in=[
+                            interface__node_config__node__in=[
                                 subnet.vlan.primary_rack,
                                 subnet.vlan.secondary_rack,
                             ],

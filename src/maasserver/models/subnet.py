@@ -842,11 +842,8 @@ class Subnet(CleanSave, TimestampedModel):
         if with_summary:
             ip_addresses = ip_addresses.prefetch_related(
                 "interface_set",
-                "interface_set__node",
-                "interface_set__node__domain",
-                "bmc_set",
+                "interface_set__node_config__node__domain",
                 "bmc_set__node_set",
-                "dnsresource_set",
                 "dnsresource_set__domain",
             )
         return sorted(

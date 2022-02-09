@@ -267,7 +267,7 @@ class TestFilteredNodesListFromRequest(APITestCase.ForUser):
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL) for _ in range(3)
         ]
         matching_mac = str(interfaces[0].mac_address)
-        matching_system_id = interfaces[0].node.system_id
+        matching_system_id = interfaces[0].node_config.node.system_id
 
         query = RequestFixture({"mac_address": [matching_mac]}, "mac_address")
         node_list = nodes_module.filtered_nodes_list_from_request(query)
@@ -542,7 +542,7 @@ class TestNodesAPI(APITestCase.ForUser):
             factory.make_Interface(INTERFACE_TYPE.PHYSICAL) for _ in range(3)
         ]
         matching_mac = interfaces[0].mac_address
-        matching_system_id = interfaces[0].node.system_id
+        matching_system_id = interfaces[0].node_config.node.system_id
         response = self.client.get(
             reverse("nodes_handler"), {"mac_address": [matching_mac]}
         )

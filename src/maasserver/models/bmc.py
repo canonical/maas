@@ -686,7 +686,7 @@ class Pod(BMC):
         elif self.ip_address is not None:
             interface = self.ip_address.get_interface()
             if interface is not None:
-                return interface.node
+                return interface.node_config.node
         else:
             return None
 
@@ -822,7 +822,7 @@ class Pod(BMC):
             mac_address=discovered_nic.mac_address,
             defaults={
                 "name": name,
-                "node": machine,
+                "node_config": machine.current_config,
                 "numa_node": machine.default_numanode,
                 "tags": discovered_nic.tags,
                 "vlan": vlan,
@@ -830,17 +830,13 @@ class Pod(BMC):
         )
         if not created:
             podlog.warning(
-                "%s: interface with MAC address %s was discovered on "
-                "machine %s and was moved from %s."
-                % (
-                    self.name,
-                    discovered_nic.mac_address,
-                    machine.hostname,
-                    nic.node.hostname,
-                )
+                f"{self.name}: interface with MAC address "
+                f"{discovered_nic.mac_address} was discovered on "
+                f"machine {machine.hostname} and was moved "
+                f"from {nic.node_config.node.hostname}."
             )
             nic.name = name
-            nic.node = machine
+            nic.node_config = machine.current_config
             nic.tags = discovered_nic.tags
             nic.vlan = vlan
             nic.ip_addresses.all().delete()
@@ -1174,7 +1170,7 @@ class Pod(BMC):
         if self.host:
             host_interfaces = {
                 interface.name: interface
-                for interface in self.host.interface_set.all()
+                for interface in self.host.current_config.interface_set.all()
             }
 
         iface_ids = set()
@@ -1313,7 +1309,7 @@ class Pod(BMC):
         # interface_set has been preloaded so filtering is done locally.
         physical_interfaces = [
             nic
-            for nic in existing_machine.interface_set.all()
+            for nic in existing_machine.current_config.interface_set.all()
             if nic.type == INTERFACE_TYPE.PHYSICAL
         ]
         for existing_nic in physical_interfaces:
@@ -1436,8 +1432,10 @@ class Pod(BMC):
             for interface in machine.interfaces
         ]
         existing_machines = list(
-            Node.objects.filter(interface__mac_address__in=all_macs)
-            .prefetch_related("interface_set")
+            Node.objects.filter(
+                current_config__interface__mac_address__in=all_macs
+            )
+            .prefetch_related("current_config__interface_set")
             .prefetch_related(
                 "current_config__blockdevice_set__physicalblockdevice"
             )
@@ -1454,7 +1452,7 @@ class Pod(BMC):
         mac_machine_map = {
             interface.mac_address: machine
             for machine in existing_machines
-            for interface in machine.interface_set.all()
+            for interface in machine.current_config.interface_set.all()
         }
         for discovered_machine in tracked_machines:
             existing_machine = self._find_existing_machine(
@@ -1570,7 +1568,7 @@ class Pod(BMC):
         if discovered_pod.mac_addresses:
             node = (
                 Node.objects.filter(
-                    interface__mac_address__in=discovered_pod.mac_addresses
+                    current_config__interface__mac_address__in=discovered_pod.mac_addresses
                 )
                 .distinct()
                 .first()

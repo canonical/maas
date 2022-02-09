@@ -99,7 +99,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
             "ip": "ip_addresses__ip",
             "mode": self._add_mode_query,
             "name": "__name",
-            "hostname": "node__hostname",
+            "hostname": "node_config__node__hostname",
             "subnet": (Subnet.objects, "staticipaddress__interface"),
             "space": self._add_space_query,
             "subnet_cidr": f"subnet{separator}cidr",
@@ -205,7 +205,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
 
         """
         return super().get_matching_object_map(
-            specifiers, "node__id", include_filter=include_filter
+            specifiers, "node_config__node_id", include_filter=include_filter
         )
 
     @staticmethod
@@ -257,7 +257,7 @@ class InterfaceQueriesMixin(MAASQueriesMixin):
         will be visited when possible (after each of its parents has been
         visited).
         """
-        query = self.filter(node=node)
+        query = self.filter(node_config=node.current_config)
         query = query.annotate(parent_count=Count("parent_relationships"))
         query = query.prefetch_related("parent_relationships")
         query = query.order_by("name")
@@ -310,7 +310,11 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         """Returns a list of Interface objects on the specified node whose
         names match the specified list of interface names.
         """
-        return list(self.filter(node=node, name__in=interface_names))
+        return list(
+            self.filter(
+                node_config=node.current_config, name__in=interface_names
+            )
+        )
 
     def get_interface_dict_for_node(
         self, node, names=None, fetch_fabric_vlan=False, by_id=False
@@ -320,10 +324,11 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
 
         Optionally select related VLANs and Fabrics.
         """
+        node_config = node.current_config
         if names is None:
-            query = self.filter(node=node)
+            query = self.filter(node_config=node_config)
         else:
-            query = self.filter(node=node, name__in=names)
+            query = self.filter(node_config=node_config, name__in=names)
         if fetch_fabric_vlan:
             query = query.select_related("vlan__fabric")
         return {
@@ -394,7 +399,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
            #the-http404-exception
         """
         interface = self.get_object_by_specifiers_or_raise(
-            specifiers, node__system_id=system_id
+            specifiers, node_config__node__system_id=system_id
         )
         node = interface.get_node()
         if node.is_device and device_perm is not None:
@@ -459,17 +464,20 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
         if self.model.get_type() == INTERFACE_TYPE.PHYSICAL:
             # Physical interfaces have a MAC uniqueness restriction.
             interfaces = self.get_queryset().filter(
-                Q(mac_address=mac_address) | Q(name=name) & Q(node=node)
+                Q(mac_address=mac_address)
+                | Q(name=name) & Q(node_config=node.current_config)
             )
             interface = interfaces.first()
         else:
             # First see if we can find an interface with the given type.
-            interfaces = Interface.objects.filter(Q(name=name) & Q(node=node))
+            interfaces = Interface.objects.filter(
+                Q(name=name) & Q(node_config=node.current_config)
+            )
             interface = interfaces.first()
         if interface is not None:
             if (
                 interface.type != self.model.get_type()
-                and interface.node.id == node.id
+                and interface.node_config_id == node.current_config_id
             ):
                 # This means we found the interface on this node, but the type
                 # didn't match what we expected. This should not happen unless
@@ -490,17 +498,17 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
                 InterfaceRelationship(
                     child=interface, parent=parent_nic
                 ).save()
-            if interface.node.id != node.id:
+            if interface.node_config_id != node.current_config_id:
                 # Bond with MAC address was on a different node. We need to
                 # move it to its new owner. In the process we delete all of its
                 # current links because they are completely wrong.
                 interface.ip_addresses.all().delete()
-                interface.node = node
+                interface.node_config = node.current_config
         else:
             interface = self.create(
                 name=name,
                 mac_address=mac_address,
-                node=node,
+                node_config=node.current_config,
                 acquired=acquired,
             )
             for parent_nic in parent_nics:
@@ -516,12 +524,10 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
             )
 
         old = self.get(id=iface.id)
-        if (
-            old.mac_address is not None
-            or iface.node.status != NODE_STATUS.BROKEN
-        ):
+        node = iface.node_config.node
+        if old.mac_address is not None or node.status != NODE_STATUS.BROKEN:
             return
-        iface.node.mark_fixed(None)
+        node.mark_fixed(None)
 
 
 class Interface(CleanSave, TimestampedModel):
@@ -529,13 +535,10 @@ class Interface(CleanSave, TimestampedModel):
         verbose_name = "Interface"
         verbose_name_plural = "Interfaces"
         ordering = ("created",)
-        unique_together = [("node", "name")]
+        unique_together = ("node_config", "name")
 
     objects = InterfaceManager()
 
-    node = ForeignKey(
-        "Node", editable=False, null=True, blank=True, on_delete=CASCADE
-    )
     node_config = ForeignKey("NodeConfig", null=True, on_delete=CASCADE)
 
     name = CharField(
@@ -684,7 +687,9 @@ class Interface(CleanSave, TimestampedModel):
         )
 
     def get_node(self):
-        return self.node
+        if self.node_config is not None:
+            return self.node_config.node
+        return None
 
     def get_log_string(self):
         hostname = "<unknown-node>"
@@ -948,7 +953,9 @@ class Interface(CleanSave, TimestampedModel):
                     "IP address (%s)%s was skipped because "
                     "it is an EUI-64 (SLAAC) address.",
                     address,
-                    " on " + self.node.fqdn if self.node is not None else "",
+                    " on " + self.node_config.node.fqdn
+                    if self.node_config
+                    else "",
                 )
                 continue
 
@@ -962,7 +969,9 @@ class Interface(CleanSave, TimestampedModel):
                     "IP address (%s)%s was skipped because it was found on "
                     "the same subnet as a previous address: %s.",
                     address,
-                    " on " + self.node.fqdn if self.node is not None else "",
+                    " on " + self.node_config.node.fqdn
+                    if self.node_config
+                    else "",
                     network,
                 )
                 continue
@@ -1441,7 +1450,7 @@ class Interface(CleanSave, TimestampedModel):
         name = self.get_default_bridge_name()
         bridge = BridgeInterface(
             name=name,
-            node=self.node,
+            node_config_id=self.node_config_id,
             mac_address=self.mac_address,
             vlan=self.vlan,
             enabled=True,
@@ -1662,25 +1671,25 @@ class PhysicalInterface(Interface):
         verbose_name_plural = "Physical interface"
 
     @classmethod
-    def get_type(self):
+    def get_type(cls):
         return INTERFACE_TYPE.PHYSICAL
 
     def _is_virtual(self):
-        if self.node is None or self.node.bmc is None:
+        if self.node_config is None or self.node_config.node.bmc is None:
             return False
 
-        power_type = self.node.bmc.power_type
+        power_type = self.node_config.node.bmc.power_type
         return power_type == "lxd" or power_type == "virsh"
 
     def clean(self):
         super().clean()
         # Node and MAC address is always required for a physical interface.
         validation_errors = {}
-        if self.node is None:
-            validation_errors["node"] = ["This field cannot be blank."]
+        if self.node_config is None:
+            validation_errors["node_config"] = ["This field cannot be blank."]
         if self.mac_address is None:
             if self._is_virtual():
-                self.node.mark_broken(
+                self.node_config.node.mark_broken(
                     None,
                     comment="A Physical Interface requires a MAC address.",
                 )
@@ -1710,7 +1719,7 @@ class PhysicalInterface(Interface):
                 )
 
             if (
-                self.node.status == NODE_STATUS.BROKEN
+                self.node_config.node.status == NODE_STATUS.BROKEN
                 and self._is_virtual()
                 and self.id is not None
             ):
@@ -1727,12 +1736,12 @@ class PhysicalInterface(Interface):
     def save(self, *args, **kwargs):
         if (
             self.numa_node_id is None
-            and self.node
-            and self.node.node_type != NODE_TYPE.DEVICE
+            and self.node_config
+            and self.node_config.node.node_type != NODE_TYPE.DEVICE
         ):
             # the node is required; if not provided, let the upcall raise an
             # error
-            self.numa_node_id = self.node.default_numanode.id
+            self.numa_node_id = self.node_config.node.default_numanode.id
         super().save(*args, **kwargs)
 
 
@@ -1756,18 +1765,19 @@ class ChildInterface(Interface):
         :return: Node model object related to this Interface, or None if one
             cannot be found.
         """
-        if self.node is not None:
-            return self.node
-        if self.id is None:
-            # This should be correct since the interface was just now created.
-            return self.node
-        else:
+        node_config = self.get_node_config()
+        if node_config:
+            return node_config.node
+        return None
+
+    def get_node_config(self):
+        if self.node_config is not None:
+            return self.node_config
+        if self.id is not None:
             parent = self.parents.first()
             if parent is not None and parent != self:
-                return parent.get_node()
-            else:
-                # This could be a bridge interface without a parent.
-                return self.node
+                return parent.node_config
+        return None
 
     def is_enabled(self):
         if self.id is None:
@@ -1783,6 +1793,12 @@ class ChildInterface(Interface):
             else:
                 return self.enabled
 
+    def save(self, *args, **kwargs):
+        self.node_config = self.get_node_config()
+        # Set the enabled status based on its parents
+        self.enabled = self.is_enabled()
+        super().save(*args, **kwargs)
+
     def _validate_acceptable_parent_types(self, parent_types):
         """Raises a ValidationError if the interface has parents which are not
         allowed, given this interface type. (for example, only physical
@@ -1791,20 +1807,25 @@ class ChildInterface(Interface):
         raise NotImplementedError()
 
     def _validate_parent_interfaces(self):
+        if self.id is None:
+            return
+
+        node_config_ids = set()
+        parent_types = set()
+        for parent in self.parents.all():
+            node_config_ids.add(parent.node_config_id)
+            parent_types.add(parent.get_type())
         # Parent interfaces on this bond must be from the same node and can
         # only be physical interfaces.
-        if self.id is not None:
-            nodes = {parent.node for parent in self.parents.all()}
-            if len(nodes) > 1:
-                raise ValidationError(
-                    {
-                        "parents": [
-                            "Parent interfaces do not belong to the same node."
-                        ]
-                    }
-                )
-            parent_types = {parent.get_type() for parent in self.parents.all()}
-            self._validate_acceptable_parent_types(parent_types)
+        if len(node_config_ids) > 1:
+            raise ValidationError(
+                {
+                    "parents": [
+                        "Parent interfaces do not belong to the same node."
+                    ]
+                }
+            )
+        self._validate_acceptable_parent_types(parent_types)
 
     def _validate_unique_or_parent_mac(self):
         # Validate that this bond interface is using either a new MAC address
@@ -1868,13 +1889,6 @@ class BridgeInterface(ChildInterface):
         self._validate_parent_interfaces()
         self._validate_unique_or_parent_mac()
 
-    def save(self, *args, **kwargs):
-        # Set the node of this bond to the same as its parents.
-        self.node = self.get_node()
-        # Set the enabled status based on its parents.
-        self.enabled = self.is_enabled()
-        super().save(*args, **kwargs)
-
 
 class BondInterface(ChildInterface):
     class Meta(Interface.Meta):
@@ -1903,13 +1917,6 @@ class BondInterface(ChildInterface):
             raise ValidationError(
                 {"parents": ["Only physical interfaces can be bonded."]}
             )
-
-    def save(self, *args, **kwargs):
-        # Set the node of this bond to the same as its parents.
-        self.node = self.get_node()
-        # Set the enabled status based on its parents.
-        self.enabled = self.is_enabled()
-        super().save(*args, **kwargs)
 
 
 def build_vlan_interface_name(parent, vlan):
@@ -1981,10 +1988,6 @@ class VLANInterface(ChildInterface):
                 )
 
     def save(self, *args, **kwargs):
-        # Set the node of this VLAN to the same as its parents.
-        self.node = self.get_node()
-        # Set the enabled status based on its parents.
-        self.enabled = self.is_enabled()
         # Set the MAC address to the same as its parent.
         if self.id is not None:
             parent = self.parents.first()
@@ -2008,8 +2011,10 @@ class UnknownInterface(Interface):
 
     def clean(self):
         super().clean()
-        if self.node is not None:
-            raise ValidationError({"node": ["This field must be blank."]})
+        if self.node_config is not None:
+            raise ValidationError(
+                {"node_config": ["This field must be blank."]}
+            )
 
         # No other interfaces can have this MAC address.
         other_interfaces = Interface.objects.filter(

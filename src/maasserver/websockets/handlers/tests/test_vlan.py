@@ -1,7 +1,5 @@
-# Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `maasserver.websockets.handlers.vlan`"""
 
 
 import random
@@ -45,8 +43,8 @@ class TestVLANHandler(MAASServerTestCase):
                 {
                     interface.node.system_id
                     for interface in vlan.interface_set.all()
-                    if interface.node_id is not None
-                    and interface.node.is_rack_controller
+                    if interface.node_config_id is not None
+                    and interface.node_config.node.is_rack_controller
                 }
             )
         )
@@ -54,9 +52,9 @@ class TestVLANHandler(MAASServerTestCase):
             data["node_ids"] = sorted(
                 list(
                     {
-                        interface.node_id
+                        interface.node_config.node_id
                         for interface in vlan.interface_set.all()
-                        if interface.node_id is not None
+                        if interface.node_config_id is not None
                     }
                 )
             )
