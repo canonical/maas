@@ -18,12 +18,4 @@ class Migration(migrations.Migration):
             WHERE maasserver_interface.node_id = maasserver_node.id
             """
         ),
-        migrations.AlterUniqueTogether(
-            name="interface",
-            unique_together={("node_config", "name")},
-        ),
-        migrations.RemoveField(
-            model_name="interface",
-            name="node",
-        ),
     ]
