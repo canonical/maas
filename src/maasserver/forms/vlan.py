@@ -12,6 +12,7 @@ from maasserver.fields import NodeChoiceField, SpecifierOrModelChoiceField
 from maasserver.forms import MAASModelForm
 from maasserver.models import Fabric, RackController, Service, Space
 from maasserver.models.vlan import VLAN
+from maasserver.permissions import NodePermission
 
 
 class VLANForm(MAASModelForm):
@@ -42,6 +43,8 @@ class VLANForm(MAASModelForm):
             "space",
             "fabric",
         )
+        permission_create = NodePermission.admin
+        permission_edit = NodePermission.admin
 
     def __init__(self, *args, **kwargs):
         self.fabric = kwargs.pop("fabric", None)
@@ -201,14 +204,10 @@ class VLANForm(MAASModelForm):
         vlan = super().save(commit=False)
         if self.fabric is not None:
             vlan.fabric = self.fabric
-        if "space" in self.data and not self.cleaned_data.get("space"):
-            # 'space' is being cleared.
-            vlan.space = None
-        if "relay_vlan" in self.data and not self.cleaned_data.get(
-            "relay_vlan"
-        ):
-            # 'relay_vlan' is being cleared.
-            vlan.relay_vlan = None
+        for key in ["space", "relay_vlan", "name"]:
+            if key in self.data and not self.cleaned_data.get(key):
+                # key is being cleared.
+                setattr(vlan, key, None)
         if vlan.dhcp_on:
             # 'relay_vlan' cannot be set when dhcp is on.
             vlan.relay_vlan = None

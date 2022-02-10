@@ -109,6 +109,34 @@ class TestVLANHandler(MAASServerTestCase):
         )
 
 
+class TestVLANHandlerUpdate(MAASServerTestCase):
+    def test_update_as_user(self):
+        user = factory.make_User()
+        handler = VLANHandler(user, {}, None)
+        vlan = factory.make_VLAN()
+        old_name = vlan.name
+        with ExpectedException(HandlerPermissionError):
+            handler.update({"id": vlan.id, "name": "new-name"})
+        vlan = reload_object(vlan)
+        self.assertEqual(old_name, vlan.name)
+
+    def test_update_as_admin(self):
+        user = factory.make_admin()
+        handler = VLANHandler(user, {}, None)
+        vlan = factory.make_VLAN()
+        handler.update({"id": vlan.id, "name": "new-name"})
+        vlan = reload_object(vlan)
+        self.assertEqual("new-name", vlan.name)
+
+    def test_update_clear_name(self):
+        user = factory.make_admin()
+        handler = VLANHandler(user, {}, None)
+        vlan = factory.make_VLAN(name="my-name")
+        handler.update({"id": vlan.id, "name": ""})
+        vlan = reload_object(vlan)
+        self.assertIsNone(vlan.name)
+
+
 class TestVLANHandlerDelete(MAASServerTestCase):
     def test_delete_as_admin_success(self):
         user = factory.make_admin()
