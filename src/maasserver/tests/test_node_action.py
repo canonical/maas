@@ -311,8 +311,10 @@ class TestDeleteAction(MAASServerTestCase):
         # Regression test for LP:1793478.
         rack = factory.make_RackController()
         nic = factory.make_Interface(node=rack)
-        nic.vlan.primary_rack = rack
-        nic.vlan.save()
+        vlan = nic.vlan
+        vlan.primary_rack = rack
+        vlan.dhcp_on = True
+        vlan.save()
         admin = factory.make_admin()
         request = factory.make_fake_request("/")
         request.user = admin

@@ -6574,12 +6574,10 @@ class RackController(Controller):
         """
         changes = []
 
-        controlled_vlans = VLAN.objects.filter(dhcp_on=True)
-        controlled_vlans = controlled_vlans.filter(
-            Q(primary_rack=self) | Q(secondary_rack=self)
-        )
-        controlled_vlans = controlled_vlans.prefetch_related(
-            "primary_rack", "secondary_rack"
+        controlled_vlans = (
+            VLAN.objects.filter(dhcp_on=True)
+            .prefetch_related("primary_rack", "secondary_rack")
+            .filter(Q(primary_rack=self) | Q(secondary_rack=self))
         )
         for controlled_vlan in controlled_vlans:
             if controlled_vlan.primary_rack_id == self.id:
@@ -6648,7 +6646,6 @@ class RackController(Controller):
         if self.node_type != NODE_TYPE.REGION_AND_RACK_CONTROLLER:
             self.maybe_delete_pods(not force)
 
-        # Avoid circular imports
         from maasserver.models import RegionRackRPCConnection
 
         # Migrate this rack controller away from managing any VLAN's.
@@ -6660,7 +6657,7 @@ class RackController(Controller):
                 for vlan, primary_rack, secondary_rack in changes
                 if primary_rack is None
             ]
-            if len(disabled) != 0:
+            if disabled:
                 raise ValidationError(
                     "Unable to delete '%s'; it is currently set as a "
                     "primary rack controller on VLANs %s and no other rack "

@@ -10,11 +10,11 @@ from django.db.models import (
     CASCADE,
     CharField,
     Count,
-    deletion,
     ForeignKey,
     GenericIPAddressField,
     IntegerField,
     Manager,
+    PROTECT,
     Q,
     SET_NULL,
     TextField,
@@ -181,7 +181,7 @@ class VLAN(CleanSave, TimestampedModel):
         blank=True,
         editable=True,
         related_name="+",
-        on_delete=CASCADE,
+        on_delete=PROTECT,
     )
 
     secondary_rack = ForeignKey(
@@ -190,7 +190,7 @@ class VLAN(CleanSave, TimestampedModel):
         blank=True,
         editable=True,
         related_name="+",
-        on_delete=CASCADE,
+        on_delete=PROTECT,
     )
 
     relay_vlan = ForeignKey(
@@ -199,7 +199,7 @@ class VLAN(CleanSave, TimestampedModel):
         blank=True,
         editable=True,
         related_name="relay_vlans",
-        on_delete=deletion.SET_NULL,
+        on_delete=SET_NULL,
     )
 
     space = ForeignKey(

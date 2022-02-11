@@ -109,6 +109,14 @@ class TestVLAN(MAASServerTestCase):
         self.assertIsNotNone(vlan)
         self.assertIsNone(vlan.relay_vlan)
 
+    def test_delete_primary_rack_fails(self):
+        rack = factory.make_RackController()
+        vlan = factory.make_VLAN(primary_rack=rack)
+        self.assertRaises(ProtectedError, rack.delete)
+        vlan = reload_object(vlan)
+        self.assertIsNotNone(vlan)
+        self.assertEqual(vlan.primary_rack, rack)
+
     def test_get_name_for_default_vlan_is_untagged(self):
         fabric = factory.make_Fabric()
         self.assertEqual("untagged", fabric.get_default_vlan().get_name())
