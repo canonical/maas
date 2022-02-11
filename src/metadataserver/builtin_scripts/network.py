@@ -328,6 +328,8 @@ def update_vlan_interface(node, name, network, links):
     if links_vlan:
         vlan = links_vlan
         if parent_nic.vlan.fabric_id != vlan.fabric_id:
+            # XXX: We should surface this error to the API and UI, since
+            # it's something the user needs to fix.
             maaslog.error(
                 f"Interface '{parent_nic.name}' on controller '{node.hostname}' "
                 f"is not on the same fabric as VLAN interface '{name}'."
@@ -338,11 +340,7 @@ def update_vlan_interface(node, name, network, links):
                 f"but links are on VLAN {links_vlan.vid}"
             )
     else:
-        # Since no suitable VLAN is found, create a new one in the same
-        # fabric as the parent interface.
-        vlan, _ = VLAN.objects.get_or_create(
-            fabric=parent_nic.vlan.fabric, vid=vid
-        )
+        vlan = None
 
     interface = VLANInterface.objects.filter(
         node_config=node.current_config,
@@ -351,6 +349,12 @@ def update_vlan_interface(node, name, network, links):
         vlan__vid=vid,
     ).first()
     if interface is None:
+        if vlan is None:
+            # Since no suitable VLAN is found, create a new one in the same
+            # fabric as the parent interface.
+            vlan, _ = VLAN.objects.get_or_create(
+                fabric=parent_nic.vlan.fabric, vid=vid
+            )
         interface, _ = VLANInterface.objects.get_or_create(
             node_config=node.current_config,
             name=name,
@@ -358,7 +362,7 @@ def update_vlan_interface(node, name, network, links):
             vlan=vlan,
             defaults={"acquired": True},
         )
-    elif interface.vlan != vlan:
+    elif vlan is not None and interface.vlan != vlan:
         interface.vlan = vlan
         interface.save()
 

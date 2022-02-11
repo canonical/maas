@@ -608,6 +608,68 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             ["eth0.0102", "vlan0100", "vlan101"], sorted(interface_names)
         )
 
+    def test_vlan_interface_moved_vlan(self):
+        controller = self.create_empty_controller()
+        data = FakeCommissioningData()
+        eth0_network = data.create_physical_network("eth0")
+        data.create_vlan_network("eth0.100", parent=eth0_network, vid=100)
+
+        self.update_interfaces(controller, data)
+
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=controller.current_config
+        )
+        eth0_100 = VLANInterface.objects.get(
+            name="eth0.100", node_config=controller.current_config
+        )
+        eth0_fabric_id = eth0.vlan.fabric_id
+        self.assertEqual(eth0_fabric_id, eth0_100.vlan.fabric_id)
+        self.assertEqual(
+            [0, 100],
+            sorted(
+                vlan.vid
+                for vlan in VLAN.objects.filter(fabric_id=eth0_fabric_id)
+            ),
+        )
+
+        # Simulate someone moving the VLAN of the VLAN interface, but
+        # before the parent VLAN is moved, update_interfaces() is
+        # called. This may happen, since our UI and API don't allow you
+        # to move multiple VLANs at a time.
+        new_fabric = factory.make_Fabric()
+        eth0_100.vlan.fabric = new_fabric
+        eth0_100.vlan.save()
+        self.update_interfaces(controller, data)
+
+        # We're now in a situation where the main interface and its VLAN
+        # interface have different fabrics. It's not a valid situation,
+        # but we have to allow it so that people can use our API to move
+        # multiple VLANs to a different fabric.
+        eth0 = PhysicalInterface.objects.get(
+            name="eth0", node_config=controller.current_config
+        )
+        eth0_100 = VLANInterface.objects.get(
+            name="eth0.100", node_config=controller.current_config
+        )
+        self.assertEqual(eth0_fabric_id, eth0.vlan.fabric_id)
+        self.assertEqual(new_fabric.id, eth0_100.vlan.fabric_id)
+        self.assertEqual(
+            [0, 100],
+            sorted(
+                VLAN.objects.filter(fabric=new_fabric).values_list(
+                    "vid", flat=True
+                )
+            ),
+        )
+        self.assertEqual(
+            [0],
+            sorted(
+                VLAN.objects.filter(fabric_id=eth0_fabric_id).values_list(
+                    "vid", flat=True
+                )
+            ),
+        )
+
     def test_sets_discovery_parameters(self):
         controller = self.create_empty_controller()
         eth0_mac = factory.make_mac_address()
