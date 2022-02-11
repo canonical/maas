@@ -25,9 +25,15 @@ server {
     {{endif}}
 
     location /machine-resources/ {
-	root {{machine_resources}};
-	autoindex on;
-	gzip on;
+        root {{machine_resources}};
+        autoindex on;
+        gzip on;
+    }
+
+    location /hardware-sync/ {
+        root {{hardware_sync}};
+        autoindex on;
+        gzip on;
     }
 
     location /images/ {

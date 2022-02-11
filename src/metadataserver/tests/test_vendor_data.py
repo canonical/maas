@@ -37,6 +37,7 @@ from metadataserver.vendor_data import (
     generate_rack_controller_configuration,
     generate_snap_configuration,
     generate_system_info,
+    get_node_maas_url,
     get_vendor_data,
     HARDWARE_SYNC_SERVICE_TEMPLATE,
     HARDWARE_SYNC_TIMER_TEMPLATE,
@@ -718,6 +719,8 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
             ["hardware_sync_interval"]
         )
 
+        maas_url = get_node_maas_url(node)
+
         expected = (
             "write_files",
             [
@@ -728,10 +731,26 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
                     "path": "/lib/systemd/system/maas_hardware_sync.timer",
                 },
                 {
-                    "content": self._get_service_template().substitute(),
+                    "content": self._get_service_template().substitute(
+                        maas_url=maas_url, architecture=node.architecture
+                    ),
                     "path": "/lib/systemd/system/maas_hardware_sync.service",
                 },
             ],
         )
 
         self.assertCountEqual(next(config), expected)
+
+
+class TestGetNodeMAASURL(MAASServerTestCase):
+    def test_maas_url_uses_boot_rack_controller(self):
+        subnet = factory.make_Subnet()
+        rack_controller = factory.make_RackController()
+        factory.make_Interface(node=rack_controller, subnet=subnet)
+        node = factory.make_Node()
+        factory.make_Interface(node=node, subnet=subnet)
+
+        expected_url = (
+            f"http://{get_maas_facing_server_host(rack_controller)}:5240/MAAS"
+        )
+        self.assertEqual(expected_url, get_node_maas_url(node))

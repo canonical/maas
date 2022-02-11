@@ -61,6 +61,13 @@ def get_vendor_data(node, proxy):
     return vendor_data
 
 
+def get_node_maas_url(node):
+    maas_hostname = get_maas_facing_server_host(
+        node.get_boot_rack_controller()
+    )
+    return f"http://{maas_hostname}:5240/MAAS"
+
+
 def generate_system_info(node):
     """Generate cloud-init system information for the given node."""
     if node.owner is not None and node.default_user:
@@ -122,8 +129,7 @@ def generate_rack_controller_configuration(node):
         and node.install_rackd
         and node.osystem in ("ubuntu", "ubuntu-core")
     ):
-        hostname = get_maas_facing_server_host(node.get_boot_rack_controller())
-        maas_url = f"http://{hostname}:5240/MAAS"
+        maas_url = get_node_maas_url(node)
         secret = Config.objects.get_config("rpc_shared_secret")
         channel = str(get_target_version().snap_channel)
         yield "runcmd", [
@@ -378,12 +384,14 @@ def generate_hardware_sync_systemd_configuration(node):
         _get_metadataserver_template(HARDWARE_SYNC_SERVICE_TEMPLATE)
     )
 
+    maas_url = get_node_maas_url(node)
+
     hardware_sync_timer = hardware_sync_timer_tmpl.substitute(
         hardware_sync_interval=hardware_sync_interval
     )
-    hardware_sync_service = (
-        hardware_sync_service_tmpl.substitute()
-    )  # TODO substitute node architecture for executable
+    hardware_sync_service = hardware_sync_service_tmpl.substitute(
+        maas_url=maas_url, architecture=node.architecture
+    )
 
     yield "write_files", [
         {

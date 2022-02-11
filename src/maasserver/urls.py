@@ -9,6 +9,8 @@ from django.http import HttpResponse
 from django.views.generic import TemplateView
 
 from maasserver import urls_api
+from maasserver.api.maas_run_scripts import MAASRunScriptHandler
+from maasserver.api.support import OperationsResource
 from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
@@ -19,6 +21,9 @@ from maasserver.prometheus.stats import prometheus_stats_handler
 from maasserver.views.account import authenticate, csrf, login, logout
 from maasserver.views.rpc import info
 from maasserver.views.vmhost import vmhost_certificate_handler
+
+maas_run_script_handler = OperationsResource(MAASRunScriptHandler)
+
 
 # Anonymous views.
 urlpatterns = [
@@ -47,6 +52,11 @@ urlpatterns = [
             content_type="text/x-python",
         ),
         name="maas-run-scripts",
+    ),
+    url(
+        r"^maas-run-scripts/(?P<architecture>.*)$",
+        maas_run_script_handler,
+        name="maas-run-scripts-bin",
     ),
     url(r"^metrics$", prometheus_stats_handler, name="metrics"),
     url(

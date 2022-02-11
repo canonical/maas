@@ -170,15 +170,14 @@ class RackHTTPService(TimerService):
     def _configure(self, upstream_http):
         """Update the HTTP configuration for the rack."""
         template = load_template("http", "rackd.nginx.conf.template")
-        machine_resources_prefix = get_root_path()
+        root_prefix = get_root_path()
         try:
             rendered = template.substitute(
                 {
                     "upstream_http": list(sorted(upstream_http)),
                     "resource_root": self._resource_root,
-                    "machine_resources": str(
-                        machine_resources_prefix / "usr/share/maas"
-                    ),
+                    "machine_resources": str(root_prefix / "usr/share/maas"),
+                    "hardware_sync": str(root_prefix / "usr/share/maas"),
                 }
             )
         except NameError as error:

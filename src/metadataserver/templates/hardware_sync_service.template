@@ -6,4 +6,6 @@ After=network.target
 
 [Service]
 type=oneshot
-ExecStart=/bin/echo "TODO add hardware sync executable"
+ExecStartPre=/usr/bin/wget -O /usr/bin/maas-hardware-sync {{ maas_url }}/hardware-sync/{{ architecture }}
+ExecStartPre=/bin/chmod 0755 /usr/bin/maas-hardware-sync
+ExecStart=/bin/echo "TODO run hardware-sync commands"
