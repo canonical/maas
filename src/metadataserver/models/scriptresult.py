@@ -24,7 +24,7 @@ from maasserver.models.interface import Interface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.timestampedmodel import now, TimestampedModel
 from maasserver.models.versionedtextfile import VersionedTextFile
-from metadataserver import DefaultMeta, logger
+from metadataserver import logger
 from metadataserver.builtin_scripts.hooks import NODE_INFO_SCRIPTS
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -40,10 +40,6 @@ from provisioningserver.events import EVENT_TYPES
 
 
 class ScriptResult(CleanSave, TimestampedModel):
-
-    # Force model into the metadataserver namespace.
-    class Meta(DefaultMeta):
-        pass
 
     script_set = ForeignKey(ScriptSet, editable=False, on_delete=CASCADE)
 

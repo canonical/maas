@@ -14,7 +14,6 @@ from django.db.models import (
     Manager,
 )
 
-from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -106,7 +105,7 @@ class RDNS(CleanSave, TimestampedModel):
     :ivar hostname: Most recent reverse DNS entry.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "Reverse-DNS entry"
         verbose_name_plural = "Reverse-DNS entries"
         unique_together = ("ip", "observer")

@@ -6,7 +6,6 @@
 
 from django.db.models import CASCADE, CharField, ForeignKey
 
-from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_FILE_TYPE_CHOICES,
@@ -36,7 +35,7 @@ class BootResourceFile(CleanSave, TimestampedModel):
         for synced Ubuntu images.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         unique_together = (("resource_set", "filename"),)
 
     resource_set = ForeignKey(

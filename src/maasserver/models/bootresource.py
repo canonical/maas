@@ -17,7 +17,6 @@ from django.db.models import (
     Sum,
 )
 
-from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -473,7 +472,7 @@ class BootResource(CleanSave, TimestampedModel):
         for synced Ubuntu images.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         unique_together = (("name", "architecture"),)
 
     objects = BootResourceManager()

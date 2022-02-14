@@ -15,7 +15,6 @@ from django.db.models import (
     Manager,
 )
 
-from maasserver import DefaultMeta
 from maasserver.enum import (
     FILESYSTEM_FORMAT_TYPE_CHOICES_DICT,
     FILESYSTEM_TYPE,
@@ -76,8 +75,7 @@ class Filesystem(CleanSave, TimestampedModel):
         if fstype != FILESYSTEM_TYPE.RAMFS and fstype != FILESYSTEM_TYPE.TMPFS
     )
 
-    class Meta(DefaultMeta):
-
+    class Meta:
         unique_together = (
             ("partition", "acquired"),
             ("block_device", "acquired"),

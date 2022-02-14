@@ -16,7 +16,6 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 
-from maasserver import DefaultViewMeta
 from maasserver.fields import CIDRField, DomainNameField, MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.viewmodel import ViewModel
@@ -173,11 +172,11 @@ class Discovery(CleanSave, ViewModel):
     the `maasserver_discovery` view.
     """
 
-    class Meta(DefaultViewMeta):
-        # When managed is False, Django will not create a migration for this
-        # model class. This is required for model classes based on views.
+    class Meta:
         verbose_name = "Discovery"
         verbose_name_plural = "Discoveries"
+        # this is a view-backed model
+        managed = False
 
     def __str__(self):
         return "<Discovery: {} at {} via {}>".format(

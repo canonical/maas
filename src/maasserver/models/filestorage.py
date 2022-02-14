@@ -11,7 +11,6 @@ from django.db.models import CharField, ForeignKey, Manager, Model, PROTECT
 from django.urls import reverse
 from django.utils.http import urlencode
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from metadataserver.fields import Bin, BinaryField
 
@@ -62,9 +61,7 @@ class FileStorage(CleanSave, Model):
     :ivar content: The file's actual data.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         unique_together = ("filename", "owner")
 
     filename = CharField(max_length=255, unique=False, editable=False)

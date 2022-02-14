@@ -8,7 +8,6 @@ import logging
 
 from django.db.models import CharField, IntegerField, Manager
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.events import AUDIT
@@ -71,7 +70,7 @@ class EventType(CleanSave, TimestampedModel):
         """A human-readable version of the log level."""
         return LOGGING_LEVELS[self.level]
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "Event type"
 
     def __str__(self):

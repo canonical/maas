@@ -19,7 +19,6 @@ from django.db.models import (
 )
 from markupsafe import Markup
 
-from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -172,9 +171,6 @@ class Notification(CleanSave, TimestampedModel):
     :ivar dismissable: Whether the notification can be dismissed.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
     objects = NotificationManager()
 
     # The ident column *is* unique, but uniqueness will be ensured using a
@@ -271,9 +267,6 @@ class NotificationDismissal(TimestampedModel):
     :ivar notification: The notification which has been dismissed.
     :ivar user: The user that has dismissed the linked notification.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = Manager()
 

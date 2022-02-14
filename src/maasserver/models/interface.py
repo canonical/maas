@@ -34,7 +34,6 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
 
-from maasserver import DefaultMeta
 from maasserver.enum import (
     BRIDGE_TYPE,
     INTERFACE_LINK_TYPE,
@@ -531,7 +530,7 @@ class InterfaceManager(Manager, InterfaceQueriesMixin):
 
 
 class Interface(CleanSave, TimestampedModel):
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "Interface"
         verbose_name_plural = "Interfaces"
         ordering = ("created",)

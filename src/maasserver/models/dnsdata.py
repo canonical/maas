@@ -19,7 +19,6 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dnsresource import DNSResource
@@ -280,9 +279,7 @@ class DNSData(CleanSave, TimestampedModel):
     :ivar rrdata: right-hand side of the DNS Resource Record.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "DNSData"
         verbose_name_plural = "DNSData"
 

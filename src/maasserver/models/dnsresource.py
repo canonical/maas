@@ -25,7 +25,6 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 
-from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models import domain
 from maasserver.models.cleansave import CleanSave
@@ -235,9 +234,7 @@ class DNSResource(CleanSave, TimestampedModel):
     :ivar objects: An instance of the class :class:`DNSResourceManager`.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "DNSResource"
         verbose_name_plural = "DNSResources"
 

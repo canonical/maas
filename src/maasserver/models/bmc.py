@@ -37,7 +37,6 @@ from netaddr import AddrFormatError, IPAddress
 import petname
 from twisted.internet.defer import inlineCallbacks
 
-from maasserver import DefaultMeta
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.enum import (
     BMC_TYPE,
@@ -144,7 +143,7 @@ class BMC(CleanSave, TimestampedModel):
     :ivar objects: The :class:`BMCManager`.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         # power_type and power_parameters have indexes in addition of the
         # combined unique one as the unique one uses MD5 hash of the content
         # and would not be used for queries looking for exact content. Here we
@@ -650,7 +649,7 @@ class PodManager(BaseBMCManager):
 class Pod(BMC):
     """A `Pod` represents a `BMC` that controls multiple machines."""
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     objects = PodManager()

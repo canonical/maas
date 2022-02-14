@@ -15,7 +15,7 @@ from django.db.models import CASCADE, ForeignKey, Manager, TextField
 from django.utils.safestring import mark_safe
 from OpenSSL import crypto
 
-from maasserver import DefaultMeta, logger
+from maasserver import logger
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -82,7 +82,7 @@ class SSLKey(CleanSave, TimestampedModel):
         null=False, blank=False, editable=True, validators=[validate_ssl_key]
     )
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "SSL key"
         unique_together = ("user", "key")
 

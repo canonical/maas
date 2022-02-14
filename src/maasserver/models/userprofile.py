@@ -16,7 +16,6 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 from piston3.models import Token
 
-from maasserver import DefaultMeta
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.models.cleansave import CleanSave
 
@@ -52,9 +51,6 @@ class UserProfile(CleanSave, Model):
        #storing-additional-information-about-users
 
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = UserProfileManager()
     user = OneToOneField(User, on_delete=CASCADE)

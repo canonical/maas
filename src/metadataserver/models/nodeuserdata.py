@@ -7,7 +7,6 @@
 from django.db.models import CASCADE, Manager, Model, OneToOneField
 
 from maasserver.models.cleansave import CleanSave
-from metadataserver import DefaultMeta
 from metadataserver.fields import Bin, BinaryField
 
 
@@ -68,9 +67,6 @@ class NodeUserData(CleanSave, Model):
     :ivar node: Node that this is for.
     :ivar data: base64-encoded data.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = NodeUserDataManager()
 

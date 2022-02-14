@@ -7,7 +7,6 @@
 from django.core.exceptions import ValidationError
 from django.db.models import CharField, URLField
 
-from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -15,9 +14,6 @@ from maasserver.models.timestampedmodel import TimestampedModel
 
 class BootSource(CleanSave, TimestampedModel):
     """A source for boot resources."""
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     url = URLField(
         blank=False, unique=True, help_text="The URL of the BootSource."

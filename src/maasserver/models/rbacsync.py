@@ -7,7 +7,6 @@
 from django.db.models import Manager, Model
 from django.db.models.fields import CharField, DateTimeField, IntegerField
 
-from maasserver import DefaultMeta
 from provisioningserver.enum import enum_choices
 
 
@@ -48,9 +47,6 @@ class RBACSync(Model):
     in this table. This way we can consistently publish RBAC information to the
     RBAC service in an HA environment.
     """
-
-    class Meta(DefaultMeta):
-        """Default meta."""
 
     objects = RBACSyncManager()
 
@@ -107,9 +103,6 @@ class RBACSync(Model):
 
 class RBACLastSync(Model):
     """ID returned after the last synchronization for each resource type."""
-
-    class Meta(DefaultMeta):
-        """Default meta."""
 
     resource_type = CharField(
         editable=False,

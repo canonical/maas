@@ -1,6 +1,5 @@
 from django.db.models import CASCADE, ForeignKey, TextField
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.enum import enum_choices
@@ -21,7 +20,7 @@ NODE_CONFIG_DEFAULT = NODE_CONFIG_TYPE.DISCOVERED
 
 
 class NodeConfig(CleanSave, TimestampedModel):
-    class Meta(DefaultMeta):
+    class Meta:
         unique_together = ["node", "name"]
 
     name = TextField(

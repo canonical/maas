@@ -12,16 +12,12 @@ from django.db.models import (
     Model,
 )
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.utils.orm import NotNullSum
 
 
 class PodStoragePool(CleanSave, Model):
     """Storage pool for a pod."""
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     pod = ForeignKey(
         "BMC",

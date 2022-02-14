@@ -6,7 +6,6 @@
 
 from django.db.models import CASCADE, ForeignKey, IntegerField
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -21,9 +20,7 @@ class RegionControllerProcess(CleanSave, TimestampedModel):
     :ivar pid: Process ID for the process.
     """
 
-    class Meta(DefaultMeta):
-        """Needed recognize this model."""
-
+    class Meta:
         unique_together = ("region", "pid")
         ordering = ["pid"]
 

@@ -6,7 +6,6 @@
 
 from django.db.models import CharField, Manager
 
-from maasserver import DefaultMeta
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -46,7 +45,7 @@ class LicenseKey(TimestampedModel):
     license key can exists per osystem/distro_series combination.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         unique_together = (("osystem", "distro_series"),)
 
     objects = LicenseKeyManager()

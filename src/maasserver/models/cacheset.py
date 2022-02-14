@@ -10,7 +10,6 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Manager, Q
 from django.http import Http404
 
-from maasserver import DefaultMeta
 from maasserver.enum import FILESYSTEM_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.numa import NUMANode
@@ -155,9 +154,6 @@ class CacheSetManager(Manager):
 
 class CacheSet(CleanSave, TimestampedModel):
     """A Bcache cache set."""
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = CacheSetManager()
 

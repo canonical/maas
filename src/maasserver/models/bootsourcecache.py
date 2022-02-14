@@ -6,7 +6,6 @@
 
 from django.db.models import CASCADE, CharField, DateField, ForeignKey, Manager
 
-from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from maasserver.models.bootsource import BootSource
 from maasserver.models.cleansave import CleanSave
@@ -41,9 +40,6 @@ class BootSourceCacheManager(Manager):
 
 class BootSourceCache(CleanSave, TimestampedModel):
     """A cache of an image provided in boot source."""
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = BootSourceCacheManager()
 

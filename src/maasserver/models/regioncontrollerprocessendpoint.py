@@ -12,7 +12,6 @@ from django.db.models import (
     IntegerField,
 )
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.regioncontrollerprocess import RegionControllerProcess
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -28,9 +27,7 @@ class RegionControllerProcessEndpoint(CleanSave, TimestampedModel):
     :ivar port: Port number of the endpoint.
     """
 
-    class Meta(DefaultMeta):
-        """Needed recognize this model."""
-
+    class Meta:
         unique_together = ("process", "address", "port")
 
     process = ForeignKey(

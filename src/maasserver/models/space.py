@@ -11,7 +11,6 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import CharField, Manager, TextField
 from django.db.models.query import QuerySet
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import MAASQueriesMixin
@@ -110,9 +109,7 @@ class Space(CleanSave, TimestampedModel):
     # Name of the undefined space.
     UNDEFINED = "undefined"
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "Space"
         verbose_name_plural = "Spaces"
 

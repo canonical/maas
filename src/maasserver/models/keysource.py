@@ -6,7 +6,6 @@
 
 from django.db.models import BooleanField, CharField, Manager
 
-from maasserver import DefaultMeta
 from maasserver.enum import KEYS_PROTOCOL_TYPE_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -55,7 +54,7 @@ class KeySource(CleanSave, TimestampedModel):
     # XXX auto-update not implemented yet
     auto_update = BooleanField(default=False)
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "Key Source"
 
     def __str__(self):

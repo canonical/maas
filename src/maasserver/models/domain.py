@@ -22,7 +22,6 @@ from django.db.models import Manager, NullBooleanField, PositiveIntegerField, Q
 from django.db.models.query import QuerySet
 from netaddr import IPAddress
 
-from maasserver import DefaultMeta
 from maasserver.fields import DomainNameField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
@@ -155,9 +154,7 @@ class Domain(CleanSave, TimestampedModel):
     :ivar objects: An instance of the class :class:`DomainManager`.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "Domain"
         verbose_name_plural = "Domains"
 

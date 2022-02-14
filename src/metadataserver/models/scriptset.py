@@ -28,7 +28,7 @@ from maasserver.forms.parameters import ParametersForm
 from maasserver.models import Config, Event
 from maasserver.models.cleansave import CleanSave
 from maasserver.preseed import CURTIN_INSTALL_LOG
-from metadataserver import DefaultMeta, logger
+from metadataserver import logger
 from metadataserver.builtin_scripts.hooks import filter_modaliases
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -355,8 +355,6 @@ class ScriptSetManager(Manager):
 
 
 class ScriptSet(CleanSave, Model):
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = ScriptSetManager()
 

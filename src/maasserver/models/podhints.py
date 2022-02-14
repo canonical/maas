@@ -15,16 +15,12 @@ from django.db.models import (
     SET_NULL,
 )
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.vmcluster import VMCluster
 
 
 class PodHints(CleanSave, Model):
     """Hint information for a pod."""
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     pod = OneToOneField("BMC", related_name="hints", on_delete=CASCADE)
 

@@ -21,7 +21,6 @@ from django.db.models import (
     TextField,
 )
 
-from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -128,9 +127,6 @@ class Partition(CleanSave, TimestampedModel):
     :ivar size: Size of the partition in bytes.
     :ivar bootable: Whether the partition is set as bootable.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = PartitionManager()
 

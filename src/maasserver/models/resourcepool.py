@@ -14,7 +14,6 @@ from datetime import datetime
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import CharField, Manager, TextField
 
-from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -117,8 +116,7 @@ class ResourcePool(CleanSave, TimestampedModel):
     )
     description = TextField(null=False, blank=True, editable=True)
 
-    class Meta(DefaultMeta):
-
+    class Meta:
         ordering = ["name"]
 
     def __str__(self):

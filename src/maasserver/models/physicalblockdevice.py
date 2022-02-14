@@ -4,16 +4,12 @@
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey
 
-from maasserver import DefaultMeta
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.utils.converters import human_readable_bytes
 
 
 class PhysicalBlockDevice(BlockDevice):
     """A physical block device attached to a node."""
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     model = CharField(
         max_length=255,

@@ -8,7 +8,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -21,9 +20,7 @@ class BootSourceSelectionManager(Manager):
 class BootSourceSelection(CleanSave, TimestampedModel):
     """A set of selections for a single `BootSource`."""
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         unique_together = ("boot_source", "os", "release")
 
     objects = BootSourceSelectionManager()

@@ -27,7 +27,7 @@ from django.db.models import (
 )
 from netaddr import IPAddress
 
-from maasserver import DefaultMeta, locks
+from maasserver import locks
 from maasserver.enum import (
     INTERFACE_LINK_TYPE,
     INTERFACE_TYPE,
@@ -793,7 +793,7 @@ class StaticIPAddressManager(Manager):
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "Static IP Address"
         verbose_name_plural = "Static IP Addresses"
         unique_together = ("alloc_type", "ip")

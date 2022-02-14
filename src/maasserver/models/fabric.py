@@ -11,7 +11,6 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import CharField, Manager, TextField
 from django.db.models.query import QuerySet
 
-from maasserver import DefaultMeta
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
@@ -128,9 +127,7 @@ class Fabric(CleanSave, TimestampedModel):
     :ivar objects: An instance of the class :class:`FabricManager`.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "Fabric"
         verbose_name_plural = "Fabrics"
 

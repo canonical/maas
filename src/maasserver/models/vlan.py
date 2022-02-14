@@ -22,7 +22,6 @@ from django.db.models import (
 from django.db.models.query import QuerySet
 from netaddr import AddrFormatError
 
-from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE
 from maasserver.fields import MODEL_NAME_VALIDATOR
 from maasserver.models.cleansave import CleanSave
@@ -144,9 +143,7 @@ class VLAN(CleanSave, TimestampedModel):
 
     objects = VLANManager()
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "VLAN"
         verbose_name_plural = "VLANs"
         unique_together = (("vid", "fabric"),)

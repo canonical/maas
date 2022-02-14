@@ -9,7 +9,6 @@ import hashlib
 from django.db.models import BigIntegerField, CharField, Manager
 from twisted.internet import reactor
 
-from maasserver import DefaultMeta
 from maasserver.fields import LargeObjectField, LargeObjectFile
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -78,9 +77,6 @@ class LargeFile(CleanSave, TimestampedModel):
         never be larger than `total_size`.
     :ivar content: File data.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = FileStorageManager()
 

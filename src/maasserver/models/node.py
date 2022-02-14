@@ -73,7 +73,6 @@ from twisted.internet.error import ConnectionClosed, ConnectionDone
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
-from maasserver import DefaultMeta
 from maasserver.clusterrpc.pods import decompose_machine
 from maasserver.clusterrpc.power import (
     power_cycle,
@@ -938,9 +937,6 @@ class Node(CleanSave, TimestampedModel):
     :ivar default_user: The username this `Node` will be configured with,
         None otherwise.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     system_id = CharField(
         max_length=41,
@@ -6330,7 +6326,7 @@ class Machine(Node):
 
     objects = MachineManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -6353,7 +6349,7 @@ class Controller(Node):
 
     objects = ControllerManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -6493,7 +6489,7 @@ class RackController(Controller):
 
     objects = RackControllerManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -6825,7 +6821,7 @@ class RegionController(Controller):
 
     objects = RegionControllerManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -6865,7 +6861,7 @@ class Device(Node):
 
     objects = DeviceManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -6876,9 +6872,6 @@ class NodeGroupToRackController(CleanSave, Model):
     """Store some of the old NodeGroup data so we can migrate it when a rack
     controller is registered.
     """
-
-    class Meta(DefaultMeta):
-        """Inexplicably required."""
 
     # The uuid of the nodegroup from < 2.0
     uuid = CharField(max_length=36, null=False, blank=False, editable=True)

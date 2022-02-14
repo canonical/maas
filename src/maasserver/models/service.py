@@ -6,7 +6,6 @@
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager
 
-from maasserver import DefaultMeta
 from maasserver.enum import NODE_TYPE, SERVICE_STATUS, SERVICE_STATUS_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -122,9 +121,7 @@ class ServiceManager(Manager):
 class Service(CleanSave, TimestampedModel):
     """A service running on regiond or rackd."""
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         unique_together = ("node", "name")
         ordering = ["id"]
 

@@ -6,7 +6,6 @@
 
 from django.db.models import CASCADE, CharField, ForeignKey, Sum
 
-from maasserver import DefaultMeta
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -47,7 +46,7 @@ class BootResourceSet(CleanSave, TimestampedModel):
         source, either daily or release.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         unique_together = (("resource", "version"),)
 
     resource = ForeignKey(

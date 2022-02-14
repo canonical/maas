@@ -18,7 +18,6 @@ from django.db.models import (
     Q,
 )
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.notification import Notification
@@ -126,7 +125,7 @@ class ControllerInfoManager(Manager):
 class ControllerInfo(CleanSave, TimestampedModel):
     """Metadata about a node that is a controller."""
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "ControllerInfo"
 
     objects = ControllerInfoManager()

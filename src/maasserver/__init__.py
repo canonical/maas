@@ -15,22 +15,6 @@ default_app_config = "maasserver.apps.MAASConfig"
 logger = logging.getLogger("maasserver")
 
 
-class DefaultMeta:
-    """Base class for model `Meta` classes in the maasserver app.
-
-    Each model in the models package outside of __init__.py needs a nested
-    `Meta` class that defines `app_label`.
-    """
-
-    app_label = "maasserver"
-
-
-class DefaultViewMeta(DefaultMeta):
-    """Default `Meta` class for a view-backed model."""
-
-    managed = False
-
-
 def execute_from_command_line():
     # Limit concurrency in all thread-pools to ONE.
     from maasserver.utils import threads

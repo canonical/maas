@@ -11,7 +11,6 @@ from django.shortcuts import get_object_or_404
 from lxml import etree
 from twisted.internet import reactor
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import post_commit_do
@@ -59,9 +58,6 @@ class Tag(CleanSave, TimestampedModel):
     """
 
     _tag_name_regex = "^[a-zA-Z0-9_-]+$"
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     name = CharField(
         max_length=256,

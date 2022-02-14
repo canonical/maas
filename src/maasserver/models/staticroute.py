@@ -14,7 +14,6 @@ from django.db.models import (
 )
 from django.shortcuts import get_object_or_404
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -48,9 +47,7 @@ class StaticRouteManager(Manager):
 class StaticRoute(CleanSave, TimestampedModel):
     """Static route between two subnets using a gateway."""
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         unique_together = ("source", "destination", "gateway_ip")
 
     objects = StaticRouteManager()

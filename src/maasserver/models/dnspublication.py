@@ -10,7 +10,6 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db.models import Manager, Model
 from django.db.models.fields import BigIntegerField, CharField, DateTimeField
 
-from maasserver import DefaultMeta
 from maasserver.sequence import INT_MAX, Sequence
 
 # A DNS zone's serial is a 32-bit integer. Also, we start with the value 1
@@ -67,9 +66,6 @@ class DNSPublication(Model):
     serial in an HA environment, and newly starting regiond processes can
     immediately be consistent with their peers.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = DNSPublicationManager()
 

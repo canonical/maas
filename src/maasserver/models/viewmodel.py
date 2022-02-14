@@ -6,13 +6,11 @@
 
 from django.db.models import Model
 
-from maasserver import DefaultMeta
-
 
 class ViewModel(Model):
     """Base class for a view-backed Django `Model`."""
 
-    class Meta(DefaultMeta):
+    class Meta:
         abstract = True
 
     def save(self):

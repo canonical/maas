@@ -7,8 +7,6 @@
 from django.db.models import DateTimeField, Model
 from django.utils import timezone
 
-from maasserver import DefaultMeta
-
 
 def now():
     """Current time."""
@@ -24,7 +22,7 @@ class TimestampedModel(Model):
     :ivar updated: Time of object's latest update.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         abstract = True
 
     created = DateTimeField(editable=False)

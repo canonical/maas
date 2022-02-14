@@ -14,7 +14,6 @@ from django.db.models import (
 )
 from netaddr import IPAddress
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one, UniqueViolation
@@ -95,7 +94,7 @@ class MDNS(CleanSave, TimestampedModel):
     :ivar objects: An instance of the class :class:`MDNSManager`.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "mDNS binding"
         verbose_name_plural = "mDNS bindings"
 

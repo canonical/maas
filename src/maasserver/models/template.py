@@ -8,7 +8,6 @@ import sys
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one
@@ -63,9 +62,7 @@ class Template(CleanSave, TimestampedModel):
         not specified, the default_version will be used.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "Template"
         verbose_name_plural = "Templates"
 

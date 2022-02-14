@@ -6,7 +6,6 @@
 
 from django.db.models import CASCADE, ForeignKey
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import RackController
 from maasserver.models.regioncontrollerprocessendpoint import (
@@ -29,9 +28,7 @@ class RegionRackRPCConnection(CleanSave, TimestampedModel):
     :ivar rack_controller: `RackController` this connection goes to.
     """
 
-    class Meta(DefaultMeta):
-        """Needed recognize this model."""
-
+    class Meta:
         unique_together = ("endpoint", "rack_controller")
 
     endpoint = ForeignKey(

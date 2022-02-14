@@ -6,7 +6,6 @@
 
 from django.db.models import CASCADE, CharField, ForeignKey, Manager, TextField
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -38,7 +37,7 @@ class NodeMetadata(CleanSave, TimestampedModel):
     :ivar objects: the switch manager class.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "NodeMetadata"
         verbose_name_plural = "NodeMetadata"
         unique_together = ("node", "key")

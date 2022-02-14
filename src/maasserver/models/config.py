@@ -12,7 +12,6 @@ from socket import gethostname
 from django.db.models import CharField, Manager, Model
 from django.db.models.signals import post_save
 
-from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.events import EVENT_TYPES
@@ -293,9 +292,6 @@ class Config(Model):
     :ivar value: The configuration value.
     :type value: Any pickleable python object.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     name = CharField(max_length=255, unique=True)
     value = JSONObjectField(null=True)

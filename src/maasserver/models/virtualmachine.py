@@ -28,7 +28,6 @@ from django.db.models import (
 )
 from django.db.models.functions import Coalesce
 
-from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bmc import BMC
@@ -102,7 +101,7 @@ class VirtualMachineInterface(CleanSave, TimestampedModel):
 class VirtualMachineDisk(CleanSave, TimestampedModel):
     """A disk attached to a virtual machine."""
 
-    class Meta(DefaultMeta):
+    class Meta:
         unique_together = ("vm", "name")
 
     name = CharField(max_length=255, blank=False)

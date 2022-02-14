@@ -7,7 +7,6 @@
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey, TextField
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -19,9 +18,7 @@ class VersionedTextFile(CleanSave, TimestampedModel):
     :ivar previous_version: Optional previous version of this file.
     """
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         verbose_name = "VersionedTextFile"
         verbose_name_plural = "VersionedTextFiles"
 

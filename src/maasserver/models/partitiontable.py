@@ -7,7 +7,6 @@
 from django.core.exceptions import ValidationError
 from django.db.models import CASCADE, CharField, ForeignKey
 
-from maasserver import DefaultMeta
 from maasserver.enum import PARTITION_TABLE_TYPE, PARTITION_TABLE_TYPE_CHOICES
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
@@ -52,9 +51,6 @@ class PartitionTable(CleanSave, TimestampedModel):
     :ivar table_type: Type of partition table.
     :ivar block_device: `BlockDevice` this partition table belongs to.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     table_type = CharField(
         max_length=20,

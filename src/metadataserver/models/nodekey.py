@@ -10,7 +10,6 @@ from piston3.models import KEY_SIZE, Token
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.user import create_auth_token
 from maasserver.utils.orm import get_one
-from metadataserver import DefaultMeta
 from metadataserver.nodeinituser import get_node_init_user
 
 
@@ -109,9 +108,6 @@ class NodeKey(CleanSave, Model):
     :ivar key: A key, to be used by `node` for logging in.  The key belongs
         to the maas-init-node user.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = NodeKeyManager()
 

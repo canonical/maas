@@ -15,7 +15,6 @@ from django.db.models import (
     TextField,
 )
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 
 DATA_KEY_RE = re.compile(r"[\w.-]+$")
@@ -54,9 +53,7 @@ class OwnerDataManager(Manager):
 class OwnerData(CleanSave, Model):
     """Owner key/value data placed on a machine while it is owned."""
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         unique_together = ("node", "key")
 
     objects = OwnerDataManager()

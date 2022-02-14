@@ -13,7 +13,6 @@ from django.db.models import CASCADE, CharField, ForeignKey, Manager, Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
-from maasserver import DefaultMeta
 from maasserver.enum import (
     CACHE_MODE_TYPE,
     CACHE_MODE_TYPE_CHOICES,
@@ -379,9 +378,6 @@ class FilesystemGroup(CleanSave, TimestampedModel):
     :ivar create_params: Parameters that can be passed during the create
         command when the filesystem group is created.
     """
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = FilesystemGroupManager()
 
@@ -871,7 +867,7 @@ class VolumeGroup(FilesystemGroup):
 
     objects = VolumeGroupManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -953,7 +949,7 @@ class RAID(FilesystemGroup):
 
     objects = RAIDManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -1064,7 +1060,7 @@ class Bcache(FilesystemGroup):
 
     objects = BcacheManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):
@@ -1078,7 +1074,7 @@ class VMFS(FilesystemGroup):
 
     objects = VMFSManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         proxy = True
 
     def __init__(self, *args, **kwargs):

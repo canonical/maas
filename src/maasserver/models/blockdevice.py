@@ -23,7 +23,6 @@ from django.db.models import (
 )
 from django.shortcuts import get_object_or_404
 
-from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
@@ -103,9 +102,7 @@ class BlockDeviceManager(Manager):
 class BlockDevice(CleanSave, TimestampedModel):
     """A block device attached to a node."""
 
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
-
+    class Meta:
         unique_together = ("node_config", "name")
         ordering = ["id"]
 

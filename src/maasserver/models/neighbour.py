@@ -13,7 +13,6 @@ from django.db.models import (
 )
 from django.db.models.query import QuerySet
 
-from maasserver import DefaultMeta
 from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.interface import Interface
@@ -133,7 +132,7 @@ class Neighbour(CleanSave, TimestampedModel):
     :ivar objects: An instance of the class :class:`SpaceManager`.
     """
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "Neighbour"
         verbose_name_plural = "Neighbours"
         unique_together = ("interface", "vid", "mac_address", "ip")

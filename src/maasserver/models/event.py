@@ -18,7 +18,6 @@ from django.db.models import (
     TextField,
 )
 
-from maasserver import DefaultMeta
 from maasserver.enum import ENDPOINT, ENDPOINT_CHOICES
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.eventtype import EventType
@@ -172,7 +171,7 @@ class Event(CleanSave, TimestampedModel):
 
     objects = EventManager()
 
-    class Meta(DefaultMeta):
+    class Meta:
         verbose_name = "Event record"
         index_together = (("node", "id"),)
         indexes = [

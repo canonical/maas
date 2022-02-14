@@ -14,7 +14,6 @@ from django.db.models import (
     TextField,
 )
 
-from maasserver import DefaultMeta
 from maasserver.fields import URLOrPPAField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -98,9 +97,6 @@ class PackageRepository(CleanSave, TimestampedModel):
     POCKETS_TO_DISABLE = ["updates", "security", "backports"]
     COMPONENTS_TO_DISABLE = ["restricted", "universe", "multiverse"]
     KNOWN_COMPONENTS = ["main", "restricted", "universe", "multiverse"]
-
-    class Meta(DefaultMeta):
-        """Needed for South to recognize this model."""
 
     objects = PackageRepositoryManager()
 

@@ -28,7 +28,6 @@ from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.versionedtextfile import VersionedTextFile
-from metadataserver import DefaultMeta
 from metadataserver.enum import (
     HARDWARE_TYPE,
     HARDWARE_TYPE_CHOICES,
@@ -133,10 +132,6 @@ class ScriptManager(Manager):
 
 
 class Script(CleanSave, TimestampedModel):
-
-    # Force model into the metadataserver namespace.
-    class Meta(DefaultMeta):
-        pass
 
     objects = ScriptManager()
 
