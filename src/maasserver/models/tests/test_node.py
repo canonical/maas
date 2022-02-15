@@ -1618,14 +1618,32 @@ class TestNode(MAASServerTestCase):
     def test_delete_node_deletes_related_interface(self):
         node = factory.make_Node()
         interface = node.add_physical_interface("AA:BB:CC:DD:EE:FF")
+        ip = factory.make_StaticIPAddress(interface=interface)
         node.delete()
         self.assertIsNone(reload_object(interface))
+        self.assertIsNone(reload_object(ip))
 
     def test_can_delete_allocated_node(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         system_id = node.system_id
         node.delete()
         self.assertCountEqual([], Node.objects.filter(system_id=system_id))
+
+    def test_delete_nodeconfig_doesnt_delete_referenced_ips(self):
+        node = factory.make_Node()
+        node_config = factory.make_NodeConfig(
+            node=node,
+            name=NODE_CONFIG_TYPE.DEPLOYMENT,
+        )
+        iface1 = factory.make_Interface(node_config=node.current_config)
+        iface2 = factory.make_Interface(node_config=node_config)
+        iface3 = factory.make_Interface(node_config=node_config)
+        ip1 = factory.make_StaticIPAddress(interface=iface1)
+        ip1.interface_set.add(iface2)
+        ip2 = factory.make_StaticIPAddress(interface=iface3)
+        node_config.delete()
+        self.assertIsNotNone(reload_object(ip1))
+        self.assertIsNone(reload_object(ip2))
 
     def test_set_random_hostname_set_hostname(self):
         node = factory.make_Node()

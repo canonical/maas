@@ -2959,7 +2959,6 @@ class Node(CleanSave, TimestampedModel):
                 machine = Machine.objects.filter(id=machine_id).first()
                 if machine is not None:
                     maaslog.info("%s: Deleting machine", machine.hostname)
-                    self._delete_related_interfaces()
                     # delete related VirtualMachine, if any
                     from maasserver.models.virtualmachine import VirtualMachine
 
@@ -2996,8 +2995,6 @@ class Node(CleanSave, TimestampedModel):
             )
         else:
             maaslog.info("%s: Deleting node", self.hostname)
-
-            self._delete_related_interfaces()
 
             # Delete my BMC if no other Nodes are using it.
             if (
@@ -6307,15 +6304,6 @@ class Node(CleanSave, TimestampedModel):
         machine anyway.
         """
         return self.dynamic and self.bmc_id is None
-
-    def _delete_related_interfaces(self):
-        """Delete the related interfaces.
-
-        This will remove all of IP addresses that are linked to those
-        interfaces.
-        """
-        for node_config in self.nodeconfig_set.all():
-            node_config.interface_set.all().delete()
 
 
 # Piston serializes objects based on the object class.
