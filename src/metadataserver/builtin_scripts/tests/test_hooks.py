@@ -1804,10 +1804,14 @@ class TestProcessLXDResults(MAASServerTestCase):
         }
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
-        usb_node_device = node.node_devices.get(bus=NODE_DEVICE_BUS.USB)
-        pcie_node_device = node.node_devices.get(bus=NODE_DEVICE_BUS.PCIE)
+        usb_node_device = node.current_config.nodedevice_set.get(
+            bus=NODE_DEVICE_BUS.USB
+        )
+        pcie_node_device = node.current_config.nodedevice_set.get(
+            bus=NODE_DEVICE_BUS.PCIE
+        )
 
-        self.assertEqual(2, node.node_devices.count())
+        self.assertEqual(2, node.current_config.nodedevice_set.count())
 
         self.assertEqual(usb_node_device.hardware_type, HARDWARE_TYPE.NODE)
         self.assertEqual(usb_node_device.vendor_id, usb_device["vendor_id"])
@@ -1850,7 +1854,9 @@ class TestProcessLXDResults(MAASServerTestCase):
             "total": 1,
         }
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
-        usb_node_device = node.node_devices.get(bus=NODE_DEVICE_BUS.USB)
+        usb_node_device = node.current_config.nodedevice_set.get(
+            bus=NODE_DEVICE_BUS.USB
+        )
         self.assertEqual(usb_node_device.hardware_type, HARDWARE_TYPE.NODE)
         self.assertEqual(usb_node_device.vendor_id, usb_device["vendor_id"])
         self.assertEqual(usb_node_device.product_id, usb_device["product_id"])
@@ -1909,9 +1915,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         }
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
-        pcie_node_device = node.node_devices.first()
+        pcie_node_device = node.current_config.nodedevice_set.first()
 
-        self.assertEqual(1, node.node_devices.count())
+        self.assertEqual(1, node.current_config.nodedevice_set.count())
         self.assertEqual(pcie_node_device.vendor_id, pcie_device["vendor_id"])
         self.assertEqual(
             pcie_node_device.product_id, pcie_device["product_id"]
@@ -1956,7 +1962,7 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
-        for node_device in node.node_devices.all():
+        for node_device in node.current_config.nodedevice_set.all():
             self.assertEqual(HARDWARE_TYPE.NETWORK, node_device.hardware_type)
             self.assertIsNotNone(node_device.physical_interface)
 
@@ -1984,7 +1990,7 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
-        for node_device in node.node_devices.all():
+        for node_device in node.current_config.nodedevice_set.all():
             self.assertEqual(HARDWARE_TYPE.STORAGE, node_device.hardware_type)
             self.assertIsNotNone(node_device.physical_blockdevice)
 
@@ -2019,7 +2025,7 @@ class TestProcessLXDResults(MAASServerTestCase):
             },
             {
                 node_device.bus: node_device.hardware_type
-                for node_device in node.node_devices.all()
+                for node_device in node.current_config.nodedevice_set.all()
             },
         )
 
@@ -2041,7 +2047,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         }
 
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
-        node_device = node.node_devices.get(pci_address=pci_address)
+        node_device = node.current_config.nodedevice_set.get(
+            pci_address=pci_address
+        )
 
         self.assertEqual(16, node_device.numa_node.index)
         self.assertEqual(16, node_device.physical_interface.numa_node.index)
@@ -2061,7 +2069,9 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
 
         self.assertIsNone(reload_object(old_node_device))
-        self.assertIsNotNone(node.node_devices.get(pci_address=pci_address))
+        self.assertIsNotNone(
+            node.current_config.nodedevice_set.get(pci_address=pci_address)
+        )
 
     def test_replace_existing_device_usb(self):
         node = factory.make_Node()
@@ -2084,7 +2094,7 @@ class TestProcessLXDResults(MAASServerTestCase):
 
         self.assertIsNone(reload_object(old_node_device))
         self.assertIsNotNone(
-            node.node_devices.get(
+            node.current_config.nodedevice_set.get(
                 bus_number=bus_number, device_number=device_number
             )
         )

@@ -399,7 +399,7 @@ def _add_or_update_node_device(
         create_args = {
             "bus": bus,
             "hardware_type": hardware_type,
-            "node": node,
+            "node_config": node.current_config,
             "numa_node": numa_node,
             "physical_blockdevice": storage_device,
             "physical_interface": network_device,
@@ -417,7 +417,7 @@ def _add_or_update_node_device(
         except ValidationError:
             # A device was replaced, delete the old one before creating
             # the new one.
-            qs = NodeDevice.objects.filter(node=node)
+            qs = NodeDevice.objects.filter(node_config=node.current_config)
             if pci_address is not None:
                 identifier = {"pci_address": pci_address}
             else:
@@ -535,7 +535,7 @@ def update_node_devices(
             if node_device.bus == NODE_DEVICE_BUS.PCIE
             else f"{node_device.bus_number}:{node_device.device_number}",
         ): node_device
-        for node_device in node.node_devices.all()
+        for node_device in node.current_config.nodedevice_set.all()
     }
 
     add_func = partial(

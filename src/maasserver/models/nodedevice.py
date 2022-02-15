@@ -49,7 +49,7 @@ def translate_bus(bus):
 class NodeDevice(CleanSave, TimestampedModel):
     class Meta:
         unique_together = [
-            ("node", "bus_number", "device_number", "pci_address")
+            ("node_config", "bus_number", "device_number", "pci_address")
         ]
 
     bus = IntegerField(choices=NODE_DEVICE_BUS_CHOICES, editable=False)
@@ -58,9 +58,7 @@ class NodeDevice(CleanSave, TimestampedModel):
         choices=HARDWARE_TYPE_CHOICES, default=HARDWARE_TYPE.NODE
     )
 
-    node = ForeignKey(
-        "Node", related_name="node_devices", on_delete=CASCADE, editable=False
-    )
+    node_config = ForeignKey("NodeConfig", on_delete=CASCADE)
 
     numa_node = ForeignKey(
         "NUMANode", related_name="node_devices", on_delete=CASCADE

@@ -28,7 +28,8 @@ class TestNodeDeviceHandler(MAASServerTestCase):
             "physical_blockdevice_id": node_device.physical_blockdevice_id,
             "physical_interface_id": node_device.physical_interface_id,
             "numa_node_id": node_device.numa_node_id,
-            "node_id": node_device.node_id,
+            "node_id": node_device.node_config.node_id,
+            "node_config_id": node_device.node_config_id,
         }
 
     def test_list(self):
@@ -36,11 +37,10 @@ class TestNodeDeviceHandler(MAASServerTestCase):
         handler = NodeDeviceHandler(user, {}, None)
         node = factory.make_Node_with_Interface_on_Subnet()
         factory.make_Node()
-
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 self.dehydrate_node_device(node_device)
-                for node_device in node.node_devices.all()
+                for node_device in node.current_config.nodedevice_set.all()
             ],
             handler.list({"system_id": node.system_id}),
         )

@@ -70,8 +70,11 @@ class NodeDevicesHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
         )
-        qs = node.node_devices.prefetch_related(
-            "node", "numa_node", "physical_interface", "physical_blockdevice"
+        qs = node.current_config.nodedevice_set.prefetch_related(
+            "node_config__node",
+            "numa_node",
+            "physical_interface",
+            "physical_blockdevice",
         )
 
         bus = get_optional_param(request.GET, "bus")
@@ -152,7 +155,7 @@ class NodeDeviceHandler(OperationsHandler):
             system_id = "system_id"
             node_device_id = "id"
         else:
-            system_id = node_device.node.system_id
+            system_id = node_device.node_config.node.system_id
             node_device_id = node_device.id
         return ("node_device_handler", [system_id, node_device_id])
 
@@ -166,7 +169,7 @@ class NodeDeviceHandler(OperationsHandler):
 
     @classmethod
     def system_id(cls, node_device):
-        return node_device.node.system_id
+        return node_device.node_config.node.system_id
 
     @classmethod
     def numa_node(cls, node_device):
@@ -176,22 +179,25 @@ class NodeDeviceHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
         )
+        node_config = node.current_config
         if id.isdigit():
-            return get_object_or_404(NodeDevice, node=node, id=id)
+            return get_object_or_404(
+                NodeDevice, node_config=node_config, id=id
+            )
         else:
             try:
                 split_id = id.split(":")
                 if len(split_id) == 2:
                     return get_object_or_404(
                         NodeDevice,
-                        node=node,
+                        node_config=node_config,
                         bus_number=int(split_id[0]),
                         device_number=int(split_id[1]),
                     )
                 else:
                     return get_object_or_404(
                         NodeDevice,
-                        node=node,
+                        node_config=node_config,
                         pci_address=id,
                     )
             except Exception:

@@ -3397,6 +3397,7 @@ class Factory(maastesting.factory.Factory):
         self,
         bus=None,
         hardware_type=None,
+        node_config=None,
         node=None,
         numa_node=None,
         physical_blockdevice=None,
@@ -3423,8 +3424,13 @@ class Factory(maastesting.factory.Factory):
                     HARDWARE_TYPE.NETWORK,
                 ),
             )
-        if node is None:
-            node = factory.make_Node()
+        if node_config is None:
+            if node is None:
+                node_config = factory.make_NodeConfig()
+            else:
+                node_config = node.current_config
+        # ensure it's always set
+        node = node_config.node
         if numa_node is None:
             try:
                 numa_node = random.choice(node.numanode_set.all())
@@ -3454,7 +3460,7 @@ class Factory(maastesting.factory.Factory):
         return NodeDevice.objects.create(
             bus=bus,
             hardware_type=hardware_type,
-            node=node,
+            node_config=node_config,
             numa_node=numa_node,
             physical_blockdevice=physical_blockdevice,
             physical_interface=physical_interface,

@@ -22,15 +22,17 @@ class NodeDeviceHandler(TimestampedModelHandler):
     def dehydrate(self, obj, data, for_list=False):
         # When NodeDevices are loaded in the UI the client has already received
         # the keys below. Instead of reprocessing them make it clear the handler
-        # is only returning the ids, not values,
+        # is only returning the ids, not values.
         for key in [
             "physical_blockdevice",
             "physical_interface",
             "numa_node",
-            "node",
+            "node_config",
         ]:
             id = data.pop(key)
             data[f"{key}_id"] = id
+
+        data["node_id"] = obj.node_config.node_id
         return data
 
     def list(self, params):
@@ -43,7 +45,7 @@ class NodeDeviceHandler(TimestampedModelHandler):
         system_id = params["system_id"]
 
         qs = self.get_queryset(for_list=True)
-        qs = qs.filter(node__system_id=system_id)
+        qs = qs.filter(node_config__node__system_id=system_id)
 
         objs = list(qs)
         getpk = attrgetter(self._meta.pk)

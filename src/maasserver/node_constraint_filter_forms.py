@@ -1213,7 +1213,7 @@ class FilterNodeForm(RenamableFieldsForm):
             filters = {}
             for f in devices.split(","):
                 key, value = f.split("=", 1)
-                filters[f"node_devices__{key}__iexact"] = value
+                filters[f"current_config__nodedevice__{key}__iexact"] = value
             filtered_nodes = filtered_nodes.filter(**filters)
         return filtered_nodes
 

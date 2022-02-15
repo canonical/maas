@@ -22,7 +22,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         super().setUp()
         self.node = factory.make_Node()
         # Remove existing devices to get a clean setup
-        self.node.node_devices.all().delete()
+        self.node.current_config.nodedevice_set.all().delete()
 
     def get_script_results_uri(self, node=None):
         """Return the script's URI on the API."""
@@ -45,7 +45,10 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         parsed_results = json_load_bytes(response.content)
 
         self.assertCountEqual(
-            [node_device.id for node_device in node.node_devices.all()],
+            [
+                node_device.id
+                for node_device in node.current_config.nodedevice_set.all()
+            ],
             [node_device["id"] for node_device in parsed_results],
         )
 
@@ -59,7 +62,9 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertCountEqual(
             [
                 node_device.id
-                for node_device in self.node.node_devices.filter(bus=bus)
+                for node_device in self.node.current_config.nodedevice_set.filter(
+                    bus=bus
+                )
             ],
             [node_device["id"] for node_device in parsed_results],
         )
@@ -77,7 +82,7 @@ class TestNodeDevicesAPI(APITestCase.ForUser):
         self.assertCountEqual(
             [
                 node_device.id
-                for node_device in self.node.node_devices.filter(
+                for node_device in self.node.current_config.nodedevice_set.filter(
                     hardware_type=hardware_type
                 )
             ],
@@ -190,14 +195,15 @@ class TestNodeDeviceAPI(APITestCase.ForUser):
         elif node_device.is_usb:
             id = f"{node_device.bus_number}:{node_device.device_number}"
         return reverse(
-            "node_device_handler", args=[node_device.node.system_id, id]
+            "node_device_handler",
+            args=[node_device.node_config.node.system_id, id],
         )
 
     def test_hander_path(self):
         node_device = factory.make_NodeDevice()
         self.assertEqual(
-            "/MAAS/api/2.0/nodes/%s/devices/%s/"
-            % (node_device.node.system_id, node_device.id),
+            "/MAAS/api/2.0/nodes/"
+            f"{node_device.node_config.node.system_id}/devices/{node_device.id}/",
             self.get_node_device_uri(node_device, True),
         )
 
@@ -215,7 +221,7 @@ class TestNodeDeviceAPI(APITestCase.ForUser):
                 "bus_name": node_device.get_bus_display(),
                 "hardware_type": node_device.hardware_type,
                 "hardware_type_name": node_device.get_hardware_type_display(),
-                "system_id": node_device.node.system_id,
+                "system_id": node_device.node_config.node.system_id,
                 "numa_node": node_device.numa_node.index,
                 "physical_blockdevice": None,
                 "physical_interface": None,
