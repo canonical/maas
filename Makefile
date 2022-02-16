@@ -263,13 +263,9 @@ clean+db: clean
 	$(RM) .db.lock
 .PHONY: clean+db
 
-harness: bin/maas-region bin/database
-	$(dbrun) bin/maas-region shell --settings=maasserver.djangosettings.demo
-.PHONY: harness
-
-dbharness: bin/database
+dbshell: bin/database
 	bin/database --preserve shell
-.PHONY: dbharness
+.PHONY: dbshell
 
 syncdb: bin/maas-region bin/database
 	$(dbrun) bin/maas-region dbupgrade
