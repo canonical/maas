@@ -70,7 +70,7 @@ class RedfishPowerDriverBase(PowerDriver):
             method, uri, headers=headers, bodyProducer=bodyProducer
         )
 
-        def render_response(response):
+        def render_response(response, uri):
             """Render the HTTPS response received."""
 
             def eb_catch_partial(failure):
@@ -100,33 +100,52 @@ class RedfishPowerDriverBase(PowerDriver):
             def cb_attach_headers(data, headers):
                 return data, headers
 
-            # Error out if the response has a status code of 400 or above.
-            if response.code >= int(HTTPStatus.BAD_REQUEST):
-                # if there was no trailing slash, retry with a trailing slash
-                # because of varying requirements of BMC manufacturers
-                if (
-                    response.code == HTTPStatus.NOT_FOUND
-                    and uri.decode("utf-8")[-1] != "/"
-                ):
-                    d = agent.request(
-                        method,
-                        uri + b"/",
-                        headers=headers,
-                        bodyProducer=bodyProducer,
-                    )
-                else:
-                    raise PowerActionError(
-                        "Redfish request failed with response status code:"
-                        " %s." % response.code
-                    )
+            if response.code >= int(HTTPStatus.BAD_REQUEST) or (
+                response.code == int(HTTPStatus.PERMANENT_REDIRECT)
+            ):
+                # Error out if the response has a status code of 400 or above.
+                if response.code >= int(HTTPStatus.BAD_REQUEST):
+                    # if there was no trailing slash,
+                    # retry with a trailing slash
+                    # because of varying requirements of BMC manufacturers
+                    if response.code == HTTPStatus.NOT_FOUND and (
+                        uri.decode("utf-8")[-1] != "/"
+                    ):
+                        d = agent.request(
+                            method,
+                            uri + b"/",
+                            headers=headers,
+                            bodyProducer=bodyProducer,
+                        )
+                    else:
+                        raise PowerActionError(
+                            "Redfish request failed with response status code:"
+                            " %s." % response.code
+                        )
+                elif response.code == int(HTTPStatus.PERMANENT_REDIRECT):
+                    uri = response.headers.getRawHeaders(b"location")[0]
+                    if b"http" in uri:
+                        d = agent.request(
+                            method,
+                            uri,
+                            headers=headers,
+                            bodyProducer=bodyProducer,
+                        )
+                    else:
+                        raise PowerActionError(
+                            "Redfish request failed with response status code:"
+                            " %s." % response.code
+                        )
+                d.addCallback(readBody)
+            else:
+                d = readBody(response)
 
-            d = readBody(response)
             d.addErrback(eb_catch_partial)
             d.addCallback(cb_json_decode)
             d.addCallback(cb_attach_headers, headers=response.headers)
             return d
 
-        d.addCallback(render_response)
+        d.addCallback(render_response, uri=uri)
         return d
 
 
