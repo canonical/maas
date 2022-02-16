@@ -103,9 +103,9 @@ class TestSubnetHandler(MAASServerTestCase):
         self.assertIsNone(handler.cache.get("staticroutes"))
         queries_one, _ = count_queries(handler.list, {})
 
-        for _ in range(10):
+        for _ in range(5):
             subnet = factory.make_Subnet()
-            for x in range(5):
+            for x in range(3):
                 node = factory.make_Node_with_Interface_on_Subnet(
                     subnet=subnet, status=NODE_STATUS.READY
                 )
