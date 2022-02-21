@@ -36,7 +36,7 @@ type cmdOptions struct {
 }
 
 func parseCmdLine() (opts cmdOptions) {
-	flag.BoolVar(&opts.Debug, "debub", false, "print verbose debug messages")
+	flag.BoolVar(&opts.Debug, "debug", false, "print verbose debug messages")
 	flag.BoolVar(&opts.MachineResourceRun, "machine-resources", false, "when set, will read machine resources and print the info to stdout")
 	flag.StringVar(&opts.GetMachineToken.SystemId, "system-id", "", "system ID for the machine to get credentials for")
 	flag.StringVar(&opts.GetMachineToken.TokenFile, "token-file", "", "path for the file to write the token to")
