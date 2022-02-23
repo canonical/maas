@@ -450,18 +450,29 @@ checks = [
 ]
 
 
-def extract(node):
-    """Extract all imports from the given AST node."""
-    for node in ast.walk(node):
+def module_path_parts(filename):
+    if filename.startswith("src/"):
+        filename = filename[4:]
+    if filename.endswith(".py"):
+        filename = filename[:-3]
+    return filename.split("/")
+
+
+def extract(module, filename):
+    """Extract all imports from the given AST module."""
+    module_parts = module_path_parts(filename)
+    for node in module.body:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 yield alias.name
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
-                # Note that `node.module is None` if the import in the format:
-                #     from . import <thing>
-                module = "." if node.module is None else node.module
-                yield "%s.%s" % (module, alias.name)
+                if node.level > 0:
+                    # relative import, make it absolute
+                    module = ".".join(module_parts[: node.level])
+                else:
+                    module = node.module
+                yield f"{module}.{alias.name}"
         else:
             pass  # Not an import.
 
@@ -495,8 +506,8 @@ def _expand(checks):
 def _scan1(rule, filename):
     """Scan one file and check against the given rule."""
     with tokenize.open(filename) as fd:
-        module = ast.parse(fd.read())
-    imports = set(extract(module))
+        module = ast.parse(source=fd.read(), filename=filename)
+    imports = set(extract(module, filename))
     allowed = set(filter(rule.check, imports))
     denied = imports.difference(allowed)
     return filename, allowed, denied
