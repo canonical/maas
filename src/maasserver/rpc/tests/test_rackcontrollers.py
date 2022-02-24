@@ -25,16 +25,13 @@ from maasserver.rpc.rackcontrollers import (
     update_last_image_sync,
     update_state,
 )
+from maasserver.testing.commissioning import FakeCommissioningData, LXDAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.builtin_scripts.network import update_node_interfaces
-from metadataserver.builtin_scripts.tests.test_network import (
-    FakeCommissioningData,
-    LXDAddress,
-)
 from provisioningserver.enum import CONTROLLER_INSTALL_TYPE
 from provisioningserver.rpc.exceptions import NoSuchScope
 
