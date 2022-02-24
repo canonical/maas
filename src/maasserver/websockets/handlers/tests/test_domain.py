@@ -533,6 +533,21 @@ class TestDomainHandlerAddressRecords(MAASServerTestCase):
             resource.get_addresses(), ["127.0.0.1", "127.0.0.2"]
         )
 
+    def test_create_address_errors_invalid_names(self):
+        user = factory.make_admin()
+        handler = DomainHandler(user, {}, None)
+        domain = factory.make_Domain()
+        name = factory.make_name("invalid_name")
+        self.assertRaises(
+            ValidationError,
+            handler.create_address_record,
+            {
+                "domain": domain.id,
+                "name": name,
+                "ip_addresses": [factory.make_ip_address()],
+            },
+        )
+
     def test_update_address__updates_single_address(self):
         user = factory.make_admin()
         handler = DomainHandler(user, {}, None)

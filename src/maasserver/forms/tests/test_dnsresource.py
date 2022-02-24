@@ -169,3 +169,19 @@ class TestDNSResourceForm(MAASServerTestCase):
             new_sip_ids,
             [ip.id for ip in reload_object(dnsresource).ip_addresses.all()],
         )
+
+    def test_does_not_create_invalid_label(self):
+        name = factory.make_name("under_score")
+        domain = factory.make_Domain()
+        ip = factory.make_ip_address()
+        request = Mock()
+        request.user = factory.make_User()
+        form = DNSResourceForm(
+            {
+                "name": name,
+                "domain": domain.id,
+                "ip_addresses": ip,
+            },
+            request=request,
+        )
+        self.assertFalse(form.is_valid())

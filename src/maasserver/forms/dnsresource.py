@@ -12,7 +12,10 @@ from netaddr.core import AddrFormatError
 
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.forms import APIEditMixin, MAASModelForm
-from maasserver.models.dnsresource import DNSResource
+from maasserver.models.dnsresource import (
+    DNSResource,
+    validate_dnsresource_name,
+)
 from maasserver.models.domain import Domain
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
@@ -85,6 +88,9 @@ class DNSResourceForm(MAASModelForm):
     def clean(self):
         cleaned_data = super().clean()
         if self.data.get("ip_addresses", None) is not None:
+            # we validate name here as well as in the model's save due
+            # to the ip address relation not being written when an ip is first added
+            validate_dnsresource_name(self.cleaned_data["name"], "A")
             ip_addresses = self.data.get("ip_addresses")
             if isinstance(ip_addresses, str):
                 ip_addresses = ip_addresses.split()

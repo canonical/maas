@@ -218,6 +218,11 @@ class DNSResourceTest(MAASServerTestCase):
         ):
             factory.make_DNSResource(name="invalid*name")
 
+    def test_underscore_label_raises_exception(self):
+        self.assertRaises(
+            ValidationError, factory.make_DNSResource, name="under_score"
+        )
+
     def test_rejects_address_with_cname(self):
         name = factory.make_name("name")
         domain = factory.make_Domain()
