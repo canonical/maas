@@ -48,6 +48,7 @@ class VERSION_ISSUES(Enum):
 
     DIFFERENT_CHANNEL = "different-channel"
     DIFFERENT_COHORT = "different-cohort"
+    MISSING_CHANNEL = "missing-channel"
 
 
 class ControllerInfoManager(Manager):
@@ -163,10 +164,13 @@ class ControllerInfo(CleanSave, TimestampedModel):
         """Return a list of version-related issues compared to the target version."""
         issues = []
         if self.install_type == CONTROLLER_INSTALL_TYPE.SNAP:
-            if (
-                SnapChannel.from_string(self.update_origin)
-                != target.snap_channel
-            ):
+            if self.update_origin:
+                snap_channel = SnapChannel.from_string(self.update_origin)
+            else:
+                snap_channel = None
+                issues.append(VERSION_ISSUES.MISSING_CHANNEL.value)
+
+            if snap_channel and snap_channel != target.snap_channel:
                 issues.append(VERSION_ISSUES.DIFFERENT_CHANNEL.value)
             if self.snap_cohort != target.snap_cohort:
                 issues.append(VERSION_ISSUES.DIFFERENT_COHORT.value)
@@ -196,6 +200,16 @@ def get_maas_version() -> Optional[MAASVersion]:
     if not versions:
         return None
     return versions[0][1]
+
+
+def channel_from_version(version) -> SnapChannel:
+    """ channel from version constructs a SnapChannel from a MAAS version """
+    risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
+    risk = risk_map.get(version.qualifier_type, "stable")
+    return SnapChannel(
+        track=f"{version.major}.{version.minor}",
+        risk=risk,
+    )
 
 
 def get_target_version() -> Optional[TargetVersion]:
@@ -264,12 +278,7 @@ def get_target_version() -> Optional[TargetVersion]:
             )
     else:
         # compose the channel from the target version
-        risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
-        risk = risk_map.get(version.qualifier_type, "stable")
-        snap_channel = SnapChannel(
-            track=f"{version.major}.{version.minor}",
-            risk=risk,
-        )
+        snap_channel = channel_from_version(version)
 
     # report a cohort only if all controllers with the target version are on
     # the same cohort (or have no cohort)

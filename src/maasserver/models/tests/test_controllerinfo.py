@@ -393,6 +393,28 @@ class TestControllerInfo(MAASServerTestCase):
             ],
         )
 
+    def test_get_version_issue_flags_missing_channel(self):
+        target_version = TargetVersion(
+            version=MAASVersion.from_string("3.1.0-222-g.cafecafe"),
+            snap_channel=SnapChannel.from_string("3.1/stable"),
+        )
+        controller = factory.make_RegionRackController()
+        ControllerInfo.objects.set_versions_info(
+            controller,
+            SnapVersionsInfo(
+                current={
+                    "revision": "1234",
+                    "version": "3.1.0-222-g.cafecafe",
+                },
+            ),
+        )
+        self.assertEqual(
+            controller.info.get_version_issues(target_version),
+            [
+                VERSION_ISSUES.MISSING_CHANNEL.value,
+            ],
+        )
+
 
 class TestGetTargetVersion(MAASServerTestCase):
     def test_empty(self):
