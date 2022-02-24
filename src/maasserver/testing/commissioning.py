@@ -1,8 +1,10 @@
+from copy import deepcopy
 import dataclasses
 import random
 from typing import List, Optional
 
 from maasserver.testing.factory import factory
+from provisioningserver.utils import kernel_to_debian_architecture
 from provisioningserver.utils.network import (
     annotate_with_default_monitored_interfaces,
     get_default_monitored_interfaces,
@@ -151,6 +153,16 @@ class FakeCommissioningData:
             disks = [LXDDisk("sda")]
         self._disks = list(disks)
         self.hints = None
+        self.storage_extra = None
+
+    @property
+    def debian_architecture(self):
+        return kernel_to_debian_architecture(
+            self.environment["kernel_architecture"]
+        )
+
+    def add_disk(self, id: str, size: int):
+        self._disks.append(LXDDisk(id, size=size))
 
     def allocate_pci_address(self):
         prev_address = (
@@ -344,6 +356,8 @@ class FakeCommissioningData:
                 ),
                 "hints": self.hints,
             }
+        if self.storage_extra:
+            data["storage-extra"] = deepcopy(self.storage_extra)
         return data
 
     def _generate_interfaces(self):
