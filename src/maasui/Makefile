@@ -26,14 +26,14 @@ $(NODEJS_DIR):
 	mkdir -p $@
 
 $(NODEJS_TARBALL): $(NODEJS_DIR)
-	wget -O $(NODEJS_TARBALL) https://nodejs.org/dist/v$(NODEJS_VERSION)/node-v$(NODEJS_VERSION)-linux-x64.tar.xz
+	wget -nv -O $(NODEJS_TARBALL) https://nodejs.org/dist/v$(NODEJS_VERSION)/node-v$(NODEJS_VERSION)-linux-x64.tar.xz
 
 $(NODEJS_BIN)/node: $(NODEJS_TARBALL)
 	tar -C $(NODEJS_DIR) -xf $< --strip-components=1
 	@touch --no-create $@
 
 $(YARN_TARBALL): $(NODEJS_DIR)
-	wget -O $@ https://github.com/yarnpkg/yarn/releases/download/v$(YARN_VERSION)/yarn-v$(YARN_VERSION).tar.gz
+	wget -nv -O $@ https://github.com/yarnpkg/yarn/releases/download/v$(YARN_VERSION)/yarn-v$(YARN_VERSION).tar.gz
 
 $(NODEJS_BIN)/yarn: $(YARN_TARBALL) $(NODEJS_BIN)/node
 	tar -C $(NODEJS_DIR) -xf $< --strip-components=1
