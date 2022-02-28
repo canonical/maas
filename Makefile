@@ -39,6 +39,7 @@ bin/maas-common \
 bin/maas-power \
 bin/maas-rack \
 bin/maas-region \
+bin/maas-sampledata \
 bin/postgresfixture \
 bin/pytest \
 bin/rackd \

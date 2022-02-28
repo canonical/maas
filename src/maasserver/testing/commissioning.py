@@ -122,6 +122,8 @@ class FakeCommissioningData:
         disks=None,
         api_extensions=None,
         api_version="1.0",
+        server_name=None,
+        kernel_architecture="x86_64",
     ):
         self.cores = cores
         self.memory = memory
@@ -135,14 +137,16 @@ class FakeCommissioningData:
             ]
         self.api_extensions = api_extensions
         self.api_version = api_version
+        if server_name is None:
+            factory.make_name("host")
         self.environment = {
             "kernel": "Linux",
-            "kernel_architecture": "x86_64",
+            "kernel_architecture": kernel_architecture,
             "kernel_version": "5.4.0-67-generic",
             "os_name": "ubuntu",
             "os_version": "20.04",
             "server": "maas-machine-resources",
-            "server_name": factory.make_name("host"),
+            "server_name": server_name,
             "server_version": "4.11",
         }
         self.address_annotations = {}
@@ -217,7 +221,7 @@ class FakeCommissioningData:
         mac_address=None,
     ):
         if name is None:
-            name = factory.make_string("eth")
+            name = factory.make_name("eth")
         if mac_address is None:
             mac_address = factory.make_mac_address()
         network = LXDNetwork(name, mac_address)
@@ -232,7 +236,7 @@ class FakeCommissioningData:
         parent=None,
     ):
         if name is None:
-            name = factory.make_string("vlan")
+            name = factory.make_name("vlan")
         if parent is None:
             parent = self.create_physical_network()
         if mac_address is None:
@@ -252,7 +256,7 @@ class FakeCommissioningData:
         parents=None,
     ):
         if name is None:
-            name = factory.make_string("bridge")
+            name = factory.make_name("bridge")
         if parents is None:
             parents = [self.create_physical_network()]
         if mac_address is None:
@@ -274,7 +278,7 @@ class FakeCommissioningData:
         parents=None,
     ):
         if name is None:
-            name = factory.make_string("bond")
+            name = factory.make_name("bond")
         if parents is None:
             parents = [self.create_physical_network()]
         if mac_address is None:
