@@ -73,8 +73,6 @@ parts:
   maas:
     plugin: python
     source: .
-    build-environment:
-      - PYTHONPATH: /usr/lib/python3/dist-packages:/usr/lib/python3.8/dist-packages
     requirements:
       - snap/local/requirements.txt
     build-packages:
