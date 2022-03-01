@@ -3711,6 +3711,8 @@ CREATE TABLE public.maasserver_node (
     dynamic boolean NOT NULL,
     register_vmhost boolean NOT NULL,
     last_applied_storage_layout character varying(50) NOT NULL,
+    current_config_id integer,
+    enable_hw_sync boolean NOT NULL,
     CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0))
 );
 
@@ -6368,360 +6370,6 @@ ALTER SEQUENCE public.django_site_id_seq OWNED BY public.django_site.id;
 
 
 --
--- Name: maasserver_bootsource; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_bootsource (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    url character varying(200) NOT NULL,
-    keyring_filename character varying(4096) NOT NULL,
-    keyring_data bytea NOT NULL
-);
-
-
---
--- Name: maasserver_bootsourcecache; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_bootsourcecache (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    os character varying(32) NOT NULL,
-    arch character varying(32) NOT NULL,
-    subarch character varying(32) NOT NULL,
-    release character varying(32) NOT NULL,
-    label character varying(32) NOT NULL,
-    boot_source_id integer NOT NULL,
-    release_codename character varying(255),
-    release_title character varying(255),
-    support_eol date,
-    kflavor character varying(32),
-    bootloader_type character varying(32),
-    extra text NOT NULL
-);
-
-
---
--- Name: maas_support__boot_source_cache; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__boot_source_cache AS
- SELECT bs.url,
-    bsc.label,
-    bsc.os,
-    bsc.release,
-    bsc.arch,
-    bsc.subarch
-   FROM (public.maasserver_bootsource bs
-     LEFT JOIN public.maasserver_bootsourcecache bsc ON ((bsc.boot_source_id = bs.id)))
-  ORDER BY bs.url, bsc.label, bsc.os, bsc.release, bsc.arch, bsc.subarch;
-
-
---
--- Name: maasserver_bootsourceselection; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_bootsourceselection (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    os character varying(20) NOT NULL,
-    release character varying(20) NOT NULL,
-    arches text[],
-    subarches text[],
-    labels text[],
-    boot_source_id integer NOT NULL
-);
-
-
---
--- Name: maas_support__boot_source_selections; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__boot_source_selections AS
- SELECT bs.url,
-    bss.release,
-    bss.arches,
-    bss.subarches,
-    bss.labels,
-    bss.os
-   FROM (public.maasserver_bootsource bs
-     LEFT JOIN public.maasserver_bootsourceselection bss ON ((bss.boot_source_id = bs.id)));
-
-
---
--- Name: maasserver_config; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_config (
-    id integer NOT NULL,
-    name character varying(255) NOT NULL,
-    value text
-);
-
-
---
--- Name: maas_support__configuration__excluding_rpc_shared_secret; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__configuration__excluding_rpc_shared_secret AS
- SELECT maasserver_config.name,
-    maasserver_config.value
-   FROM public.maasserver_config
-  WHERE ((maasserver_config.name)::text <> 'rpc_shared_secret'::text);
-
-
---
--- Name: maas_support__device_overview; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__device_overview AS
- SELECT node.hostname,
-    node.system_id,
-    parent.hostname AS parent
-   FROM (public.maasserver_node node
-     LEFT JOIN public.maasserver_node parent ON ((node.parent_id = parent.id)))
-  WHERE (node.node_type = 1)
-  ORDER BY node.hostname;
-
-
---
--- Name: maasserver_bmc; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_bmc (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    power_type character varying(10) NOT NULL,
-    ip_address_id integer,
-    architectures text[],
-    bmc_type integer NOT NULL,
-    capabilities text[],
-    cores integer NOT NULL,
-    cpu_speed integer NOT NULL,
-    local_storage bigint NOT NULL,
-    memory integer NOT NULL,
-    name character varying(255) NOT NULL,
-    pool_id integer,
-    zone_id integer NOT NULL,
-    tags text[],
-    cpu_over_commit_ratio double precision NOT NULL,
-    memory_over_commit_ratio double precision NOT NULL,
-    default_storage_pool_id integer,
-    power_parameters jsonb NOT NULL,
-    default_macvlan_mode character varying(32),
-    version text NOT NULL,
-    created_with_cert_expiration_days integer,
-    created_with_maas_generated_cert boolean,
-    created_with_trust_password boolean
-);
-
-
---
--- Name: maasserver_interface; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_interface (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    type character varying(20) NOT NULL,
-    mac_address macaddr,
-    ipv4_params text NOT NULL,
-    ipv6_params text NOT NULL,
-    params text NOT NULL,
-    tags text[],
-    enabled boolean NOT NULL,
-    node_id integer,
-    vlan_id integer,
-    acquired boolean NOT NULL,
-    mdns_discovery_state boolean NOT NULL,
-    neighbour_discovery_state boolean NOT NULL,
-    firmware_version character varying(255),
-    product character varying(255),
-    vendor character varying(255),
-    interface_speed integer NOT NULL,
-    link_connected boolean NOT NULL,
-    link_speed integer NOT NULL,
-    numa_node_id integer,
-    sriov_max_vf integer NOT NULL,
-    CONSTRAINT maasserver_interface_interface_speed_check CHECK ((interface_speed >= 0)),
-    CONSTRAINT maasserver_interface_link_speed_check CHECK ((link_speed >= 0)),
-    CONSTRAINT maasserver_interface_sriov_max_vf_check CHECK ((sriov_max_vf >= 0))
-);
-
-
---
--- Name: maasserver_interface_ip_addresses; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_interface_ip_addresses (
-    id integer NOT NULL,
-    interface_id integer NOT NULL,
-    staticipaddress_id integer NOT NULL
-);
-
-
---
--- Name: maasserver_staticipaddress; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_staticipaddress (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    ip inet,
-    alloc_type integer NOT NULL,
-    subnet_id integer,
-    user_id integer,
-    lease_time integer NOT NULL,
-    temp_expires_on timestamp with time zone
-);
-
-
---
--- Name: maasserver_subnet; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_subnet (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(255) NOT NULL,
-    cidr cidr NOT NULL,
-    gateway_ip inet,
-    dns_servers text[],
-    vlan_id integer NOT NULL,
-    rdns_mode integer NOT NULL,
-    allow_proxy boolean NOT NULL,
-    description text NOT NULL,
-    active_discovery boolean NOT NULL,
-    managed boolean NOT NULL,
-    allow_dns boolean NOT NULL,
-    disabled_boot_architectures character varying(64)[] NOT NULL
-);
-
-
---
--- Name: maas_support__ip_allocation; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__ip_allocation AS
- SELECT sip.ip,
-        CASE
-            WHEN (sip.alloc_type = 0) THEN 'AUTO'::bpchar
-            WHEN (sip.alloc_type = 1) THEN 'STICKY'::bpchar
-            WHEN (sip.alloc_type = 4) THEN 'USER_RESERVED'::bpchar
-            WHEN (sip.alloc_type = 5) THEN 'DHCP'::bpchar
-            WHEN (sip.alloc_type = 6) THEN 'DISCOVERED'::bpchar
-            ELSE (sip.alloc_type)::character(1)
-        END AS alloc_type,
-    subnet.cidr,
-    node.hostname,
-    iface.id AS ifid,
-    iface.name AS ifname,
-    iface.type AS iftype,
-    iface.mac_address,
-    bmc.power_type
-   FROM (((((public.maasserver_staticipaddress sip
-     LEFT JOIN public.maasserver_subnet subnet ON ((subnet.id = sip.subnet_id)))
-     LEFT JOIN public.maasserver_interface_ip_addresses ifip ON ((sip.id = ifip.staticipaddress_id)))
-     LEFT JOIN public.maasserver_interface iface ON ((iface.id = ifip.interface_id)))
-     LEFT JOIN public.maasserver_node node ON ((iface.node_id = node.id)))
-     LEFT JOIN public.maasserver_bmc bmc ON ((bmc.ip_address_id = sip.id)))
-  ORDER BY sip.ip;
-
-
---
--- Name: maasserver_licensekey; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_licensekey (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    osystem character varying(255) NOT NULL,
-    distro_series character varying(255) NOT NULL,
-    license_key character varying(255) NOT NULL
-);
-
-
---
--- Name: maas_support__license_keys_present__excluding_key_material; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__license_keys_present__excluding_key_material AS
- SELECT maasserver_licensekey.osystem,
-    maasserver_licensekey.distro_series
-   FROM public.maasserver_licensekey;
-
-
---
--- Name: maasserver_fabric; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.maasserver_fabric (
-    id integer NOT NULL,
-    created timestamp with time zone NOT NULL,
-    updated timestamp with time zone NOT NULL,
-    name character varying(256),
-    class_type character varying(256),
-    description text NOT NULL
-);
-
-
---
--- Name: maas_support__node_networking; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__node_networking AS
- SELECT node.hostname,
-    iface.id AS ifid,
-    iface.name,
-    iface.type,
-    iface.mac_address,
-    sip.ip,
-        CASE
-            WHEN (sip.alloc_type = 0) THEN 'AUTO'::bpchar
-            WHEN (sip.alloc_type = 1) THEN 'STICKY'::bpchar
-            WHEN (sip.alloc_type = 4) THEN 'USER_RESERVED'::bpchar
-            WHEN (sip.alloc_type = 5) THEN 'DHCP'::bpchar
-            WHEN (sip.alloc_type = 6) THEN 'DISCOVERED'::bpchar
-            ELSE (sip.alloc_type)::character(1)
-        END AS alloc_type,
-    subnet.cidr,
-    vlan.vid,
-    fabric.name AS fabric
-   FROM ((((((public.maasserver_interface iface
-     LEFT JOIN public.maasserver_interface_ip_addresses ifip ON ((ifip.interface_id = iface.id)))
-     LEFT JOIN public.maasserver_staticipaddress sip ON ((ifip.staticipaddress_id = sip.id)))
-     LEFT JOIN public.maasserver_subnet subnet ON ((sip.subnet_id = subnet.id)))
-     LEFT JOIN public.maasserver_node node ON ((node.id = iface.node_id)))
-     LEFT JOIN public.maasserver_vlan vlan ON ((vlan.id = subnet.vlan_id)))
-     LEFT JOIN public.maasserver_fabric fabric ON ((fabric.id = vlan.fabric_id)))
-  ORDER BY node.hostname, iface.name, sip.alloc_type;
-
-
---
--- Name: maas_support__node_overview; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.maas_support__node_overview AS
- SELECT maasserver_node.hostname,
-    maasserver_node.system_id,
-    maasserver_node.cpu_count AS cpu,
-    maasserver_node.memory
-   FROM public.maasserver_node
-  WHERE (maasserver_node.node_type = 0)
-  ORDER BY maasserver_node.hostname;
-
-
---
 -- Name: maasserver_sshkey; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6760,7 +6408,7 @@ CREATE TABLE public.maasserver_blockdevice (
     size bigint NOT NULL,
     block_size integer NOT NULL,
     tags text[],
-    node_id integer NOT NULL
+    node_config_id integer NOT NULL
 );
 
 
@@ -6782,6 +6430,39 @@ CREATE SEQUENCE public.maasserver_blockdevice_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_blockdevice_id_seq OWNED BY public.maasserver_blockdevice.id;
+
+
+--
+-- Name: maasserver_bmc; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_bmc (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    power_type character varying(10) NOT NULL,
+    ip_address_id integer,
+    architectures text[],
+    bmc_type integer NOT NULL,
+    capabilities text[],
+    cores integer NOT NULL,
+    cpu_speed integer NOT NULL,
+    local_storage bigint NOT NULL,
+    memory integer NOT NULL,
+    name character varying(255) NOT NULL,
+    pool_id integer,
+    zone_id integer NOT NULL,
+    tags text[],
+    cpu_over_commit_ratio double precision NOT NULL,
+    memory_over_commit_ratio double precision NOT NULL,
+    default_storage_pool_id integer,
+    power_parameters jsonb NOT NULL,
+    default_macvlan_mode character varying(32),
+    version text NOT NULL,
+    created_with_cert_expiration_days integer,
+    created_with_maas_generated_cert boolean,
+    created_with_trust_password boolean
+);
 
 
 --
@@ -6948,6 +6629,20 @@ ALTER SEQUENCE public.maasserver_bootresourceset_id_seq OWNED BY public.maasserv
 
 
 --
+-- Name: maasserver_bootsource; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_bootsource (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    url character varying(200) NOT NULL,
+    keyring_filename character varying(4096) NOT NULL,
+    keyring_data bytea NOT NULL
+);
+
+
+--
 -- Name: maasserver_bootsource_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -6968,6 +6663,29 @@ ALTER SEQUENCE public.maasserver_bootsource_id_seq OWNED BY public.maasserver_bo
 
 
 --
+-- Name: maasserver_bootsourcecache; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_bootsourcecache (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    os character varying(32) NOT NULL,
+    arch character varying(32) NOT NULL,
+    subarch character varying(32) NOT NULL,
+    release character varying(32) NOT NULL,
+    label character varying(32) NOT NULL,
+    boot_source_id integer NOT NULL,
+    release_codename character varying(255),
+    release_title character varying(255),
+    support_eol date,
+    kflavor character varying(32),
+    bootloader_type character varying(32),
+    extra text NOT NULL
+);
+
+
+--
 -- Name: maasserver_bootsourcecache_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -6985,6 +6703,23 @@ CREATE SEQUENCE public.maasserver_bootsourcecache_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_bootsourcecache_id_seq OWNED BY public.maasserver_bootsourcecache.id;
+
+
+--
+-- Name: maasserver_bootsourceselection; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_bootsourceselection (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    os character varying(20) NOT NULL,
+    release character varying(20) NOT NULL,
+    arches text[],
+    subarches text[],
+    labels text[],
+    boot_source_id integer NOT NULL
+);
 
 
 --
@@ -7036,6 +6771,17 @@ CREATE SEQUENCE public.maasserver_cacheset_id_seq
 --
 
 ALTER SEQUENCE public.maasserver_cacheset_id_seq OWNED BY public.maasserver_cacheset.id;
+
+
+--
+-- Name: maasserver_config; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_config (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    value text
+);
 
 
 --
@@ -7098,6 +6844,55 @@ ALTER SEQUENCE public.maasserver_dhcpsnippet_id_seq OWNED BY public.maasserver_d
 
 
 --
+-- Name: maasserver_fabric; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_fabric (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(256),
+    class_type character varying(256),
+    description text NOT NULL
+);
+
+
+--
+-- Name: maasserver_interface; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_interface (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(255) NOT NULL,
+    type character varying(20) NOT NULL,
+    mac_address macaddr,
+    ipv4_params text NOT NULL,
+    ipv6_params text NOT NULL,
+    params text NOT NULL,
+    tags text[],
+    enabled boolean NOT NULL,
+    vlan_id integer,
+    acquired boolean NOT NULL,
+    mdns_discovery_state boolean NOT NULL,
+    neighbour_discovery_state boolean NOT NULL,
+    firmware_version character varying(255),
+    product character varying(255),
+    vendor character varying(255),
+    interface_speed integer NOT NULL,
+    link_connected boolean NOT NULL,
+    link_speed integer NOT NULL,
+    numa_node_id integer,
+    sriov_max_vf integer NOT NULL,
+    node_config_id integer,
+    CONSTRAINT maasserver_interface_interface_speed_check CHECK ((interface_speed >= 0)),
+    CONSTRAINT maasserver_interface_link_speed_check CHECK ((link_speed >= 0)),
+    CONSTRAINT maasserver_interface_sriov_max_vf_check CHECK ((sriov_max_vf >= 0))
+);
+
+
+--
 -- Name: maasserver_mdns; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7145,6 +6940,29 @@ CREATE TABLE public.maasserver_rdns (
 
 
 --
+-- Name: maasserver_subnet; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_subnet (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name character varying(255) NOT NULL,
+    cidr cidr NOT NULL,
+    gateway_ip inet,
+    dns_servers text[],
+    vlan_id integer NOT NULL,
+    rdns_mode integer NOT NULL,
+    allow_proxy boolean NOT NULL,
+    description text NOT NULL,
+    active_discovery boolean NOT NULL,
+    managed boolean NOT NULL,
+    allow_dns boolean NOT NULL,
+    disabled_boot_architectures character varying(64)[] NOT NULL
+);
+
+
+--
 -- Name: maasserver_discovery; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -7176,7 +6994,7 @@ CREATE VIEW public.maasserver_discovery AS
     masklen((subnet.cidr)::inet) AS subnet_prefixlen
    FROM (((((((public.maasserver_neighbour neigh
      JOIN public.maasserver_interface iface ON ((neigh.interface_id = iface.id)))
-     JOIN public.maasserver_node node ON ((node.id = iface.node_id)))
+     JOIN public.maasserver_node node ON ((node.current_config_id = iface.node_config_id)))
      JOIN public.maasserver_vlan vlan ON ((iface.vlan_id = vlan.id)))
      JOIN public.maasserver_fabric fabric ON ((vlan.fabric_id = fabric.id)))
      LEFT JOIN public.maasserver_mdns mdns ON ((mdns.ip = neigh.ip)))
@@ -7502,7 +7320,7 @@ CREATE TABLE public.maasserver_filesystem (
     cache_set_id integer,
     filesystem_group_id integer,
     partition_id integer,
-    node_id integer
+    node_config_id integer NOT NULL
 );
 
 
@@ -7679,6 +7497,17 @@ ALTER SEQUENCE public.maasserver_interface_id_seq OWNED BY public.maasserver_int
 
 
 --
+-- Name: maasserver_interface_ip_addresses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_interface_ip_addresses (
+    id integer NOT NULL,
+    interface_id integer NOT NULL,
+    staticipaddress_id integer NOT NULL
+);
+
+
+--
 -- Name: maasserver_interface_ip_addresses_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -7838,6 +7667,20 @@ ALTER SEQUENCE public.maasserver_largefile_id_seq OWNED BY public.maasserver_lar
 
 
 --
+-- Name: maasserver_licensekey; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_licensekey (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    osystem character varying(255) NOT NULL,
+    distro_series character varying(255) NOT NULL,
+    license_key character varying(255) NOT NULL
+);
+
+
+--
 -- Name: maasserver_licensekey_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -7949,6 +7792,39 @@ ALTER SEQUENCE public.maasserver_node_tags_id_seq OWNED BY public.maasserver_nod
 
 
 --
+-- Name: maasserver_nodeconfig; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_nodeconfig (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    name text NOT NULL,
+    node_id integer NOT NULL
+);
+
+
+--
+-- Name: maasserver_nodeconfig_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_nodeconfig_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_nodeconfig_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_nodeconfig_id_seq OWNED BY public.maasserver_nodeconfig.id;
+
+
+--
 -- Name: maasserver_nodedevice; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -7966,10 +7842,10 @@ CREATE TABLE public.maasserver_nodedevice (
     bus_number integer NOT NULL,
     device_number integer NOT NULL,
     pci_address character varying(64),
-    node_id integer NOT NULL,
     numa_node_id integer NOT NULL,
     physical_blockdevice_id integer,
     physical_interface_id integer,
+    node_config_id integer NOT NULL,
     CONSTRAINT maasserver_nodedevice_bus_number_check CHECK ((bus_number >= 0)),
     CONSTRAINT maasserver_nodedevice_device_number_check CHECK ((device_number >= 0))
 );
@@ -8424,6 +8300,23 @@ ALTER SEQUENCE public.maasserver_podhints_nodes_id_seq OWNED BY public.maasserve
 
 
 --
+-- Name: maasserver_staticipaddress; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_staticipaddress (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    ip inet,
+    alloc_type integer NOT NULL,
+    subnet_id integer,
+    user_id integer,
+    lease_time integer NOT NULL,
+    temp_expires_on timestamp with time zone
+);
+
+
+--
 -- Name: maasserver_podhost; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -8443,7 +8336,7 @@ CREATE VIEW public.maasserver_podhost AS
      LEFT JOIN public.maasserver_staticipaddress ip ON (((pod.ip_address_id = ip.id) AND (pod.bmc_type = 1))))
      LEFT JOIN public.maasserver_interface_ip_addresses ifip ON ((ifip.staticipaddress_id = ip.id)))
      LEFT JOIN public.maasserver_interface if ON ((if.id = ifip.interface_id)))
-     LEFT JOIN public.maasserver_node node ON ((node.id = if.node_id)));
+     LEFT JOIN public.maasserver_node node ON ((node.current_config_id = if.node_config_id)));
 
 
 --
@@ -8724,25 +8617,26 @@ ALTER SEQUENCE public.maasserver_rootkey_id_seq OWNED BY public.maasserver_rootk
 --
 
 CREATE VIEW public.maasserver_routable_pairs AS
- SELECT if_left.node_id AS left_node_id,
+ SELECT n_left.id AS left_node_id,
     if_left.id AS left_interface_id,
     subnet_left.id AS left_subnet_id,
     vlan_left.id AS left_vlan_id,
     sip_left.ip AS left_ip,
-    if_right.node_id AS right_node_id,
+    n_right.id AS right_node_id,
     if_right.id AS right_interface_id,
     subnet_right.id AS right_subnet_id,
     vlan_right.id AS right_vlan_id,
     sip_right.ip AS right_ip,
     vlan_left.space_id,
         CASE
-            WHEN (if_left.node_id = if_right.node_id) THEN 0
+            WHEN (if_left.node_config_id = if_right.node_config_id) THEN 0
             WHEN (subnet_left.id = subnet_right.id) THEN 1
             WHEN (vlan_left.id = vlan_right.id) THEN 2
             WHEN (vlan_left.space_id IS NOT NULL) THEN 3
             ELSE 4
         END AS metric
-   FROM (((((((((public.maasserver_interface if_left
+   FROM (((((((((((public.maasserver_interface if_left
+     JOIN public.maasserver_node n_left ON ((n_left.current_config_id = if_left.node_config_id)))
      JOIN public.maasserver_interface_ip_addresses ifia_left ON ((if_left.id = ifia_left.interface_id)))
      JOIN public.maasserver_staticipaddress sip_left ON ((ifia_left.staticipaddress_id = sip_left.id)))
      JOIN public.maasserver_subnet subnet_left ON ((sip_left.subnet_id = subnet_left.id)))
@@ -8752,6 +8646,7 @@ CREATE VIEW public.maasserver_routable_pairs AS
      JOIN public.maasserver_staticipaddress sip_right ON ((subnet_right.id = sip_right.subnet_id)))
      JOIN public.maasserver_interface_ip_addresses ifia_right ON ((sip_right.id = ifia_right.staticipaddress_id)))
      JOIN public.maasserver_interface if_right ON ((ifia_right.interface_id = if_right.id)))
+     JOIN public.maasserver_node n_right ON ((if_right.node_config_id = n_right.current_config_id)))
   WHERE (if_left.enabled AND (sip_left.ip IS NOT NULL) AND if_right.enabled AND (sip_right.ip IS NOT NULL) AND (family(sip_left.ip) = family(sip_right.ip)));
 
 
@@ -9939,6 +9834,13 @@ ALTER TABLE ONLY public.maasserver_node_tags ALTER COLUMN id SET DEFAULT nextval
 
 
 --
+-- Name: maasserver_nodeconfig id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodeconfig ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodeconfig_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_nodedevice id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10712,6 +10614,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 422	Can change token	106	change_token
 423	Can delete token	106	delete_token
 424	Can view token	106	view_token
+425	Can add node config	107	add_nodeconfig
+426	Can change node config	107	change_nodeconfig
+427	Can delete node config	107	delete_nodeconfig
+428	Can view node config	107	view_nodeconfig
 \.
 
 
@@ -10850,6 +10756,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 104	piston3	consumer
 105	piston3	nonce
 106	piston3	token
+107	maasserver	nodeconfig
 \.
 
 
@@ -11153,6 +11060,20 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 293	sites	0001_initial	2021-11-19 12:41:12.455763+00
 294	sites	0002_alter_domain_unique	2021-11-19 12:41:12.467536+00
 295	maasserver	0252_drop_fannetwork	2021-11-26 17:02:43.267105+00
+296	maasserver	0253_nodeconfig	2022-03-01 15:55:02.690198+00
+297	maasserver	0254_default_nodeconfig_devices	2022-03-01 15:55:02.735735+00
+298	maasserver	0255_node_current_config	2022-03-01 15:55:02.863062+00
+299	maasserver	0256_blockdevice_nodeconfig_only	2022-03-01 15:55:02.882362+00
+300	maasserver	0257_filesystem_populate_node_config_id	2022-03-01 15:55:02.892658+00
+301	maasserver	0258_filesystem_nodeconfig_only	2022-03-01 15:55:03.355721+00
+302	maasserver	0259_add_hardware_sync_flag	2022-03-01 15:55:03.478532+00
+303	maasserver	0260_drop_maas_support_views	2022-03-01 15:55:03.536395+00
+304	maasserver	0261_interface_nodeconfig_only	2022-03-01 15:55:03.547634+00
+305	maasserver	0262_nodeconfig_link_replace_node	2022-03-01 15:55:04.117676+00
+306	maasserver	0263_vlan_racks_on_delete	2022-03-01 15:55:04.573912+00
+307	maasserver	0264_nodedevice_nodeconfig_link	2022-03-01 15:55:04.795457+00
+308	maasserver	0265_nodedevice_nodeconfig_migrate	2022-03-01 15:55:04.81799+00
+309	maasserver	0266_nodedevice_unlink_node	2022-03-01 15:55:05.13206+00
 \.
 
 
@@ -11177,7 +11098,7 @@ COPY public.django_site (id, domain, name) FROM stdin;
 -- Data for Name: maasserver_blockdevice; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_blockdevice (id, created, updated, name, id_path, size, block_size, tags, node_id) FROM stdin;
+COPY public.maasserver_blockdevice (id, created, updated, name, id_path, size, block_size, tags, node_config_id) FROM stdin;
 \.
 
 
@@ -11355,7 +11276,7 @@ COPY public.maasserver_filestorage (id, filename, content, key, owner_id) FROM s
 -- Data for Name: maasserver_filesystem; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_filesystem (id, created, updated, uuid, fstype, label, create_params, mount_point, mount_options, acquired, block_device_id, cache_set_id, filesystem_group_id, partition_id, node_id) FROM stdin;
+COPY public.maasserver_filesystem (id, created, updated, uuid, fstype, label, create_params, mount_point, mount_options, acquired, block_device_id, cache_set_id, filesystem_group_id, partition_id, node_config_id) FROM stdin;
 \.
 
 
@@ -11396,7 +11317,7 @@ COPY public.maasserver_globaldefault (id, created, updated, domain_id) FROM stdi
 -- Data for Name: maasserver_interface; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_interface (id, created, updated, name, type, mac_address, ipv4_params, ipv6_params, params, tags, enabled, node_id, vlan_id, acquired, mdns_discovery_state, neighbour_discovery_state, firmware_version, product, vendor, interface_speed, link_connected, link_speed, numa_node_id, sriov_max_vf) FROM stdin;
+COPY public.maasserver_interface (id, created, updated, name, type, mac_address, ipv4_params, ipv6_params, params, tags, enabled, vlan_id, acquired, mdns_discovery_state, neighbour_discovery_state, firmware_version, product, vendor, interface_speed, link_connected, link_speed, numa_node_id, sriov_max_vf, node_config_id) FROM stdin;
 \.
 
 
@@ -11468,7 +11389,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync) FROM stdin;
 \.
 
 
@@ -11481,10 +11402,18 @@ COPY public.maasserver_node_tags (id, node_id, tag_id) FROM stdin;
 
 
 --
+-- Data for Name: maasserver_nodeconfig; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_nodeconfig (id, created, updated, name, node_id) FROM stdin;
+\.
+
+
+--
 -- Data for Name: maasserver_nodedevice; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_nodedevice (id, created, updated, bus, hardware_type, vendor_id, product_id, vendor_name, product_name, commissioning_driver, bus_number, device_number, pci_address, node_id, numa_node_id, physical_blockdevice_id, physical_interface_id) FROM stdin;
+COPY public.maasserver_nodedevice (id, created, updated, bus, hardware_type, vendor_id, product_id, vendor_name, product_name, commissioning_driver, bus_number, device_number, pci_address, numa_node_id, physical_blockdevice_id, physical_interface_id, node_config_id) FROM stdin;
 \.
 
 
@@ -11894,7 +11823,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 424, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 428, true);
 
 
 --
@@ -11922,14 +11851,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 106, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 107, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 295, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 309, true);
 
 
 --
@@ -12196,6 +12125,13 @@ SELECT pg_catalog.setval('public.maasserver_node_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.maasserver_node_tags_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_nodeconfig_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_nodeconfig_id_seq', 1, false);
 
 
 --
@@ -12687,11 +12623,11 @@ ALTER TABLE ONLY public.django_site
 
 
 --
--- Name: maasserver_blockdevice maasserver_blockdevice_node_id_name_1dddf3d0_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_blockdevice maasserver_blockdevice_node_config_id_name_9103d63b_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_blockdevice
-    ADD CONSTRAINT maasserver_blockdevice_node_id_name_1dddf3d0_uniq UNIQUE (node_id, name);
+    ADD CONSTRAINT maasserver_blockdevice_node_config_id_name_9103d63b_uniq UNIQUE (node_config_id, name);
 
 
 --
@@ -13063,11 +12999,11 @@ ALTER TABLE ONLY public.maasserver_interface_ip_addresses
 
 
 --
--- Name: maasserver_interface maasserver_interface_node_id_name_83f87ba4_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_interface maasserver_interface_node_config_id_name_348eea09_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_interface
-    ADD CONSTRAINT maasserver_interface_node_id_name_83f87ba4_uniq UNIQUE (node_id, name);
+    ADD CONSTRAINT maasserver_interface_node_config_id_name_348eea09_uniq UNIQUE (node_config_id, name);
 
 
 --
@@ -13215,11 +13151,27 @@ ALTER TABLE ONLY public.maasserver_node_tags
 
 
 --
--- Name: maasserver_nodedevice maasserver_nodedevice_node_id_bus_number_devic_805ca24f_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_nodeconfig maasserver_nodeconfig_node_id_name_44bd083f_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodeconfig
+    ADD CONSTRAINT maasserver_nodeconfig_node_id_name_44bd083f_uniq UNIQUE (node_id, name);
+
+
+--
+-- Name: maasserver_nodeconfig maasserver_nodeconfig_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodeconfig
+    ADD CONSTRAINT maasserver_nodeconfig_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevice_node_config_id_bus_numbe_f4934ebf_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_nodedevice
-    ADD CONSTRAINT maasserver_nodedevice_node_id_bus_number_devic_805ca24f_uniq UNIQUE (node_id, bus_number, device_number, pci_address);
+    ADD CONSTRAINT maasserver_nodedevice_node_config_id_bus_numbe_f4934ebf_uniq UNIQUE (node_config_id, bus_number, device_number, pci_address);
 
 
 --
@@ -14048,10 +14000,10 @@ CREATE INDEX maasserver__power_p_511df2_hash ON public.maasserver_bmc USING hash
 
 
 --
--- Name: maasserver_blockdevice_node_id_bdedcfca; Type: INDEX; Schema: public; Owner: -
+-- Name: maasserver_blockdevice_node_config_id_5b310b67; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX maasserver_blockdevice_node_id_bdedcfca ON public.maasserver_blockdevice USING btree (node_id);
+CREATE INDEX maasserver_blockdevice_node_config_id_5b310b67 ON public.maasserver_blockdevice USING btree (node_config_id);
 
 
 --
@@ -14321,10 +14273,10 @@ CREATE INDEX maasserver_filesystem_filesystem_group_id_9bc05fe7 ON public.maasse
 
 
 --
--- Name: maasserver_filesystem_node_id_2263663a; Type: INDEX; Schema: public; Owner: -
+-- Name: maasserver_filesystem_node_config_id_741ff095; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX maasserver_filesystem_node_id_2263663a ON public.maasserver_filesystem USING btree (node_id);
+CREATE INDEX maasserver_filesystem_node_config_id_741ff095 ON public.maasserver_filesystem USING btree (node_config_id);
 
 
 --
@@ -14384,10 +14336,10 @@ CREATE INDEX maasserver_interface_ip_addresses_staticipaddress_id_5fa63951 ON pu
 
 
 --
--- Name: maasserver_interface_node_id_692ef434; Type: INDEX; Schema: public; Owner: -
+-- Name: maasserver_interface_node_config_id_a52b0f8a; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX maasserver_interface_node_id_692ef434 ON public.maasserver_interface USING btree (node_id);
+CREATE INDEX maasserver_interface_node_config_id_a52b0f8a ON public.maasserver_interface USING btree (node_config_id);
 
 
 --
@@ -14486,6 +14438,13 @@ CREATE INDEX maasserver_node_boot_interface_id_fad48090 ON public.maasserver_nod
 --
 
 CREATE INDEX maasserver_node_current_commissioning_script_set_id_9ae2ec39 ON public.maasserver_node USING btree (current_commissioning_script_set_id);
+
+
+--
+-- Name: maasserver_node_current_config_id_d9cbacad; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_node_current_config_id_d9cbacad ON public.maasserver_node USING btree (current_config_id);
 
 
 --
@@ -14594,10 +14553,17 @@ CREATE INDEX maasserver_node_zone_id_97213f69 ON public.maasserver_node USING bt
 
 
 --
--- Name: maasserver_nodedevice_node_id_56c4d8ac; Type: INDEX; Schema: public; Owner: -
+-- Name: maasserver_nodeconfig_node_id_c9235109; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX maasserver_nodedevice_node_id_56c4d8ac ON public.maasserver_nodedevice USING btree (node_id);
+CREATE INDEX maasserver_nodeconfig_node_id_c9235109 ON public.maasserver_nodeconfig USING btree (node_id);
+
+
+--
+-- Name: maasserver_nodedevice_node_config_id_3f91f0a0; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_nodedevice_node_config_id_3f91f0a0 ON public.maasserver_nodedevice USING btree (node_config_id);
 
 
 --
@@ -15196,11 +15162,11 @@ ALTER TABLE ONLY public.auth_user_user_permissions
 
 
 --
--- Name: maasserver_blockdevice maasserver_blockdevice_node_id_bdedcfca_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_blockdevice maasserver_blockdevi_node_config_id_5b310b67_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_blockdevice
-    ADD CONSTRAINT maasserver_blockdevice_node_id_bdedcfca_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_blockdevi_node_config_id_5b310b67_fk_maasserve FOREIGN KEY (node_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -15420,19 +15386,19 @@ ALTER TABLE ONLY public.maasserver_filesystem
 
 
 --
+-- Name: maasserver_filesystem maasserver_filesyste_node_config_id_741ff095_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_filesystem
+    ADD CONSTRAINT maasserver_filesyste_node_config_id_741ff095_fk_maasserve FOREIGN KEY (node_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_filesystem maasserver_filesyste_partition_id_6174cd8b_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_filesystem
     ADD CONSTRAINT maasserver_filesyste_partition_id_6174cd8b_fk_maasserve FOREIGN KEY (partition_id) REFERENCES public.maasserver_partition(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_filesystem maasserver_filesystem_node_id_2263663a_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_filesystem
-    ADD CONSTRAINT maasserver_filesystem_node_id_2263663a_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -15476,11 +15442,11 @@ ALTER TABLE ONLY public.maasserver_interface_ip_addresses
 
 
 --
--- Name: maasserver_interface maasserver_interface_node_id_692ef434_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: maasserver_interface maasserver_interface_node_config_id_a52b0f8a_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_interface
-    ADD CONSTRAINT maasserver_interface_node_id_692ef434_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT maasserver_interface_node_config_id_a52b0f8a_fk_maasserve FOREIGN KEY (node_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -15577,6 +15543,14 @@ ALTER TABLE ONLY public.maasserver_node
 
 ALTER TABLE ONLY public.maasserver_node
     ADD CONSTRAINT maasserver_node_current_commissionin_9ae2ec39_fk_metadatas FOREIGN KEY (current_commissioning_script_set_id) REFERENCES public.metadataserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_node maasserver_node_current_config_id_d9cbacad_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_node
+    ADD CONSTRAINT maasserver_node_current_config_id_d9cbacad_fk_maasserve FOREIGN KEY (current_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -15684,6 +15658,22 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
+-- Name: maasserver_nodeconfig maasserver_nodeconfig_node_id_c9235109_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodeconfig
+    ADD CONSTRAINT maasserver_nodeconfig_node_id_c9235109_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_nodedevice maasserver_nodedevic_node_config_id_3f91f0a0_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevice
+    ADD CONSTRAINT maasserver_nodedevic_node_config_id_3f91f0a0_fk_maasserve FOREIGN KEY (node_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
 -- Name: maasserver_nodedevice maasserver_nodedevic_numa_node_id_fadf5b46_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -15705,14 +15695,6 @@ ALTER TABLE ONLY public.maasserver_nodedevice
 
 ALTER TABLE ONLY public.maasserver_nodedevice
     ADD CONSTRAINT maasserver_nodedevic_physical_interface_i_ee476ae3_fk_maasserve FOREIGN KEY (physical_interface_id) REFERENCES public.maasserver_interface(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_nodedevice maasserver_nodedevice_node_id_56c4d8ac_fk_maasserver_node_id; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_nodedevice
-    ADD CONSTRAINT maasserver_nodedevice_node_id_56c4d8ac_fk_maasserver_node_id FOREIGN KEY (node_id) REFERENCES public.maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --

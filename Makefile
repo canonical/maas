@@ -143,13 +143,9 @@ test-perf: bin/test.perf.history
 	bin/test.perf.history
 .PHONY: test-perf
 
-src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
-    # Run migrations without any triggers created.
-	$(dbrun) bin/maas-region dbupgrade --internal-no-triggers
-    # Data migration will create a notification, that will break tests. Want
-    # the database to be a clean schema.
-	$(dbrun) bin/maas-region shell -c "from maasserver.models.notification import Notification; Notification.objects.all().delete()"
-	$(dbrun) pg_dump maas --no-owner --no-privileges --format=plain > $@
+update-initial-sql: bin/database bin/maas-region cleandb
+	$(dbrun) utilities/update-initial-sql src/maasserver/testing/initial.maas_test.sql
+.PHONY: update-initial-sql
 
 lint: lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
@@ -197,7 +193,8 @@ lint-shell: bin/shellcheck
 		utilities/package-version \
 		utilities/run-performanced \
 		utilities/run-py-tests-ci \
-		utilities/schemaspy 
+		utilities/schemaspy \
+		utilities/update-initial-sql
 .PHONY: lint-shell
 
 format.parallel:
