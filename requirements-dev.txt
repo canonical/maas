@@ -3,6 +3,7 @@ blessings==1.6
 extras==1.0.0
 fixtures==3.0.0
 hypothesis==4.36.2
+influxdb-client[ciso]==1.25.0
 ipdb==0.10.3
 junitxml==0.7
 linecache2==1.0.0

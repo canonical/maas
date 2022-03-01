@@ -156,6 +156,7 @@ TestingLibraries = Pattern(
     "dns|dns.**",
     "fixtures|fixtures.**",
     "hypothesis|hypothesis.**",
+    "influxdb_client|influxdb_client.**",
     "junitxml|junitxml.**",
     "maastesting|maastesting.**",
     "nose|nose.**",
@@ -178,6 +179,22 @@ def files(*patterns):
 
 
 APIClient = files("src/apiclient/**/*.py")
+
+PerfTestHarness = files("src/maastesting/perftest.py")
+PerfTestMigrations = files("src/maastesting/migrations/**/*.py")
+PerfTestModel = files("src/maastesting/models.py")
+PerfTestTests = files("src/maastesting/tests/test_perftest.py")
+PerfTests = (
+    PerfTestHarness & PerfTestMigrations & PerfTestModel & PerfTestTests
+)
+PerfTestHarnessRule = Rule(
+    Allow("django|django.**"),
+    Allow("maasserver.models.cleansave.*"),
+    Allow("maasserver.models.timestampmodel.*"),
+    Allow("maasserver.testing.testcase.MAASServerTestCase"),
+    Allow(StandardLibraries),
+    Allow(TestingLibraries),
+)
 
 
 RackControllerConfig = files("src/provisioningserver/config.py")
@@ -303,7 +320,13 @@ Tests = files(
 
 
 TestScriptEntryPoints = files("src/maastesting/scripts.py")
-TestHelpers = files("src/maastesting/**/*.py") - TestScriptEntryPoints
+TestHelpers = (
+    files("src/maastesting/**/*.py")
+    - TestScriptEntryPoints
+    - PerfTestTests
+    - PerfTestMigrations
+    - PerfTestModel
+)
 
 TestHelpersRule = Rule(
     Allow("crochet|crochet.**"),
@@ -351,6 +374,13 @@ checks = [
             Allow(StandardLibraries),
             Allow(TestingLibraries),
         ),
+    ),
+    #
+    # PERF TEST HARNESS
+    #
+    (
+        PerfTests,
+        PerfTestHarnessRule,
     ),
     #
     # RACK CONTROLLER

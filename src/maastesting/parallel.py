@@ -433,6 +433,8 @@ def main(args=None):
             "bin/test.region",
             r"^src/(maas|metadata)server\b",
             r"^(maas|metadata)server\b",
+            r"^src/maastesting/tests/test_perf.py$",
+            r"^maastesting.tests.test_perf$",
         ),
     )
     # Parse arguments.

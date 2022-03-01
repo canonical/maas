@@ -48,6 +48,8 @@ bin/subunit-1to2 \
 bin/subunit2junitxml \
 bin/subunit2pyunit \
 bin/test.parallel \
+bin/test.perf \
+bin/test.perf.history \
 bin/test.rack \
 bin/test.region \
 bin/test.region.legacy
@@ -134,6 +136,12 @@ test-missing-migrations: bin/database bin/maas-region
 test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyunit bin/pytest
 	@utilities/run-py-tests-ci
 .PHONY: test-py
+
+test-perf: bin/test.perf.history
+	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
+	GIT_HASH=$(shell git rev-parse HEAD) \
+	bin/test.perf.history
+.PHONY: test-perf
 
 src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
     # Run migrations without any triggers created.
