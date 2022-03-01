@@ -214,10 +214,6 @@ check: clean test
 api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_api_doc > $@
 
-sampledata: bin/maas-region bin/database syncdb go-bins
-	$(dbrun) bin/maas-region generate_sample_data
-.PHONY: sampledata
-
 doc: api-docs.rst
 .PHONY: doc
 
@@ -258,11 +254,9 @@ clean: clean-ui clean-go-bins
 	$(RM) -r .tox
 .PHONY: clean
 
-clean+db: clean
-	while fuser db --kill -TERM; do sleep 1; done
-	$(RM) -r db
-	$(RM) .db.lock
-.PHONY: clean+db
+#
+# Local database
+#
 
 dbshell: bin/database
 	bin/database --preserve shell
@@ -271,6 +265,22 @@ dbshell: bin/database
 syncdb: bin/maas-region bin/database
 	$(dbrun) bin/maas-region dbupgrade
 .PHONY: syncdb
+
+dumpdb: DB_DUMP ?= maasdb.dump
+dumpdb: bin/database
+	$(dbrun) pg_dump $(PGDATABASE) --format=custom -f $(DB_DUMP)
+.PHONY: dumpdb
+
+cleandb:
+	while fuser db --kill -TERM; do sleep 1; done
+	$(RM) -r db
+	$(RM) .db.lock
+.PHONY: cleandb
+
+sampledata: SAMPLEDATA_MACHINES ?= 100
+sampledata: syncdb bin/maas-sampledata
+	$(dbrun) bin/maas-sampledata --machine $(SAMPLEDATA_MACHINES)
+.PHONY: sampledata
 
 #
 # Package building

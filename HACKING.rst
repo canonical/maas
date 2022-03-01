@@ -199,18 +199,6 @@ and sets up some useful commands in ``bin/``::
 
     $ make
 
-Create the database cluster and initialise the development database::
-
-    $ make syncdb
-
-Optionally, if all you want to do is to take a look around the UI and
-API, without interacting with real machines or VMs, populate your
-database with the sample data::
-
-    $ make sampledata
-
-You can login as a simple user using the test account (username: 'test',
-password: 'test') or the admin account (username: 'admin', password: 'test').
 
 Development using the snap
 ==========================
@@ -299,6 +287,39 @@ network you created. For example::
 Note that your LXD host will have the .1 address and will act as a
 gateway for your VMs.
 
+
+Creating sample data
+^^^^^^^^^^^^^^^^^^^^
+
+To create a local Postgres dabase tree (in the ``db/`` directory), run::
+
+    $ make syncdb
+
+In addition, it's possible to generate sample data in the database with::
+
+    $ make sampledata
+
+with an optional (``SAMPLEDATA_MACHINES=<n>`` parameter to specify how many
+machines to generate).
+
+The created database can be dumped via::
+
+    $ make dumpdb
+
+(optionally specifying ``DB_DUMP=filename.dump`` for the target file).
+
+The resulting dump can then be imported into a different PostgreSQL server for
+MAAS to use.
+
+With maas-test-db, this can be done with the following::
+
+   $ sudo cp maasdb.dump /var/snap/maas-test-db/common
+   $ sudo snap run --shell maas-test-db.psql \
+     -c 'db-dump restore $SNAP_COMMON/maasdb.dump maassampledata'
+
+and then updating the MAAS configuration to use the new db by editing
+``/var/snap/maas/current/regiond.conf`` to point to the new database, and
+restarting the snap.
 
 
 Configuring DHCP
