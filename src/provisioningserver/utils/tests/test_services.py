@@ -858,12 +858,11 @@ ForeverProcessProtocolService was terminated.""",
             service.startService()
             yield service.stopService()
         self.assertEqual(
-            logger.output,
-            (
-                "ForeverProcessProtocolService started.\n"
-                "---\n"
-                "ForeverProcessProtocolService was terminated."
-            ),
+            logger.messages[0], "ForeverProcessProtocolService started."
+        )
+        self.assertEqual(
+            logger.messages[-1],
+            "ForeverProcessProtocolService was terminated.",
         )
 
     @inlineCallbacks
