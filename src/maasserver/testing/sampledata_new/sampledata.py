@@ -17,6 +17,8 @@ def generate(
     tag_prefix: str,
     redfish_address: str,
 ):
+    from metadataserver.builtin_scripts import load_builtin_scripts
+
     from .machine import make_machine_infos, make_machines, set_machine_status
     from .network import make_network_interfaces, make_networks
     from .storage import make_storage_setup
@@ -40,6 +42,8 @@ def generate(
     tags = make_tags(TAG_COUNT, tag_prefix)
     LOGGER.info(f"creating {VMHOST_COUNT} VM hosts")
     vmhosts = make_vmhosts(VMHOST_COUNT)
+    LOGGER.info("creating builtin scripts")
+    load_builtin_scripts()
     LOGGER.info("creating machine resources data")
     machine_infos = make_machine_infos(machine_count, hostname_prefix)
     LOGGER.info("creating network interfaces")

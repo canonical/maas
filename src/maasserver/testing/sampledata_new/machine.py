@@ -10,6 +10,7 @@ from metadataserver.builtin_scripts.hooks import process_lxd_results
 from . import LOGGER
 from .common import range_one
 from .defs import MACHINE_ARCHES, MACHINE_STATUSES
+from .script import make_scripts
 
 
 def make_machine_infos(count: int, hostname_prefix: str):
@@ -66,9 +67,9 @@ def make_machines(machine_infos, vmhosts, tags, redfish_address):
             instance_power_parameters=instance_power_parameters,
         )
         machine.tags.add(*random.choices(tags, k=10))
-        process_lxd_results(
-            machine, json.dumps(machine_info.render()).encode(), 0
-        )
+        lxd_info = json.dumps(machine_info.render()).encode()
+        process_lxd_results(machine, lxd_info, 0)
+        make_scripts(machine, lxd_info)
         machines.append(machine)
         if n % 10 == 0:
             LOGGER.info(f" created {n} machines")
