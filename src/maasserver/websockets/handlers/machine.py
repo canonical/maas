@@ -238,7 +238,6 @@ class MachineHandler(NodeHandler):
             "locked",
             "owner",
             "cpu_count",
-            "cpu_speed",
             "description",
             "error_description",
             "memory",
@@ -247,6 +246,10 @@ class MachineHandler(NodeHandler):
             "pool",
             "zone",
         ]
+        list_exclude = [
+            "commissioning_start_time",
+            "commissioning_status",
+        ] + exclude
         listen_channels = ["machine"]
         create_permission = NodePermission.admin
         view_permission = NodePermission.view

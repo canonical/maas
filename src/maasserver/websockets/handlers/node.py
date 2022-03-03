@@ -284,14 +284,15 @@ class NodeHandler(TimestampedModelHandler):
                             and script_result.started < testing_start_time
                         ):
                             testing_start_time = script_result.started
-            data["commissioning_status"] = self.dehydrate_test_statuses(
-                commissioning_script_results
-            )
+            if not for_list:
+                data["commissioning_status"] = self.dehydrate_test_statuses(
+                    commissioning_script_results
+                )
+                data["commissioning_start_time"] = dehydrate_datetime(
+                    commissioning_start_time
+                )
             data["testing_status"] = self.dehydrate_test_statuses(
                 testing_script_results
-            )
-            data["commissioning_start_time"] = dehydrate_datetime(
-                commissioning_start_time
             )
             data["testing_start_time"] = dehydrate_datetime(testing_start_time)
             data["installation_start_time"] = dehydrate_datetime(

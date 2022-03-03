@@ -388,46 +388,49 @@ class TestMachineHandler(MAASServerTestCase):
                 data["sriov_support"] = any(
                     iface["sriov_max_vf"] > 0 for iface in data["interfaces"]
                 )
-            allowed_fields = MachineHandler.Meta.list_fields + [
-                "actions",
-                "architecture",
-                "commissioning_script_count",
-                "commissioning_start_time",
-                "commissioning_status",
-                "dhcp_on",
-                "distro_series",
-                "extra_macs",
-                "link_speeds",
-                "fabrics",
-                "fqdn",
-                "has_logs",
-                "installation_start_time",
-                "ip_addresses",
-                "link_type",
-                "metadata",
-                "node_type_display",
-                "numa_nodes_count",
-                "osystem",
-                "permissions",
-                "physical_disk_count",
-                "pod",
-                "pxe_mac",
-                "pxe_mac_vendor",
-                "spaces",
-                "sriov_support",
-                "status",
-                "status_code",
-                "status_message",
-                "storage",
-                "storage_tags",
-                "subnets",
-                "tags",
-                "testing_script_count",
-                "testing_start_time",
-                "testing_status",
-                "vlan",
-                "workload_annotations",
-            ]
+            list_fields = set(MachineHandler.Meta.list_fields) - set(
+                MachineHandler.Meta.list_exclude
+            )
+            allowed_fields = list_fields.union(
+                {
+                    "actions",
+                    "architecture",
+                    "commissioning_script_count",
+                    "dhcp_on",
+                    "distro_series",
+                    "extra_macs",
+                    "link_speeds",
+                    "fabrics",
+                    "fqdn",
+                    "has_logs",
+                    "installation_start_time",
+                    "ip_addresses",
+                    "link_type",
+                    "metadata",
+                    "node_type_display",
+                    "numa_nodes_count",
+                    "osystem",
+                    "permissions",
+                    "physical_disk_count",
+                    "pod",
+                    "pxe_mac",
+                    "pxe_mac_vendor",
+                    "spaces",
+                    "sriov_support",
+                    "status",
+                    "status_code",
+                    "status_message",
+                    "storage",
+                    "storage_tags",
+                    "subnets",
+                    "tags",
+                    "testing_script_count",
+                    "testing_start_time",
+                    "testing_status",
+                    "vlan",
+                    "workload_annotations",
+                }
+            )
             for key in list(data):
                 if key not in allowed_fields:
                     del data[key]
@@ -2249,13 +2252,16 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         factory.make_PhysicalBlockDevice(node=node)
         self.assertNotIn(node.id, handler._script_results.keys())
-        self.assertCountEqual(
-            [self.dehydrate_node(node, handler, for_list=True)],
-            handler.list({}),
-        )
+        list_results = handler.list({})
         self.assertDictEqual(
             {node.id: {script_result.script.hardware_type: [script_result]}},
             handler._script_results,
+        )
+        self.assertNotIn("commissioning_status", list_results[0])
+        self.assertNotIn("commissioning_start_time", list_results[0])
+        self.assertNotIn("cpu_speed", list_results[0])
+        self.assertCountEqual(
+            [self.dehydrate_node(node, handler, for_list=True)], list_results
         )
 
     def test_list_includes_numa_node_info(self):
