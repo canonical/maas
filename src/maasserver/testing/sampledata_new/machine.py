@@ -1,8 +1,12 @@
 from itertools import cycle
 import json
 import random
+from typing import List
 
-from maasserver.models import BMC, Machine
+from django.contrib.auth.models import User
+
+from maasserver.enum import NODE_STATUS
+from maasserver.models import BMC, Machine, Pod, Tag
 from maasserver.testing.commissioning import FakeCommissioningData
 from metadataserver.builtin_scripts.hooks import process_lxd_results
 
@@ -24,8 +28,15 @@ def make_machine_infos(count: int, hostname_prefix: str):
     return machine_infos
 
 
-def make_machines(machine_infos, vmhosts, tags, redfish_address):
-    vmhosts = cycle(vmhosts)
+def make_machines(
+    machine_infos: List[FakeCommissioningData],
+    vmhosts: List[Pod],
+    tags: List[Tag],
+    users: List[User],
+    redfish_address: str,
+):
+    bmcs = cycle(vmhosts)
+    owners = cycle(users)
     machines = []
     # ensure machines in a VM host have matching arches
     vmhost_ratio = len(MACHINE_ARCHES) * 2
@@ -45,7 +56,7 @@ def make_machines(machine_infos, vmhosts, tags, redfish_address):
     for n, machine_info in enumerate(machine_infos, 1):
         hostname = machine_info.environment["server_name"]
         if n % vmhost_ratio == 0:
-            bmc = next(vmhosts)
+            bmc = next(bmcs)
             instance_power_parameters = {
                 "instance_name"
                 if bmc.power_type == "lxd"
@@ -58,13 +69,20 @@ def make_machines(machine_infos, vmhosts, tags, redfish_address):
             bmc = BMC.objects.create(power_type="manual")
             instance_power_parameters = {}
 
+        status = next(MACHINE_STATUSES)
+        owner = (
+            None
+            if status in (NODE_STATUS.NEW, NODE_STATUS.READY)
+            else next(owners)
+        )
         machine = Machine.objects.create(
             hostname=hostname,
             architecture=machine_info.debian_architecture,
             bios_boot_method="uefi",
             bmc=bmc,
             instance_power_parameters=instance_power_parameters,
-            status=MACHINE_STATUSES.get_next_item(),
+            status=status,
+            owner=owner,
         )
         machine.tags.add(*random.choices(tags, k=10))
         lxd_info = json.dumps(machine_info.render()).encode()

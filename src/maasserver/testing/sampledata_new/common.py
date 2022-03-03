@@ -12,7 +12,7 @@ class WeightedItemGetter:
             self.item_cum_weights[item] = weight + self.max_cum_weight
             self.max_cum_weight += weight
 
-    def get_next_item(self):
+    def __next__(self):
         value = random.randint(1, self.max_cum_weight)
         for item, cum_weight in self.item_cum_weights.items():
             if value <= cum_weight:

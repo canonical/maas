@@ -30,5 +30,5 @@ def make_events(counts: WeightedItemGetter, event_types, machines):
                 created=now,
                 updated=now,
             )
-            for _ in range(counts.get_next_item())
+            for _ in range(next(counts))
         )
