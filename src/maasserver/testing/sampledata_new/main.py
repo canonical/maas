@@ -30,6 +30,14 @@ def parse_args() -> Namespace:
         default="",
     )
     parser.add_argument(
+        "--ownerdata-prefix",
+        help=(
+            "Prefix for ownerdata keys. If none is specified, a random one "
+            "is generated"
+        ),
+        default="",
+    )
+    parser.add_argument(
         "--tag-prefix",
         help=(
             "Prefix for tag names. If none is specified, a random one "
@@ -121,6 +129,7 @@ def main():
     generate(
         args.machines,
         args.hostname_prefix,
+        args.ownerdata_prefix,
         args.tag_prefix,
         args.redfish_address,
     )

@@ -1,4 +1,3 @@
-from collections import defaultdict
 from itertools import cycle
 import json
 import random
@@ -65,6 +64,7 @@ def make_machines(machine_infos, vmhosts, tags, redfish_address):
             bios_boot_method="uefi",
             bmc=bmc,
             instance_power_parameters=instance_power_parameters,
+            status=MACHINE_STATUSES.get_next_item(),
         )
         machine.tags.add(*random.choices(tags, k=10))
         lxd_info = json.dumps(machine_info.render()).encode()
@@ -74,13 +74,3 @@ def make_machines(machine_infos, vmhosts, tags, redfish_address):
         if n % 10 == 0:
             LOGGER.info(f" created {n} machines")
     return machines
-
-
-def set_machine_status(machines):
-    from maasserver.models import Machine
-
-    statuses = defaultdict(list)
-    for machine in machines:
-        statuses[MACHINE_STATUSES.get_next_item()].append(machine.id)
-    for status, machine_ids in statuses.items():
-        Machine.objects.filter(id__in=machine_ids).update(status=status)

@@ -4,6 +4,7 @@ from . import LOGGER
 from .common import make_name
 from .defs import (
     MACHINES_PER_FABRIC,
+    OWNERDATA_PER_MACHINE_COUNT,
     TAG_COUNT,
     VLAN_PER_FABRIC_COUNT,
     VMHOST_COUNT,
@@ -14,13 +15,15 @@ from .defs import (
 def generate(
     machine_count: int,
     hostname_prefix: str,
+    ownerdata_prefix: str,
     tag_prefix: str,
     redfish_address: str,
 ):
     from metadataserver.builtin_scripts import load_builtin_scripts
 
-    from .machine import make_machine_infos, make_machines, set_machine_status
+    from .machine import make_machine_infos, make_machines
     from .network import make_network_interfaces, make_networks
+    from .ownerdata import make_ownerdata
     from .storage import make_storage_setup
     from .tag import make_tags
     from .vmhost import make_vmhosts
@@ -28,6 +31,9 @@ def generate(
     if not hostname_prefix:
         hostname_prefix = make_name()
         LOGGER.info(f"machine hostname prefix is '{hostname_prefix}'")
+    if not ownerdata_prefix:
+        ownerdata_prefix = make_name()
+        LOGGER.info(f"ownerdata prefix is '{ownerdata_prefix}'")
     if not tag_prefix:
         tag_prefix = make_name()
         LOGGER.info(f"tag prefix is '{tag_prefix}'")
@@ -51,4 +57,5 @@ def generate(
     make_storage_setup(machine_infos)
     LOGGER.info(f"creating {machine_count} machines")
     machines = make_machines(machine_infos, vmhosts, tags, redfish_address)
-    set_machine_status(machines)
+    LOGGER.info(f"creating {OWNERDATA_PER_MACHINE_COUNT} owner data")
+    make_ownerdata(OWNERDATA_PER_MACHINE_COUNT, ownerdata_prefix, machines)

@@ -5,6 +5,7 @@ from .common import WeightedItemGetter
 MACHINES_PER_FABRIC = 48  # Each ToR switch is its own fabric
 VLAN_PER_FABRIC_COUNT = 4  # in addition to the default one
 VMHOST_COUNT = 5
+OWNERDATA_PER_MACHINE_COUNT = 5
 TAG_COUNT = 100
 
 MACHINE_ARCHES = ("x86_64", "aarch64", "ppc64le")
