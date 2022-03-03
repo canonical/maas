@@ -14,7 +14,6 @@ import time
 from unittest import skip
 from urllib.parse import urlparse
 
-from crochet import wait_for
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import ContainsAll, Equals, HasLength, MatchesStructure
 from twisted.internet.defer import inlineCallbacks, succeed
@@ -42,6 +41,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith, MockCalledWith
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
@@ -80,7 +80,7 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 @transactional

@@ -6,7 +6,6 @@
 
 import os
 
-from crochet import wait_for
 from twisted.internet.defer import inlineCallbacks, maybeDeferred
 
 from maasserver.models.config import Config
@@ -16,11 +15,12 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.testcase import MAASTestCase
 from provisioningserver.proxy import config
 from provisioningserver.utils.service_monitor import SERVICE_STATE
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestGlobalServiceMonitor(MAASTestCase):

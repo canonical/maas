@@ -79,7 +79,7 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.rpc.cluster import DecomposeMachine
 from provisioningserver.utils.constraints import LabeledConstraintMap
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 UNDEFINED = object()
 SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 

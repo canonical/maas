@@ -10,7 +10,6 @@ import json
 import random
 from unittest.mock import call, Mock, sentinel
 
-from crochet import wait_for
 from django.db.utils import DatabaseError
 from netaddr import IPAddress
 from testtools import ExpectedException
@@ -37,6 +36,7 @@ from maasserver.utils.orm import (
     TransactionManagementError,
 )
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -55,7 +55,7 @@ from metadataserver.enum import RESULT_TYPE, SCRIPT_STATUS
 from metadataserver.models import NodeKey
 from provisioningserver.events import EVENT_STATUS_MESSAGES
 
-wait_for_reactor = wait_for(30)
+wait_for_reactor = wait_for()
 
 
 class TestStatusHandlerResource(MAASTestCase):

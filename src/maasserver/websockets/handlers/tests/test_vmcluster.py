@@ -15,7 +15,7 @@ from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers import VMClusterHandler
 from maastesting.crochet import wait_for
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestVMClusterHandler(MAASTransactionServerTestCase):

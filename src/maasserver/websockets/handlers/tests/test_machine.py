@@ -10,7 +10,6 @@ import random
 import re
 from unittest.mock import ANY
 
-from crochet import wait_for
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from lxml import etree
@@ -112,6 +111,7 @@ from maasserver.websockets.handlers.machine import MachineHandler
 from maasserver.websockets.handlers.machine import Node as node_model
 from maasserver.websockets.handlers.node import NODE_TYPE_TO_LINK_TYPE
 from maasserver.websockets.handlers.node_result import NodeResultHandler
+from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from metadataserver.enum import (
@@ -134,7 +134,7 @@ from provisioningserver.tags import merge_details_cleanly
 
 SAMPLE_CERTIFICATE = Certificate.generate("maas")
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class FakeRequest:

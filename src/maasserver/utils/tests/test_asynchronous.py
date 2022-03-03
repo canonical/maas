@@ -10,7 +10,6 @@ import threading
 from time import time
 from unittest.mock import call, Mock, sentinel
 
-from crochet import wait_for
 from testtools.matchers import (
     Contains,
     Equals,
@@ -30,6 +29,7 @@ from maasserver.exceptions import IteratorReusedError
 from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.utils import asynchronous
 from maasserver.utils.asynchronous import DeferredHooks
+from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsFiredDeferred,
@@ -142,7 +142,7 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
 
     def test_add_cannot_be_called_in_the_reactor(self):
         dhooks = DeferredHooks()
-        add_in_reactor = wait_for(30)(dhooks.add)  # Wait 30 seconds.
+        add_in_reactor = wait_for()(dhooks.add)  # Wait 30 seconds.
         self.assertRaises(AssertionError, add_in_reactor, Deferred())
 
     def test_fire_calls_hooks(self):

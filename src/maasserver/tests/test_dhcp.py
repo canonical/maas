@@ -6,7 +6,6 @@ from operator import itemgetter
 import random
 from unittest.mock import ANY
 
-from crochet import wait_for
 from django.core.exceptions import ValidationError
 from netaddr import IPAddress, IPNetwork
 from testtools import ExpectedException
@@ -48,6 +47,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import always_fail_with, always_succeed_with
@@ -60,7 +60,7 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.utils.twisted import synchronous
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestGetOMAPIKey(MAASServerTestCase):

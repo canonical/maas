@@ -6,7 +6,6 @@
 
 from unittest.mock import Mock
 
-from crochet import wait_for
 from testtools.matchers import Equals, Is
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
@@ -17,6 +16,7 @@ from maasserver.regiondservices.reverse_dns import ReverseDNSService
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.utils.testing import callWithServiceRunning
 from provisioningserver.utils.tests.test_network import TestReverseResolveMixIn

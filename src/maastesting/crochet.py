@@ -5,6 +5,7 @@
 
 from asyncio import iscoroutinefunction
 from functools import wraps
+import os
 
 import crochet
 from testtools.content import Content, UTF8_TEXT
@@ -110,11 +111,19 @@ class EventualResultCatchingMixin:
         )
 
 
-def wait_for(timeout):
+def wait_for(timeout=None):
     """Backport of wait_for from Crochet 2.0.
 
     This allows async def definitions to be used.
     """
+
+    def get_timeout():
+        wait_time = (
+            os.environ.get("MAAS_WAIT_FOR_REACTOR", 60.0)
+            if timeout is None
+            else timeout
+        )
+        return float(wait_time)
 
     def decorator(function):
         def wrapper(function, _, args, kwargs):
@@ -127,7 +136,7 @@ def wait_for(timeout):
 
             eventual_result = run()
             try:
-                return eventual_result.wait(timeout)
+                return eventual_result.wait(get_timeout())
             except TimeoutError:
                 eventual_result.cancel()
                 raise

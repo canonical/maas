@@ -6,16 +6,16 @@
 
 from unittest.mock import sentinel
 
-from crochet import wait_for
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import Equals, Is
 
 from maasserver import eventloop, rpc
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import exceptions
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestFunctions(MAASTestCase):

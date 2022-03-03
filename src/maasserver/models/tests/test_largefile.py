@@ -8,7 +8,6 @@ from io import BytesIO
 from random import randint
 from unittest.mock import ANY, call
 
-from crochet import wait_for
 from django.db import transaction
 import psycopg2
 from testtools.matchers import (
@@ -30,6 +29,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit_hooks
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 
 

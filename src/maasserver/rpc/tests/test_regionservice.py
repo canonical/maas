@@ -10,7 +10,6 @@ import random
 from unittest import skip
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
-from crochet import wait_for
 from django.db import IntegrityError
 from testtools import ExpectedException
 from testtools.deferredruntest import assert_fails_with
@@ -60,6 +59,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch, Provides
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import (
@@ -82,7 +82,7 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.utils import events
 from provisioningserver.utils.version import get_running_version
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestRegionServer(MAASTransactionServerTestCase):

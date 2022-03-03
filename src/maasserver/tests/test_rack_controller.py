@@ -7,7 +7,6 @@
 import random
 from unittest.mock import call, create_autospec, sentinel
 
-from crochet import wait_for
 from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
@@ -22,6 +21,7 @@ from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
@@ -29,7 +29,7 @@ from maastesting.matchers import (
     MockNotCalled,
 )
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestRackControllerService(

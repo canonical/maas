@@ -202,7 +202,7 @@ class TestDiscoverAndSyncVMHost(MAASServerTestCase):
 
 class TestDiscoverAndSyncVMHostAsync(MAASTransactionServerTestCase):
 
-    wait_for_reactor = wait_for(30)
+    wait_for_reactor = wait_for()
 
     @wait_for_reactor
     async def test_sync_details(self):
@@ -655,7 +655,7 @@ class TestSyncVMCluster(MAASServerTestCase):
 
 class TestSyncVMClusterAsync(MAASTransactionServerTestCase):
 
-    wait_for_reactor = wait_for(30)
+    wait_for_reactor = wait_for()
 
     @wait_for_reactor
     async def test_sync_vmcluster_async_creates_cluster(self):

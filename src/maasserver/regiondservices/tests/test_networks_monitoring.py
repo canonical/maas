@@ -4,7 +4,6 @@
 """Tests for networks monitor."""
 
 
-from crochet import wait_for
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 
@@ -14,6 +13,7 @@ from maasserver.regiondservices.networks_monitoring import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils import services
 from provisioningserver.utils.testing import MAASIDFixture

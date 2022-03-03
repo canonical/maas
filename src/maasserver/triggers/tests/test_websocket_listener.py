@@ -6,7 +6,6 @@ import logging
 import random
 from unittest import skip
 
-from crochet import wait_for
 from netaddr import IPAddress
 from testtools import ExpectedException
 from twisted.internet.defer import (
@@ -43,6 +42,7 @@ from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.triggers.websocket import node_fields
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import SCRIPT_STATUS
 from provisioningserver.utils.snap import SnapVersionsInfo
@@ -54,7 +54,7 @@ from provisioningserver.utils.twisted import (
     synchronous,
 )
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 @synchronous

@@ -39,7 +39,7 @@ from provisioningserver.rpc.cluster import DiscoverPodProjects
 
 SAMPLE_CERTIFICATE = Certificate.generate("maas")
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestPodHandler(MAASTransactionServerTestCase):

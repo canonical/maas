@@ -7,7 +7,6 @@
 from pathlib import Path
 import random
 
-from crochet import wait_for
 from django.conf import settings
 from fixtures import EnvironmentVariableFixture
 from testtools.matchers import Contains, FileContains, Not
@@ -19,11 +18,12 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from provisioningserver.proxy import config
 from provisioningserver.utils import snap
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestProxyUpdateConfig(MAASTransactionServerTestCase):

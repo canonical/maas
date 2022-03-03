@@ -12,7 +12,7 @@ from textwrap import dedent
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
 import crochet
-from crochet import TimeoutError, wait_for
+from crochet import TimeoutError
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models.deletion import Collector
@@ -161,6 +161,7 @@ from maasserver.utils.orm import (
 )
 from maasserver.utils.threads import callOutToDatabase, deferToDatabase
 from maasserver.worker_user import get_worker_user
+from maastesting.crochet import wait_for
 from maastesting.matchers import (
     DocTestMatches,
     IsNonEmptyString,
@@ -206,7 +207,7 @@ from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.network import inet_ntop
 from provisioningserver.utils.testing import MAASIDFixture
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestGenerateNodeSystemID(MAASServerTestCase):

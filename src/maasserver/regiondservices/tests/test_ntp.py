@@ -4,7 +4,6 @@
 """Tests for `maasserver.regiondservices.ntp`."""
 
 
-from crochet import wait_for
 from testtools.matchers import AllMatch, Equals, IsInstance, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
@@ -19,6 +18,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.fixtures import MAASRootFixture
 from maastesting.matchers import (
     ContainedBy,
@@ -31,7 +31,7 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import always_succeed_with, TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 def make_region_with_address(space):
