@@ -16,7 +16,7 @@ from operator import attrgetter
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db.models import Model
+from django.db.models import Model, Q
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 
@@ -476,8 +476,28 @@ class Handler(metaclass=HandlerMetaclass):
             queryset = queryset.filter(
                 **{"%s__gt" % self._meta.batch_key: params["start"]}
             )
+
+        fields = self._meta.list_fields or self._meta.object_class._meta.fields
+
+        search_filter = Q()
+        for field in fields:
+            if f"search_{field}" in params:
+                search_filter |= Q(
+                    **{f"{field}__icontains": params[f"search_{field}"]}
+                )
+        queryset = queryset.filter(search_filter)
+
+        select_filter = Q()
+        for field in fields:
+            if f"select_{field}" in params:
+                select_filter &= Q(
+                    **{f"{field}__in": params[f"select_{field}"]}
+                )
+        queryset = queryset.filter(select_filter)
+
         if "limit" in params:
             queryset = queryset[: params["limit"]]
+
         objs = list(queryset)
         self._cache_pks(objs)
         return [self.full_dehydrate(obj, for_list=True) for obj in objs]

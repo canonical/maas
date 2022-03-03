@@ -477,6 +477,65 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             output, handler.list({"start": nodes[2].id, "limit": 3})
         )
 
+    def test_list_filter_one_field(self):
+        nodes = [factory.make_Node() for _ in range(3)]
+        output = [
+            {
+                "id": nodes[1].id,
+                "hostname": nodes[1].hostname,
+                "system_id": nodes[1].system_id,
+            }
+        ]
+        handler = self.make_nodes_handler(
+            list_fields=["id", "hostname", "system_id"],
+        )
+        self.assertEqual(
+            output, handler.list({"search_hostname": nodes[1].hostname[:6]})
+        )
+
+    def test_list_filter_two_fields(self):
+        nodes = [factory.make_Node() for _ in range(3)]
+        output = [
+            {
+                "id": nodes[1].id,
+                "hostname": nodes[1].hostname,
+                "system_id": nodes[1].system_id,
+            }
+        ]
+        handler = self.make_nodes_handler(
+            list_fields=["id", "hostname", "system_id"],
+        )
+        self.assertEqual(
+            output,
+            handler.list(
+                {
+                    "search_hostname": nodes[1].hostname[:6],
+                    "search_system_id": nodes[1].hostname[:6],
+                }
+            ),
+        )
+
+    def test_list_select(self):
+        nodes = [factory.make_Node() for _ in range(3)]
+        output = [
+            {
+                "id": nodes[1].id,
+                "hostname": nodes[1].hostname,
+                "system_id": nodes[1].system_id,
+            }
+        ]
+        handler = self.make_nodes_handler(
+            list_fields=["id", "hostname", "system_id"],
+        )
+        self.assertEqual(
+            output,
+            handler.list(
+                {
+                    "select_system_id": [nodes[1].system_id],
+                }
+            ),
+        )
+
     def test_list_adds_to_loaded_pks(self):
         pks = [factory.make_Node().system_id for _ in range(3)]
         handler = self.make_nodes_handler(fields=["hostname"])
