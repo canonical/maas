@@ -3,6 +3,8 @@ from django.db import transaction
 from . import LOGGER
 from .common import make_name
 from .defs import (
+    EVENT_PER_MACHINE,
+    EVENT_TYPE_COUNT,
     MACHINES_PER_FABRIC,
     OWNERDATA_PER_MACHINE_COUNT,
     TAG_COUNT,
@@ -21,6 +23,7 @@ def generate(
 ):
     from metadataserver.builtin_scripts import load_builtin_scripts
 
+    from .event import make_event_types, make_events
     from .machine import make_machine_infos, make_machines
     from .network import make_network_interfaces, make_networks
     from .ownerdata import make_ownerdata
@@ -38,6 +41,8 @@ def generate(
         tag_prefix = make_name()
         LOGGER.info(f"tag prefix is '{tag_prefix}'")
 
+    event_types = make_event_types(EVENT_TYPE_COUNT)
+    LOGGER.info(f"creating {EVENT_TYPE_COUNT} event types")
     fabric_count = int(machine_count / MACHINES_PER_FABRIC) + 1
     LOGGER.info(
         f"creating {(VLAN_PER_FABRIC_COUNT + 1) * fabric_count} VLANs "
@@ -59,3 +64,5 @@ def generate(
     machines = make_machines(machine_infos, vmhosts, tags, redfish_address)
     LOGGER.info(f"creating {OWNERDATA_PER_MACHINE_COUNT} owner data")
     make_ownerdata(OWNERDATA_PER_MACHINE_COUNT, ownerdata_prefix, machines)
+    LOGGER.info("creating machine events")
+    make_events(EVENT_PER_MACHINE, event_types, machines)

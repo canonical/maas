@@ -7,6 +7,7 @@ VLAN_PER_FABRIC_COUNT = 4  # in addition to the default one
 VMHOST_COUNT = 5
 OWNERDATA_PER_MACHINE_COUNT = 5
 TAG_COUNT = 100
+EVENT_TYPE_COUNT = 50
 
 MACHINE_ARCHES = ("x86_64", "aarch64", "ppc64le")
 STORAGE_SETUPS = (
@@ -40,5 +41,14 @@ MACHINE_STATUSES = WeightedItemGetter(
         NODE_STATUS.EXITING_RESCUE_MODE: 1,
         NODE_STATUS.FAILED_EXITING_RESCUE_MODE: 1,
         NODE_STATUS.FAILED_TESTING: 1,
+    }
+)
+
+EVENT_PER_MACHINE = WeightedItemGetter(
+    {
+        15000: 5,
+        10000: 10,
+        5000: 100,
+        1000: 200,
     }
 )
