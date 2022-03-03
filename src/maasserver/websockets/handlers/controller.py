@@ -23,8 +23,7 @@ from maasserver.models import Config, Controller, Event, RackController, VLAN
 from maasserver.models.controllerinfo import get_target_version
 from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerError, HandlerPermissionError
-from maasserver.websockets.handlers.machine import MachineHandler
-from maasserver.websockets.handlers.node import node_prefetch
+from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
 
 # return the list of VLAN ids connected to a controller
 _vlan_ids_aggr = ArrayAgg(
@@ -36,8 +35,8 @@ _vlan_ids_aggr = ArrayAgg(
 )
 
 
-class ControllerHandler(MachineHandler):
-    class Meta(MachineHandler.Meta):
+class ControllerHandler(NodeHandler):
+    class Meta(NodeHandler.Meta):
         abstract = False
         queryset = node_prefetch(
             Controller.controllers.all()
@@ -215,6 +214,10 @@ class ControllerHandler(MachineHandler):
     def dehydrate_show_os_info(self, obj):
         """Always show the OS information for controllers in the UI."""
         return True
+
+    def preprocess_form(self, action, params):
+        params.update(self.preprocess_node_form(action, params))
+        return super().preprocess_form(action, params)
 
     def register_info(self, params):
         """Return the registration info for a new controller.

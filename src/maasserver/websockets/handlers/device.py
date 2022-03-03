@@ -249,17 +249,14 @@ class DeviceHandler(NodeHandler):
 
     def preprocess_form(self, action, params):
         """Process the `params` to before passing the data to the form."""
-        new_params = {
-            "mac_addresses": self.get_mac_addresses(params),
-            "hostname": params.get("hostname"),
-            "description": params.get("description"),
-            "parent": params.get("parent"),
-        }
-
-        if "zone" in params:
-            new_params["zone"] = params["zone"]["name"]
-        if "domain" in params:
-            new_params["domain"] = params["domain"]["name"]
+        new_params = self.preprocess_node_form(action, params)
+        new_params.update(
+            {
+                "mac_addresses": self.get_mac_addresses(params),
+                "hostname": params.get("hostname"),
+                "parent": params.get("parent"),
+            }
+        )
 
         # Cleanup any fields that have a None value.
         new_params = {

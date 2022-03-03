@@ -904,6 +904,16 @@ class NodeHandler(TimestampedModelHandler):
             for event in events
         ]
 
+    def preprocess_node_form(self, action, params):
+        """Helper for sub-classes to deal with common parameters."""
+        new_params = {}
+        new_params["description"] = params.get("description")
+        if "zone" in params:
+            new_params["zone"] = params["zone"]["name"]
+        if "domain" in params:
+            new_params["domain"] = params["domain"]["name"]
+        return new_params
+
     def get_all_storage_tags(self, blockdevices):
         """Return list of all storage tags in `blockdevices`."""
         tags = set()

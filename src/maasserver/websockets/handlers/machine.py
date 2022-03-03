@@ -418,23 +418,17 @@ class MachineHandler(NodeHandler):
 
     def preprocess_form(self, action, params):
         """Process the `params` to before passing the data to the form."""
-        new_params = {}
-
+        new_params = self.preprocess_node_form(action, params)
         # Only copy the allowed fields into `new_params` to be passed into
         # the form.
         new_params["mac_addresses"] = self.get_mac_addresses(params)
         new_params["hostname"] = params.get("hostname")
         new_params["architecture"] = params.get("architecture")
-        new_params["description"] = params.get("description")
         new_params["power_type"] = params.get("power_type")
         new_params["power_parameters"] = params.get("power_parameters")
         new_params["deployed"] = params.get("deployed")
-        if "zone" in params:
-            new_params["zone"] = params["zone"]["name"]
         if params.get("pool"):
             new_params["pool"] = params["pool"]["name"]
-        if "domain" in params:
-            new_params["domain"] = params["domain"]["name"]
         if "min_hwe_kernel" in params:
             new_params["min_hwe_kernel"] = params["min_hwe_kernel"]
 

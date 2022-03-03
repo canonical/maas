@@ -165,7 +165,7 @@ class TestControllerHandler(MAASServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            34,
+            31,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -187,6 +187,25 @@ class TestControllerHandler(MAASServerTestCase):
         data = handler.get({"system_id": controller.system_id})
         updated = handler.update(data)
         self.assertIn("vlans_ha", updated)
+
+    def test_update_updates_controller(self):
+        user = factory.make_admin()
+        handler = ControllerHandler(user, {}, None)
+        controller = factory.make_RackController()
+        data = handler.get({"system_id": controller.system_id})
+        new_zone = factory.make_Zone()
+        new_domain = factory.make_Domain()
+        new_description = factory.make_name("description")
+        data.update(
+            zone={"name": new_zone.name},
+            domain={"name": new_domain.name},
+            description=new_description,
+        )
+        updated = handler.update(data)
+
+        self.assertEqual(new_zone.id, updated["zone"]["id"])
+        self.assertEqual(new_domain.id, updated["domain"]["id"])
+        self.assertEqual(new_description, updated["description"])
 
     def test_check_images(self):
         owner = factory.make_admin()
