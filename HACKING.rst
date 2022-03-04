@@ -321,6 +321,18 @@ and then updating the MAAS configuration to use the new db by editing
 ``/var/snap/maas/current/regiond.conf`` to point to the new database, and
 restarting the snap.
 
+If an external postgres is used a command similar to the following one can be
+used to restore the database::
+
+   pg_restore \
+     --clean \
+     --if-exists \
+     --no-owner \
+     --no-privileges \
+     --role maas \
+     --disable-triggers \
+     -d maassampledata maasdb.dump
+
 
 Configuring DHCP
 ^^^^^^^^^^^^^^^^
