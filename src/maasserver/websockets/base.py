@@ -16,7 +16,7 @@ from operator import attrgetter
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db.models import Model, Q
+from django.db.models import Count, Model, Q
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 
@@ -93,6 +93,8 @@ class HandlerOptions:
         "update",
         "delete",
         "set_active",
+        "count",
+        "stratify",
     ]
     handler_name = None
     object_class = None
@@ -461,22 +463,7 @@ class Handler(metaclass=HandlerMetaclass):
         getpk = attrgetter(self._meta.pk)
         self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
 
-    def list(self, params):
-        """List objects.
-
-        :param start: A value of the `batch_key` column and NOT `pk`. They are
-            often the same but that is not a certainty. Make sure the client
-            also understands this distinction.
-        :param offset: Offset into the queryset to return.
-        :param limit: Maximum number of objects to return.
-        """
-        queryset = self.get_queryset(for_list=True)
-        queryset = queryset.order_by(self._meta.batch_key)
-        if "start" in params:
-            queryset = queryset.filter(
-                **{"%s__gt" % self._meta.batch_key: params["start"]}
-            )
-
+    def _filter(self, queryset, params):
         fields = self._meta.list_fields or self._meta.object_class._meta.fields
 
         search_filter = Q()
@@ -485,7 +472,6 @@ class Handler(metaclass=HandlerMetaclass):
                 search_filter |= Q(
                     **{f"{field}__icontains": params[f"search_{field}"]}
                 )
-        queryset = queryset.filter(search_filter)
 
         select_filter = Q()
         for field in fields:
@@ -493,7 +479,71 @@ class Handler(metaclass=HandlerMetaclass):
                 select_filter &= Q(
                     **{f"{field}__in": params[f"select_{field}"]}
                 )
-        queryset = queryset.filter(select_filter)
+        queryset = queryset.filter(search_filter).filter(select_filter)
+        return queryset
+
+    def count(self, params):
+        """Count objects.
+
+        :param select_FIELD: selects rows where FIELD exactly matches the value.
+            Multiple `select` parameters are AND'ed together.
+        :param filter_FIELD: selects rows where FIELD contains the value. It's
+            and case-insensitive substring match. Multiple `filter` are OR'ed.
+        """
+        queryset = self.get_queryset(for_list=True)
+        queryset = self._filter(queryset, params)
+        cnt = queryset.count()
+
+        return {
+            "count": cnt,
+        }
+
+    def stratify(self, params):
+        """group and count objects.
+
+        :param group_by: group rows by this column
+        :param select_FIELD: selects rows where FIELD exactly matches the value.
+            Multiple `select` parameters are AND'ed together.
+        :param filter_FIELD: selects rows where FIELD contains the value. It's
+            and case-insensitive substring match. Multiple `filter` are OR'ed.
+        """
+        if "group_by" not in params:
+            raise HandlerValidationError(
+                {"group_by": ["This field is required"]}
+            )
+        field = params["group_by"]
+        queryset = self.get_queryset(for_list=True)
+        queryset = self._filter(queryset, params)
+
+        strata = (
+            queryset.all()
+            .values(field)
+            .annotate(total=Count(field))
+            .order_by("total")
+        )
+        return [{s[field]: s["total"]} for s in strata]
+
+    def list(self, params):
+        """List objects.
+
+        :param start: A value of the `batch_key` column and NOT `pk`. They are
+            often the same but that is not a certainty. Make sure the client
+            also understands this distinction.
+        :param offset: Offset into the queryset to return.
+        :param limit: Maximum number of objects to return.
+        :param select_FIELD: selects rows where FIELD exactly matches the value.
+            Multiple `select` parameters are AND'ed together.
+        :param filter_FIELD: selects rows where FIELD contains the value. It's
+            and case-insensitive substring match. Multiple `filter` are OR'ed.
+        """
+        queryset = self.get_queryset(for_list=True)
+        queryset = queryset.order_by(self._meta.batch_key)
+        if "start" in params:
+            queryset = queryset.filter(
+                **{"%s__gt" % self._meta.batch_key: params["start"]}
+            )
+
+        queryset = self._filter(queryset, params)
 
         if "limit" in params:
             queryset = queryset[: params["limit"]]
