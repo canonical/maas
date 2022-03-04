@@ -10,7 +10,7 @@ from textwrap import dedent
 from unittest.mock import call, Mock
 import urllib.parse
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
@@ -239,6 +239,7 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         )
 
     @given(sampled_from([MicrosoftOCSState.ON, MicrosoftOCSState.OFF]))
+    @settings(deadline=None)
     def test_power_query_returns_power_state(self, power_state):
         def get_msftocs_state(power_state):
             if power_state == MicrosoftOCSState.OFF:

@@ -133,6 +133,7 @@ class TestWedgePowerDriver(MAASTestCase):
         )
 
     @given(sampled_from(WedgeState.ON + WedgeState.OFF))
+    @settings(deadline=None)
     def test_power_query_returns_power_state(self, power_state):
         def get_wedge_state(power_state):
             if power_state in WedgeState.OFF:

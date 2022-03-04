@@ -143,6 +143,7 @@ class TestHMCPowerDriver(MAASTestCase):
         )
 
     @given(sampled_from(HMCState.ON + HMCState.OFF))
+    @settings(deadline=None)
     def test_power_query_returns_power_state(self, power_state):
         def get_hmc_state(power_state):
             if power_state in HMCState.OFF:

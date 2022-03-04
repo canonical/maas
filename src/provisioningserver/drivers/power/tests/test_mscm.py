@@ -203,6 +203,7 @@ class TestMSCMPowerDriver(MAASTestCase):
         self.assertThat(output, Equals("on"))
 
     @given(sampled_from(["Off", "Unavailable", "On"]))
+    @settings(deadline=None)
     def test_power_query_returns_power_state(self, power_state):
         states = {"Off": "off", "Unavailable": "off", "On": "on"}
         driver = MSCMPowerDriver()
