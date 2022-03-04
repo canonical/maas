@@ -7,6 +7,7 @@ from typing import Optional
 
 import django
 from django.conf import settings
+from django.db import connection, transaction
 
 from provisioningserver.config import is_dev_environment
 
@@ -118,6 +119,36 @@ def setup_django(
     LOGGER.info(f"using database '{db_config['NAME']}' on {db_config['HOST']}")
 
 
+# List of triggers that should be disabled. Especially notification
+# triggers don't provide any functinality when generating sample data,
+# but can slow down things considerable.
+TRIGGERS = {
+    "maasserver_event": [
+        "event_event_create_notify",
+        "event_event_machine_update_notify",
+    ],
+}
+
+
+def _set_triggers(state):
+    with connection.cursor() as cursor:
+        for table in TRIGGERS:
+            for trigger in TRIGGERS[table]:
+                cursor.execute(
+                    f'ALTER TABLE "{table}" {state} TRIGGER "{trigger}"'
+                )
+
+
+@transaction.atomic
+def disable_triggers():
+    _set_triggers("DISABLE")
+
+
+@transaction.atomic
+def enable_triggers():
+    _set_triggers("ENABLE")
+
+
 def main():
     args = parse_args()
     setup_django(
@@ -126,6 +157,7 @@ def main():
         log_queries=args.log_queries,
     )
     start_time = time.monotonic()
+    disable_triggers()
     generate(
         args.machines,
         args.hostname_prefix,
@@ -133,6 +165,7 @@ def main():
         args.tag_prefix,
         args.redfish_address,
     )
+    enable_triggers()
     end_time = time.monotonic()
     LOGGER.info(
         f"sampledata generated in {timedelta(seconds=end_time - start_time)}"
