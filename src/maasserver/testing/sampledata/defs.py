@@ -48,9 +48,9 @@ MACHINE_STATUSES = WeightedItemGetter(
 
 EVENT_PER_MACHINE = WeightedItemGetter(
     {
-        15000: 5,
-        10000: 10,
-        5000: 100,
-        1000: 200,
+        10000: 1,
+        1000: 100,
+        500: 200,
+        100: 500,
     }
 )
