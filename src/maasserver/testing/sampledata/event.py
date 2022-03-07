@@ -1,12 +1,8 @@
 from datetime import datetime
 from itertools import cycle
-from typing import Iterable, TYPE_CHECKING
+from typing import Iterable
 
-from maasserver.models import Event, EventType
-
-if TYPE_CHECKING:
-    from maasserver.models import Machine
-
+from maasserver.models import Event, EventType, Machine
 from maasserver.models.eventtype import LOGGING_LEVELS
 
 from .common import make_name, range_one
