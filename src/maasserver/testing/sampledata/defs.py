@@ -1,6 +1,6 @@
 from maasserver.enum import NODE_STATUS
 
-from .common import WeightedItemGetter
+from .common import make_weighted_item_getter
 
 MACHINES_PER_FABRIC = 48  # Each ToR switch is its own fabric
 VLAN_PER_FABRIC_COUNT = 4  # in addition to the default one
@@ -23,7 +23,7 @@ STORAGE_SETUPS = (
     "raid-6",
 )
 
-MACHINE_STATUSES = WeightedItemGetter(
+MACHINE_STATUSES = make_weighted_item_getter(
     {
         NODE_STATUS.NEW: 5,
         NODE_STATUS.COMMISSIONING: 15,
@@ -46,7 +46,7 @@ MACHINE_STATUSES = WeightedItemGetter(
     }
 )
 
-EVENT_PER_MACHINE = WeightedItemGetter(
+EVENT_PER_MACHINE = make_weighted_item_getter(
     {
         10000: 1,
         1000: 100,

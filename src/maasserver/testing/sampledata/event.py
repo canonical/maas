@@ -1,10 +1,15 @@
 from datetime import datetime
 from itertools import cycle
+from typing import Iterable, TYPE_CHECKING
 
 from maasserver.models import Event, EventType
+
+if TYPE_CHECKING:
+    from maasserver.models import Machine
+
 from maasserver.models.eventtype import LOGGING_LEVELS
 
-from .common import make_name, range_one, WeightedItemGetter
+from .common import make_name, range_one
 
 
 def make_event_types(count: int):
@@ -17,7 +22,11 @@ def make_event_types(count: int):
     ]
 
 
-def make_events(counts: WeightedItemGetter, event_types, machines):
+def make_events(
+    counts: Iterable[int],
+    event_types: Iterable[EventType],
+    machines: Iterable[Machine],
+):
     event_types = cycle(event_types)
     now = datetime.utcnow()
     for machine in machines:

@@ -1,22 +1,14 @@
 import random
 import string
+from typing import Any, Mapping
 
 
-class WeightedItemGetter:
-    """Get items based on probilibility."""
-
-    def __init__(self, item_weights):
-        self.item_cum_weights = {}
-        self.max_cum_weight = 0
-        for item, weight in item_weights.items():
-            self.item_cum_weights[item] = weight + self.max_cum_weight
-            self.max_cum_weight += weight
-
-    def __next__(self):
-        value = random.randint(1, self.max_cum_weight)
-        for item, cum_weight in self.item_cum_weights.items():
-            if value <= cum_weight:
-                return item
+def make_weighted_item_getter(item_weights: Mapping[Any, int]):
+    """Choose a key from item_weights with probability given in values."""
+    while True:
+        yield random.choices(
+            list(item_weights.keys()), list(item_weights.values())
+        )[0]
 
 
 def range_one(count: int) -> range:
