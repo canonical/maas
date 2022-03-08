@@ -9213,6 +9213,42 @@ ALTER SEQUENCE public.maasserver_zone_serial_seq OWNED BY public.maasserver_dnsp
 
 
 --
+-- Name: maastesting_perftestbuild; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maastesting_perftestbuild (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    start_ts timestamp with time zone NOT NULL,
+    end_ts timestamp with time zone,
+    git_branch text NOT NULL,
+    git_hash text NOT NULL,
+    release text
+);
+
+
+--
+-- Name: maastesting_perftestbuild_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maastesting_perftestbuild_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maastesting_perftestbuild_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maastesting_perftestbuild_id_seq OWNED BY public.maastesting_perftestbuild.id;
+
+
+--
 -- Name: metadataserver_nodekey; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10114,6 +10150,13 @@ ALTER TABLE ONLY public.maasserver_zone ALTER COLUMN id SET DEFAULT nextval('pub
 
 
 --
+-- Name: maastesting_perftestbuild id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maastesting_perftestbuild ALTER COLUMN id SET DEFAULT nextval('public.maastesting_perftestbuild_id_seq'::regclass);
+
+
+--
 -- Name: metadataserver_nodekey id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10618,6 +10661,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 426	Can change node config	107	change_nodeconfig
 427	Can delete node config	107	delete_nodeconfig
 428	Can view node config	107	view_nodeconfig
+429	Can add perf test build	108	add_perftestbuild
+430	Can change perf test build	108	change_perftestbuild
+431	Can delete perf test build	108	delete_perftestbuild
+432	Can view perf test build	108	view_perftestbuild
 \.
 
 
@@ -10757,6 +10804,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 105	piston3	nonce
 106	piston3	token
 107	maasserver	nodeconfig
+108	maastesting	perftestbuild
 \.
 
 
@@ -11074,6 +11122,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 307	maasserver	0264_nodedevice_nodeconfig_link	2022-03-01 15:55:04.795457+00
 308	maasserver	0265_nodedevice_nodeconfig_migrate	2022-03-01 15:55:04.81799+00
 309	maasserver	0266_nodedevice_unlink_node	2022-03-01 15:55:05.13206+00
+310	maastesting	0001_initial	2022-03-08 14:01:53.649122+00
 \.
 
 
@@ -11742,6 +11791,14 @@ COPY public.maasserver_zone (id, created, updated, name, description) FROM stdin
 
 
 --
+-- Data for Name: maastesting_perftestbuild; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maastesting_perftestbuild (id, created, updated, start_ts, end_ts, git_branch, git_hash, release) FROM stdin;
+\.
+
+
+--
 -- Data for Name: metadataserver_nodekey; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -11823,7 +11880,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 428, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 432, true);
 
 
 --
@@ -11851,14 +11908,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 107, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 108, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 309, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 310, true);
 
 
 --
@@ -12412,6 +12469,13 @@ SELECT pg_catalog.setval('public.maasserver_zone_id_seq', 1, true);
 --
 
 SELECT pg_catalog.setval('public.maasserver_zone_serial_seq', 3, true);
+
+
+--
+-- Name: maastesting_perftestbuild_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maastesting_perftestbuild_id_seq', 1, false);
 
 
 --
@@ -13775,6 +13839,22 @@ ALTER TABLE ONLY public.maasserver_zone
 
 
 --
+-- Name: maastesting_perftestbuild maastesting_perftestbuild_git_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maastesting_perftestbuild
+    ADD CONSTRAINT maastesting_perftestbuild_git_hash_key UNIQUE (git_hash);
+
+
+--
+-- Name: maastesting_perftestbuild maastesting_perftestbuild_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maastesting_perftestbuild
+    ADD CONSTRAINT maastesting_perftestbuild_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: metadataserver_nodekey metadataserver_nodekey_key_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14984,6 +15064,13 @@ CREATE INDEX maasserver_vmcluster_zone_id_07623572 ON public.maasserver_vmcluste
 --
 
 CREATE INDEX maasserver_zone_name_a0aef207_like ON public.maasserver_zone USING btree (name varchar_pattern_ops);
+
+
+--
+-- Name: maastesting_perftestbuild_git_hash_07335de3_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maastesting_perftestbuild_git_hash_07335de3_like ON public.maastesting_perftestbuild USING btree (git_hash text_pattern_ops);
 
 
 --
