@@ -273,10 +273,6 @@ class WebApplicationService(StreamServerEndpointService):
                 get_root_path() / "usr/share/maas/machine-resources"
             ),
         )
-        maas.putChild(
-            b"hardware-sync",
-            NoListingFile(get_root_path() / "usr/share/maas/hardware-sync"),
-        )
 
         # Setup static docs
         maas.putChild(

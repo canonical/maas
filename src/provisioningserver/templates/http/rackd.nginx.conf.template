@@ -30,12 +30,6 @@ server {
         gzip on;
     }
 
-    location /hardware-sync/ {
-        root {{hardware_sync}};
-        autoindex on;
-        gzip on;
-    }
-
     location /images/ {
         auth_request /log;
 

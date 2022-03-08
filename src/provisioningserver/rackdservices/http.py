@@ -177,7 +177,6 @@ class RackHTTPService(TimerService):
                     "upstream_http": list(sorted(upstream_http)),
                     "resource_root": self._resource_root,
                     "machine_resources": str(root_prefix / "usr/share/maas"),
-                    "hardware_sync": str(root_prefix / "usr/share/maas"),
                 }
             )
         except NameError as error:

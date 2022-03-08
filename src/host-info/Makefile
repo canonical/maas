@@ -30,7 +30,7 @@ $(MACHINE_RESOURCES_BINARIES): vendor
 $(HARDWARE_SYNC_BINARIES): vendor
 	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(DEB_GO_ARCH_$(notdir $@)) go build -mod vendor -ldflags '-s -w' -o $@ $(HARDWARE_SYNC_DIR)
 
-build: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
+build: $(MACHINE_RESOURCES_BINARIES)
 .PHONY: build
 
 clean:
@@ -41,9 +41,8 @@ format:
 	@go fmt $(PACKAGE_DIR)
 .PHONY: format
 
-install: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
+install: $(MACHINE_RESOURCES_BINARIES)
 	install -t $(DESTDIR)/usr/share/maas/machine-resources -D $(MACHINE_RESOURCES_BINARIES)
-	install -t $(DESTDIR)/usr/share/maas/hardware-sync -D $(HARDWARE_SYNC_BINARIES)
 .PHONY: install
 
 vendor:

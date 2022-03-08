@@ -19,12 +19,6 @@ debian/tmp/usr/share/maas/machine-resources/armhf usr/share/maas/machine-resourc
 debian/tmp/usr/share/maas/machine-resources/i386 usr/share/maas/machine-resources
 debian/tmp/usr/share/maas/machine-resources/ppc64el usr/share/maas/machine-resources
 debian/tmp/usr/share/maas/machine-resources/s390x usr/share/maas/machine-resources
-debian/tmp/usr/share/maas/hardware-sync/amd64 usr/share/maas/hardware-sync
-debian/tmp/usr/share/maas/hardware-sync/arm64 usr/share/maas/hardware-sync
-debian/tmp/usr/share/maas/hardware-sync/armhf usr/share/maas/hardware-sync
-debian/tmp/usr/share/maas/hardware-sync/i386 usr/share/maas/hardware-sync
-debian/tmp/usr/share/maas/hardware-sync/ppc64el usr/share/maas/hardware-sync
-debian/tmp/usr/share/maas/hardware-sync/s390x usr/share/maas/hardware-sync
 
 usr/bin/maas-common /usr/lib/maas
 etc/maas/certificates

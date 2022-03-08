@@ -18,6 +18,7 @@ import yaml
 from maasserver import ntp
 from maasserver.models import Config, NodeMetadata
 from maasserver.models.controllerinfo import get_target_version
+from maasserver.models.user import get_auth_tokens
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
@@ -31,8 +32,9 @@ from provisioningserver.utils.text import make_gecos_field
 LXD_CERTIFICATE_METADATA_KEY = "lxd_certificate"
 VIRSH_PASSWORD_METADATA_KEY = "virsh_password"
 
-HARDWARE_SYNC_TIMER_TEMPLATE = "hardware_sync_timer.template"
+HARDWARE_SYNC_MACHINE_TOKEN_PATH = "/tmp/maas-machine-creds.yml"
 HARDWARE_SYNC_SERVICE_TEMPLATE = "hardware_sync_service.template"
+HARDWARE_SYNC_TIMER_TEMPLATE = "hardware_sync_timer.template"
 
 
 def get_vendor_data(node, proxy):
@@ -369,6 +371,17 @@ def _get_metadataserver_template(template_name):
     ).decode("utf-8")
 
 
+def _get_node_admin_token(node):
+    admin_token = ""
+    if node.owner:
+        token = get_auth_tokens(node.owner).first()
+        if token:
+            admin_token = ":".join(token.consumer.key, token.key, token.secret)
+            if token.consumer.secret:
+                admin_token = f"{admin_token}:{token.consumer.secret}"
+    return admin_token
+
+
 def generate_hardware_sync_systemd_configuration(node):
     """generate systemd unit files for hardware sync"""
     if not node.enable_hw_sync:
@@ -389,8 +402,12 @@ def generate_hardware_sync_systemd_configuration(node):
     hardware_sync_timer = hardware_sync_timer_tmpl.substitute(
         hardware_sync_interval=hardware_sync_interval
     )
+
     hardware_sync_service = hardware_sync_service_tmpl.substitute(
-        maas_url=maas_url, architecture=node.architecture
+        admin_token=_get_node_admin_token(node),
+        maas_url=maas_url,
+        system_id=node.system_id,
+        token_file_path=HARDWARE_SYNC_MACHINE_TOKEN_PATH,
     )
 
     yield "write_files", [

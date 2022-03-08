@@ -29,6 +29,7 @@ from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
 from metadataserver.vendor_data import (
     _get_metadataserver_template,
+    _get_node_admin_token,
     generate_ephemeral_deployment_network_configuration,
     generate_ephemeral_netplan_lock_removal,
     generate_hardware_sync_systemd_configuration,
@@ -39,6 +40,7 @@ from metadataserver.vendor_data import (
     generate_system_info,
     get_node_maas_url,
     get_vendor_data,
+    HARDWARE_SYNC_MACHINE_TOKEN_PATH,
     HARDWARE_SYNC_SERVICE_TEMPLATE,
     HARDWARE_SYNC_TIMER_TEMPLATE,
 )
@@ -732,7 +734,10 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
                 },
                 {
                     "content": self._get_service_template().substitute(
-                        maas_url=maas_url, architecture=node.architecture
+                        admin_token=_get_node_admin_token(node),
+                        maas_url=maas_url,
+                        system_id=node.system_id,
+                        token_file_path=HARDWARE_SYNC_MACHINE_TOKEN_PATH,
                     ),
                     "path": "/lib/systemd/system/maas_hardware_sync.service",
                 },

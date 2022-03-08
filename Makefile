@@ -450,6 +450,4 @@ sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
 	$(RSYNC) snap/local/tree/ $(DEV_SNAP_PRIME_DIR)/
 	$(RSYNC) src/host-info/bin/machine-resources/ \
 		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/machine-resources/
-	$(RSYNC) src/host-info/bin/hardware-sync/ \
-		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/hardware-sync/
 .PHONY: sync-dev-snap
