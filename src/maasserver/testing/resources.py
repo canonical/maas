@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 from sys import __stderr__
+from textwrap import dedent
 
 from postgresfixture import ClusterFixture
 import psycopg2
@@ -47,6 +48,23 @@ class DatabaseClusterManager(TestResourceManager):
 
     def make(self, dependencies):
         cluster = ClusterFixture("db", preserve=True)
+        cluster.create()
+        postgres_path = Path(cluster.datadir)
+        postgres_conf = postgres_path / "postgresql.conf"
+        postgres_speed_conf = postgres_path / "postgresql.conf.speed"
+        if "postgresql.conf.speed" not in postgres_conf.read_text():
+            with postgres_conf.open("a") as fh:
+                fh.write("include = 'postgresql.conf.speed'\n")
+            with postgres_speed_conf.open("w") as fh:
+                fh.write(
+                    dedent(
+                        """\
+                    fsync = off
+                    full_page_writes = off
+                    synchronous_commit = off
+                    """
+                    )
+                )
         cluster.setUp()
         return cluster
 
