@@ -605,7 +605,7 @@ class TestMachineHandler(MAASServerTestCase):
         self.useFixture(RBACForceOffFixture())
 
         owner = factory.make_User()
-        for _ in range(10):
+        for _ in range(2):
             node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
             commissioning_script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.COMMISSIONING
@@ -616,7 +616,7 @@ class TestMachineHandler(MAASServerTestCase):
             node.current_commissioning_script_set = commissioning_script_set
             node.current_testing_script_set = testing_script_set
             node.save()
-            for __ in range(10):
+            for __ in range(2):
                 factory.make_ScriptResult(
                     status=SCRIPT_STATUS.PASSED,
                     script_set=commissioning_script_set,
@@ -656,7 +656,7 @@ class TestMachineHandler(MAASServerTestCase):
         rbac.store.allow(owner.username, pool, "view")
         rbac.store.allow(owner.username, pool, "admin-machines")
 
-        for _ in range(10):
+        for _ in range(2):
             node = factory.make_Node_with_Interface_on_Subnet(
                 owner=owner, pool=pool
             )
@@ -669,7 +669,7 @@ class TestMachineHandler(MAASServerTestCase):
             node.current_commissioning_script_set = commissioning_script_set
             node.current_testing_script_set = testing_script_set
             node.save()
-            for __ in range(10):
+            for __ in range(2):
                 factory.make_ScriptResult(
                     status=SCRIPT_STATUS.PASSED,
                     script_set=commissioning_script_set,
@@ -745,7 +745,7 @@ class TestMachineHandler(MAASServerTestCase):
         node.current_commissioning_script_set = commissioning_script_set
         node.current_testing_script_set = testing_script_set
         node.save()
-        for __ in range(10):
+        for __ in range(2):
             factory.make_ScriptResult(
                 status=SCRIPT_STATUS.PASSED,
                 script_set=commissioning_script_set,
@@ -776,7 +776,8 @@ class TestMachineHandler(MAASServerTestCase):
         node.current_commissioning_script_set = commissioning_script_set
         node.current_testing_script_set = testing_script_set
         node.save()
-        for _ in range(10):
+        num_scripts = 2
+        for _ in range(num_scripts):
             factory.make_ScriptResult(
                 status=SCRIPT_STATUS.PASSED,
                 script_set=commissioning_script_set,
@@ -791,8 +792,8 @@ class TestMachineHandler(MAASServerTestCase):
         _, _, ret = handler.on_listen_for_active_pk(
             "update", node.system_id, node
         )
-        self.assertEqual(ret["commissioning_status"]["passed"], 10)
-        self.assertEqual(ret["testing_status"]["passed"], 10)
+        self.assertEqual(ret["commissioning_status"]["passed"], num_scripts)
+        self.assertEqual(ret["testing_status"]["passed"], num_scripts)
 
     def test_cache_clears_on_reload(self):
         owner = factory.make_User()
@@ -806,7 +807,7 @@ class TestMachineHandler(MAASServerTestCase):
         node.current_commissioning_script_set = commissioning_script_set
         node.current_testing_script_set = testing_script_set
         node.save()
-        for _ in range(10):
+        for _ in range(2):
             factory.make_ScriptResult(
                 status=SCRIPT_STATUS.PASSED,
                 script_set=commissioning_script_set,
@@ -822,7 +823,7 @@ class TestMachineHandler(MAASServerTestCase):
         for result_type in handler._script_results[node.id].values():
             for _ in result_type:
                 count += 1
-        self.assertEqual(20, count)
+        self.assertEqual(4, count)
 
     def test_dehydrate_owner_empty_when_None(self):
         owner = factory.make_User()
@@ -1862,13 +1863,13 @@ class TestMachineHandler(MAASServerTestCase):
             observed,
         )
 
-    def test_dehydrate_events_only_includes_lastest_50(self):
+    def test_dehydrate_events_only_includes_latest_50(self):
         owner = factory.make_User()
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
         event_type = factory.make_EventType(level=logging.INFO)
         events = [
-            factory.make_Event(node=node, type=event_type) for _ in range(100)
+            factory.make_Event(node=node, type=event_type) for _ in range(51)
         ]
         expected = [
             {
@@ -1992,7 +1993,7 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_FilesystemGroup(node=node)
         node.owner = user
         node.save()
-        for _ in range(100):
+        for _ in range(5):
             factory.make_Event(node=node)
         lldp_data = b"<foo>bar</foo>"
         script_set = node.current_commissioning_script_set
@@ -2056,12 +2057,7 @@ class TestMachineHandler(MAASServerTestCase):
 
         observed = handler.get({"system_id": node.system_id})
         expected = self.dehydrate_node(node, handler)
-        self.assertThat(
-            observed,
-            MatchesDict(
-                {name: Equals(value) for name, value in expected.items()}
-            ),
-        )
+        self.assertEqual(observed, expected)
 
     def test_get_driver_for_series(self):
         user = factory.make_User()
@@ -4856,6 +4852,11 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
         handler = MachineHandler(admin, {}, None)
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
         statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
+        status_iter = iter(statuses)
+        machine = factory.make_Node(status=next(status_iter))
+        self.patch(
+            MachineHandler, "_get_node_or_permission_error"
+        ).return_value = machine
         raises_node_state_violation = Raises(
             MatchesException(
                 NodeStateViolation,
@@ -4865,8 +4866,8 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
                 ),
             )
         )
-        for status in statuses:
-            machine = factory.make_Node(status=status)
+        for status in status_iter:
+            machine.status = status
             params = {
                 "system_id": machine.system_id,
                 "fstype": self.fstype,
@@ -4964,6 +4965,11 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
         handler = MachineHandler(admin, {}, None)
         statuses = {name for name, _ in NODE_STATUS_CHOICES}
         statuses -= {NODE_STATUS.READY, NODE_STATUS.ALLOCATED}
+        status_iter = iter(statuses)
+        machine = factory.make_Node(status=next(status_iter))
+        self.patch(
+            MachineHandler, "_get_node_or_permission_error"
+        ).return_value = machine
         raises_node_state_violation = Raises(
             MatchesException(
                 NodeStateViolation,
@@ -4973,8 +4979,8 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
                 ),
             )
         )
-        for status in statuses:
-            machine = factory.make_Node(status=status)
+        for status in status_iter:
+            machine.status = status
             filesystem = factory.make_Filesystem(
                 node_config=machine.current_config,
                 fstype=self.fstype,
@@ -5511,7 +5517,7 @@ class TestMachineHandlerUpdateFilesystem(MAASServerTestCase):
         owner = factory.make_User()
         handler = MachineHandler(owner, {}, None)
         nodes = []
-        for idx in range(30):
+        for idx in range(10):
             node = factory.make_Node(owner=owner)
             nodes.append(node)
             factory.make_ScriptResult(
