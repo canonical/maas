@@ -822,11 +822,11 @@ class TestProcessProtocolService(MAASTestCase):
             result = yield service._protocol.done
             self.assertIsNone(result)
         self.assertEqual(
-            """\
-ForeverProcessProtocolService started.
----
-ForeverProcessProtocolService was terminated.""",
-            logger.output,
+            logger.messages[0], "ForeverProcessProtocolService started."
+        )
+        self.assertEqual(
+            logger.messages[-1],
+            "ForeverProcessProtocolService was terminated.",
         )
         with ExpectedException(ProcessExitedAlready):
             service._process.signalProcess("INT")
