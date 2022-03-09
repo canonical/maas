@@ -824,12 +824,9 @@ def _update_node_physical_block_devices(
         elif block_info.get("usb_address"):
             block_devices[block_info["usb_address"]] = block_device
 
-    # Clear boot_disk if it is being removed.
-    boot_disk = node.boot_disk
-    if boot_disk is not None and boot_disk in previous_block_devices:
-        boot_disk = None
-    if node.boot_disk != boot_disk:
-        node.boot_disk = boot_disk
+    # Clear boot_disk if it's being removed.
+    if node.boot_disk in previous_block_devices:
+        node.boot_disk = None
         node.save(update_fields=["boot_disk"])
 
     # XXX ltrager 11-16-2017 - Don't regenerate ScriptResults on controllers.
