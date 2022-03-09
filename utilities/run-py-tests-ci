@@ -19,6 +19,8 @@ bin/test.parallel --subprocess-per-core --emit-subunit | \
     bin/subunit2junitxml --no-passthrough -f -o junit.xml | \
     bin/subunit2pyunit --no-passthrough
 res1=$?
-bin/pytest -n auto --junit-xml=junit-pytest.xml
+bin/pytest -n auto --junit-xml=junit-pytest.xml\
+    -m 'not perftest' -p 'no:django'\
+    --ignore-glob 'src/**/perf'
 res2=$?
 exit $((res1 + res2))

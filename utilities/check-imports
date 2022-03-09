@@ -162,6 +162,7 @@ TestingLibraries = Pattern(
     "nose|nose.**",
     "postgresfixture|postgresfixture.**",
     "pytest|pytest.**",
+    "pytest_django.plugin.*",
     "subunit|subunit.**",
     "testresources|testresources.**",
     "testscenarios|testscenarios.**",
@@ -184,14 +185,18 @@ PerfTestHarness = files("src/maastesting/perftest.py")
 PerfTestMigrations = files("src/maastesting/migrations/**/*.py")
 PerfTestModel = files("src/maastesting/models.py")
 PerfTestTests = files("src/maastesting/tests/test_perftest.py")
+PerfTestPerf = files("src/**/perf/test_*.py")
+PerfTestConftest = files("src/**/perf/conftest.py")
 PerfTests = (
-    PerfTestHarness & PerfTestMigrations & PerfTestModel & PerfTestTests
+    PerfTestHarness
+    & PerfTestMigrations
+    & PerfTestModel
+    & PerfTestTests
+    & PerfTestPerf
+    & PerfTestConftest
 )
 PerfTestHarnessRule = Rule(
     Allow("django|django.**"),
-    Allow("maasserver.models.cleansave.*"),
-    Allow("maasserver.models.timestampmodel.*"),
-    Allow("maasserver.testing.testcase.MAASServerTestCase"),
     Allow(StandardLibraries),
     Allow(TestingLibraries),
 )
@@ -386,7 +391,7 @@ checks = [
     # RACK CONTROLLER
     #
     (
-        RackController - Tests,
+        RackController - Tests - PerfTestConftest,
         RackControllerRule,
     ),
     (
@@ -424,7 +429,7 @@ checks = [
     # REGION CONTROLLER
     #
     (
-        RegionController - Tests,
+        RegionController - Tests - PerfTestConftest,
         RegionControllerRule | Rule(Allow("snippets.**")),
     ),
     (

@@ -140,19 +140,9 @@ def run_parallel():
 
 
 def run_perf():
-    """Entry point for performance test runner."""
-    run_perf_tests(os.environ)
-
-
-def run_perf_with_db():
     """Entry point for historical performance test runner."""
 
     update_environ()
     init_asyncio_reactor()
-
-    # Configure Django
-    import django
-
-    django.setup()
 
     run_perf_tests(os.environ)

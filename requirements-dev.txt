@@ -3,7 +3,6 @@ blessings==1.6
 extras==1.0.0
 fixtures==3.0.0
 hypothesis==4.36.2
-influxdb-client[ciso]==1.25.0
 ipdb==0.10.3
 junitxml==0.7
 linecache2==1.0.0
@@ -12,6 +11,7 @@ postgresfixture==0.4.1
 prompt-toolkit==2.0.10
 ptyprocess==0.6.0
 pytest==6.2.2
+pytest-django==4.5.2
 pytest-mock==3.5.1
 pytest-xdist==2.2.1
 python-subunit==1.4.0

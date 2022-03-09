@@ -28,7 +28,6 @@ prevent_migrations = StringBool().to_python(
     os.environ.get("MAAS_PREVENT_MIGRATIONS", 0)
 )
 
-INSTALLED_APPS += ("maastesting",)
 if prevent_migrations:
     INSTALLED_APPS += ("maasserver.tests", "metadataserver.tests")
 

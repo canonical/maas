@@ -49,7 +49,6 @@ bin/subunit2junitxml \
 bin/subunit2pyunit \
 bin/test.parallel \
 bin/test.perf \
-bin/test.perf.history \
 bin/test.rack \
 bin/test.region \
 bin/test.region.legacy
@@ -137,11 +136,17 @@ test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyu
 	@utilities/run-py-tests-ci
 .PHONY: test-py
 
-test-perf: bin/test.perf.history
+test-perf: bin/test.perf
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
 	GIT_HASH=$(shell git rev-parse HEAD) \
-	bin/test.perf.history
+	bin/test.perf ./src/
 .PHONY: test-perf
+
+test-perf-quiet: bin/test.perf
+	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
+	GIT_HASH=$(shell git rev-parse HEAD) \
+	bin/test.perf -q --disable-warnings --show-capture=no --no-header --no-summary ./src/
+.PHONY: test-perf-quiet
 
 update-initial-sql: bin/database bin/maas-region cleandb
 	$(dbrun) utilities/update-initial-sql src/maasserver/testing/initial.maas_test.sql

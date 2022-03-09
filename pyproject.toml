@@ -35,7 +35,7 @@ snippets
 order_by_type = false
 
 [tool.pytest.ini_options]
-addopts = "--ignore=src/maastesting/tests/test_perftest.py"
+DJANGO_SETTINGS_MODULE = "maasserver.djangosettings.development"
 filterwarnings = "error::BytesWarning"
 testpaths = [
   "src/apiclient",
