@@ -27,8 +27,8 @@ fi
 msg "importing SQL dump"
 psql -c "\i $sql_dump_file" >/dev/null
 
-msg "cheching pending migrations"
-if ! bin/maas-region showmigrations --list | grep -q '^ \[ \]'; then
+msg "checking pending migrations"
+if ! have_pending_migration; then
     echo "no pending migration, $sql_dump_file is up to date"
     exit 0
 fi
