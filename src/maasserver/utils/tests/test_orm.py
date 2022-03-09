@@ -1394,6 +1394,7 @@ class TestDisablingDatabaseConnections(MAASTransactionServerTestCase):
         self.assertRaises(RuntimeError, getattr, connection, "__call__")
         self.assertRaises(RuntimeError, setattr, connection, "foo", "bar")
         self.assertRaises(RuntimeError, delattr, connection, "baz")
+        self.assertIsNone(connection.close())
 
 
 class TestTotallyDisconnected(MAASTransactionServerTestCase):

@@ -852,6 +852,10 @@ class DisabledDatabaseConnection:
             "disabled." % threading.currentThread().name
         )
 
+    def close(self):
+        """Nothing to close on a disabled connection."""
+        return
+
 
 def disable_all_database_connections():
     """Replace all connections in this thread with unusable stubs.
