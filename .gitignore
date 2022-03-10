@@ -52,6 +52,7 @@
 /tags
 /twisted
 /xunit.*.xml
+/junit-*.xml
 __pycache__
 *.orig
 *~

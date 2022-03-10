@@ -9,6 +9,7 @@ from datetime import datetime
 from functools import wraps
 import json
 import os
+import random
 import sys
 
 from pytest import fixture
@@ -17,8 +18,6 @@ from pytest import mark, skip
 
 from maastesting.fixtures import MAASDataFixture, MAASRootFixture
 
-INFLUXDB_BUCKET = "maas-perf"
-INFLUXDB_SECOND = 1000000000
 DEFAULT_BRANCH = "master"
 
 
@@ -104,6 +103,10 @@ def perf_test_finish(output):
 
 def run_perf_tests(env):
     global perf_tester
+
+    rand_seed = os.environ.get("MAAS_RAND_SEED")
+    random.seed(rand_seed)
+
     try:
         cmd_args = sys.argv[1:]
         perf_tester = PerfTester(env.get("GIT_BRANCH"), env.get("GIT_HASH"))

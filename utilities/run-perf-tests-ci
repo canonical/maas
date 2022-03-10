@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+# Helpers to run performance tests in CI.
+
+set -o pipefail
+
+GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+GIT_HASH="$(git rev-parse HEAD)"
+
+PYTHONHASHSEED="${PYTHONHASHSEED:-$(shuf -i 0-4294967295 -n 1)}"
+MAAS_RAND_SEED="${MAAS_RAND_SEED:-$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')}"
+
+export MAAS_RAND_SEED PYTHONHASHSEED GIT_HASH GIT_BRANCH
+
+echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
+echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
+
+exec bin/database --preserve run -- bin/test.perf \
+    -q \
+    --disable-warnings \
+    --show-capture=no \
+    --no-header \
+    --no-summary \
+    --junit-xml=junit-perf.xml \
+    ./src/
