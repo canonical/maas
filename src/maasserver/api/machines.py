@@ -190,6 +190,9 @@ DISPLAYED_MACHINE_FIELDS = (
     ("numanode_set", DISPLAYED_NUMANODE_FIELDS),
     "virtualmachine_id",
     "workload_annotations",
+    "last_sync",
+    "sync_interval",
+    "next_sync",
 )
 
 # Limited set of machine fields exposed on the anonymous API.

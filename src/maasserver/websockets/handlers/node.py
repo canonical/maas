@@ -304,6 +304,19 @@ class NodeHandler(TimestampedModelHandler):
         else:
             blockdevices = []
 
+        if obj.enable_hw_sync:
+            data.update(
+                {
+                    "last_sync": obj.last_sync,
+                    "sync_interval": obj.sync_interval,
+                    "next_sync": obj.next_sync,
+                }
+            )
+        else:
+            for k in ("last_sync", "sync_interval", "next_sync"):
+                if k in data:
+                    del data[k]
+
         if obj.node_type != NODE_TYPE.DEVICE:
             # These values are not defined on a device.
             data["architecture"] = obj.architecture

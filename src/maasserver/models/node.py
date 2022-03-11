@@ -161,6 +161,7 @@ from maasserver.storage_layouts import (
     VMFS6StorageLayout,
     VMFS7StorageLayout,
 )
+from maasserver.utils.converters import parse_systemd_interval
 from maasserver.utils.dns import validate_hostname
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
@@ -1259,7 +1260,10 @@ class Node(CleanSave, TimestampedModel):
         "NodeConfig", null=True, on_delete=CASCADE, related_name="+"
     )
 
+    # hardware updates
     enable_hw_sync = BooleanField(default=False)
+    sync_interval = IntegerField(blank=True, null=True)
+    last_sync = DateTimeField(blank=True, null=True)
 
     # Note that the ordering of the managers is meaningful.  More precisely,
     # the first manager defined is important: see
@@ -1359,6 +1363,12 @@ class Node(CleanSave, TimestampedModel):
     @property
     def is_pod(self):
         return self.get_hosted_pods().exists()
+
+    @property
+    def next_sync(self):
+        if self.last_sync and self.sync_interval:
+            return self.last_sync + timedelta(seconds=self.sync_interval)
+        return None
 
     def is_commissioning(self):
         return self.status not in (NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING)
@@ -1741,6 +1751,8 @@ class Node(CleanSave, TimestampedModel):
         from maasserver.models.event import Event
 
         self.status = NODE_STATUS.DEPLOYED
+        if self.enable_hw_sync:
+            self.last_sync = datetime.now()
         self.save()
 
         # Create a status message for DEPLOYED.
@@ -2003,6 +2015,11 @@ class Node(CleanSave, TimestampedModel):
                 and "status_expires" not in kwargs["update_fields"]
             ):
                 kwargs["update_fields"].append("status_expires")
+
+        if self.enable_hw_sync and self.sync_interval is None:
+            self.sync_interval = parse_systemd_interval(
+                Config.objects.get_config("hardware_sync_interval")
+            )
 
         super().save(*args, **kwargs)
 
@@ -3690,6 +3707,8 @@ class Node(CleanSave, TimestampedModel):
         self.install_kvm = False
         self.register_vmhost = False
         self.enable_hw_sync = False
+        self.sync_interval = None
+        self.last_sync = None
         self.save()
 
         # Create a status message for RELEASING.

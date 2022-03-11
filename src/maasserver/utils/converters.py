@@ -4,7 +4,9 @@
 """Conversion utilities."""
 
 
+from datetime import timedelta
 import json
+import re
 
 from django.conf import settings
 from lxml import etree
@@ -132,3 +134,17 @@ def json_load_bytes(input: bytes, encoding=None):
             settings.DEFAULT_CHARSET if encoding is None else encoding
         )
     )
+
+
+_duration_re = re.compile(
+    r"((?P<hours>\d+?)(\s?(hour(s?)|hr|h))\s?)?((?P<minutes>\d+?)(\s?(minute(s?)|min|m))\s?)?((?P<seconds>\d+?)(\s?(second(s?)|sec|s))\s?)?"
+)
+
+
+def parse_systemd_interval(interval):
+    duration = _duration_re.match(interval)
+    if not duration:
+        raise ValueError("value is not a valid interval")
+    duration = duration.groupdict()
+    params = {name: int(t) for name, t in duration.items() if t}
+    return timedelta(**params).total_seconds()

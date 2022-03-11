@@ -757,6 +757,9 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
                 "interface_test_status_name",
                 "virtualmachine_id",
                 "workload_annotations",
+                "last_sync",
+                "sync_interval",
+                "next_sync",
             },
             parsed_result.keys(),
         )
@@ -978,6 +981,9 @@ class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
                 "interface_test_status_name",
                 "virtualmachine_id",
                 "workload_annotations",
+                "last_sync",
+                "sync_interval",
+                "next_sync",
             },
             parsed_result.keys(),
         )

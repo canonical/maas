@@ -2892,6 +2892,35 @@ class TestNode(MAASServerTestCase):
             node.release()
         self.assertFalse(node.enable_hw_sync)
 
+    def test_release_sets_sync_interval_to_None(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, enable_hw_sync=True
+        )
+        self.patch(node, "_stop")
+        self.patch(node, "_set_status_expires")
+        self.assertEqual(
+            node.sync_interval, timedelta(minutes=15).total_seconds()
+        )
+        with post_commit_hooks:
+            node.release()
+        self.assertIsNone(node.sync_interval)
+
+    def test_sync_interval_is_set_when_enable_hw_sync_is_True(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, enable_hw_sync=True
+        )
+        self.assertEqual(
+            node.sync_interval, timedelta(minutes=15).total_seconds()
+        )
+
+    def test_next_sync_returns_time_after_last_sync(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, enable_hw_sync=True
+        )
+        node.last_sync = datetime.now()
+        expected_interval = timedelta(minutes=15)
+        self.assertEqual(node.next_sync, node.last_sync + expected_interval)
+
     def test_dynamic_ip_addresses_from_ip_address_table(self):
         node = factory.make_Node()
         interfaces = [
@@ -4866,6 +4895,15 @@ class TestNode(MAASServerTestCase):
         event = Event.objects.get(node=node)
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
         self.assertEqual(event.type.name, EVENT_TYPES.DEPLOYED)
+
+    def test_end_deployment_sets_first_last_sync_value(self):
+        self.disable_node_query()
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, enable_hw_sync=True
+        )
+        self.assertIsNone(node.last_sync)
+        node.end_deployment()
+        self.assertIsNotNone(node.last_sync)
 
     def test_start_deployment_changes_state_and_creates_sts_msg(self):
         node = factory.make_Node_with_Interface_on_Subnet(

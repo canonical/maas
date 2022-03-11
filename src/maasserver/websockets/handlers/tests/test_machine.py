@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 
+from datetime import datetime, timedelta
 from functools import partial
 import json
 import logging
@@ -514,6 +515,15 @@ class TestMachineHandler(MAASServerTestCase):
         data["other_test_status"] = handler.dehydrate_test_statuses(
             node_script_results
         )
+
+        if node.enable_hw_sync:
+            data.update(
+                {
+                    "last_sync": node.last_sync,
+                    "sync_interval": node.sync_interval,
+                    "next_sync": node.next_sync,
+                }
+            )
 
         # Clear cache
         handler._script_results = {}
@@ -2058,6 +2068,22 @@ class TestMachineHandler(MAASServerTestCase):
         observed = handler.get({"system_id": node.system_id})
         expected = self.dehydrate_node(node, handler)
         self.assertEqual(observed, expected)
+
+    def test_get_hardware_sync_fields(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        Config.objects.set_config(name="hardware_sync_interval", value="10m")
+        node = factory.make_Node_with_Interface_on_Subnet(enable_hw_sync=True)
+        node.last_sync = datetime.now()
+        node.save()
+        observed = handler.get({"system_id": node.system_id})
+        self.assertEqual(observed["last_sync"], node.last_sync)
+        self.assertEqual(
+            observed["sync_interval"], timedelta(minutes=10).total_seconds()
+        )
+        self.assertEqual(
+            observed["next_sync"], node.last_sync + timedelta(minutes=10)
+        )
 
     def test_get_driver_for_series(self):
         user = factory.make_User()
