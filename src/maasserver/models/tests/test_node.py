@@ -40,7 +40,7 @@ from maasserver import bootresources
 from maasserver import preseed as preseed_module
 from maasserver import server_address
 from maasserver.clusterrpc import boot_images
-from maasserver.clusterrpc.driver_parameters import get_driver_types
+from maasserver.clusterrpc.driver_parameters import get_driver_choices
 from maasserver.clusterrpc.power import (
     power_cycle,
     power_off_node,
@@ -469,32 +469,23 @@ class TestNodeManager(MAASServerTestCase):
 
 
 class TestMachineManager(MAASServerTestCase):
-    def make_machine(self, user=None, **kwargs):
-        """Create a machine, allocated to `user` if given."""
-        if user is None:
-            status = NODE_STATUS.READY
-        else:
-            status = NODE_STATUS.ALLOCATED
-        return factory.make_Node(status=status, owner=user, **kwargs)
+    def make_machine(self, *args, **kwargs):
+        return factory.make_Node(
+            status=NODE_STATUS.READY, with_boot_disk=False, **kwargs
+        )
 
     def test_machine_lists_node_type_machine(self):
-        # Create machines.
-        machines = [
-            factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)
-        ]
-        # Create devices.
-        [factory.make_Device() for _ in range(3)]
-        # Create rack_controllers.
-        [
-            factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-            for _ in range(3)
-        ]
-        self.assertCountEqual(machines, Machine.objects.all())
+        machine = self.make_machine()
+        factory.make_Device()
+        factory.make_Node(
+            node_type=NODE_TYPE.RACK_CONTROLLER, with_boot_disk=False
+        )
+        self.assertCountEqual([machine], Machine.objects.all())
 
     def test_get_available_machines_finds_available_machines(self):
         user = factory.make_User()
-        machine1 = self.make_machine(None)
-        machine2 = self.make_machine(None)
+        machine1 = self.make_machine()
+        machine2 = self.make_machine()
         self.assertCountEqual(
             [machine1, machine2],
             Machine.objects.get_available_machines_for_acquisition(user),
@@ -513,12 +504,17 @@ class TestMachineManager(MAASServerTestCase):
         unavailable_statuses = set(NODE_STATUS_CHOICES_DICT) - {
             available_status
         }
+        machine = factory.make_Machine(with_boot_disk=False)
         for status in unavailable_statuses:
-            factory.make_Node(status=status)
-        self.assertEqual(
-            [],
-            list(Machine.objects.get_available_machines_for_acquisition(user)),
-        )
+            machine.status = status
+            self.assertEqual(
+                [],
+                list(
+                    Machine.objects.get_available_machines_for_acquisition(
+                        user
+                    )
+                ),
+            )
 
     def test_get_available_machines_ignores_invisible_machines(self):
         user = factory.make_User()
@@ -534,15 +530,14 @@ class TestMachineManager(MAASServerTestCase):
 class TestControllerManager(MAASServerTestCase):
     def test_controller_lists_node_type_rack_and_region(self):
         racks_and_regions = set()
-        for _ in range(3):
-            factory.make_Node(node_type=NODE_TYPE.MACHINE)
-            factory.make_Device()
-            for node_type in (
-                NODE_TYPE.RACK_CONTROLLER,
-                NODE_TYPE.REGION_CONTROLLER,
-                NODE_TYPE.REGION_AND_RACK_CONTROLLER,
-            ):
-                racks_and_regions.add(factory.make_Node(node_type=node_type))
+        factory.make_Node(node_type=NODE_TYPE.MACHINE)
+        factory.make_Device()
+        for node_type in (
+            NODE_TYPE.RACK_CONTROLLER,
+            NODE_TYPE.REGION_CONTROLLER,
+            NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+        ):
+            racks_and_regions.add(factory.make_Node(node_type=node_type))
         self.assertCountEqual(racks_and_regions, Controller.objects.all())
 
 
@@ -560,16 +555,10 @@ class TestRackControllerManager(MAASServerTestCase):
         return rack
 
     def test_rack_controller_lists_node_type_rack_controller(self):
-        # Create machines.
-        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
-        # Create devices.
-        [factory.make_Device() for _ in range(3)]
-        # Create rack_controllers.
-        rack_controllers = [
-            factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-            for _ in range(3)
-        ]
-        self.assertCountEqual(rack_controllers, RackController.objects.all())
+        factory.make_Machine()
+        factory.make_Device()
+        rack_controller = factory.make_RackController()
+        self.assertCountEqual([rack_controller], RackController.objects.all())
 
     def test_get_running_controller(self):
         rack = factory.make_RackController()
@@ -683,27 +672,23 @@ class TestRackControllerManager(MAASServerTestCase):
 
     def test_get_accessible_by_url(self):
         accessible_subnet = factory.make_Subnet()
-        accessible_racks = set()
-        for _ in range(3):
-            accessible_racks.add(
-                self.make_rack_controller_with_ip(accessible_subnet)
-            )
-            factory.make_RackController()
+        accessible_rack = self.make_rack_controller_with_ip(accessible_subnet)
         url = factory.pick_ip_in_Subnet(accessible_subnet)
-        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
-        mock_getaddr_info.return_value = (("", "", "", "", (url,)),)
-        self.assertIn(
+        self.patch(node_module.socket, "getaddrinfo").return_value = (
+            ("", "", "", "", (url,)),
+        )
+        self.assertEqual(
             RackController.objects.get_accessible_by_url(url, False),
-            accessible_racks,
+            accessible_rack,
         )
 
     def test_get_accessible_by_url_returns_none_when_not_found(self):
+        factory.make_RackController()
         accessible_subnet = factory.make_Subnet()
-        for _ in range(3):
-            factory.make_RackController()
         url = factory.pick_ip_in_Subnet(accessible_subnet)
-        mock_getaddr_info = self.patch(node_module.socket, "getaddrinfo")
-        mock_getaddr_info.return_value = (("", "", "", "", (url,)),)
+        self.patch(node_module.socket, "getaddrinfo").return_value = (
+            ("", "", "", "", (url,)),
+        )
         self.assertEqual(
             None, RackController.objects.get_accessible_by_url(url, False)
         )
@@ -716,9 +701,9 @@ class TestRegionControllerManager(MAASServerTestCase):
         factory.make_Machine()
         factory.make_RackController()
         # Create region controllers.
-        regions = [factory.make_RegionController() for _ in range(3)]
+        region = factory.make_RegionController()
         # Only the region controllers are found.
-        self.assertCountEqual(regions, RegionController.objects.all())
+        self.assertCountEqual([region], RegionController.objects.all())
 
     def test_get_running_controller_finds_controller_via_maas_id(self):
         region = factory.make_RegionController()
@@ -949,16 +934,10 @@ class TestRegionControllerManagerGetOrCreateRunningController(
 
 class TestDeviceManager(MAASServerTestCase):
     def test_device_lists_node_type_devices(self):
-        # Create machines.
-        [factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)]
-        # Create devices.
-        devices = [factory.make_Device() for _ in range(3)]
-        # Create rack_controllers.
-        [
-            factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-            for _ in range(3)
-        ]
-        self.assertCountEqual(devices, Device.objects.all())
+        factory.make_Machine()
+        factory.make_RackController()
+        device = factory.make_Device()
+        self.assertCountEqual([device], Device.objects.all())
 
     def test_empty_architecture_accepted_for_type_device(self):
         device = factory.make_Device(architecture="")
@@ -1589,7 +1568,6 @@ class TestNode(MAASServerTestCase):
 
     # Deleting Node deletes BMC. Regression for lp:1586555.
     def test_delete_node_doesnt_delete_shared_bmc(self):
-        nodes = [factory.make_Node(), factory.make_Node()]
         bmc = factory.make_BMC(
             power_type="virsh",
             power_parameters={
@@ -1597,10 +1575,7 @@ class TestNode(MAASServerTestCase):
                 % (factory.make_ipv4_address())
             },
         )
-        nodes[0].bmc = bmc
-        nodes[0].save()
-        nodes[1].bmc = bmc
-        nodes[1].save()
+        nodes = [factory.make_Node(bmc=bmc), factory.make_Node(bmc=bmc)]
         # Shouldn't delete BMC, as 2nd node is still using it.
         nodes[0].delete()
         self.assertIsNotNone(reload_object(bmc))
@@ -1668,14 +1643,9 @@ class TestNode(MAASServerTestCase):
         self.assertRaises(UnknownPowerType, node.get_effective_power_type)
 
     def test_get_effective_power_type_reads_node_field(self):
-        power_types = list(get_driver_types())
-        nodes = [
-            factory.make_Node(power_type=power_type)
-            for power_type in power_types
-        ]
-        self.assertEqual(
-            power_types, [node.get_effective_power_type() for node in nodes]
-        )
+        power_type = factory.pick_choice(get_driver_choices())
+        node = factory.make_Node(power_type=power_type)
+        self.assertEqual(power_type, node.get_effective_power_type())
 
     def test_get_effective_power_parameters_returns_power_parameters(self):
         params = {"test_parameter": factory.make_string()}
@@ -3308,6 +3278,7 @@ class TestNode(MAASServerTestCase):
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()
         # changes the node's status, and returns the node.
+        self.disable_node_query()
         target_state = NODE_STATUS.COMMISSIONING
 
         user = factory.make_User()
@@ -3322,56 +3293,33 @@ class TestNode(MAASServerTestCase):
         # If a node has already been accepted, but not assigned a role
         # yet, calling accept_enlistment on it is meaningless but not an
         # error.  The method returns None in this case.
+        self.disable_node_query()
         accepted_states = [NODE_STATUS.COMMISSIONING, NODE_STATUS.READY]
-        nodes = {
-            status: factory.make_Node(status=status)
-            for status in accepted_states
-        }
 
-        return_values = {
-            status: node.accept_enlistment(factory.make_User())
-            for status, node in nodes.items()
-        }
-
-        self.assertEqual(
-            {status: None for status in accepted_states}, return_values
-        )
-        self.assertEqual(
-            {status: status for status in accepted_states},
-            {status: node.status for status, node in nodes.items()},
-        )
+        user = factory.make_User()
+        node = factory.make_Node()
+        for status in accepted_states:
+            node.status = status
+            self.assertIsNone(node.accept_enlistment(user))
 
     def test_accept_enlistment_rejects_bad_state_change(self):
         # If a node is neither New nor in one of the "accepted"
         # states where acceptance is a safe no-op, accept_enlistment
         # raises a node state violation and leaves the node's state
         # unchanged.
-        all_states = map_enum(NODE_STATUS).values()
-        acceptable_states = [
+        self.disable_node_query()
+        all_states = set(map_enum(NODE_STATUS).values())
+        acceptable_states = {
             NODE_STATUS.NEW,
             NODE_STATUS.COMMISSIONING,
             NODE_STATUS.READY,
-        ]
-        unacceptable_states = set(all_states) - set(acceptable_states)
-        nodes = {
-            status: factory.make_Node(status=status)
-            for status in unacceptable_states
         }
-
-        exceptions = {status: False for status in unacceptable_states}
-        for status, node in nodes.items():
-            try:
-                node.accept_enlistment(factory.make_User())
-            except NodeStateViolation:
-                exceptions[status] = True
-
-        self.assertEqual(
-            {status: True for status in unacceptable_states}, exceptions
-        )
-        self.assertEqual(
-            {status: status for status in unacceptable_states},
-            {status: node.status for status, node in nodes.items()},
-        )
+        unacceptable_states = set(all_states) - acceptable_states
+        user = factory.make_User()
+        node = factory.make_Node()
+        for status in unacceptable_states:
+            node.status = status
+            self.assertRaises(NodeStateViolation, node.accept_enlistment, user)
 
     def test_start_commissioning_errors_for_unconfigured_power_type(self):
         node = factory.make_Node(
@@ -3980,10 +3928,12 @@ class TestNode(MAASServerTestCase):
         )
 
     def test_abort_commissioning_errors_if_node_is_not_commissioning(self):
+        self.disable_node_query()
         unaccepted_statuses = set(map_enum(NODE_STATUS).values())
         unaccepted_statuses.remove(NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(power_type="virsh")
         for status in unaccepted_statuses:
-            node = factory.make_Node(status=status, power_type="virsh")
+            node.status = status
             self.assertRaises(
                 NodeStateViolation,
                 node.abort_commissioning,
@@ -4379,7 +4329,6 @@ class TestNode(MAASServerTestCase):
         node.status = status
         node.save()
         # The test is that this does not raise an error.
-        pass
 
     def test_save_passes_if_status_valid_transition(self):
         self.disable_node_query()
@@ -4390,7 +4339,6 @@ class TestNode(MAASServerTestCase):
         node.status = NODE_STATUS.ALLOCATED
         node.save()
         # The test is that this does not raise an error.
-        pass
 
     def test_save_raises_node_state_violation_on_bad_transition(self):
         # RETIRED -> ALLOCATED is an invalid transition.
@@ -6463,9 +6411,9 @@ class NodeManagerTest(MAASServerTestCase):
         return factory.make_string().encode("ascii")
 
     def test_filter_by_ids_filters_nodes_by_ids(self):
-        nodes = [factory.make_Node() for counter in range(5)]
+        nodes = [factory.make_Node() for counter in range(2)]
         ids = [node.system_id for node in nodes]
-        selection = slice(1, 3)
+        selection = slice(1, 2)
         self.assertCountEqual(
             nodes[selection],
             Node.objects.filter_by_ids(Node.objects.all(), ids[selection]),
@@ -7237,18 +7185,18 @@ class TestNodeErase(MAASServerTestCase):
 class TestNodeParentRelationShip(MAASServerTestCase):
     def test_children_field_returns_children(self):
         parent = factory.make_Node()
-        # Create other nodes.
-        [factory.make_Node() for _ in range(3)]
-        children = [factory.make_Node(parent=parent) for _ in range(3)]
+        # Create other node.
+        factory.make_Node()
+        children = [factory.make_Node(parent=parent) for _ in range(2)]
         self.assertCountEqual(parent.children.all(), children)
 
     def test_children_get_deleted_when_parent_is_deleted(self):
         parent = factory.make_Node()
         # Create children.
-        [factory.make_Node(parent=parent) for _ in range(3)]
-        other_nodes = [factory.make_Node() for _ in range(3)]
+        factory.make_Node(parent=parent)
+        other_node = factory.make_Node()
         parent.delete()
-        self.assertCountEqual(other_nodes, Node.objects.all())
+        self.assertCountEqual([other_node], Node.objects.all())
 
     def test_children_get_deleted_when_parent_is_released(self):
         self.patch(Node, "_stop")
@@ -7256,12 +7204,12 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         owner = factory.make_User()
         # Create children.
         parent = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
-        [factory.make_Node(parent=parent) for _ in range(3)]
-        other_nodes = [factory.make_Node() for _ in range(3)]
+        factory.make_Node(parent=parent)
+        other_node = factory.make_Node()
         with post_commit_hooks:
             parent.release()
         self.assertCountEqual([], parent.children.all())
-        self.assertCountEqual(other_nodes + [parent], Node.objects.all())
+        self.assertCountEqual([other_node, parent], Node.objects.all())
 
 
 class TestNodeNetworking(MAASTransactionServerTestCase):
@@ -9252,7 +9200,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             user, power_type="manual"
         )
         node_interface = node.get_boot_interface()
-        [auto_ip] = node_interface.ip_addresses.filter(
+        auto_ip = node_interface.ip_addresses.get(
             alloc_type=IPADDRESS_TYPE.AUTO
         )
 
@@ -9294,8 +9242,8 @@ class TestNode_Start(MAASTransactionServerTestCase):
                 exclude_addresses=[first_ip.ip, second_ip.ip],
             )
             third_ip.delete()
-            # This is the next IP address that will actaully get picked for the
-            # machine as it will be free from the database and will no be
+            # This is the next IP address that will actually get picked for the
+            # machine as it will be free from the database and will not be
             # reported as used from the rack controller.
             fourth_ip = StaticIPAddress.objects.allocate_new(
                 subnet=auto_ip.subnet,
@@ -10916,9 +10864,9 @@ class TestRackController(MAASTransactionServerTestCase):
 
     def test_deletes_services(self):
         rack = factory.make_RackController()
-        factory.make_Service(rack)
+        service = factory.make_Service(rack)
         rack.delete()
-        self.assertCountEqual([], Service.objects.all())
+        self.assertIsNone(reload_object(service))
 
     def test_deletes_region_rack_rpc_connections(self):
         rack = factory.make_RackController()
@@ -10963,7 +10911,7 @@ class TestRackController(MAASTransactionServerTestCase):
         )
         rack_controller.update_rackd_status()
         self.assertThat(
-            Service.objects.get(node=rack_controller, name="rackd"),
+            rack_controller.service_set.get(name="rackd"),
             MatchesStructure.byEquality(
                 status=SERVICE_STATUS.RUNNING, status_info=""
             ),
@@ -10971,34 +10919,25 @@ class TestRackController(MAASTransactionServerTestCase):
 
     def test_update_rackd_status_sets_rackd_degraded(self):
         rack_controller = factory.make_RackController()
-        regions_with_processes = []
-        for _ in range(3):
-            region = factory.make_RegionController()
-            process = factory.make_RegionControllerProcess(region=region)
-            factory.make_RegionControllerProcessEndpoint(process=process)
-            regions_with_processes.append(region)
-        regions_without_processes = []
-        for _ in range(3):
-            region = factory.make_RegionController()
-            regions_without_processes.append(region)
+        region = factory.make_RegionController()
+        process = factory.make_RegionControllerProcess(region=region)
+        factory.make_RegionControllerProcessEndpoint(process=process)
+
+        factory.make_RegionController()
         connected_endpoint = factory.make_RegionControllerProcessEndpoint()
         RegionRackRPCConnection.objects.create(
             endpoint=connected_endpoint, rack_controller=rack_controller
         )
         rack_controller.update_rackd_status()
-        percentage = ((len(regions_without_processes) * 4) + 1) / (
-            (len(regions_without_processes) + len(regions_with_processes)) * 4
+        # (num disconnected * 4 + 1) / (total * 4)
+        percentage = (4 + 1) / (3 * 4)
+        rack_controller_service = rack_controller.service_set.get(name="rackd")
+        self.assertEqual(
+            rack_controller_service.status, SERVICE_STATUS.DEGRADED
         )
-        self.assertThat(
-            Service.objects.get(node=rack_controller, name="rackd"),
-            MatchesStructure.byEquality(
-                status=SERVICE_STATUS.DEGRADED,
-                status_info=(
-                    "{:.0%} connected to region controllers.".format(
-                        1.0 - percentage
-                    )
-                ),
-            ),
+        self.assertEqual(
+            rack_controller_service.status_info,
+            "{:.0%} connected to region controllers.".format(1.0 - percentage),
         )
 
     fake_images = [

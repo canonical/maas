@@ -420,7 +420,7 @@ class Factory(maastesting.factory.Factory):
         if status is None:
             status = NODE_STATUS.DEFAULT
         if zone is None:
-            zone = self.make_Zone()
+            zone = Zone.objects.get_default_zone()
         if power_type is None:
             power_type = "virsh"
         if power_state is None:
@@ -605,9 +605,6 @@ class Factory(maastesting.factory.Factory):
             hostname = self.make_string(prefix="controller")
         if owner is None:
             owner = get_worker_user()
-        if zone is None:
-            zone = self.make_Zone()
-
         node = self.make_Node_with_Interface_on_Subnet(
             node_type=controller_type,
             hostname=hostname,
@@ -3039,7 +3036,7 @@ class Factory(maastesting.factory.Factory):
         if project is None:
             project = self.make_name("project")
         if zone is None:
-            zone = self.make_Zone()
+            zone = Zone.objects.get_default_zone()
 
         cluster = VMCluster.objects.create(
             name=name,

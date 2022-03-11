@@ -6672,8 +6672,8 @@ class RackController(Controller):
                 )
 
         # Disable and delete all services related to this node
-        Service.objects.mark_dead(self, dead_rack=True)
-        Service.objects.filter(node=self).delete()
+        self.service_set.mark_dead(self, dead_rack=True)
+        self.service_set.all().delete()
 
         try:
             client = getClientFor(self.system_id, timeout=1)

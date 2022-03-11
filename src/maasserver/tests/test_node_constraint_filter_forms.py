@@ -667,8 +667,10 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
 
     def test_not_in_zone_excludes_given_zones(self):
-        ineligible_nodes = [factory.make_Node() for _ in range(2)]
-        eligible_nodes = [factory.make_Node() for _ in range(2)]
+        bad_zone = factory.make_Zone()
+        good_zone = factory.make_Zone()
+        ineligible_nodes = [factory.make_Node(zone=bad_zone) for _ in range(2)]
+        eligible_nodes = [factory.make_Node(zone=good_zone) for _ in range(2)]
         self.assertConstrainedNodes(
             eligible_nodes,
             {"not_in_zone": [node.zone.name for node in ineligible_nodes]},
@@ -697,7 +699,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         # Three nodes, all in different physical zones.  If we say we don't
         # want the first node's zone or the second node's zone, we get the node
         # in the remaining zone.
-        nodes = [factory.make_Node() for _ in range(3)]
+        nodes = [factory.make_Node(zone=factory.make_Zone()) for _ in range(3)]
         self.assertConstrainedNodes(
             [nodes[2]],
             {"not_in_zone": [nodes[0].zone.name, nodes[1].zone.name]},
