@@ -74,7 +74,7 @@ class StorageLayoutBase(Form):
                 physical_bds.append(bd.physicalblockdevice)
             except Exception:
                 pass
-        return sorted(physical_bds, key=lambda bd: bd.id)
+        return sorted(physical_bds, key=attrgetter("id"))
 
     def setup_root_device_field(self):
         """Setup the possible root devices."""
@@ -362,10 +362,7 @@ class FlatStorageLayout(StorageLayoutBase):
             for partition in pt.partitions.all():
                 # On UEFI systems the first partition is for the bootloader. If
                 # found check the next partition.
-                if (
-                    partition.get_partition_number() == 1
-                    and self.is_uefi_partition(partition)
-                ):
+                if partition.index == 1 and self.is_uefi_partition(partition):
                     continue
                 # Most layouts allow you to define a boot partition, skip it
                 # if its defined.
@@ -510,10 +507,7 @@ class LVMStorageLayout(StorageLayoutBase):
             for partition in pt.partitions.all():
                 # On UEFI systems the first partition is for the bootloader. If
                 # found check the next partition.
-                if (
-                    partition.get_partition_number() == 1
-                    and self.is_uefi_partition(partition)
-                ):
+                if partition.index == 1 and self.is_uefi_partition(partition):
                     continue
                 # Most layouts allow you to define a boot partition, skip it
                 # if its defined.
@@ -745,10 +739,7 @@ class BcacheStorageLayout(FlatStorageLayout):
             for partition in ordered_partitions:
                 # On UEFI systems the first partition is for the bootloader. If
                 # found check the next partition.
-                if (
-                    partition.get_partition_number() == 1
-                    and self.is_uefi_partition(partition)
-                ):
+                if partition.index == 1 and self.is_uefi_partition(partition):
                     continue
                 # Bcache always has a boot partition. Keep searching until its
                 # found.
@@ -809,22 +800,22 @@ class VMFS6StorageLayout(StorageLayoutBase):
 
     base_partitions = [
         # EFI System
-        {"size": 3 * 1024 ** 2, "bootable": True},
+        {"index": 1, "size": 3 * 1024 ** 2, "bootable": True},
         # Basic Data
-        {"size": 4 * 1024 ** 3},
+        {"index": 2, "size": 4 * 1024 ** 3},
         # VMFS Datastore, size is 0 so the partition order is correct, its
         # fixed after everything is applied.
-        {"size": 0},
+        {"index": 3, "size": 0},
         # Basic Data
-        {"size": 249 * 1024 ** 2},
+        {"index": 5, "size": 249 * 1024 ** 2},
         # Basic Data
-        {"size": 249 * 1024 ** 2},
+        {"index": 6, "size": 249 * 1024 ** 2},
         # VMKCore Diagnostic
-        {"size": 109 * 1024 ** 2},
+        {"index": 7, "size": 109 * 1024 ** 2},
         # Basic Data
-        {"size": 285 * 1024 ** 2},
+        {"index": 8, "size": 285 * 1024 ** 2},
         # VMKCore Diagnostic
-        {"size": 2560 * 1024 ** 2},
+        {"index": 9, "size": 2560 * 1024 ** 2},
     ]
 
     def _clean_boot_disk(self):
@@ -924,15 +915,15 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
 
     base_partitions = [
         # EFI System
-        {"size": 105 * 1024 ** 2, "bootable": True},
+        {"index": 1, "size": 105 * 1024 ** 2, "bootable": True},
         # Basic Data
-        {"size": 1074 * 1024 ** 2},
+        {"index": 5, "size": 1074 * 1024 ** 2},
         # Basic Data
-        {"size": 1074 * 1024 ** 2},
+        {"index": 6, "size": 1074 * 1024 ** 2},
         # VMFSL
-        {"size": 8704 * 1024 ** 2},
+        {"index": 7, "size": 8704 * 1024 ** 2},
         # VMFS
-        {"size": 0},
+        {"index": 8, "size": 0},
     ]
 
     def _clean_boot_disk(self):

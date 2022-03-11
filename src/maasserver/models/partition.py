@@ -5,7 +5,6 @@
 
 
 from collections.abc import Iterable
-from operator import attrgetter
 from uuid import uuid4
 
 from django.contrib.postgres.fields import ArrayField
@@ -17,9 +16,12 @@ from django.db.models import (
     CASCADE,
     CharField,
     ForeignKey,
+    IntegerField,
     Manager,
+    Max,
     TextField,
 )
+from django.db.models.functions import Coalesce
 
 from maasserver.enum import PARTITION_TABLE_TYPE
 from maasserver.models.cleansave import CleanSave
@@ -76,8 +78,9 @@ class PartitionManager(Manager):
             except ValueError:
                 # Invalid partition number.
                 raise self.model.DoesNotExist()
-            partition = self.get_partition_by_device_name_and_number(
-                device_name, partition_number
+            partition = self.get(
+                partition_table__block_device__name=device_name,
+                index=partition_number,
             )
             if (
                 partition_table is not None
@@ -90,20 +93,6 @@ class PartitionManager(Manager):
         if partition_table is not None:
             kwargs["partition_table"] = partition_table
         return self.get(**kwargs)
-
-    def get_partition_by_device_name_and_number(
-        self, device_name, partition_number
-    ):
-        """Return `Partition` for the block device and partition_number."""
-        partitions = (
-            self.filter(partition_table__block_device__name=device_name)
-            .prefetch_related("partition_table__partitions")
-            .all()
-        )
-        for partition in partitions:
-            if partition.get_partition_number() == partition_number:
-                return partition
-        raise self.model.DoesNotExist()
 
     def filter_by_tags(self, tags):
         if not isinstance(tags, list):
@@ -138,6 +127,9 @@ class Partition(CleanSave, TimestampedModel):
         on_delete=CASCADE,
     )
 
+    # the partition number in the partition table
+    index = IntegerField()
+
     uuid = CharField(max_length=36, unique=True, null=True, blank=True)
 
     size = BigIntegerField(
@@ -148,16 +140,16 @@ class Partition(CleanSave, TimestampedModel):
 
     tags = ArrayField(TextField(), blank=True, null=True, default=list)
 
+    class Meta:
+        unique_together = ("partition_table", "index")
+
     @property
     def name(self):
         return self.get_name()
 
     @property
     def path(self):
-        return "{}-part{}".format(
-            self.partition_table.block_device.path,
-            self.get_partition_number(),
-        )
+        return f"{self.partition_table.block_device.path}-part{self.index}"
 
     @property
     def type(self):
@@ -170,9 +162,8 @@ class Partition(CleanSave, TimestampedModel):
 
     def get_name(self):
         """Return the name of the partition."""
-        return "{}-part{}".format(
-            self.partition_table.block_device.get_name(),
-            self.get_partition_number(),
+        return (
+            f"{self.partition_table.block_device.get_name()}-part{self.index}"
         )
 
     def get_node(self):
@@ -200,74 +191,41 @@ class Partition(CleanSave, TimestampedModel):
         """Block size of partition."""
         return self.partition_table.get_block_size()
 
-    def get_partition_number(self):
-        """Return the partition number in the table."""
-        # Avoid circular imports.
-        from maasserver.storage_layouts import (
-            VMFS6StorageLayout,
-            VMFS7StorageLayout,
-        )
-
-        # Sort manually instead of with `order_by`, this will prevent django
-        # from making a query if the partitions are already cached.
-        partitions_in_table = self.partition_table.partitions.all()
-        partitions_in_table = sorted(partitions_in_table, key=attrgetter("id"))
-        idx = partitions_in_table.index(self)
-        if self.partition_table.table_type == PARTITION_TABLE_TYPE.GPT:
-            # In some instances the first partition is skipped because it
-            # is used by the machine architecture for a specific reason.
-            #   * ppc64el - reserved for prep partition
-            #   * amd64 (not UEFI) - reserved for bios_grub partition
+    def _get_partition_number(self):
+        """Return the partition number in the table for a new partition."""
+        max_index = self.partition_table.partitions.aggregate(
+            max_index=Coalesce(Max("index"), 0)
+        )["max_index"]
+        ptable_type = self.partition_table.table_type
+        index = max_index + 1
+        if index == 4 and ptable_type == PARTITION_TABLE_TYPE.MBR:
+            # The 4th MBR partition is used for the extended partitions.
+            index = 5
+        elif index == 1 and ptable_type == PARTITION_TABLE_TYPE.GPT:
             node = self.get_node()
             arch, _ = node.split_arch()
             boot_disk = node.get_boot_disk()
             bios_boot_method = node.get_bios_boot_method()
             block_device = self.partition_table.block_device
-            vmfs6_layout = VMFS6StorageLayout(node)
-            vmfs6_bd = vmfs6_layout.is_layout()
-            vmfs7_layout = VMFS7StorageLayout(node)
-            vmfs7_bd = vmfs7_layout.is_layout()
-            # VMware ESXi is a DD image but MAAS allows partitions to
-            # be added to the end of the disk as well as resize the
-            # datastore partition. The EFI partition is already in the
-            # image so there is no reason to account for it.
-            if vmfs6_bd is not None:
-                if vmfs6_bd.id == block_device.id and idx >= 3:
-                    # VMware ESXi 6.7 skips the 4th partition.
-                    return idx + 2
-                else:
-                    return idx + 1
-            elif vmfs7_bd is not None:
-                if vmfs7_bd.id == block_device.id and idx >= 1:
-                    # VMware ESXi 7.0 skips the partitions 2-4.
-                    return idx + 4
-                else:
-                    return idx + 1
-            elif arch == "ppc64el" and block_device.id == boot_disk.id:
-                return idx + 2
-            elif arch == "amd64" and bios_boot_method != "uefi":
-                if block_device.type == "physical":
-                    # Delay the `type` check because it can cause a query. Only
-                    # physical block devices get the bios_grub partition.
-                    return idx + 2
-                else:
-                    return idx + 1
-            else:
-                return idx + 1
-        elif self.partition_table.table_type == PARTITION_TABLE_TYPE.MBR:
-            # If more than 4 partitions then the 4th partition number is
-            # skipped because that is used for the extended partition.
-            if len(partitions_in_table) > 4 and idx > 2:
-                return idx + 2
-            else:
-                return idx + 1
-        else:
-            raise ValueError("Unknown partition table type.")
+
+            need_prep_partition = (
+                arch == "ppc64el" and block_device.id == boot_disk.id
+            )
+            need_bios_grub = (
+                arch == "amd64"
+                and bios_boot_method != "uefi"
+                and block_device.type == "physical"
+            )
+            if need_prep_partition or need_bios_grub:
+                index = 2
+        return index
 
     def save(self, *args, **kwargs):
         """Save partition."""
         if not self.uuid:
             self.uuid = uuid4()
+        if not self.index:
+            self.index = self._get_partition_number()
         return super().save(*args, **kwargs)
 
     def clean(self, *args, **kwargs):
@@ -359,7 +317,7 @@ class Partition(CleanSave, TimestampedModel):
             return False
         if vmfs_bd.id != self.partition_table.block_device_id:
             return False
-        if self.get_partition_number() >= len(vmfs_layout.base_partitions) + 2:
+        if self.index >= len(vmfs_layout.base_partitions) + 2:
             # A user may apply the VMFS6 layout and leave space at the end of
             # the disk for additional VMFS datastores. Those partitions may be
             # deleted, the base partitions may not as they are part of the DD.
@@ -377,7 +335,7 @@ class Partition(CleanSave, TimestampedModel):
             return False
         if vmfs_bd.id != self.partition_table.block_device_id:
             return False
-        if self.get_partition_number() < len(vmfs_layout.base_partitions) + 3:
+        if self.index < len(vmfs_layout.base_partitions) + 3:
             # A user may apply the VMFS7 layout and leave space at the end of
             # the disk for additional VMFS datastores. Those partitions may be
             # deleted, the base partitions may not as they are part of the DD.

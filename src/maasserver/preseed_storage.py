@@ -390,26 +390,25 @@ class CurtinStorageGenerator:
         `storage_config`."""
         partition_table = partition.partition_table
         block_device = partition_table.block_device
-        partition_number = partition.get_partition_number()
         partition_operation = {
             "id": partition.get_name(),
             "name": partition.get_name(),
             "type": "partition",
-            "number": partition_number,
+            "number": partition.index,
             "uuid": partition.uuid,
             "size": "%sB" % partition.size,
             "device": block_device.get_name(),
             "wipe": "superblock",
         }
         # First partition always sets the initial offset.
-        if partition_number == 1 and include_initial:
+        if partition.index == 1 and include_initial:
             partition_operation["offset"] = "%sB" % INITIAL_PARTITION_OFFSET
         if partition.bootable:
             partition_operation["flag"] = "boot"
         if partition_table.table_type == PARTITION_TABLE_TYPE.MBR:
             # Fifth partition on an MBR partition, must add the extend
             # partition operation. So the remaining partitions can be added.
-            if partition_number == 5:
+            if partition.index == 5:
                 # Calculate the remaining size of the disk available for the
                 # extended partition.
                 extended_size = block_device.size - PARTITION_TABLE_EXTRA_SPACE
@@ -442,7 +441,7 @@ class CurtinStorageGenerator:
                 partition_operation["size"] = "%sB" % (
                     partition.size - (1 << 20)
                 )
-            elif partition_number > 5:
+            elif partition.index > 5:
                 # Curtin adds 1MiB between each logical partition. We subtract
                 # the 1MiB from the size of the partition so all the partitions
                 # fit within the extended partition.

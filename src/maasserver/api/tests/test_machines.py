@@ -546,7 +546,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual(
             queries_count,
             [
-                base_count + (machine_count * 30)
+                base_count + (machine_count * 7)
                 for machine_count in machines_count
             ],
         )

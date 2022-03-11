@@ -700,12 +700,14 @@ class MachineHandler(NodeHandler):
         )
         node_config = node.current_config
         partition_id = params.get("partition_id")
-        if partition_id is not None:
-            partition = Partition.objects.get(
-                id=partition_id,
-                partition_table__block_device__node_config=node_config,
-            )
-            partition.delete()
+        if partition_id is None:
+            return
+
+        partition = Partition.objects.get(
+            id=partition_id,
+            partition_table__block_device__node_config=node_config,
+        )
+        partition.partition_table.delete_partition(partition)
 
     def delete_volume_group(self, params):
         node = self._get_node_or_permission_error(

@@ -68,7 +68,10 @@ from maasserver.models.nodeprobeddetails import (
     get_single_probed_details,
     script_output_nsmap,
 )
-from maasserver.models.partition import PARTITION_ALIGNMENT_SIZE
+from maasserver.models.partition import (
+    MIN_PARTITION_SIZE,
+    PARTITION_ALIGNMENT_SIZE,
+)
 import maasserver.node_action as node_action_module
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
@@ -770,7 +773,7 @@ class TestMachineHandler(MAASServerTestCase):
         queries, _ = count_queries(handler.get, {"system_id": node.system_id})
         self.assertEqual(
             queries,
-            55,
+            54,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -2866,6 +2869,22 @@ class TestMachineHandler(MAASServerTestCase):
             {"system_id": node.system_id, "partition_id": partition.id}
         )
         self.assertIsNone(reload_object(partition))
+
+    def test_delete_renumbers_others(self):
+        user = factory.make_admin()
+        handler = MachineHandler(user, {}, None)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        p1 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        p2 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        p3 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+
+        handler.delete_partition(
+            {"system_id": node.system_id, "partition_id": p1.id}
+        )
+        self.assertEqual(reload_object(p2).index, 1)
+        self.assertEqual(reload_object(p3).index, 2)
 
     def test_delete_partition_locked_raises_permission_error(self):
         user = factory.make_admin()

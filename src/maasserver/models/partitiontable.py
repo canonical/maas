@@ -5,7 +5,7 @@
 
 
 from django.core.exceptions import ValidationError
-from django.db.models import CASCADE, CharField, ForeignKey
+from django.db.models import CASCADE, CharField, F, ForeignKey
 
 from maasserver.enum import PARTITION_TABLE_TYPE, PARTITION_TABLE_TYPE_CHOICES
 from maasserver.models.blockdevice import BlockDevice
@@ -132,6 +132,16 @@ class PartitionTable(CleanSave, TimestampedModel):
         return Partition.objects.create(
             partition_table=self, size=size, uuid=uuid, bootable=bootable
         )
+
+    def delete_partition(self, partition):
+        if partition.partition_table_id != self.id:
+            raise ValidationError(
+                "Partition doesn't belong to the partition table"
+            )
+        index = partition.index
+        partition.delete()
+        # renumber partitions
+        self.partitions.filter(index__gt=index).update(index=F("index") - 1)
 
     def __str__(self):
         return f"Partition table for {self.block_device}"

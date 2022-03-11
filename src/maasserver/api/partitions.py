@@ -246,13 +246,13 @@ class PartitionHandler(OperationsHandler):
         partition_table = get_object_or_404(
             PartitionTable, block_device=device
         )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
         node = device.get_node()
         if node.status != NODE_STATUS.READY:
             raise NodeStateViolation(
                 "Cannot delete block device because the node is not Ready."
             )
-        partition.delete()
+        partition = get_partition_by_id_or_name__or_404(id, partition_table)
+        partition_table.delete_partition(partition)
         return rc.DELETED
 
     @operation(idempotent=False)

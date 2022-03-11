@@ -19,6 +19,7 @@ from maasserver.models.partitiontable import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import round_size_to_nearest_block
+from maasserver.utils.orm import reload_object
 
 
 class TestPartitionTable(MAASServerTestCase):
@@ -152,6 +153,16 @@ class TestPartitionTable(MAASServerTestCase):
         partition_table = factory.make_PartitionTable(block_device=device)
         partition_table.add_partition()
         self.assertRaises(ValidationError, partition_table.add_partition)
+
+    def test_delete_renumbers_others(self):
+        partition_table = factory.make_PartitionTable()
+        p1 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        p2 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        p3 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        self.assertEqual([p1.index, p2.index, p3.index], [1, 2, 3])
+        partition_table.delete_partition(p1)
+        self.assertEqual(reload_object(p2).index, 1)
+        self.assertEqual(reload_object(p3).index, 2)
 
     def test_get_overhead_size(self):
         node = factory.make_Node(bios_boot_method="pxe")

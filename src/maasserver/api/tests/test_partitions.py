@@ -243,6 +243,22 @@ class TestPartitions(APITestCase.ForUser):
         )
         self.assertIsNone(reload_object(partition))
 
+    def test_delete_renumbers_others(self):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        device = factory.make_PhysicalBlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=device)
+        p1 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        p2 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        p3 = partition_table.add_partition(size=MIN_PARTITION_SIZE)
+        uri = get_partition_uri(p1)
+        response = self.client.delete(uri)
+        self.assertEqual(
+            http.client.NO_CONTENT, response.status_code, response.content
+        )
+        self.assertEqual(reload_object(p2).index, 1)
+        self.assertEqual(reload_object(p3).index, 2)
+
     def test_format_returns_409_if_not_allocated_or_ready(self):
         self.become_admin()
         status = factory.pick_enum(

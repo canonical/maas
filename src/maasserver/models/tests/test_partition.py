@@ -6,7 +6,6 @@ from unittest.mock import sentinel
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from testtools.matchers import Equals
 
 from maasserver.enum import (
     FILESYSTEM_GROUP_TYPE,
@@ -122,7 +121,7 @@ class TestPartitionManager(MAASServerTestCase):
             "%spart%s"
             % (
                 partition.partition_table.block_device.get_name(),
-                partition.get_partition_number(),
+                partition.index,
             ),
         )
 
@@ -154,20 +153,6 @@ class TestPartitionManager(MAASServerTestCase):
             Partition.objects.get_partition_by_id_or_name,
             partition.name,
             other_table,
-        )
-
-    def test_get_partition_by_device_name_and_number(self):
-        block_device = factory.make_PhysicalBlockDevice()
-        partition_table = factory.make_PartitionTable(
-            block_device=block_device
-        )
-        factory.make_Partition(partition_table=partition_table)
-        partition_two = factory.make_Partition(partition_table=partition_table)
-        self.assertEqual(
-            partition_two,
-            Partition.objects.get_partition_by_device_name_and_number(
-                block_device.get_name(), partition_two.get_partition_number()
-            ),
         )
 
     def test_filter_by_tags_returns_partitions_with_one_tag(self):
@@ -401,7 +386,7 @@ class TestPartition(MAASServerTestCase):
             sentinel.filesystem, partition.get_effective_filesystem()
         )
 
-    def test_get_partition_number_returns_starting_at_1_in_order_for_gpt(self):
+    def test_partition_index_start_at_1_for_gpt(self):
         node = factory.make_Node(bios_boot_method="uefi")
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
@@ -414,11 +399,10 @@ class TestPartition(MAASServerTestCase):
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
         ]
-        idx = 1
-        for idx, partition in enumerate(partitions, 1):
-            self.assertEqual(partition.get_partition_number(), idx)
+        for index, partition in enumerate(partitions, 1):
+            self.assertEqual(partition.index, index)
 
-    def test_get_partition_number_starting_at_2_for_amd64_not_uefi(self):
+    def test_partition_index_start_at_2_for_amd64_not_uefi(self):
         node = factory.make_Node(
             bios_boot_method="pxe", architecture="amd64/generic"
         )
@@ -435,10 +419,10 @@ class TestPartition(MAASServerTestCase):
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
         ]
-        for idx, partition in enumerate(partitions, 2):
-            self.assertEqual(partition.get_partition_number(), idx)
+        for index, partition in enumerate(partitions, 2):
+            self.assertEqual(partition.index, index)
 
-    def test_get_partition_number_returns_starting_at_2_for_ppc64el(self):
+    def test_partition_index_start_at_2_for_ppc64el(self):
         node = factory.make_Node(
             architecture="ppc64el/generic",
             bios_boot_method="uefi",
@@ -464,10 +448,10 @@ class TestPartition(MAASServerTestCase):
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
         ]
-        for idx, partition in enumerate(partitions, 2):
-            self.assertEqual(partition.get_partition_number(), idx)
+        for index, partition in enumerate(partitions, 2):
+            self.assertEqual(partition.index, index)
 
-    def test_get_partition_number_returns_vmfs6_order(self):
+    def test_partition_index_vmfs6(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
@@ -475,12 +459,14 @@ class TestPartition(MAASServerTestCase):
         layout = VMFS6StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
-        self.assertCountEqual(
+        self.assertEqual(
             [1, 2, 3, 5, 6, 7, 8, 9],
-            [part.get_partition_number() for part in pt.partitions.all()],
+            list(
+                pt.partitions.order_by("index").values_list("index", flat=True)
+            ),
         )
 
-    def test_get_partition_number_returns_vmfs7_order(self):
+    def test_partition_index_vmfs7(self):
         node = factory.make_Node(with_boot_disk=False)
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
@@ -488,12 +474,14 @@ class TestPartition(MAASServerTestCase):
         layout = VMFS7StorageLayout(node)
         layout.configure()
         pt = bd.get_partitiontable()
-        self.assertCountEqual(
+        self.assertEqual(
             [1, 5, 6, 7, 8],
-            [part.get_partition_number() for part in pt.partitions.all()],
+            list(
+                pt.partitions.order_by("index").values_list("index", flat=True)
+            ),
         )
 
-    def test_get_partition_number_returns_starting_at_2_for_amd64_gpt(self):
+    def test_partition_index_start_at_2_for_amd64_gpt(self):
         node = factory.make_Node(
             architecture="amd64/generic",
             bios_boot_method="pxe",
@@ -516,12 +504,10 @@ class TestPartition(MAASServerTestCase):
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(4)
         ]
-        idx = 2
-        for partition in partitions:
-            self.expectThat(idx, Equals(partition.get_partition_number()))
-            idx += 1
+        for index, partition in enumerate(partitions, 2):
+            self.assertEqual(index, partition.index)
 
-    def test_get_partition_number_returns_correct_numbering_for_mbr(self):
+    def test_partition_index_for_mbr_extended(self):
         block_device = factory.make_PhysicalBlockDevice(
             size=(MIN_BLOCK_DEVICE_SIZE * 6) + PARTITION_TABLE_EXTRA_SPACE
         )
@@ -532,13 +518,10 @@ class TestPartition(MAASServerTestCase):
             partition_table.add_partition(size=MIN_BLOCK_DEVICE_SIZE)
             for _ in range(6)
         ]
-        idx = 1
-        for partition in partitions:
-            self.expectThat(idx, Equals(partition.get_partition_number()))
-            idx += 1
-            if idx == 4:
-                # Skip the extended partition.
-                idx += 1
+        self.assertEqual(
+            [1, 2, 3, 5, 6, 7],  # partition 4 is used for extended
+            [partition.index for partition in partitions],
+        )
 
     def test_is_vmfs6_partition(self):
         node = factory.make_Node(with_boot_disk=False)
@@ -560,7 +543,7 @@ class TestPartition(MAASServerTestCase):
         layout.configure()
         pt = bd.get_partitiontable()
         for partition in pt.partitions.all():
-            if partition.get_partition_number() >= 8:
+            if partition.index >= 8:
                 self.assertFalse(partition.is_vmfs7_partition())
             else:
                 self.assertTrue(partition.is_vmfs7_partition())
@@ -575,10 +558,7 @@ class TestPartition(MAASServerTestCase):
         layout_name = layout.configure()
         pt = bd.get_partitiontable()
         for partition in pt.partitions.all():
-            if (
-                layout_name == "vmfs7"
-                and partition.get_partition_number() >= 8
-            ):
+            if layout_name == "vmfs7" and partition.index >= 8:
                 self.assertFalse(partition.is_vmfs_partition())
             else:
                 self.assertTrue(partition.is_vmfs_partition())

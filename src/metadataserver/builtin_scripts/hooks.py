@@ -722,6 +722,11 @@ def _condense_luns(disks):
 def _update_node_physical_block_devices(
     node, data, numa_nodes, custom_storage_config=None
 ):
+    # ensure the same node object is referenced so that updates to the node are
+    # visible to objects related to the node config, such as block devices, that
+    # access the node
+    node.current_config.node = node
+
     custom_layout = None
     if custom_storage_config:
         # generating the layout also validates the config
