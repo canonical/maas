@@ -113,8 +113,8 @@ def get_simplestreams_env():
             no_proxy_hosts = "127.0.0.1,localhost"
             # When using a proxy and using an image mirror, we may not want
             # to use the proxy to download the images, as they could be
-            # localted in the local network, hence it makes no sense to use
-            # it. With this, we add the image mirror localtion(s) to the
+            # located in the local network, hence it makes no sense to use
+            # it. With this, we add the image mirror location(s) to the
             # no proxy variable, which ensures MAAS contacts the mirror
             # directly instead of through the proxy.
             no_proxy = Config.objects.get_config("boot_images_no_proxy")
@@ -124,6 +124,11 @@ def get_simplestreams_env():
                     host = urlparse(source["url"]).netloc.split(":")[0]
                     no_proxy_hosts = ",".join((no_proxy_hosts, host))
             env["no_proxy"] = no_proxy_hosts
+    else:
+        # The proxy is disabled, let's not accidentally use proxy from
+        # encompassing environment.
+        env["http_proxy"] = ""
+        env["https_proxy"] = ""
     return env
 
 

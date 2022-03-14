@@ -7,8 +7,7 @@
 import html
 from os import environ
 import random
-from unittest import skip
-from unittest.mock import ANY, MagicMock
+from unittest.mock import ANY, MagicMock, patch
 
 from fixtures import EnvironmentVariableFixture
 from requests.exceptions import ConnectionError
@@ -410,7 +409,6 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             MockCalledOnceWith(ANY, user_agent=get_maas_user_agent()),
         )
 
-    @skip("XXX: GavinPanella 2015-12-04 bug=1546235: Fails spuriously.")
     def test_doesnt_have_env_http_and_https_proxy_set_if_disabled(self):
         proxy_address = factory.make_name("proxy")
         Config.objects.set_config("http_proxy", proxy_address)
@@ -419,7 +417,16 @@ class TestPrivateCacheBootSources(MAASTransactionServerTestCase):
             self
         )
         factory.make_BootSource(keyring_data=b"1234")
-        cache_boot_sources()
+        env_http_proxy_address = factory.make_name("http-proxy")
+        env_https_proxy_address = factory.make_name("https-proxy")
+        with patch.dict(
+            "os.environ",
+            {
+                "http_proxy": env_http_proxy_address,
+                "https_proxy": env_https_proxy_address,
+            },
+        ):
+            cache_boot_sources()
         self.assertEqual(
             ("", ""),
             (
