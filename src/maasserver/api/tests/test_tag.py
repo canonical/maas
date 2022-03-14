@@ -13,7 +13,7 @@ from testtools.matchers import MatchesStructure
 from apiclient.creds import convert_tuple_to_string
 from maasserver import middleware
 from maasserver.enum import NODE_STATUS
-from maasserver.models import Event, Node, Tag
+from maasserver.models import Event, Tag
 from maasserver.models.node import generate_node_system_id
 from maasserver.models.user import (
     create_auth_token,
@@ -186,7 +186,6 @@ class TestTagAPI(APITestCase.ForUser):
             [r["system_id"] for r in parsed_result],
         )
 
-    @skip("LP:1840491")
     def test_GET_nodes_query_count(self):
         # Patch middleware so it does not affect query counting.
         self.patch(
@@ -195,53 +194,42 @@ class TestTagAPI(APITestCase.ForUser):
         )
 
         tag = factory.make_Tag()
-        for _ in range(3):
-            machine = factory.make_Node_with_Interface_on_Subnet()
-            machine.tags.add(tag)
-        # XXX ltrager 2019-08-16 - Work around for LP:1840491
-        Node.objects.update(boot_disk=None)
-        for _ in range(3):
-            device = factory.make_Device()
-            device.tags.add(tag)
-        num_queries1, response1 = count_queries(
+
+        query_counts = []
+        node_counts = []
+
+        machine = factory.make_Node_with_Interface_on_Subnet()
+        machine.tags.add(tag)
+        num_queries, response = count_queries(
             self.client.get, self.get_tag_uri(tag), {"op": "nodes"}
         )
-
-        for _ in range(3):
-            machine = factory.make_Node_with_Interface_on_Subnet()
-            machine.tags.add(tag)
-        # XXX ltrager 2019-08-16 - Work around for LP:1840491
-        Node.objects.update(boot_disk=None)
-        for _ in range(3):
-            device = factory.make_Device()
-            device.tags.add(tag)
-        num_queries2, response2 = count_queries(
+        query_counts.append(num_queries)
+        node_counts.append(len(response.json()))
+        machine = factory.make_Node_with_Interface_on_Subnet()
+        machine.tags.add(tag)
+        num_queries, response = count_queries(
             self.client.get, self.get_tag_uri(tag), {"op": "nodes"}
         )
+        query_counts.append(num_queries)
+        node_counts.append(len(response.json()))
+        machine = factory.make_Node_with_Interface_on_Subnet()
+        machine.tags.add(tag)
+        num_queries, response = count_queries(
+            self.client.get, self.get_tag_uri(tag), {"op": "nodes"}
+        )
+        query_counts.append(num_queries)
+        node_counts.append(len(response.json()))
 
-        # Make sure the responses are ok as it's not useful to compare the
-        # number of queries if they are not.
-        parsed_result_1 = json.loads(
-            response1.content.decode(settings.DEFAULT_CHARSET)
-        )
-        parsed_result_2 = json.loads(
-            response2.content.decode(settings.DEFAULT_CHARSET)
-        )
-        self.assertEqual(
-            [http.client.OK, http.client.OK, 6, 12],
-            [
-                response1.status_code,
-                response2.status_code,
-                len(extract_system_ids(parsed_result_1)),
-                len(extract_system_ids(parsed_result_2)),
-            ],
-        )
-
+        self.assertEqual(node_counts, [1, 2, 3])
         # Because of fields `status_action`, `status_message`,
-        # `default_gateways`, `health_status`, 'special_filesystems' and
-        # 'resource_pool' the number of queries is not the same but it is
-        # proportional to the number of machines.
-        self.assertEqual(num_queries1, num_queries2 - (3 * 7))
+        # `default_gateways`, `health_status` and 'resource_pool', the number
+        # of queries is not the same but it is proportional to the number of
+        # machines.
+        base_count = 92
+        self.assertEqual(
+            query_counts,
+            [base_count + (n * 6) for n in node_counts],
+        )
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
@@ -265,7 +253,6 @@ class TestTagAPI(APITestCase.ForUser):
             [machine.system_id], [r["system_id"] for r in parsed_result]
         )
 
-    @skip("LP:1840491")
     def test_GET_machines_query_count(self):
         # Patch middleware so it does not affect query counting.
         self.patch(
@@ -274,47 +261,42 @@ class TestTagAPI(APITestCase.ForUser):
         )
 
         tag = factory.make_Tag()
-        for _ in range(3):
-            machine = factory.make_Node_with_Interface_on_Subnet()
-            machine.tags.add(tag)
-        # XXX ltrager 2019-08-16 - Work around for LP:1840491
-        Node.objects.update(boot_disk=None)
-        num_queries1, response1 = count_queries(
+
+        query_counts = []
+        machine_counts = []
+
+        machine = factory.make_Node_with_Interface_on_Subnet()
+        machine.tags.add(tag)
+        num_queries, response = count_queries(
             self.client.get, self.get_tag_uri(tag), {"op": "machines"}
         )
-
-        for _ in range(3):
-            machine = factory.make_Node_with_Interface_on_Subnet()
-            machine.tags.add(tag)
-        # XXX ltrager 2019-08-16 - Work around for LP:1840491
-        Node.objects.update(boot_disk=None)
-        num_queries2, response2 = count_queries(
+        query_counts.append(num_queries)
+        machine_counts.append(len(response.json()))
+        machine = factory.make_Node_with_Interface_on_Subnet()
+        machine.tags.add(tag)
+        num_queries, response = count_queries(
             self.client.get, self.get_tag_uri(tag), {"op": "machines"}
         )
+        query_counts.append(num_queries)
+        machine_counts.append(len(response.json()))
+        machine = factory.make_Node_with_Interface_on_Subnet()
+        machine.tags.add(tag)
+        num_queries, response = count_queries(
+            self.client.get, self.get_tag_uri(tag), {"op": "machines"}
+        )
+        query_counts.append(num_queries)
+        machine_counts.append(len(response.json()))
 
-        # Make sure the responses are ok as it's not useful to compare the
-        # number of queries if they are not.
-        parsed_result_1 = json.loads(
-            response1.content.decode(settings.DEFAULT_CHARSET)
-        )
-        parsed_result_2 = json.loads(
-            response2.content.decode(settings.DEFAULT_CHARSET)
-        )
-        self.assertEqual(
-            [http.client.OK, http.client.OK, 3, 6],
-            [
-                response1.status_code,
-                response2.status_code,
-                len(extract_system_ids(parsed_result_1)),
-                len(extract_system_ids(parsed_result_2)),
-            ],
-        )
-
+        self.assertEqual(machine_counts, [1, 2, 3])
         # Because of fields `status_action`, `status_message`,
         # `default_gateways`, `health_status` and 'resource_pool', the number
         # of queries is not the same but it is proportional to the number of
         # machines.
-        self.assertEqual(num_queries1, num_queries2 - (3 * 7))
+        base_count = 92
+        self.assertEqual(
+            query_counts,
+            [base_count + (n * 6) for n in machine_counts],
+        )
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()
