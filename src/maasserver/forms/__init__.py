@@ -3165,7 +3165,7 @@ class UpdateVirtualBlockDeviceForm(
         return cleaned_data
 
 
-def convert_block_device_name_to_id(value):
+def convert_block_device_name_to_id(node, value):
     """Convert a block device value from an input field into the block device
     id.
 
@@ -3181,7 +3181,9 @@ def convert_block_device_name_to_id(value):
         value = int(value)
     except ValueError:
         try:
-            value = BlockDevice.objects.get(name=value).id
+            value = BlockDevice.objects.get(
+                node_config=node.current_config, name=value
+            ).id
         except BlockDevice.DoesNotExist:
             pass
     return value
@@ -3192,7 +3194,10 @@ def clean_block_device_name_to_id(field):
     See `convert_block_device_name_to_id`."""
 
     def _convert(self):
-        return convert_block_device_name_to_id(self.cleaned_data[field])
+        return convert_block_device_name_to_id(
+            self.node,
+            self.cleaned_data[field],
+        )
 
     return _convert
 
@@ -3203,14 +3208,14 @@ def clean_block_device_names_to_ids(field):
 
     def _convert(self):
         return [
-            convert_block_device_name_to_id(block_device)
-            for block_device in self.cleaned_data[field]
+            convert_block_device_name_to_id(self.node, device_name)
+            for device_name in self.cleaned_data[field]
         ]
 
     return _convert
 
 
-def convert_partition_name_to_id(value):
+def convert_partition_name_to_id(node_config, value):
     """Convert a partition value from an input field into the partition id.
 
     This is used when the user can provide either the ID or the name of the
@@ -3222,10 +3227,11 @@ def convert_partition_name_to_id(value):
     if not value:
         return value
     try:
-        partition = Partition.objects.get_partition_by_id_or_name(value)
+        return Partition.objects.get_partition_by_id_or_name(
+            node_config, value
+        ).id
     except Partition.DoesNotExist:
         return value
-    return partition.id
 
 
 def clean_partition_name_to_id(field):
@@ -3233,7 +3239,9 @@ def clean_partition_name_to_id(field):
     See `convert_partition_name_to_id`."""
 
     def _convert(self):
-        return convert_partition_name_to_id(self.cleaned_data[field])
+        return convert_partition_name_to_id(
+            self.node.current_config, self.cleaned_data[field]
+        )
 
     return _convert
 
@@ -3244,7 +3252,7 @@ def clean_partition_names_to_ids(field):
 
     def _convert(self):
         return [
-            convert_partition_name_to_id(partition)
+            convert_partition_name_to_id(self.node.current_config, partition)
             for partition in self.cleaned_data[field]
         ]
 
@@ -3835,6 +3843,7 @@ class UpdateRaidForm(Form):
 
     def __init__(self, raid, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.node = raid.get_node()
         self.raid = raid
         self.set_up_field_choices()
 
@@ -3848,18 +3857,18 @@ class UpdateRaidForm(Form):
         partitions and block devices that fit this node.
 
         """
-        node = self.raid.get_node()
-
         # Select the unused, non-partitioned block devices of this node.
         free_block_devices = (
-            BlockDevice.objects.get_free_block_devices_for_node(node)
+            BlockDevice.objects.get_free_block_devices_for_node(self.node)
         )
         add_block_device_choices = [
             (bd.id, bd.name) for bd in free_block_devices
         ] + [(bd.name, bd.name) for bd in free_block_devices]
 
         # Select the unused partitions of this node.
-        free_partitions = Partition.objects.get_free_partitions_for_node(node)
+        free_partitions = Partition.objects.get_free_partitions_for_node(
+            self.node
+        )
         add_partition_choices = [(p.id, p.name) for p in free_partitions] + [
             (p.name, p.name) for p in free_partitions
         ]
@@ -4108,6 +4117,7 @@ class UpdateVolumeGroupForm(Form):
 
     def __init__(self, volume_group, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.node = volume_group.get_node()
         self.volume_group = volume_group
         self.set_up_choice_fields()
 
@@ -4117,16 +4127,17 @@ class UpdateVolumeGroupForm(Form):
         This needs to be done on the fly so that we can pass a dynamic list of
         partitions and block devices that fit this node.
         """
-        node = self.volume_group.get_node()
         # Select the unused, non-partitioned block devices of this node.
         free_block_devices = (
-            BlockDevice.objects.get_free_block_devices_for_node(node)
+            BlockDevice.objects.get_free_block_devices_for_node(self.node)
         )
         self.fields["add_block_devices"].choices = [
             (bd.id, bd.name) for bd in free_block_devices
         ] + [(bd.name, bd.name) for bd in free_block_devices]
         # Select the unused partitions of this node.
-        free_partitions = Partition.objects.get_free_partitions_for_node(node)
+        free_partitions = Partition.objects.get_free_partitions_for_node(
+            self.node
+        )
         self.fields["add_partitions"].choices = [
             (partition.id, partition.name) for partition in free_partitions
         ] + [(partition.name, partition.name) for partition in free_partitions]
@@ -4302,7 +4313,7 @@ class UpdateVMFSForm(UpdateVolumeGroupForm):
         # setup is identical. As such the parent class calls the object
         # volume_group.
         vmfs = self.volume_group
-        node = vmfs.get_node()
+        node = self.node
         for block_device in BlockDevice.objects.filter(
             id__in=self.cleaned_data["add_block_devices"]
         ):

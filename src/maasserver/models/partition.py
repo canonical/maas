@@ -61,38 +61,35 @@ class PartitionManager(Manager):
         """Return `Partition`s for the belong to the filesystem group."""
         return self.filter(filesystem__filesystem_group=filesystem_group)
 
-    def get_partition_by_id_or_name(
-        self, partition_id_or_name, partition_table=None
-    ):
+    def get_partition_by_id_or_name(self, node_config, partition_id_or_name):
         """Return `Partition` based on its ID or name."""
-        try:
-            partition_id = int(partition_id_or_name)
-        except ValueError:
-            name_split = partition_id_or_name.split("-part")
-            if len(name_split) != 2:
-                # Invalid name.
-                raise self.model.DoesNotExist()
-            device_name, partition_number = name_split
+
+        def criteria_by_id(partition_id):
             try:
-                partition_number = int(partition_number)
+                return {"id": int(partition_id)}
             except ValueError:
-                # Invalid partition number.
-                raise self.model.DoesNotExist()
-            partition = self.get(
-                partition_table__block_device__name=device_name,
-                index=partition_number,
-            )
-            if (
-                partition_table is not None
-                and partition.partition_table_id != partition_table.id
-            ):
-                # No partition with that name on that partition table.
-                raise self.model.DoesNotExist()
-            return partition
-        kwargs = {"id": partition_id}
-        if partition_table is not None:
-            kwargs["partition_table"] = partition_table
-        return self.get(**kwargs)
+                return None
+
+        def criteria_by_name(partition_id):
+            try:
+                device_name, partition_index = partition_id.split("-part", 1)
+                return {
+                    "partition_table__block_device__name": device_name,
+                    "index": int(partition_index),
+                }
+            except ValueError:
+                return None
+
+        criteria = criteria_by_id(partition_id_or_name)
+        if not criteria:
+            criteria = criteria_by_name(partition_id_or_name)
+        if not criteria:
+            raise self.model.DoesNotExist()
+
+        return self.get(
+            partition_table__block_device__node_config=node_config,
+            **criteria,
+        )
 
     def filter_by_tags(self, tags):
         if not isinstance(tags, list):

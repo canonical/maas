@@ -85,23 +85,67 @@ class TestPartitionManager(MAASServerTestCase):
         self.assertCountEqual([partition], partitions_in_filesystem_group)
 
     def test_get_partition_by_id_or_name_returns_valid_with_id(self):
-        partition = factory.make_Partition()
+        node = factory.make_Node()
+        disk = factory.make_BlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=disk)
+        partition = partition_table.add_partition()
         self.assertEqual(
             partition,
-            Partition.objects.get_partition_by_id_or_name(partition.id),
+            Partition.objects.get_partition_by_id_or_name(
+                node.current_config, partition.id
+            ),
         )
 
     def test_get_partition_by_id_or_name_returns_valid_with_name(self):
-        partition = factory.make_Partition()
+        node = factory.make_Node()
+        disk = factory.make_BlockDevice(node=node)
+        partition_table = factory.make_PartitionTable(block_device=disk)
+        partition = partition_table.add_partition()
         self.assertEqual(
             partition,
-            Partition.objects.get_partition_by_id_or_name(partition.name),
+            Partition.objects.get_partition_by_id_or_name(
+                node.current_config, partition.name
+            ),
+        )
+
+    def test_get_partition_by_name_on_right_disk(self):
+        node = factory.make_Node()
+        disk = factory.make_BlockDevice(node=node, name="sda")
+        partition_table = factory.make_PartitionTable(block_device=disk)
+        partition = partition_table.add_partition()
+
+        # another node with a partition with same name as the first
+        node2 = factory.make_Node()
+        disk2 = factory.make_BlockDevice(node=node2, name="sda")
+        partition_table2 = factory.make_PartitionTable(block_device=disk2)
+        partition2 = partition_table2.add_partition()
+        self.assertEqual(partition.get_name(), partition2.get_name())
+
+        self.assertEqual(
+            partition,
+            Partition.objects.get_partition_by_id_or_name(
+                node.current_config, partition.get_name()
+            ),
+        )
+
+    def test_get_partition_by_name_not_found_other_disk(self):
+        node = factory.make_Node()
+        disk = factory.make_BlockDevice(node=node, name="sda")
+        partition_table = factory.make_PartitionTable(block_device=disk)
+        partition = partition_table.add_partition()
+        node2 = factory.make_Node()
+        self.assertRaises(
+            Partition.DoesNotExist,
+            Partition.objects.get_partition_by_id_or_name,
+            node2.current_config,
+            partition.get_name(),
         )
 
     def test_get_partition_by_id_or_name_invalid_id(self):
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
+            factory.make_NodeConfig(),
             random.randint(1000, 5000),
         )
 
@@ -110,6 +154,7 @@ class TestPartitionManager(MAASServerTestCase):
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
+            factory.make_NodeConfig(),
             "",
         )
 
@@ -118,11 +163,8 @@ class TestPartitionManager(MAASServerTestCase):
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
-            "%spart%s"
-            % (
-                partition.partition_table.block_device.get_name(),
-                partition.index,
-            ),
+            factory.make_NodeConfig(),
+            f"{partition.partition_table.block_device.get_name()}part{partition.index}",
         )
 
     def test_get_partition_by_id_or_name_invalid_part_number(self):
@@ -130,29 +172,8 @@ class TestPartitionManager(MAASServerTestCase):
         self.assertRaises(
             Partition.DoesNotExist,
             Partition.objects.get_partition_by_id_or_name,
-            "%spartX" % (partition.partition_table.block_device.get_name()),
-        )
-
-    def test_get_partition_by_id_or_name_by_id_invalid_table(self):
-        partition_table = factory.make_PartitionTable()
-        other_table = factory.make_PartitionTable()
-        partition = factory.make_Partition(partition_table=partition_table)
-        self.assertRaises(
-            Partition.DoesNotExist,
-            Partition.objects.get_partition_by_id_or_name,
-            partition.id,
-            other_table,
-        )
-
-    def test_get_partition_by_id_or_name_by_name_invalid_table(self):
-        partition_table = factory.make_PartitionTable()
-        other_table = factory.make_PartitionTable()
-        partition = factory.make_Partition(partition_table=partition_table)
-        self.assertRaises(
-            Partition.DoesNotExist,
-            Partition.objects.get_partition_by_id_or_name,
-            partition.name,
-            other_table,
+            factory.make_NodeConfig(),
+            f"{partition.partition_table.block_device.get_name()}partX",
         )
 
     def test_filter_by_tags_returns_partitions_with_one_tag(self):

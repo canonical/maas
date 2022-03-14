@@ -36,14 +36,14 @@ DISPLAYED_PARTITION_FIELDS = (
 )
 
 
-def get_partition_by_id_or_name__or_404(partition_id, partition_table):
-    """Get the partition by its partition_id or its name.
+def get_partition_by_id_or_name__or_404(node_config, partition_id):
+    """Get the partition by its ID or its name.
 
     :raise Http404: If the partition does not exist.
     """
     try:
         partition = Partition.objects.get_partition_by_id_or_name(
-            partition_id, partition_table
+            node_config, partition_id
         )
     except Partition.DoesNotExist:
         raise Http404()
@@ -218,10 +218,7 @@ class PartitionHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.view
         )
-        partition_table = get_object_or_404(
-            PartitionTable, block_device=device
-        )
-        return get_partition_by_id_or_name__or_404(id, partition_table)
+        return get_partition_by_id_or_name__or_404(device.node_config, id)
 
     def delete(self, request, system_id, device_id, id):
         """@description-title Delete a partition
@@ -251,7 +248,7 @@ class PartitionHandler(OperationsHandler):
             raise NodeStateViolation(
                 "Cannot delete block device because the node is not Ready."
             )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
+        partition = get_partition_by_id_or_name__or_404(device.node_config, id)
         partition_table.delete_partition(partition)
         return rc.DELETED
 
@@ -290,11 +287,8 @@ class PartitionHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
         )
-        partition_table = get_object_or_404(
-            PartitionTable, block_device=device
-        )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
         node = device.get_node()
+        partition = get_partition_by_id_or_name__or_404(device.node_config, id)
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "format"
         )
@@ -329,11 +323,8 @@ class PartitionHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
         )
-        partition_table = get_object_or_404(
-            PartitionTable, block_device=device
-        )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
         node = device.get_node()
+        partition = get_partition_by_id_or_name__or_404(device.node_config, id)
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unformat"
         )
@@ -390,12 +381,10 @@ class PartitionHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
         )
-        partition_table = get_object_or_404(
-            PartitionTable, block_device=device
-        )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
+        node = device.get_node()
+        partition = get_partition_by_id_or_name__or_404(device.node_config, id)
         raise_error_for_invalid_state_on_allocated_operations(
-            device.get_node(), request.user, "mount"
+            node, request.user, "mount"
         )
         filesystem = partition.get_effective_filesystem()
         form = MountFilesystemForm(filesystem, data=request.data)
@@ -438,11 +427,8 @@ class PartitionHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
         )
-        partition_table = get_object_or_404(
-            PartitionTable, block_device=device
-        )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
         node = device.get_node()
+        partition = get_partition_by_id_or_name__or_404(device.node_config, id)
         raise_error_for_invalid_state_on_allocated_operations(
             node, request.user, "unmount"
         )
@@ -487,10 +473,7 @@ class PartitionHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin
         )
-        partition_table = get_object_or_404(
-            PartitionTable, block_device=device
-        )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
+        partition = get_partition_by_id_or_name__or_404(device.node_config, id)
         partition.add_tag(get_mandatory_param(request.POST, "tag"))
         partition.save()
         return partition
@@ -526,10 +509,7 @@ class PartitionHandler(OperationsHandler):
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin
         )
-        partition_table = get_object_or_404(
-            PartitionTable, block_device=device
-        )
-        partition = get_partition_by_id_or_name__or_404(id, partition_table)
+        partition = get_partition_by_id_or_name__or_404(device.node_config, id)
         partition.remove_tag(get_mandatory_param(request.POST, "tag"))
         partition.save()
         return partition

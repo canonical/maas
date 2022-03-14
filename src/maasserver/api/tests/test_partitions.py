@@ -209,6 +209,32 @@ class TestPartitions(APITestCase.ForUser):
         self.assertEqual(partition.id, parsed_partition["id"])
         self.assertEqual(partition.size, parsed_partition["size"])
 
+    def test_read_partition_by_name_multiple(self):
+        device = factory.make_PhysicalBlockDevice(
+            size=(MIN_PARTITION_SIZE * 4) + PARTITION_TABLE_EXTRA_SPACE
+        )
+        partition_table = factory.make_PartitionTable(block_device=device)
+        partition = factory.make_Partition(
+            partition_table=partition_table,
+            size=MIN_PARTITION_SIZE,
+            bootable=True,
+        )
+
+        # a partition with same name on a different machine
+        device2 = factory.make_PhysicalBlockDevice(name=device.name)
+        partition_table2 = factory.make_PartitionTable(block_device=device2)
+        partition2 = factory.make_Partition(partition_table=partition_table2)
+        self.assertEqual(partition.get_name(), partition2.get_name())
+
+        uri = get_partition_uri(partition, by_name=True)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+
+        parsed_partition = response.json()
+        self.assertEqual(partition.id, parsed_partition["id"])
+
     def test_delete_returns_403_for_non_admin(self):
         node = factory.make_Node(owner=self.user)
         partition = self.make_partition(node)

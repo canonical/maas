@@ -284,6 +284,41 @@ class TestUpdateBcacheForm(MAASServerTestCase):
             [k for (k, v) in form.fields["backing_partition"].choices],
         )
 
+    def test_lookup_by_name(self):
+        node = factory.make_Node(with_boot_disk=False)
+        disk = factory.make_PhysicalBlockDevice(node=node)
+        cache_set = factory.make_CacheSet(node=node)
+        filesystems = [
+            factory.make_Filesystem(
+                partition=factory.make_PartitionTable(
+                    block_device=factory.make_PhysicalBlockDevice(node=node)
+                ).add_partition(),
+                fstype=FILESYSTEM_TYPE.BCACHE_BACKING,
+            )
+        ]
+        bcache = factory.make_FilesystemGroup(
+            group_type=FILESYSTEM_GROUP_TYPE.BCACHE,
+            cache_set=cache_set,
+            filesystems=filesystems,
+        )
+
+        # create a disk with same name on another machine
+        factory.make_PhysicalBlockDevice(
+            node=factory.make_Node(with_boot_disk=False),
+            name=disk.name,
+        )
+
+        form = UpdateBcacheForm(
+            bcache=bcache, data={"backing_device": disk.name}
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        bcache = form.save()
+        partition = disk.get_partitiontable().partitions.first()
+        self.assertEqual(
+            partition.get_effective_filesystem(),
+            bcache.filesystems.get(fstype=FILESYSTEM_TYPE.BCACHE_BACKING),
+        )
+
     def test_bcache_update_with_invalid_mode(self):
         """Tests the mode field validation."""
         node = factory.make_Node()
