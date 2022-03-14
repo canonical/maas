@@ -65,9 +65,9 @@ from provisioningserver.drivers.pod import (
     RequestedMachineInterface,
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
+from provisioningserver.testing.certificates import get_sample_cert
 
 wait_for_reactor = wait_for()
-SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 
 def make_pod_with_hints(with_host=False, host=None, **pod_attributes):
@@ -386,11 +386,12 @@ class TestPodForm(MAASTransactionServerTestCase):
         vmhosts = [
             factory.make_Pod(pod_type="lxd", cluster=cluster) for _ in range(3)
         ]
+        sample_cert = get_sample_cert()
         form = PodForm(
             data={
                 "type": "lxd",
-                "certificate": SAMPLE_CERT.certificate_pem(),
-                "key": SAMPLE_CERT.private_key_pem(),
+                "certificate": sample_cert.certificate_pem(),
+                "key": sample_cert.private_key_pem(),
             },
             request=self.request,
             instance=vmhosts[0],
@@ -401,11 +402,11 @@ class TestPodForm(MAASTransactionServerTestCase):
         for vmhost in updated_vmhosts:
             self.assertEqual(
                 vmhost.power_parameters["certificate"],
-                SAMPLE_CERT.certificate_pem().strip(),
+                sample_cert.certificate_pem().strip(),
             )
             self.assertEqual(
                 vmhost.power_parameters["key"],
-                SAMPLE_CERT.private_key_pem().strip(),
+                sample_cert.private_key_pem().strip(),
             )
 
     def test_creates_virsh_pod_with_no_metrics(self):
@@ -447,7 +448,7 @@ class TestPodForm(MAASTransactionServerTestCase):
 
     def test_creates_lxd_pod_with_cert_expiration_supplied(self):
         pod_info = self.make_pod_info("lxd")
-        maas_cert = Certificate.generate("mypod", validity=timedelta(days=10))
+        maas_cert = get_sample_cert("mypod", validity=timedelta(days=10))
         pod_info["certificate"] = maas_cert.certificate_pem()
         pod_info["key"] = maas_cert.private_key_pem()
         form = PodForm(data=pod_info, request=self.request)

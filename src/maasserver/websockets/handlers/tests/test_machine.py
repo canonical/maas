@@ -128,15 +128,13 @@ from metadataserver.enum import (
 )
 from metadataserver.models.nodekey import NodeKey
 from metadataserver.models.scriptset import get_status_from_qs
-from provisioningserver.certificates import Certificate
 from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
 )
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.tags import merge_details_cleanly
-
-SAMPLE_CERTIFICATE = Certificate.generate("maas")
+from provisioningserver.testing.certificates import get_sample_cert
 
 wait_for_reactor = wait_for()
 
@@ -712,12 +710,13 @@ class TestMachineHandler(MAASServerTestCase):
         )
 
     def test_list_no_power_params_certificate(self):
+        sample_cert = get_sample_cert()
         factory.make_Node(
             power_type="lxd",
             power_parameters={
                 "power_address": "lxd.maas",
-                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
-                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+                "certificate": sample_cert.certificate_pem(),
+                "key": sample_cert.private_key_pem(),
             },
         )
         handler = MachineHandler(factory.make_User(), {}, None)
@@ -725,12 +724,13 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertNotIn("certificate", node_info)
 
     def test_get_power_params_certificate(self):
+        sample_cert = get_sample_cert()
         node = factory.make_Node(
             power_type="lxd",
             power_parameters={
                 "power_address": "lxd.maas",
-                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
-                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+                "certificate": sample_cert.certificate_pem(),
+                "key": sample_cert.private_key_pem(),
             },
         )
         handler = MachineHandler(factory.make_User(), {}, None)
@@ -738,9 +738,9 @@ class TestMachineHandler(MAASServerTestCase):
         self.assertEqual(
             result["certificate"],
             {
-                "CN": SAMPLE_CERTIFICATE.cn(),
-                "fingerprint": SAMPLE_CERTIFICATE.cert_hash(),
-                "expiration": SAMPLE_CERTIFICATE.expiration().strftime(
+                "CN": sample_cert.cn(),
+                "fingerprint": sample_cert.cert_hash(),
+                "expiration": sample_cert.expiration().strftime(
                     DATETIME_FORMAT
                 ),
             },

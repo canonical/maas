@@ -64,7 +64,6 @@ from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
-from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     DiscoveredMachine,
     DiscoveredMachineBlockDevice,
@@ -81,7 +80,6 @@ from provisioningserver.utils.constraints import LabeledConstraintMap
 
 wait_for_reactor = wait_for()
 UNDEFINED = object()
-SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 
 class TestBMC(MAASServerTestCase):

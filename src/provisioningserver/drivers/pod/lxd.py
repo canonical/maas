@@ -905,22 +905,23 @@ class LXDPodDriver(PodDriver):
             raise LXDPodError(
                 f"Pod {pod_id}: Failed to connect to the LXD REST API."
             )
-        yield client
-        if cert_paths:
+        else:
+            yield client
+        finally:
             for path in cert_paths:
                 os.unlink(path)
 
     def _get_cert_paths(self, context: dict) -> Optional[Tuple[str, str]]:
         """Return a 2-tuple with paths for temporary files containing cert and key.
 
-        If no certificate or key are provided, None is returned.
+        If no certificate or key are provided, an empty tuple is returned.
 
         If invalid material is passed, an error is raised.
         """
         cert = context.get("certificate")
         key = context.get("key")
         if not cert or not key:
-            return None
+            return ()
 
         cert = Certificate.from_pem(cert, key)
         return cert.tempfiles()

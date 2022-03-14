@@ -14,56 +14,73 @@ from provisioningserver.certificates import (
     CertificateError,
     get_maas_cert_tuple,
 )
-
-SAMPLE_CERT = Certificate.generate("maas")
+from provisioningserver.testing.certificates import get_sample_cert
 
 
 class TestCertificate(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        self.sample_cert = get_sample_cert("maas")
+
     def test_certificate(self):
-        self.assertEqual(SAMPLE_CERT.cn(), "maas")
+        self.assertEqual(self.sample_cert.cn(), "maas")
         self.assertGreaterEqual(
             datetime.utcnow() + timedelta(days=3650),
-            SAMPLE_CERT.expiration(),
+            self.sample_cert.expiration(),
         )
         self.assertTrue(
-            SAMPLE_CERT.certificate_pem().startswith(
+            self.sample_cert.certificate_pem().startswith(
                 "-----BEGIN CERTIFICATE-----"
             )
         )
         self.assertTrue(
-            SAMPLE_CERT.public_key_pem().startswith(
+            self.sample_cert.public_key_pem().startswith(
                 "-----BEGIN PUBLIC KEY-----"
             )
         )
         self.assertTrue(
-            SAMPLE_CERT.private_key_pem().startswith(
+            self.sample_cert.private_key_pem().startswith(
                 "-----BEGIN PRIVATE KEY-----"
             )
         )
 
     def test_from_pem_single_material(self):
         cert = Certificate.from_pem(
-            SAMPLE_CERT.certificate_pem() + SAMPLE_CERT.private_key_pem()
+            self.sample_cert.certificate_pem()
+            + self.sample_cert.private_key_pem()
         )
-        self.assertEqual(SAMPLE_CERT.certificate_pem(), cert.certificate_pem())
-        self.assertEqual(SAMPLE_CERT.private_key_pem(), cert.private_key_pem())
+        self.assertEqual(
+            self.sample_cert.certificate_pem(), cert.certificate_pem()
+        )
+        self.assertEqual(
+            self.sample_cert.private_key_pem(), cert.private_key_pem()
+        )
 
     def test_from_pem_multiple_material(self):
         cert = Certificate.from_pem(
-            SAMPLE_CERT.certificate_pem(), SAMPLE_CERT.private_key_pem()
+            self.sample_cert.certificate_pem(),
+            self.sample_cert.private_key_pem(),
         )
-        self.assertEqual(SAMPLE_CERT.certificate_pem(), cert.certificate_pem())
-        self.assertEqual(SAMPLE_CERT.private_key_pem(), cert.private_key_pem())
+        self.assertEqual(
+            self.sample_cert.certificate_pem(), cert.certificate_pem()
+        )
+        self.assertEqual(
+            self.sample_cert.private_key_pem(), cert.private_key_pem()
+        )
 
     def test_from_pem_multiple_material_adds_newlines(self):
         # material entries are joined with a newline since each PEM material
         # must start on a new line to be valid
         cert = Certificate.from_pem(
-            SAMPLE_CERT.certificate_pem().strip(),
-            SAMPLE_CERT.private_key_pem().strip(),
+            self.sample_cert.certificate_pem().strip(),
+            self.sample_cert.private_key_pem().strip(),
         )
-        self.assertEqual(SAMPLE_CERT.certificate_pem(), cert.certificate_pem())
-        self.assertEqual(SAMPLE_CERT.private_key_pem(), cert.private_key_pem())
+        self.assertEqual(
+            self.sample_cert.certificate_pem(), cert.certificate_pem()
+        )
+        self.assertEqual(
+            self.sample_cert.private_key_pem(), cert.private_key_pem()
+        )
 
     def test_from_pem_invalid_material(self):
         error = self.assertRaises(
@@ -74,14 +91,14 @@ class TestCertificate(MAASTestCase):
     def test_from_pem_private_key_with_passphrase(self):
         encrypted_privatekey_pem = crypto.dump_privatekey(
             crypto.FILETYPE_PEM,
-            SAMPLE_CERT.key,
+            self.sample_cert.key,
             cipher="AES128",
             passphrase=b"sekret",
         ).decode("ascii")
         error = self.assertRaises(
             CertificateError,
             Certificate.from_pem,
-            SAMPLE_CERT.certificate_pem(),
+            self.sample_cert.certificate_pem(),
             encrypted_privatekey_pem,
         )
         self.assertEqual(str(error), "Private key can't have a passphrase")
@@ -90,13 +107,13 @@ class TestCertificate(MAASTestCase):
         error = self.assertRaises(
             CertificateError,
             Certificate.from_pem,
-            SAMPLE_CERT.certificate_pem(),
+            self.sample_cert.certificate_pem(),
         )
         self.assertEqual(str(error), "Invalid PEM material")
 
     def test_from_pem_check_keys_match(self):
         cert = Certificate.generate("maas")
-        material = SAMPLE_CERT.certificate_pem() + cert.private_key_pem()
+        material = self.sample_cert.certificate_pem() + cert.private_key_pem()
         error = self.assertRaises(
             CertificateError,
             Certificate.from_pem,
@@ -105,12 +122,12 @@ class TestCertificate(MAASTestCase):
         self.assertEqual(str(error), "Private and public keys don't match")
 
     def test_tempfiles(self):
-        cert_file, key_file = SAMPLE_CERT.tempfiles()
+        cert_file, key_file = self.sample_cert.tempfiles()
         self.assertEqual(
-            Path(cert_file).read_text(), SAMPLE_CERT.certificate_pem()
+            Path(cert_file).read_text(), self.sample_cert.certificate_pem()
         )
         self.assertEqual(
-            Path(key_file).read_text(), SAMPLE_CERT.private_key_pem()
+            Path(key_file).read_text(), self.sample_cert.private_key_pem()
         )
 
     def test_generate_certificate_defaults(self):

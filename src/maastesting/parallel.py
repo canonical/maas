@@ -61,7 +61,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         return command
 
     def run(self, result):
-        with tempfile.NamedTemporaryFile() as log:
+        with tempfile.NamedTemporaryFile(prefix="maas-parallel-test") as log:
             try:
                 okay = self._run(result, log)
             except Exception:

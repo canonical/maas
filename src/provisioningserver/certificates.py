@@ -135,8 +135,9 @@ class Certificate(NamedTuple):
             os.close(fileno)
             return path
 
-        return write_temp(self.certificate_pem()), write_temp(
-            self.private_key_pem()
+        return (
+            write_temp(self.certificate_pem()),
+            write_temp(self.private_key_pem()),
         )
 
     @staticmethod

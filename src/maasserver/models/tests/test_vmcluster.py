@@ -18,10 +18,9 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
-from provisioningserver.certificates import Certificate
+from provisioningserver.testing.certificates import get_sample_cert
 
 wait_for_reactor = wait_for()
-SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 
 class TestVMClusterManager(MAASServerTestCase):
@@ -525,8 +524,9 @@ class TestVMCluster(MAASServerTestCase):
 
     def test_update_cluster_certificate_updates_peers_with_same_cert(self):
         cluster = factory.make_VMCluster(pods=3)
-        cert = SAMPLE_CERT.certificate_pem()
-        key = SAMPLE_CERT.private_key_pem()
+        sample_cert = get_sample_cert()
+        cert = sample_cert.certificate_pem()
+        key = sample_cert.private_key_pem()
         cluster.update_certificate(cert, key)
 
         creds = [
@@ -537,8 +537,8 @@ class TestVMCluster(MAASServerTestCase):
             for vmhost in cluster.hosts()
         ]
         for cert, key in creds:
-            self.assertEqual(cert, SAMPLE_CERT.certificate_pem())
-            self.assertEqual(key, SAMPLE_CERT.private_key_pem())
+            self.assertEqual(cert, sample_cert.certificate_pem())
+            self.assertEqual(key, sample_cert.private_key_pem())
 
 
 class TestVMClusterDelete(MAASTransactionServerTestCase):

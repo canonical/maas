@@ -27,7 +27,6 @@ from maasserver.websockets.base import DATETIME_FORMAT
 from maasserver.websockets.handlers import pod as pod_module
 from maasserver.websockets.handlers.pod import ComposeMachineForm, PodHandler
 from maastesting.crochet import wait_for
-from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredPod,
@@ -36,8 +35,7 @@ from provisioningserver.drivers.pod import (
     InterfaceAttachType,
 )
 from provisioningserver.rpc.cluster import DiscoverPodProjects
-
-SAMPLE_CERTIFICATE = Certificate.generate("maas")
+from provisioningserver.testing.certificates import get_sample_cert
 
 wait_for_reactor = wait_for()
 
@@ -135,10 +133,11 @@ class TestPodHandler(MAASTransactionServerTestCase):
     def test_get(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)
+        sample_cert = get_sample_cert()
         power_params = {
             "power_address": "1.2.3.4",
-            "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
-            "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            "certificate": sample_cert.certificate_pem(),
+            "key": sample_cert.private_key_pem(),
             "project": "maas",
         }
         pod = self.make_pod_with_hints(
@@ -167,10 +166,11 @@ class TestPodHandler(MAASTransactionServerTestCase):
     def test_get_with_storage_pool(self):
         admin = factory.make_admin()
         handler = PodHandler(admin, {}, None)
+        sample_cert = get_sample_cert()
         power_params = {
             "power_address": "1.2.3.4",
-            "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
-            "key": SAMPLE_CERTIFICATE.private_key_pem(),
+            "certificate": sample_cert.certificate_pem(),
+            "key": sample_cert.private_key_pem(),
             "project": "maas",
         }
         pod = self.make_pod_with_hints(
@@ -587,11 +587,12 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertThat(result["boot_vlans"], Equals([]))
 
     def test_get_with_certificate_info(self):
+        sample_cert = get_sample_cert()
         pod = self.make_pod_with_hints(
             pod_type="lxd",
             parameters={
-                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
-                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+                "certificate": sample_cert.certificate_pem(),
+                "key": sample_cert.private_key_pem(),
             },
         )
         handler = PodHandler(factory.make_User(), {}, None)
@@ -599,9 +600,9 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertEqual(
             result["certificate"],
             {
-                "CN": SAMPLE_CERTIFICATE.cn(),
-                "fingerprint": SAMPLE_CERTIFICATE.cert_hash(),
-                "expiration": SAMPLE_CERTIFICATE.expiration().strftime(
+                "CN": sample_cert.cn(),
+                "fingerprint": sample_cert.cert_hash(),
+                "expiration": sample_cert.expiration().strftime(
                     DATETIME_FORMAT
                 ),
             },
@@ -667,11 +668,12 @@ class TestPodHandler(MAASTransactionServerTestCase):
         self.assertEqual(result["resources"]["vms"], [])
 
     def test_full_dehydrate_for_list_no_cert_metadata(self):
+        sample_cert = get_sample_cert()
         pod = self.make_pod_with_hints(
             pod_type="lxd",
             parameters={
-                "certificate": SAMPLE_CERTIFICATE.certificate_pem(),
-                "key": SAMPLE_CERTIFICATE.private_key_pem(),
+                "certificate": sample_cert.certificate_pem(),
+                "key": sample_cert.private_key_pem(),
             },
         )
         handler = PodHandler(factory.make_User(), {}, None)

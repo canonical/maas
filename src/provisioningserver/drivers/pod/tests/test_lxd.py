@@ -2,9 +2,11 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import dataclasses
+from functools import lru_cache
 from os.path import exists, join
 from pathlib import Path
 import random
+import tempfile
 from typing import Optional, Tuple
 from unittest.mock import ANY, MagicMock, Mock, PropertyMock, sentinel
 
@@ -15,7 +17,6 @@ from twisted.internet.defer import inlineCallbacks
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
-from provisioningserver.certificates import Certificate
 from provisioningserver.drivers.pod import (
     Capabilities,
     DiscoveredMachineBlockDevice,
@@ -34,6 +35,10 @@ from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
 from provisioningserver.rpc.exceptions import PodInvalidResources
+from provisioningserver.testing.certificates import (
+    get_sample_cert,
+    SampleCertificateFixture,
+)
 from provisioningserver.utils import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
@@ -253,9 +258,6 @@ class FakeLXDCluster:
         return client
 
 
-SAMPLE_CERT = Certificate.generate("maas")
-
-
 def _make_maas_certs(test_case):
     tempdir = Path(test_case.useFixture(TempDir()).path)
     test_case.useFixture(EnvironmentVariable("MAAS_ROOT", str(tempdir)))
@@ -268,7 +270,10 @@ def _make_maas_certs(test_case):
     return str(maas_cert), str(maas_key)
 
 
-def _make_context(with_cert=True, with_password=True, extra=None):
+@lru_cache()
+def _make_context(
+    with_cert=True, with_password=True, extra=(), sample_cert=None
+):
     params = {
         "power_address": "".join(
             [
@@ -280,13 +285,13 @@ def _make_context(with_cert=True, with_password=True, extra=None):
         "project": factory.make_name("project"),
     }
     if with_cert:
-        params["certificate"] = SAMPLE_CERT.certificate_pem()
-        params["key"] = SAMPLE_CERT.private_key_pem()
+        if sample_cert is None:
+            sample_cert = get_sample_cert()
+        params["certificate"] = sample_cert.certificate_pem()
+        params["key"] = sample_cert.private_key_pem()
     if with_password:
         params["password"] = factory.make_name("password")
-    if not extra:
-        extra = {}
-    return {**params, **extra}
+    return {**params, **dict(extra)}
 
 
 class TestClusteredLXDPodDriver(MAASTestCase):
@@ -302,7 +307,7 @@ class TestClusteredLXDPodDriver(MAASTestCase):
     def make_maas_certs(self):
         return _make_maas_certs(self)
 
-    def make_context(self, with_cert=True, with_password=True, extra=None):
+    def make_context(self, with_cert=True, with_password=True, extra=()):
         return _make_context(with_cert, with_password, extra)
 
     @inlineCallbacks
@@ -400,12 +405,21 @@ class TestLXDPodDriver(MAASTestCase):
         self.fake_lxd = FakeLXD()
         self.driver = lxd_module.LXDPodDriver()
         self.driver._pylxd_client_class = self.fake_lxd.make_client
+        fixture = self.useFixture(
+            SampleCertificateFixture(
+                Path(tempfile.gettempdir()) / "maas-test-cert.pem"
+            )
+        )
+
+        self.sample_cert = fixture.cert
 
     def make_maas_certs(self):
         return _make_maas_certs(self)
 
-    def make_context(self, with_cert=True, with_password=True, extra=None):
-        return _make_context(with_cert, with_password, extra)
+    def make_context(self, with_cert=True, with_password=True, extra=()):
+        return _make_context(
+            with_cert, with_password, extra, sample_cert=self.sample_cert
+        )
 
     def test_missing_packages(self):
         self.assertEqual(self.driver.detect_missing_packages(), [])
@@ -467,7 +481,7 @@ class TestLXDPodDriver(MAASTestCase):
 
     def test_get_client_with_invalid_certificate_or_key(self):
         context = self.make_context(
-            extra={"certificate": "random", "key": "stuff"}
+            extra=(("certificate", "random"), ("key", "stuff"))
         )
         pod_id = factory.make_name("pod_id")
         error_msg = f"VM Host {pod_id}: Invalid PEM material"
@@ -488,7 +502,7 @@ class TestLXDPodDriver(MAASTestCase):
         client_with_builtin_certs = self.fake_lxd.clients[1]
         self.assertEqual(client_with_builtin_certs.cert, maas_certs)
         client_with_builtin_certs.certificates.create.assert_called_with(
-            "", SAMPLE_CERT.certificate_pem().encode("ascii")
+            "", self.sample_cert.certificate_pem().encode("ascii")
         )
 
     def test_get_client_with_certificate_and_key_untrusted(self):
@@ -507,7 +521,7 @@ class TestLXDPodDriver(MAASTestCase):
         # the builtin cert is used to try to trust the provided one
         client_with_builtin_certs = self.fake_lxd.clients[1]
         client_with_builtin_certs.certificates.create.assert_called_with(
-            "", SAMPLE_CERT.certificate_pem().encode("ascii")
+            "", self.sample_cert.certificate_pem().encode("ascii")
         )
 
     def test_get_client_default_project(self):
