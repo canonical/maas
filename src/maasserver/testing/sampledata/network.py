@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from netaddr import IPNetwork
 
@@ -10,7 +10,9 @@ from maastesting.factory import factory
 from .defs import MACHINES_PER_FABRIC
 
 
-def make_networks(count_per_fabric: int, fabrics_count):
+def make_networks(
+    count_per_fabric: int, fabrics_count
+) -> Tuple[Dict[Fabric, List[VLAN]], Dict[VLAN, IPNetwork]]:
     fabrics = [Fabric.objects.create() for _ in range(fabrics_count)]
     vlans = {}
     ip_networks = {}
@@ -34,18 +36,19 @@ def make_networks(count_per_fabric: int, fabrics_count):
 
 def make_network_interfaces(
     machine_infos: List[FakeCommissioningData],
-    vlans: Dict[Fabric, VLAN],
+    vlans: Dict[Fabric, List[VLAN]],
     ip_networks: Dict[VLAN, IPNetwork],
 ):
     machine_infos = list(machine_infos)
-    for vlans in vlans.values():
-        fabric_machine_infos = [
-            machine_infos.pop()
-            for _ in range(MACHINES_PER_FABRIC)
-            if machine_infos
-        ]
+    for fabric_vlans in vlans.values():
+        if not machine_infos:
+            return
+        fabric_machine_infos, machine_infos = (
+            machine_infos[:MACHINES_PER_FABRIC],
+            machine_infos[MACHINES_PER_FABRIC:],
+        )
         for machine_info in fabric_machine_infos:
-            for vlan in vlans:
+            for vlan in fabric_vlans:
                 network = machine_info.create_physical_network()
                 ip_network = ip_networks[vlan]
                 ip = factory.pick_ip_in_network(ip_network)
