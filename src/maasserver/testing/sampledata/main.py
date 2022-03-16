@@ -107,6 +107,12 @@ def setup_django(
             "level": "DEBUG",
             "handlers": ["console"],
         }
+    if setting == "development":
+        # revert the default password hasher since the dev settings use the MD5
+        # one
+        config["PASSWORD_HASHERS"] = [
+            "django.contrib.auth.hashers.PBKDF2PasswordHasher"
+        ]
     # override db settings if specified
     db_config = config["DATABASES"]["default"]
     if db_host:
