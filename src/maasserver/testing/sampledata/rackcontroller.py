@@ -29,6 +29,7 @@ def make_rackcontrollers(
 ):
 
     rackcontrollers = []
+    running_version = version.get_running_version()
 
     for rackcontroller_info in rackcontroller_infos:
         hostname = rackcontroller_info.environment["server_name"]
@@ -47,7 +48,7 @@ def make_rackcontrollers(
         rackcontrollers.append(rackcontroller)
 
         ControllerInfo.objects.create(
-            node=rackcontroller, version=version.get_running_version()
+            node=rackcontroller, version=running_version
         )
 
     return rackcontrollers
