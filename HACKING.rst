@@ -333,6 +333,17 @@ used to restore the database::
      --disable-triggers \
      -d maassampledata maasdb.dump
 
+You can review generated data::
+
+    $ sudo maas-test-db.psql
+
+If you don't like an interactive ``psql`` prompt, you can connect via socket
+using other tools like `pgcli`_::
+
+    $ sudo pgcli -h /var/snap/maas-test-db/common/postgres/sockets -U postgres
+
+.. _pgcli: https://www.pgcli.com/install
+
 
 Configuring DHCP
 ^^^^^^^^^^^^^^^^

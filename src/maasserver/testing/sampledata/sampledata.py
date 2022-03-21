@@ -8,6 +8,7 @@ from .defs import (
     EVENT_TYPE_COUNT,
     MACHINES_PER_FABRIC,
     OWNERDATA_PER_MACHINE_COUNT,
+    RACKCONTROLLER_COUNT,
     TAG_COUNT,
     USER_COUNT,
     VLAN_PER_FABRIC_COUNT,
@@ -29,6 +30,11 @@ def generate(
     from .machine import make_machine_infos, make_machines
     from .network import make_network_interfaces, make_networks
     from .ownerdata import make_ownerdata
+    from .rackcontroller import (
+        make_rackcontroller_infos,
+        make_rackcontrollers,
+        make_rackcontrollers_primary_or_secondary,
+    )
     from .storage import make_storage_setup
     from .tag import make_tags
     from .user import make_users
@@ -69,8 +75,19 @@ def generate(
     LOGGER.info("creating machine resources data")
     machine_infos = make_machine_infos(machine_count, hostname_prefix)
 
+    LOGGER.info("creating rackcontroller resources data")
+    rackcontroller_infos = make_rackcontroller_infos(
+        RACKCONTROLLER_COUNT, hostname_prefix
+    )
+
     LOGGER.info("creating network interfaces")
     make_network_interfaces(machine_infos, vlans, ip_networks)
+    make_network_interfaces(rackcontroller_infos, vlans, ip_networks)
+
+    LOGGER.info(f"creating {RACKCONTROLLER_COUNT} rack controllers")
+    make_storage_setup(rackcontroller_infos)
+    rackcontrollers = make_rackcontrollers(rackcontroller_infos, tags)
+    make_rackcontrollers_primary_or_secondary(rackcontrollers, vlans)
 
     LOGGER.info(f"creating {machine_count} machines")
     make_storage_setup(machine_infos)
