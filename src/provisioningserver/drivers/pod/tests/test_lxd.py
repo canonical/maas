@@ -3,6 +3,7 @@
 
 import dataclasses
 from functools import lru_cache
+from os import environ
 from os.path import exists, join
 from pathlib import Path
 import random
@@ -92,6 +93,11 @@ def make_requested_machine(num_disks=1, known_host_interfaces=None, **kwargs):
         known_host_interfaces=known_host_interfaces,
         **kwargs,
     )
+
+
+twisted_test_factory = MAASTwistedRunTest.make_factory(
+    timeout=environ.get("MAAS_WAIT_FOR_REACTOR", 60.0)
+)
 
 
 class TestLXDByteSuffixes(MAASTestCase):
@@ -295,7 +301,8 @@ def _make_context(
 
 
 class TestClusteredLXDPodDriver(MAASTestCase):
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    run_tests_with = twisted_test_factory
 
     def setUp(self):
         super().setUp()
@@ -398,7 +405,7 @@ class TestClusteredLXDPodDriver(MAASTestCase):
 
 class TestLXDPodDriver(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = twisted_test_factory
 
     def setUp(self):
         super().setUp()
