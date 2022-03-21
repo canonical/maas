@@ -4,7 +4,11 @@ from typing import Dict, List, Tuple
 from netaddr import IPNetwork
 
 from maasserver.models import Fabric, Subnet, VLAN
-from maasserver.testing.commissioning import FakeCommissioningData, LXDAddress
+from maasserver.testing.commissioning import (
+    FakeCommissioningData,
+    LXDAddress,
+    LXDNetwork,
+)
 from maastesting.factory import factory
 
 from .defs import MACHINES_PER_FABRIC
@@ -25,6 +29,7 @@ def make_networks(
         ]
         for vlan in vlans[fabric]:
             cidr = factory.make_ipv4_network(slash=24, but_not=created_cidrs)
+            created_cidrs.add(cidr)
             Subnet.objects.create(
                 vlan=vlan,
                 cidr=cidr,
@@ -40,6 +45,13 @@ def make_network_interfaces(
     ip_networks: Dict[VLAN, IPNetwork],
 ):
     machine_infos = list(machine_infos)
+
+    def make_network_ip(vlan: VLAN, network: LXDNetwork):
+        ip_network = ip_networks[vlan]
+        ip = factory.pick_ip_in_network(ip_network)
+        network.addresses = [LXDAddress(str(ip), str(ip_network.prefixlen))]
+        return ip
+
     for fabric_vlans in vlans.values():
         if not machine_infos:
             return
@@ -48,8 +60,23 @@ def make_network_interfaces(
             machine_infos[MACHINES_PER_FABRIC:],
         )
         for machine_info in fabric_machine_infos:
-            for vlan in fabric_vlans:
+            for idx, vlan in enumerate(fabric_vlans):
                 network = machine_info.create_physical_network()
-                ip_network = ip_networks[vlan]
-                ip = factory.pick_ip_in_network(ip_network)
-                network.addresses = [LXDAddress(ip, ip_network.prefixlen)]
+                if idx == 0:
+                    bridge = machine_info.create_bridge_network(
+                        mac_address=network.hwaddr, parents=[network]
+                    )
+                    make_network_ip(vlan, bridge)
+                elif idx == 1:
+                    vlan_iface = machine_info.create_vlan_network(
+                        vid=vlan.vid, parent=network
+                    )
+                    make_network_ip(vlan, vlan_iface)
+                elif idx == 2:
+                    network2 = machine_info.create_physical_network()
+                    bond = machine_info.create_bond_network(
+                        parents=[network, network2]
+                    )
+                    make_network_ip(vlan, bond)
+                else:
+                    make_network_ip(vlan, network)
