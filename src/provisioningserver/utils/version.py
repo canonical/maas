@@ -75,12 +75,12 @@ class MAASVersion:
     @property
     def extended_info(self) -> str:
         """Additional version string. Contains git commit details."""
-        info = ""
+        tokens = []
         if self.revno:
-            info += str(self.revno)
+            tokens.append(str(self.revno))
         if self.git_rev:
-            info += f"-g.{self.git_rev}"
-        return info
+            tokens.append(f"g.{self.git_rev}")
+        return "-".join(tokens)
 
     @classmethod
     def from_string(cls, version: str):
@@ -168,7 +168,7 @@ def _get_maas_repo_hash():
 
 def _get_maas_repo_commit_count():
     """Return the number of commit counts in the git tree, or 0 when not in a tree."""
-    return _git_cmd("rev-list", "--count") or 0
+    return _git_cmd("rev-list", "--count", "HEAD") or 0
 
 
 def _git_cmd(*cmd):

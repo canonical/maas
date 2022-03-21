@@ -74,7 +74,7 @@ class TestGetMAASRepoHash(MAASTestCase):
         self.assertIsInstance(commit_hash, str)
 
 
-class TestMAASVersion(MAASTestCase):
+class TestMAASVersionScenarios(MAASTestCase):
 
     scenarios = (
         (
@@ -254,6 +254,19 @@ class TestMAASVersion(MAASTestCase):
         self.assertEqual(maas_version.main_version, self.main_version)
 
 
+class TestMAASVersion(MAASTestCase):
+    def test_extended_info_no_git_hash_ignore_count(self):
+        version = MAASVersion(
+            major=2,
+            minor=3,
+            point=2,
+            qualifier_type="alpha",
+            qualifier_version=3,
+            git_rev="54f83de",
+        )
+        self.assertEqual(version.extended_info, "g.54f83de")
+
+
 class TestVersionTestCase(MAASTestCase):
     """MAASTestCase that resets the cache used by utility methods."""
 
@@ -300,6 +313,7 @@ class TestGetRunningVersion(TestVersionTestCase):
             "2.10.0b1"
         )
         self.patch(version, "_get_maas_repo_hash").return_value = None
+        self.patch(version, "_get_maas_repo_commit_count").return_value = 0
         maas_version = get_running_version()
         self.assertEqual(maas_version.short_version, "2.10.0~beta1")
         self.assertEqual(maas_version.extended_info, "")
