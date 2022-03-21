@@ -1,7 +1,7 @@
 [Unit]
 Description=Timer for periodically running MAAS hardware sync
 Documentation=https://maas.io
-Want=network.target
+Wants=network.target
 After=network.target
 
 [Install]

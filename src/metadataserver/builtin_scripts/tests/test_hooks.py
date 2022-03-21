@@ -29,7 +29,7 @@ from maasserver.models import (
     Tag,
     VLAN,
 )
-from maasserver.models import Config, Event, Interface
+from maasserver.models import Config, Event, EventType, Interface
 from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.storage_custom import ConfigError
@@ -41,6 +41,11 @@ from maastesting.matchers import MockNotCalled
 from maastesting.testcase import MAASTestCase
 import metadataserver.builtin_scripts.hooks as hooks_module
 from metadataserver.builtin_scripts.hooks import (
+    _hardware_sync_block_device_notify,
+    _hardware_sync_cpu_notify,
+    _hardware_sync_memory_notify,
+    _hardware_sync_node_device_notify,
+    _hardware_sync_notify,
     _update_node_physical_block_devices,
     add_switch_vendor_model_tags,
     create_metadata_by_modalias,
@@ -55,9 +60,13 @@ from metadataserver.builtin_scripts.hooks import (
     update_node_fruid_metadata,
     update_node_network_information,
 )
-from metadataserver.enum import HARDWARE_TYPE, SCRIPT_TYPE
+from metadataserver.enum import (
+    HARDWARE_SYNC_ACTIONS,
+    HARDWARE_TYPE,
+    SCRIPT_TYPE,
+)
 from metadataserver.models import ScriptSet
-from provisioningserver.events import EVENT_TYPES
+from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
     KERNEL_CMDLINE_OUTPUT_NAME,
 )
@@ -3852,3 +3861,151 @@ class TestParseBootifCmdline(MAASTestCase):
 
     def test_bootif_too_few(self):
         self.assertIsNone(parse_bootif_cmdline("BOOTIF=01-02-03-04-05-06"))
+
+
+class TestHardwareSyncNotify(MAASServerTestCase):
+    def setup(self):
+        details = EVENT_DETAILS[EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE]
+        EventType.objects.register(
+            details.name, details.description, details.level
+        )
+
+    def test_hardware_sync_notify_does_not_create_event_without_hw_sync(self):
+        node = factory.make_Node()
+        block_device = factory.make_BlockDevice(node=node)
+        _hardware_sync_notify(
+            EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE,
+            node,
+            block_device,
+            HARDWARE_SYNC_ACTIONS.ADDED,
+        )
+        self.assertEqual(0, Event.objects.count())
+
+    def test_hardware_sync_notify_does_not_create_event_if_not_deployed(self):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.COMMISSIONING
+        )
+        block_device = factory.make_BlockDevice(node=node)
+        _hardware_sync_notify(
+            EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE,
+            node,
+            block_device,
+            HARDWARE_SYNC_ACTIONS.ADDED,
+        )
+        self.assertEqual(0, Event.objects.count())
+
+    def test_hardware_sync_notify_creates_event(self):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        block_device = factory.make_BlockDevice(node=node)
+        _hardware_sync_notify(
+            EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE,
+            node,
+            block_device,
+            HARDWARE_SYNC_ACTIONS.ADDED,
+        )
+        self.assertEqual(1, Event.objects.count())
+
+
+class TestHardwareSyncBlockDeviceNotify(MAASServerTestCase):
+    def setup(self):
+        details = EVENT_DETAILS[EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE]
+        EventType.objects.register(
+            details.name, details.description, details.level
+        )
+
+    def test_hardware_sync_block_device_notify_creates_event(self):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        block_device = factory.make_BlockDevice(node=node)
+        _hardware_sync_block_device_notify(
+            node, block_device, HARDWARE_SYNC_ACTIONS.ADDED
+        )
+        event = Event.objects.get(
+            type__name=EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE
+        )
+        self.assertEqual(event.action, HARDWARE_SYNC_ACTIONS.ADDED)
+        self.assertEqual(
+            event.description,
+            f"{block_device.name} was added on node {node.system_id}",
+        )
+
+
+class TestHardwareSyncNodeDeviceNotify(MAASServerTestCase):
+    def setup(self):
+        pci_details = EVENT_DETAILS[EVENT_TYPES.NODE_HARDWARE_SYNC_PCI_DEVICE]
+        usb_details = EVENT_DETAILS[EVENT_TYPES.NODE_HARDWARE_SYNC_USB_DEVICE]
+        EventType.objects.register(
+            pci_details.name, pci_details.description, pci_details.level
+        )
+        EventType.objects.register(
+            usb_details.name, usb_details.description, usb_details.level
+        )
+
+    def test_hardware_sync_node_device_notify_creates_pci_event_for_pci_device(
+        self,
+    ):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        pci_device = factory.make_NodeDevice(bus=NODE_DEVICE_BUS.PCIE)
+        _hardware_sync_node_device_notify(
+            node, pci_device, HARDWARE_SYNC_ACTIONS.ADDED
+        )
+        event = Event.objects.get(
+            type__name=EVENT_TYPES.NODE_HARDWARE_SYNC_PCI_DEVICE
+        )
+        self.assertEqual(event.action, HARDWARE_SYNC_ACTIONS.ADDED)
+        self.assertEqual(
+            event.description,
+            f"{pci_device.device_number} was added on node {node.system_id}",
+        )
+
+
+class TestHardwareSyncCPUNotify(MAASServerTestCase):
+    def setup(self):
+        details = EVENT_DETAILS[EVENT_TYPES.NODE_HARDWARE_SYNC_CPU]
+        EventType.objects.register(
+            details.name, details.description, details.level
+        )
+
+    def test_hardware_sync_cpu_notify_creates_cpu_event(self):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        cpu_model = factory.make_name("cpu-model")
+        _hardware_sync_cpu_notify(node, cpu_model, HARDWARE_SYNC_ACTIONS.ADDED)
+        event = Event.objects.get(
+            type__name=EVENT_TYPES.NODE_HARDWARE_SYNC_CPU
+        )
+        self.assertEqual(event.action, HARDWARE_SYNC_ACTIONS.ADDED)
+        self.assertEqual(
+            event.description,
+            f"{cpu_model} was added on node {node.system_id}",
+        )
+
+
+class TestHardwareSyncMemoryNotify(MAASServerTestCase):
+    def setup(self):
+        details = EVENT_DETAILS[EVENT_TYPES.NODE_HARDWARE_SYNC_MEMORY]
+        EventType.objects.register(
+            details.name, details.description, details.level
+        )
+
+    def test_hardware_sync_memory_notify_creates_memory(self):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        old_memory = node.memory
+        node.memory = 1073741824
+        _hardware_sync_memory_notify(node, old_memory)
+        event = Event.objects.get(
+            type__name=EVENT_TYPES.NODE_HARDWARE_SYNC_MEMORY
+        )
+        self.assertEqual(event.action, HARDWARE_SYNC_ACTIONS.ADDED)
+        self.assertEqual(
+            event.description,
+            f"1.1 GB of memory was added on node {node.system_id}",
+        )

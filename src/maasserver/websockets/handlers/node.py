@@ -307,9 +307,9 @@ class NodeHandler(TimestampedModelHandler):
         if obj.enable_hw_sync:
             data.update(
                 {
-                    "last_sync": obj.last_sync,
+                    "last_sync": dehydrate_datetime(obj.last_sync),
                     "sync_interval": obj.sync_interval,
-                    "next_sync": obj.next_sync,
+                    "next_sync": dehydrate_datetime(obj.next_sync),
                 }
             )
         else:

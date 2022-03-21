@@ -69,6 +69,14 @@ class EVENT_TYPES:
     NODE_EXITING_RESCUE_MODE_EVENT_FAILED = (
         "NODE_EXITING_RESCUE_MODE_EVENT_FAILED"
     )
+    # Node hardware sync events
+    NODE_HARDWARE_SYNC_BMC = "NODE_HARDWARE_SYNC_BMC"
+    NODE_HARDWARE_SYNC_BLOCK_DEVICE = "NODE_HARDWARE_SYNC_BLOCK_DEVICE"
+    NODE_HARDWARE_SYNC_CPU = "NODE_HARDWARE_SYNC_CPU"
+    NODE_HARDWARE_SYNC_INTERFACE = "NODE_HARDWARE_SYNC_INTERFACE"
+    NODE_HARDWARE_SYNC_MEMORY = "NODE_HARDWARE_SYNC_MEMORY"
+    NODE_HARDWARE_SYNC_PCI_DEVICE = "NODE_HARDWARE_SYNC_PCI_DEVICE"
+    NODE_HARDWARE_SYNC_USB_DEVICE = "NODE_HARDWARE_SYNC_USB_DEVICE"
     # Node user request events
     REQUEST_NODE_START_COMMISSIONING = "REQUEST_NODE_START_COMMISSIONING"
     REQUEST_NODE_ABORT_COMMISSIONING = "REQUEST_NODE_ABORT_COMMISSIONING"
@@ -241,6 +249,27 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_EXITING_RESCUE_MODE_EVENT_FAILED: EventDetail(
         description="Node exiting rescue mode failure", level=ERROR
+    ),
+    EVENT_TYPES.NODE_HARDWARE_SYNC_BMC: EventDetail(
+        description="Node BMC hardware sync state change", level=AUDIT
+    ),
+    EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE: EventDetail(
+        description="Node Block Device hardware sync state change", level=AUDIT
+    ),
+    EVENT_TYPES.NODE_HARDWARE_SYNC_CPU: EventDetail(
+        description="Node CPU hardware sync state change", level=AUDIT
+    ),
+    EVENT_TYPES.NODE_HARDWARE_SYNC_INTERFACE: EventDetail(
+        description="Node Interface hardware sync state change", level=AUDIT
+    ),
+    EVENT_TYPES.NODE_HARDWARE_SYNC_MEMORY: EventDetail(
+        description="Node Memory hardware sync state change", level=AUDIT
+    ),
+    EVENT_TYPES.NODE_HARDWARE_SYNC_PCI_DEVICE: EventDetail(
+        description="Node PCI Device hardware sync state change", level=AUDIT
+    ),
+    EVENT_TYPES.NODE_HARDWARE_SYNC_USB_DEVICE: EventDetail(
+        description="Node USB Device hardware sync state chage", level=AUDIT
     ),
     EVENT_TYPES.REQUEST_NODE_START_COMMISSIONING: EventDetail(
         description="User starting node commissioning", level=DEBUG

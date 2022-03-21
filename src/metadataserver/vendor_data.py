@@ -376,7 +376,9 @@ def _get_node_admin_token(node):
     if node.owner:
         token = get_auth_tokens(node.owner).first()
         if token:
-            admin_token = ":".join(token.consumer.key, token.key, token.secret)
+            admin_token = ":".join(
+                [token.consumer.key, token.key, token.secret]
+            )
             if token.consumer.secret:
                 admin_token = f"{admin_token}:{token.consumer.secret}"
     return admin_token
@@ -387,8 +389,8 @@ def generate_hardware_sync_systemd_configuration(node):
     if not node.enable_hw_sync:
         return
 
-    hardware_sync_interval = Config.objects.get_configs(
-        ["hardware_sync_interval"]
+    hardware_sync_interval = Config.objects.get_config(
+        "hardware_sync_interval"
     )
     hardware_sync_timer_tmpl = tempita.Template(
         _get_metadataserver_template(HARDWARE_SYNC_TIMER_TEMPLATE)
@@ -419,6 +421,11 @@ def generate_hardware_sync_systemd_configuration(node):
             "content": hardware_sync_service,
             "path": "/lib/systemd/system/maas_hardware_sync.service",
         },
+    ]
+    yield "runcmd", [
+        "systemctl daemon-reload",
+        "systemctl start maas_hardware_sync.timer",
+        "systemctl enable maas_hardware_sync.timer",
     ]
 
 

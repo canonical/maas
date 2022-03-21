@@ -520,9 +520,9 @@ class TestMachineHandler(MAASServerTestCase):
         if node.enable_hw_sync:
             data.update(
                 {
-                    "last_sync": node.last_sync,
+                    "last_sync": dehydrate_datetime(node.last_sync),
                     "sync_interval": node.sync_interval,
-                    "next_sync": node.next_sync,
+                    "next_sync": dehydrate_datetime(node.next_sync),
                 }
             )
 
@@ -2080,12 +2080,15 @@ class TestMachineHandler(MAASServerTestCase):
         node.last_sync = datetime.now()
         node.save()
         observed = handler.get({"system_id": node.system_id})
-        self.assertEqual(observed["last_sync"], node.last_sync)
+        self.assertEqual(
+            observed["last_sync"], dehydrate_datetime(node.last_sync)
+        )
         self.assertEqual(
             observed["sync_interval"], timedelta(minutes=10).total_seconds()
         )
         self.assertEqual(
-            observed["next_sync"], node.last_sync + timedelta(minutes=10)
+            observed["next_sync"],
+            dehydrate_datetime(node.last_sync + timedelta(minutes=10)),
         )
 
     def test_get_driver_for_series(self):

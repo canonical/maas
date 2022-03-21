@@ -1,6 +1,7 @@
 graft src/maasserver/static
 graft src/maasserver/templates
 graft src/metadataserver/fixtures
+graft src/metadataserver/templates
 graft src/metadataserver/user_data/templates
 graft src/provisioningserver/templates
 include src/provisioningserver/drivers/power/*.xml

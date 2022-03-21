@@ -1,16 +1,16 @@
 [Unit]
 Description=MAAS Hardware Sync Service
 Documentation=https://maas.io
-Want=network.target
+Wants=network.target
 After=network.target
 
 [Service]
-type=oneshot
+Type=oneshot
 ExecStartPre=/usr/bin/wget -O /usr/bin/maas-run-scripts {{ maas_url }}/maas-run-scripts
 ExecStartPre=/bin/chmod 0755 /usr/bin/maas-run-scripts
 ExecStartPre=/usr/bin/maas-run-scripts get-machine-token\
-    --maas-url='{{ maas_url }}'\
-    --admin_toke='{{ admin_token }}'\
+    '{{ maas_url }}'\
+    '{{ admin_token }}'\
     {{ system_id }}\
     {{ token_file_path }}
 ExecStart=/usr/bin/maas-run-scripts report-results --config {{ token_file_path }}

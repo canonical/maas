@@ -717,9 +717,7 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
             enable_hw_sync=True,
         )
         config = generate_hardware_sync_systemd_configuration(node)
-        expected_interval = Config.objects.get_configs(
-            ["hardware_sync_interval"]
-        )
+        expected_interval = Config.objects.get_config("hardware_sync_interval")
 
         maas_url = get_node_maas_url(node)
 

@@ -15,6 +15,7 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.subnet import Subnet
 from maasserver.models.vlan import VLAN
 from maasserver.utils.orm import transactional
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import flatten, sorttop
 from provisioningserver.utils.network import fix_link_addresses
@@ -53,6 +54,14 @@ def get_address_extra(config):
                 "gateway": link.get("gateway"),
             }
     return extra
+
+
+def _hardware_sync_network_device_notify(node, net_device, action):
+    from metadataserver.builtin_scripts.hooks import _hardware_sync_notify
+
+    _hardware_sync_notify(
+        EVENT_TYPES.NODE_HARDWARE_SYNC_INTERFACE, node, net_device.name, action
+    )
 
 
 @synchronous
@@ -128,9 +137,15 @@ def update_node_interfaces(node, data):
     deletion_order = sorttop(deletion_order)
     deletion_order = [sorted(list(items)) for items in deletion_order]
     deletion_order = reversed(list(flatten(deletion_order)))
+
+    from metadataserver.enum import HARDWARE_SYNC_ACTIONS
+
     for delete_id in deletion_order:
         if node.boot_interface_id == delete_id:
             node.boot_interface = None
+        _hardware_sync_network_device_notify(
+            node, current_interfaces[delete_id], HARDWARE_SYNC_ACTIONS.REMOVED
+        )
         current_interfaces[delete_id].delete()
     node.save()
 
@@ -192,6 +207,8 @@ def update_physical_interface(
     :param config: Interface dictionary that was parsed from
         /etc/network/interfaces on the rack controller.
     """
+    from metadataserver.enum import HARDWARE_SYNC_ACTIONS
+
     new_vlan = None
     # In containers, for example, there will be interfaces that are
     # like physical NICs, but they don't have an actual NIC
@@ -217,6 +234,11 @@ def update_physical_interface(
             "acquired": not node.is_commissioning(),
         },
     )
+    if created:
+        _hardware_sync_network_device_notify(
+            node, interface, HARDWARE_SYNC_ACTIONS.ADDED
+        )
+
     if not created and interface.node_config_id != node.current_config_id:
         # MAC address was on a different node. We need to move
         # it to its new owner. In the process we delete all of its
@@ -256,6 +278,10 @@ def update_physical_interface(
     update_physical_links(node, interface, links, new_vlan, update_fields)
     if update_fields:
         interface.save(update_fields=list(update_fields))
+    if not created:
+        _hardware_sync_network_device_notify(
+            node, interface, HARDWARE_SYNC_ACTIONS.UPDATED
+        )
     return interface
 
 
@@ -342,6 +368,8 @@ def update_vlan_interface(node, name, network, links):
     else:
         vlan = None
 
+    from metadataserver.builtin_scripts.hooks import HARDWARE_SYNC_ACTIONS
+
     interface = VLANInterface.objects.filter(
         node_config=node.current_config,
         name=name,
@@ -355,16 +383,26 @@ def update_vlan_interface(node, name, network, links):
             vlan, _ = VLAN.objects.get_or_create(
                 fabric=parent_nic.vlan.fabric, vid=vid
             )
-        interface, _ = VLANInterface.objects.get_or_create(
+        interface, created = VLANInterface.objects.get_or_create(
             node_config=node.current_config,
             name=name,
             parents=[parent_nic],
             vlan=vlan,
             defaults={"acquired": True},
         )
+        _hardware_sync_network_device_notify(
+            node,
+            interface,
+            HARDWARE_SYNC_ACTIONS.ADDED
+            if created
+            else HARDWARE_SYNC_ACTIONS.UPDATED,
+        )
     elif vlan is not None and interface.vlan != vlan:
         interface.vlan = vlan
         interface.save()
+        _hardware_sync_network_device_notify(
+            node, interface, HARDWARE_SYNC_ACTIONS.UPDATED
+        )
 
     update_links(node, interface, links, force_vlan=True)
     return interface

@@ -4,6 +4,7 @@
 """Enumerations meaningful to the metadataserver application."""
 
 __all__ = [
+    "HARDWARE_SYNC_ACTIONS",
     "HARDWARE_TYPE",
     "HARDWARE_TYPE_CHOICES",
     "RESULT_TYPE",
@@ -161,3 +162,9 @@ SCRIPT_PARALLEL_CHOICES = (
     (SCRIPT_PARALLEL.INSTANCE, "Run along other instances of this script"),
     (SCRIPT_PARALLEL.ANY, "Run along any other script."),
 )
+
+
+class HARDWARE_SYNC_ACTIONS:
+    ADDED = "added"
+    REMOVED = "removed"
+    UPDATED = "updated"

@@ -9,6 +9,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_TYPE,
 )
+from maasserver.models import Event, EventType
 from maasserver.models.fabric import Fabric
 from maasserver.models.interface import (
     BondInterface,
@@ -34,9 +35,11 @@ from maasserver.utils.orm import get_one, reload_object
 from maastesting.testcase import MAASTestCase
 from metadataserver.builtin_scripts import network as network_module
 from metadataserver.builtin_scripts.network import (
+    _hardware_sync_network_device_notify,
     get_interface_dependencies,
     update_node_interfaces,
 )
+from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
@@ -2852,4 +2855,27 @@ class TestGetInterfaceDependencies(MAASTestCase):
                 "br1": ["bond0.10", "eth3"],
             },
             dependencies,
+        )
+
+
+class TestHardwareSyncNetworkDeviceNotify(MAASServerTestCase):
+    def setup(self):
+        details = EVENT_DETAILS[EVENT_TYPES.NODE_HARDWARE_SYNC_INTERFACE]
+        EventType.objects.register(
+            details.name, details.description, details.level
+        )
+
+    def test_hardware_sync_network_device_notify(self):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        interface = factory.make_Interface(node=node)
+        _hardware_sync_network_device_notify(node, interface, "added")
+        event = Event.objects.get(
+            type__name=EVENT_TYPES.NODE_HARDWARE_SYNC_INTERFACE
+        )
+        self.assertEqual(event.action, "added")
+        self.assertEqual(
+            event.description,
+            f"{interface.name} was added on node {node.system_id}",
         )

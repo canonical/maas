@@ -36,10 +36,11 @@ from maasserver.storage_custom import (
     get_storage_layout,
     UnappliableLayout,
 )
+from maasserver.utils.converters import human_readable_bytes
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import get_release
 from metadataserver.builtin_scripts.network import update_node_interfaces
-from metadataserver.enum import HARDWARE_TYPE
+from metadataserver.enum import HARDWARE_SYNC_ACTIONS, HARDWARE_TYPE
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
@@ -394,6 +395,9 @@ def _add_or_update_node_device(
         node_device.product_name = device.get("product")
         node_device.commissioning_driver = commissioning_driver
         node_device.save()
+        _hardware_sync_node_device_notify(
+            node, node_device, HARDWARE_SYNC_ACTIONS.UPDATED
+        )
     else:
         pci_address = device.get("pci_address")
         create_args = {
@@ -412,8 +416,10 @@ def _add_or_update_node_device(
             "device_number": device.get("device_address"),
             "pci_address": pci_address,
         }
+
+        node_device = None
         try:
-            NodeDevice.objects.create(**create_args)
+            node_device = NodeDevice.objects.create(**create_args)
         except ValidationError:
             # A device was replaced, delete the old one before creating
             # the new one.
@@ -442,7 +448,11 @@ def _add_or_update_node_device(
             else:
                 qs = qs.filter(**identifier)
             qs.delete()
-            NodeDevice.objects.create(**create_args)
+            node_device = NodeDevice.objects.create(**create_args)
+        finally:
+            _hardware_sync_node_device_notify(
+                node, node_device, HARDWARE_SYNC_ACTIONS.ADDED
+            )
 
 
 def _process_pcie_devices(add_func, data):
@@ -551,6 +561,10 @@ def update_node_devices(
     _process_pcie_devices(add_func, data)
     _process_usb_devices(add_func, data)
 
+    _hardware_sync_node_devices_notify(
+        node, old_devices.values(), HARDWARE_SYNC_ACTIONS.REMOVED
+    )
+
     NodeDevice.objects.filter(
         id__in=[node_device.id for node_device in old_devices.values()]
     ).delete()
@@ -564,10 +578,15 @@ def _process_lxd_resources(node, data):
     node.cpu_count, node.cpu_speed, cpu_model, numa_nodes = parse_lxd_cpuinfo(
         resources
     )
+
+    old_memory = node.memory
     # Update memory.
     node.memory, hugepages_size, numa_nodes_info = _parse_memory(
         resources.get("memory", {}), numa_nodes
     )
+
+    _hardware_sync_memory_notify(node, old_memory)
+
     # Create or update NUMA nodes. This must be kept as a dictionary as not all
     # systems maintain linear continuity. e.g the PPC64 machine in our CI uses
     # 0, 1, 16, 17.
@@ -599,9 +618,15 @@ def _process_lxd_resources(node, data):
     )
 
     if cpu_model:
-        NodeMetadata.objects.update_or_create(
+        _, created = NodeMetadata.objects.update_or_create(
             node=node, key="cpu_model", defaults={"value": cpu_model}
         )
+
+        # in the case of hardware sync for a cpu, a new one is added if this value has been updated
+        if not created:
+            _hardware_sync_cpu_notify(
+                node, cpu_model, HARDWARE_SYNC_ACTIONS.ADDED
+            )
 
     _process_system_information(node, resources.get("system", {}))
 
@@ -719,6 +744,87 @@ def _condense_luns(disks):
     return sorted(processed_disks, key=itemgetter("id"))
 
 
+def _hardware_sync_notify(ev_type, node, device_name, action):
+    """
+    creates an event for hardware sync detectd updates
+    """
+    if not (node.enable_hw_sync and node.status == NODE_STATUS.DEPLOYED):
+        return
+
+    Event.objects.create_node_event(
+        node.system_id,
+        ev_type,
+        event_action=action,
+        event_description=f"{device_name} was {action} on node {node.system_id}",
+    )
+
+
+def _hardware_sync_block_device_notify(node, block_device, action):
+    _hardware_sync_notify(
+        EVENT_TYPES.NODE_HARDWARE_SYNC_BLOCK_DEVICE,
+        node,
+        block_device.name,
+        action,
+    )
+
+
+def _hardware_sync_block_devices_notify(node, block_devices, action):
+    [
+        _hardware_sync_block_device_notify(node, bd, action)
+        for bd in block_devices
+    ]
+
+
+def _hardware_sync_PCI_device_notify(node, pci_device, action):
+    _hardware_sync_notify(
+        EVENT_TYPES.NODE_HARDWARE_SYNC_PCI_DEVICE,
+        node,
+        pci_device.device_number,
+        action,
+    )
+
+
+def _hardware_sync_USB_device_notify(node, usb_device, action):
+    _hardware_sync_notify(
+        EVENT_TYPES.NODE_HARDWARE_SYNC_USB_DEVICE,
+        node,
+        usb_device.device_number,
+        action,
+    )
+
+
+def _hardware_sync_node_device_notify(node, device, action):
+    if device.is_pcie:
+        _hardware_sync_PCI_device_notify(node, device, action)
+    else:
+        _hardware_sync_USB_device_notify(node, device, action)
+
+
+def _hardware_sync_node_devices_notify(node, devices, action):
+    [
+        _hardware_sync_node_device_notify(node, device, action)
+        for device in devices
+    ]
+
+
+def _hardware_sync_cpu_notify(node, cpu_model, action):
+    _hardware_sync_notify(
+        EVENT_TYPES.NODE_HARDWARE_SYNC_CPU, node, cpu_model, action
+    )
+
+
+def _hardware_sync_memory_notify(node, old_size):
+    diff = node.memory - old_size
+    _hardware_sync_notify(
+        EVENT_TYPES.NODE_HARDWARE_SYNC_MEMORY,
+        node,
+        f"{human_readable_bytes(diff)} of memory",
+        HARDWARE_SYNC_ACTIONS.ADDED
+        if diff > 0
+        else HARDWARE_SYNC_ACTIONS.REMOVED,
+    )
+
+
 def _update_node_physical_block_devices(
     node, data, numa_nodes, custom_storage_config=None
 ):
@@ -802,6 +908,9 @@ def _update_node_physical_block_devices(
             block_device.firmware_version = firmware_version
             block_device.tags = tags
             block_device.save()
+            _hardware_sync_block_device_notify(
+                node, block_device, HARDWARE_SYNC_ACTIONS.UPDATED
+            )
         else:
             # MAAS doesn't allow disks smaller than 4MiB so skip them
             if size <= MIN_BLOCK_DEVICE_SIZE:
@@ -822,6 +931,9 @@ def _update_node_physical_block_devices(
                 model=model,
                 serial=serial,
                 firmware_version=firmware_version,
+            )
+            _hardware_sync_block_device_notify(
+                node, block_device, HARDWARE_SYNC_ACTIONS.ADDED
             )
 
         if block_info.get("pci_address"):
@@ -853,6 +965,9 @@ def _update_node_physical_block_devices(
         PhysicalBlockDevice.objects.filter(
             id__in=delete_block_device_ids
         ).delete()
+        _hardware_sync_block_devices_notify(
+            node, previous_block_devices, HARDWARE_SYNC_ACTIONS.REMOVED
+        )
 
     if node.is_commissioning():
         # Layouts need to be set last so removed disks aren't included in the
