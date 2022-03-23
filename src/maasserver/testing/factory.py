@@ -568,8 +568,6 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(updated=updated)
         if created is not None:
             Node.objects.filter(id=node.id).update(created=created)
-        for _ in range(0, random.randint(10, 20)):
-            self.make_NodeDevice(node=node)
         return reload_object(node)
 
     def make_Machine(self, *args, **kwargs):
@@ -2685,9 +2683,9 @@ class Factory(maastesting.factory.Factory):
             firmware_version=firmware_version,
             numa_node=numa_node,
         )
-        # Only NVMe drives have a NodeDevice assoicated with them since
-        # they are PCIE devices. Don't always create them.
-        if pcie or self.pick_bool():
+        # Only NVMe drives have a NodeDevice associated with them since
+        # they are PCIE devices.
+        if pcie:
             self.make_NodeDevice(
                 bus=NODE_DEVICE_BUS.PCIE,
                 hardware_type=HARDWARE_TYPE.STORAGE,

@@ -1,8 +1,6 @@
 # Copyright 2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `maasserver.websockets.handlers.node_device`"""
-
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import dehydrate_datetime, HandlerPKError
@@ -35,12 +33,16 @@ class TestNodeDeviceHandler(MAASServerTestCase):
     def test_list(self):
         user = factory.make_User()
         handler = NodeDeviceHandler(user, {}, None)
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node()
         factory.make_Node()
+        node_devices = [
+            factory.make_NodeDevice(node=node),
+            factory.make_NodeDevice(node=node),
+        ]
         self.assertCountEqual(
             [
                 self.dehydrate_node_device(node_device)
-                for node_device in node.current_config.nodedevice_set.all()
+                for node_device in node_devices
             ],
             handler.list({"system_id": node.system_id}),
         )

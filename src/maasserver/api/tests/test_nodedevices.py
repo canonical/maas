@@ -1,7 +1,6 @@
 # Copyright 2017-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the node devices API."""
 import http.client
 
 from django.urls import reverse
@@ -16,170 +15,90 @@ from metadataserver.enum import HARDWARE_TYPE_CHOICES
 
 
 class TestNodeDevicesAPI(APITestCase.ForUser):
-    """Tests for /api/2.0/nodes/<system_id>/devices/."""
+    def test_hander_path(self):
+        node = factory.make_Node()
+        self.assertEqual(
+            reverse("node_devices_handler", args=[node.system_id]),
+            f"/MAAS/api/2.0/nodes/{node.system_id}/devices/",
+        )
+
+    def test_GET(self):
+        node = factory.make_Node()
+        node_devices = [
+            factory.make_NodeDevice(node=node),
+            factory.make_NodeDevice(node=node),
+        ]
+        response = self.client.get(
+            f"/MAAS/api/2.0/nodes/{node.system_id}/devices/",
+        )
+        self.assertThat(response, HasStatusCode(http.client.OK))
+        self.assertCountEqual(
+            [node_device.id for node_device in node_devices],
+            [node_device["id"] for node_device in response.json()],
+        )
+
+
+class TestNodeDevicesAPIFilter(APITestCase.ForUser):
+
+    scenarios = [
+        ("filter=bus", {"choices": NODE_DEVICE_BUS_CHOICES, "key": "bus"}),
+        (
+            "filter=hardware_type",
+            {"choices": HARDWARE_TYPE_CHOICES, "key": "hardware_type"},
+        ),
+        (
+            "filter=vendor_id",
+            {
+                "choices": lambda: factory.make_hex_string(4),
+                "key": "vendor_id",
+            },
+        ),
+        (
+            "filter=product_id",
+            {
+                "choices": lambda: factory.make_hex_string(4),
+                "key": "product_id",
+            },
+        ),
+        (
+            "filter=vendor_name",
+            {"choices": factory.make_name, "key": "vendor_name"},
+        ),
+        (
+            "filter=product_name",
+            {"choices": factory.make_name, "key": "product_name"},
+        ),
+        (
+            "filter=commissioning_driver",
+            {"choices": factory.make_name, "key": "commissioning_driver"},
+        ),
+    ]
 
     def setUp(self):
         super().setUp()
         self.node = factory.make_Node()
-        # Remove existing devices to get a clean setup
-        self.node.current_config.nodedevice_set.all().delete()
+        self.uri = reverse("node_devices_handler", args=[self.node.system_id])
 
-    def get_script_results_uri(self, node=None):
-        """Return the script's URI on the API."""
-        if node is None:
-            node = self.node
-        return reverse("node_devices_handler", args=[node.system_id])
+    def test_GET_filter(self):
+        if callable(self.choices):
+            choice1 = self.choices()
+        else:
+            choice1 = factory.pick_choice(self.choices)
+        node_device = factory.make_NodeDevice(
+            node=self.node, **{self.key: choice1}
+        )
+        # create a device with different criteria
+        if callable(self.choices):
+            choice2 = self.choices()
+        else:
+            choice2 = factory.pick_choice(self.choices, but_not=[choice1])
+        factory.make_NodeDevice(node=self.node, **{self.key: choice2})
 
-    def test_hander_path(self):
+        response = self.client.get(self.uri, {self.key: choice1})
+        self.assertEqual(response.status_code, http.client.OK)
         self.assertEqual(
-            "/MAAS/api/2.0/nodes/%s/devices/" % self.node.system_id,
-            self.get_script_results_uri(self.node),
-        )
-
-    def test_GET(self):
-        # For this test we want the random devices that the factory sets up
-        node = factory.make_Node()
-
-        response = self.client.get(self.get_script_results_uri(node))
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [
-                node_device.id
-                for node_device in node.current_config.nodedevice_set.all()
-            ],
-            [node_device["id"] for node_device in parsed_results],
-        )
-
-    def test_GET_filter_bus(self):
-        bus = factory.pick_choice(NODE_DEVICE_BUS_CHOICES)
-
-        response = self.client.get(self.get_script_results_uri(), {"bus": bus})
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [
-                node_device.id
-                for node_device in self.node.current_config.nodedevice_set.filter(
-                    bus=bus
-                )
-            ],
-            [node_device["id"] for node_device in parsed_results],
-        )
-
-    def test_GET_filter_hardware_type(self):
-        hardware_type = factory.pick_choice(HARDWARE_TYPE_CHOICES)
-
-        response = self.client.get(
-            self.get_script_results_uri(),
-            {"hardware_type": hardware_type},
-        )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [
-                node_device.id
-                for node_device in self.node.current_config.nodedevice_set.filter(
-                    hardware_type=hardware_type
-                )
-            ],
-            [node_device["id"] for node_device in parsed_results],
-        )
-
-    def test_GET_filter_vendor_id(self):
-        vendor_id = factory.make_hex_string(4)
-        node_devices = [
-            factory.make_NodeDevice(node=self.node, vendor_id=vendor_id)
-            for _ in range(3)
-        ]
-
-        response = self.client.get(
-            self.get_script_results_uri(), {"vendor_id": vendor_id}
-        )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [node_device.id for node_device in node_devices],
-            [node_device["id"] for node_device in parsed_results],
-        )
-
-    def test_GET_filter_product_id(self):
-        product_id = factory.make_hex_string(4)
-        node_devices = [
-            factory.make_NodeDevice(node=self.node, product_id=product_id)
-            for _ in range(3)
-        ]
-
-        response = self.client.get(
-            self.get_script_results_uri(), {"product_id": product_id}
-        )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [node_device.id for node_device in node_devices],
-            [node_device["id"] for node_device in parsed_results],
-        )
-
-    def test_GET_filter_vendor_name(self):
-        vendor_name = factory.make_name("vendor_name")
-        node_devices = [
-            factory.make_NodeDevice(node=self.node, vendor_name=vendor_name)
-            for _ in range(3)
-        ]
-
-        response = self.client.get(
-            self.get_script_results_uri(), {"vendor_name": vendor_name}
-        )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [node_device.id for node_device in node_devices],
-            [node_device["id"] for node_device in parsed_results],
-        )
-
-    def test_GET_filter_product_name(self):
-        product_name = factory.make_name("product_name")
-        node_devices = [
-            factory.make_NodeDevice(node=self.node, product_name=product_name)
-            for _ in range(3)
-        ]
-
-        response = self.client.get(
-            self.get_script_results_uri(), {"product_name": product_name}
-        )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [node_device.id for node_device in node_devices],
-            [node_device["id"] for node_device in parsed_results],
-        )
-
-    def test_GET_filter_commissioning_driver(self):
-        commissioning_driver = factory.make_name("commissioning_driver")
-        node_devices = [
-            factory.make_NodeDevice(
-                node=self.node, commissioning_driver=commissioning_driver
-            )
-            for _ in range(3)
-        ]
-
-        response = self.client.get(
-            self.get_script_results_uri(),
-            {"commissioning_driver": commissioning_driver},
-        )
-        self.assertThat(response, HasStatusCode(http.client.OK))
-        parsed_results = json_load_bytes(response.content)
-
-        self.assertCountEqual(
-            [node_device.id for node_device in node_devices],
-            [node_device["id"] for node_device in parsed_results],
+            [node_device.id],
+            [node_device["id"] for node_device in response.json()],
         )
 
 
