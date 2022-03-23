@@ -30,8 +30,7 @@ from testtools.matchers import (
 from twisted.internet.defer import succeed
 import yaml
 
-from maasserver import preseed as preseed_module
-from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
+from maasserver.api import support
 from maasserver.enum import (
     NODE_STATUS,
     NODE_TYPE,
@@ -51,13 +50,9 @@ from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
-from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.testclient import MAASSensibleOAuthClient
 from maasserver.utils.orm import reload_object
 from maastesting.matchers import (
@@ -1165,31 +1160,24 @@ class TestMetadataUserDataStateChanges(MAASServerTestCase):
         self.assertEqual(user_data, response.content)
 
 
-class TestCurtinMetadataUserData(
-    PreseedRPCMixin, MAASTransactionServerTestCase
-):
+class TestCurtinMetadataUserData(MAASServerTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
     def test_curtin_user_data_view_returns_curtin_data(self):
-        node = factory.make_Node(interface=True)
-        nic = node.get_boot_interface()
-        nic.vlan.dhcp_on = True
-        nic.vlan.primary_rack = self.rpc_rack_controller
-        nic.vlan.save()
-        arch, subarch = node.architecture.split("/")
-        boot_image = make_rpc_boot_image(purpose="xinstall")
-        self.patch(preseed_module, "get_boot_images_for").return_value = [
-            boot_image
-        ]
+        # This should be in a reusable place - when we just run this
+        # test, it takes ~1s to calculate the API description.
+        self.patch(support, "get_api_description").return_value = {
+            "hash": "0xDEADBEEF"
+        }
+        node = factory.make_Node()
+        url = reverse("curtin-metadata-user-data", args=["latest"])
+        userdata = self.patch(api, "get_curtin_userdata")
         client = make_node_client(node)
-        response = client.get(
-            reverse("curtin-metadata-user-data", args=["latest"])
-        )
 
-        self.assertEqual(http.client.OK.value, response.status_code)
-        self.assertThat(
-            response.content.decode(settings.DEFAULT_CHARSET),
-            Contains("PREFIX='curtin'"),
+        response = client.get(url)
+        userdata.assert_called_once_with(ANY, node)
+        self.assertEqual(
+            http.client.OK.value, response.status_code, response.content
         )
 
 

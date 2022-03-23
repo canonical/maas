@@ -250,6 +250,9 @@ def add_event_to_node_event_log(
     )
 
 
+_EXT_TO_KEY = {".out": "stdout", ".err": "stderr", ".yaml": "result"}
+
+
 def process_file(
     results,
     script_set,
@@ -268,17 +271,12 @@ def process_file(
     # column of ScriptResult. If neither are given put it in the combined
     # output column. If given, we look up by script_result_id along with the
     # name to allow .out or .err in the name.
-    if script_name.lower().endswith(".out"):
-        script_name = script_name[0:-4]
-        key = "stdout"
-    elif script_name.lower().endswith(".err"):
-        script_name = script_name[0:-4]
-        key = "stderr"
-    elif script_name.lower().endswith(".yaml"):
-        script_name = script_name[0:-5]
-        key = "result"
-    else:
+    base_name, output_type = os.path.splitext(script_name)
+    key = _EXT_TO_KEY.get(output_type.lower())
+    if key is None:
         key = "output"
+    else:
+        script_name = base_name
 
     script_result = (
         script_set.scriptresult_set.filter(id=script_result_id)
