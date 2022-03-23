@@ -1379,7 +1379,7 @@ class TestApplyLayoutToMachine(MAASServerTestCase):
         layout = get_storage_layout(config)
         machine = factory.make_Node()
         apply_layout_to_machine(layout, machine)
-        fs1, fs2 = machine.special_filesystems.order_by("label")
+        fs1, fs2 = machine.current_config.special_filesystems.order_by("label")
         self.assertEqual(fs1.fstype, FILESYSTEM_TYPE.TMPFS)
         self.assertEqual(fs1.mount_point, "/temp1")
         self.assertEqual(fs2.fstype, FILESYSTEM_TYPE.RAMFS)

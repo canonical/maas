@@ -214,7 +214,9 @@ class CurtinStorageGenerator:
                                     partition_filesystem
                                 )
 
-        for filesystem in self.node.special_filesystems.filter(acquired=True):
+        for filesystem in self.node_config.special_filesystems.filter(
+            acquired=True
+        ):
             self.operations["mount"].append(filesystem)
 
     def _requires_format_operation(self, filesystem):

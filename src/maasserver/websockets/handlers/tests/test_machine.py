@@ -289,7 +289,9 @@ class TestMachineHandler(MAASServerTestCase):
             "storage_layout_issues": node.storage_layout_issues(),
             "special_filesystems": [
                 handler.dehydrate_filesystem(filesystem)
-                for filesystem in node.special_filesystems.order_by("id")
+                for filesystem in node.current_config.special_filesystems.order_by(
+                    "id"
+                )
             ],
             "supported_filesystems": [
                 {"key": key, "ui": ui}
@@ -4864,7 +4866,7 @@ class TestMachineHandlerMountSpecialScenarios(MAASServerTestCase):
         }
         self.assertThat(handler.mount_special(params), Is(None))
         self.assertThat(
-            list(machine.special_filesystems),
+            list(machine.current_config.special_filesystems),
             MatchesListwise(
                 [
                     MatchesStructure.byEquality(
@@ -4988,7 +4990,7 @@ class TestMachineHandlerUnmountSpecialScenarios(MAASServerTestCase):
             "mount_point": filesystem.mount_point,
         }
         self.assertIsNone(handler.unmount_special(params))
-        self.assertFalse(machine.special_filesystems.exists())
+        self.assertFalse(machine.current_config.special_filesystems.exists())
 
     def test_user_unmounts_non_storage_filesystem_on_allocated_machine(self):
         user = factory.make_User()

@@ -29,6 +29,14 @@ class NodeConfig(CleanSave, TimestampedModel):
     )
     node = ForeignKey("Node", on_delete=CASCADE)
 
+    @property
+    def special_filesystems(self):
+        """Return special filesystems (e.g. tmpfs) for the config."""
+        return self.filesystem_set.filter(
+            block_device=None,
+            partition=None,
+        )
+
 
 def create_default_nodeconfig(node):
     """Create the `discovered` NodeConfig for a Node."""

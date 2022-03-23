@@ -1286,14 +1286,6 @@ class Node(CleanSave, TimestampedModel):
         """Return NUMA node 0 for the node."""
         return self.numanode_set.get(index=0)
 
-    @property
-    def special_filesystems(self):
-        """Return special filesystems (e.g. tmpfs) for the node."""
-        return self.current_config.filesystem_set.filter(
-            block_device=None,
-            partition=None,
-        )
-
     def lock(self, user, comment=None):
         self._register_request_event(
             user, EVENT_TYPES.REQUEST_NODE_LOCK, action="lock", comment=comment
@@ -4162,7 +4154,7 @@ class Node(CleanSave, TimestampedModel):
             )
 
         # Clone the special filesystems.
-        for filesystem in source_node.special_filesystems.all():
+        for filesystem in source_node.current_config.special_filesystems.all():
             _clone_object(
                 filesystem, uuid=None, node_config=self.current_config
             )
@@ -4385,7 +4377,7 @@ class Node(CleanSave, TimestampedModel):
         Filesystem.objects.filter(
             block_device__id__in=block_device_ids
         ).delete()
-        self.special_filesystems.all().delete()
+        self.current_config.special_filesystems.all().delete()
         virtual_devices = list(reversed(self.virtualblockdevice_set.all()))
         for _ in range(10):  # 10 times gives enough tries to remove.
             for virtual_bd in virtual_devices[:]:  # Iterate on copy.

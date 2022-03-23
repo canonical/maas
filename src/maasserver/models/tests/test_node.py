@@ -5118,10 +5118,12 @@ class TestNode(MAASServerTestCase):
             ),
         ]
         self.assertCountEqual(
-            node.special_filesystems.all(), special_filesystems
+            node.current_config.special_filesystems.all(), special_filesystems
         )
         node._clear_full_storage_configuration()
-        self.assertCountEqual(node.special_filesystems.all(), [])
+        self.assertCountEqual(
+            node.current_config.special_filesystems.all(), []
+        )
 
     def test_clear_full_storage_configuration_lp1815091(self):
         node = factory.make_Node()

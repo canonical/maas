@@ -3064,7 +3064,7 @@ class TestMountSpecialScenarios(APITestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         self.assertThat(
-            list(machine.special_filesystems),
+            list(machine.current_config.special_filesystems),
             MatchesListwise(
                 [
                     MatchesStructure.byEquality(
@@ -3205,7 +3205,7 @@ class TestUnmountSpecialScenarios(APITestCase.ForUser):
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        self.assertFalse(machine.special_filesystems.exists())
+        self.assertFalse(machine.current_config.special_filesystems.exists())
 
     def test_user_unmounts_non_storage_filesystem_on_allocated_machine(self):
         self.assertCanUnmountFilesystem(
