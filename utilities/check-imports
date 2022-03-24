@@ -320,7 +320,10 @@ RegionControllerRule = Rule(
 
 
 Tests = files(
-    "src/**/test_*.py", "src/**/testing/**/*.py", "src/**/testing.py"
+    "src/**/test_*.py",
+    "src/**/testing/**/*.py",
+    "src/**/testing.py",
+    "src/**/conftest.py",
 )
 
 

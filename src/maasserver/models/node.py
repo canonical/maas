@@ -3868,19 +3868,10 @@ class Node(CleanSave, TimestampedModel):
             self.error_description = comment if comment else ""
             if commit:
                 self.save()
-            maaslog.error(
-                "%s: Marking node failed: %s", self.hostname, comment
-            )
+            log_snippet = f": {comment}" if comment else ""
+            maaslog.error(f"{self.hostname}: Marking node failed{log_snippet}")
             if new_status == NODE_STATUS.FAILED_DEPLOYMENT:
-                # Avoid circular imports
-                from maasserver.preseed import get_curtin_merged_config
-
-                log.debug(
-                    "Node '{hostname}' failed deployment with curtin "
-                    "config: {config()}",
-                    hostname=self.hostname,
-                    config=lambda: get_curtin_merged_config(self),
-                )
+                maaslog.debug(f"Node '{self.hostname}' failed deployment")
         elif self.status == NODE_STATUS.NEW:
             # Silently ignore, failing a new node makes no sense.
             pass

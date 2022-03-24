@@ -51,6 +51,8 @@ def run_region():
         "--select-dir=src/metadataserver",
         "--cover-package=maas,maasserver,metadataserver",
         "--cover-branches",
+        # exclude pytest tests
+        "--exclude-dir-file=src/maastesting/pytest.dirs",
         # exclude perf tests
         "--exclude=perf",
         # Reduce the logging level to INFO here as
@@ -95,6 +97,8 @@ def run_region_legacy():
         "--select-dir=src/metadataserver",
         "--cover-package=maas,maasserver,metadataserver",
         "--cover-branches",
+        # exclude pytest tests
+        "--exclude-dir-file=src/maastesting/pytest.dirs",
         # exclude perf tests
         "--exclude=perf",
         # Reduce the logging level to INFO here as DebuggingLoggerMiddleware
@@ -123,6 +127,8 @@ def run_rack():
         "--select-dir=src/provisioningserver",
         "--cover-package=provisioningserver",
         "--cover-branches",
+        # exclude pytest tests
+        "--exclude-dir-file=src/maastesting/pytest.dirs",
         # exclude perf tests
         "--exclude=perf",
     ]

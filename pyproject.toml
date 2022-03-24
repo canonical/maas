@@ -40,7 +40,9 @@ filterwarnings = "error::BytesWarning"
 testpaths = [
   "src/apiclient",
   "src/maascli",
-  "src/maastesting"
+  "src/maastesting",
+  # TODO: maybe use Cog to add all these "dynamically"
+  "src/maasserver/models/pytest_tests",
 ]
 markers = [
     "perftest: marks tests for performance testing"
