@@ -1,8 +1,6 @@
 # Copyright 2015-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Model for interfaces."""
-
 __all__ = [
     "BondInterface",
     "build_vlan_interface_name",
@@ -1700,14 +1698,16 @@ class PhysicalInterface(Interface):
             raise ValidationError(validation_errors)
 
         if self.mac_address:
-            # MAC address must be unique amongst every PhysicalInterface.
+            # MAC address must be unique amongst PhysicalInterfaces, with the
+            # exception of other NodeConfigs for this node
             other_interfaces = PhysicalInterface.objects.filter(
-                mac_address=self.mac_address
+                Q(node_config=self.node_config)
+                | ~Q(node_config__node_id=self.node_config.node_id),
+                mac_address=self.mac_address,
             )
             if self.id is not None:
                 other_interfaces = other_interfaces.exclude(id=self.id)
-            other_interfaces = other_interfaces.all()
-            if len(other_interfaces) > 0:
+            if other_interfaces.exists():
                 raise ValidationError(
                     {
                         "mac_address": [

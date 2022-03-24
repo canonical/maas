@@ -1656,7 +1656,7 @@ class TestPhysicalInterface(MAASServerTestCase):
         interface.save()
         self.assertEqual(interface.node_config.node.status, NODE_STATUS.READY)
 
-    def test_mac_address_must_be_unique(self):
+    def test_mac_address_must_be_unique_for_nodeconfig(self):
         node_config = factory.make_NodeConfig()
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, node_config=node_config
@@ -1676,6 +1676,20 @@ class TestPhysicalInterface(MAASServerTestCase):
             },
             error.message_dict,
         )
+
+    def test_mac_address_can_be_duplicated_for_other_nodeconfig(self):
+        node = factory.make_Node()
+        if1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL, node_config=node.current_config
+        )
+        node_config2 = factory.make_NodeConfig(node=node, name="deployment")
+        if2 = PhysicalInterface.objects.create(
+            node_config=node_config2,
+            mac_address=if1.mac_address,
+            name=factory.make_name("eth"),
+        )
+        # no error is raised on interface save
+        self.assertEqual(if1.mac_address, if2.mac_address)
 
     def test_create_raises_error_on_not_unique(self):
         node = factory.make_Node()
