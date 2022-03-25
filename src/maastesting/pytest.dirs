@@ -1,1 +1,8 @@
-src/maasserver/models/pytest_tests/
+# [[[cog
+# import cog
+# import pathlib
+# for path in sorted(pathlib.Path('.').glob('**/pytest_tests')):
+#    cog.outl(str(path))
+# ]]]
+src/maasserver/models/pytest_tests
+# [[[end]]]

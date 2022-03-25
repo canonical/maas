@@ -41,8 +41,14 @@ testpaths = [
   "src/apiclient",
   "src/maascli",
   "src/maastesting",
-  # TODO: maybe use Cog to add all these "dynamically"
+  # [[[cog
+  # import cog
+  # import pathlib
+  # for path in sorted(pathlib.Path('.').glob('**/pytest_tests')):
+  #    cog.outl(f'"{path}",')
+  # ]]]
   "src/maasserver/models/pytest_tests",
+  # [[[end]]]
 ]
 markers = [
     "perftest: marks tests for performance testing"
