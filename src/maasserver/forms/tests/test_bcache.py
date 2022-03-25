@@ -1,9 +1,6 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for all forms that are used with `Bcache`."""
-
-
 from uuid import uuid4
 
 from maasserver.enum import (
@@ -285,7 +282,7 @@ class TestUpdateBcacheForm(MAASServerTestCase):
         )
 
     def test_lookup_by_name(self):
-        node = factory.make_Node(with_boot_disk=False)
+        node = factory.make_Node(with_boot_disk=True)
         disk = factory.make_PhysicalBlockDevice(node=node)
         cache_set = factory.make_CacheSet(node=node)
         filesystems = [
@@ -313,9 +310,8 @@ class TestUpdateBcacheForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
         bcache = form.save()
-        partition = disk.get_partitiontable().partitions.first()
         self.assertEqual(
-            partition.get_effective_filesystem(),
+            disk.get_effective_filesystem(),
             bcache.filesystems.get(fstype=FILESYSTEM_TYPE.BCACHE_BACKING),
         )
 
