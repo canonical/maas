@@ -326,7 +326,7 @@ class TagHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def update_nodes(self, request, name):
-        """@description-title Add or remove nodes by tag
+        """@description-title Update nodes associated with this tag
         @description Add or remove nodes associated with the given tag.
         Note that you must supply either the ``add`` or ``remove``
         parameter.
