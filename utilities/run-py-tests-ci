@@ -20,6 +20,6 @@ bin/test.parallel --subprocess-per-core --emit-subunit | \
     bin/subunit2pyunit --no-passthrough
 res1=$?
 bin/database --preserve run make syncdb
-bin/database run -- bin/pytest -n auto --junit-xml=junit-pytest.xml -m 'not perftest' --ignore-glob 'src/**/perf'
+bin/database run -- bin/pytest -n auto --junit-xml=junit-pytest.xml
 res2=$?
 exit $((res1 + res2))
