@@ -27,6 +27,7 @@ from maasserver.fields import JSONObjectField
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.config import Config
 from maasserver.models.timestampedmodel import now, TimestampedModel
 from maasserver.utils.orm import get_first, get_one
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
@@ -583,6 +584,16 @@ class BootResource(CleanSave, TimestampedModel):
         return self.architecture.split("/")
 
     def split_base_image(self):
+        # handle older custom images that may not have a base image
+        if not self.base_image:
+            cfg = Config.objects.get_configs(
+                ["commissioning_osystem", "commissioning_distro_series"]
+            )
+            return (
+                cfg["commissioning_osystem"],
+                cfg["commissioning_distro_series"],
+            )
+
         return self.base_image.split("/")
 
     def get_next_version_name(self):
