@@ -8,4 +8,5 @@ After=network.target
 WantedBy=timers.target
 
 [Timer]
+Persistent=true
 OnActiveSec={{ hardware_sync_interval }}

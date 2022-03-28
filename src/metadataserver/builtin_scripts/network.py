@@ -231,7 +231,11 @@ def update_physical_interface(
             "node_config": node.current_config,
             "name": name,
             "enabled": True,
-            "acquired": not node.is_commissioning(),
+            # actual physical interfaces are to be considered non-acquired in hw sync to be preserved on release
+            "acquired": not (
+                node.is_commissioning()
+                or (node.enable_hw_sync and port is not None)
+            ),
         },
     )
     if created:

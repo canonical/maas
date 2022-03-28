@@ -2374,6 +2374,19 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(Fabric.objects.count(), 1)
         self.assertEqual(VLAN.objects.count(), 1)
 
+    def test_hardware_sync_added_physical_interface_is_not_marked_acquired(
+        self,
+    ):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        data = FakeCommissioningData()
+        data.create_physical_network(name="eth0")
+        self.update_interfaces(node, data)
+        node.refresh_from_db()
+        iface = node.current_config.interface_set.get(name="eth0")
+        self.assertFalse(iface.acquired)
+
 
 class TestUpdateInterfacesWithHints(
     MAASTransactionServerTestCase, UpdateInterfacesMixin

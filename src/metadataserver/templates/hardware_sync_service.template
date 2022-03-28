@@ -14,3 +14,6 @@ ExecStartPre=/usr/bin/maas-run-scripts get-machine-token\
     {{ system_id }}\
     {{ token_file_path }}
 ExecStart=/usr/bin/maas-run-scripts report-results --config {{ token_file_path }}
+
+[Install]
+WantedBy=maas_hardware_sync.timer

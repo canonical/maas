@@ -90,6 +90,7 @@ from maasserver.models import (
     Node,
 )
 from maasserver.models import (
+    NodeDevice,
     OwnerData,
     PartitionTable,
     PhysicalInterface,
@@ -5951,6 +5952,135 @@ class TestNode(MAASServerTestCase):
         )
         self.assertEqual(node.get_commissioning_resources(), data)
 
+    def test_hardware_sync_physical_block_device_addition_is_preserved_on_release(
+        self,
+    ):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        self.patch(Node, "_set_status_expires")
+        self.patch(node_module, "post_commit_do")
+        self.patch(node, "_power_control_node")
+        self.patch(node, "stop")
+        block_device = factory.make_PhysicalBlockDevice(
+            node_config=node.current_config
+        )
+        with post_commit_hooks:
+            node.release()
+        self.assertIn(
+            block_device.name,
+            [bd.name for bd in node.current_config.blockdevice_set.all()],
+        )
+
+    def test_hardware_sync_physical_block_device_removal_is_preserved_on_release(
+        self,
+    ):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        self.patch(Node, "_set_status_expires")
+        self.patch(node_module, "post_commit_do")
+        self.patch(node, "_power_control_node")
+        self.patch(node, "stop")
+        block_device = factory.make_PhysicalBlockDevice(
+            node_config=node.current_config
+        )
+        self.assertIn(
+            block_device.name,
+            [bd.name for bd in node.current_config.blockdevice_set.all()],
+        )
+        block_device.delete()
+        with post_commit_hooks:
+            node.release()
+        self.assertNotIn(
+            block_device.name,
+            [bd.name for bd in node.current_config.blockdevice_set.all()],
+        )
+
+    def test_hardware_sync_physical_interface_addition_is_preserved_on_release(
+        self,
+    ):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        self.patch(Node, "_set_status_expires")
+        self.patch(node_module, "post_commit_do")
+        self.patch(node, "_power_control_node")
+        self.patch(node, "stop")
+        interface = factory.make_Interface(node_config=node.current_config)
+        with post_commit_hooks:
+            node.release()
+        self.assertIn(interface, list(node.current_config.interface_set.all()))
+
+    def test_hardware_sync_physical_interface_removal_is_preserved_on_release(
+        self,
+    ):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        self.patch(Node, "_set_status_expires")
+        self.patch(node_module, "post_commit_do")
+        self.patch(node, "_power_control_node")
+        self.patch(node, "stop")
+        interface = factory.make_Interface(node_config=node.current_config)
+        self.assertIn(interface, list(node.current_config.interface_set.all()))
+        interface.delete()
+        with post_commit_hooks:
+            node.release()
+        self.assertNotIn(
+            interface, list(node.current_config.interface_set.all())
+        )
+
+    def test_hardware_sync_node_device_is_preserved_on_release(self):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        self.patch(Node, "_set_status_expires")
+        self.patch(node_module, "post_commit_do")
+        self.patch(node, "_power_control_node")
+        self.patch(node, "stop")
+        node_device = factory.make_NodeDevice(node_config=node.current_config)
+        with post_commit_hooks:
+            node.release()
+        self.assertIn(
+            node_device,
+            list(NodeDevice.objects.filter(node_config=node.current_config)),
+        )
+
+    def test_hardware_sync_virtual_interface_is_removed_on_release(self):
+        d = defer.succeed(None)
+        self.patch(node_module, "post_commit").return_value = d
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        self.patch(Node, "_set_status_expires")
+        self.patch(node_module, "post_commit_do")
+        self.patch(node, "_power_control_node")
+        self.patch(node, "stop")
+        parent = factory.make_Interface(node_config=node.current_config)
+        interface = factory.make_Interface(
+            node_config=node.current_config,
+            iftype=INTERFACE_TYPE.VLAN,
+            parents=[parent],
+        )
+        interface.acquired = True
+        interface.save()
+        with post_commit_hooks:
+            node.release()
+        self.assertNotIn(
+            interface, list(node.current_config.interface_set.all())
+        )
+
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):
@@ -7788,6 +7918,40 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
                 interface.name
                 for interface in node.current_config.interface_set.all()
             ),
+        )
+
+    def test_restore_network_interfaces_includes_hardware_sync_discovered_physical_interfaces(
+        self,
+    ):
+        node = factory.make_Node(
+            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+        )
+        lxd_script = factory.make_Script(
+            name=COMMISSIONING_OUTPUT_NAME,
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+        )
+        commissioning_script_set = (
+            ScriptSet.objects.create_commissioning_script_set(
+                node, scripts=[lxd_script.name]
+            )
+        )
+        node.current_commissioning_script_set = commissioning_script_set
+        output = test_hooks.make_lxd_output_json()
+        factory.make_ScriptResult(
+            script_set=commissioning_script_set,
+            script=lxd_script,
+            exit_status=0,
+            output=output,
+            stdout=output,
+        )
+        # Create NUMA nodes.
+        test_hooks.create_numa_nodes(node)
+        iface_name = factory.make_name()
+        factory.make_Interface(name=iface_name, node=node)
+        node.restore_network_interfaces()
+        self.assertIn(
+            iface_name,
+            [iface.name for iface in node.current_config.interface_set.all()],
         )
 
 

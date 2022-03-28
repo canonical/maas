@@ -4686,6 +4686,33 @@ class Node(CleanSave, TimestampedModel):
         for interface in interfaces:
             interface.clear_all_links(clearing_config=True)
 
+    def _hw_sync_preserve_network_interfaces(self, data):
+        for iface in self.current_config.interface_set.filter(
+            type=INTERFACE_TYPE.PHYSICAL
+        ):
+            if iface.name in data["networks"]:
+                continue
+            data["networks"][iface.name] = {
+                "type": "broadcast",
+                "hwaddr": iface.mac_address,
+                "bridge": None,
+                "bond": None,
+                "vlan": None,
+                "addresses": [
+                    {
+                        "address": link["ip_address"].ip,
+                        "netmask": link["subnet"].netmask,
+                        "family": "inet"
+                        if link["subnet"].get_ip_version() == 4
+                        else "inet6",
+                        "scope": "global",
+                    }
+                    for link in iface.get_links()
+                ],
+                "state": "up" if iface.link_connected else "down",
+            }
+        return data
+
     def restore_network_interfaces(self):
         """Restore the network interface to their commissioned state."""
         from metadataserver.builtin_scripts.hooks import (
@@ -4699,6 +4726,8 @@ class Node(CleanSave, TimestampedModel):
                 "Missing network information from commissioning script, "
                 "please commission the machine again"
             )
+        if self.enable_hw_sync:
+            data = self._hw_sync_preserve_network_interfaces(data)
         update_node_network_information(
             self, data, NUMANode.objects.filter(node=self)
         )
