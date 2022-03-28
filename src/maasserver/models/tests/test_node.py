@@ -6035,6 +6035,8 @@ class TestNode(MAASServerTestCase):
         interface.delete()
         with post_commit_hooks:
             node.release()
+            # interfaces for managed power types are released when powering off
+            node.update_power_state(POWER_STATE.OFF)
         self.assertNotIn(
             interface, list(node.current_config.interface_set.all())
         )
@@ -6061,7 +6063,8 @@ class TestNode(MAASServerTestCase):
         d = defer.succeed(None)
         self.patch(node_module, "post_commit").return_value = d
         node = factory.make_Node(
-            enable_hw_sync=True, status=NODE_STATUS.DEPLOYED
+            enable_hw_sync=True,
+            status=NODE_STATUS.DEPLOYED,
         )
         self.patch(Node, "_set_status_expires")
         self.patch(node_module, "post_commit_do")
@@ -6077,6 +6080,8 @@ class TestNode(MAASServerTestCase):
         interface.save()
         with post_commit_hooks:
             node.release()
+            # interfaces for managed power types are released when powering off
+            node.update_power_state(POWER_STATE.OFF)
         self.assertNotIn(
             interface, list(node.current_config.interface_set.all())
         )
