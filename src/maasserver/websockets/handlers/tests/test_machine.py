@@ -283,6 +283,7 @@ class TestMachineHandler(MAASServerTestCase):
                 key=itemgetter("fqdn"),
             ),
             "domain": handler.dehydrate_domain(node.domain),
+            "enable_hw_sync": node.enable_hw_sync,
             "permissions": permissions,
             "physical_disk_count": node.physicalblockdevice_set.count(),
             "disks": disks,
