@@ -17,3 +17,5 @@ db30bb39fa9d98bf75bcd9f7c3d525d5d9e1a21a
 c5feaeb51ae224fd57d422dee960c919822e7b1e
 # Run pyupgrade for Python3.8+
 50d22fd35af7cab6530b4ad229946a3e61980a1b
+# Reformat after Black update to 22.3.0
+695fb49cf1b2fc0a785aa437da9ccbd68d238036
