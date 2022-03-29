@@ -14,7 +14,6 @@ from django.db.models import (
     BigIntegerField,
     BooleanField,
     CASCADE,
-    CharField,
     ForeignKey,
     IntegerField,
     Manager,
@@ -127,7 +126,7 @@ class Partition(CleanSave, TimestampedModel):
     # the partition number in the partition table
     index = IntegerField()
 
-    uuid = CharField(max_length=36, unique=True, null=True, blank=True)
+    uuid = TextField(null=True, blank=True, default=uuid4)
 
     size = BigIntegerField(
         null=False, validators=[MinValueValidator(MIN_PARTITION_SIZE)]
@@ -219,6 +218,7 @@ class Partition(CleanSave, TimestampedModel):
 
     def save(self, *args, **kwargs):
         """Save partition."""
+        # XXX this is needed because tests pass uuid=None by default
         if not self.uuid:
             self.uuid = uuid4()
         if not self.index:

@@ -7,7 +7,7 @@
 from uuid import uuid4
 
 from django.core.exceptions import ValidationError
-from django.db.models import CASCADE, CharField, ForeignKey
+from django.db.models import CASCADE, ForeignKey, TextField
 
 from maasserver.models.blockdevice import BlockDevice, BlockDeviceManager
 from maasserver.models.filesystemgroup import FilesystemGroup
@@ -58,7 +58,7 @@ class VirtualBlockDevice(BlockDevice):
 
     objects = VirtualBlockDeviceManager()
 
-    uuid = CharField(max_length=36, unique=True)
+    uuid = TextField(default=uuid4)
 
     filesystem_group = ForeignKey(
         FilesystemGroup,
@@ -108,6 +108,7 @@ class VirtualBlockDevice(BlockDevice):
             assert self.size == self.filesystem_group.get_size()
 
     def save(self, *args, **kwargs):
+        # XXX this is needed because tests pass uuid=None by default
         if not self.uuid:
             self.uuid = uuid4()
         return super().save(*args, **kwargs)

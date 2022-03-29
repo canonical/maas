@@ -1,8 +1,5 @@
-# Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2015-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for `VirtualBlockDevice`."""
-
 
 import random
 import re
@@ -189,7 +186,7 @@ class TestVirtualBlockDevice(MAASServerTestCase):
     def test_save_doesnt_overwrite_uuid(self):
         uuid = uuid4()
         block_device = factory.make_VirtualBlockDevice(uuid=uuid)
-        self.assertEqual("%s" % uuid, block_device.uuid)
+        self.assertEqual(block_device.uuid, str(uuid))
 
     def test_get_parents_finds_devices(self):
         node = factory.make_Node()
@@ -214,10 +211,9 @@ class TestVirtualBlockDevice(MAASServerTestCase):
         node = factory.make_Node(with_boot_disk=False)
         volume_group = factory.make_VolumeGroup(node=node)
         name = factory.make_name()
-        vguuid = "%s" % uuid4()
         size = random.randint(MIN_BLOCK_DEVICE_SIZE, volume_group.get_size())
         logical_volume = volume_group.create_logical_volume(
-            name=name, uuid=vguuid, size=size
+            name=name, uuid=uuid4(), size=size
         )
         logical_volume = reload_object(logical_volume)
         sdb = factory.make_PhysicalBlockDevice(node=node)

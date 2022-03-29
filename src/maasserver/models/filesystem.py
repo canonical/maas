@@ -13,6 +13,7 @@ from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
+    TextField,
 )
 
 from maasserver.enum import (
@@ -83,9 +84,7 @@ class Filesystem(CleanSave, TimestampedModel):
 
     objects = FilesystemManager()
 
-    uuid = CharField(
-        max_length=36, unique=False, null=False, blank=False, editable=False
-    )
+    uuid = TextField(default=uuid4)
 
     fstype = CharField(
         max_length=20,
@@ -284,6 +283,7 @@ class Filesystem(CleanSave, TimestampedModel):
                 )
 
     def save(self, *args, **kwargs):
+        # XXX this is needed because tests pass uuid=None by default
         if not self.uuid:
             self.uuid = uuid4()
         super().save(*args, **kwargs)

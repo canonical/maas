@@ -9,7 +9,14 @@ from itertools import chain
 from uuid import uuid4
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db.models import CASCADE, CharField, ForeignKey, Manager, Q
+from django.db.models import (
+    CASCADE,
+    CharField,
+    ForeignKey,
+    Manager,
+    Q,
+    TextField,
+)
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 
@@ -381,9 +388,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
 
     objects = FilesystemGroupManager()
 
-    uuid = CharField(
-        max_length=36, unique=True, null=False, blank=False, editable=False
-    )
+    uuid = TextField(default=uuid4)
 
     group_type = CharField(
         max_length=20,
@@ -777,6 +782,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         # if needed.
         if self.group_type is not None and self.name is None:
             self.name = FilesystemGroup.objects.get_available_name_for(self)
+        # XXX this is needed because tests pass uuid=None by default
         if not self.uuid:
             self.uuid = uuid4()
         super().save(*args, **kwargs)
