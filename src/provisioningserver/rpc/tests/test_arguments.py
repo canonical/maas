@@ -160,7 +160,7 @@ class TestCompressedAmpList(MAASTestCase):
         self.expectThat(
             len(encoded_compressed), LessThan(len(encoded_uncompressed) / 2)
         )
-        self.expectThat(len(encoded_compressed), LessThan(2 ** 16))
+        self.expectThat(len(encoded_compressed), LessThan(2**16))
 
 
 class TestIPAddress(MAASTestCase):

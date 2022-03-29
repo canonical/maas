@@ -238,10 +238,10 @@ class TestRPCProtocol(MAASTestCase):
 
 class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
 
-    answer_seq = b"%d" % random.randrange(0, 2 ** 32)
+    answer_seq = b"%d" % random.randrange(0, 2**32)
     answer_box = amp.AmpBox(_answer=answer_seq)
 
-    error_seq = b"%d" % random.randrange(0, 2 ** 32)
+    error_seq = b"%d" % random.randrange(0, 2**32)
     error_box = amp.AmpBox(
         _error=error_seq,
         _error_code=amp.UNHANDLED_ERROR_CODE,
@@ -288,7 +288,7 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
         dispatchCommand = self.patch(amp.AMP, "dispatchCommand")
         dispatchCommand.side_effect = always_fail_with(ZeroDivisionError())
         # Push a command box into the protocol.
-        seq = b"%d" % random.randrange(0, 2 ** 32)
+        seq = b"%d" % random.randrange(0, 2**32)
         cmd = factory.make_string().encode("ascii")
         box = amp.AmpBox(_ask=seq, _command=cmd)
         with TwistedLoggerFixture() as logger:

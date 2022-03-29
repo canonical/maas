@@ -87,17 +87,17 @@ LXD_VM_POWER_STATE = {101: "on", 102: "off", 103: "on", 110: "off"}
 LXD_BYTE_SUFFIXES = {
     "B": 1,
     "kB": 1000,
-    "MB": 1000 ** 2,
-    "GB": 1000 ** 3,
-    "TB": 1000 ** 4,
-    "PB": 1000 ** 5,
-    "EB": 1000 ** 6,
+    "MB": 1000**2,
+    "GB": 1000**3,
+    "TB": 1000**4,
+    "PB": 1000**5,
+    "EB": 1000**6,
     "KiB": 1024,
-    "MiB": 1024 ** 2,
-    "GiB": 1024 ** 3,
-    "TiB": 1024 ** 4,
-    "PiB": 1024 ** 5,
-    "EiB": 1024 ** 6,
+    "MiB": 1024**2,
+    "GiB": 1024**3,
+    "TiB": 1024**4,
+    "PiB": 1024**5,
+    "EiB": 1024**6,
 }
 
 LXD_REQUIRED_EXTENSIONS = frozenset(
@@ -159,7 +159,7 @@ def get_lxd_machine_definition(request, include_profile=False):
         "architecture": debian_to_kernel_architecture(request.architecture),
         "config": {
             "limits.cpu": _get_cpu_limits(request),
-            "limits.memory": str(request.memory * 1024 ** 2),
+            "limits.memory": str(request.memory * 1024**2),
             "limits.memory.hugepages": "true"
             if request.hugepages_backed
             else "false",
@@ -773,7 +773,7 @@ class LXDPodDriver(PodDriver):
         # sure we convert to MiB, which is what MAAS uses.
         memory = expanded_config.get("limits.memory")
         if memory is not None:
-            memory = convert_lxd_byte_suffixes(memory, divisor=1024 ** 2)
+            memory = convert_lxd_byte_suffixes(memory, divisor=1024**2)
         else:
             memory = 1024
         hugepages_backed = _get_bool(

@@ -1273,14 +1273,14 @@ class NetworksMonitoringService(SingleInstanceService):
         return monitored_interfaces
 
     def _startNeighbourDiscovery(self, ifname):
-        """"Start neighbour discovery service on the specified interface."""
+        """Start neighbour discovery service on the specified interface."""
         service = NeighbourDiscoveryService(ifname, self.reportNeighbours)
         service.clock = self.clock
         service.setName("neighbour_discovery:" + ifname)
         service.setServiceParent(self)
 
     def _startBeaconing(self, ifname):
-        """"Start neighbour discovery service on the specified interface."""
+        """Start neighbour discovery service on the specified interface."""
         service = BeaconingService(ifname, self.reportBeacons)
         service.clock = self.clock
         service.setName("beaconing:" + ifname)

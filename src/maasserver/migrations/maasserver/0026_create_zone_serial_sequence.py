@@ -15,7 +15,7 @@ EXCEPTION WHEN duplicate_table THEN
 END
 $$ LANGUAGE plpgsql;
 """.format(
-    minvalue=1, maxvalue=((2 ** 32) - 1)
+    minvalue=1, maxvalue=((2**32) - 1)
 )
 
 sequence_drop = "DROP SEQUENCE IF EXISTS maasserver_zone_serial_seq"

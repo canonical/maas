@@ -771,7 +771,7 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
     tftp_port = ConfigurationOption(
         "tftp_port",
         "The UDP port on which to listen for TFTP requests.",
-        Number(min=0, max=(2 ** 16) - 1, if_missing=69),
+        Number(min=0, max=(2**16) - 1, if_missing=69),
     )
     tftp_root = ConfigurationOption(
         "tftp_root",

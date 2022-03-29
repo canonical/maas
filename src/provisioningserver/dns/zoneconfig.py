@@ -253,7 +253,7 @@ class DNSForwardZoneConfig(DomainConfigBase):
     def get_GENERATE_directives(cls, dynamic_range):
         """Return the GENERATE directives for the forward zone of a network."""
         slash_16 = IPNetwork("%s/16" % IPAddress(dynamic_range.first))
-        if dynamic_range.size > 256 ** 2 or not ip_range_within_network(
+        if dynamic_range.size > 256**2 or not ip_range_within_network(
             dynamic_range, slash_16
         ):
             # We can't issue a sane set of $GENERATEs for any network
@@ -493,7 +493,7 @@ class DNSReverseZoneConfig(DomainConfigBase):
     def get_GENERATE_directives(cls, dynamic_range, domain, zone_info):
         """Return the GENERATE directives for the reverse zone of a network."""
         slash_16 = IPNetwork("%s/16" % IPAddress(dynamic_range.first))
-        if dynamic_range.size > 256 ** 2 or not ip_range_within_network(
+        if dynamic_range.size > 256**2 or not ip_range_within_network(
             dynamic_range, slash_16
         ):
             # We can't issue a sane set of $GENERATEs for any network

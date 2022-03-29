@@ -998,13 +998,13 @@ class MetaDataHandler(VersionIndexHandler):
         )
 
     def public_keys(self, node, version, item):
-        """ Produce public-keys attribute."""
+        """Produce public-keys attribute."""
         return make_list_response(
             SSHKey.objects.get_keys_for_user(user=node.owner)
         )
 
     def ssl_certs(self, node, version, item):
-        """ Produce x509 certs attribute. """
+        """Produce x509 certs attribute."""
         return make_list_response(
             SSLKey.objects.get_keys_for_user(user=node.owner)
         )

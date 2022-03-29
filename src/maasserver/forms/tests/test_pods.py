@@ -661,7 +661,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
                                 IsInstance(RequestedMachineBlockDevice),
                                 MatchesStructure(
                                     size=Equals(
-                                        DEFAULT_COMPOSED_STORAGE * (1000 ** 3)
+                                        DEFAULT_COMPOSED_STORAGE * (1000**3)
                                     )
                                 ),
                             )
@@ -682,15 +682,15 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         cores = random.randint(1, pod.hints.cores)
         memory = random.randint(1024, pod.hints.memory)
         cpu_speed = random.randint(300, pod.hints.cpu_speed)
-        disk_1 = random.randint(8, 16) * (1000 ** 3)
+        disk_1 = random.randint(8, 16) * (1000**3)
         disk_1_tags = [factory.make_name("tag") for _ in range(3)]
-        disk_2 = random.randint(8, 16) * (1000 ** 3)
+        disk_2 = random.randint(8, 16) * (1000**3)
         disk_2_tags = [factory.make_name("tag") for _ in range(3)]
         hugepages_backed = factory.pick_bool()
         storage = "root:%d(%s),extra:%d(%s)" % (
-            disk_1 // (1000 ** 3),
+            disk_1 // (1000**3),
             ",".join(disk_1_tags),
-            disk_2 // (1000 ** 3),
+            disk_2 // (1000**3),
             ",".join(disk_2_tags),
         )
         form = ComposeMachineForm(
@@ -774,11 +774,11 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
     def test_get_machine_handles_no_tags_in_storage(self):
         request = MagicMock()
         pod = make_pod_with_hints()
-        disk_1 = random.randint(8, 16) * (1000 ** 3)
-        disk_2 = random.randint(8, 16) * (1000 ** 3)
+        disk_1 = random.randint(8, 16) * (1000**3)
+        disk_2 = random.randint(8, 16) * (1000**3)
         storage = "root:%d,extra:%d" % (
-            disk_1 // (1000 ** 3),
-            disk_2 // (1000 ** 3),
+            disk_1 // (1000**3),
+            disk_2 // (1000**3),
         )
         form = ComposeMachineForm(
             data={"storage": storage}, request=request, pod=pod

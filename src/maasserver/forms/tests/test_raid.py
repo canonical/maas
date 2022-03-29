@@ -23,7 +23,7 @@ def _make_interesting_RAID(
     num_spare_partitions=2,
 ):
     """Returns a RAID that is interesting for our tests."""
-    size = 1000 ** 4  # A Terabyte.
+    size = 1000**4  # A Terabyte.
     block_devices = [
         factory.make_BlockDevice(node=node, size=size)
         for _ in range(num_devices)
@@ -62,7 +62,7 @@ class TestCreateRaidForm(MAASServerTestCase):
     def test_choices_are_being_populated_correctly(self):
         node = factory.make_Node(with_boot_disk=False)
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for _ in range(10)
         ]
         for bd in bds[5:]:
@@ -96,7 +96,7 @@ class TestCreateRaidForm(MAASServerTestCase):
 
     def test_raid_creation_on_save(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         bds = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -144,7 +144,7 @@ class TestCreateRaidForm(MAASServerTestCase):
 
     def test_raid_creation_with_names(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         bds = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)

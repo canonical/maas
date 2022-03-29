@@ -2982,7 +2982,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         # The documented size limit for commissioning result files:
         # one megabyte.  What happens above this limit is none of
         # anybody's business, but files up to this size should work.
-        size_limit = 2 ** 20
+        size_limit = 2**20
         contents = factory.make_string(size_limit, spaces=True)
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, with_empty_script_sets=True

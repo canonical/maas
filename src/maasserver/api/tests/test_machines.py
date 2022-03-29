@@ -1234,18 +1234,18 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         disk_1 = factory.make_PhysicalBlockDevice(
             node=machine,
-            size=(random.randint(8, 16) * (1000 ** 3)),
+            size=(random.randint(8, 16) * (1000**3)),
             tags=["local"],
             formatted_root=True,
         )
         disk_2 = factory.make_PhysicalBlockDevice(
             node=machine,
-            size=(random.randint(8, 16) * (1000 ** 3)),
+            size=(random.randint(8, 16) * (1000**3)),
             tags=["other"],
         )
         storage = "root:%d(local),remote:%d(other)" % (
-            disk_1.size // (1000 ** 3),
-            disk_2.size // (1000 ** 3),
+            disk_1.size // (1000**3),
+            disk_2.size // (1000**3),
         )
         mock_list_all_usable_architectures = self.patch(
             forms_module, "list_all_usable_architectures"
@@ -1917,7 +1917,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         factory.make_PhysicalBlockDevice(
             node=machine,
-            size=11 * (1000 ** 3),
+            size=11 * (1000**3),
             tags=["ssd"],
             formatted_root=True,
         )
@@ -1943,7 +1943,7 @@ class TestMachinesAPI(APITestCase.ForUser):
         )
         factory.make_PhysicalBlockDevice(
             node=machine,
-            size=11 * (1000 ** 3),
+            size=11 * (1000**3),
             tags=["ssd"],
             formatted_root=True,
         )

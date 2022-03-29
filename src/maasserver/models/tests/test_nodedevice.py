@@ -14,8 +14,8 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestNodeDevice(MAASServerTestCase):
     def test_save_fills_in_bus_dev_num_for_pcie(self):
-        bus_number = random.randint(0, 2 ** 16)
-        device_number = random.randint(0, 2 ** 16)
+        bus_number = random.randint(0, 2**16)
+        device_number = random.randint(0, 2**16)
         node_config = factory.make_NodeConfig()
         node = node_config.node
         node_device = NodeDevice.objects.create(
@@ -38,8 +38,8 @@ class TestNodeDevice(MAASServerTestCase):
         self.assertRaises(ValidationError, node_device.save)
 
     def test_device_on_different_nodeconfig(self):
-        bus_number = random.randint(0, 2 ** 16)
-        device_number = random.randint(0, 2 ** 16)
+        bus_number = random.randint(0, 2**16)
+        device_number = random.randint(0, 2**16)
         node_config1 = factory.make_NodeConfig()
         node = node_config1.node
         node_config2 = factory.make_NodeConfig(

@@ -357,7 +357,7 @@ class TestMachineHandler(MAASServerTestCase):
                     blockdevice.size
                     for blockdevice in node.physicalblockdevice_set.all()
                 )
-                / (1000 ** 3),
+                / (1000**3),
                 1,
             ),
             "storage_tags": handler.get_all_storage_tags(blockdevices),
@@ -1274,12 +1274,12 @@ class TestMachineHandler(MAASServerTestCase):
         node = factory.make_Node(owner=owner)
         handler = MachineHandler(owner, {}, None)
         blockdevice = factory.make_PhysicalBlockDevice(
-            node=node, size=10 * 1024 ** 3, block_size=512
+            node=node, size=10 * 1024**3, block_size=512
         )
         partition_table = factory.make_PartitionTable(block_device=blockdevice)
         partitions = [
             factory.make_Partition(
-                partition_table=partition_table, size=1 * 1024 ** 3
+                partition_table=partition_table, size=1 * 1024**3
             )
             for _ in range(3)
         ]
@@ -3677,9 +3677,9 @@ class TestMachineHandler(MAASServerTestCase):
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(with_boot_disk=False)
         node.boot_disk = factory.make_PhysicalBlockDevice(
-            node=node, size=40 * 1024 ** 3
+            node=node, size=40 * 1024**3
         )
-        factory.make_PhysicalBlockDevice(node=node, size=20 * 1024 ** 3)
+        factory.make_PhysicalBlockDevice(node=node, size=20 * 1024**3)
         storage_layout = factory.pick_choice(
             STORAGE_LAYOUT_CHOICES,
             but_not=("blank", "custom"),
@@ -3716,7 +3716,7 @@ class TestMachineHandler(MAASServerTestCase):
         user = factory.make_admin()
         handler = MachineHandler(user, {}, None)
         node = factory.make_Node(with_boot_disk=False)
-        factory.make_PhysicalBlockDevice(size=1024 ** 3)
+        factory.make_PhysicalBlockDevice(size=1024**3)
         params = {
             "system_id": node.system_id,
             "storage_layout": factory.pick_choice(STORAGE_LAYOUT_CHOICES),
@@ -3850,20 +3850,20 @@ class TestMachineHandler(MAASServerTestCase):
         request.user = user
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
-            node=source, size=8 * 1024 ** 3, name="sda"
+            node=source, size=8 * 1024**3, name="sda"
         )
         destination1 = factory.make_Machine(
             status=NODE_STATUS.READY, with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(
-            node=destination1, size=1024 ** 3, name="sda"
+            node=destination1, size=1024**3, name="sda"
         )
         destination2 = factory.make_Machine(
             status=NODE_STATUS.FAILED_TESTING,
             with_boot_disk=False,
         )
         factory.make_PhysicalBlockDevice(
-            node=destination2, size=1024 ** 3, name="sda"
+            node=destination2, size=1024**3, name="sda"
         )
 
         handler = MachineHandler(user, {}, request)
@@ -3908,7 +3908,7 @@ class TestMachineHandler(MAASServerTestCase):
         request.user = user
         source = factory.make_Machine(with_boot_disk=False)
         boot_disk = factory.make_PhysicalBlockDevice(
-            node=source, size=8 * 1024 ** 3, name="sda"
+            node=source, size=8 * 1024**3, name="sda"
         )
         partition_table = factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.MBR, block_device=boot_disk
@@ -3916,27 +3916,27 @@ class TestMachineHandler(MAASServerTestCase):
         efi_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=512 * 1024 ** 2,
+            size=512 * 1024**2,
             bootable=True,
         )
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=2 * 1024 ** 3,
+            size=2 * 1024**3,
             bootable=False,
         )
         destination1 = factory.make_Machine(
             status=NODE_STATUS.READY, with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(
-            node=destination1, size=1024 ** 3, name="sda"
+            node=destination1, size=1024**3, name="sda"
         )
         destination2 = factory.make_Machine(
             status=NODE_STATUS.FAILED_TESTING,
             with_boot_disk=False,
         )
         factory.make_PhysicalBlockDevice(
-            node=destination2, size=8 * 1024 ** 3, name="sda"
+            node=destination2, size=8 * 1024**3, name="sda"
         )
 
         handler = MachineHandler(user, {}, request)
@@ -4589,7 +4589,7 @@ class TestMachineHandler(MAASServerTestCase):
     def test_get_grouped_storages_parses_blockdevices(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
-        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 ** 3)
+        size = random.randint(MIN_BLOCK_DEVICE_SIZE, 1000**3)
         ssd = factory.make_PhysicalBlockDevice(node=node, tags=["ssd"])
         hdd = factory.make_PhysicalBlockDevice(
             node=node, tags=["hdd"], size=size

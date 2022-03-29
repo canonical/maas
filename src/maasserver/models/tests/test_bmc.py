@@ -758,7 +758,7 @@ class PodTestMixin:
         return DiscoveredMachineBlockDevice(
             model=model,
             serial=serial,
-            size=random.randint(1024 ** 3, 1024 ** 4),
+            size=random.randint(1024**3, 1024**4),
             block_size=random.choice([512, 4096]),
             tags=[factory.make_name("tag") for _ in range(3)],
             id_path=id_path,
@@ -830,7 +830,7 @@ class PodTestMixin:
         return DiscoveredPodStoragePool(
             id=factory.make_name("id"),
             name=name,
-            storage=random.randint(10 * 1024 ** 3, 100 * 1024 ** 3),
+            storage=random.randint(10 * 1024**3, 100 * 1024**3),
             type=factory.make_name("type"),
             path="/var/lib/%s" % name,
         )

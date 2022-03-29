@@ -29,7 +29,7 @@ from maastesting.crochet import wait_for
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.utils.testing import MAASIDFixture
 
-is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
+is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2**16))
 
 
 class RPCViewTest(MAASTransactionServerTestCase):

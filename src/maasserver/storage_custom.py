@@ -542,9 +542,9 @@ def _get_size(size: str) -> int:
     It supports M, G, T suffixes.
     """
     multipliers = {
-        "M": 1000 ** 2,
-        "G": 1000 ** 3,
-        "T": 1000 ** 4,
+        "M": 1000**2,
+        "G": 1000**3,
+        "T": 1000**4,
     }
     try:
         value, multiplier = size[:-1], size[-1]

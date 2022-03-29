@@ -669,8 +669,8 @@ class TestMAASStats(MAASServerTestCase):
         self.assertEqual(get_custom_images_deployed_stats(), 2)
 
     def test_vmcluster_stats(self):
-        GiB = 2 ** 30
-        GB = 10 ** 9
+        GiB = 2**30
+        GB = 10**9
 
         # create clusters
         factory.make_VMCluster(
@@ -857,7 +857,7 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
             stats.get_subnets_utilisation_stats(),
             {
                 "1.2.0.0/16": {
-                    "available": 2 ** 16 - 3,
+                    "available": 2**16 - 3,
                     "dynamic_available": 0,
                     "dynamic_used": 0,
                     "reserved_available": 0,
@@ -901,7 +901,7 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
             stats.get_subnets_utilisation_stats(),
             {
                 "1.2.0.0/16": {
-                    "available": 2 ** 16 - 23,
+                    "available": 2**16 - 23,
                     "dynamic_available": 18,
                     "dynamic_used": 2,
                     "reserved_available": 0,
@@ -935,7 +935,7 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
             stats.get_subnets_utilisation_stats(),
             {
                 "1.2.0.0/16": {
-                    "available": 2 ** 16 - 23,
+                    "available": 2**16 - 23,
                     "dynamic_available": 0,
                     "dynamic_used": 0,
                     "reserved_available": 19,
@@ -958,7 +958,7 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
             stats.get_subnets_utilisation_stats(),
             {
                 "1.2.0.0/16": {
-                    "available": 2 ** 16 - 6,
+                    "available": 2**16 - 6,
                     "dynamic_available": 0,
                     "dynamic_used": 0,
                     "reserved_available": 0,
@@ -1002,7 +1002,7 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
             stats.get_subnets_utilisation_stats(),
             {
                 "1.2.0.0/16": {
-                    "available": 2 ** 16 - 36,
+                    "available": 2**16 - 36,
                     "dynamic_available": 9,
                     "dynamic_used": 1,
                     "reserved_available": 18,

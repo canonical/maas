@@ -184,7 +184,7 @@ class TFTPOffloadProtocol(protocol.Protocol):
     def copyReader(self, reader):
         tempfd, tempname = tempfile.mkstemp(dir=self.store)
         with os.fdopen(tempfd, "wb") as tempfd:
-            chunksize = 2 ** 16  # 64kiB
+            chunksize = 2**16  # 64kiB
             while True:
                 chunk = yield reader.read(chunksize)
                 tempfd.write(chunk)

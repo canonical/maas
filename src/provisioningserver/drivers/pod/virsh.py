@@ -282,7 +282,7 @@ VM_STATE_TO_POWER_STATE = {
 
 
 class VirshError(Exception):
-    """Failure communicating to virsh. """
+    """Failure communicating to virsh."""
 
 
 class VirshSSH(pexpect.spawn):
@@ -902,7 +902,7 @@ class VirshSSH(pexpect.spawn):
             # LP: #1858201
             # Round down to the nearest MiB for zfs.
             # See bug comments for more details.
-            disk_size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
+            disk_size = int(floor(disk.size / 2**20)) * 2**20
             extra_args = [
                 "--allocation",
                 "0",

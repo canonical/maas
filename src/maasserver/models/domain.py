@@ -30,7 +30,7 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
-NAMESPEC = fr"({LABEL}.)*{LABEL}.?"
+NAMESPEC = rf"({LABEL}.)*{LABEL}.?"
 
 
 def validate_domain_name(value):

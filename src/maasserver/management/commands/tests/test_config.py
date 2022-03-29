@@ -182,7 +182,7 @@ class TestConfigurationSet_DatabasePort(MAASTestCase):
     def test_exception_when_port_is_too_high(self):
         self.useFixture(RegionConfigurationFixture())
         error = self.assertRaises(
-            CommandError, call_set, database_port=2 ** 16
+            CommandError, call_set, database_port=2**16
         )
         self.assertThat(
             str(error),

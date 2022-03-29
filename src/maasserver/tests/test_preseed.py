@@ -929,7 +929,7 @@ class TestComposeCurtinSwapSpace(MAASServerTestCase):
 
     def test_returns_set_swap_size(self):
         node = factory.make_Node()
-        node.swap_size = 10 * 1000 ** 3
+        node.swap_size = 10 * 1000**3
         swap_preseed = compose_curtin_swap_preseed(node)
         self.assertEqual(
             swap_preseed, [yaml.safe_dump({"swap": {"size": "10000000000B"}})]

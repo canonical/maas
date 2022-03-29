@@ -27,7 +27,7 @@ def exponential_growth(base, rate):
     :type rate: float.
     """
     for attempt in count(1):
-        yield base * (rate ** attempt)
+        yield base * (rate**attempt)
 
 
 def full_jitter(values):

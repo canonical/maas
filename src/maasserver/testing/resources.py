@@ -26,7 +26,6 @@ if os.environ.get("MAAS_DEBUG_RESOURCES") is None:
     def debug(message, **args):
         """Throw away all messages."""
 
-
 else:
 
     def debug(message, **args):

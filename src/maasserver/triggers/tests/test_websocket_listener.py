@@ -3386,7 +3386,7 @@ class TestMachineBlockDeviceListener(
             yield deferToDatabase(
                 self.update_blockdevice,
                 blockdevice.id,
-                {"size": random.randint(MIN_BLOCK_DEVICE_SIZE, 1000 ** 3)},
+                {"size": random.randint(MIN_BLOCK_DEVICE_SIZE, 1000**3)},
             )
             yield dv.get(timeout=2)
             self.assertEqual(("update", node.system_id), dv.value)
@@ -3591,7 +3591,7 @@ class TestMachinePartitionListener(
             yield deferToDatabase(
                 self.update_partition,
                 partition.id,
-                {"size": random.randint(MIN_PARTITION_SIZE, 1000 ** 3)},
+                {"size": random.randint(MIN_PARTITION_SIZE, 1000**3)},
             )
             yield dv.get(timeout=2)
             self.assertEqual(("update", node.system_id), dv.value)

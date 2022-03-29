@@ -1793,7 +1793,7 @@ class TestAllocTypeName(MAASServerTestCase):
 
     def test_returns_empty_string_for_unknown_types(self):
         ip = factory.make_StaticIPAddress()
-        ip.alloc_type = randint(2 ** 16, 2 ** 32)
+        ip.alloc_type = randint(2**16, 2**32)
         self.assertThat(ip.alloc_type_name, Equals(""))
 
 

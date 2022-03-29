@@ -236,7 +236,7 @@ class NodeHandler(TimestampedModelHandler):
             data["physical_disk_count"] = len(physical_blockdevices)
             data["storage"] = round(
                 sum(blockdevice.size for blockdevice in physical_blockdevices)
-                / (1000 ** 3),
+                / (1000**3),
                 1,
             )
             data["storage_tags"] = self.get_all_storage_tags(blockdevices)

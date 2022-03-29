@@ -330,7 +330,7 @@ def get_storage_constraints_from_string(storage):
     constraints = [
         (
             label,
-            int(float(size) * (1000 ** 3)),
+            int(float(size) * (1000**3)),
             tags.split(",") if tags != "" else None,
         )
         for (label, size, tags) in groups

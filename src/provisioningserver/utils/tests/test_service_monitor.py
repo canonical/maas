@@ -876,17 +876,20 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadSystemDServiceState_status_returns_off_and_dead(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        systemd_status_output = dedent(
-            """\
+        systemd_status_output = (
+            dedent(
+                """\
             %s.service - LSB: iscsi target daemon
                 Loaded: loaded (/lib/systemd/system/%s.service)
                 Active: %s (dead)
                 Docs: man:systemd-sysv-generator(8)
             """
-        ) % (
-            service.service_name,
-            service.service_name,
-            random.choice(["inactive", "deactivating"]),
+            )
+            % (
+                service.service_name,
+                service.service_name,
+                random.choice(["inactive", "deactivating"]),
+            )
         )
 
         mock_execSystemDServiceAction = self.patch(
@@ -907,17 +910,20 @@ class TestServiceMonitor(MAASTestCase):
     def test_loadSystemDServiceState_status_returns_dead_for_failed(self):
         service = make_fake_service(SERVICE_STATE.ON)
         service_monitor = self.make_service_monitor([service])
-        systemd_status_output = dedent(
-            """\
+        systemd_status_output = (
+            dedent(
+                """\
             %s.service - Fake service
                 Loaded: loaded (/lib/systemd/system/%s.service; ...
                 Active: %s (Result: exit-code) since Wed 2016-01-20...
                 Docs: man:dhcpd(8)
             """
-        ) % (
-            service.service_name,
-            service.service_name,
-            random.choice(["reloading", "failed", "activating"]),
+            )
+            % (
+                service.service_name,
+                service.service_name,
+                random.choice(["reloading", "failed", "activating"]),
+            )
         )
 
         mock_execSystemDServiceAction = self.patch(

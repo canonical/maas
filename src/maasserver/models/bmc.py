@@ -184,7 +184,7 @@ class BMC(CleanSave, TimestampedModel):
 
     # JSON-encoded set of parameters for power control, limited to 32kiB when
     # encoded as JSON. These apply to all Nodes controlled by this BMC.
-    power_parameters = JSONField(max_length=(2 ** 15), blank=True, default=str)
+    power_parameters = JSONField(max_length=(2**15), blank=True, default=str)
 
     # Rack controllers that have access to the BMC by routing instead of
     # having direct layer 2 access.

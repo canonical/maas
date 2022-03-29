@@ -21,9 +21,9 @@ from maasserver.utils.converters import round_size_to_nearest_block
 from maasserver.utils.orm import reload_object
 from maastesting.testcase import MAASTestCase
 
-MB = 1000 ** 2
-GB = 1000 ** 3
-TB = 1000 ** 4
+MB = 1000**2
+GB = 1000**3
+TB = 1000**4
 
 
 def rounded_size(size):

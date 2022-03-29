@@ -266,7 +266,7 @@ def generate_node_system_id():
     there are over 183 million six-digit system IDs to choose from.
     """
     for attempt in range(1, 1001):
-        system_num = random.randrange(24 ** 5, 24 ** 6)
+        system_num = random.randrange(24**5, 24**6)
         system_id = znums.from_int(system_num)
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1074,7 +1074,7 @@ class Node(CleanSave, TimestampedModel):
     # Power parameters specific to this node instance. Global power parameters
     # are stored in this node's BMC.
     instance_power_parameters = JSONField(
-        max_length=(2 ** 15), blank=True, default=str
+        max_length=(2**15), blank=True, default=str
     )
 
     power_state = CharField(
@@ -3969,7 +3969,7 @@ class Node(CleanSave, TimestampedModel):
 
     @transactional
     def update_power_state(self, power_state):
-        """Update a node's power state """
+        """Update a node's power state"""
         # Avoid circular imports.
         from maasserver.models.event import Event
 

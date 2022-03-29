@@ -128,7 +128,7 @@ class TestPrometheus(MAASServerTestCase):
         mock_vm_hosts.return_value = vm_hosts
         subnet_stats = {
             "1.2.0.0/16": {
-                "available": 2 ** 16 - 3,
+                "available": 2**16 - 3,
                 "dynamic_available": 0,
                 "dynamic_used": 0,
                 "reserved_available": 0,

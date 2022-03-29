@@ -78,7 +78,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
 
     def test_create_403_if_not_admin(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
@@ -102,7 +102,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
     def test_create_409_if_not_ready(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
@@ -130,7 +130,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         )
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
@@ -169,7 +169,7 @@ class TestBcacheDevicesAPI(APITestCase.ForUser):
         """Tests Bcache device creation without a cache set."""
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
         )

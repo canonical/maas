@@ -350,17 +350,17 @@ class TestConvertSizeToBytes(MAASTestCase):
 
     scenarios = (
         ("bytes", {"value": "24111", "expected": 24111}),
-        ("KiB", {"value": "2.21 KiB", "expected": int(2.21 * 2 ** 10)}),
-        ("MiB", {"value": "2.21 MiB", "expected": int(2.21 * 2 ** 20)}),
-        ("GiB", {"value": "2.21 GiB", "expected": int(2.21 * 2 ** 30)}),
-        ("TiB", {"value": "2.21 TiB", "expected": int(2.21 * 2 ** 40)}),
-        ("PiB", {"value": "2.21 PiB", "expected": int(2.21 * 2 ** 50)}),
-        ("EiB", {"value": "2.21 EiB", "expected": int(2.21 * 2 ** 60)}),
-        ("ZiB", {"value": "2.21 ZiB", "expected": int(2.21 * 2 ** 70)}),
-        ("YiB", {"value": "2.21 YiB", "expected": int(2.21 * 2 ** 80)}),
+        ("KiB", {"value": "2.21 KiB", "expected": int(2.21 * 2**10)}),
+        ("MiB", {"value": "2.21 MiB", "expected": int(2.21 * 2**20)}),
+        ("GiB", {"value": "2.21 GiB", "expected": int(2.21 * 2**30)}),
+        ("TiB", {"value": "2.21 TiB", "expected": int(2.21 * 2**40)}),
+        ("PiB", {"value": "2.21 PiB", "expected": int(2.21 * 2**50)}),
+        ("EiB", {"value": "2.21 EiB", "expected": int(2.21 * 2**60)}),
+        ("ZiB", {"value": "2.21 ZiB", "expected": int(2.21 * 2**70)}),
+        ("YiB", {"value": "2.21 YiB", "expected": int(2.21 * 2**80)}),
         (
             "whitespace",
-            {"value": "2.21   GiB", "expected": int(2.21 * 2 ** 30)},
+            {"value": "2.21   GiB", "expected": int(2.21 * 2**30)},
         ),
         ("zero", {"value": "0 TiB", "expected": 0}),
     )

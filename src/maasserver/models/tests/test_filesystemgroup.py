@@ -221,12 +221,12 @@ class TestManagersFilterByBlockDevice(MAASServerTestCase):
         self.assertEqual([filesystem_group.id], result_filesystem_group_ids)
 
     def test_volume_group_on_partition(self):
-        block_device = factory.make_PhysicalBlockDevice(size=10 * 1024 ** 3)
+        block_device = factory.make_PhysicalBlockDevice(size=10 * 1024**3)
         partition_table = factory.make_PartitionTable(
             block_device=block_device
         )
         partition = factory.make_Partition(
-            size=5 * 1024 ** 3, partition_table=partition_table
+            size=5 * 1024**3, partition_table=partition_table
         )
         filesystem = factory.make_Filesystem(
             fstype=FILESYSTEM_TYPE.LVM_PV, partition=partition
@@ -760,7 +760,7 @@ class TestFilesystemGroup(MAASServerTestCase):
         filesystems = []
         for _ in range(3):
             size = random.randint(
-                MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
+                MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE**2
             )
             total_size += size
             block_device = factory.make_PhysicalBlockDevice(
@@ -785,9 +785,9 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_get_size_returns_sum_of_disk_size_for_raid_0(self):
         node = factory.make_Node()
         small_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE**2
         )
-        large_size = random.randint(small_size + 1, small_size + (10 ** 5))
+        large_size = random.randint(small_size + 1, small_size + (10**5))
         filesystems = [
             factory.make_Filesystem(
                 fstype=FILESYSTEM_TYPE.RAID,
@@ -813,9 +813,9 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_get_size_returns_smallest_disk_size_for_raid_1(self):
         node = factory.make_Node()
         small_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE**2
         )
-        large_size = random.randint(small_size + 1, small_size + (10 ** 5))
+        large_size = random.randint(small_size + 1, small_size + (10**5))
         filesystems = [
             factory.make_Filesystem(
                 fstype=FILESYSTEM_TYPE.RAID,
@@ -840,9 +840,9 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_get_size_returns_correct_disk_size_for_raid_5(self):
         node = factory.make_Node()
         small_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE**2
         )
-        other_size = random.randint(small_size + 1, small_size + (10 ** 5))
+        other_size = random.randint(small_size + 1, small_size + (10**5))
         number_of_raid_devices = random.randint(2, 9)
         filesystems = [
             factory.make_Filesystem(
@@ -882,9 +882,9 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_get_size_returns_correct_disk_size_for_raid_6(self):
         node = factory.make_Node()
         small_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE**2
         )
-        other_size = random.randint(small_size + 1, small_size + (10 ** 5))
+        other_size = random.randint(small_size + 1, small_size + (10**5))
         number_of_raid_devices = random.randint(3, 9)
         filesystems = [
             factory.make_Filesystem(
@@ -926,9 +926,9 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_get_size_returns_correct_disk_size_for_raid_10(self):
         node = factory.make_Node()
         small_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE**2
         )
-        other_size = random.randint(small_size + 1, small_size + (10 ** 5))
+        other_size = random.randint(small_size + 1, small_size + (10**5))
         number_of_raid_devices = random.randint(3, 9)
         filesystems = [
             factory.make_Filesystem(
@@ -973,7 +973,7 @@ class TestFilesystemGroup(MAASServerTestCase):
     def test_get_size_returns_size_of_backing_device_with_bcache(self):
         node = factory.make_Node()
         backing_size = random.randint(
-            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE ** 2
+            MIN_BLOCK_DEVICE_SIZE, MIN_BLOCK_DEVICE_SIZE**2
         )
         cache_set = factory.make_CacheSet(node=node)
         backing_block_device = factory.make_PhysicalBlockDevice(
@@ -1594,21 +1594,21 @@ class TestFilesystemGroup(MAASServerTestCase):
                 block_device=block_device,
             )
         # Size should be 50 GB minus one extent per filesystem for LVM headers.
-        pv_total_size = 50 * 1000 ** 3
+        pv_total_size = 50 * 1000**3
         extents = (pv_total_size // LVM_PE_SIZE) - 5
         usable_size = extents * LVM_PE_SIZE
         self.assertEqual(usable_size, fsgroup.get_size())
 
         # Allocate two VirtualBlockDevice's
         factory.make_VirtualBlockDevice(
-            filesystem_group=fsgroup, size=35 * 1000 ** 3
+            filesystem_group=fsgroup, size=35 * 1000**3
         )
         factory.make_VirtualBlockDevice(
-            filesystem_group=fsgroup, size=5 * 1000 ** 3
+            filesystem_group=fsgroup, size=5 * 1000**3
         )
 
         expected_size = round_size_to_nearest_block(
-            40 * 1000 ** 3, PARTITION_ALIGNMENT_SIZE, False
+            40 * 1000**3, PARTITION_ALIGNMENT_SIZE, False
         )
         self.assertEqual(expected_size, fsgroup.get_lvm_allocated_size())
         self.assertEqual(
@@ -1929,7 +1929,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_create_raid(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -1970,7 +1970,7 @@ class TestRAID(MAASServerTestCase):
     def test_create_raid_0_with_a_spare_fails(self):
         node = factory.make_Node()
         block_devices = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for _ in range(10)
         ]
         uuid = str(uuid4())
@@ -2033,7 +2033,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_create_raid_1_with_spares(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2094,7 +2094,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_create_raid_5_with_spares(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2135,7 +2135,7 @@ class TestRAID(MAASServerTestCase):
     def test_create_raid_5_with_2_elements_fails(self):
         node = factory.make_Node()
         block_devices = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for _ in range(2)
         ]
         uuid = str(uuid4())
@@ -2231,7 +2231,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_add_device_to_array(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2252,7 +2252,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_add_spare_device_to_array(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2273,7 +2273,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_add_partition_to_array(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2326,7 +2326,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_add_spare_partition_to_array(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2352,7 +2352,7 @@ class TestRAID(MAASServerTestCase):
     def test_add_device_from_another_node_to_array_fails(self):
         node = factory.make_Node()
         other_node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2383,7 +2383,7 @@ class TestRAID(MAASServerTestCase):
     def test_add_partition_from_another_node_to_array_fails(self):
         node = factory.make_Node()
         other_node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2415,7 +2415,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_add_already_used_device_to_array_fails(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2450,7 +2450,7 @@ class TestRAID(MAASServerTestCase):
         etc). The goal is to make sure we trigger the RAID internal validation.
         """
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(4)
@@ -2486,7 +2486,7 @@ class TestRAID(MAASServerTestCase):
         etc). The goal is to make sure we trigger the RAID internal validation.
         """
         node = factory.make_Node(bios_boot_method="uefi")
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         partitions = [
             factory.make_PartitionTable(
                 table_type=PARTITION_TABLE_TYPE.GPT,
@@ -2524,7 +2524,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_remove_device_from_array(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2545,7 +2545,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_remove_partition_from_array(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         partitions = [
             factory.make_PartitionTable(
                 block_device=factory.make_PhysicalBlockDevice(
@@ -2571,7 +2571,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_remove_invalid_partition_from_array_fails(self):
         node = factory.make_Node(bios_boot_method="uefi")
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         partitions = [
             factory.make_PartitionTable(
                 table_type=PARTITION_TABLE_TYPE.GPT,
@@ -2607,7 +2607,7 @@ class TestRAID(MAASServerTestCase):
 
     def test_remove_device_from_array_fails(self):
         node = factory.make_Node()
-        device_size = 10 * 1000 ** 4
+        device_size = 10 * 1000**4
         block_devices = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)
             for _ in range(10)
@@ -2644,7 +2644,7 @@ class TestBcache(MAASServerTestCase):
         """Checks creation of a Bcache with physical block devices for caching
         and backing roles."""
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
@@ -2673,8 +2673,8 @@ class TestBcache(MAASServerTestCase):
         """Checks creation of a Bcache with virtual block devices for caching
         and backing roles."""
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
-        cache_size = 1000 ** 4
+        backing_size = 10 * 1000**4
+        cache_size = 1000**4
         # A caching device that's ridiculously fast to read from, but slow for
         # writing to it.
         cache_device = RAID.objects.create_raid(
@@ -2721,8 +2721,8 @@ class TestBcache(MAASServerTestCase):
         """Checks creation of a Bcache with partitions for caching and backing
         roles."""
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
-        cache_size = 1000 ** 4
+        backing_size = 10 * 1000**4
+        cache_size = 1000**4
         cache_partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=cache_size
@@ -2763,8 +2763,8 @@ class TestBcache(MAASServerTestCase):
         """Checks creation of a Bcache with a partition for caching and a
         physical block device for backing."""
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
-        cache_size = 1000 ** 4
+        backing_size = 10 * 1000**4
+        cache_size = 1000**4
         cache_partition = factory.make_PartitionTable(
             block_device=factory.make_PhysicalBlockDevice(
                 node=node, size=cache_size
@@ -2802,7 +2802,7 @@ class TestBcache(MAASServerTestCase):
         """Ensures deletion of a bcache also deletes bcache filesystems from
         caching and backing devices."""
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size

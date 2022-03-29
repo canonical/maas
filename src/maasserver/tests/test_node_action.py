@@ -1876,7 +1876,7 @@ class TestCloneAction(MAASServerTestCase):
         request.user = user
         source = factory.make_Machine(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
-            node=source, size=8 * 1024 ** 3, name="sda"
+            node=source, size=8 * 1024**3, name="sda"
         )
         factory.make_Interface(node=source, name="eth0")
         destination1 = factory.make_Machine(
@@ -1884,7 +1884,7 @@ class TestCloneAction(MAASServerTestCase):
             with_boot_disk=False,
         )
         factory.make_PhysicalBlockDevice(
-            node=destination1, size=8 * 1024 ** 3, name="sda"
+            node=destination1, size=8 * 1024**3, name="sda"
         )
         factory.make_Interface(node=destination1, name="eth0")
         destination2 = factory.make_Machine(
@@ -1892,7 +1892,7 @@ class TestCloneAction(MAASServerTestCase):
             with_boot_disk=False,
         )
         factory.make_PhysicalBlockDevice(
-            node=destination2, size=8 * 1024 ** 3, name="sda"
+            node=destination2, size=8 * 1024**3, name="sda"
         )
         factory.make_Interface(node=destination2, name="eth0")
 
@@ -1915,13 +1915,13 @@ class TestCloneAction(MAASServerTestCase):
             status=NODE_STATUS.READY, with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(
-            node=source, size=8 * 1024 ** 3, name="sda"
+            node=source, size=8 * 1024**3, name="sda"
         )
         destination = factory.make_Machine(
             status=NODE_STATUS.READY, with_boot_disk=False
         )
         factory.make_PhysicalBlockDevice(
-            node=destination, size=4 * 1024 ** 3, name="sda"
+            node=destination, size=4 * 1024**3, name="sda"
         )
         action = Clone(source, user, request)
         exception = self.assertRaises(

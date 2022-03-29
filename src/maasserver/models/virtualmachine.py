@@ -424,7 +424,7 @@ def _update_detailed_resource_counters(pod, resources):
 
 
 def _get_global_vm_host_storage(pod, resources):
-    """Get VMHost storage details, including storage pools """
+    """Get VMHost storage details, including storage pools"""
     storage = (
         VirtualMachineDisk.objects.filter(
             backing_pool__pod=pod,

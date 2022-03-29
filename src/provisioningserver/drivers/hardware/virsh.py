@@ -54,7 +54,7 @@ VM_STATE_TO_POWER_STATE = {
 
 
 class VirshError(Exception):
-    """Failure communicating to virsh. """
+    """Failure communicating to virsh."""
 
 
 class VirshSSH(pexpect.spawn):

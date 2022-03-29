@@ -492,7 +492,7 @@ class VirshRunFake:
 def make_requested_machine():
     block_devices = [
         RequestedMachineBlockDevice(
-            size=random.randint(1024 ** 3, 4 * 1024 ** 3)
+            size=random.randint(1024**3, 4 * 1024**3)
         )
         for _ in range(3)
     ]
@@ -865,7 +865,7 @@ class TestVirshSSH(MAASTestCase):
         pools_mock = self.patch(virsh.VirshSSH, "list_pools")
         pools_mock.return_value = [factory.make_name("pool") for _ in range(3)]
         expected = conn.get_pod_available_local_storage()
-        self.assertEqual(int(452.96 * 3 * 2 ** 30), expected)
+        self.assertEqual(int(452.96 * 3 * 2**30), expected)
 
     def test_get_machine_local_storage(self):
         conn = self.configure_virshssh(SAMPLE_DOMBLKINFO)
@@ -1617,7 +1617,7 @@ class TestVirshSSH(MAASTestCase):
             size=random.randint(1000, 2000), tags=[]
         )
         used_pool, volume_name = conn._create_local_volume(disk)
-        size = int(floor(disk.size / 2 ** 20)) * 2 ** 20
+        size = int(floor(disk.size / 2**20)) * 2**20
         conn.run.assert_called_once_with(
             [
                 "vol-create-as",

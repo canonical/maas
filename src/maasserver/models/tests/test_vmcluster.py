@@ -207,7 +207,7 @@ class TestVMCluster(MAASServerTestCase):
         project = factory.make_name("project")
         cluster = VMCluster(name=cluster_name, project=project)
         storage_allocated = 0
-        storage_total = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+        storage_total = random.randint(10 * 1024**3, 100 * 1024**3)
         pool_name = factory.make_name("pool")
 
         for _ in range(0, 3):
@@ -232,7 +232,7 @@ class TestVMCluster(MAASServerTestCase):
                 pool_type="ceph",
                 storage=storage_total,
             )
-            disk_size = random.randint(1 * 1024 ** 3, storage_total // 3)
+            disk_size = random.randint(1 * 1024**3, storage_total // 3)
             factory.make_VirtualMachineDisk(
                 vm=vm, backing_pool=pool1, size=disk_size
             )
@@ -262,7 +262,7 @@ class TestVMCluster(MAASServerTestCase):
         project = factory.make_name("project")
         cluster = VMCluster(name=cluster_name, project=project)
         storage_shared_allocated = 0
-        storage_shared_total = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+        storage_shared_total = random.randint(10 * 1024**3, 100 * 1024**3)
         storage_nonshared_allocated = 0
         storage_nonshared_total = 0
         pool_shared_name = factory.make_name("pool-ceph")
@@ -291,7 +291,7 @@ class TestVMCluster(MAASServerTestCase):
                 storage=storage_shared_total,
             )
             disk_size = random.randint(
-                1 * 1024 ** 3, storage_shared_total // 3
+                1 * 1024**3, storage_shared_total // 3
             )
             factory.make_VirtualMachineDisk(
                 vm=vm, backing_pool=pool1, size=disk_size
@@ -301,7 +301,7 @@ class TestVMCluster(MAASServerTestCase):
                 pod=pod, name=pool_nonshared_name, pool_type="lvm"
             )
             storage_nonshared_total += pool2.storage
-            disk_size = random.randint(1 * 1024 ** 3, pool2.storage)
+            disk_size = random.randint(1 * 1024**3, pool2.storage)
             factory.make_VirtualMachineDisk(
                 vm=vm, backing_pool=pool2, size=disk_size
             )
@@ -392,7 +392,7 @@ class TestVMCluster(MAASServerTestCase):
         project = factory.make_name("project")
         cluster = VMCluster(name=cluster_name, project=project)
         storage_shared_allocated = 0
-        storage_shared_total = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+        storage_shared_total = random.randint(10 * 1024**3, 100 * 1024**3)
         storage_nonshared_allocated = 0
         storage_nonshared_total = 0
         pool_shared_name = factory.make_name("pool-ceph")
@@ -422,7 +422,7 @@ class TestVMCluster(MAASServerTestCase):
                 storage=storage_shared_total,
             )
             disk_size = random.randint(
-                1 * 1024 ** 3, storage_shared_total // 3
+                1 * 1024**3, storage_shared_total // 3
             )
             factory.make_VirtualMachineDisk(
                 vm=vm, backing_pool=pool1, size=disk_size
@@ -432,7 +432,7 @@ class TestVMCluster(MAASServerTestCase):
                 pod=pod, name=pool_nonshared_name, pool_type="lvm", path="/"
             )
             storage_nonshared_total += pool2.storage
-            disk_size = random.randint(1 * 1024 ** 3, pool2.storage)
+            disk_size = random.randint(1 * 1024**3, pool2.storage)
             factory.make_VirtualMachineDisk(
                 vm=vm, backing_pool=pool2, size=disk_size
             )

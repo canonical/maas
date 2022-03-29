@@ -120,7 +120,7 @@ class TestSpecialFilesystems(MAASServerTestCase, AssertStorageConfigMixin):
         node = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -243,7 +243,7 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -254,25 +254,25 @@ class TestSimpleGPTLayout(MAASServerTestCase, AssertStorageConfigMixin):
         efi_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=512 * 1024 ** 2,
+            size=512 * 1024**2,
             bootable=True,
         )
         boot_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
-            size=1 * 1024 ** 3,
+            size=1 * 1024**3,
             bootable=True,
         )
         swap_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="53f88413-0568-44cc-b7db-4378bdba7f6e",
-            size=(1.0 * 1024 ** 3),
+            size=(1.0 * 1024**3),
             bootable=False,
         )
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=(5.5 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(5.5 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -439,7 +439,7 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -450,31 +450,31 @@ class TestSimpleMBRLayout(MAASServerTestCase, AssertStorageConfigMixin):
         efi_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=512 * 1024 ** 2,
+            size=512 * 1024**2,
             bootable=True,
         )
         boot_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
-            size=1 * 1024 ** 3,
+            size=1 * 1024**3,
             bootable=True,
         )
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=2.5 * 1024 ** 3,
+            size=2.5 * 1024**3,
             bootable=False,
         )
         partition_five = factory.make_Partition(
             partition_table=partition_table,
             uuid="1b59e74f-6189-41a1-ba8e-fbf38df19820",
-            size=2 * 1024 ** 3,
+            size=2 * 1024**3,
             bootable=False,
         )
         partition_six = factory.make_Partition(
             partition_table=partition_table,
             uuid="8c365c80-900b-40a1-a8c7-1e445878d19a",
-            size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(2 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -571,14 +571,14 @@ class TestSimpleWithEmptyDiskLayout(
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
         )  # 8 GiB
         factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sdb",
             id_path="/dev/disk/by-id/wwn-0x55cd2e400009bf84",
         )  # Free disk
@@ -588,7 +588,7 @@ class TestSimpleWithEmptyDiskLayout(
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=(8 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(8 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -654,14 +654,14 @@ class TestMBRWithBootDiskWithoutPartitionsLayout(
         )
         first_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
         )  # 8 GiB
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sdb",
             id_path="/dev/disk/by-id/wwn-0x55cd2e400009bf84",
         )
@@ -673,7 +673,7 @@ class TestMBRWithBootDiskWithoutPartitionsLayout(
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=(8 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(8 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -749,14 +749,14 @@ class TestGPTWithBootDiskWithoutPartitionsLayout(
         )
         first_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
         )  # 8 GiB
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=2 * 1024 ** 4,
+            size=2 * 1024**4,
             name="sdb",
             id_path="/dev/disk/by-id/wwn-0x55cd2e400009bf84",
         )  # 2 TiB
@@ -768,7 +768,7 @@ class TestGPTWithBootDiskWithoutPartitionsLayout(
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=(8 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(8 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -837,7 +837,7 @@ class TestGPTPXELargeBootDiskLayout(
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=2 * 1024 ** 4,
+            size=2 * 1024**4,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -851,7 +851,7 @@ class TestGPTPXELargeBootDiskLayout(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
             size=(
-                (8 * 1024 ** 3)
+                (8 * 1024**3)
                 - PARTITION_TABLE_EXTRA_SPACE
                 - BIOS_GRUB_PARTITION_SIZE
             ),
@@ -907,14 +907,14 @@ class TestLVMOnlyVG(MAASServerTestCase, AssertStorageConfigMixin):
         )
         factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
         )
         disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sdb",
             model="QEMU HARDDISK",
             serial="QM00002",
@@ -1124,49 +1124,49 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
         )  # 8 GiB
         ssd_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sdb",
             model="QEMU SSD",
             serial="QM00002",
         )  # 8 GiB
         raid_5_disk_1 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdc",
             model="QEMU HARDDISK",
             serial="QM00003",
         )  # 1 TiB
         raid_5_disk_2 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdd",
             model="QEMU HARDDISK",
             serial="QM00004",
         )  # 1 TiB
         raid_5_disk_3 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sde",
             model="QEMU HARDDISK",
             serial="QM00005",
         )  # 1 TiB
         raid_5_disk_4 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdf",
             model="QEMU HARDDISK",
             serial="QM00006",
         )  # 1 TiB
         raid_5_disk_5 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdg",
             model="QEMU HARDDISK",
             serial="QM00007",
@@ -1177,19 +1177,19 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
         efi_partition = factory.make_Partition(
             partition_table=boot_partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=512 * 1024 ** 2,
+            size=512 * 1024**2,
             bootable=True,
         )
         boot_partition = factory.make_Partition(
             partition_table=boot_partition_table,
             uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
-            size=1 * 1024 ** 3,
+            size=1 * 1024**3,
             bootable=True,
         )
         root_partition = factory.make_Partition(
             partition_table=boot_partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=(6.5 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(6.5 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -1216,7 +1216,7 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
         cache_partition = factory.make_Partition(
             partition_table=ssd_partition_table,
             uuid="f3281144-a0b6-46f1-90af-8541f97f7b1f",
-            size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(2 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         cache_set = factory.make_CacheSet(partition=cache_partition)
@@ -1230,7 +1230,7 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
         lvm_partition = factory.make_Partition(
             partition_table=ssd_partition_table,
             uuid="ea7f96d0-b508-40d9-8495-b2163df35c9b",
-            size=(6 * 1024 ** 3),
+            size=(6 * 1024**3),
             bootable=False,
         )
         vgroot = VolumeGroup.objects.create_volume_group(
@@ -1242,12 +1242,12 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
         lvroot = vgroot.create_logical_volume(
             name="lvroot",
             uuid="98fac182-45a4-4afc-ba57-a1ace0396679",
-            size=2 * 1024 ** 3,
+            size=2 * 1024**3,
         )
         vgroot.create_logical_volume(
             name="lvextra",
             uuid="0d960ec6-e6d0-466f-8f83-ee9c11e5b9ba",
-            size=2 * 1024 ** 3,
+            size=2 * 1024**3,
         )
         factory.make_Filesystem(
             block_device=lvroot,
@@ -1270,7 +1270,7 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
         raid_5_partition = factory.make_Partition(
             partition_table=raid_5_partition_table,
             uuid="18a6e885-3e6d-4505-8a0d-cf34df11a8b0",
-            size=(2 * 1024 ** 4) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(2 * 1024**4) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -1338,7 +1338,7 @@ class TestSimplePower8Layout(MAASServerTestCase, AssertStorageConfigMixin):
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -1350,7 +1350,7 @@ class TestSimplePower8Layout(MAASServerTestCase, AssertStorageConfigMixin):
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
             size=(
-                (8 * 1024 ** 3)
+                (8 * 1024**3)
                 - PARTITION_TABLE_EXTRA_SPACE
                 - PREP_PARTITION_SIZE
             ),
@@ -1421,7 +1421,7 @@ class TestPower8ExtraSpaceLayout(MAASServerTestCase, AssertStorageConfigMixin):
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -1432,7 +1432,7 @@ class TestPower8ExtraSpaceLayout(MAASServerTestCase, AssertStorageConfigMixin):
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=(7 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(7 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -1510,7 +1510,7 @@ class TestPower8NoPartitionTableLayout(
         )
         root_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -1520,7 +1520,7 @@ class TestPower8NoPartitionTableLayout(
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sdb",
             model="QEMU HARDDISK",
             serial="QM00002",
@@ -1533,7 +1533,7 @@ class TestPower8NoPartitionTableLayout(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
             size=(
-                (8 * 1024 ** 3)
+                (8 * 1024**3)
                 - PARTITION_TABLE_EXTRA_SPACE
                 - PREP_PARTITION_SIZE
             ),
@@ -1563,7 +1563,7 @@ class TestMountOrdering(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.READY, with_boot_disk=True)
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -1710,7 +1710,7 @@ class TestBootableRaidLayoutMBR(MAASServerTestCase, AssertStorageConfigMixin):
             architecture="amd64/generic",
             with_boot_disk=False,
         )
-        terabyte = 1 * 1024 ** 4
+        terabyte = 1 * 1024**4
         partitions = []
         for letter in "abc":
             disk = factory.make_PhysicalBlockDevice(
@@ -1843,7 +1843,7 @@ class TestBootableRaidLayoutUEFI(MAASServerTestCase, AssertStorageConfigMixin):
             bios_boot_method="uefi",
             with_boot_disk=False,
         )
-        size = 5 * 1024 ** 4  # 5Tb
+        size = 5 * 1024**4  # 5Tb
         partitions = []
         for letter in "abc":
             disk = factory.make_PhysicalBlockDevice(
@@ -1992,7 +1992,7 @@ class TestBootableRaidLayoutGPT(MAASServerTestCase, AssertStorageConfigMixin):
             architecture="amd64/generic",
             with_boot_disk=False,
         )
-        size = 5 * 1024 ** 4  # 5Tb
+        size = 5 * 1024**4  # 5Tb
         partitions = []
         for letter in "abc":
             disk = factory.make_PhysicalBlockDevice(
@@ -2152,7 +2152,7 @@ class TestBootableRaidLayoutGPTWithPartition(
             architecture="amd64/generic",
             with_boot_disk=False,
         )
-        size = 5 * 1024 ** 4  # 5Tb
+        size = 5 * 1024**4  # 5Tb
         partitions = []
         for letter in "abc":
             disk = factory.make_PhysicalBlockDevice(
@@ -2186,7 +2186,7 @@ class TestBootableRaidLayoutGPTWithPartition(
         raid_partition = factory.make_Partition(
             partition_table=raid_part_table,
             uuid="uuid-raid-part",
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -2355,7 +2355,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
         )
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=100 * 1024 ** 3,
+            size=100 * 1024**3,
             name="sda",
             model="vendor",
             serial="serial-a",
@@ -2364,7 +2364,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
         layout.configure()
         extra_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=100 * 1024 ** 3,
+            size=100 * 1024**3,
             name="sdb",
             model="vendor",
             serial="serial-b",
@@ -2382,7 +2382,7 @@ class TestVMFS(MAASServerTestCase, AssertStorageConfigMixin):
         )
         extra_datastore_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=100 * 1024 ** 3,
+            size=100 * 1024**3,
             name="sdc",
             model="vendor",
             serial="serial-c",

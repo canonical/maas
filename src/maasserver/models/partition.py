@@ -33,7 +33,7 @@ from maasserver.utils.converters import (
 from maasserver.utils.orm import psql_array
 from maasserver.utils.storage import get_effective_filesystem, used_for
 
-MAX_PARTITION_SIZE_FOR_MBR = (((2 ** 32) - 1) * 512) - (1024 ** 2)  # 2 TiB
+MAX_PARTITION_SIZE_FOR_MBR = (((2**32) - 1) * 512) - (1024**2)  # 2 TiB
 # All partitions are aligned down to 4MiB blocks for performance (lp:1513085)
 PARTITION_ALIGNMENT_SIZE = 4 * 1024 * 1024
 MIN_PARTITION_SIZE = PARTITION_ALIGNMENT_SIZE

@@ -34,7 +34,7 @@ class TestFunctions(MAASTestCase):
         self.assertEqual(growth_seq, sorted(growth_seq))
 
         self.assertEqual((base * rate), growth_seq[0])
-        self.assertEqual((base * (rate ** 10)), growth_seq[-1])
+        self.assertEqual((base * (rate**10)), growth_seq[-1])
 
     @given(lists(floats(0.0, 10000.0), 0, 100))
     def test_full_jitter(self, values):

@@ -28,5 +28,5 @@ def from_int(num, _chars=zchars):
 def to_int(zs, _nums=znums):
     total, div = 0, len(_nums)
     for char, exp in zip(zs[::-1], count(0)):
-        total += _nums[char] * (div ** exp)
+        total += _nums[char] * (div**exp)
     return total

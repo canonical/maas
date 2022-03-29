@@ -74,7 +74,7 @@ def get_block_size(storage):
 
 def get_meminfo_key(meminfo, key):
     """Get key values from /proc/meminfo."""
-    m = re.search(fr"{key}:\s+(?P<{key}>\d+)\s+kB", meminfo)
+    m = re.search(rf"{key}:\s+(?P<{key}>\d+)\s+kB", meminfo)
     if m is None or key not in m.groupdict():
         print("ERROR: Unable to find %s in /proc/meminfo" % key)
         sys.exit(1)

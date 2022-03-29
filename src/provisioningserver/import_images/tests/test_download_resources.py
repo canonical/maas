@@ -124,7 +124,7 @@ class TestExtractArchiveTar(MAASTestCase):
         sha256 = hashlib.sha256()
         size = 0
         with open(filename, "rb") as f:
-            for chunk in iter(lambda: f.read(2 ** 15), b""):
+            for chunk in iter(lambda: f.read(2**15), b""):
                 sha256.update(chunk)
                 size += len(chunk)
         return sha256.hexdigest(), size
@@ -214,7 +214,7 @@ class TestRepoWriter(MAASTestCase):
             "product_name": factory.make_string(),
             "version_name": datetime.utcnow().strftime("%Y%m%d"),
             "sha256": factory.make_name("sha256"),
-            "size": random.randint(2, 2 ** 16),
+            "size": random.randint(2, 2**16),
             "ftype": factory.make_name("ftype"),
             "path": "/path/to/%s" % factory.make_name("filename"),
             "os": factory.make_name("os"),

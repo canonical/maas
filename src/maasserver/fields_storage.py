@@ -36,7 +36,7 @@ class BytesOrPercentageField(forms.RegexField):
     def __init__(self, *args, **kwargs):
         self.min_value = kwargs.pop("min_value", None)
         self.max_value = kwargs.pop("max_value", None)
-        regex = fr"^({PERCENTAGE_REGEX}|{BYTES_REGEX})$"
+        regex = rf"^({PERCENTAGE_REGEX}|{BYTES_REGEX})$"
         super().__init__(regex, *args, **kwargs)
 
     def to_python(self, value):

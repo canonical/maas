@@ -495,7 +495,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         # Ensure that there are at least 64kiB of power parameters (when
         # converted to JSON) in the database.
         example_parameters = {"key%d" % i: "value%d" % i for i in range(250)}
-        remaining = 2 ** 16
+        remaining = 2**16
         while remaining > 0:
             node = self.make_Node(
                 bmc_connected_to=rack, power_parameters=example_parameters
@@ -510,9 +510,9 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         nodes_json = map(json.dumps, nodes)
         nodes_json_lengths = map(len, nodes_json)
         nodes_json_length = sum(nodes_json_lengths)
-        expected_maximum = 60 * (2 ** 10)  # 60kiB
+        expected_maximum = 60 * (2**10)  # 60kiB
         self.expectThat(nodes_json_length, LessThan(expected_maximum + 1))
-        expected_minimum = 50 * (2 ** 10)  # 50kiB
+        expected_minimum = 50 * (2**10)  # 50kiB
         self.expectThat(nodes_json_length, GreaterThan(expected_minimum - 1))
 
     def test_limited_to_10_nodes_at_a_time_by_default(self):

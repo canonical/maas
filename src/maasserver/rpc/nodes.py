@@ -138,7 +138,7 @@ def list_cluster_nodes_power_parameters(system_id, limit=10):
     # Generate all the the power queries that will fit into the response.
     nodes = rack.get_bmc_accessible_nodes()
     details = _gen_cluster_nodes_power_parameters(nodes, limit)
-    details = _gen_up_to_json_limit(details, 60 * (2 ** 10))  # 60kiB
+    details = _gen_up_to_json_limit(details, 60 * (2**10))  # 60kiB
     details = list(details)
 
     # Update the queried time on all of the nodes at once. So another

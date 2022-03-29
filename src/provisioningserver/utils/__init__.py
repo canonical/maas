@@ -232,14 +232,14 @@ def is_instance_or_subclass(test, *query):
 
 # Capacity units supported by convert_size_to_bytes() function.
 CAPACITY_UNITS = {
-    "KiB": 2 ** 10,
-    "MiB": 2 ** 20,
-    "GiB": 2 ** 30,
-    "TiB": 2 ** 40,
-    "PiB": 2 ** 50,
-    "EiB": 2 ** 60,
-    "ZiB": 2 ** 70,
-    "YiB": 2 ** 80,
+    "KiB": 2**10,
+    "MiB": 2**20,
+    "GiB": 2**30,
+    "TiB": 2**40,
+    "PiB": 2**50,
+    "EiB": 2**60,
+    "ZiB": 2**70,
+    "YiB": 2**80,
 }
 
 

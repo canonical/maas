@@ -121,11 +121,11 @@ class NodeDevice(CleanSave, TimestampedModel):
     # number for USB devices but MAAS has to parse it from the pci_address
     # for PCIE devices.
     bus_number = PositiveIntegerField(
-        validators=[MaxValueValidator(2 ** 16)], blank=False, null=False
+        validators=[MaxValueValidator(2**16)], blank=False, null=False
     )
 
     device_number = PositiveIntegerField(
-        validators=[MaxValueValidator(2 ** 16)], blank=False, null=False
+        validators=[MaxValueValidator(2**16)], blank=False, null=False
     )
 
     # The PCI address is expressed in BDF notation

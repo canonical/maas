@@ -9,7 +9,7 @@ DEFAULT_BIOS_BOOT_METHOD = "pxe"
 KNOWN_BIOS_BOOT_METHODS = frozenset(
     ("pxe", "uefi", "powernv", "powerkvm", "s390x_partition")
 )
-MIB = 1024 ** 2
+MIB = 1024**2
 MIN_BOOT_PARTITION_SIZE = 512 * MIB
 
 VMFS6_PARTITIONS_SIZE = (

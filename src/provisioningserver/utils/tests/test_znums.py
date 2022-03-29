@@ -17,17 +17,17 @@ class TestZNumbers(MAASTestCase):
         self.assertThat(from_int(-1), Equals("3"))
         self.assertThat(from_int(0), Equals("3"))
         self.assertThat(from_int(1), Equals("4"))
-        self.assertThat(from_int(24 ** 5), Equals("433333"))
-        self.assertThat(from_int(24 ** 5 - 1), Equals("yyyyy"))
+        self.assertThat(from_int(24**5), Equals("433333"))
+        self.assertThat(from_int(24**5 - 1), Equals("yyyyy"))
 
     def test_to_int_basics(self):
         self.assertThat(to_int(""), Equals(0))
         self.assertThat(to_int("3"), Equals(0))
         self.assertThat(to_int("4"), Equals(1))
-        self.assertThat(to_int("433333"), Equals(24 ** 5))
-        self.assertThat(to_int("yyyyy"), Equals(24 ** 5 - 1))
+        self.assertThat(to_int("433333"), Equals(24**5))
+        self.assertThat(to_int("yyyyy"), Equals(24**5 - 1))
 
-    @given(integers(0, 2 ** 64))
+    @given(integers(0, 2**64))
     def test_roundtrip(self, num):
         self.assertThat(to_int(from_int(num)), Equals(num))
 
@@ -35,7 +35,7 @@ class TestZNumbers(MAASTestCase):
     # long, giving a range of ~183 million distinct znums. We expect znums of
     # the same number of digits to sort lexicographically in the same order as
     # their magnitude.
-    six_digit_range = integers((24 ** 5), (24 ** 6) - 1)
+    six_digit_range = integers((24**5), (24**6) - 1)
 
     @given(six_digit_range, six_digit_range)
     def test_sorting_6_digit_znums(self, a, b):

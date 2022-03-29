@@ -574,7 +574,6 @@ if sys.stdout.isatty():
     def print_denied(name):
         print("  \x1b[31mdenied:\x1b[39m", name)
 
-
 else:
 
     def print_filename(filename):

@@ -61,7 +61,7 @@ class TestPartitionTable(MAASServerTestCase):
     def test_get_size_returns_block_device_size_minus_amd64_gpt(self):
         node = factory.make_Node(architecture="amd64/generic")
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=2 * (1024 ** 4)
+            node=node, size=2 * (1024**4)
         )
         partition_table = factory.make_PartitionTable(
             block_device=block_device
@@ -116,7 +116,7 @@ class TestPartitionTable(MAASServerTestCase):
     def test_add_partition_no_size_sets_mbr_max(self):
         block_size = 4096
         device = factory.make_BlockDevice(
-            size=3 * (1024 ** 4), block_size=block_size
+            size=3 * (1024**4), block_size=block_size
         )
         partition_table = factory.make_PartitionTable(
             table_type=PARTITION_TABLE_TYPE.MBR, block_device=device
@@ -188,7 +188,7 @@ class TestPartitionTable(MAASServerTestCase):
     def test_get_overhead_size_for_amd64_gpt(self):
         node = factory.make_Node(architecture="amd64/generic")
         block_device = factory.make_PhysicalBlockDevice(
-            node=node, size=2 * (1024 ** 4)
+            node=node, size=2 * (1024**4)
         )
         partition_table = factory.make_PartitionTable(
             block_device=block_device

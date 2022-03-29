@@ -335,7 +335,7 @@ class Factory(maastesting.factory.Factory):
     # Ports for use with make_RegionControllerProcessEndpoint. Note that the
     # simpler cycle(range(...)) is not used because it gradually consumes all
     # memory.
-    _rcpe_ports = chain.from_iterable(repeat(range(2 ** 16)))
+    _rcpe_ports = chain.from_iterable(repeat(range(2**16)))
 
     def make_RegionControllerProcessEndpoint(
         self, process=None, address=None, port=None
@@ -3279,7 +3279,7 @@ class Factory(maastesting.factory.Factory):
         if path is None:
             path = "/var/lib/%s" % name
         if storage is None:
-            storage = random.randint(10 * 1024 ** 3, 100 * 1024 ** 3)
+            storage = random.randint(10 * 1024**3, 100 * 1024**3)
         return PodStoragePool.objects.create(
             pod=pod,
             name=name,
@@ -3442,9 +3442,9 @@ class Factory(maastesting.factory.Factory):
         if commissioning_driver is None:
             commissioning_driver = self.make_name("commissioning_driver")
         if bus_number is None:
-            bus_number = random.randint(0, 2 ** 16)
+            bus_number = random.randint(0, 2**16)
         if device_number is None:
-            device_number = random.randint(0, 2 ** 16)
+            device_number = random.randint(0, 2**16)
         if pci_address is None and bus == NODE_DEVICE_BUS.PCIE:
             pci_domain = factory.make_hex_string(size=4)
             pci_function_number = random.randint(0, 9)

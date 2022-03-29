@@ -709,7 +709,7 @@ class BcacheStorageLayout(FlatStorageLayout):
 
         boot_size = self.get_boot_size()
         if boot_size == 0:
-            boot_size = 1 * 1024 ** 3
+            boot_size = 1 * 1024**3
         root_partition, _ = self.create_basic_layout(boot_size=boot_size)
         cache_set = self.create_cache_set()
         bcache = Bcache.objects.create_bcache(
@@ -800,26 +800,26 @@ class VMFS6StorageLayout(StorageLayoutBase):
 
     base_partitions = [
         # EFI System
-        {"index": 1, "size": 3 * 1024 ** 2, "bootable": True},
+        {"index": 1, "size": 3 * 1024**2, "bootable": True},
         # Basic Data
-        {"index": 2, "size": 4 * 1024 ** 3},
+        {"index": 2, "size": 4 * 1024**3},
         # VMFS Datastore, size is 0 so the partition order is correct, its
         # fixed after everything is applied.
         {"index": 3, "size": 0},
         # Basic Data
-        {"index": 5, "size": 249 * 1024 ** 2},
+        {"index": 5, "size": 249 * 1024**2},
         # Basic Data
-        {"index": 6, "size": 249 * 1024 ** 2},
+        {"index": 6, "size": 249 * 1024**2},
         # VMKCore Diagnostic
-        {"index": 7, "size": 109 * 1024 ** 2},
+        {"index": 7, "size": 109 * 1024**2},
         # Basic Data
-        {"index": 8, "size": 285 * 1024 ** 2},
+        {"index": 8, "size": 285 * 1024**2},
         # VMKCore Diagnostic
-        {"index": 9, "size": 2560 * 1024 ** 2},
+        {"index": 9, "size": 2560 * 1024**2},
     ]
 
     def _clean_boot_disk(self):
-        if self.boot_disk.size < (10 * 1024 ** 3):
+        if self.boot_disk.size < (10 * 1024**3):
             set_form_error(
                 self, "boot_size", "Boot disk must be at least 10Gb."
             )
@@ -915,13 +915,13 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
 
     base_partitions = [
         # EFI System
-        {"index": 1, "size": 105 * 1024 ** 2, "bootable": True},
+        {"index": 1, "size": 105 * 1024**2, "bootable": True},
         # Basic Data
-        {"index": 5, "size": 1074 * 1024 ** 2},
+        {"index": 5, "size": 1074 * 1024**2},
         # Basic Data
-        {"index": 6, "size": 1074 * 1024 ** 2},
+        {"index": 6, "size": 1074 * 1024**2},
         # VMFSL
-        {"index": 7, "size": 8704 * 1024 ** 2},
+        {"index": 7, "size": 8704 * 1024**2},
         # VMFS
         {"index": 8, "size": 0},
     ]
@@ -934,7 +934,7 @@ class VMFS7StorageLayout(VMFS6StorageLayout):
         flash media devices only for ESXi boot bank partitions. A boot
         device must not be shared between ESXi hosts.
         """
-        if self.boot_disk.size < (32 * 1024 ** 3):
+        if self.boot_disk.size < (32 * 1024**3):
             set_form_error(
                 self, "boot_size", "Boot disk must be at least 32Gb."
             )

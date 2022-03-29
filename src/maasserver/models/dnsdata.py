@@ -28,7 +28,7 @@ from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 
 CNAME_LABEL = r"[_a-zA-Z0-9]([-_a-zA-Z0-9]{0,62}[_a-zA-Z0-9]){0,1}"
-CNAME_SPEC = fr"^({CNAME_LABEL}\.)*{CNAME_LABEL}\.?$"
+CNAME_SPEC = rf"^({CNAME_LABEL}\.)*{CNAME_LABEL}\.?$"
 SUPPORTED_RRTYPES = {"CNAME", "MX", "NS", "SRV", "SSHFP", "TXT"}
 INVALID_CNAME_MSG = "Invalid CNAME: Should be '<server>'."
 INVALID_MX_MSG = (

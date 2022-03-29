@@ -26,13 +26,13 @@ class POWER_STATUS:
 
 
 class SeaMicroError(Exception):
-    """Failure talking to a SeaMicro chassis controller. """
+    """Failure talking to a SeaMicro chassis controller."""
 
     pass
 
 
 class SeaMicroAPIV09Error(SeaMicroError):
-    """Failure talking to a SeaMicro API v0.9. """
+    """Failure talking to a SeaMicro API v0.9."""
 
     def __init__(self, msg, response_code=None):
         super().__init__(msg)

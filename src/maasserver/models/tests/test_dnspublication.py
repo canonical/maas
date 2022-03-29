@@ -29,7 +29,7 @@ class TestZoneSerial(MAASServerTestCase):
         self.assertThat(
             zone_serial,
             MatchesStructure.byEquality(
-                maxvalue=2 ** 32 - 1,
+                maxvalue=2**32 - 1,
                 minvalue=1,
                 increment=1,
                 cycle=True,

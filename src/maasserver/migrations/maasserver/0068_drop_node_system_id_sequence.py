@@ -19,8 +19,8 @@ $$ LANGUAGE plpgsql;
     # fairly garbled looking starting value; it'll hopefully prevent people
     # from immediately grokking that IDs are derived from a sequence. This
     # still allows for >175 million unique IDs.
-    minvalue=(24 ** 5),
-    maxvalue=((24 ** 6) - 1),
+    minvalue=(24**5),
+    maxvalue=((24**6) - 1),
     start=15600471,
 )
 

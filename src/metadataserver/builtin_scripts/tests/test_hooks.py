@@ -668,9 +668,9 @@ def make_lxd_pcie_device(numa_node=0, pci_address=None):
 
 def make_lxd_usb_device(bus_address=None, device_address=None):
     if bus_address is None:
-        bus_address = random.randint(0, 2 ** 16)
+        bus_address = random.randint(0, 2**16)
     if device_address is None:
-        device_address = random.randint(0, 2 ** 16)
+        device_address = random.randint(0, 2**16)
     return {
         "bus_address": bus_address,
         "device_address": device_address,
@@ -2909,7 +2909,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         resources = deepcopy(SAMPLE_LXD_RESOURCES)
         device_path_prefix = f"ccw-0.0.0008-fc-0x{factory.make_hex_string(16)}"
         lun1_model = factory.make_name("lun1_model")
-        lun1_size = 1024 ** 3 * random.randint(5, 100)
+        lun1_size = 1024**3 * random.randint(5, 100)
         lun1_device_path = (
             f"{device_path_prefix}-lun-0x{factory.make_hex_string(16)}"
         )
@@ -2917,7 +2917,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         lun1_firmware_version = factory.make_name("lun1_firmware_version")
         lun1_serial = factory.make_name("lun1_serial")
         lun2_model = factory.make_name("lun2_model")
-        lun2_size = 1024 ** 3 * random.randint(5, 100)
+        lun2_size = 1024**3 * random.randint(5, 100)
         lun2_device_path = (
             f"{device_path_prefix}-lun-0x{factory.make_hex_string(16)}"
         )
@@ -3053,7 +3053,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 "model": factory.make_name("model"),
                 "type": "scsi",
                 "read_only": False,
-                "size": 1024 ** 3 * 10,
+                "size": 1024**3 * 10,
                 "removable": False,
                 "numa_node": 0,
                 "device_path": f"pci-0.0.0008-sas-0x{factory.make_hex_string(16)}-lun-123",
@@ -3070,7 +3070,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 "model": factory.make_name("model"),
                 "type": "scsi",
                 "read_only": False,
-                "size": 1024 ** 3 * 10,
+                "size": 1024**3 * 10,
                 "removable": False,
                 "numa_node": 0,
                 "device_path": f"pci-0.0.0004-sas-0x{factory.make_hex_string(16)}-lun-123",
@@ -3102,7 +3102,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 "model": factory.make_name("model"),
                 "type": "scsi",
                 "read_only": False,
-                "size": 1024 ** 3 * 10,
+                "size": 1024**3 * 10,
                 "removable": False,
                 "numa_node": 0,
                 "device_path": f"pci-0.0.0008-sas-0x{factory.make_hex_string(16)}-lun-123",
@@ -3119,7 +3119,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
                 "model": factory.make_name("model"),
                 "type": "scsi",
                 "read_only": False,
-                "size": 1024 ** 3 * 10,
+                "size": 1024**3 * 10,
                 "removable": False,
                 "numa_node": 0,
                 "device_path": f"pci-0.0.0004-sas-0x{factory.make_hex_string(16)}-lun-123",

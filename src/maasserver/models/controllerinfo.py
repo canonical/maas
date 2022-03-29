@@ -203,7 +203,7 @@ def get_maas_version() -> Optional[MAASVersion]:
 
 
 def channel_from_version(version) -> SnapChannel:
-    """ channel from version constructs a SnapChannel from a MAAS version """
+    """channel from version constructs a SnapChannel from a MAAS version"""
     risk_map = {"alpha": "edge", "beta": "beta", "rc": "candidate"}
     risk = risk_map.get(version.qualifier_type, "stable")
     return SnapChannel(

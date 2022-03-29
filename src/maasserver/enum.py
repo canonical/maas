@@ -163,7 +163,7 @@ ALLOCATED_NODE_STATUSES = frozenset(
 
 
 class NODE_TYPE:
-    """ Valid node types."""
+    """Valid node types."""
 
     DEFAULT = 0
     MACHINE = 0
@@ -187,7 +187,7 @@ NODE_TYPE_CHOICES_DICT = OrderedDict(NODE_TYPE_CHOICES)
 
 
 class BMC_TYPE:
-    """ Valid BMC types."""
+    """Valid BMC types."""
 
     DEFAULT = 0
     BMC = 0

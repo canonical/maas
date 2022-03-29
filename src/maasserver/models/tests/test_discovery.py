@@ -143,7 +143,7 @@ class TestDiscoveryModel(MAASServerTestCase):
 
 
 class TestDiscoveryManagerClear(MAASServerTestCase):
-    """Tests for `DiscoveryManager.clear` """
+    """Tests for `DiscoveryManager.clear`"""
 
     def test_clear_mdns_entries(self):
         maaslog = self.patch(discovery_module.maaslog, "info")
@@ -230,7 +230,7 @@ class TestDiscoveryManagerClear(MAASServerTestCase):
 
 
 class TestDiscoveryManagerDeleteByMacAndIP(MAASServerTestCase):
-    """Tests for `DiscoveryManager.delete_by_mac_and_ip` """
+    """Tests for `DiscoveryManager.delete_by_mac_and_ip`"""
 
     def test_deletes_neighbours_matching_mac_and_ip(self):
         neigh = factory.make_Neighbour()

@@ -1277,7 +1277,7 @@ class TestNode(MAASServerTestCase):
     def test_storage_returns_size_of_physical_blockdevices_in_mb(self):
         node = factory.make_Node(with_boot_disk=False)
         for _ in range(3):
-            factory.make_PhysicalBlockDevice(node=node, size=50 * (1000 ** 2))
+            factory.make_PhysicalBlockDevice(node=node, size=50 * (1000**2))
         self.assertEqual(50 * 3, node.storage)
 
     def test_get_boot_disk_returns_set_boot_disk(self):
@@ -5016,7 +5016,7 @@ class TestNode(MAASServerTestCase):
     def test_clear_full_storage_configuration_removes_related_objects(self):
         node = factory.make_Node()
         physical_block_devices = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**3)
             for _ in range(3)
         ]
         filesystem = factory.make_Filesystem(
@@ -5034,10 +5034,10 @@ class TestNode(MAASServerTestCase):
             group_type=FILESYSTEM_GROUP_TYPE.LVM_VG, filesystems=[fslvm]
         )
         vbd1 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup, size=2 * 1000 ** 3
+            filesystem_group=vgroup, size=2 * 1000**3
         )
         vbd2 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup, size=3 * 1000 ** 3
+            filesystem_group=vgroup, size=3 * 1000**3
         )
         filesystem_on_vbd1 = factory.make_Filesystem(
             block_device=vbd1, fstype=FILESYSTEM_TYPE.LVM_PV
@@ -5047,7 +5047,7 @@ class TestNode(MAASServerTestCase):
             filesystems=[filesystem_on_vbd1],
         )
         vbd3_on_vbd1 = factory.make_VirtualBlockDevice(
-            filesystem_group=vgroup_on_vgroup, size=1 * 1000 ** 3
+            filesystem_group=vgroup_on_vgroup, size=1 * 1000**3
         )
         node._clear_full_storage_configuration()
         for pbd in physical_block_devices:
@@ -5129,7 +5129,7 @@ class TestNode(MAASServerTestCase):
     def test_clear_full_storage_configuration_lp1815091(self):
         node = factory.make_Node()
         physical_block_devices = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 3)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**3)
             for _ in range(4)
         ]
         raid5_filesystems = [
@@ -9758,7 +9758,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node = factory.make_Node(
             osystem="esxi", distro_series="6.7", with_boot_disk=False
         )
-        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
+        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024**3))
         layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
         layout = layout_class(node)
         layout.configure()
@@ -9768,7 +9768,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node = factory.make_Node(
             osystem="esxi", distro_series="6.7", with_boot_disk=False
         )
-        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
+        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024**3))
         layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
         layout = layout_class(node)
         layout.configure()
@@ -9783,7 +9783,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
             osystem=random.choice(["ubuntu", "centos", "rhel"]),
             with_boot_disk=False,
         )
-        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024 ** 3))
+        factory.make_PhysicalBlockDevice(node=node, size=(100 * 1024**3))
         layout_class = random.choice([VMFS6StorageLayout, VMFS7StorageLayout])
         layout = layout_class(node)
         layout.configure()
@@ -11340,23 +11340,23 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
     def test_identical_size_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
         node1_sda = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node1, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         node1_sdb = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdb", tags=["sdd"]
+            node=node1, size=8 * 1024**3, name="sdb", tags=["sdd"]
         )
         node1_sdc = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdc", tags=["sdd"]
+            node=node1, size=8 * 1024**3, name="sdc", tags=["sdd"]
         )
         node2 = factory.make_Node(with_boot_disk=False)
         node2_sda = factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node2, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         node2_sdb = factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sdb", tags=["sdd"]
+            node=node2, size=8 * 1024**3, name="sdb", tags=["sdd"]
         )
         node2_sdc = factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sdc", tags=["sdd"]
+            node=node2, size=8 * 1024**3, name="sdc", tags=["sdd"]
         )
         self.assertEqual(
             {node2_sda: node1_sda, node2_sdb: node1_sdb, node2_sdc: node1_sdc},
@@ -11366,23 +11366,23 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
     def test_larger_size_identical_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
         node1_sda = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node1, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         node1_sdb = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdb", tags=["sdd", "match"]
+            node=node1, size=8 * 1024**3, name="sdb", tags=["sdd", "match"]
         )
         node1_sdc = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdc", tags=["sdd"]
+            node=node1, size=8 * 1024**3, name="sdc", tags=["sdd"]
         )
         node2 = factory.make_Node(with_boot_disk=False)
         node2_sda = factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node2, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         node2_sdb = factory.make_PhysicalBlockDevice(
-            node=node2, size=10 * 1024 ** 3, name="sdb", tags=["sdd", "match"]
+            node=node2, size=10 * 1024**3, name="sdb", tags=["sdd", "match"]
         )
         node2_sdc = factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sdc", tags=["sdd"]
+            node=node2, size=8 * 1024**3, name="sdc", tags=["sdd"]
         )
         self.assertEqual(
             {node2_sda: node1_sda, node2_sdb: node1_sdb, node2_sdc: node1_sdc},
@@ -11392,23 +11392,23 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
     def test_larger_size_diff_tags(self):
         node1 = factory.make_Node(with_boot_disk=False)
         node1_sda = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node1, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         node1_sdb = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdb", tags=["sdd", "match"]
+            node=node1, size=8 * 1024**3, name="sdb", tags=["sdd", "match"]
         )
         node1_sdc = factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdc", tags=["sdd"]
+            node=node1, size=8 * 1024**3, name="sdc", tags=["sdd"]
         )
         node2 = factory.make_Node(with_boot_disk=False)
         node2_sda = factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node2, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         node2_sdb = factory.make_PhysicalBlockDevice(
-            node=node2, size=10 * 1024 ** 3, name="sdb", tags=["sdd", "other"]
+            node=node2, size=10 * 1024**3, name="sdb", tags=["sdd", "other"]
         )
         node2_sdc = factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sdc", tags=["diff"]
+            node=node2, size=8 * 1024**3, name="sdc", tags=["diff"]
         )
         self.assertEqual(
             {node2_sda: node1_sda, node2_sdb: node1_sdc, node2_sdc: node1_sdb},
@@ -11418,23 +11418,23 @@ class TestNodeStorageClone__MappingBetweenNodes(MAASServerTestCase):
     def test_small_size_fails(self):
         node1 = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node1, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdb", tags=["sdd", "match"]
+            node=node1, size=8 * 1024**3, name="sdb", tags=["sdd", "match"]
         )
         factory.make_PhysicalBlockDevice(
-            node=node1, size=8 * 1024 ** 3, name="sdc", tags=["sdd"]
+            node=node1, size=8 * 1024**3, name="sdc", tags=["sdd"]
         )
         node2 = factory.make_Node(with_boot_disk=False)
         factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sda", tags=["hdd"]
+            node=node2, size=8 * 1024**3, name="sda", tags=["hdd"]
         )
         factory.make_PhysicalBlockDevice(
-            node=node2, size=6 * 1024 ** 3, name="sdb", tags=["sdd", "other"]
+            node=node2, size=6 * 1024**3, name="sdb", tags=["sdd", "other"]
         )
         factory.make_PhysicalBlockDevice(
-            node=node2, size=8 * 1024 ** 3, name="sdc", tags=["diff"]
+            node=node2, size=8 * 1024**3, name="sdc", tags=["diff"]
         )
         self.assertRaises(
             ValidationError, node2._get_storage_mapping_between_nodes, node1
@@ -11557,7 +11557,7 @@ class TestNodeStorageClone_SimpleMBRLayout(
     def create_physical_disks(self, node):
         return factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -11574,31 +11574,31 @@ class TestNodeStorageClone_SimpleMBRLayout(
         efi_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=512 * 1024 ** 2,
+            size=512 * 1024**2,
             bootable=True,
         )
         boot_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
-            size=1 * 1024 ** 3,
+            size=1 * 1024**3,
             bootable=True,
         )
         root_partition = factory.make_Partition(
             partition_table=partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=2.5 * 1024 ** 3,
+            size=2.5 * 1024**3,
             bootable=False,
         )
         partition_five = factory.make_Partition(
             partition_table=partition_table,
             uuid="1b59e74f-6189-41a1-ba8e-fbf38df19820",
-            size=2 * 1024 ** 3,
+            size=2 * 1024**3,
             bootable=False,
         )
         partition_six = factory.make_Partition(
             partition_table=partition_table,
             uuid="8c365c80-900b-40a1-a8c7-1e445878d19a",
-            size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(2 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -11839,7 +11839,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
     def create_physical_disks(self, node):
         boot_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -11847,7 +11847,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         )  # 8 GiB
         ssd_disk = factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sdb",
             model="QEMU SSD",
             serial="QM00002",
@@ -11855,7 +11855,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         )  # 8 GiB
         raid_5_disk_1 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdc",
             model="QEMU HARDDISK",
             serial="QM00003",
@@ -11863,7 +11863,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         )  # 1 TiB
         raid_5_disk_2 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdd",
             model="QEMU HARDDISK",
             serial="QM00004",
@@ -11871,7 +11871,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         )  # 1 TiB
         raid_5_disk_3 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sde",
             model="QEMU HARDDISK",
             serial="QM00005",
@@ -11879,7 +11879,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         )  # 1 TiB
         raid_5_disk_4 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdf",
             model="QEMU HARDDISK",
             serial="QM00006",
@@ -11887,7 +11887,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         )  # 1 TiB
         raid_5_disk_5 = factory.make_PhysicalBlockDevice(
             node=node,
-            size=1 * 1024 ** 4,
+            size=1 * 1024**4,
             name="sdg",
             model="QEMU HARDDISK",
             serial="QM00007",
@@ -11924,19 +11924,19 @@ class TestNodeStorageClone_ComplexDiskLayout(
         efi_partition = factory.make_Partition(
             partition_table=boot_partition_table,
             uuid="6efc2c3d-bc9d-4ee5-a7ed-c6e1574d5398",
-            size=512 * 1024 ** 2,
+            size=512 * 1024**2,
             bootable=True,
         )
         boot_partition = factory.make_Partition(
             partition_table=boot_partition_table,
             uuid="0c1c1c3a-1e9d-4047-8ef6-328a03d513e5",
-            size=1 * 1024 ** 3,
+            size=1 * 1024**3,
             bootable=True,
         )
         root_partition = factory.make_Partition(
             partition_table=boot_partition_table,
             uuid="f74ff260-2a5b-4a36-b1b8-37f746b946bf",
-            size=(6.5 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(6.5 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -11963,7 +11963,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         cache_partition = factory.make_Partition(
             partition_table=ssd_partition_table,
             uuid="f3281144-a0b6-46f1-90af-8541f97f7b1f",
-            size=(2 * 1024 ** 3) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(2 * 1024**3) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         cache_set = factory.make_CacheSet(partition=cache_partition)
@@ -11977,7 +11977,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         lvm_partition = factory.make_Partition(
             partition_table=ssd_partition_table,
             uuid="ea7f96d0-b508-40d9-8495-b2163df35c9b",
-            size=(6 * 1024 ** 3),
+            size=(6 * 1024**3),
             bootable=False,
         )
         vgroot = VolumeGroup.objects.create_volume_group(
@@ -11989,12 +11989,12 @@ class TestNodeStorageClone_ComplexDiskLayout(
         lvroot = vgroot.create_logical_volume(
             name="lvroot",
             uuid="98fac182-45a4-4afc-ba57-a1ace0396679",
-            size=2 * 1024 ** 3,
+            size=2 * 1024**3,
         )
         vgroot.create_logical_volume(
             name="lvextra",
             uuid="0d960ec6-e6d0-466f-8f83-ee9c11e5b9ba",
-            size=2 * 1024 ** 3,
+            size=2 * 1024**3,
         )
         factory.make_Filesystem(
             block_device=lvroot,
@@ -12018,7 +12018,7 @@ class TestNodeStorageClone_ComplexDiskLayout(
         raid_5_partition = factory.make_Partition(
             partition_table=raid_5_partition_table,
             uuid="18a6e885-3e6d-4505-8a0d-cf34df11a8b0",
-            size=(2 * 1024 ** 4) - PARTITION_TABLE_EXTRA_SPACE,
+            size=(2 * 1024**4) - PARTITION_TABLE_EXTRA_SPACE,
             bootable=False,
         )
         factory.make_Filesystem(
@@ -12084,7 +12084,7 @@ class TestNodeStorageClone_SpecialFilesystems(
     def create_physical_disks(self, node):
         return factory.make_PhysicalBlockDevice(
             node=node,
-            size=8 * 1024 ** 3,
+            size=8 * 1024**3,
             name="sda",
             model="QEMU HARDDISK",
             serial="QM00001",
@@ -12444,12 +12444,12 @@ class TestNodeClone__Prefetches(MAASServerTestCase):
     def test_node_with_prefetch(self):
         source = factory.make_Machine(with_boot_disk=False)
         disk = factory.make_PhysicalBlockDevice(
-            node=source, size=8 * 1024 ** 3, name="sda"
+            node=source, size=8 * 1024**3, name="sda"
         )
         ptable = factory.make_PartitionTable(block_device=disk)
-        part1 = ptable.add_partition(size=2 * 1024 ** 3)
+        part1 = ptable.add_partition(size=2 * 1024**3)
         factory.make_Filesystem(partition=part1)
-        part2 = ptable.add_partition(size=3 * 1024 ** 3)
+        part2 = ptable.add_partition(size=3 * 1024**3)
         factory.make_Filesystem(partition=part2)
         factory.make_Interface(node=source, name="eth0")
         destination = factory.make_Machine(
@@ -12459,7 +12459,7 @@ class TestNodeClone__Prefetches(MAASServerTestCase):
             with_boot_disk=False,
         )
         factory.make_PhysicalBlockDevice(
-            node=destination, size=8 * 1024 ** 3, name="sda"
+            node=destination, size=8 * 1024**3, name="sda"
         )
         factory.make_Interface(node=destination, name="eth0")
         source = Machine.objects.prefetch_related(

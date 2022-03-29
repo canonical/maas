@@ -640,10 +640,10 @@ def _parse_memory(memory, numa_nodes):
     # fill NUMA nodes info
     for memory_node in memory.get("nodes", [default_numa_node]):
         numa_node = numa_nodes[memory_node["numa_node"]]
-        numa_node.memory = int(memory_node.get("total", 0) / 1024 ** 2)
+        numa_node.memory = int(memory_node.get("total", 0) / 1024**2)
         numa_node.hugepages = memory_node.get("hugepages_total", 0)
 
-    return int(total_memory / 1024 ** 2), hugepages_size, numa_nodes
+    return int(total_memory / 1024**2), hugepages_size, numa_nodes
 
 
 def _get_tags_from_block_info(block_info):

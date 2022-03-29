@@ -314,8 +314,9 @@ class TestRNDCUtilities(MAASTestCase):
         # Actual rndc-confgen output, mildly mangled for testing purposes.
         # Note the awkward line break.  The code works by matching that exact
         # line, so there's no leeway with the spacing.
-        rndc_config = dedent(
-            """\
+        rndc_config = (
+            dedent(
+                """\
             # Start of rndc.conf
             %(rndc_part)s
             # End of rndc.conf
@@ -324,14 +325,16 @@ class TestRNDCUtilities(MAASTestCase):
             %(named_part)s
             # End of named.conf
         """
-        ) % {
-            "start_marker": (
-                "Use with the following in named.conf, "
-                "adjusting the allow list as needed:"
-            ),
-            "rndc_part": factory.make_string(),
-            "named_part": named_part,
-        }
+            )
+            % {
+                "start_marker": (
+                    "Use with the following in named.conf, "
+                    "adjusting the allow list as needed:"
+                ),
+                "rndc_part": factory.make_string(),
+                "named_part": named_part,
+            }
+        )
         # What you get is just the suggested named.conf that's embedded in
         # the rndc-confgen output, not including its header and footer.
         self.assertEqual(

@@ -613,7 +613,7 @@ class HostListFormField(forms.CharField):
     # additional and more robust validation ought to be done to make sure.
     pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
     pt_ipv6 = r"(?: (?: [\da-fA-F]+ :+)+ (?: [\da-fA-F]+ | %s )+ )" % pt_ipv4
-    pt_ip = re.compile(fr"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
+    pt_ip = re.compile(rf"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
 
     def clean(self, value):
         if value is None:
@@ -666,9 +666,9 @@ class SubnetListFormField(forms.CharField):
     # additional and more robust validation ought to be done to make sure.
     pt_ipv4 = r"(?: \d{1,3} [.] \d{1,3} [.] \d{1,3} [.] \d{1,3} )"
     pt_ipv6 = r"(?: (|[0-9A-Fa-f]{1,4}) [:] (|[0-9A-Fa-f]{1,4}) [:] (.*))"
-    pt_ip = re.compile(fr"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
+    pt_ip = re.compile(rf"^ (?: {pt_ipv4} | {pt_ipv6} ) $", re.VERBOSE)
     pt_subnet = re.compile(
-        fr"^ (?: {pt_ipv4} | {pt_ipv6} ) \/\d+$", re.VERBOSE
+        rf"^ (?: {pt_ipv4} | {pt_ipv6} ) \/\d+$", re.VERBOSE
     )
 
     def clean(self, value):

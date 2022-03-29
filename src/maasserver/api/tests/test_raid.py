@@ -387,13 +387,13 @@ class TestRaidsAPI(APITestCase.ForUser):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add 10 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for i in range(10)
         ]
         for bd in bds[5:]:
             factory.make_PartitionTable(block_device=bd)
         for bd in bds[5:]:
-            bd.get_partitiontable().add_partition(size=1000 ** 4)
+            bd.get_partitiontable().add_partition(size=1000**4)
         large_partitions = [
             bd.get_partitiontable().add_partition() for bd in bds[5:]
         ]
@@ -446,13 +446,13 @@ class TestRaidsAPI(APITestCase.ForUser):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add 10 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for i in range(10)
         ]
         for bd in bds[5:]:
             factory.make_PartitionTable(block_device=bd)
         for bd in bds[5:]:
-            bd.get_partitiontable().add_partition(size=1000 ** 4)
+            bd.get_partitiontable().add_partition(size=1000**4)
         large_partitions = [
             bd.get_partitiontable().add_partition() for bd in bds[5:]
         ]
@@ -506,13 +506,13 @@ class TestRaidsAPI(APITestCase.ForUser):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add 10 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for i in range(10)
         ]
         for bd in bds[5:]:
             factory.make_PartitionTable(block_device=bd)
         for bd in bds[5:]:
-            bd.get_partitiontable().add_partition(size=1000 ** 4)
+            bd.get_partitiontable().add_partition(size=1000**4)
         large_partitions = [
             bd.get_partitiontable().add_partition() for bd in bds[5:]
         ]
@@ -564,7 +564,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add 2 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for i in range(2)
         ]
         uuid4 = str(uuid.uuid4())
@@ -590,7 +590,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add 3 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for i in range(3)
         ]
         uuid4 = str(uuid.uuid4())
@@ -616,7 +616,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add 3 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for i in range(2)
         ]
         uuid4 = str(uuid.uuid4())
@@ -641,7 +641,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add one 10TB physical block devices to the node.
-        bd = factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+        bd = factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
         uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(
@@ -664,7 +664,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add one 10TB physical block devices to the node.
-        bd = factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+        bd = factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
         uuid4 = str(uuid.uuid4())
         uri = get_raid_devices_uri(node)
         response = self.client.post(
@@ -737,7 +737,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         node = factory.make_Node(status=NODE_STATUS.READY)
         # Add 10 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for i in range(10)
         ]
         uuid4 = str(uuid.uuid4())
@@ -766,7 +766,7 @@ class TestRaidsAPI(APITestCase.ForUser):
         node2 = factory.make_Node(status=NODE_STATUS.READY)
         # Add 10 10TB physical block devices to the node.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node2, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node2, size=10 * 1000**4)
             for i in range(10)
         ]
         uuid4 = str(uuid.uuid4())

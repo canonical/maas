@@ -2324,7 +2324,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
                         "sha256": factory.make_name("sha256"),
                         "path": factory.make_name("path"),
                         "ftype": ftype,
-                        "size": random.randint(0, 2 ** 64),
+                        "size": random.randint(0, 2**64),
                     }
                     for ftype in ftypes
                 }
@@ -2366,7 +2366,7 @@ class TestBootResourceRepoWriter(MAASServerTestCase):
                         "sha256": factory.make_name("sha256"),
                         "path": factory.make_name("path"),
                         "ftype": BOOT_RESOURCE_FILE_TYPE.BOOTLOADER,
-                        "size": random.randint(0, 2 ** 64),
+                        "size": random.randint(0, 2**64),
                     }
                 }
             }

@@ -91,7 +91,7 @@ def separate_fqdn(fqdn, rrtype=None, domainname=None):
         spec = SRV_LHS
     else:
         spec = LABEL
-    regexp = fr"^(?P<name>{spec}).(?P<domain>{domain.NAMESPEC})$"
+    regexp = rf"^(?P<name>{spec}).(?P<domain>{domain.NAMESPEC})$"
     regex = re.compile(regexp)
     result = regex.search(fqdn)
     if result is not None:

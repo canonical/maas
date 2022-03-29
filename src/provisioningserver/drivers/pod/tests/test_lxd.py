@@ -76,7 +76,7 @@ def make_requested_machine(num_disks=1, known_host_interfaces=None, **kwargs):
         ]
     block_devices = [
         RequestedMachineBlockDevice(
-            size=random.randint(1024 ** 3, 4 * 1024 ** 3),
+            size=random.randint(1024**3, 4 * 1024**3),
             tags=[factory.make_name("tag")],
         )
         for _ in range(num_disks)
@@ -368,7 +368,7 @@ class TestClusteredLXDPodDriver(MAASTestCase):
             ),
             "config": {
                 "limits.cpu": str(request.cores),
-                "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
@@ -884,7 +884,7 @@ class TestLXDPodDriver(MAASTestCase):
                 model="QEMU HARDDISK",
                 serial="lxd_root",
                 id_path="/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_root",
-                size=20 * 1000 ** 3,
+                size=20 * 1000**3,
                 block_size=512,
                 tags=[],
                 storage_pool=expanded_devices["root"]["pool"],
@@ -1257,7 +1257,7 @@ class TestLXDPodDriver(MAASTestCase):
             Mock(
                 **{
                     "resources.get.return_value": Mock(
-                        space={"total": 2 ** i * 2048, "used": 2 * i * 1500}
+                        space={"total": 2**i * 2048, "used": 2 * i * 1500}
                     )
                 }
             )
@@ -1281,7 +1281,7 @@ class TestLXDPodDriver(MAASTestCase):
             Mock(
                 **{
                     "resources.get.return_value": Mock(
-                        space={"total": 2 ** i * 2048, "used": 2 * i * 1500}
+                        space={"total": 2**i * 2048, "used": 2 * i * 1500}
                     )
                 }
             )
@@ -1305,7 +1305,7 @@ class TestLXDPodDriver(MAASTestCase):
             Mock(
                 **{
                     "resources.get.return_value": Mock(
-                        space={"total": 2 ** i * 2048, "used": 2 * i * 1500}
+                        space={"total": 2**i * 2048, "used": 2 * i * 1500}
                     )
                 }
             )
@@ -1332,7 +1332,7 @@ class TestLXDPodDriver(MAASTestCase):
             Mock(
                 **{
                     "resources.get.return_value": Mock(
-                        space={"total": 2 ** i * 2048, "used": 2 * i * 1500}
+                        space={"total": 2**i * 2048, "used": 2 * i * 1500}
                     )
                 }
             )
@@ -1356,7 +1356,7 @@ class TestLXDPodDriver(MAASTestCase):
             Mock(
                 **{
                     "resources.get.return_value": Mock(
-                        space={"total": 2 ** i * 2048, "used": 2 * i * 1500}
+                        space={"total": 2**i * 2048, "used": 2 * i * 1500}
                     )
                 }
             )
@@ -1403,7 +1403,7 @@ class TestLXDPodDriver(MAASTestCase):
             ),
             "config": {
                 "limits.cpu": str(request.cores),
-                "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
@@ -1546,7 +1546,7 @@ class TestLXDPodDriver(MAASTestCase):
             ),
             "config": {
                 "limits.cpu": str(request.cores),
-                "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
@@ -1651,7 +1651,7 @@ class TestLXDPodDriver(MAASTestCase):
             ),
             "config": {
                 "limits.cpu": str(request.cores),
-                "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },
@@ -1702,7 +1702,7 @@ class TestLXDPodDriver(MAASTestCase):
             ),
             "config": {
                 "limits.cpu": str(request.cores),
-                "limits.memory": str(request.memory * 1024 ** 2),
+                "limits.memory": str(request.memory * 1024**2),
                 "limits.memory.hugepages": "false",
                 "security.secureboot": "false",
             },

@@ -2482,7 +2482,7 @@ class TestMachineAPI(APITestCase.ForUser):
         )
         response = self.client.put(
             reverse("machine_handler", args=[machine.system_id]),
-            {"swap_size": 5 * 1000 ** 3},
+            {"swap_size": 5 * 1000**3},
         )  # Making sure we overflow 32 bits
         parsed_result = json_load_bytes(response.content)
         machine = reload_object(machine)

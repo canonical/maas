@@ -359,5 +359,5 @@ class BlockDevice(CleanSave, TimestampedModel):
             suffix = match.group(1)
             for col, char in enumerate(reversed(suffix)):
                 digit = ord(char) + (0 if col == 0 else 1) - ord("a")
-                idx += digit * (26 ** col)
+                idx += digit * (26**col)
             return idx

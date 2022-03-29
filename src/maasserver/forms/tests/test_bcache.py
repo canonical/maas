@@ -27,7 +27,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
         node = factory.make_Node(with_boot_disk=False)
         # Make 10 block devices.
         bds = [
-            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000 ** 4)
+            factory.make_PhysicalBlockDevice(node=node, size=10 * 1000**4)
             for _ in range(10)
         ]
         # Make 3 cache sets.
@@ -63,7 +63,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
 
     def test_bcache_creation_on_save(self):
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
@@ -94,7 +94,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
 
     def test_bcache_creation_with_names(self):
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         cache_set = factory.make_CacheSet(node=node)
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
@@ -192,7 +192,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
 
     def test_bcache_creation_without_cache_set_fails(self):
         node = factory.make_Node()
-        backing_size = 10 * 1000 ** 4
+        backing_size = 10 * 1000**4
         backing_device = factory.make_PhysicalBlockDevice(
             node=node, size=backing_size
         )
@@ -231,7 +231,7 @@ class TestCreateBcacheForm(MAASServerTestCase):
 class TestUpdateBcacheForm(MAASServerTestCase):
     def test_choices_are_being_populated_correctly(self):
         node = factory.make_Node(with_boot_disk=False)
-        device_size = 1 * 1000 ** 4
+        device_size = 1 * 1000**4
         # Make 10 block devices.
         bds = [
             factory.make_PhysicalBlockDevice(node=node, size=device_size)

@@ -77,7 +77,7 @@ class BootImageMapping:
         self.mapping.setdefault(image_spec, item)
 
     def set(self, image_spec, item):
-        """"Set metadata for `image_spec` to item, even if already set."""
+        """ "Set metadata for `image_spec` to item, even if already set."""
         assert isinstance(image_spec, ImageSpec)
         self.mapping[image_spec] = item
 

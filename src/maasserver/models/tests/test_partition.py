@@ -342,7 +342,7 @@ class TestPartition(MAASServerTestCase):
         )
 
     def test_test_cannot_create_mbr_partition_larger_than_2TiB(self):
-        block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
+        block_device = factory.make_BlockDevice(size=3 * (1024**4))  # 3TiB
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR
         )
@@ -363,12 +363,12 @@ class TestPartition(MAASServerTestCase):
         )
 
     def test_test_cannot_resize_mbr_partition_to_more_than_2TiB(self):
-        block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
+        block_device = factory.make_BlockDevice(size=3 * (1024**4))  # 3TiB
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.MBR
         )
-        partition = partition_table.add_partition(size=1 * (1024 ** 4))
-        partition.size = 2.5 * (1024 ** 4)
+        partition = partition_table.add_partition(size=1 * (1024**4))
+        partition.size = 2.5 * (1024**4)
         error = self.assertRaises(ValidationError, partition.save)
         self.assertEqual(
             {
@@ -382,7 +382,7 @@ class TestPartition(MAASServerTestCase):
         )
 
     def test_validate_can_save_gpt_larger_than_2TiB(self):
-        block_device = factory.make_BlockDevice(size=3 * (1024 ** 4))  # 3TiB
+        block_device = factory.make_BlockDevice(size=3 * (1024**4))  # 3TiB
         partition_table = factory.make_PartitionTable(
             block_device=block_device, table_type=PARTITION_TABLE_TYPE.GPT
         )
@@ -511,7 +511,7 @@ class TestPartition(MAASServerTestCase):
         block_device = factory.make_PhysicalBlockDevice(
             node=node,
             size=(
-                (2 * (1024 ** 4))
+                (2 * (1024**4))
                 + PARTITION_TABLE_EXTRA_SPACE
                 + BIOS_GRUB_PARTITION_SIZE
             ),
@@ -609,7 +609,7 @@ class TestPartition(MAASServerTestCase):
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
         )
-        layout = VMFS6StorageLayout(node, {"root_size": 10 * 1024 ** 3})
+        layout = VMFS6StorageLayout(node, {"root_size": 10 * 1024**3})
         layout.configure()
         pt = bd.get_partitiontable()
         extra_partition = pt.add_partition()
@@ -620,7 +620,7 @@ class TestPartition(MAASServerTestCase):
         bd = factory.make_PhysicalBlockDevice(
             node=node, size=LARGE_BLOCK_DEVICE
         )
-        layout = VMFS7StorageLayout(node, {"root_size": 10 * 1024 ** 3})
+        layout = VMFS7StorageLayout(node, {"root_size": 10 * 1024**3})
         layout.configure()
         pt = bd.get_partitiontable()
         extra_partition = pt.add_partition()
@@ -628,7 +628,7 @@ class TestPartition(MAASServerTestCase):
 
     def test_delete_not_allowed_if_part_of_filesystem_group(self):
         partition = factory.make_Partition(
-            size=1024 ** 3, block_device_size=2 * 1024 ** 3
+            size=1024**3, block_device_size=2 * 1024**3
         )
         VolumeGroup.objects.create_volume_group(
             factory.make_name("vg"), [], [partition]
