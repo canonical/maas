@@ -13,6 +13,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import connections, DEFAULT_DB_ALIAS
 
+from maasserver.plugin import PGSQL_MIN_VERSION, UnsupportedDBException
+
 
 class Command(BaseCommand):
     help = "Upgrades database schema for MAAS regiond."
@@ -99,6 +101,13 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         database = options.get("database")
         no_triggers = options.get("no_triggers")
+
+        # Check database version
+        conn = connections[database]
+        conn.ensure_connection()
+        pg_ver = conn.cursor().connection.server_version
+        if pg_ver // 100 < PGSQL_MIN_VERSION:
+            raise UnsupportedDBException(pg_ver)
 
         # First, drop any views that may already exist. We don't want views
         # that that depend on a particular schema to prevent schema
