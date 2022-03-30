@@ -1,3 +1,9 @@
+maas (2.8.8-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.8.8.
+
+ -- Jorge Merlino <jorge.merlino@canonical.com>  Wed, 30 Mar 2022 13:43:08 +0000
+
 maas (2.8.7-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 2.8.7.
