@@ -95,7 +95,7 @@ def perf_test(commit_transaction=False, db_only=False):
 
 def perf_test_finish(output):
     if output:
-        with open(output, "rw") as f:
+        with open(output, "w") as f:
             perf_tester.finish_build(f)
     else:
         perf_tester.finish_build(sys.stdout)
