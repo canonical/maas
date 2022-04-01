@@ -5,6 +5,7 @@ from dataclasses import asdict
 import random
 
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
 from maasserver.enum import INTERFACE_TYPE
 from maasserver.models.virtualmachine import (
@@ -81,6 +82,93 @@ class TestVirtualMachine(MAASServerTestCase):
             machine=machine,
         )
         self.assertIs(machine.virtualmachine, vm)
+
+
+class TestVirtualMachineInterface(MAASServerTestCase):
+    def test_unique_no_host_interface(self):
+        vm = factory.make_VirtualMachine()
+        mac = "aa:bb:cc:dd:ee:ff"
+        VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address=mac,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        self.assertRaises(
+            IntegrityError,
+            VirtualMachineInterface.objects.create,
+            vm=vm,
+            mac_address=mac,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+
+    def test_unique_with_host_interface(self):
+        node = factory.make_Node()
+        other_node_config = factory.make_NodeConfig(
+            node=node, name="deployment"
+        )
+        iface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            node_config=node.current_config,
+        )
+        iface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            mac_address=iface1.mac_address,
+            node_config=other_node_config,
+        )
+        vm = factory.make_VirtualMachine()
+        vm_if1 = VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address=iface1.mac_address,
+            host_interface=iface1,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        vm_if2 = VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address=iface2.mac_address,
+            host_interface=iface2,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        self.assertEqual(vm_if1.mac_address, vm_if2.mac_address)
+
+
+class TestVirtualMachineDisk(MAASServerTestCase):
+    def test_unique_no_block_device(self):
+        vm = factory.make_VirtualMachine()
+        factory.make_VirtualMachineDisk(vm=vm, name="sda")
+        self.assertRaises(
+            IntegrityError,
+            factory.make_VirtualMachineDisk,
+            vm=vm,
+            name="sda",
+        )
+
+    def test_unique_with_block_device(self):
+        node = factory.make_Node()
+        other_node_config = factory.make_NodeConfig(
+            node=node, name="deployment"
+        )
+        disk1 = factory.make_PhysicalBlockDevice(
+            name="sda",
+            node_config=node.current_config,
+        )
+        disk2 = factory.make_PhysicalBlockDevice(
+            name="sda",
+            node_config=other_node_config,
+        )
+        vm = factory.make_VirtualMachine()
+        vm_disk1 = factory.make_VirtualMachineDisk(
+            vm=vm,
+            name="sda",
+            block_device=disk1,
+        )
+        vm_disk2 = factory.make_VirtualMachineDisk(
+            vm=vm,
+            name="sda",
+            block_device=disk2,
+        )
+        self.assertEqual(vm_disk1.name, vm_disk2.name)
 
 
 class TestGetVMHostStoragePools(MAASServerTestCase):

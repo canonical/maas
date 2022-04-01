@@ -49,6 +49,7 @@ from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.virtualmachine import (
     VirtualMachine,
+    VirtualMachineDisk,
     VirtualMachineInterface,
 )
 from maasserver.models.vmcluster import VMCluster
@@ -1892,7 +1893,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
 
         machine = pod.create_machine(discovered_machine, factory.make_User())
         vm = machine.virtualmachine
-        vmdisk1, vmdisk2 = vm.disks_set.order_by("block_device__id_path")
+        vmdisk1, vmdisk2 = VirtualMachineDisk.objects.filter(vm=vm).order_by(
+            "block_device__id_path"
+        )
         disk1, disk2 = machine.current_config.blockdevice_set.order_by(
             "id_path"
         )
@@ -2582,7 +2585,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
         pod.sync(discovered_pod, factory.make_User())
         self.assertEqual(Machine.objects.count(), 0)
         vm = VirtualMachine.objects.get(identifier=instance_name)
-        vmdisk1, vmdisk2 = vm.disks_set.order_by("backing_pool_id")
+        vmdisk1, vmdisk2 = VirtualMachineDisk.objects.filter(vm=vm).order_by(
+            "backing_pool_id"
+        )
         pool1 = PodStoragePool.objects.get(name=discovered_pool1.name)
         pool2 = PodStoragePool.objects.get(name=discovered_pool2.name)
         self.assertEqual(vmdisk1.backing_pool, pool1)
@@ -2725,7 +2730,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             machine=machine,
         )
         pod._sync_machine(discovered_machine, machine)
-        [created_interface] = list(machine.virtualmachine.interfaces_set.all())
+        created_interface = VirtualMachineInterface.objects.get(
+            vm=machine.virtualmachine
+        )
         self.assertEqual("11:22:33:44:55:66", created_interface.mac_address)
         self.assertEqual(
             InterfaceAttachType.BRIDGE, created_interface.attachment_type
@@ -2753,7 +2760,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             attachment_type=InterfaceAttachType.MACVLAN,
         )
         pod._sync_machine(discovered_machine, machine)
-        [created_interface] = list(machine.virtualmachine.interfaces_set.all())
+        created_interface = VirtualMachineInterface.objects.get(
+            vm=machine.virtualmachine
+        )
         self.assertEqual(
             "11:22:33:44:55:66", str(created_interface.mac_address)
         )
@@ -2802,12 +2811,16 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             attachment_type=InterfaceAttachType.MACVLAN,
         )
         pod._sync_machine(discovered_machine, machine)
-        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        vm_interface = VirtualMachineInterface.objects.get(
+            vm=machine.virtualmachine
+        )
         self.assertEqual("11:22:33:44:55:66", str(vm_interface.mac_address))
         self.assertEqual(
             InterfaceAttachType.BRIDGE, vm_interface.attachment_type
         )
-        [vm2_interface] = list(machine2.virtualmachine.interfaces_set.all())
+        vm2_interface = VirtualMachineInterface.objects.get(
+            vm=machine2.virtualmachine
+        )
         self.assertEqual("33:44:55:66:77:88", str(vm2_interface.mac_address))
 
     def test_sync_machine_interface_no_mac_address(self):
@@ -2827,9 +2840,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             interfaces=[interface1, interface2],
         )
         pod._sync_machine(discovered_machine, machine)
-        [vm_interface1, vm_interface2] = list(
-            machine.virtualmachine.interfaces_set.all()
-        )
+        vm_interface1, vm_interface2 = VirtualMachineInterface.objects.filter(
+            vm=machine.virtualmachine
+        ).order_by("id")
         self.assertIsNone(vm_interface1.mac_address)
         self.assertEqual(
             InterfaceAttachType.SRIOV, vm_interface1.attachment_type
@@ -2855,7 +2868,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             interfaces=[interface],
         )
         pod._sync_machine(discovered_machine, machine)
-        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        vm_interface = VirtualMachineInterface.objects.get(
+            vm=machine.virtualmachine
+        )
         self.assertIsNone(pod.host)
         self.assertIsNone(vm_interface.host_interface)
 
@@ -2881,7 +2896,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             interfaces=[interface],
         )
         pod._sync_machine(discovered_machine, machine)
-        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        vm_interface = VirtualMachineInterface.objects.get(
+            vm=machine.virtualmachine
+        )
         self.assertIsNone(vm_interface.host_interface)
 
     def test_sync_machine_interface_with_pod_host_interface(self):
@@ -2906,7 +2923,9 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             interfaces=[interface],
         )
         pod._sync_machine(discovered_machine, machine)
-        [vm_interface] = list(machine.virtualmachine.interfaces_set.all())
+        vm_interface = VirtualMachineInterface.objects.get(
+            vm=machine.virtualmachine
+        )
         self.assertEqual(host_interface, vm_interface.host_interface)
 
     def test_sync_machines_uses_location_to_set_bmc_in_a_cluster(self):

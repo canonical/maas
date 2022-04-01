@@ -26,6 +26,7 @@ from django.db.models import (
     TextField,
     Value,
 )
+from django.db.models.constraints import UniqueConstraint
 from django.db.models.functions import Coalesce
 
 from maasserver.fields import MACAddressField
@@ -60,11 +61,10 @@ class VirtualMachine(CleanSave, TimestampedModel):
         default=None,
         blank=True,
         null=True,
-        editable=False,
         related_name="virtualmachine",
     )
     project = TextField(default="", blank=True)
-    bmc = ForeignKey(BMC, editable=False, on_delete=CASCADE)
+    bmc = ForeignKey(BMC, on_delete=CASCADE)
 
     class Meta:
         unique_together = [("bmc", "identifier", "project")]
@@ -80,11 +80,24 @@ class VirtualMachine(CleanSave, TimestampedModel):
 class VirtualMachineInterface(CleanSave, TimestampedModel):
     """A NIC inside VM that's connected to the host interface."""
 
+    class Meta:
+        constraints = [
+            UniqueConstraint(
+                fields=("vm", "mac_address"),
+                condition=Q(host_interface__isnull=True),
+                name="maasserver_virtualmachineinterface_no_iface_uniq",
+            ),
+            UniqueConstraint(
+                fields=("vm", "mac_address", "host_interface"),
+                condition=Q(host_interface__isnull=False),
+                name="maasserver_virtualmachineinterface_iface_uniq",
+            ),
+        ]
+
     vm = ForeignKey(
         VirtualMachine,
-        editable=False,
         on_delete=CASCADE,
-        related_name="interfaces_set",
+        related_name="+",
     )
     mac_address = MACAddressField(null=True, blank=True)
     host_interface = ForeignKey(Interface, null=True, on_delete=SET_NULL)
@@ -94,37 +107,41 @@ class VirtualMachineInterface(CleanSave, TimestampedModel):
         choices=InterfaceAttachTypeChoices,
     )
 
-    class Meta:
-        unique_together = [("vm", "mac_address")]
-
 
 class VirtualMachineDisk(CleanSave, TimestampedModel):
     """A disk attached to a virtual machine."""
 
     class Meta:
-        unique_together = ("vm", "name")
+        constraints = [
+            UniqueConstraint(
+                fields=("vm", "name"),
+                condition=Q(block_device__isnull=True),
+                name="maasserver_virtualmachinedisk_no_bdev_uniq",
+            ),
+            UniqueConstraint(
+                fields=("vm", "name", "block_device"),
+                condition=Q(block_device__isnull=False),
+                name="maasserver_virtualmachinedisk_bdev_uniq",
+            ),
+        ]
 
     name = CharField(max_length=255, blank=False)
     vm = ForeignKey(
         VirtualMachine,
-        editable=False,
         on_delete=CASCADE,
-        related_name="disks_set",
+        related_name="+",
     )
     backing_pool = ForeignKey(
         PodStoragePool,
-        editable=False,
         null=True,
         on_delete=CASCADE,
-        related_name="vmdisks_set",
+        related_name="+",
     )
     block_device = OneToOneField(
         BlockDevice,
         on_delete=SET_NULL,
-        default=None,
         blank=True,
         null=True,
-        editable=False,
         related_name="vmdisk",
     )
     size = BigIntegerField()
