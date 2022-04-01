@@ -149,7 +149,7 @@ class BMC(CleanSave, TimestampedModel):
         # and would not be used for queries looking for exact content. Here we
         # use a HASH index to get around the size limitation on the content of
         # the indexed object
-        indexes = (HashIndex(fields=("power_parameters",)),)
+        indexes = [HashIndex(fields=["power_parameters"])]
         constraints = [
             UniqueConstraint(
                 name="name-unique",

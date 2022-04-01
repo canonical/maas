@@ -24,6 +24,8 @@ from django.db.models import (
     IntegerField,
     Manager,
     PROTECT,
+    Q,
+    UniqueConstraint,
 )
 from netaddr import IPAddress
 
@@ -797,6 +799,13 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         verbose_name = "Static IP Address"
         verbose_name_plural = "Static IP Addresses"
         unique_together = ("alloc_type", "ip")
+        constraints = [
+            UniqueConstraint(
+                fields=["ip"],
+                condition=~Q(alloc_type=IPADDRESS_TYPE.DISCOVERED),
+                name="maasserver_staticipaddress_discovered_uniq",
+            )
+        ]
 
     # IP can be none when a DHCP lease has expired: in this case the entry
     # in the StaticIPAddress only materializes the connection between an

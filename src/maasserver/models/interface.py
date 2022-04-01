@@ -28,6 +28,7 @@ from django.db.models import (
     PROTECT,
     Q,
     TextField,
+    UniqueConstraint,
 )
 from django.db.models.query import QuerySet
 from netaddr import AddrFormatError, EUI, IPAddress, IPNetwork
@@ -533,6 +534,13 @@ class Interface(CleanSave, TimestampedModel):
         verbose_name_plural = "Interfaces"
         ordering = ("created",)
         unique_together = ("node_config", "name")
+        constraints = [
+            UniqueConstraint(
+                fields=("node_config", "mac_address"),
+                condition=Q(type=INTERFACE_TYPE.PHYSICAL),
+                name="maasserver_interface_node_config_mac_address_uniq",
+            ),
+        ]
 
     objects = InterfaceManager()
 

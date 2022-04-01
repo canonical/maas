@@ -173,10 +173,9 @@ class Notification(CleanSave, TimestampedModel):
 
     objects = NotificationManager()
 
-    # The ident column *is* unique, but uniqueness will be ensured using a
-    # partial index in PostgreSQL. These cannot be expressed using Django. See
-    # migrations for the SQL used to create this index.
-    ident = CharField(max_length=40, null=True, blank=True, default=None)
+    ident = CharField(
+        max_length=40, null=True, blank=True, default=None, unique=True
+    )
 
     user = ForeignKey(
         User, null=True, blank=True, default=None, on_delete=CASCADE
