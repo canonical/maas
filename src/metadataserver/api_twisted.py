@@ -200,16 +200,16 @@ def _create_vmhost_for_deployment(node):
         )
         return
 
+    boot_if = node.get_boot_interface()
+    ip = node.ip_addresses([boot_if])[0]
+    if ":" in ip:
+        ip = f"[{ip}]"
+
     for cred_meta in creds_meta:
         is_lxd = cred_meta.key == LXD_CERTIFICATE_METADATA_KEY
         secret = cred_meta.value
         cred_meta.delete()
 
-        # XXX: Should find the best IP to communicate with, given what the rack
-        # controller can access, or use the boot interface IP address.
-        ip = node.ip_addresses()[0]
-        if ":" in ip:
-            ip = f"[{ip}]"
         name = node.hostname
         if len(creds_meta) > 1:
             # make VM host names unique

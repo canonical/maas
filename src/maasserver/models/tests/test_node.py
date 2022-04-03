@@ -2927,6 +2927,19 @@ class TestNode(MAASServerTestCase):
         factory.make_StaticIPAddress(interface=other_node.get_boot_interface())
         self.assertCountEqual([ip1.ip, ip2.ip], node.static_ip_addresses())
 
+    def test_static_ip_addresses_returns_filtered_ip_addresses(self):
+        node = factory.make_Node()
+        [interface1, interface2] = [
+            factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+            for _ in range(2)
+        ]
+        factory.make_StaticIPAddress(interface=interface1)
+        ip2 = factory.make_StaticIPAddress(interface=interface2)
+        # Create another node with a static IP address.
+        other_node = factory.make_Node(interface=True)
+        factory.make_StaticIPAddress(interface=other_node.get_boot_interface())
+        self.assertCountEqual([ip2.ip], node.static_ip_addresses([interface2]))
+
     def test_ip_addresses_returns_static_ip_addresses_if_allocated(self):
         # If both static and dynamic IP addresses are present, the static
         # addresses take precedence: they are allocated and deallocated in

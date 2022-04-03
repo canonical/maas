@@ -1750,7 +1750,7 @@ class Node(CleanSave, TimestampedModel):
         # Create a status message for DEPLOYED.
         Event.objects.create_node_event(self, EVENT_TYPES.DEPLOYED)
 
-    def ip_addresses(self):
+    def ip_addresses(self, ifaces=None):
         """IP addresses allocated to this node.
 
         Return the current IP addresses for this Node, or the empty
@@ -1760,18 +1760,20 @@ class Node(CleanSave, TimestampedModel):
         # before the dynamic IP addresses are returned. The dynamic IP
         # addresses will only be returned if the node has no static IP
         # addresses.
-        ips = self.static_ip_addresses()
+        ips = self.static_ip_addresses(ifaces=ifaces)
         if len(ips) == 0:
-            ips = self.dynamic_ip_addresses()
+            ips = self.dynamic_ip_addresses(ifaces=ifaces)
         return ips
 
-    def static_ip_addresses(self):
+    def static_ip_addresses(self, ifaces=None):
         """Static IP addresses allocated to this node."""
         # DHCP is included here because it is a configured type. Its not
         # just set randomly by the lease parser.
+        if not ifaces:
+            ifaces = self.current_config.interface_set.all()
         return [
             ip_address.get_ip()
-            for interface in self.current_config.interface_set.all()
+            for interface in ifaces
             for ip_address in interface.ip_addresses.all()
             if ip_address.ip
             and ip_address.alloc_type
@@ -1783,11 +1785,13 @@ class Node(CleanSave, TimestampedModel):
             ]
         ]
 
-    def dynamic_ip_addresses(self):
+    def dynamic_ip_addresses(self, ifaces=None):
         """Dynamic IP addresses allocated to this node."""
+        if not ifaces:
+            ifaces = self.current_config.interface_set.all()
         return [
             ip_address.ip
-            for interface in self.current_config.interface_set.all()
+            for interface in ifaces
             for ip_address in interface.ip_addresses.all()
             if (
                 ip_address.ip
