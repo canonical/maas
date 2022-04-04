@@ -20,6 +20,7 @@ export MAAS_RAND_SEED PYTHONHASHSEED GIT_HASH GIT_BRANCH OUTPUT_FILE
 echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
 echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
 
+bin/database --preserve run make syncdb || exit 1
 exec bin/database --preserve run -- bin/test.perf \
     -q \
     --disable-warnings \
