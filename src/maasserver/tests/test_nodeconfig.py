@@ -127,7 +127,7 @@ class TestDuplicateNodeConfig(MAASServerTestCase):
         ptable1 = factory.make_PartitionTable(block_device=bdev1)
         part1 = ptable1.add_partition()
         fs1 = factory.make_Filesystem(partition=part1)
-        bdev2 = factory.make_PhysicalBlockDevice(node=node)
+        bdev2 = factory.make_PhysicalBlockDevice(node=node, size=bdev1.size)
         fs2 = factory.make_Filesystem(block_device=bdev2)
 
         new_config = duplicate_nodeconfig(
