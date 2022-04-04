@@ -1,7 +1,7 @@
 [Unit]
 Description=MAAS Hardware Sync Service
 Documentation=https://maas.io
-Wants=network.target
+Wants=maas_hardware_sync.timer
 After=network.target
 
 [Service]
@@ -16,4 +16,4 @@ ExecStartPre=/usr/bin/maas-run-scripts get-machine-token\
 ExecStart=/usr/bin/maas-run-scripts report-results --config {{ token_file_path }}
 
 [Install]
-WantedBy=maas_hardware_sync.timer
+WantedBy=multi-user.target

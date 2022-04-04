@@ -25,6 +25,7 @@ from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import systemd_interval_to_calendar
 from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
 from metadataserver.vendor_data import (
@@ -726,7 +727,9 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
             [
                 {
                     "content": self._get_timer_template().substitute(
-                        hardware_sync_interval=expected_interval
+                        hardware_sync_interval=systemd_interval_to_calendar(
+                            expected_interval
+                        )
                     ),
                     "path": "/lib/systemd/system/maas_hardware_sync.timer",
                 },

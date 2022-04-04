@@ -12,6 +12,7 @@ from maasserver.utils.converters import (
     machine_readable_bytes,
     parse_systemd_interval,
     round_size_to_nearest_block,
+    systemd_interval_to_calendar,
     XMLToYAML,
 )
 from maastesting.testcase import MAASTestCase
@@ -162,3 +163,41 @@ class TestParseSystemdInterval(MAASTestCase):
 
     def test_parses_single_initials_duration(self):
         self._assert_parsed("15s", seconds=15)
+
+
+class TestSystemdIntervalToCalendar(MAASTestCase):
+    def test_every_2_hours(self):
+        interval = "2h"
+        self.assertEqual(
+            "*-*-* 00/2:00:00", systemd_interval_to_calendar(interval)
+        )
+
+    def test_every_hour(self):
+        interval = "1h"
+        self.assertEqual(
+            "*-*-* *:00:00", systemd_interval_to_calendar(interval)
+        )
+
+    def test_every_hour_and_a_half(self):
+        interval = "1h 30m"
+        self.assertEqual(
+            "*-*-* *:00/30:00", systemd_interval_to_calendar(interval)
+        )
+
+    def test_every_30_minutes(self):
+        interval = "30m"
+        self.assertEqual(
+            "*-*-* *:00/30:00", systemd_interval_to_calendar(interval)
+        )
+
+    def test_every_30_minutes_5_seconds(self):
+        interval = "30m 5s"
+        self.assertEqual(
+            "*-*-* *:00/30:00/5", systemd_interval_to_calendar(interval)
+        )
+
+    def test_every_15_seconds(self):
+        interval = "15s"
+        self.assertEqual(
+            "*-*-* *:*:00/15", systemd_interval_to_calendar(interval)
+        )

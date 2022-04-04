@@ -148,3 +148,24 @@ def parse_systemd_interval(interval):
     duration = duration.groupdict()
     params = {name: int(t) for name, t in duration.items() if t}
     return timedelta(**params).total_seconds()
+
+
+def systemd_interval_to_calendar(interval):
+    duration = _duration_re.match(interval)
+    if not duration:
+        raise ValueError("value is not a valid interval")
+    duration = duration.groupdict()
+    hours = duration.get("hours")
+    minutes = duration.get("minutes")
+    seconds = duration.get("seconds")
+    hour_interval = f"00/{hours}" if hours and hours != "1" else "*"
+    second_interval = f"00/{seconds}" if seconds else "00"
+    minute_interval = (
+        f"00/{minutes}"
+        if minutes
+        else "00"
+        if second_interval == "00"
+        else "*"
+    )
+
+    return f"*-*-* {hour_interval}:{minute_interval}:{second_interval}"

@@ -25,6 +25,7 @@ from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils.certificates import generate_certificate
+from maasserver.utils.converters import systemd_interval_to_calendar
 from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 from provisioningserver.ntp.config import normalise_address
 from provisioningserver.utils.text import make_gecos_field
@@ -402,7 +403,9 @@ def generate_hardware_sync_systemd_configuration(node):
     maas_url = get_node_maas_url(node)
 
     hardware_sync_timer = hardware_sync_timer_tmpl.substitute(
-        hardware_sync_interval=hardware_sync_interval
+        hardware_sync_interval=systemd_interval_to_calendar(
+            hardware_sync_interval
+        )
     )
 
     hardware_sync_service = hardware_sync_service_tmpl.substitute(
