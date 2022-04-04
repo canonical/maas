@@ -175,13 +175,16 @@ def make_SyslogService():
     return syslog.RegionSyslogService(reactor)
 
 
+def make_HTTPService():
+    from maasserver.regiondservices import http
+
+    return http.RegionHTTPService()
+
+
 def make_WebApplicationService(postgresListener, statusWorker):
     from maasserver.webapp import WebApplicationService
 
-    site_port = DEFAULT_PORT  # config["port"]
-    site_service = WebApplicationService(
-        site_port, postgresListener, statusWorker
-    )
+    site_service = WebApplicationService(postgresListener, statusWorker)
     return site_service
 
 
@@ -396,6 +399,11 @@ class RegionEventLoop:
         "ipc-worker": {
             "only_on_master": False,
             "factory": make_IPCWorkerService,
+            "requires": [],
+        },
+        "reverse_proxy": {
+            "only_on_master": True,
+            "factory": make_HTTPService,
             "requires": [],
         },
     }

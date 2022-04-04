@@ -14,12 +14,15 @@ __all__ = [
     "synchronised",
 ]
 
-from functools import wraps
+from functools import lru_cache, wraps
+import os
+from typing import Tuple
 from urllib.parse import urlencode, urljoin, urlsplit
 
 from django.conf import settings
 from django.urls import reverse
 from netaddr import valid_ipv4, valid_ipv6
+import tempita
 
 from maasserver.config import RegionConfiguration
 from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
@@ -208,3 +211,14 @@ def get_default_region_ip(request):
     if remote_ip is not None:
         default_region_ip = get_source_address(remote_ip)
     return default_region_ip
+
+
+@lru_cache(maxsize=256)
+def load_template(*path: Tuple[str]):
+    """Load the template."""
+    return tempita.Template.from_filename(
+        os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "templates", *path)
+        ),
+        encoding="UTF-8",
+    )

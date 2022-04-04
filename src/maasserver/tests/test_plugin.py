@@ -254,6 +254,7 @@ class TestRegionMasterServiceMaker(TestServiceMaker):
             "networks-monitor",
             "active-discovery",
             "reverse-dns",
+            "reverse_proxy",
             "ntp",
             "syslog",
             "version-check",
@@ -380,6 +381,7 @@ class TestRegionAllInOneServiceMaker(TestServiceMaker):
             "networks-monitor",
             "active-discovery",
             "reverse-dns",
+            "reverse_proxy",
             "ntp",
             "syslog",
             # "workers",  Prevented in all-in-one.

@@ -13,7 +13,14 @@ from maasserver.models.timestampedmodel import TimestampedModel
 # Services that run on the region controller. NOTE that this needs to include
 # services overseen by the region's ServiceMonitor.
 REGION_SERVICES = frozenset(
-    {"regiond", "bind9", "ntp_region", "proxy", "syslog_region"}
+    {
+        "bind9",
+        "ntp_region",
+        "proxy",
+        "regiond",
+        "reverse_proxy",
+        "syslog_region",
+    }
 )
 
 # Services that run on the rack controller. NOTE that this needs to include
@@ -49,6 +56,7 @@ DEAD_STATUSES = {
     "dns_rack": SERVICE_STATUS.UNKNOWN,
     "proxy_rack": SERVICE_STATUS.UNKNOWN,
     "syslog_rack": SERVICE_STATUS.UNKNOWN,
+    "reverse_proxy": SERVICE_STATUS.UNKNOWN,
 }
 
 

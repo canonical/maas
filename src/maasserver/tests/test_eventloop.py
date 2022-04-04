@@ -25,7 +25,7 @@ from maasserver import (
     webapp,
     workers,
 )
-from maasserver.eventloop import DEFAULT_PORT, MAASServices
+from maasserver.eventloop import MAASServices
 from maasserver.prometheus.service import REGION_PROMETHEUS_PORT
 from maasserver.prometheus.stats import PrometheusService
 from maasserver.regiondservices import ntp, service_monitor_service, syslog
@@ -454,8 +454,6 @@ class TestFactories(MAASServerTestCase):
             FakePostgresListenerService(), sentinel.status_worker
         )
         self.assertThat(service, IsInstance(webapp.WebApplicationService))
-        # The port is set to port 5243 on localhost.
-        self.assertThat(service.port, Equals(DEFAULT_PORT))
         # It is registered as a factory in RegionEventLoop.
         self.assertIs(
             eventloop.make_WebApplicationService,

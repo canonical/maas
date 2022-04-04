@@ -255,6 +255,24 @@ def fix_twisted_web_http_Request():
         # address='fe80', port = ':1', because it does host.split(':', 1)[0].
         twisted.web.http.Request.getRequestHostname = new_getRequestHostname
 
+    def new_getHost(self):
+        """See https://twistedmatrix.com/trac/ticket/5406"""
+        if type(self.host) is address.UNIXAddress:
+            return address.IPv4Address("TCP", "127.0.0.1", "80")
+
+        return self.host
+
+    twisted.web.http.Request.getHost = new_getHost
+
+    def new_getClientAddress(self):
+        """See https://twistedmatrix.com/trac/ticket/5406"""
+        if type(self.client) is address.UNIXAddress:
+            return address.IPv4Address("TCP", "127.0.0.1", "80")
+
+        return self.client
+
+    twisted.web.http.Request.getClientAddress = new_getClientAddress
+
 
 def fix_twisted_web_server_addressToTuple():
     """Add ipv6 support to t.w.server._addressToTuple()

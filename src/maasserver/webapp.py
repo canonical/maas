@@ -32,6 +32,7 @@ from maasserver.websockets.websockets import (
 )
 from metadataserver.api_twisted import StatusHandlerResource
 from provisioningserver.logger import LegacyLogger
+from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.fs import get_root_path
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -202,8 +203,7 @@ class WebApplicationService(StreamServerEndpointService):
         the web application.
     """
 
-    def __init__(self, port, listener, status_worker):
-        self.port = port
+    def __init__(self, listener, status_worker):
         self.starting = False
         # Start with an empty `Resource`, `installApplication` will configure
         # the root resource. This must be seperated because Django must be
@@ -309,21 +309,22 @@ class WebApplicationService(StreamServerEndpointService):
 
     def _makeEndpoint(self):
         """Make the endpoint for the webapp."""
-        # Make a socket with SO_REUSEPORT set so that we can run multiple web
-        # applications. This is easier to do from outside of Twisted as there's
-        # not yet official support for setting socket options.
-        s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        # N.B, using the IPv6 INADDR_ANY means that getpeername() returns
-        # something like: ('::ffff:192.168.133.32', 40588, 0, 0)
-        s.bind(("::", self.port))
+
+        socket_path = os.getenv(
+            "MAAS_HTTP_SOCKET_PATH",
+            get_maas_data_path("maas-regiond-webapp.sock"),
+        )
+
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        if os.path.exists(socket_path):
+            os.unlink(socket_path)
+
+        s.bind(socket_path)
         # Use a backlog of 50, which seems to be fairly common.
         s.listen(50)
 
         # Adopt this socket into Twisted's reactor setting the endpoint.
         endpoint = AdoptedStreamServerEndpoint(reactor, s.fileno(), s.family)
-        endpoint.port = self.port  # Make it easy to get the port number.
         endpoint.socket = s  # Prevent garbage collection.
         return endpoint
 

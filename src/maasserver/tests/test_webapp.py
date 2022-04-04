@@ -228,7 +228,7 @@ class TestWebApplicationService(MAASTestCase):
     def make_webapp(self):
         listener = FakePostgresListenerService()
         service = webapp.WebApplicationService(
-            0, listener, sentinel.status_worker
+            listener, sentinel.status_worker
         )
         mock_makeEndpoint = self.patch(service, "_makeEndpoint")
         mock_makeEndpoint.return_value = TCP4ServerEndpoint(

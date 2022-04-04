@@ -73,6 +73,14 @@ class ProxyService(Service):
         return deferToDatabase(db_getExpectedState)
 
 
+class HTTPService(AlwaysOnService):
+    """Monitored HTTP service."""
+
+    name = "reverse_proxy"
+    service_name = "maas-http"
+    snap_service_name = "http"
+
+
 # Global service monitor for regiond. NOTE that changes to this need to be
 # mirrored in maasserver.model.services.
 service_monitor = ServiceMonitor(
@@ -80,4 +88,5 @@ service_monitor = ServiceMonitor(
     NTPServiceOnRegion(),
     SyslogServiceOnRegion(),
     ProxyService(),
+    HTTPService(),
 )

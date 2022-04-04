@@ -59,6 +59,7 @@ killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/dhcpd6.log
 startsecs=10
+{{endif}}
 
 [program:http]
 process_name=http
@@ -68,7 +69,6 @@ killasgroup=true
 redirect_stderr=true
 stdout_logfile=%(ENV_SNAP_COMMON)s/log/nginx.log
 startsecs=10
-{{endif}}
 
 {{if rackd or regiond}}
 [program:bind9]
