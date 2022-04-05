@@ -13,6 +13,10 @@ from maasserver.models import (
     VirtualBlockDevice,
 )
 from maasserver.models.interface import InterfaceRelationship
+from maasserver.models.virtualmachine import (
+    VirtualMachineDisk,
+    VirtualMachineInterface,
+)
 
 
 def duplicate_nodeconfig(src_config: NodeConfig, dest_type: str) -> NodeConfig:
@@ -43,7 +47,18 @@ def duplicate_nodeconfig(src_config: NodeConfig, dest_type: str) -> NodeConfig:
             | Q(child_id__in=orig_interface_ids)
         ).values_list("parent_id", "child_id")
     )
-    # XXX add relationships for other models that link to interfaces
+
+    def process_virtualmachineinterface(viface):
+        viface.host_interface_id = interface_map.get(viface.host_interface_id)
+
+    _duplicate_entry_set(
+        VirtualMachineInterface.objects.filter(
+            host_interface_id__in=interface_map
+        ),
+        process_virtualmachineinterface,
+    )
+
+    # XXX handle IP addressed linked to interface
 
     blockdevice_map = {}
 
@@ -57,8 +72,6 @@ def duplicate_nodeconfig(src_config: NodeConfig, dest_type: str) -> NodeConfig:
             process_blockdevice,
         )
     )
-
-    # XXX blockdevices are also referenced by VirtualMachineDisk
 
     cacheset_map = _duplicate_entry_set(
         CacheSet.objects.filter(filesystems__node_config=src_config)
@@ -127,6 +140,14 @@ def duplicate_nodeconfig(src_config: NodeConfig, dest_type: str) -> NodeConfig:
     _duplicate_entry_set(
         src_config.nodedevice_set.all(),
         process_nodedevice,
+    )
+
+    def process_virtualmachinedisk(vdisk):
+        vdisk.block_device_id = blockdevice_map.get(vdisk.block_device_id)
+
+    _duplicate_entry_set(
+        VirtualMachineDisk.objects.filter(block_device_id__in=blockdevice_map),
+        process_virtualmachinedisk,
     )
 
     return dest_node_config

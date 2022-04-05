@@ -1,9 +1,14 @@
 from maasserver.enum import FILESYSTEM_GROUP_TYPE, INTERFACE_TYPE
 from maasserver.models import PhysicalBlockDevice, VirtualBlockDevice
 from maasserver.models.nodeconfig import NODE_CONFIG_TYPE
+from maasserver.models.virtualmachine import (
+    VirtualMachineDisk,
+    VirtualMachineInterface,
+)
 from maasserver.nodeconfig import duplicate_nodeconfig
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.drivers.pod import InterfaceAttachType
 
 
 class TestDuplicateNodeConfig(MAASServerTestCase):
@@ -162,3 +167,43 @@ class TestDuplicateNodeConfig(MAASServerTestCase):
         self.assertEqual(new_nodedev2.physical_interface_id, new_iface.id)
         self.assertEqual(new_nodedev2.bus, nodedev2.bus)
         self.assertEqual(new_nodedev2.hardware_type, nodedev2.hardware_type)
+
+    def test_virtualmachinedisks(self):
+        node = factory.make_Node(with_boot_disk=False)
+        src_config = node.current_config
+        disk = factory.make_PhysicalBlockDevice(
+            node_config=src_config, pcie=True
+        )
+        vm = factory.make_VirtualMachine(machine=node)
+        vdisk = factory.make_VirtualMachineDisk(
+            vm=vm, name=disk.name, block_device=disk
+        )
+        new_config = duplicate_nodeconfig(
+            src_config, NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        [new_disk] = new_config.blockdevice_set.all()
+        new_vdisk = VirtualMachineDisk.objects.get(block_device=new_disk)
+        self.assertNotEqual(new_vdisk.id, vdisk.id)
+        self.assertEqual(new_vdisk.name, vdisk.name)
+
+    def test_virtualmachineinterfaces(self):
+        node = factory.make_Node(with_boot_disk=False)
+        src_config = node.current_config
+        iface = factory.make_Interface(node_config=src_config)
+        vm = factory.make_VirtualMachine(machine=node)
+        mac_address = "aa:bb:cc:dd:ee:ff"
+        viface = VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address=mac_address,
+            host_interface=iface,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        new_config = duplicate_nodeconfig(
+            src_config, NODE_CONFIG_TYPE.DEPLOYMENT
+        )
+        [new_iface] = new_config.interface_set.all()
+        new_viface = VirtualMachineInterface.objects.get(
+            host_interface=new_iface
+        )
+        self.assertNotEqual(new_viface.id, viface.id)
+        self.assertEqual(new_viface.mac_address, mac_address)
