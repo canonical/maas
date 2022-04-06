@@ -38,7 +38,7 @@ class TestReverseDNSService(
             self.region
         )
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_caches_region_model_object(self):
         hostname = factory.make_hostname()
@@ -48,7 +48,7 @@ class TestReverseDNSService(
         self.assertThat(service.region, Equals(self.region))
         service.stopService()
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_adds_rdns_entry(self):
         hostname = factory.make_hostname()
@@ -62,7 +62,7 @@ class TestReverseDNSService(
         self.assertThat(result.ip, Equals(ip))
         self.assertThat(result.hostname, Equals(hostname))
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_updates_rdns_entry(self):
         hostname = factory.make_hostname()
@@ -79,7 +79,7 @@ class TestReverseDNSService(
         self.assertThat(result.ip, Equals(ip))
         self.assertThat(result.hostname, Equals(hostname2))
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_deletes_rdns_entry(self):
         hostname = factory.make_hostname()
@@ -93,7 +93,7 @@ class TestReverseDNSService(
         result = yield deferToDatabase(RDNS.objects.first)
         self.assertThat(result, Is(None))
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_registers_and_unregisters_listener(self):
         listener = Mock()
@@ -111,7 +111,7 @@ class TestReverseDNSService(
             MockCalledOnceWith("neighbour", service.consumeNeighbourEvent),
         )
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_ignores_timeouts_when_consuming_neighbour_event(self):
         reverseResolve = self.patch(reverse_dns_module, "reverseResolve")

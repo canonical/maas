@@ -191,7 +191,7 @@ class TestDeleteLargeObjectContentLater(MAASTransactionServerTestCase):
 
         # Call the delayed function ourselves instead of advancing `clock` so
         # that we can wait for it to complete (it returns a Deferred).
-        func = wait_for(30)(delayed_call.func)  # Wait 30 seconds.
+        func = wait_for()(delayed_call.func)
         func(*delayed_call.args, **delayed_call.kw)
 
         # The content has been removed from the database.

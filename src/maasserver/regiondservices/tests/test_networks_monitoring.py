@@ -41,7 +41,7 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
         setattr(obj, call_name, wrapped_call)
         return deferred
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_logs_error_when_running_region_controller_cannot_be_found(self):
         service = RegionNetworksMonitoringService(
@@ -59,7 +59,7 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             logger.output,
         )
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_get_refresh_details_running(self):
         region = yield deferToDatabase(factory.make_RegionController)

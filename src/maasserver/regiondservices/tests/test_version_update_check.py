@@ -21,7 +21,7 @@ from provisioningserver.utils.testing import MAASIDFixture
 
 
 class TestRegionVersionUpdateCheckService(MAASTransactionServerTestCase):
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_update_version(self):
         region = yield deferToDatabase(factory.make_RegionController)

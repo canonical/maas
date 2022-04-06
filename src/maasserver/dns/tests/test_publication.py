@@ -101,7 +101,7 @@ class TestDNSPublicationGarbageServiceWithDatabase(
 
     run_tests_with = MAASCrochetRunTest
 
-    @wait_for(30.0)
+    @wait_for()
     @inlineCallbacks
     def test_garbage_is_collected(self):
         dnsgc = publication.DNSPublicationGarbageService()

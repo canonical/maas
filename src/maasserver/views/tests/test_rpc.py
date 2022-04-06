@@ -81,7 +81,7 @@ class RPCViewTest(MAASTransactionServerTestCase):
         getServiceNamed = eventloop.services.getServiceNamed
         ipcMaster = getServiceNamed("ipc-master")
 
-        @wait_for(5)
+        @wait_for()
         @inlineCallbacks
         def wait_for_startup():
             # Wait for the service to complete startup.

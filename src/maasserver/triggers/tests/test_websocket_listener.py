@@ -2530,7 +2530,7 @@ class TestDomainListener(
         finally:
             yield listener.stopService()
 
-    @wait_for(360000)
+    @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_dnsresource_address_removal(self):
         domain = yield deferToDatabase(self.create_domain)
@@ -2572,7 +2572,7 @@ class TestDomainListener(
         finally:
             yield listener.stopService()
 
-    @wait_for(360000)
+    @wait_for_reactor
     @inlineCallbacks
     def test_calls_handler_on_dnsresource_delete_notification(self):
         domain = yield deferToDatabase(self.create_domain)
