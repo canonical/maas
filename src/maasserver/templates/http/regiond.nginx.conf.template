@@ -39,7 +39,7 @@ server {
 
     location ~ ^/MAAS/machine-resources/(.*)$ {
         root {{static_dir}}/machine-resources;
-        try_files $1 =404;
+        try_files /$1 =404;
     }
 
     location = /MAAS/docs {
