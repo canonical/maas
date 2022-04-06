@@ -12,9 +12,6 @@ from maastesting.twisted import always_succeed_with
 class TestRegionHTTPService(MAASTestCase):
     """Tests for `RegionHTTPService`."""
 
-    def setUp(self):
-        super().setUp()
-
     def make_startable_RegionHTTPService(self):
         return http.RegionHTTPService()
 
@@ -55,15 +52,18 @@ class TestRegionHTTPService(MAASTestCase):
         service._configure()
         # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
         data_path = os.getenv("MAAS_DATA")
-        self.assertIn(
-            f"{data_path}/maas-regiond-webapp.sock;", nginx_conf.read_text()
-        )
+        nginx_config = nginx_conf.read_text()
+        self.assertIn(f"{data_path}/maas-regiond-webapp.sock;", nginx_config)
+        self.assertIn("root /usr/share/maas/web/static;", nginx_config)
 
     def test_configure_in_snap(self):
         self.patch(
             os,
             "environ",
-            {"MAAS_HTTP_SOCKET_PATH": "/snap/maas/maas-regiond-webapp.sock"},
+            {
+                "MAAS_HTTP_SOCKET_PATH": "/snap/maas/maas-regiond-webapp.sock",
+                "SNAP": "/snap/maas/1234",
+            },
         )
         tempdir = self.make_dir()
         nginx_conf = Path(tempdir) / "regiond.nginx.conf"
@@ -72,7 +72,11 @@ class TestRegionHTTPService(MAASTestCase):
             nginx_conf
         )
         service._configure()
+        nginx_config = nginx_conf.read_text()
         self.assertIn(
             "server unix:/snap/maas/maas-regiond-webapp.sock;",
-            nginx_conf.read_text(),
+            nginx_config,
+        )
+        self.assertIn(
+            "root /snap/maas/1234/usr/share/maas/web/static;", nginx_config
         )

@@ -1,24 +1,70 @@
+# -*- mode: nginx -*-
+
 upstream regiond-webapp {
     server unix:{{socket_path}};
 }
 
 server {
-    listen [::]:5240;
-    listen 5240;
+    listen [::]:{{http_port}};
+    listen {{http_port}};
 
-    location / {
-        proxy_buffering off;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host:$server_port;
+    proxy_http_version 1.1;
+    proxy_buffering off;
+    proxy_read_timeout 900s; # to match the Twisted one
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Host $host:$server_port;
 
-        # TODO: refine if we really need to send Upgrade header on each call
-        # maybe we should only send it when /ws is requested
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "Upgrade";
+    location = / {
+        return 301 /MAAS/r/;
+    }
+
+    location = /MAAS/ {
+        return 301 /MAAS/r/;
+    }
+
+    location /MAAS {
         proxy_pass http://regiond-webapp;
+    }
+
+    location /MAAS/ws {
+        proxy_pass http://regiond-webapp;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Upgrade $http_upgrade;
+    }
+
+    # static assets
+
+    location ~ ^/MAAS/machine-resources/(.*)$ {
+        root {{static_dir}}/machine-resources;
+        try_files $1 =404;
+    }
+
+    location = /MAAS/docs {
+        return 301 /MAAS/docs/;
+    }
+
+    location ~ ^/MAAS/docs/(.*)$ {
+        root {{static_dir}}/web/static/docs;
+        # redirect to the UI version if the page is not found by default
+        try_files /$1 /$1.html /ui/$1 ui/$1/html /$1/index.html =404;
+
+    }
+
+    location ~ ^/MAAS/assets/(.*)$ {
+        root {{static_dir}}/web/static/assets;
+        try_files /$1 =404;
+    }
+
+    location ~ ^/MAAS/[rl]/(.*)$ {
+        root {{static_dir}}/web/static;
+        try_files /$1 /index.html =404;
+    }
+
+    location /favicon.ico {
+        root {{static_dir}}/web/static;
+        try_files /maas-favicon-32px.png =404;
     }
 }

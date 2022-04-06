@@ -12,7 +12,7 @@ from maasserver.utils import load_template
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.rackdservices.http import compose_http_config_path
-from provisioningserver.utils.fs import atomic_write, snap
+from provisioningserver.utils.fs import atomic_write, get_root_path, snap
 
 log = LegacyLogger()
 
@@ -30,7 +30,12 @@ class RegionHTTPService(Service):
             "MAAS_HTTP_SOCKET_PATH",
             get_maas_data_path("maas-regiond-webapp.sock"),
         )
-        rendered = template.substitute({"socket_path": socket_path}).encode()
+        environ = {
+            "http_port": 5240,
+            "socket_path": socket_path,
+            "static_dir": str(get_root_path() / "usr/share/maas"),
+        }
+        rendered = template.substitute(environ).encode()
 
         target_path = compose_http_config_path("regiond.nginx.conf")
         os.makedirs(os.path.dirname(target_path), exist_ok=True)

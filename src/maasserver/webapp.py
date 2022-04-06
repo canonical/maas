@@ -10,7 +10,6 @@ import os
 import re
 import socket
 
-from django.conf import settings
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
@@ -18,8 +17,6 @@ from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 from twisted.web.error import UnsupportedMethod
 from twisted.web.resource import NoResource, Resource
 from twisted.web.server import Request, Site
-from twisted.web.static import File
-from twisted.web.util import Redirect
 from twisted.web.wsgi import WSGIResource
 
 from maasserver import concurrency
@@ -33,7 +30,6 @@ from maasserver.websockets.websockets import (
 from metadataserver.api_twisted import StatusHandlerResource
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.path import get_maas_data_path
-from provisioningserver.utils.fs import get_root_path
 from provisioningserver.utils.twisted import (
     asynchronous,
     reducedWebLogFormatter,
@@ -142,55 +138,6 @@ class ResourceOverlay(Resource):
         return self.basis.render(request)
 
 
-class DefaultFile(File):
-    """
-    A `File` resource that always returns the same file no matter the
-    path.
-    """
-
-    def getChild(self, path, request):
-        return self
-
-
-class NoListingFile(File):
-    """
-    A `File` resource that returns childNotFound instead of listing the directory contents.
-    """
-
-    def directoryListing(self):
-        return self.childNotFound
-
-
-class DefaultFallbackFile(NoListingFile):
-    """
-    A `NoListingFile` that returns the fallback file when a path is not found.
-    """
-
-    def __init__(self, *args, **kwargs):
-        fallback = kwargs.pop("fallback", "index.html")
-        super().__init__(*args, **kwargs)
-        self.childNotFound = DefaultFile(self.child(fallback).path)
-
-
-class DocsFallbackFile(NoListingFile):
-    """
-    A `NoListingFile` that returns the fallback file when a path is not found.
-    """
-
-    def __init__(self, *args, **kwargs):
-        fallback = kwargs.pop("fallback", "404.html")
-        super().__init__(*args, **kwargs)
-        self.childNotFound = DefaultFile(self.child(fallback).path)
-
-    def getChild(self, path, request):
-        if path == b"":
-            return self.getChild("maas-documentation-25.html", request)
-        child = super().getChild(path, request)
-        if child is self.childNotFound and not path.endswith(b".html"):
-            child = super().getChild(path + b".html", request)
-        return child
-
-
 class WebApplicationService(StreamServerEndpointService):
     """Service encapsulating the Django web application.
 
@@ -251,37 +198,7 @@ class WebApplicationService(StreamServerEndpointService):
             b"ws", WebSocketsResource(lookupProtocolForFactory(self.websocket))
         )
 
-        # /MAAS/r/{path} and /MAAS/l/{path} are all resolved by the new MAAS UI
-        # react app, and legacy angularjs app respectively.
-        # If any paths do not match then its routed to index.html in the new
-        # UI code as it uses HTML 5 routing.
-        maas.putChild(b"r", DefaultFallbackFile(settings.STATIC_ROOT))
-
-        maas.putChild(b"l", DefaultFallbackFile(settings.STATIC_ROOT))
-
-        # Redirect /MAAS to react app
-        maas.putChild(b"", Redirect(b"/MAAS/r/"))
-
-        # Setup static resources
-        maas.putChild(
-            b"assets",
-            NoListingFile(os.path.join(settings.STATIC_ROOT, "assets")),
-        )
-        maas.putChild(
-            b"machine-resources",
-            NoListingFile(
-                get_root_path() / "usr/share/maas/machine-resources"
-            ),
-        )
-
-        # Setup static docs
-        maas.putChild(
-            b"docs",
-            DocsFallbackFile(os.path.join(settings.STATIC_ROOT, "docs")),
-        )
-
         root = Resource()
-        root.putChild(b"", Redirect(b"MAAS/"))
         root.putChild(b"MAAS", maas)
 
         # Setup the resources to process paths that django handles.
