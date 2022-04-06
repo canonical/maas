@@ -39,6 +39,7 @@ from netaddr import AddrFormatError, IPAddress, IPNetwork
 import psycopg2.extensions
 
 from maasserver.models.versionedtextfile import VersionedTextFile
+from maasserver.utils.converters import parse_systemd_interval
 from maasserver.utils.dns import validate_domain_name, validate_hostname
 from maasserver.utils.orm import get_one, validate_in_transaction
 from provisioningserver.utils import typed
@@ -890,3 +891,15 @@ class URLOrPPAField(URLField):
         defaults = {"form_class": URLOrPPAFormField}
         defaults.update(kwargs)
         return super(URLField, self).formfield(**defaults)
+
+
+class SystemdIntervalField(forms.CharField):
+    def clean(self, value):
+        try:
+            parse_systemd_interval(value)
+        except ValueError as e:
+            raise ValidationError(
+                f"{e}: {value}, only 'h|hr|hour|hours, m|min|minute|minutes, s|sec|second|seconds' are valid units"
+            )
+        else:
+            return value

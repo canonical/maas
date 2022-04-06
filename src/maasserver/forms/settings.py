@@ -23,6 +23,7 @@ from maasserver.fields import (
     HostListFormField,
     IPListFormField,
     SubnetListFormField,
+    SystemdIntervalField,
 )
 from maasserver.models import BootResource
 from maasserver.models.config import (
@@ -1008,7 +1009,7 @@ CONFIG_ITEMS = {
     },
     "hardware_sync_interval": {
         "default": "15m",
-        "form": forms.CharField,
+        "form": SystemdIntervalField,
         "form_kwargs": {
             "label": "Hardware Sync Interval",
             "required": False,

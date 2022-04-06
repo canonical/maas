@@ -5,7 +5,7 @@
 
 
 import json
-from random import randint
+from random import choice, randint
 import re
 
 from django import forms
@@ -31,6 +31,7 @@ from maasserver.fields import (
     NodeChoiceField,
     register_mac_type,
     SubnetListFormField,
+    SystemdIntervalField,
     URLOrPPAFormField,
     URLOrPPAValidator,
     validate_mac,
@@ -1029,3 +1030,30 @@ class TestURLOrPPAField(MAASServerTestCase):
             error.messages[0],
             Equals("Enter a valid repository URL or PPA location."),
         )
+
+
+class TestSystemdIntervalField(MAASServerTestCase):
+    def test_valid_interval(self):
+        intervals = [
+            "h",
+            "hr",
+            "hour",
+            "hours",
+            "m",
+            "min",
+            "minute",
+            "minutes",
+            "s",
+            "sec",
+            "second",
+            "seconds",
+        ]
+        interval = choice(intervals)
+        value = f"1{interval}"
+        field = SystemdIntervalField()
+        self.assertEqual(value, field.clean(value))
+
+    def test_invalid_interval(self):
+        value = "1 year"
+        field = SystemdIntervalField()
+        self.assertRaises(ValidationError, field.clean, value)

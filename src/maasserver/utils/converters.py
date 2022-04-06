@@ -143,7 +143,7 @@ _duration_re = re.compile(
 
 def parse_systemd_interval(interval):
     duration = _duration_re.match(interval)
-    if not duration:
+    if not duration.group():
         raise ValueError("value is not a valid interval")
     duration = duration.groupdict()
     params = {name: int(t) for name, t in duration.items() if t}
@@ -152,7 +152,7 @@ def parse_systemd_interval(interval):
 
 def systemd_interval_to_calendar(interval):
     duration = _duration_re.match(interval)
-    if not duration:
+    if not duration.group():
         raise ValueError("value is not a valid interval")
     duration = duration.groupdict()
     hours = duration.get("hours")
