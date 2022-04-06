@@ -3929,7 +3929,7 @@ class TestHardwareSyncBlockDeviceNotify(MAASServerTestCase):
         self.assertEqual(event.action, HARDWARE_SYNC_ACTIONS.ADDED)
         self.assertEqual(
             event.description,
-            f"{block_device.name} was added on node {node.system_id}",
+            f"block device {block_device.name} was added on node {node.system_id}",
         )
 
 
@@ -3960,7 +3960,7 @@ class TestHardwareSyncNodeDeviceNotify(MAASServerTestCase):
         self.assertEqual(event.action, HARDWARE_SYNC_ACTIONS.ADDED)
         self.assertEqual(
             event.description,
-            f"{pci_device.device_number} was added on node {node.system_id}",
+            f"pci device {pci_device.device_number} was added on node {node.system_id}",
         )
 
 
@@ -3983,7 +3983,7 @@ class TestHardwareSyncCPUNotify(MAASServerTestCase):
         self.assertEqual(event.action, HARDWARE_SYNC_ACTIONS.ADDED)
         self.assertEqual(
             event.description,
-            f"{cpu_model} was added on node {node.system_id}",
+            f"cpu {cpu_model} was added on node {node.system_id}",
         )
 
 

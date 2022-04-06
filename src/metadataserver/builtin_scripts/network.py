@@ -60,7 +60,11 @@ def _hardware_sync_network_device_notify(node, net_device, action):
     from metadataserver.builtin_scripts.hooks import _hardware_sync_notify
 
     _hardware_sync_notify(
-        EVENT_TYPES.NODE_HARDWARE_SYNC_INTERFACE, node, net_device.name, action
+        EVENT_TYPES.NODE_HARDWARE_SYNC_INTERFACE,
+        node,
+        net_device.name,
+        action,
+        device_type="interface",
     )
 
 

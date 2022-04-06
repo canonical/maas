@@ -2890,5 +2890,5 @@ class TestHardwareSyncNetworkDeviceNotify(MAASServerTestCase):
         self.assertEqual(event.action, "added")
         self.assertEqual(
             event.description,
-            f"{interface.name} was added on node {node.system_id}",
+            f"interface {interface.name} was added on node {node.system_id}",
         )

@@ -744,18 +744,24 @@ def _condense_luns(disks):
     return sorted(processed_disks, key=itemgetter("id"))
 
 
-def _hardware_sync_notify(ev_type, node, device_name, action):
+def _hardware_sync_notify(
+    ev_type, node, device_name, action, device_type=None
+):
     """
     creates an event for hardware sync detectd updates
     """
     if not (node.enable_hw_sync and node.status == NODE_STATUS.DEPLOYED):
         return
 
+    description = f"{device_name} was {action} on node {node.system_id}"
+    if device_type:
+        description = f"{device_type} " + description
+
     Event.objects.create_node_event(
         node.system_id,
         ev_type,
         event_action=action,
-        event_description=f"{device_name} was {action} on node {node.system_id}",
+        event_description=description,
     )
 
 
@@ -765,6 +771,7 @@ def _hardware_sync_block_device_notify(node, block_device, action):
         node,
         block_device.name,
         action,
+        device_type="block device",
     )
 
 
@@ -781,6 +788,7 @@ def _hardware_sync_PCI_device_notify(node, pci_device, action):
         node,
         pci_device.device_number,
         action,
+        device_type="pci device",
     )
 
 
@@ -790,6 +798,7 @@ def _hardware_sync_USB_device_notify(node, usb_device, action):
         node,
         usb_device.device_number,
         action,
+        device_type="usb device",
     )
 
 
@@ -809,7 +818,11 @@ def _hardware_sync_node_devices_notify(node, devices, action):
 
 def _hardware_sync_cpu_notify(node, cpu_model, action):
     _hardware_sync_notify(
-        EVENT_TYPES.NODE_HARDWARE_SYNC_CPU, node, cpu_model, action
+        EVENT_TYPES.NODE_HARDWARE_SYNC_CPU,
+        node,
+        cpu_model,
+        action,
+        device_type="cpu",
     )
 
 
