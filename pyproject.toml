@@ -43,8 +43,8 @@ testpaths = [
   "src/maastesting",
   # [[[cog
   # import cog
-  # import pathlib
-  # for path in sorted(pathlib.Path('.').glob('**/pytest_tests')):
+  # from pathlib import Path
+  # for path in sorted(Path("src").glob("**/pytest_tests")):
   #    cog.outl(f'"{path}",')
   # ]]]
   "src/maasserver/models/pytest_tests",
