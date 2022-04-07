@@ -71,6 +71,10 @@ def get_node_maas_url(node):
     return f"http://{maas_hostname}:5240/MAAS"
 
 
+def get_node_rack_url(node):
+    return f"http://{node.boot_cluster_ip}:5248/MAAS"
+
+
 def generate_system_info(node):
     """Generate cloud-init system information for the given node."""
     if node.owner is not None and node.default_user:
@@ -400,7 +404,7 @@ def generate_hardware_sync_systemd_configuration(node):
         _get_metadataserver_template(HARDWARE_SYNC_SERVICE_TEMPLATE)
     )
 
-    maas_url = get_node_maas_url(node)
+    maas_url = get_node_rack_url(node)
 
     hardware_sync_timer = hardware_sync_timer_tmpl.substitute(
         hardware_sync_interval=systemd_interval_to_calendar(

@@ -40,6 +40,7 @@ from metadataserver.vendor_data import (
     generate_snap_configuration,
     generate_system_info,
     get_node_maas_url,
+    get_node_rack_url,
     get_vendor_data,
     HARDWARE_SYNC_MACHINE_TOKEN_PATH,
     HARDWARE_SYNC_SERVICE_TEMPLATE,
@@ -720,7 +721,7 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
         config = generate_hardware_sync_systemd_configuration(node)
         expected_interval = Config.objects.get_config("hardware_sync_interval")
 
-        maas_url = get_node_maas_url(node)
+        maas_url = get_node_rack_url(node)
 
         expected = (
             "write_files",
@@ -760,3 +761,36 @@ class TestGetNodeMAASURL(MAASServerTestCase):
             f"http://{get_maas_facing_server_host(rack_controller)}:5240/MAAS"
         )
         self.assertEqual(expected_url, get_node_maas_url(node))
+
+
+class TestGetNodeRackURL(MAASServerTestCase):
+    def test_url_uses_machine_facing_rack_controller(self):
+        vlan1 = factory.make_VLAN()
+        vlan2 = factory.make_VLAN()
+        subnet1 = factory.make_Subnet(vlan=vlan1, cidr="10.0.0.0/24")
+        subnet2 = factory.make_Subnet(vlan=vlan2, cidr="10.0.1.0/24")
+        rack_controller = factory.make_RackController()
+        factory.make_Interface(
+            node=rack_controller,
+            vlan=vlan1,
+            subnet=subnet1,
+            ip="10.0.0.1",
+            link_connected=True,
+        )
+        factory.make_Interface(
+            node=rack_controller,
+            vlan=vlan2,
+            subnet=subnet2,
+            ip="10.0.1.1",
+            link_connected=True,
+        )
+        node = factory.make_Node(
+            boot_interface=factory.make_Interface(
+                vlan=vlan1, ip="10.0.0.2", subnet=subnet1, link_connected=True
+            )
+        )
+        node.boot_cluster_ip = "10.0.0.1"
+        node.save()
+
+        expected_url = "http://10.0.0.1:5248/MAAS"
+        self.assertEqual(expected_url, get_node_rack_url(node))
