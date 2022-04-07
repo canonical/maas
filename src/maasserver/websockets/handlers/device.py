@@ -409,13 +409,3 @@ class DeviceHandler(NodeHandler):
             )
         extra_params = params.get("extra", {})
         return action.execute(**extra_params)
-
-    def update(self, params):
-        """Update the object from params."""
-        data = super().update(params)
-        if "tags" in params:
-            device_obj = Device.objects.get(system_id=data["system_id"])
-            self.update_tags(device_obj, params["tags"])
-            device_obj.save()
-            return self.full_dehydrate(device_obj)
-        return data

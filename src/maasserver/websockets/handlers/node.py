@@ -132,6 +132,15 @@ class NodeHandler(TimestampedModelHandler):
         super().__init__(user, cache, request)
         self._script_results = {}
 
+    def update(self, params):
+        data = super().update(params)
+        if "tags" in params:
+            instance = self.get_object(params)
+            self._update_tags(instance, params["tags"])
+            instance.save()
+            return self.full_dehydrate(self.refetch(instance))
+        return data
+
     def dehydrate_owner(self, user):
         """Return owners username."""
         if user is None:
@@ -989,15 +998,6 @@ class NodeHandler(TimestampedModelHandler):
                     return True
         return False
 
-    def update_tags(self, node, tag_ids):
-        tags = list(Tag.objects.filter(id__in=tag_ids))
-        for tag in tags:
-            if tag.is_defined:
-                raise HandlerError(
-                    f"Cannot add tag {tag.name} to node because it has a definition"
-                )
-        node.tags.set(tags)
-
     def get_grouped_storages(self, blockdevices):
         """Group storage based off of the size and type.
 
@@ -1193,3 +1193,12 @@ class NodeHandler(TimestampedModelHandler):
                 mapping["id"] = script_result.id
                 script_result_mappings[system_id].append(mapping)
         return script_result_mappings
+
+    def _update_tags(self, node, tag_ids):
+        tags = list(Tag.objects.filter(id__in=tag_ids))
+        for tag in tags:
+            if tag.is_defined:
+                raise HandlerError(
+                    f"Cannot add tag {tag.name} to node because it has a definition"
+                )
+        node.tags.set(tags)

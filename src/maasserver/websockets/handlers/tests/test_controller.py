@@ -21,11 +21,6 @@ from provisioningserver.utils.snap import SnapVersionsInfo
 
 
 class TestControllerHandler(MAASServerTestCase):
-    def make_controllers(self, number):
-        """Create `number` of new nodes."""
-        for counter in range(number):
-            factory.make_RackController()
-
     def test_vlan_counts_list(self):
         owner = factory.make_admin()
         rack1 = factory.make_RackController(owner=owner)
@@ -206,6 +201,19 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertEqual(new_zone.id, updated["zone"]["id"])
         self.assertEqual(new_domain.id, updated["domain"]["id"])
         self.assertEqual(new_description, updated["description"])
+
+    def test_update_update_controller_tags(self):
+        user = factory.make_admin()
+        handler = ControllerHandler(user, {}, None)
+        controller = factory.make_RackController()
+        tags = [factory.make_Tag(definition="") for _ in range(3)]
+        controller.tags.set(tags[:2])
+
+        data = handler.get({"system_id": controller.system_id})
+        new_tag_ids = [tag.id for tag in tags[1:]]
+        data["tags"] = new_tag_ids
+        updated_data = handler.update(data)
+        self.assertCountEqual(updated_data["tags"], new_tag_ids)
 
     def test_check_images(self):
         owner = factory.make_admin()

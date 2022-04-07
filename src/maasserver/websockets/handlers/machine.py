@@ -457,16 +457,6 @@ class MachineHandler(NodeHandler):
 
         return data
 
-    def update(self, params):
-        """Update the object from params."""
-        data = super().update(params)
-        if "tags" in params:
-            node_obj = Node.objects.get(system_id=data["system_id"])
-            self.update_tags(node_obj, params["tags"])
-            node_obj.save()
-            return self.full_dehydrate(self.refetch(node_obj))
-        return data
-
     def mount_special(self, params):
         """Mount a special-purpose filesystem, like tmpfs.
 
