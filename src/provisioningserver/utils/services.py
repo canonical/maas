@@ -1221,7 +1221,9 @@ class NetworksMonitoringService(SingleInstanceService):
     ):
         if script_name != COMMISSIONING_OUTPUT_NAME:
             return
-        lxd_data = json.loads(Path(stdout_path).read_bytes())
+        script_stdout = Path(stdout_path)
+        with script_stdout.open() as fp:
+            lxd_data = json.load(fp)
         lxd_data["network-extra"] = {
             "interfaces": interfaces,
             "monitored-interfaces": get_default_monitored_interfaces(
@@ -1229,9 +1231,10 @@ class NetworksMonitoringService(SingleInstanceService):
             ),
             "hints": hints,
         }
-        Path(stdout_path).write_text(json.dumps(lxd_data, indent=4))
+        with script_stdout.open("w") as fp:
+            json.dump(lxd_data, fp, indent=4)
         Path(combined_path).write_text(
-            Path(stdout_path).read_text() + Path(stderr_path).read_text()
+            script_stdout.read_text() + Path(stderr_path).read_text()
         )
 
     def _getInterfacesForBeaconing(self, interfaces: dict):
