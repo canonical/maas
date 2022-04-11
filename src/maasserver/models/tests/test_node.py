@@ -6353,6 +6353,26 @@ class TestNodePowerParameters(MAASServerTestCase):
         machine.save()
         self.assertIsNotNone(reload_object(pod))
 
+    def test_is_sync_healthy_returns_false_when_enable_hw_sync_is_false(self):
+        node = factory.make_Node()
+        self.assertFalse(node.is_sync_healthy)
+
+    def test_is_sync_healthy_returns_true_when_last_sync_within_window(self):
+        node = factory.make_Node(enable_hw_sync=True)
+        now = datetime.now()
+        node.last_sync = now - timedelta(seconds=node.sync_interval)
+        node.save()
+        self.assertTrue(node.is_sync_healthy)
+
+    def test_is_sync_healthy_returns_false_when_last_sync_is_beyond_window(
+        self,
+    ):
+        node = factory.make_Node(enable_hw_sync=True)
+        now = datetime.now()
+        node.last_sync = now - (2 * timedelta(seconds=node.sync_interval))
+        node.save()
+        self.assertFalse(node.is_sync_healthy)
+
 
 class TestDecomposeMachineMixin:
     """Mixin to help `TestDecomposeMachine` and

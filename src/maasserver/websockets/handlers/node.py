@@ -319,6 +319,7 @@ class NodeHandler(TimestampedModelHandler):
                     "last_sync": dehydrate_datetime(obj.last_sync),
                     "sync_interval": obj.sync_interval,
                     "next_sync": dehydrate_datetime(obj.next_sync),
+                    "is_sync_healthy": obj.is_sync_healthy,
                 }
             )
         else:

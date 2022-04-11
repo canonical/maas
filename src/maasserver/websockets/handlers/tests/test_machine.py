@@ -526,6 +526,7 @@ class TestMachineHandler(MAASServerTestCase):
                     "last_sync": dehydrate_datetime(node.last_sync),
                     "sync_interval": node.sync_interval,
                     "next_sync": dehydrate_datetime(node.next_sync),
+                    "is_sync_healthy": node.is_sync_healthy,
                 }
             )
 
@@ -2093,6 +2094,7 @@ class TestMachineHandler(MAASServerTestCase):
             observed["next_sync"],
             dehydrate_datetime(node.last_sync + timedelta(minutes=10)),
         )
+        self.assertTrue(observed["is_sync_healthy"])
 
     def test_get_driver_for_series(self):
         user = factory.make_User()

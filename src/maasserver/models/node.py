@@ -1362,6 +1362,15 @@ class Node(CleanSave, TimestampedModel):
             return self.last_sync + timedelta(seconds=self.sync_interval)
         return None
 
+    @property
+    def is_sync_healthy(self):
+        if self.enable_hw_sync:
+            return (
+                datetime.now()
+                <= 1.5 * timedelta(seconds=self.sync_interval) + self.last_sync
+            )
+        return False
+
     def is_commissioning(self):
         return self.status not in (NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING)
 
