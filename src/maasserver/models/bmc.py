@@ -1174,7 +1174,7 @@ class Pod(BMC):
 
         iface_ids = set()
         existing_vm_ifaces = list(
-            VirtualMachineInterface.objects.filter(vm=vm).all()
+            VirtualMachineInterface.objects_current_config.filter(vm=vm).all()
         )
         for discovered_interface in discovered_machine.interfaces:
             found_iface = None
@@ -1203,7 +1203,7 @@ class Pod(BMC):
                 discovered_interface.attach_name
             )
             iface.save()
-        VirtualMachineInterface.objects.filter(vm=vm).exclude(
+        VirtualMachineInterface.objects_current_config.filter(vm=vm).exclude(
             id__in=iface_ids
         ).delete()
 

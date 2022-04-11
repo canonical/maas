@@ -19,6 +19,7 @@ from django.db.models import (
     F,
     ForeignKey,
     IntegerField,
+    Manager,
     OneToOneField,
     Q,
     SET_NULL,
@@ -77,8 +78,33 @@ class VirtualMachine(CleanSave, TimestampedModel):
             )
 
 
+class VirtualMachineInterfaceCurrentConfigManager(Manager):
+    """Manager filtering VirtualMachineInterface objects by related interfaces.
+
+    This only returns entries that are either not tied to host interfaces, or
+    tied to host interfacse for the related machine current NodeConfig.
+    """
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                Q(host_interface__isnull=True)
+                | Q(
+                    host_interface__node_config__in=F(
+                        "vm__bmc__hints__nodes__current_config"
+                    )
+                )
+            )
+        )
+
+
 class VirtualMachineInterface(CleanSave, TimestampedModel):
     """A NIC inside VM that's connected to the host interface."""
+
+    objects = Manager()
+    objects_current_config = VirtualMachineInterfaceCurrentConfigManager()
 
     class Meta:
         constraints = [
@@ -108,8 +134,29 @@ class VirtualMachineInterface(CleanSave, TimestampedModel):
     )
 
 
+class VirtualMachineDiskCurrentConfigManager(Manager):
+    """Manager filtering VirtualMachineDisk objects by related block device.
+
+    This only returns entries that are either not tied to block devices, or
+    tied to block devices for the related machine current NodeConfig.
+    """
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .filter(
+                Q(block_device__isnull=True)
+                | Q(block_device__node_config=F("vm__machine__current_config"))
+            )
+        )
+
+
 class VirtualMachineDisk(CleanSave, TimestampedModel):
     """A disk attached to a virtual machine."""
+
+    objects = Manager()
+    objects_current_config = VirtualMachineDiskCurrentConfigManager()
 
     class Meta:
         constraints = [
@@ -332,7 +379,7 @@ def get_vm_host_used_resources(vmhost) -> VMHostUsedResources:
         hugepages_memory=C(Sum("memory", filter=Q(hugepages_backed=True))),
     )
     counts.update(
-        VirtualMachineDisk.objects.filter(
+        VirtualMachineDisk.objects_current_config.filter(
             vm__bmc=vmhost, vm__project=vmhost.tracked_project
         ).aggregate(
             storage=C(Sum("size")),
@@ -397,7 +444,7 @@ def _update_detailed_resource_counters(pod, resources):
     # are attached to
     vm_ifs_numa_indexes = defaultdict(
         list,
-        VirtualMachineInterface.objects.filter(
+        VirtualMachineInterface.objects_current_config.filter(
             vm__in=vms, host_interface__isnull=False
         )
         .values_list("vm_id")
@@ -443,7 +490,7 @@ def _update_detailed_resource_counters(pod, resources):
 def _get_global_vm_host_storage(pod, resources):
     """Get VMHost storage details, including storage pools"""
     storage = (
-        VirtualMachineDisk.objects.filter(
+        VirtualMachineDisk.objects_current_config.filter(
             backing_pool__pod=pod,
         )
         .values(

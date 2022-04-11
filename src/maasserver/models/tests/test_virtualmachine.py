@@ -831,6 +831,94 @@ class TestGetVMHostResources(MAASServerTestCase):
             ],
         )
 
+    def test_get_resources_only_current_disks(self):
+        project = factory.make_string()
+        vmhost = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+        )
+        pool = factory.make_PodStoragePool(pod=vmhost)
+
+        node = factory.make_Node()
+        other_node_config = factory.make_NodeConfig(
+            node=node, name="deployment"
+        )
+        disk = factory.make_PhysicalBlockDevice(node=node)
+        disk_other_config = factory.make_PhysicalBlockDevice(
+            node_config=other_node_config
+        )
+
+        vm = factory.make_VirtualMachine(
+            machine=node,
+            bmc=vmhost,
+            project=project,
+        )
+        vmdisk1 = factory.make_VirtualMachineDisk(
+            vm=vm, backing_pool=pool, block_device=disk
+        )
+        vmdisk2 = factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool)
+        # a disk in a different node config does not contribute to count
+        factory.make_VirtualMachineDisk(
+            vm=vm, backing_pool=pool, block_device=disk_other_config
+        )
+        resources = get_vm_host_resources(vmhost)
+        self.assertEqual(
+            resources.storage.allocated_tracked, vmdisk1.size + vmdisk2.size
+        )
+
+    def test_get_resources_only_current_interfaces(self):
+        node = factory.make_Node()
+        other_node_config = factory.make_NodeConfig(
+            node=node, name="deployment"
+        )
+        iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            numa_node=node.default_numanode,
+            node_config=node.current_config,
+            sriov_max_vf=8,
+        )
+        other_iface = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            numa_node=node.default_numanode,
+            node_config=other_node_config,
+            sriov_max_vf=8,
+        )
+        project = factory.make_string()
+        pod = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+            host=node,
+        )
+        vm = factory.make_VirtualMachine(bmc=pod, project=project)
+        VirtualMachineInterface.objects.create(
+            vm=vm,
+            host_interface=iface,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm,
+            host_interface=other_iface,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        resources = get_vm_host_resources(pod)
+        self.assertEqual(
+            resources.interfaces,
+            [
+                VMHostNetworkInterface(
+                    id=iface.id,
+                    name="eth0",
+                    numa_index=0,
+                    virtual_functions=VMHostResource(
+                        allocated_tracked=0,
+                        allocated_other=0,
+                        free=8,
+                    ),
+                ),
+            ],
+        )
+
 
 class TestGetVMHostUsedResources(MAASServerTestCase):
     def test_get_used_resources(self):
@@ -928,3 +1016,36 @@ class TestGetVMHostUsedResources(MAASServerTestCase):
         self.assertEqual(used_resources.hugepages_memory, 2048)
         self.assertEqual(used_resources.total_memory, 3072)
         self.assertEqual(used_resources.storage, 8000)
+
+    def test_get_used_resources_only_current_disks(self):
+        project = factory.make_string()
+        vmhost = factory.make_Pod(
+            pod_type="lxd",
+            parameters={"project": project},
+        )
+        pool = factory.make_PodStoragePool(pod=vmhost)
+
+        node = factory.make_Node()
+        other_node_config = factory.make_NodeConfig(
+            node=node, name="deployment"
+        )
+        disk = factory.make_PhysicalBlockDevice(node=node)
+        disk_other_config = factory.make_PhysicalBlockDevice(
+            node_config=other_node_config
+        )
+
+        vm = factory.make_VirtualMachine(
+            machine=node,
+            bmc=vmhost,
+            project=project,
+        )
+        vmdisk1 = factory.make_VirtualMachineDisk(
+            vm=vm, backing_pool=pool, block_device=disk
+        )
+        vmdisk2 = factory.make_VirtualMachineDisk(vm=vm, backing_pool=pool)
+        # a disk in a different node config does not contribute to count
+        factory.make_VirtualMachineDisk(
+            vm=vm, backing_pool=pool, block_device=disk_other_config
+        )
+        used_resources = get_vm_host_used_resources(vmhost)
+        self.assertEqual(used_resources.storage, vmdisk1.size + vmdisk2.size)
