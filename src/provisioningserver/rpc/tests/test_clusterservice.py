@@ -455,14 +455,10 @@ class TestClusterClientService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def fakeAgentResponse(self, data):
-        def mock_body_producer(code, phrase, defer):
-            defer.callback(data)
-            return Mock()
-
-        self.patch(clusterservice, "_ReadBodyProtocol", mock_body_producer)
+    def fakeAgentResponse(self, data="", code=200):
+        self.patch(clusterservice, "readBody").return_value = succeed(data)
         mock_agent = MagicMock()
-        response = MagicMock()
+        response = MagicMock(code=code)
         mock_agent.request.return_value = succeed(response)
         self.patch(clusterservice, "Agent").return_value = mock_agent
 
@@ -547,37 +543,32 @@ class TestClusterClientService(MAASTestCase):
         observed_urls = yield service._build_rpc_info_urls(maas_urls)
         self.assertThat(observed_urls, Equals(expected_urls))
 
-    def test_doUpdate_connect_503_error_is_logged_tersely(self):
-        mock_agent = MagicMock()
-        mock_agent.request.return_value = fail(web.error.Error("503"))
-        self.patch(clusterservice, "Agent").return_value = mock_agent
-
+    def test_doUpdate_connect_502_error_is_logged_tersely(self):
+        self.fakeAgentResponse(code=502)
         logger = self.useFixture(TwistedLoggerFixture())
 
         service = ClusterClientService(Clock())
-        _build_rpc_info_urls = self.patch(service, "_build_rpc_info_urls")
-        _build_rpc_info_urls.return_value = succeed(
-            [([b"http://[::ffff:127.0.0.1]/MAAS"], "http://127.0.0.1/MAAS")]
-        )
-
         # Starting the service causes the first update to be performed.
         service.startService()
 
-        self.assertThat(
-            mock_agent.request,
-            MockCalledOnceWith(
-                b"GET",
-                ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
-            ),
-        )
+        dump = logger.dump()
+        self.assertIn("Region is not advertising RPC endpoints.", dump)
+
+    def test_doUpdate_connect_503_error_is_logged_tersely(self):
+        self.fakeAgentResponse(code=503)
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = ClusterClientService(Clock())
+        # Starting the service causes the first update to be performed.
+        service.startService()
+
         dump = logger.dump()
         self.assertIn("Region is not advertising RPC endpoints.", dump)
 
     def test_doUpdate_makes_parallel_requests(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
-            web.error.Error("503")
+            web.error.Error("boom!")
         )
         self.patch(clusterservice, "Agent").return_value = mock_agent
 
@@ -627,7 +618,7 @@ class TestClusterClientService(MAASTestCase):
     def test_doUpdate_makes_parallel_with_serial_requests(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
-            web.error.Error("503")
+            web.error.Error("boom!")
         )
         self.patch(clusterservice, "Agent").return_value = mock_agent
 
@@ -699,7 +690,7 @@ class TestClusterClientService(MAASTestCase):
     def test_doUpdate_falls_back_to_rpc_info_state(self):
         mock_agent = MagicMock()
         mock_agent.request.return_value = always_fail_with(
-            web.error.Error("503")
+            web.error.Error("boom!")
         )
         self.patch(clusterservice, "Agent").return_value = mock_agent
 
@@ -896,7 +887,7 @@ class TestClusterClientService(MAASTestCase):
             None,
             ("::ffff:127.0.0.1", 80, 0, 1),
         )
-        self.fakeAgentResponse(self.example_rpc_info_view_response)
+        self.fakeAgentResponse(data=self.example_rpc_info_view_response)
         service = ClusterClientService(Clock())
         _update_connections = self.patch(service, "_update_connections")
         service.startService()

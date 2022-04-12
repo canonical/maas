@@ -15,12 +15,10 @@ import sys
 from urllib.parse import urlparse
 
 from netaddr import IPAddress
-from twisted import web
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
-    Deferred,
     DeferredList,
     inlineCallbacks,
     maybeDeferred,
@@ -31,7 +29,7 @@ from twisted.internet.error import ConnectError, ConnectionClosed, ProcessDone
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python.reflect import fullyQualifiedName
-from twisted.web.client import _ReadBodyProtocol, Agent
+from twisted.web.client import Agent, readBody
 from twisted.web.http_headers import Headers
 from zope.interface import implementer
 
@@ -1407,25 +1405,19 @@ class ClusterClientService(TimerService):
             self._rpc_info_state = connected_addr
 
     def _fetch_rpc_info(self, url, orig_url):
-        def catch_503_error(failure):
-            # Catch `twisted.web.error.Error` if has a 503 status code. That
-            # means the region is not all the way up. Ignore the error as this
-            # service will try again after the calculated interval.
-            failure.trap(web.error.Error)
-            if failure.value.status != "503":
-                failure.raiseException()
-            else:
-                return ({"eventloops": None}, orig_url)
+        @inlineCallbacks
+        def process_response(response):
+            if response.code in (502, 503):
+                # Ignore transient errors as the service will try again after
+                # the calculated interval.
+                #
+                # 502 means nginx is running but the region is not yet up
+                # 503 means the region is not completely up and running yet
+                returnValue(({"eventloops": None}, orig_url))
+                return
 
-        def read_body(response):
-            # Read the body of the response and convert it to JSON.
-            d = Deferred()
-            protocol = _ReadBodyProtocol(response.code, response.phrase, d)
-            response.deliverBody(protocol)
-            d.addCallback(
-                lambda data: (json.loads(data.decode("utf-8")), orig_url)
-            )
-            return d
+            payload = yield readBody(response)
+            returnValue((json.loads(payload.decode("utf-8")), orig_url))
 
         # Request the RPC information.
         agent = Agent(reactor)
@@ -1439,8 +1431,7 @@ class ClusterClientService(TimerService):
                 }
             ),
         )
-        d.addCallback(read_body)
-        d.addErrback(catch_503_error)
+        d.addCallback(process_response)
 
         # Timeout making HTTP request after 5 seconds.
         self.clock.callLater(5, d.cancel)
