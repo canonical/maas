@@ -189,15 +189,17 @@ def generate_kvm_pod_configuration(node):
     if node.netboot or not (node.install_kvm or node.register_vmhost):
         return
 
+    NodeMetadata.objects.release_volatile(node)
+
     arch, _ = node.split_arch()
 
     if node.register_vmhost:
         cert = generate_certificate(Config.objects.get_config("maas_name"))
         cert_pem = cert.certificate_pem() + cert.private_key_pem()
-        NodeMetadata.objects.update_or_create(
+        NodeMetadata.objects.create(
             node=node,
             key=LXD_CERTIFICATE_METADATA_KEY,
-            defaults={"value": cert_pem},
+            value=cert_pem,
         )
         # write out the LXD cert on node to add it to the trust after setup
         maas_project = "maas"
@@ -230,10 +232,10 @@ def generate_kvm_pod_configuration(node):
 
     if node.install_kvm:
         password = _generate_password()
-        NodeMetadata.objects.update_or_create(
+        NodeMetadata.objects.create(
             node=node,
             key=VIRSH_PASSWORD_METADATA_KEY,
-            defaults={"value": password},
+            value=password,
         )
         # Make sure SSH password authentication is enabled.
         yield "ssh_pwauth", True

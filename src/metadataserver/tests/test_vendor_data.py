@@ -26,6 +26,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import systemd_interval_to_calendar
+from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockNotCalled
 from metadataserver import vendor_data
 from metadataserver.vendor_data import (
@@ -45,6 +46,8 @@ from metadataserver.vendor_data import (
     HARDWARE_SYNC_MACHINE_TOKEN_PATH,
     HARDWARE_SYNC_SERVICE_TEMPLATE,
     HARDWARE_SYNC_TIMER_TEMPLATE,
+    LXD_CERTIFICATE_METADATA_KEY,
+    VIRSH_PASSWORD_METADATA_KEY,
 )
 from provisioningserver.drivers.pod.lxd import LXD_MAAS_PROJECT_CONFIG
 
@@ -335,6 +338,17 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
             netboot=False,
             install_kvm=True,
         )
+        factory.make_NodeMetadata(
+            key=VIRSH_PASSWORD_METADATA_KEY,
+            node=node,
+            value="old value",
+        )
+        cred_lxd = factory.make_NodeMetadata(
+            key=LXD_CERTIFICATE_METADATA_KEY,
+            node=node,
+            value="old value",
+        )
+
         config = list(generate_kvm_pod_configuration(node))
         self.assertEqual(
             config,
@@ -389,6 +403,7 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
         password_meta = NodeMetadata.objects.first()
         self.assertEqual(password_meta.key, "virsh_password")
         self.assertEqual(password_meta.value, password)
+        self.assertIsNone(reload_object(cred_lxd))
 
     def test_yields_configuration_when_machine_register_vmhost_true(self):
         cert = vendor_data.generate_certificate("maas")
@@ -398,6 +413,16 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
             osystem="ubuntu",
             netboot=False,
             register_vmhost=True,
+        )
+        cred_virsh = factory.make_NodeMetadata(
+            key=VIRSH_PASSWORD_METADATA_KEY,
+            node=node,
+            value="old value",
+        )
+        factory.make_NodeMetadata(
+            key=LXD_CERTIFICATE_METADATA_KEY,
+            node=node,
+            value="old value",
         )
         config = list(generate_kvm_pod_configuration(node))
         self.assertEqual(
@@ -436,6 +461,7 @@ class TestGenerateKVMPodConfiguration(MAASServerTestCase):
         self.assertEqual(
             creds_meta.value, cert.certificate_pem() + cert.private_key_pem()
         )
+        self.assertIsNone(reload_object(cred_virsh))
 
     def test_includes_smt_off_for_install_kvm_on_ppc64(self):
         password = "123secure"

@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from maasserver.models import NodeMetadata
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import reload_object
 from maastesting.crochet import wait_for
 
 wait_for_reactor = wait_for()
@@ -50,3 +51,23 @@ class TestNodeMetadata(MAASServerTestCase):
             default,
             NodeMetadata.objects.get(node=node, key=key, default=default),
         )
+
+    def test_release_volatile(self):
+        from metadataserver.vendor_data import (
+            LXD_CERTIFICATE_METADATA_KEY,
+            VIRSH_PASSWORD_METADATA_KEY,
+        )
+
+        node = factory.make_Node()
+        dummy = factory.make_NodeMetadata(node=node)
+        cred_virsh = factory.make_NodeMetadata(
+            key=VIRSH_PASSWORD_METADATA_KEY, node=node
+        )
+        cred_lxd = factory.make_NodeMetadata(
+            key=LXD_CERTIFICATE_METADATA_KEY, node=node
+        )
+
+        NodeMetadata.objects.release_volatile(node)
+        self.assertIsNotNone(reload_object(dummy))
+        self.assertIsNone(reload_object(cred_virsh))
+        self.assertIsNone(reload_object(cred_lxd))

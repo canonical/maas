@@ -1263,3 +1263,69 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             node=node, key="virsh_password", value="xyz123"
         )
         self.assertRaises(DatabaseError, _create_vmhost_for_deployment, node)
+
+    def test_ignore_unused_lxd_creds(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user,
+            status=NODE_STATUS.DEPLOYING,
+            agent_name="maas-kvm-pod",
+            install_kvm=True,
+        )
+        ip = factory.make_StaticIPAddress(interface=node.boot_interface)
+        virsh_password_meta = NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123"
+        )
+        cert = generate_certificate("maas")
+        lxd_cert_meta = NodeMetadata.objects.create(
+            node=node,
+            key="lxd_certificate",
+            value=cert.certificate_pem() + cert.private_key_pem(),
+        )
+        addr = ip.ip
+        if IPAddress(addr).version == 6:
+            addr = f"[{addr}]"
+        _create_vmhost_for_deployment(node)
+        virsh_vmhost = Pod.objects.get(power_type="virsh")
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        self.mock_discover_and_sync.assert_has_calls(
+            [
+                call(virsh_vmhost, user),
+            ],
+            any_order=True,
+        )
+        self.assertIsNone(reload_object(virsh_password_meta))
+        self.assertIsNotNone(reload_object(lxd_cert_meta))
+
+    def test_ignore_unused_virsh_creds(self):
+        user = factory.make_User()
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=user,
+            status=NODE_STATUS.DEPLOYING,
+            agent_name="maas-kvm-pod",
+            register_vmhost=True,
+        )
+        ip = factory.make_StaticIPAddress(interface=node.boot_interface)
+        virsh_password_meta = NodeMetadata.objects.create(
+            node=node, key="virsh_password", value="xyz123"
+        )
+        cert = generate_certificate("maas")
+        lxd_cert_meta = NodeMetadata.objects.create(
+            node=node,
+            key="lxd_certificate",
+            value=cert.certificate_pem() + cert.private_key_pem(),
+        )
+        addr = ip.ip
+        if IPAddress(addr).version == 6:
+            addr = f"[{addr}]"
+        _create_vmhost_for_deployment(node)
+        lxd_vmhost = Pod.objects.get(power_type="lxd")
+        self.assertEqual(node.status, NODE_STATUS.DEPLOYED)
+        self.mock_discover_and_sync.assert_has_calls(
+            [
+                call(lxd_vmhost, user),
+            ],
+            any_order=True,
+        )
+        self.assertIsNotNone(reload_object(virsh_password_meta))
+        self.assertIsNone(reload_object(lxd_cert_meta))

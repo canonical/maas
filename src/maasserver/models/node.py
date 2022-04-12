@@ -3727,6 +3727,11 @@ class Node(CleanSave, TimestampedModel):
         # If this node has non-installable children, remove them.
         self.children.all().delete()
 
+        # Release volatile metadata
+        from maasserver.models import NodeMetadata
+
+        NodeMetadata.objects.release_volatile(self)
+
         # Power was off or cannot be powered off so release to ready now.
         if finalize_release:
             self._finalize_release()

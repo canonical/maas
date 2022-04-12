@@ -184,13 +184,16 @@ POD_CREATION_ERROR = (
 
 
 def _create_vmhost_for_deployment(node):
+    cred_types = set()
+    if node.register_vmhost:
+        cred_types.add(LXD_CERTIFICATE_METADATA_KEY)
+    if node.install_kvm:
+        cred_types.add(VIRSH_PASSWORD_METADATA_KEY)
+
     creds_meta = list(
         NodeMetadata.objects.filter(
             node=node,
-            key__in=(
-                LXD_CERTIFICATE_METADATA_KEY,
-                VIRSH_PASSWORD_METADATA_KEY,
-            ),
+            key__in=cred_types,
         )
     )
     if not creds_meta:

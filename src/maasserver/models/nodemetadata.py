@@ -22,6 +22,24 @@ class NodeMetadataManager(Manager):
         except NodeMetadata.DoesNotExist:
             return default
 
+    def release_volatile(cls, node):
+        """Remove volatile information.
+
+        Should be called when releasing the node to remove all data that
+        is related to this deployment.
+        """
+        from metadataserver import vendor_data
+
+        volatile_meta = (
+            vendor_data.LXD_CERTIFICATE_METADATA_KEY,
+            vendor_data.VIRSH_PASSWORD_METADATA_KEY,
+        )
+
+        NodeMetadata.objects.filter(
+            node=node,
+            key__in=volatile_meta,
+        ).delete()
+
 
 class NodeMetadata(CleanSave, TimestampedModel):
     """A `NodeMetadata` represents a key/value storage for Node metadata.
