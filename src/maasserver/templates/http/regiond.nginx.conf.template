@@ -8,6 +8,12 @@ server {
     listen [::]:{{http_port}};
     listen {{http_port}};
 
+    {{if tls_enabled}}
+    listen {{tls_port}} ssl;
+    ssl_certificate {{tls_cert_path}};
+    ssl_certificate_key {{tls_key_path}};
+    {{endif}}
+
     proxy_http_version 1.1;
     proxy_buffering off;
     proxy_read_timeout 900s; # to match the Twisted one

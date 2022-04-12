@@ -214,6 +214,7 @@ COMMANDS = {
 REGIOND_COMMANDS = (
     ("apikey", "maasserver", None),
     ("configauth", "maasserver", None),
+    ("config-tls", "maasserver", None),
     ("createadmin", "maasserver", None),
     (
         "changepassword",
@@ -299,13 +300,22 @@ def run_regiond_command(management, parser):
     # At present, only root should execute regiond commands
     if os.getuid() != 0:
         raise SystemExit("You can only '%s' as root." % sys.argv[1])
-    management.execute_from_command_line()
+    management.execute()
 
 
 def load_regiond_commands(management, parser):
     """Load the allowed regiond commands into the MAAS cli."""
+
+    # XXX: Define custom non-Django Command Management in order to follow
+    # Canonical CLI Guidelines and have two-word commands having `-` delimiter.
+    class CanonicalizedCommandManagement(management.ManagementUtility):
+        def fetch_command(self, subcommand):
+            return super().fetch_command(subcommand.replace("-", "_"))
+
+    canonicalized_management = CanonicalizedCommandManagement()
+
     for name, app, help_text in REGIOND_COMMANDS:
-        klass = management.load_command_class(app, name)
+        klass = management.load_command_class(app, name.replace("-", "_"))
         if help_text is None:
             help_text = klass.help
         command_parser = parser.subparsers.add_parser(
@@ -313,5 +323,5 @@ def load_regiond_commands(management, parser):
         )
         klass.add_arguments(command_parser)
         command_parser.set_defaults(
-            execute=partial(run_regiond_command, management)
+            execute=partial(run_regiond_command, canonicalized_management)
         )

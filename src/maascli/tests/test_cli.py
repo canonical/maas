@@ -77,7 +77,10 @@ class TestRegisterCommands(MAASTestCase):
         cli.register_cli_commands(parser)
         for name, app, help_text in cli.REGIOND_COMMANDS:
             subparser = parser.subparsers.choices.get(name)
-            klass = management.load_command_class(app, name)
+            # XXX: We use custom non-Django Command Management in order to follow
+            # Canonical CLI Guidelines and have two-word commands having `-` delimiter.
+            # But Django Management loads commands by module name, which has `_`
+            klass = management.load_command_class(app, name.replace("-", "_"))
             if help_text is None:
                 help_text = klass.help
             self.assertIsNotNone(subparser)

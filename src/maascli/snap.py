@@ -681,6 +681,10 @@ class cmd_init(SnapCommand):
                     To create admins when not using external authentication, run
 
                       sudo maas createadmin
+
+                    To enable TLS for secured communication, please run
+
+                      sudo maas config-tls enable
                     """
                 )
             )
