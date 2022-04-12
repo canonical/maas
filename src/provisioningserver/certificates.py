@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import os
 from pathlib import Path
 import random
+import re
 import secrets
 from tempfile import mkstemp
 from typing import NamedTuple, Optional, Tuple
@@ -15,6 +16,14 @@ from OpenSSL import crypto
 
 from provisioningserver.path import get_tentative_data_path
 from provisioningserver.utils.snap import running_in_snap, SnapPaths
+
+# inspired by https://github.com/hynek/pem
+CERTS_RE = re.compile(
+    """----[- ]BEGIN CERTIFICATE[- ]----\r?
+.+?\r?
+----[- ]END CERTIFICATE[- ]----\r?\n?""",
+    re.DOTALL,
+)
 
 
 class CertificateError(Exception):
@@ -26,13 +35,17 @@ class Certificate(NamedTuple):
 
     key: crypto.PKey
     cert: crypto.X509
+    ca_certs: Tuple[crypto.X509]
 
     @classmethod
-    def from_pem(cls, *materials: str):
+    def from_pem(cls, *materials: str, ca_certs_material: str = ""):
         """Return a Certificate from PEM encoded material.
 
         The `materials` items are concatened and they are expected to contain a
         certificate and its private key.
+
+        Optionally, it's possible to pass a string containing a set of CA
+        certificates.
         """
         material = "\n".join(materials)
 
@@ -47,7 +60,9 @@ class Certificate(NamedTuple):
         except crypto.Error:
             raise CertificateError("Invalid PEM material")
         cls._check_key_match(key, cert)
-        return cls(key, cert)
+
+        ca_certs = cls._split_ca_certs(ca_certs_material)
+        return cls(key, cert, ca_certs)
 
     @classmethod
     def generate(
@@ -83,7 +98,7 @@ class Certificate(NamedTuple):
         cert.gmtime_adj_notAfter(int(validity.total_seconds()))
         cert.set_pubkey(key)
         cert.sign(key, "sha512")
-        return cls(key, cert)
+        return cls(key, cert, ())
 
     def cn(self) -> str:
         """Return the certificate CN."""
@@ -122,6 +137,17 @@ class Certificate(NamedTuple):
             "ascii"
         )
 
+    def ca_certificates_pem(self) -> str:
+        """Return PEM-encoded CA certificates chain"""
+        return b"".join(
+            crypto.dump_certificate(crypto.FILETYPE_PEM, ca_cert)
+            for ca_cert in self.ca_certs
+        ).decode("ascii")
+
+    def fullchain_pem(self) -> str:
+        """Return PEM-encoded full chain (certificate + CA certificates)."""
+        return self.certificate_pem() + self.ca_certificates_pem()
+
     def cert_hash(self) -> str:
         """Return the SHA-256 digest for the certificate."""
         return self.cert.digest("sha256").decode("ascii")
@@ -141,13 +167,20 @@ class Certificate(NamedTuple):
         )
 
     @staticmethod
-    def _check_key_match(key, cert):
+    def _check_key_match(key: crypto.PKey, cert: crypto.X509):
         data = secrets.token_bytes()
         signature = crypto.sign(key, data, "sha512")
         try:
             crypto.verify(cert, signature, data, "sha512")
         except crypto.Error:
             raise CertificateError("Private and public keys don't match")
+
+    @staticmethod
+    def _split_ca_certs(ca_certs_material: str) -> Tuple[crypto.X509]:
+        return tuple(
+            crypto.load_certificate(crypto.FILETYPE_PEM, material)
+            for material in CERTS_RE.findall(ca_certs_material)
+        )
 
 
 def get_maas_cert_tuple():
@@ -156,15 +189,11 @@ def get_maas_cert_tuple():
     The format is the same used by python-requests."""
     if running_in_snap():
         cert_dir = SnapPaths.from_environ().common / "certificates"
-        private_key = cert_dir / "maas.key"
-        certificate = cert_dir / "maas.crt"
     else:
-        private_key = Path(
-            get_tentative_data_path("/etc/maas/certificates/maas.key")
-        )
-        certificate = Path(
-            get_tentative_data_path("/etc/maas/certificates/maas.crt")
-        )
+        cert_dir = Path(get_tentative_data_path("/etc/maas/certificates"))
+
+    private_key = cert_dir / "maas.key"
+    certificate = cert_dir / "maas.crt"
     if not private_key.exists() or not certificate.exists():
         return None
     return str(certificate), str(private_key)

@@ -43,6 +43,11 @@ class TestCertificate(MAASTestCase):
                 "-----BEGIN PRIVATE KEY-----"
             )
         )
+        self.assertEqual(self.sample_cert.ca_certificates_pem(), "")
+        self.assertEqual(
+            self.sample_cert.certificate_pem(),
+            self.sample_cert.fullchain_pem(),
+        )
 
     def test_from_pem_single_material(self):
         cert = Certificate.from_pem(
@@ -120,6 +125,19 @@ class TestCertificate(MAASTestCase):
             material,
         )
         self.assertEqual(str(error), "Private and public keys don't match")
+
+    def test_from_pem_ca_certs(self):
+        other_cert = Certificate.generate("maas")
+        other_cert_pem = other_cert.certificate_pem()
+        cert = Certificate.from_pem(
+            self.sample_cert.certificate_pem().strip(),
+            self.sample_cert.private_key_pem().strip(),
+            ca_certs_material=other_cert_pem,
+        )
+        self.assertEqual(cert.ca_certificates_pem(), other_cert_pem)
+        self.assertEqual(
+            cert.fullchain_pem(), cert.certificate_pem() + other_cert_pem
+        )
 
     def test_tempfiles(self):
         cert_file, key_file = self.sample_cert.tempfiles()
