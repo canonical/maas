@@ -94,7 +94,7 @@ class TestRegionHTTPService(MAASTransactionServerTestCase):
         nginx_config = nginx_conf.read_text()
         self.assertIn(f"{data_path}/maas-regiond-webapp.sock;", nginx_config)
         self.assertIn("root /usr/share/maas/web/static;", nginx_config)
-        self.assertIn("listen 5443 ssl;", nginx_config)
+        self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("ssl_certificate cert_path;", nginx_config)
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
 
@@ -127,6 +127,24 @@ class TestRegionHTTPService(MAASTransactionServerTestCase):
         self.assertIn(
             "root /snap/maas/5443/usr/share/maas/web/static;", nginx_config
         )
-        self.assertIn("listen 5443 ssl;", nginx_config)
+        self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("ssl_certificate cert_path;", nginx_config)
         self.assertIn("ssl_certificate_key key_path;", nginx_config)
+
+    def test_configure_https_also_has_http_server(self):
+        tempdir = self.make_dir()
+        nginx_conf = Path(tempdir) / "regiond.nginx.conf"
+        service = http.RegionHTTPService()
+        self.patch(http, "compose_http_config_path").return_value = str(
+            nginx_conf
+        )
+
+        mock_create_cert_files = self.patch(service, "_create_cert_files")
+        mock_create_cert_files.return_value = ("key_path", "cert_path")
+
+        service._configure(http._Configuration("maas-key", "maas-cert", 5443))
+
+        nginx_config = nginx_conf.read_text()
+        self.assertIn("listen 5443 ssl http2;", nginx_config)
+        self.assertIn("listen 5240;", nginx_config)
+        self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)

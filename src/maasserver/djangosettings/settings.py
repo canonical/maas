@@ -286,6 +286,9 @@ PRESEED_TEMPLATE_LOCATIONS = ("/etc/maas/preseeds", "/usr/share/maas/preseeds")
 # See https://docs.djangoproject.com/en/1.5/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ["*"]
 
+# Consider the request secure if the header is set
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 # Extend Django's JSON serialization.  Without this, JSON serialization of
 # MAC addresses in model fields will break.
 SERIALIZATION_MODULES = {"maasjson": "maasserver.json"}

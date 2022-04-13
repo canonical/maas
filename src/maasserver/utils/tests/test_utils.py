@@ -1,8 +1,5 @@
-# Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for miscellaneous helpers."""
-
 
 import threading
 from unittest.mock import sentinel
@@ -108,21 +105,26 @@ class TestAbsoluteReverse(MAASServerTestCase):
 
 
 class TestBuildAbsoluteURI(MAASTestCase):
-    """Tests for `build_absolute_uri`."""
-
     def setUp(self):
         super().setUp()
         self.useFixture(RegionConfigurationFixture())
 
     def make_request(
-        self, host="example.com", port=80, script_name="", is_secure=False
+        self,
+        host="example.com",
+        port=80,
+        script_name="",
+        scheme="http",
+        headers=None,
     ):
         """Return a :class:`HttpRequest` with the given parameters."""
         request = HttpRequest()
         request.META["SERVER_NAME"] = host
         request.META["SERVER_PORT"] = port
         request.META["SCRIPT_NAME"] = script_name
-        request.is_secure = lambda: is_secure
+        if headers:
+            request.META.update(headers)
+        request._get_scheme = lambda: scheme
         return request
 
     def test_simple(self):
@@ -148,15 +150,24 @@ class TestBuildAbsoluteURI(MAASTestCase):
         )
 
     def test_secure(self):
-        request = self.make_request(port=443, is_secure=True)
+        request = self.make_request(port=443, scheme="https")
         self.assertEqual(
             "https://example.com/fred", build_absolute_uri(request, "/fred")
         )
 
     def test_different_port_and_secure(self):
-        request = self.make_request(port=9443, is_secure=True)
+        request = self.make_request(port=9443, scheme="https")
         self.assertEqual(
             "https://example.com:9443/fred",
+            build_absolute_uri(request, "/fred"),
+        )
+
+    def test_secure_from_header(self):
+        request = self.make_request(
+            port=8443, headers={"HTTP_X_FORWARDED_PROTO": "https"}
+        )
+        self.assertEqual(
+            "https://example.com:8443/fred",
             build_absolute_uri(request, "/fred"),
         )
 
