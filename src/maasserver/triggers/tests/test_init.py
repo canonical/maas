@@ -66,6 +66,8 @@ class TestTriggersUsed(MAASServerTestCase):
         "config_sys_dns_config_update",
         "config_sys_rbac_config_insert",
         "config_sys_rbac_config_update",
+        "config_sys_reverse_proxy_config_insert",
+        "config_sys_reverse_proxy_config_update",
         "dhcpsnippet_sys_dhcp_snippet_delete",
         "dhcpsnippet_sys_dhcp_snippet_insert",
         "dhcpsnippet_sys_dhcp_snippet_update",

@@ -10,11 +10,18 @@ from twisted.internet.defer import inlineCallbacks
 from maasserver.models.config import Config
 from maasserver.regiondservices import http
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.triggers.system import register_system_triggers
+from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
+from provisioningserver.utils.twisted import DeferredValue
+
+wait_for_reactor = wait_for()
 
 
-class TestRegionHTTPService(MAASTransactionServerTestCase):
+class TestRegionHTTPService(
+    TransactionalHelpersMixin, MAASTransactionServerTestCase
+):
     """Tests for `RegionHTTPService`."""
 
     def set_config(self):
@@ -22,7 +29,7 @@ class TestRegionHTTPService(MAASTransactionServerTestCase):
         Config.objects.set_config("tls_cert", "maas-cert")
         Config.objects.set_config("tls_port", 5443)
 
-    @wait_for()
+    @wait_for_reactor
     @inlineCallbacks
     def test_configure_and_reload_not_snap(self):
         service = http.RegionHTTPService()
@@ -47,7 +54,7 @@ class TestRegionHTTPService(MAASTransactionServerTestCase):
 
         assert m.mock_calls == expected_calls
 
-    @wait_for()
+    @wait_for_reactor
     @inlineCallbacks
     def test_configure_and_reload_in_snap(self):
         self.patch(os, "environ", {"SNAP": "true"})
@@ -148,3 +155,36 @@ class TestRegionHTTPService(MAASTransactionServerTestCase):
         self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("listen 5240;", nginx_config)
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_registers_and_unregisters_listener(self):
+        listener = Mock()
+        service = http.RegionHTTPService(postgresListener=listener)
+        self.patch(http.service_monitor, "reloadService")
+        self.patch(service, "_configure")
+
+        yield service.startService()
+        listener.register.assert_called_once_with(
+            "sys_reverse_proxy", service._consume_event
+        )
+
+        service.stopService()
+        listener.unregister.assert_called_once_with(
+            "sys_reverse_proxy", service._consume_event
+        )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_handler_is_called_on_config_change(self):
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sys_reverse_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(self.set_config)
+        try:
+            yield dv.get(timeout=2)
+            self.assertEqual(("sys_reverse_proxy", ""), dv.value)
+        finally:
+            yield listener.stopService()

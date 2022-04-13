@@ -175,10 +175,10 @@ def make_SyslogService():
     return syslog.RegionSyslogService(reactor)
 
 
-def make_HTTPService():
+def make_HTTPService(postgresListener):
     from maasserver.regiondservices import http
 
-    return http.RegionHTTPService()
+    return http.RegionHTTPService(postgresListener)
 
 
 def make_WebApplicationService(postgresListener, statusWorker):
@@ -404,7 +404,7 @@ class RegionEventLoop:
         "reverse_proxy": {
             "only_on_master": True,
             "factory": make_HTTPService,
-            "requires": [],
+            "requires": ["postgres-listener-master"],
         },
     }
 

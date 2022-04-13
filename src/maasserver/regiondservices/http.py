@@ -10,6 +10,7 @@ from typing import Optional
 from twisted.application.service import Service
 from twisted.internet.defer import inlineCallbacks
 
+from maasserver.listener import PostgresListenerService
 from maasserver.models.config import Config
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
@@ -27,12 +28,23 @@ log = LegacyLogger()
 
 
 class RegionHTTPService(Service):
+    def __init__(self, postgresListener: PostgresListenerService = None):
+        super().__init__()
+        self.listener = postgresListener
+
     @inlineCallbacks
     def startService(self):
         config = yield deferToDatabase(self._getConfiguration)
         self._configure(config)
         self._reload_service()
         super().startService()
+        if self.listener is not None:
+            self.listener.register("sys_reverse_proxy", self._consume_event)
+
+    def stopService(self):
+        if self.listener is not None:
+            self.listener.unregister("sys_reverse_proxy", self._consume_event)
+        return super().stopService()
 
     def _getConfiguration(self):
         return _Configuration(
@@ -107,8 +119,12 @@ class RegionHTTPService(Service):
         if snap.running_in_snap():
             service_monitor.restartService("reverse_proxy")
         else:
-
             service_monitor.reloadService("reverse_proxy")
+
+    @inlineCallbacks
+    def _consume_event(self, channel, message):
+        self.stopService()
+        yield self.startService()
 
 
 @dataclass
