@@ -95,46 +95,6 @@ class TestStaticIPAddressManager(MAASServerTestCase):
             StaticIPAddress.objects.filter_by_ip_family(IPADDRESS_FAMILY.IPv6),
         )
 
-    def test_filter_by_subnet_cidr_family_ipv4(self):
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        ip_v4 = factory.pick_ip_in_network(network_v4)
-        ip_v4 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v4, subnet=subnet_v4
-        )
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        ip_v6 = factory.pick_ip_in_network(network_v6)
-        ip_v6 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
-        )
-        self.assertCountEqual(
-            [ip_v4],
-            StaticIPAddress.objects.filter_by_subnet_cidr_family(
-                IPADDRESS_FAMILY.IPv4
-            ),
-        )
-
-    def test_filter_by_subnet_cidr_family_ipv6(self):
-        network_v4 = factory.make_ipv4_network()
-        subnet_v4 = factory.make_Subnet(cidr=str(network_v4.cidr))
-        ip_v4 = factory.pick_ip_in_network(network_v4)
-        ip_v4 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v4, subnet=subnet_v4
-        )
-        network_v6 = factory.make_ipv6_network()
-        subnet_v6 = factory.make_Subnet(cidr=str(network_v6.cidr))
-        ip_v6 = factory.pick_ip_in_network(network_v6)
-        ip_v6 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, ip=ip_v6, subnet=subnet_v6
-        )
-        self.assertCountEqual(
-            [ip_v6],
-            StaticIPAddress.objects.filter_by_subnet_cidr_family(
-                IPADDRESS_FAMILY.IPv6
-            ),
-        )
-
     def test_allocate_new_returns_ip_in_correct_range(self):
         subnet = factory.make_managed_Subnet()
         ipaddress = StaticIPAddress.objects.allocate_new(subnet)

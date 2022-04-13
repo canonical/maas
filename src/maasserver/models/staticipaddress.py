@@ -19,13 +19,16 @@ from django.db import connection, IntegrityError, transaction
 from django.db.models import (
     CASCADE,
     DateTimeField,
+    F,
     ForeignKey,
+    Func,
     GenericIPAddressField,
     IntegerField,
     Manager,
     PROTECT,
     Q,
     UniqueConstraint,
+    Value,
 )
 from netaddr import IPAddress
 
@@ -141,8 +144,7 @@ class StaticIPAddressManager(Manager):
             IPADDRESS_TYPE.USER_RESERVED,
         ]:
             raise ValueError(
-                "IP address type %r is not allowed to use allocate_new."
-                % alloc_type
+                f"IP address type {alloc_type} is not allowed to use allocate_new."
             )
 
         if user is None:
@@ -188,8 +190,7 @@ class StaticIPAddressManager(Manager):
         except IntegrityError:
             # The address is already taken.
             raise StaticIPAddressUnavailable(
-                "The IP address %s is already in use."
-                % requested_address.format()
+                f"The IP address {requested_address.format()} is already in use."
             )
         else:
             # We deliberately do *not* save the user until now because it
@@ -307,7 +308,7 @@ class StaticIPAddressManager(Manager):
                 > 0
             ):
                 raise StaticIPAddressUnavailable(
-                    "The IP address %s is already in use." % requested_address
+                    f"The IP address {requested_address} is already in use."
                 )
 
             subnet.validate_static_ip(requested_address)
@@ -769,29 +770,11 @@ class StaticIPAddressManager(Manager):
         possible_families = map_enum_reverse(IPADDRESS_FAMILY)
         if family not in possible_families:
             raise ValueError(
-                "IP address family %r is not a member of "
-                "IPADDRESS_FAMILY." % family
+                f"IP address family {family} is not a member of IPADDRESS_FAMILY."
             )
-        return self.extra(
-            where=["family(maasserver_staticipaddress.ip) = %s"],
-            params=[family],
-        )
-
-    def filter_by_subnet_cidr_family(self, family):
-        possible_families = map_enum_reverse(IPADDRESS_FAMILY)
-        if family not in possible_families:
-            raise ValueError(
-                "Subnet CIDR family %r is not a member of "
-                "IPADDRESS_FAMILY." % family
-            )
-        return self.extra(
-            tables=["maasserver_subnet"],
-            where=[
-                "maasserver_staticipaddress.subnet_id = maasserver_subnet.id",
-                "family(maasserver_subnet.cidr) = %s",
-            ],
-            params=[family],
-        )
+        return self.annotate(
+            ip_family=Func(F("ip"), function="family")
+        ).filter(ip_family=Value(family))
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):
@@ -878,8 +861,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         # MAAS currently only relates a single interface per IP address
         # at this time. In the future, we may want to model virtual IPs, in
         # which case this will need to change.
-        interface = self.interface_set.first()
-        return interface
+        return self.interface_set.first()
 
     def get_interface_link_type(self):
         """Return the `INTERFACE_LINK_TYPE`."""
@@ -927,7 +909,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
             ).order_by("-id")
             if ip.ip
         ]
-        if len(discovered_ips) > 0:
+        if discovered_ips:
             return discovered_ips[0]
         else:
             return None
@@ -987,8 +969,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 raise ValidationError(
                     {
                         "ip": [
-                            "IP address %s is not within the subnet: %s."
-                            % (str(address), str(network))
+                            f"IP address {address} is not within the subnet: {network}."
                         ]
                     }
                 )
@@ -1106,7 +1087,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 data["bmcs"] = bmcs
         return data
 
-    def set_ip_address(self, ipaddr, iface=None):
+    def set_ip_address(self, ipaddr):
         """Sets the IP address to the specified value, and also updates
         the subnet field.
 
