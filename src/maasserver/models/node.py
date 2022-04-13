@@ -1364,7 +1364,7 @@ class Node(CleanSave, TimestampedModel):
 
     @property
     def is_sync_healthy(self):
-        if self.enable_hw_sync:
+        if self.enable_hw_sync and self.last_sync and self.sync_interval:
             return (
                 datetime.now()
                 <= 1.5 * timedelta(seconds=self.sync_interval) + self.last_sync
