@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from unittest.mock import call, Mock
 
+from django.db import transaction
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.models.config import Config
@@ -25,9 +26,13 @@ class TestRegionHTTPService(
     """Tests for `RegionHTTPService`."""
 
     def set_config(self):
-        Config.objects.set_config("tls_key", "maas-key")
-        Config.objects.set_config("tls_cert", "maas-cert")
-        Config.objects.set_config("tls_port", 5443)
+        with transaction.atomic():
+            Config.objects.set_config("tls_key", "maas-key")
+            Config.objects.set_config("tls_cert", "maas-cert")
+            Config.objects.set_config("tls_port", 5443)
+
+    def get_config(self):
+        return Config.objects.get_configs(["tls_key", "tls_cert", "tls_port"])
 
     @wait_for_reactor
     @inlineCallbacks
@@ -188,3 +193,25 @@ class TestRegionHTTPService(
             self.assertEqual(("sys_reverse_proxy", ""), dv.value)
         finally:
             yield listener.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_data_is_consistent_when_notified(self):
+        listener = self.make_listener_without_delay()
+        dv = DeferredValue()
+        listener.register("sys_reverse_proxy", lambda *args: dv.set(args))
+        yield listener.startService()
+        yield deferToDatabase(register_system_triggers)
+        yield deferToDatabase(self.set_config)
+        try:
+            yield dv.get(timeout=2)
+            self.assertEqual(("sys_reverse_proxy", ""), dv.value)
+        finally:
+            yield listener.stopService()
+
+        config = yield deferToDatabase(self.get_config)
+
+        self.assertEqual(
+            {"tls_key": "maas-key", "tls_cert": "maas-cert", "tls_port": 5443},
+            config,
+        )

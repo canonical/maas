@@ -27,11 +27,15 @@ class TestConfigTLSCommand(MAASServerTestCase):
             key_file.flush()
             yield key_file.name
 
+    def _get_config(self):
+        return Config.objects.get_configs(["tls_key", "tls_cert", "tls_port"])
+
     def test_config_tls_disable(self):
         call_command("config_tls", "disable")
-        self.assertEqual(None, Config.objects.get_config("tls_port"))
-        self.assertEqual("", Config.objects.get_config("tls_key"))
-        self.assertEqual("", Config.objects.get_config("tls_cert"))
+        self.assertEqual(
+            {"tls_port": None, "tls_key": "", "tls_cert": ""},
+            self._get_config(),
+        )
 
     def test_config_tls_enable(self):
         sample_cert = get_sample_cert()
@@ -40,29 +44,26 @@ class TestConfigTLSCommand(MAASServerTestCase):
         self.read_input.return_value = "y"
         call_command("config_tls", "enable", key_path, cert_path, "-p=5234")
 
-        self.assertEqual(5234, Config.objects.get_config("tls_port"))
         self.assertEqual(
-            sample_cert.private_key_pem(), Config.objects.get_config("tls_key")
-        )
-        self.assertEqual(
-            sample_cert.certificate_pem(),
-            Config.objects.get_config("tls_cert"),
+            {
+                "tls_port": 5234,
+                "tls_key": sample_cert.private_key_pem(),
+                "tls_cert": sample_cert.certificate_pem(),
+            },
+            self._get_config(),
         )
 
     def test_config_tls_enable_break(self):
         sample_cert = get_sample_cert()
         cert_path, key_path = sample_cert.tempfiles()
 
-        last_tls_port = Config.objects.get_config("tls_port")
-        last_tls_key = Config.objects.get_config("tls_key")
-        last_tls_cert = Config.objects.get_config("tls_cert")
+        last_config = self._get_config()
 
         call_command("config_tls", "enable", key_path, cert_path)
         self.read_input.return_value = "n"
 
-        self.assertEqual(last_tls_port, Config.objects.get_config("tls_port"))
-        self.assertEqual(last_tls_key, Config.objects.get_config("tls_key"))
-        self.assertEqual(last_tls_cert, Config.objects.get_config("tls_cert"))
+        current_config = self._get_config()
+        self.assertEqual(last_config, current_config)
 
     def test_config_tls_enable_with_default_port(self):
         sample_cert = get_sample_cert()
@@ -71,13 +72,13 @@ class TestConfigTLSCommand(MAASServerTestCase):
         self.read_input.return_value = "y"
         call_command("config_tls", "enable", key_path, cert_path)
 
-        self.assertEqual(5443, Config.objects.get_config("tls_port"))
         self.assertEqual(
-            sample_cert.private_key_pem(), Config.objects.get_config("tls_key")
-        )
-        self.assertEqual(
-            sample_cert.certificate_pem(),
-            Config.objects.get_config("tls_cert"),
+            {
+                "tls_port": 5443,
+                "tls_key": sample_cert.private_key_pem(),
+                "tls_cert": sample_cert.certificate_pem(),
+            },
+            self._get_config(),
         )
 
     def test_config_tls_enable_with_incorrect_key(self):
@@ -94,7 +95,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
                 key_path,
                 cert_path,
             )
-            self.assertEqual(str(error), "Invalid PEM material")
+            self.assertEqual("Invalid PEM material", str(error))
 
     def test_config_tls_enable_with_incorrect_cert(self):
         with self.wrong_file() as cert_path:
@@ -110,4 +111,4 @@ class TestConfigTLSCommand(MAASServerTestCase):
                 key_path,
                 cert_path,
             )
-            self.assertEqual(str(error), "Invalid PEM material")
+            self.assertEqual("Invalid PEM material", str(error))

@@ -6,7 +6,7 @@
 import argparse
 
 from django.core.management.base import BaseCommand
-from django.db import DEFAULT_DB_ALIAS
+from django.db import DEFAULT_DB_ALIAS, transaction
 
 from maascli.init import read_input
 from maasserver.models import Config
@@ -14,15 +14,17 @@ from provisioningserver.certificates import Certificate
 
 
 def set_tls_config(config_manager, cert, port):
-    config_manager.set_config("tls_port", port)
-    config_manager.set_config("tls_key", cert.private_key_pem())
-    config_manager.set_config("tls_cert", cert.certificate_pem())
+    with transaction.atomic():
+        config_manager.set_config("tls_port", port)
+        config_manager.set_config("tls_key", cert.private_key_pem())
+        config_manager.set_config("tls_cert", cert.certificate_pem())
 
 
 def disable_tls(config_manager):
-    config_manager.set_config("tls_port", None)
-    config_manager.set_config("tls_key", "")
-    config_manager.set_config("tls_cert", "")
+    with transaction.atomic():
+        config_manager.set_config("tls_port", None)
+        config_manager.set_config("tls_key", "")
+        config_manager.set_config("tls_cert", "")
 
 
 class Command(BaseCommand):

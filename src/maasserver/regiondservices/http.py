@@ -47,10 +47,11 @@ class RegionHTTPService(Service):
         return super().stopService()
 
     def _getConfiguration(self):
+        configs = Config.objects.get_configs(
+            ["tls_key", "tls_cert", "tls_port"]
+        )
         return _Configuration(
-            Config.objects.get_config("tls_key"),
-            Config.objects.get_config("tls_cert"),
-            Config.objects.get_config("tls_port"),
+            configs["tls_key"], configs["tls_cert"], configs["tls_port"]
         )
 
     def _configure(self, configuration):
@@ -62,11 +63,7 @@ class RegionHTTPService(Service):
         )
 
         tls_enabled = all(
-            (
-                configuration.port,
-                configuration.key,
-                configuration.cert,
-            )
+            (configuration.port, configuration.key, configuration.cert)
         )
 
         key_path, cert_path = "", ""
