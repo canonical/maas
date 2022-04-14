@@ -1984,6 +1984,49 @@ class TestParseParameters(MAASTestCase):
 
         self.assertRaises(KeyError, parse_parameters, script, scripts_dir)
 
+    def test_parse_parameters_storage_uses_id_path_if_set(self):
+        mock_get_storage_model_from_udev = self.patch(
+            maas_run_remote_scripts, "get_storage_model_from_udev"
+        )
+        mock_get_storage_model_from_udev.side_effect = lambda bd: bd
+        scripts_dir = factory.make_name("scripts_dir")
+        script = {
+            "path": "path_to/" + factory.make_name("script_name"),
+            "parameters": {
+                "storage": {
+                    "type": "storage",
+                    "value": {
+                        "name": factory.make_name("name"),
+                        "model": factory.make_name("model"),
+                        "serial": factory.make_name("serial"),
+                        "id_path": "/dev/%s" % factory.make_name("id_path"),
+                    },
+                    "argument_format": ("--bar {path}"),
+                },
+            },
+        }
+        lsblk_output = {
+            "blockdevices": [
+                {
+                    "name": factory.make_name("name"),
+                    "model": factory.make_name("model"),
+                    "serial": factory.make_name("serial"),
+                    "maj:min": "259:1",
+                }
+            ]
+        }
+
+        mock_check_output = self.patch(maas_run_remote_scripts, "check_output")
+        mock_check_output.return_value = json.dumps(lsblk_output).encode()
+        self.assertCountEqual(
+            [
+                os.path.join(scripts_dir, script["path"]),
+                "--bar",
+                script["parameters"]["storage"]["value"]["id_path"],
+            ],
+            parse_parameters(script, scripts_dir),
+        )
+
 
 class TestCheckLinkConnected(MAASTestCase):
     def test_only_runs_with_network_script(self):

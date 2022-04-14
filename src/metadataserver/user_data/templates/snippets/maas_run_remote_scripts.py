@@ -821,6 +821,11 @@ def parse_parameters(script, scripts_dir):
                         value["path"] = value["input"] = (
                             "/dev/%s" % blockdev["name"]
                         )
+                if "id_path" in value and "path" not in value:
+                    # some devices, such as RAID controllers, may have multiple serials
+                    # and lsblik may return a different one from what was discovered
+                    # so we trust id_path in this case
+                    value["path"] = value["input"] = value["id_path"]
             argument_format = param.get("argument_format", "--storage={path}")
             try:
                 ret += argument_format.format(**value).split()
