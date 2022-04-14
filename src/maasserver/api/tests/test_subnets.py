@@ -8,12 +8,18 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import Contains, ContainsDict, Equals
+from testtools.matchers import Contains, Equals
 
-from maasserver.enum import IPADDRESS_TYPE, NODE_STATUS, RDNS_MODE_CHOICES
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODE_STATUS,
+    RDNS_MODE,
+    RDNS_MODE_CHOICES,
+)
 from maasserver.testing.api import APITestCase, explain_unexpected_response
-from maasserver.testing.factory import factory, RANDOM
+from maasserver.testing.factory import factory
 from maasserver.utils.orm import reload_object
+from maastesting.djangotestcase import CountQueries
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils.network import inet_ntop, IPRangeStatistics
 
@@ -36,21 +42,58 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.assertEqual("/MAAS/api/2.0/subnets/", get_subnets_uri())
 
     def test_read(self):
-        subnets = [factory.make_Subnet() for _ in range(3)]
+        def make_subnet():
+            space = factory.make_Space()
+            subnet = factory.make_Subnet(space=space)
+            primary_rack = factory.make_RackController(subnet=subnet)
+            secondary_rack = factory.make_RackController(subnet=subnet)
+            relay_vlan = factory.make_VLAN()
+            vlan = subnet.vlan
+            vlan.dhcp_on = True
+            vlan.primary_rack = primary_rack
+            vlan.secondary_rack = secondary_rack
+            vlan.relay_vlan = relay_vlan
+            vlan.save()
+            return subnet
+
+        subnets = [make_subnet()]
         uri = get_subnets_uri()
-        response = self.client.get(uri)
+        with CountQueries() as counter:
+            response = self.client.get(uri)
+        base_count = counter.count
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        expected_ids = [subnet.id for subnet in subnets]
+
         result_ids = [
             subnet["id"]
             for subnet in json.loads(
                 response.content.decode(settings.DEFAULT_CHARSET)
             )
         ]
-        self.assertCountEqual(expected_ids, result_ids)
+        self.assertCountEqual(
+            [subnet.id for subnet in subnets],
+            result_ids,
+            json.loads(response.content.decode(settings.DEFAULT_CHARSET)),
+        )
+
+        subnets.append(make_subnet())
+        with CountQueries() as counter:
+            response = self.client.get(uri)
+        # XXX: These should be the same.
+        self.assertEqual(base_count + 7, counter.count)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        result_ids = [
+            subnet["id"]
+            for subnet in json.loads(
+                response.content.decode(settings.DEFAULT_CHARSET)
+            )
+        ]
+        self.assertCountEqual([subnet.id for subnet in subnets], result_ids)
 
     def test_create(self):
         self.become_admin()
@@ -269,8 +312,15 @@ class TestSubnetAPI(APITestCase.ForUser):
             "/MAAS/api/2.0/subnets/%s/" % subnet.id, get_subnet_uri(subnet)
         )
 
-    def test_read(self):
-        subnet = factory.make_Subnet(space=RANDOM)
+    def test_read_basic(self):
+        subnet = factory.make_Subnet(
+            name="my-subnet",
+            cidr="10.10.10.0/24",
+            gateway_ip=None,
+            space=None,
+            dns_servers=[],
+            disabled_boot_architectures=[],
+        )
         uri = get_subnet_uri(subnet)
         response = self.client.get(uri)
 
@@ -280,34 +330,100 @@ class TestSubnetAPI(APITestCase.ForUser):
         parsed_subnet = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
+        self.assertEqual(
             parsed_subnet,
-            ContainsDict(
-                {
-                    "id": Equals(subnet.id),
-                    "name": Equals(subnet.name),
-                    "vlan": ContainsDict({"vid": Equals(subnet.vlan.vid)}),
-                    "space": Equals(subnet.space.get_name()),
-                    "cidr": Equals(subnet.cidr),
-                    "gateway_ip": Equals(subnet.gateway_ip),
-                    "dns_servers": Equals(subnet.dns_servers),
-                    "managed": Equals(subnet.managed),
-                    "disabled_boot_architectures": Equals(
-                        subnet.disabled_boot_architectures
-                    ),
-                }
-            ),
+            {
+                "id": subnet.id,
+                "name": "my-subnet",
+                "active_discovery": False,
+                "allow_dns": True,
+                "allow_proxy": True,
+                "description": "",
+                "space": "undefined",
+                "cidr": "10.10.10.0/24",
+                "gateway_ip": None,
+                "dns_servers": [],
+                "managed": True,
+                "disabled_boot_architectures": [],
+                "rdns_mode": RDNS_MODE.DEFAULT,
+                "resource_uri": f"/MAAS/api/2.0/subnets/{subnet.id}/",
+                "vlan": {
+                    "id": subnet.vlan_id,
+                    "dhcp_on": subnet.vlan.dhcp_on,
+                    "external_dhcp": subnet.vlan.external_dhcp,
+                    "fabric": subnet.vlan.fabric.get_name(),
+                    "fabric_id": subnet.vlan.fabric_id,
+                    "mtu": subnet.vlan.mtu,
+                    "primary_rack": None,
+                    "secondary_rack": None,
+                    "space": "undefined",
+                    "vid": subnet.vlan.vid,
+                    "name": subnet.vlan.get_name(),
+                    "relay_vlan": None,
+                    "resource_uri": f"/MAAS/api/2.0/vlans/{subnet.vlan_id}/",
+                },
+            },
         )
 
-    def test_read_includes_description(self):
-        description = factory.make_string()
-        subnet = factory.make_Subnet(space=RANDOM, description=description)
+    def test_read_full(self):
+        space = factory.make_Space(name="my-space")
+        subnet = factory.make_Subnet(
+            name="my-subnet",
+            cidr="10.20.20.0/24",
+            gateway_ip="10.20.20.1",
+            space=space,
+            dns_servers=["10.20.20.20"],
+            disabled_boot_architectures=["pxe"],
+            active_discovery=True,
+            allow_proxy=False,
+            allow_dns=False,
+            description="My subnet",
+            managed=False,
+            rdns_mode=RDNS_MODE.DISABLED,
+        )
         uri = get_subnet_uri(subnet)
         response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
         parsed_subnet = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertEqual(description, parsed_subnet["description"])
+        self.assertEqual(
+            parsed_subnet,
+            {
+                "id": subnet.id,
+                "name": "my-subnet",
+                "active_discovery": True,
+                "allow_dns": False,
+                "allow_proxy": False,
+                "description": "My subnet",
+                "space": "my-space",
+                "cidr": "10.20.20.0/24",
+                "gateway_ip": "10.20.20.1",
+                "dns_servers": ["10.20.20.20"],
+                "managed": False,
+                "disabled_boot_architectures": ["pxe"],
+                "rdns_mode": RDNS_MODE.DISABLED,
+                "resource_uri": f"/MAAS/api/2.0/subnets/{subnet.id}/",
+                "vlan": {
+                    "id": subnet.vlan_id,
+                    "dhcp_on": subnet.vlan.dhcp_on,
+                    "external_dhcp": subnet.vlan.external_dhcp,
+                    "fabric": subnet.vlan.fabric.get_name(),
+                    "fabric_id": subnet.vlan.fabric_id,
+                    "mtu": subnet.vlan.mtu,
+                    "primary_rack": None,
+                    "secondary_rack": None,
+                    "space": "my-space",
+                    "vid": subnet.vlan.vid,
+                    "name": subnet.vlan.get_name(),
+                    "relay_vlan": None,
+                    "resource_uri": f"/MAAS/api/2.0/vlans/{subnet.vlan_id}/",
+                },
+            },
+        )
 
     def test_read_404_when_bad_id(self):
         uri = reverse("subnet_handler", args=[random.randint(100, 1000)])

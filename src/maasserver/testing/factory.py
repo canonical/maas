@@ -1617,6 +1617,7 @@ class Factory(maastesting.factory.Factory):
         primary_rack=None,
         secondary_rack=None,
         relay_vlan=None,
+        mtu=1500,
     ):
         assert vid != 0, "VID=0 VLANs are auto-created"
         if name is RANDOM:
@@ -1636,6 +1637,7 @@ class Factory(maastesting.factory.Factory):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
             relay_vlan=relay_vlan,
+            mtu=mtu,
         )
         vlan.save()
         for rack in [primary_rack, secondary_rack]:

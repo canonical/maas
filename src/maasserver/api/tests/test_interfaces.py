@@ -26,6 +26,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models import Interface
+from maasserver.models.vlan import DEFAULT_MTU
 from maasserver.testing.api import APITestCase, APITransactionTestCase
 from maasserver.testing.factory import factory
 from maasserver.utils.converters import json_load_bytes
@@ -58,6 +59,44 @@ def get_interface_uri(interface, node=None):
             node = interface.get_node()
         interface = interface.id
     return reverse("interface_handler", args=[node.system_id, interface])
+
+
+def serialize_vlan(vlan):
+    return {
+        "id": vlan.id,
+        "dhcp_on": vlan.dhcp_on,
+        "external_dhcp": vlan.external_dhcp,
+        "fabric": vlan.fabric.get_name(),
+        "fabric_id": vlan.fabric_id,
+        "mtu": vlan.mtu,
+        "primary_rack": None,
+        "secondary_rack": None,
+        "space": "undefined" if not vlan.space else vlan.space.get_name(),
+        "vid": vlan.vid,
+        "name": vlan.get_name(),
+        "relay_vlan": None,
+        "resource_uri": f"/MAAS/api/2.0/vlans/{vlan.id}/",
+    }
+
+
+def serialize_subnet(subnet):
+    return {
+        "name": subnet.name,
+        "id": subnet.id,
+        "vlan": serialize_vlan(subnet.vlan),
+        "description": "",
+        "cidr": subnet.cidr,
+        "rdns_mode": subnet.rdns_mode,
+        "gateway_ip": subnet.gateway_ip,
+        "dns_servers": subnet.dns_servers,
+        "allow_dns": subnet.allow_dns,
+        "allow_proxy": subnet.allow_proxy,
+        "active_discovery": subnet.active_discovery,
+        "managed": subnet.managed,
+        "disabled_boot_architectures": subnet.disabled_boot_architectures,
+        "space": "undefined" if not subnet.space else subnet.space.get_name(),
+        "resource_uri": f"/MAAS/api/2.0/subnets/{subnet.id}/",
+    }
 
 
 def make_complex_interface(node, name=None):
@@ -887,14 +926,113 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             get_interface_uri(interface, node=node),
         )
 
+    def test_read_basic(self):
+        node = factory.make_Node()
+        interface = factory.make_Interface(
+            node=node,
+            name="eno1",
+            iftype=INTERFACE_TYPE.PHYSICAL,
+            mac_address="11:11:11:11:11:11",
+            enabled=False,
+            vendor="my-vendor",
+            product="my-product",
+            firmware_version="1.2.3",
+            link_connected=False,
+            vlan=None,
+            interface_speed=100,
+            sriov_max_vf=0,
+            tags=[],
+        )
+
+        uri = get_interface_uri(interface)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed_interface = json_load_bytes(response.content)
+        self.maxDiff = None
+        self.assertEqual(
+            {
+                "system_id": node.system_id,
+                "id": interface.id,
+                "name": "eno1",
+                "type": INTERFACE_TYPE.PHYSICAL,
+                "vlan": None,
+                "mac_address": "11:11:11:11:11:11",
+                "parents": [],
+                "children": [],
+                "tags": [],
+                "enabled": False,
+                "links": [],
+                "params": "",
+                "discovered": None,
+                "effective_mtu": DEFAULT_MTU,
+                "vendor": "my-vendor",
+                "product": "my-product",
+                "firmware_version": "1.2.3",
+                "link_connected": False,
+                "interface_speed": 100,
+                "link_speed": 0,
+                "numa_node": 0,
+                "sriov_max_vf": 0,
+                "resource_uri": (
+                    f"/MAAS/api/2.0/nodes/{node.system_id}/interfaces/{interface.id}/"
+                ),
+            },
+            parsed_interface,
+        )
+
+    def test_read_connected(self):
+        vlan = factory.make_VLAN(name="my-vlan", mtu=1234)
+        interface = factory.make_Interface(
+            enabled=True,
+            link_connected=True,
+            vlan=vlan,
+            interface_speed=100,
+            link_speed=10,
+            tags=["foo", "bar"],
+        )
+
+        uri = get_interface_uri(interface)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed_interface = json_load_bytes(response.content)
+        expected_parts = {
+            "id": interface.id,
+            "tags": ["foo", "bar"],
+            "enabled": True,
+            "discovered": None,
+            "effective_mtu": 1234,
+            "link_connected": True,
+            "interface_speed": 100,
+            "link_speed": 10,
+            "vlan": {
+                "id": vlan.id,
+                "dhcp_on": vlan.dhcp_on,
+                "external_dhcp": vlan.external_dhcp,
+                "fabric": vlan.fabric.get_name(),
+                "fabric_id": vlan.fabric_id,
+                "mtu": vlan.mtu,
+                "primary_rack": None,
+                "secondary_rack": None,
+                "space": "undefined",
+                "vid": vlan.vid,
+                "name": vlan.get_name(),
+                "relay_vlan": None,
+                "resource_uri": f"/MAAS/api/2.0/vlans/{vlan.id}/",
+            },
+        }
+        for key, value in expected_parts.items():
+            self.assertEqual(parsed_interface[key], value)
+
     def test_read(self):
         node = factory.make_Node()
         bond, parents, children = make_complex_interface(node)
-        # Add some known links to the bond interface.
 
-        # First link is a DHCP link.
-        links = []
-        dhcp_subnet = factory.make_Subnet()
+        # Add some known links to the bond interface.
+        dhcp_subnet = factory.make_Subnet(vlan=bond.vlan)
         dhcp_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.DHCP,
             ip="",
@@ -908,19 +1046,9 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             subnet=dhcp_subnet,
             interface=bond,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(dhcp_ip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.DHCP),
-                    "subnet": ContainsDict({"id": Equals(dhcp_subnet.id)}),
-                    "ip_address": Equals(discovered_ip),
-                }
-            )
-        )
 
         # Second link is a STATIC ip link.
-        static_subnet = factory.make_Subnet()
+        static_subnet = factory.make_Subnet(vlan=bond.vlan)
         static_ip = factory.pick_ip_in_network(static_subnet.get_ipnetwork())
         sip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
@@ -928,40 +1056,21 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             subnet=static_subnet,
             interface=bond,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(sip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.STATIC),
-                    "ip_address": Equals(static_ip),
-                    "subnet": ContainsDict({"id": Equals(static_subnet.id)}),
-                }
-            )
-        )
 
         # Third link is just a LINK_UP. In reality this cannot exist while the
         # other two links exist but for testing we allow it. If validation of
         # the StaticIPAddress model ever included this check, which it
         # probably should then this will fail and cause this test to break.
-        link_subnet = factory.make_Subnet()
+        link_subnet = factory.make_Subnet(vlan=bond.vlan)
         link_ip = factory.make_StaticIPAddress(
             alloc_type=IPADDRESS_TYPE.STICKY,
             ip="",
             subnet=link_subnet,
             interface=bond,
         )
-        links.append(
-            MatchesDict(
-                {
-                    "id": Equals(link_ip.id),
-                    "mode": Equals(INTERFACE_LINK_TYPE.LINK_UP),
-                    "subnet": ContainsDict({"id": Equals(link_subnet.id)}),
-                }
-            )
-        )
 
         # Add MTU parameter.
-        bond.params = {"mtu": random.randint(800, 2000)}
+        bond.params = {"mtu": 1234}
         bond.save()
 
         uri = get_interface_uri(bond)
@@ -970,33 +1079,77 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
             http.client.OK, response.status_code, response.content
         )
         parsed_interface = json_load_bytes(response.content)
-        self.assertThat(
-            parsed_interface,
-            ContainsDict(
-                {
-                    "id": Equals(bond.id),
-                    "name": Equals(bond.name),
-                    "type": Equals(bond.type),
-                    "vlan": ContainsDict({"id": Equals(bond.vlan.id)}),
-                    "mac_address": Equals("%s" % bond.mac_address),
-                    "tags": Equals(bond.tags),
-                    "resource_uri": Equals(get_interface_uri(bond)),
-                    "params": Equals(bond.params),
-                    "effective_mtu": Equals(bond.get_effective_mtu()),
-                    "system_id": Equals(node.system_id),
-                }
-            ),
-        )
+
+        expected_parts = {
+            "id": bond.id,
+            "name": bond.name,
+            "type": bond.type,
+            "mac_address": str(bond.mac_address),
+            "vlan": serialize_vlan(bond.vlan),
+            "tags": bond.tags,
+            "resource_uri": get_interface_uri(bond),
+            "params": {"mtu": 1234},
+            "effective_mtu": 1500,
+            "system_id": node.system_id,
+        }
+        for key, value in expected_parts.items():
+            self.assertEqual(parsed_interface[key], value)
         self.assertEqual(
             sorted(nic.name for nic in parents), parsed_interface["parents"]
         )
         self.assertEqual(
             sorted(nic.name for nic in children), parsed_interface["children"]
         )
-        self.assertThat(parsed_interface["links"], MatchesSetwise(*links))
-        json_discovered = parsed_interface["discovered"][0]
-        self.assertEqual(dhcp_subnet.id, json_discovered["subnet"]["id"])
-        self.assertEqual(discovered_ip, json_discovered["ip_address"])
+
+        self.assertEqual(
+            [
+                {
+                    "id": dhcp_ip.id,
+                    "mode": "dhcp",
+                    "ip_address": discovered_ip,
+                    "subnet": serialize_subnet(dhcp_subnet),
+                },
+                {
+                    "id": sip.id,
+                    "mode": "static",
+                    "ip_address": static_ip,
+                    "subnet": serialize_subnet(static_subnet),
+                },
+                {
+                    "id": link_ip.id,
+                    "mode": "link_up",
+                    "subnet": serialize_subnet(link_subnet),
+                },
+            ],
+            parsed_interface["links"],
+        )
+        self.assertEqual(
+            [
+                {
+                    "ip_address": discovered_ip,
+                    "subnet": serialize_subnet(dhcp_subnet),
+                },
+            ],
+            parsed_interface["discovered"],
+        )
+
+    def test_read_effective_mtu(self):
+        node = factory.make_Node()
+        bond, parents, children = make_complex_interface(node)
+        bond.params = {"mtu": 1000}
+        bond.save()
+        children[0].params = {"mtu": 2000}
+        children[0].save()
+
+        uri = get_interface_uri(bond)
+        response = self.client.get(uri)
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed_interface = json_load_bytes(response.content)
+
+        self.assertEqual(bond.id, parsed_interface["id"])
+        self.assertEqual(2000, parsed_interface["effective_mtu"])
 
     def test_read_by_specifier(self):
         node = factory.make_Node(hostname="tasty-biscuits")

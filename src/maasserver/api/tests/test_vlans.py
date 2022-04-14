@@ -10,12 +10,13 @@ import random
 
 from django.conf import settings
 from django.urls import reverse
-from testtools.matchers import ContainsDict, Equals, Is, Not
+from testtools.matchers import Equals, Is, Not
 
-from maasserver.models import Space
+from maasserver.models import Space, VLAN
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.utils.orm import reload_object
+from maastesting.djangotestcase import CountQueries
 
 
 def get_vlans_uri(fabric):
@@ -41,23 +42,71 @@ class TestVlansAPI(APITestCase.ForUser):
         )
 
     def test_read(self):
+        def make_vlan():
+            space = factory.make_Space()
+            subnet = factory.make_Subnet(fabric=fabric, space=space)
+            primary_rack = factory.make_RackController()
+            factory.make_Interface(node=primary_rack, subnet=subnet)
+            secondary_rack = factory.make_RackController()
+            factory.make_Interface(node=secondary_rack, subnet=subnet)
+            relay_vlan = factory.make_VLAN()
+            vlan = subnet.vlan
+            vlan.dhcp_on = True
+            vlan.primary_rack = primary_rack
+            vlan.secondary_rack = secondary_rack
+            vlan.relay_vlan = relay_vlan
+            vlan.save()
+
+        def serialize_vlan(vlan):
+            return {
+                "id": vlan.id,
+                "name": vlan.get_name(),
+                "vid": vlan.vid,
+                "fabric": vlan.fabric.name,
+                "fabric_id": vlan.fabric_id,
+                "mtu": vlan.mtu,
+                "primary_rack": (
+                    vlan.primary_rack.system_id if vlan.primary_rack else None
+                ),
+                "secondary_rack": (
+                    vlan.secondary_rack.system_id
+                    if vlan.secondary_rack
+                    else None
+                ),
+                "dhcp_on": vlan.dhcp_on,
+                "external_dhcp": None,
+                "relay_vlan": serialize_vlan(vlan.relay_vlan)
+                if vlan.relay_vlan
+                else None,
+                "space": vlan.space.name if vlan.space else "undefined",
+                "resource_uri": f"/MAAS/api/2.0/vlans/{vlan.id}/",
+            }
+
         fabric = factory.make_Fabric()
-        for vid in range(1, 4):
-            factory.make_VLAN(vid=vid, fabric=fabric)
+        make_vlan()
+
         uri = get_vlans_uri(fabric)
-        response = self.client.get(uri)
+        with CountQueries() as counter:
+            response = self.client.get(uri)
+        base_count = counter.count
 
         self.assertEqual(
             http.client.OK, response.status_code, response.content
         )
-        expected_ids = [vlan.vid for vlan in fabric.vlan_set.all()]
-        result_ids = [
-            vlan["vid"]
-            for vlan in json.loads(
-                response.content.decode(settings.DEFAULT_CHARSET)
-            )
-        ]
-        self.assertCountEqual(expected_ids, result_ids)
+        result = json.loads(response.content.decode(settings.DEFAULT_CHARSET))
+        # It's three VLANs, since when creating a fabric, a default VLAN
+        # is always created.
+        vlans = {vlan.id: vlan for vlan in VLAN.objects.filter(fabric=fabric)}
+        self.assertEqual(2, len(result))
+        for serialized_vlan in result:
+            vlan = vlans[serialized_vlan["id"]]
+            self.assertEqual(serialize_vlan(vlan), serialized_vlan)
+
+        make_vlan()
+        with CountQueries() as counter:
+            response = self.client.get(uri)
+        # XXX: These really should be equal.
+        self.assertEqual(base_count + 5, counter.count)
 
     def test_create(self):
         self.become_admin()
@@ -187,9 +236,11 @@ class TestVlanAPI(APITestCase.ForUser):
             "/MAAS/api/2.0/vlans/%s/" % vlan.id, get_vlan_uri(vlan)
         )
 
-    def test_read(self):
-        fabric = factory.make_Fabric()
-        vlan = factory.make_VLAN(fabric=fabric)
+    def test_read_basic(self):
+        fabric = factory.make_Fabric(name="my-fabric")
+        vlan = factory.make_VLAN(
+            fabric=fabric, name="my-vlan", vid=123, mtu=1234
+        )
         uri = get_vlan_uri(vlan)
         response = self.client.get(uri)
 
@@ -199,47 +250,27 @@ class TestVlanAPI(APITestCase.ForUser):
         parsed_vlan = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_vlan,
-            ContainsDict(
-                {
-                    "id": Equals(vlan.id),
-                    "name": Equals(vlan.get_name()),
-                    "vid": Equals(vlan.vid),
-                    "fabric": Equals(fabric.get_name()),
-                    "fabric_id": Equals(fabric.id),
-                    "resource_uri": Equals(get_vlan_uri(vlan)),
-                }
-            ),
-        )
-
-    def test_read_with_fabric(self):
-        fabric = factory.make_Fabric()
-        vlan = factory.make_VLAN(fabric=fabric)
-        uri = get_vlan_uri(vlan, fabric)
-        response = self.client.get(uri)
-
         self.assertEqual(
-            http.client.OK, response.status_code, response.content
-        )
-        parsed_vlan = json.loads(
-            response.content.decode(settings.DEFAULT_CHARSET)
-        )
-        self.assertThat(
             parsed_vlan,
-            ContainsDict(
-                {
-                    "id": Equals(vlan.id),
-                    "name": Equals(vlan.get_name()),
-                    "vid": Equals(vlan.vid),
-                    "fabric": Equals(fabric.get_name()),
-                    "resource_uri": Equals(get_vlan_uri(vlan)),
-                }
-            ),
+            {
+                "id": vlan.id,
+                "name": "my-vlan",
+                "vid": 123,
+                "fabric": "my-fabric",
+                "fabric_id": fabric.id,
+                "mtu": 1234,
+                "primary_rack": None,
+                "secondary_rack": None,
+                "dhcp_on": False,
+                "external_dhcp": None,
+                "relay_vlan": None,
+                "space": "undefined",
+                "resource_uri": f"/MAAS/api/2.0/vlans/{vlan.id}/",
+            },
         )
 
     def test_read_with_space(self):
-        space = factory.make_Space()
+        space = factory.make_Space(name="my-space")
         vlan = factory.make_VLAN(space=space)
         uri = get_vlan_uri(vlan, vlan.fabric)
         response = self.client.get(uri)
@@ -250,21 +281,19 @@ class TestVlanAPI(APITestCase.ForUser):
         parsed_vlan = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_vlan,
-            ContainsDict(
-                {
-                    "id": Equals(vlan.id),
-                    "name": Equals(vlan.get_name()),
-                    "vid": Equals(vlan.vid),
-                    "space": Equals(space.get_name()),
-                    "resource_uri": Equals(get_vlan_uri(vlan)),
-                }
-            ),
-        )
+        self.assertEqual(parsed_vlan["space"], "my-space")
 
-    def test_read_without_space_returns_undefined_space(self):
-        vlan = factory.make_VLAN(space=None)
+    def test_read_with_dhcp(self):
+        subnet = factory.make_Subnet()
+        primary_rack = factory.make_RackController()
+        factory.make_Interface(node=primary_rack, subnet=subnet)
+        secondary_rack = factory.make_RackController()
+        factory.make_Interface(node=secondary_rack, subnet=subnet)
+        vlan = subnet.vlan
+        vlan.dhcp_on = True
+        vlan.primary_rack = primary_rack
+        vlan.secondary_rack = secondary_rack
+        vlan.save()
         uri = get_vlan_uri(vlan, vlan.fabric)
         response = self.client.get(uri)
 
@@ -274,17 +303,41 @@ class TestVlanAPI(APITestCase.ForUser):
         parsed_vlan = json.loads(
             response.content.decode(settings.DEFAULT_CHARSET)
         )
-        self.assertThat(
-            parsed_vlan,
-            ContainsDict(
-                {
-                    "id": Equals(vlan.id),
-                    "name": Equals(vlan.get_name()),
-                    "vid": Equals(vlan.vid),
-                    "space": Equals(Space.UNDEFINED),
-                    "resource_uri": Equals(get_vlan_uri(vlan)),
-                }
-            ),
+        self.assertTrue(parsed_vlan["dhcp_on"])
+        self.assertEqual(primary_rack.system_id, parsed_vlan["primary_rack"])
+        self.assertEqual(
+            secondary_rack.system_id, parsed_vlan["secondary_rack"]
+        )
+
+    def test_read_with_relay_vlan(self):
+        relay_vlan = factory.make_VLAN(name="my-relay")
+        vlan = factory.make_VLAN(relay_vlan=relay_vlan)
+        uri = get_vlan_uri(vlan, vlan.fabric)
+        response = self.client.get(uri)
+
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        parsed_vlan = json.loads(
+            response.content.decode(settings.DEFAULT_CHARSET)
+        )
+        self.assertEqual(
+            {
+                "id": relay_vlan.id,
+                "name": "my-relay",
+                "vid": relay_vlan.vid,
+                "fabric": relay_vlan.fabric.name,
+                "fabric_id": relay_vlan.fabric_id,
+                "mtu": relay_vlan.mtu,
+                "primary_rack": None,
+                "secondary_rack": None,
+                "dhcp_on": False,
+                "external_dhcp": None,
+                "relay_vlan": None,
+                "space": "undefined",
+                "resource_uri": f"/MAAS/api/2.0/vlans/{relay_vlan.id}/",
+            },
+            parsed_vlan["relay_vlan"],
         )
 
     def test_read_404_when_bad_id(self):
