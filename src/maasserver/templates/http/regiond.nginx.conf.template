@@ -103,5 +103,9 @@ server {
         root {{static_dir}}/machine-resources;
         try_files /$1 =404;
     }
+
+    location /MAAS {
+        return 301 https://$host:{{tls_port}}$request_uri;
+    }
 }
 {{endif}}
