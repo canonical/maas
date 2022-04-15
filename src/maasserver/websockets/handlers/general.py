@@ -39,6 +39,7 @@ from maasserver.utils.osystems import (
 )
 from maasserver.websockets.base import dehydrate_datetime, Handler
 from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.certificates import Certificate
 
 
 class GeneralHandler(Handler):
@@ -66,6 +67,7 @@ class GeneralHandler(Handler):
             "region_controller_actions",
             "release_options",
             "target_version",
+            "tls_certificate",
             "version",
         ]
 
@@ -260,4 +262,24 @@ class GeneralHandler(Handler):
             "expiration": dehydrate_datetime(cert.expiration()),
             "fingerprint": cert.cert_hash(),
             "private_key": cert.private_key_pem(),
+        }
+
+    def tls_certificate(self, params):
+        """Returns information about certificate used by HTTP reverse proxy.
+
+        All requests to MAAS API are proxied via HTTP reverse proxy.
+        If TLS is enabled, then HTTPS used for communication.
+        """
+
+        configs = Config.objects.get_configs(["tls_key", "tls_cert"])
+
+        if not all((configs["tls_key"], configs["tls_cert"])):
+            return {}
+
+        cert = Certificate.from_pem(configs["tls_key"], configs["tls_cert"])
+        return {
+            "CN": cert.cn(),
+            "certificate": cert.certificate_pem(),
+            "expiration": dehydrate_datetime(cert.expiration()),
+            "fingerprint": cert.cert_hash(),
         }

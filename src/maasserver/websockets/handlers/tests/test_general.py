@@ -5,6 +5,7 @@
 from unittest.mock import sentinel
 
 from distro_info import UbuntuDistroInfo
+from django.db import transaction
 import petname
 
 from maasserver.enum import (
@@ -21,10 +22,11 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.certificates import generate_certificate
-from maasserver.websockets.base import DATETIME_FORMAT
+from maasserver.websockets.base import DATETIME_FORMAT, dehydrate_datetime
 from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
 from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.testing.certificates import get_sample_cert
 from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.version import MAASVersion
 
@@ -400,3 +402,31 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertEqual(
             result["expiration"], cert.expiration().strftime(DATETIME_FORMAT)
         )
+
+    def test_tls_certificate(self):
+        cert = get_sample_cert()
+        with transaction.atomic():
+            Config.objects.set_config("tls_key", cert.private_key_pem)
+            Config.objects.set_config("tls_cert", cert.certificate_pem)
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.tls_certificate({})
+
+        self.assertEqual(cert.cn(), result["CN"])
+        self.assertEqual(cert.certificate_pem(), result["certificate"])
+        self.assertEqual(
+            dehydrate_datetime(cert.expiration()), result["expiration"]
+        )
+        self.assertEqual(cert.cert_hash(), result["fingerprint"])
+
+        # ensure we don't leak anything else
+        allowed_keys = ["CN", "certificate", "expiration", "fingerprint"]
+        self.assertCountEqual(result.keys(), allowed_keys)
+
+    def test_tls_certificate_tls_disabled(self):
+        with transaction.atomic():
+            Config.objects.set_config("tls_key", None)
+            Config.objects.set_config("tls_cert", None)
+        handler = GeneralHandler(factory.make_User(), {}, None)
+        result = handler.tls_certificate({})
+
+        self.assertEqual(result, {})
