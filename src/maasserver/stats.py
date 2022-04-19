@@ -44,6 +44,7 @@ from maasserver.utils import get_maas_user_agent
 from maasserver.utils.orm import NotNullSum, transactional
 from maasserver.utils.threads import deferToDatabase
 from metadataserver.enum import SCRIPT_STATUS
+from provisioningserver.certificates import Certificate
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
@@ -391,6 +392,22 @@ def get_storage_layouts_stats():
     }
 
 
+def get_tls_configuration_stats():
+    configs = Config.objects.get_configs(["tls_key", "tls_cert"])
+
+    if not all((configs["tls_key"], configs["tls_cert"])):
+        return {"tls_enabled": False, "tls_cert_validity_days": None}
+
+    cert = Certificate.from_pem(configs["tls_key"], configs["tls_cert"])
+
+    validity_days = None
+    expiration = cert.expiration()
+    not_before = cert.not_before()
+    if all((expiration, not_before)):
+        validity_days = (expiration - not_before).days
+    return {"tls_enabled": True, "tls_cert_validity_days": validity_days}
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -439,6 +456,7 @@ def get_maas_stats():
         },
         "vmcluster": get_vmcluster_stats(),
         "storage_layouts": get_storage_layouts_stats(),
+        "tls_configuration": get_tls_configuration_stats(),
     }
 
 

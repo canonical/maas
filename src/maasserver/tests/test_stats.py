@@ -40,6 +40,7 @@ from maasserver.stats import (
     get_machines_by_architecture,
     get_request_params,
     get_storage_layouts_stats,
+    get_tls_configuration_stats,
     get_vm_hosts_stats,
     get_vmcluster_stats,
     get_workload_annotations_stats,
@@ -62,6 +63,7 @@ from provisioningserver.drivers.pod import DiscoveredPod
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
 )
+from provisioningserver.testing.certificates import get_sample_cert
 from provisioningserver.utils.twisted import asynchronous
 
 
@@ -450,6 +452,10 @@ class TestMAASStats(MAASServerTestCase):
                 "vms": 0,
             },
             "storage_layouts": {},
+            "tls_configuration": {
+                "tls_cert_validity_days": None,
+                "tls_enabled": False,
+            },
         }
         self.assertEqual(stats, expected)
 
@@ -618,6 +624,10 @@ class TestMAASStats(MAASServerTestCase):
                 "vms": 0,
             },
             "storage_layouts": {},
+            "tls_configuration": {
+                "tls_cert_validity_days": None,
+                "tls_enabled": False,
+            },
         }
         self.assertEqual(get_maas_stats(), expected)
 
@@ -741,6 +751,29 @@ class TestMAASStats(MAASServerTestCase):
         for _ in range(2):
             factory.make_Node()
         self.assertEqual(get_storage_layouts_stats(), counts)
+
+    def test_get_tls_configuration_stats(self):
+        cert = get_sample_cert()
+        with transaction.atomic():
+            Config.objects.set_config("tls_key", cert.private_key_pem())
+            Config.objects.set_config("tls_cert", cert.certificate_pem())
+
+        self.assertEqual(
+            {
+                "tls_cert_validity_days": 3650,
+                "tls_enabled": True,
+            },
+            get_tls_configuration_stats(),
+        )
+
+    def test_get_tls_configuration_stats_not_set(self):
+        self.assertEqual(
+            {
+                "tls_cert_validity_days": None,
+                "tls_enabled": False,
+            },
+            get_tls_configuration_stats(),
+        )
 
 
 class FakeRequest:

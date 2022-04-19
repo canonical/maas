@@ -112,12 +112,18 @@ class Certificate(NamedTuple):
         """Return the certificate OU."""
         return self.cert.get_issuer().OU
 
+    def _parse_datetime(self, date) -> Optional[datetime]:
+        if date is None:
+            return None
+        return datetime.strptime(date.decode("ascii"), "%Y%m%d%H%M%SZ")
+
     def expiration(self) -> Optional[datetime]:
         """Return the certificate expiration."""
-        expiry = self.cert.get_notAfter()
-        if expiry is None:
-            return None
-        return datetime.strptime(expiry.decode("ascii"), "%Y%m%d%H%M%SZ")
+        return self._parse_datetime(self.cert.get_notAfter())
+
+    def not_before(self) -> Optional[datetime]:
+        """Return the certificate `not before` date."""
+        return self._parse_datetime(self.cert.get_notBefore())
 
     def public_key_pem(self) -> str:
         """Return PEM-encoded public key."""

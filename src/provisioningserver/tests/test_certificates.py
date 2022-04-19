@@ -200,6 +200,17 @@ class TestCertificate(MAASTestCase):
         self.assertEqual(cert.o(), o[:-1])
         self.assertEqual(cert.ou(), ou[:-1])
 
+    def test_generate_certificate_not_before(self):
+        cert = Certificate.generate("maas", validity=timedelta(days=100))
+        self.assertLessEqual(
+            datetime.utcnow() + timedelta(days=-1),
+            cert.not_before(),
+        )
+        self.assertGreater(
+            cert.expiration(),
+            cert.not_before(),
+        )
+
 
 class TestGetMAASCertTuple(MAASTestCase):
     def setUp(self):
