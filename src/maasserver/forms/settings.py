@@ -1019,6 +1019,31 @@ CONFIG_ITEMS = {
             ),
         },
     },
+    "tls_cert_expiration_notification_enabled": {
+        "default": False,
+        "form": forms.BooleanField,
+        "form_kwargs": {
+            "label": "Notify when the certificate is due to expire",
+            "required": False,
+            "help_text": (
+                "Enable/Disable notification about certificate expiration."
+            ),
+        },
+    },
+    "tls_cert_expiration_notification_interval": {
+        "default": 30,
+        "form": forms.IntegerField,
+        "form_kwargs": {
+            "label": "Certificate expiration reminder (days)",
+            "required": False,
+            "help_text": (
+                "Configure notification when certificate is "
+                "due to expire in (days)."
+            ),
+            "min_value": 0,
+            "max_value": 90,
+        },
+    },
 }
 
 
