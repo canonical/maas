@@ -352,8 +352,6 @@ class TestStaticIPAddressManagerTransactional(MAASTransactionServerTestCase):
 
 
 class TestStaticIPAddressManagerMapping(MAASServerTestCase):
-    """Tests for get_hostname_ip_mapping()."""
-
     def test_get_hostname_ip_mapping_returns_mapping(self):
         domain = Domain.objects.get_default_domain()
         expected_mapping = {}
@@ -417,6 +415,36 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             Subnet.objects.first()
         )
         self.assertEqual(expected_mapping, mapping)
+
+    def test_get_hostname_ip_mapping_only_node_current_interfaces(self):
+        domain = Domain.objects.get_default_domain()
+        node = factory.make_Node()
+        other_node_config = factory.make_NodeConfig(
+            node=node, name="deployment"
+        )
+        interface1 = factory.make_Interface(node_config=node.current_config)
+        interface2 = factory.make_Interface(node_config=other_node_config)
+        subnet = factory.make_Subnet()
+        staticip1 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet,
+            interface=interface1,
+        )
+        factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=factory.pick_ip_in_Subnet(subnet),
+            subnet=subnet,
+            interface=interface2,
+        )
+        self.assertEqual(
+            dict(StaticIPAddress.objects.get_hostname_ip_mapping(subnet)),
+            {
+                f"{node.hostname}.{domain.name}": HostnameIPMapping(
+                    node.system_id, 30, {staticip1.ip}, node.node_type
+                ),
+            },
+        )
 
     def test_get_hostname_ip_mapping_returns_fqdn_and_other(self):
         hostname = factory.make_name("hostname")

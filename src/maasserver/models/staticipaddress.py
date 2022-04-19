@@ -424,7 +424,7 @@ class StaticIPAddressManager(Manager):
                 JOIN maasserver_nodeconfig AS nodeconfig ON
                     nodeconfig.id = iface.node_config_id
                 JOIN maasserver_node AS nd ON
-                    nd.id = nodeconfig.node_id
+                    nd.current_config_id = nodeconfig.id
                 JOIN maasserver_domain AS dom ON
                     nd.domain_id = dom.id
                 LEFT JOIN maasserver_domain AS dom2 ON
@@ -598,7 +598,7 @@ class StaticIPAddressManager(Manager):
             JOIN maasserver_nodeconfig as nodeconfig ON
                 nodeconfig.id = interface.node_config_id
             JOIN maasserver_node AS node ON
-                node.id = nodeconfig.node_id
+                node.current_config_id = nodeconfig.id
             JOIN maasserver_domain AS domain ON
                 domain.id = node.domain_id
             JOIN maasserver_interface_ip_addresses AS link ON
@@ -678,7 +678,7 @@ class StaticIPAddressManager(Manager):
             JOIN maasserver_nodeconfig AS nodeconfig ON
                 nodeconfig.id = interface.node_config_id
             JOIN maasserver_node AS node ON
-                node.id = nodeconfig.node_id
+                node.current_config_id = nodeconfig.id
             JOIN maasserver_domain AS domain ON
                 domain.id = node.domain_id
             JOIN maasserver_interface_ip_addresses AS link ON
@@ -794,11 +794,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     # in the StaticIPAddress only materializes the connection between an
     # interface and asubnet.
     ip = GenericIPAddressField(
-        unique=False,
         null=True,
-        editable=False,
         blank=True,
-        default=None,
         verbose_name="IP",
     )
 
