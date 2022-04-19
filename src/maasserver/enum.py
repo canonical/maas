@@ -806,9 +806,14 @@ class ENDPOINT:
 
     API = 0
     UI = 1
+    CLI = 2
 
 
-ENDPOINT_CHOICES = ((ENDPOINT.API, "API"), (ENDPOINT.UI, "WebUI"))
+ENDPOINT_CHOICES = (
+    (ENDPOINT.API, "API"),
+    (ENDPOINT.UI, "WebUI"),
+    (ENDPOINT.CLI, "CLI"),
+)
 
 
 class NODE_DEVICE_BUS:

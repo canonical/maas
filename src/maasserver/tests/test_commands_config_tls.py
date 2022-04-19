@@ -8,10 +8,12 @@ import tempfile
 
 from django.core.management import call_command
 
+from maasserver.enum import ENDPOINT
 from maasserver.management.commands import config_tls
-from maasserver.models import Config
+from maasserver.models import Config, Event
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.certificates import CertificateError
+from provisioningserver.events import AUDIT, EVENT_TYPES
 from provisioningserver.testing.certificates import get_sample_cert
 
 
@@ -33,7 +35,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
     def test_config_tls_disable(self):
         call_command("config_tls", "disable")
         self.assertEqual(
-            {"tls_port": None, "tls_key": "", "tls_cert": ""},
+            {"tls_port": None, "tls_key": None, "tls_cert": None},
             self._get_config(),
         )
 
@@ -112,3 +114,27 @@ class TestConfigTLSCommand(MAASServerTestCase):
                 cert_path,
             )
             self.assertEqual("Invalid PEM material", str(error))
+
+    def test_config_tls_is_audited(self):
+        sample_cert = get_sample_cert()
+        cert_path, key_path = sample_cert.tempfiles()
+
+        self.read_input.return_value = "y"
+        call_command("config_tls", "enable", key_path, cert_path)
+
+        self.assertEqual(
+            {
+                "tls_port": 5443,
+                "tls_key": sample_cert.private_key_pem(),
+                "tls_cert": sample_cert.certificate_pem(),
+            },
+            self._get_config(),
+        )
+        events = list(Event.objects.filter(type__level=AUDIT))
+        self.assertEqual(3, len(events))
+        config = ["tls_key", "tls_cert", "tls_port"]
+
+        for key, event in zip(config, events):
+            self.assertEqual(EVENT_TYPES.SETTINGS, event.type.name)
+            self.assertEqual(ENDPOINT.CLI, event.endpoint)
+            self.assertIn(key, event.description)

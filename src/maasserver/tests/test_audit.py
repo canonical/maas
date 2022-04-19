@@ -81,3 +81,12 @@ class CreateAuditEventTest(MAASServerTestCase):
         event = Event.objects.get(type__level=AUDIT)
         self.assertIsNotNone(event)
         self.assertIsNone(event.user_id)
+
+    def test_create_audit_event_creates_audit_event_with_empty_request(self):
+        endpoint = factory.pick_choice(ENDPOINT_CHOICES)
+        create_audit_event(EVENT_TYPES.SETTINGS, endpoint)
+        event = Event.objects.get(type__level=AUDIT)
+        self.assertIsNotNone(event)
+        self.assertIsNone(event.ip_address)
+        self.assertIsNone(event.user_id)
+        self.assertEqual("", event.user_agent)

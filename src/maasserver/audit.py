@@ -12,16 +12,23 @@ from provisioningserver.events import AUDIT, EVENT_DETAILS
 
 
 def create_audit_event(
-    event_type, endpoint, request, system_id=None, description=None
+    event_type, endpoint, request=None, system_id=None, description=None
 ):
     """Helper to register Audit events.
 
-    These are events that have an event type level of AUDIT."""
-    event_description = description if description is not None else ""
-    # Retrieve Django request's user agent if it is set.
-    user_agent = request.META.get("HTTP_USER_AGENT", "")
-    ip_address = get_remote_ip(request)
-    user = None if isinstance(request.user, AnonymousUser) else request.user
+    These are events that have an event type level of AUDIT.
+    """
+    event_description = description or ""
+    if request:
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
+        ip_address = get_remote_ip(request)
+        user = (
+            None if isinstance(request.user, AnonymousUser) else request.user
+        )
+    else:
+        user_agent = ""
+        ip_address = None
+        user = None
 
     Event.objects.register_event_and_event_type(
         type_name=event_type,

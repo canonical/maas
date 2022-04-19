@@ -9,22 +9,23 @@ from django.core.management.base import BaseCommand
 from django.db import DEFAULT_DB_ALIAS, transaction
 
 from maascli.init import read_input
+from maasserver.audit import create_audit_event
+from maasserver.enum import ENDPOINT
 from maasserver.models import Config
 from provisioningserver.certificates import Certificate
+from provisioningserver.events import EVENT_TYPES
 
 
-def set_tls_config(config_manager, cert, port):
+def _update_tls_config(config_manager, key=None, cert=None, port=None):
+    config = {"tls_key": key, "tls_cert": cert, "tls_port": port}
     with transaction.atomic():
-        config_manager.set_config("tls_port", port)
-        config_manager.set_config("tls_key", cert.private_key_pem())
-        config_manager.set_config("tls_cert", cert.certificate_pem())
-
-
-def disable_tls(config_manager):
-    with transaction.atomic():
-        config_manager.set_config("tls_port", None)
-        config_manager.set_config("tls_key", "")
-        config_manager.set_config("tls_cert", "")
+        for key, value in config.items():
+            config_manager.set_config(key, value)
+            create_audit_event(
+                EVENT_TYPES.SETTINGS,
+                ENDPOINT.CLI,
+                description=f"Updated configuration setting '{key}' to '{value}'.",
+            )
 
 
 class Command(BaseCommand):
@@ -61,7 +62,7 @@ class Command(BaseCommand):
         config_manager = Config.objects.db_manager(DEFAULT_DB_ALIAS)
 
         if options["command"] == "disable":
-            disable_tls(config_manager)
+            _update_tls_config(config_manager)
             return
 
         reply = (
@@ -78,4 +79,9 @@ class Command(BaseCommand):
             options["key"].read(), options["cert"].read()
         )
 
-        set_tls_config(config_manager, cert, options["port"])
+        _update_tls_config(
+            config_manager,
+            cert.private_key_pem(),
+            cert.certificate_pem(),
+            options["port"],
+        )
