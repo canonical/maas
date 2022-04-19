@@ -35,7 +35,9 @@ class Command(BaseCommand):
         subparsers.required = True
 
         enable_tls_parser_append = subparsers.add_parser(
-            "enable", help="Enable TLS and switch to a secured mode (https)."
+            "enable",
+            help="Enable TLS and switch to a secured mode (https).",
+            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
 
         subparsers.add_parser(
