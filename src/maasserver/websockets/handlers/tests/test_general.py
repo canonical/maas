@@ -429,4 +429,4 @@ class TestGeneralHandler(MAASServerTestCase):
         handler = GeneralHandler(factory.make_User(), {}, None)
         result = handler.tls_certificate({})
 
-        self.assertEqual(result, {})
+        self.assertIsNone(result)

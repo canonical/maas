@@ -274,7 +274,7 @@ class GeneralHandler(Handler):
         configs = Config.objects.get_configs(["tls_key", "tls_cert"])
 
         if not all((configs["tls_key"], configs["tls_cert"])):
-            return {}
+            return None
 
         cert = Certificate.from_pem(configs["tls_key"], configs["tls_cert"])
         return {
