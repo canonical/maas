@@ -23,6 +23,8 @@ server {
     ssl_ciphers "AES256+EECDH AES256+EDH !aNULL";
     ssl_prefer_server_ciphers on;
     ssl_session_cache shared:SSL:10m;
+
+    add_header Strict-Transport-Security 'max-age=86400; includeSubdomains' always;
     {{else}}
     listen [::]:{{http_port}};
     listen {{http_port}};
