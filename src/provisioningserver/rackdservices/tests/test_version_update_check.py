@@ -39,40 +39,12 @@ class TestVersionUpdateCheckService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
 
-    def test_get_version_info_empty(self):
-        service = SampleVersionUpdateCheckService()
-        self.patch(
-            version_update_check, "get_snap_versions_info"
-        ).return_value = None
-        self.patch(
-            version_update_check, "get_deb_versions_info"
-        ).return_value = None
-        self.assertIsNone(service._get_versions_info())
-
-    def test_get_versions_state_snap_over_deb(self):
-        service = SampleVersionUpdateCheckService()
-        versions_info = SnapVersionsInfo(
-            current=SnapVersion(
-                revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
-            ),
-        )
-        mock_get_snap_versions = self.patch(
-            version_update_check, "get_snap_versions_info"
-        )
-        mock_get_snap_versions.return_value = versions_info
-        mock_get_deb_versions = self.patch(
-            version_update_check, "get_deb_versions_info"
-        )
-        mock_get_deb_versions.return_value = None
-        self.assertEqual(service._get_versions_info(), versions_info)
-        # if running in the snap, deb info is not collected
-        mock_get_snap_versions.assert_called_once()
-        mock_get_deb_versions.assert_not_called()
-
     @inlineCallbacks
     def test_process_version_info_not_called_without_versions(self):
         service = SampleVersionUpdateCheckService()
-        self.patch(service, "_get_versions_info").return_value = None
+        self.patch(
+            version_update_check, "get_versions_info"
+        ).return_value = None
         yield service.do_action()
         self.assertEqual(service.calls, [])
 
@@ -80,7 +52,7 @@ class TestVersionUpdateCheckService(MAASTestCase):
     def test_process_version_called_with_versions(self):
         service = SampleVersionUpdateCheckService()
         self.patch(
-            service, "_get_versions_info"
+            version_update_check, "get_versions_info"
         ).return_value = sentinel.versions_info
         yield service.do_action()
         self.assertEqual(service.calls, [sentinel.versions_info])
@@ -152,7 +124,7 @@ class TestRackVersionUpdateCheckService(MAASTestCase):
             ),
         )
         self.patch(
-            version_update_check, "get_snap_versions_info"
+            version_update_check, "get_versions_info"
         ).return_value = versions_info
         service.startService()
         yield service.stopService()

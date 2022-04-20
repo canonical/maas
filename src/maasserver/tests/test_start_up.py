@@ -1,9 +1,6 @@
 # Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test the start up utility."""
-
-
 import random
 from unittest.mock import call
 
@@ -29,9 +26,9 @@ from maastesting.matchers import (
 )
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils import ipaddr
+from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.env import get_maas_id
 from provisioningserver.utils.testing import MAASIDFixture
-from provisioningserver.utils.version import get_running_version
 
 
 class TestStartUp(MAASTransactionServerTestCase):
@@ -87,13 +84,17 @@ class TestStartUp(MAASTransactionServerTestCase):
 
 
 class TestInnerStartUp(MAASServerTestCase):
-    """Tests for the actual work done in `inner_start_up`."""
-
     def setUp(self):
         super().setUp()
         self.useFixture(MAASIDFixture(None))
         self.patch_autospec(start_up, "dns_kms_setting_changed")
         self.patch(ipaddr, "get_ip_addr").return_value = {}
+        self.versions_info = DebVersionsInfo(
+            current={"version": "1:3.1.0-1234-g.deadbeef"}
+        )
+        self.patch(
+            start_up, "get_versions_info"
+        ).return_value = self.versions_info
 
     def test_calls_dns_kms_setting_changed_if_master(self):
         with post_commit_hooks:
@@ -213,4 +214,5 @@ class TestInnerStartUp(MAASServerTestCase):
         with post_commit_hooks:
             start_up.inner_start_up()
         region = RegionController.objects.first()
-        self.assertEqual(region.version, str(get_running_version()))
+        self.assertEqual(region.version, "1:3.1.0-1234-g.deadbeef")
+        self.assertEqual(region.info.install_type, "deb")

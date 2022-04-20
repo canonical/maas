@@ -9,6 +9,7 @@ from provisioningserver.utils import deb, shell, snap, version
 from provisioningserver.utils.version import (
     _get_version_from_python_package,
     get_running_version,
+    get_versions_info,
     MAASVersion,
 )
 
@@ -345,3 +346,25 @@ class TestGetRunningVersion(TestVersionTestCase):
         self.assertNotIn(first_return_value, [b"", "", None])
         self.assertEqual(first_return_value, second_return_value)
         mock_get_snap_versions.assert_called_once()
+
+
+class TestGetVersionsInfo(MAASTestCase):
+    def test_get_versions_info_empty(self):
+        self.patch(snap, "get_snap_versions_info").return_value = None
+        self.patch(deb, "get_deb_versions_info").return_value = None
+        self.assertIsNone(get_versions_info())
+
+    def test_get_versions_state_snap_over_deb(self):
+        versions_info = snap.SnapVersionsInfo(
+            current=snap.SnapVersion(
+                revision="1234", version="3.0.0~alpha1-111-g.deadbeef"
+            ),
+        )
+        mock_get_snap_versions = self.patch(snap, "get_snap_versions_info")
+        mock_get_snap_versions.return_value = versions_info
+        mock_get_deb_versions = self.patch(deb, "get_deb_versions_info")
+        mock_get_deb_versions.return_value = None
+        self.assertEqual(get_versions_info(), versions_info)
+        # if running in the snap, deb info is not collected
+        mock_get_snap_versions.assert_called_once()
+        mock_get_deb_versions.assert_not_called()

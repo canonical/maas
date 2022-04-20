@@ -143,6 +143,14 @@ def get_running_version() -> MAASVersion:
     return maas_version
 
 
+def get_versions_info():
+    """Get a versions info object based on the install type."""
+    versions_info = snap.get_snap_versions_info()
+    if not versions_info:
+        versions_info = deb.get_deb_versions_info()
+    return versions_info
+
+
 def _get_version_from_python_package():
     """Return a string with the version from the python package."""
     parsed_version = DISTRIBUTION.parsed_version

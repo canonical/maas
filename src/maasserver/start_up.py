@@ -32,7 +32,7 @@ from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
-from provisioningserver.utils.version import get_running_version
+from provisioningserver.utils.version import get_versions_info
 
 maaslog = get_maas_logger("start-up")
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ def inner_start_up(master=False):
     # happen before `locks.startup` is released.
     node = RegionController.objects.get_or_create_running_controller()
     # Update region version
-    ControllerInfo.objects.set_version(node, get_running_version())
+    ControllerInfo.objects.set_versions_info(node, get_versions_info())
     # Ensure that uuid is created after creating
     RegionController.objects.get_or_create_uuid()
 

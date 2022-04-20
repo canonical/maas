@@ -38,7 +38,7 @@ class TestRegionVersionUpdateCheckService(MAASTransactionServerTestCase):
             ),
         )
         self.patch(
-            version_update_check, "get_snap_versions_info"
+            version_update_check, "get_versions_info"
         ).return_value = versions_info
 
         service = RegionVersionUpdateCheckService(reactor)
