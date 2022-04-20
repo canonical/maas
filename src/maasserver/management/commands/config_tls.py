@@ -24,7 +24,7 @@ def _update_tls_config(config_manager, key=None, cert=None, port=None):
             create_audit_event(
                 EVENT_TYPES.SETTINGS,
                 ENDPOINT.CLI,
-                description=f"Updated configuration setting '{key}' to '{value}'.",
+                description=f"Updated configuration setting '{key}'.",
             )
 
 
