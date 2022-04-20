@@ -205,11 +205,6 @@ parts:
     plugin: npm
     source: src/maasui/src
     npm-node-version: "16.13.0"
-    build-packages:
-      - on amd64: []
-      - else:
-          # node-sass on non-amd64 needs python 2, see http://pad.lv/1867329
-          - python
     override-build: |
       snapcraftctl build
       PATH="$PATH:$SNAPCRAFT_PART_BUILD/node_modules/.bin:$SNAPCRAFT_PART_INSTALL/bin"
