@@ -201,6 +201,10 @@ class DjangoDatabasesManager(TestResourceManager):
 
     resources = (("templates", DjangoPristineDatabaseManager()),)
 
+    DB_NAME_REGEX = re.compile(
+        r"^(?P<template>.+)_(?P<pid>\d+)_(?P<suffix>\d+)$"
+    )
+
     def __init__(self, assume_dirty=True):
         super().__init__()
         self._count = count(1)
@@ -213,15 +217,10 @@ class DjangoDatabasesManager(TestResourceManager):
             with conn.cursor() as cursor:
                 for database in databases:
                     template = database["NAME"]
-                    dbname = "%s_%d_%d" % (
-                        template,
-                        os.getpid(),
-                        next(self._count),
-                    )
-                    stmt = "CREATE DATABASE {} WITH TEMPLATE {}".format(
-                        dbname,
-                        template,
-                    )
+                    suffix = next(self._count)
+                    dbname = f"{template}_{os.getpid()}_{suffix}"
+                    assert self.DB_NAME_REGEX.match(dbname), dbname
+                    stmt = f"CREATE DATABASE {dbname} WITH TEMPLATE {template}"
                     # Create the database with a shared lock to the cluster to
                     # avoid racing a DjangoPristineDatabaseManager.make in a
                     # concurrently running test process.
@@ -241,7 +240,11 @@ class DjangoDatabasesManager(TestResourceManager):
             with conn.cursor() as cursor:
                 for database in databases:
                     dbname = database["NAME"]
-                    template = re.search(r"^(.+)_\d+_\d+$", dbname).group(1)
+                    maybe_match = re.search(self.DB_NAME_REGEX, dbname)
+                    assert (
+                        maybe_match is not None
+                    ), f"Unable to extract original name from {dbname}"
+                    template = maybe_match.group("template")
                     self._stopOtherActivity(cursor, dbname)
                     self._dropDatabase(cursor, dbname)
                     database["NAME"] = template
