@@ -298,14 +298,12 @@ class StaticIPAddressManager(Manager):
             )
         else:
             requested_address = IPAddress(requested_address)
-            # Circular imports.
             from maasserver.models import StaticIPAddress
 
             if (
                 StaticIPAddress.objects.filter(ip=str(requested_address))
                 .exclude(alloc_type=IPADDRESS_TYPE.DISCOVERED)
-                .count()
-                > 0
+                .exists()
             ):
                 raise StaticIPAddressUnavailable(
                     f"The IP address {requested_address} is already in use."
@@ -891,26 +889,6 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         ]
         return interface_types == [INTERFACE_TYPE.UNKNOWN]
 
-    def get_related_discovered_ip(self):
-        """Return the related DISCOVERED IP address for this IP address. This
-        comes from looking at the DISCOVERED IP addresses assigned to the
-        related interfaces.
-        """
-        interfaces = list(self.interface_set.all())
-        discovered_ips = [
-            ip
-            for ip in StaticIPAddress.objects.filter(
-                interface__in=interfaces,
-                alloc_type=IPADDRESS_TYPE.DISCOVERED,
-                ip__isnull=False,
-            ).order_by("-id")
-            if ip.ip
-        ]
-        if discovered_ips:
-            return discovered_ips[0]
-        else:
-            return None
-
     def get_ip(self):
         """Return the IP address assigned."""
         ip, subnet = self.get_ip_and_subnet()
@@ -924,16 +902,10 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         `subnet` on the same linked interfaces.
         """
         if self.alloc_type == IPADDRESS_TYPE.DHCP:
-            discovered_ip = self.get_related_discovered_ip()
+            discovered_ip = self._get_related_discovered_ip()
             if discovered_ip is not None:
                 return discovered_ip.ip, discovered_ip.subnet
         return self.ip, self.subnet
-
-    def deallocate(self):
-        """Mark this IP address as no longer in use.
-        After return, this object is no longer valid.
-        """
-        self.delete()
 
     def clean_subnet_and_ip_consistent(self):
         """Validate that the IP address is inside the subnet."""
@@ -991,17 +963,6 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         super().clean(*args, **kwargs)
         self.clean_subnet_and_ip_consistent()
 
-    def validate_unique(self, exclude=None):
-        """Overrides Django's default for validating unique columns.
-
-        Django's ORM has a misfeature: `Model.validate_unique` -- which our
-        CleanSave mix-in calls -- checks every unique key against the database
-        before actually saving the row. Django runs READ COMMITTED by default,
-        which means there's a racey period between the uniqueness validation
-        check and the actual insert.
-        """
-        pass
-
     def _set_subnet(self, subnet, interfaces=None):
         """Resets the Subnet for this StaticIPAddress, making sure to update
         the VLAN for a related Interface (if the VLAN has changed).
@@ -1021,7 +982,6 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         """Render a representation of this `StaticIPAddress` object suitable
         for converting to JSON. Includes optional parameters wherever a join
         would be implied by including a specific piece of information."""
-        # Circular imports.
         # XXX mpontillo 2016-03-11 we should do the formatting client side.
         from maasserver.websockets.base import dehydrate_datetime
 
@@ -1054,33 +1014,33 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                     # earlier. A node's owner takes precedence.
                     if node.owner and node.owner.username:
                         data["user"] = node.owner.username
-            if len(self.dnsresource_set.all()) > 0:
-                # This IP address is used as DNS resource.
-                dns_records = [
-                    {
-                        "id": resource.id,
-                        "name": resource.name,
-                        "domain": resource.domain.name,
-                    }
-                    for resource in self.dnsresource_set.all()
-                ]
+            # This IP address is used as DNS resource.
+            dns_records = [
+                {
+                    "id": resource.id,
+                    "name": resource.name,
+                    "domain": resource.domain.name,
+                }
+                for resource in self.dnsresource_set.all()
+            ]
+            if dns_records:
                 data["dns_records"] = dns_records
-            if self.bmc_set.exists():
-                # This IP address is used as a BMC.
-                bmcs = [
-                    {
-                        "id": bmc.id,
-                        "power_type": bmc.power_type,
-                        "nodes": [
-                            {
-                                "system_id": node.system_id,
-                                "hostname": node.hostname,
-                            }
-                            for node in bmc.node_set.all()
-                        ],
-                    }
-                    for bmc in self.bmc_set.all()
-                ]
+            # This IP address is used as a BMC.
+            bmcs = [
+                {
+                    "id": bmc.id,
+                    "power_type": bmc.power_type,
+                    "nodes": [
+                        {
+                            "system_id": node.system_id,
+                            "hostname": node.hostname,
+                        }
+                        for node in bmc.node_set.all()
+                    ],
+                }
+                for bmc in self.bmc_set.all()
+            ]
+            if bmcs:
                 data["bmcs"] = bmcs
         return data
 
@@ -1117,3 +1077,19 @@ class StaticIPAddress(CleanSave, TimestampedModel):
                 # traverse the interface_set many-to-many.
                 self.save()
                 self._set_subnet(subnet, interfaces=self.interface_set.all())
+
+    def _get_related_discovered_ip(self):
+        """Return the related DISCOVERED IP address for this IP address.
+
+        This comes from looking at the DISCOVERED IP addresses assigned to the
+        related interfaces.
+        """
+        return (
+            StaticIPAddress.objects.filter(
+                interface__in=self.interface_set.all(),
+                alloc_type=IPADDRESS_TYPE.DISCOVERED,
+                ip__isnull=False,
+            )
+            .order_by("-id")
+            .first()
+        )

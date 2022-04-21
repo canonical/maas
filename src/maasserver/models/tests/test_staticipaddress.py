@@ -1,9 +1,6 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-""":class:`StaticIPAddress` tests."""
-
-
 from datetime import datetime
 from random import randint, shuffle
 import threading
@@ -1405,17 +1402,6 @@ class TestStaticIPAddress(MAASServerTestCase):
             INTERFACE_LINK_TYPE.LINK_UP, ip.get_interface_link_type()
         )
 
-    def test_deallocate_removes_object(self):
-        ipaddress = factory.make_StaticIPAddress()
-        ipaddress.deallocate()
-        self.assertEqual([], list(StaticIPAddress.objects.all()))
-
-    def test_deallocate_ignores_other_objects(self):
-        ipaddress = factory.make_StaticIPAddress()
-        ipaddress2 = factory.make_StaticIPAddress()
-        ipaddress.deallocate()
-        self.assertEqual([ipaddress2], list(StaticIPAddress.objects.all()))
-
 
 class TestUserReservedStaticIPAddress(MAASServerTestCase):
     def test_user_reserved_addresses_have_default_hostnames(self):
@@ -1793,7 +1779,7 @@ class TestUniqueConstraints(MAASServerTestCase):
             subnet=subnet,
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
         )
-        with ExpectedException(IntegrityError):
+        with ExpectedException(ValidationError):
             factory.make_StaticIPAddress(
                 ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.USER_RESERVED
             )
@@ -1815,7 +1801,7 @@ class TestUniqueConstraints(MAASServerTestCase):
         factory.make_StaticIPAddress(
             ip="10.0.0.1", subnet=subnet, alloc_type=IPADDRESS_TYPE.DISCOVERED
         )
-        with ExpectedException(IntegrityError):
+        with ExpectedException(ValidationError):
             factory.make_StaticIPAddress(
                 ip="10.0.0.1",
                 subnet=subnet,
