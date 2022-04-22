@@ -59,8 +59,8 @@ class TestRegionHTTPService(
             ),
             call.mock_reloadService("reverse_proxy"),
         ]
-
-        assert m.mock_calls == expected_calls
+        yield service.stopService()
+        self.assertEqual(m.mock_calls, expected_calls)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -88,8 +88,8 @@ class TestRegionHTTPService(
             ),
             call.mock_restartService("reverse_proxy"),
         ]
-
-        assert m.mock_calls == expected_calls
+        yield service.stopService()
+        self.assertEqual(m.mock_calls, expected_calls)
 
     def test_configure_not_snap(self):
         tempdir = self.make_dir()
@@ -207,7 +207,7 @@ class TestRegionHTTPService(
             "sys_reverse_proxy", service._consume_event
         )
 
-        service.stopService()
+        yield service.stopService()
         listener.unregister.assert_called_once_with(
             "sys_reverse_proxy", service._consume_event
         )
