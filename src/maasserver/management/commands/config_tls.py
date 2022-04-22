@@ -16,8 +16,15 @@ from provisioningserver.certificates import Certificate
 from provisioningserver.events import EVENT_TYPES
 
 
-def _update_tls_config(config_manager, key=None, cert=None, port=None):
-    config = {"tls_key": key, "tls_cert": cert, "tls_port": port}
+def _update_tls_config(
+    config_manager, key=None, cert=None, cacert=None, port=None
+):
+    config = {
+        "tls_key": key,
+        "tls_cert": cert,
+        "tls_cacert": cacert,
+        "tls_port": port,
+    }
     with transaction.atomic():
         for key, value in config.items():
             config_manager.set_config(key, value)
@@ -55,6 +62,11 @@ class Command(BaseCommand):
             type=argparse.FileType(),
         )
         enable_tls_parser_append.add_argument(
+            "--cacert",
+            help="path to CA certificates chain in PEM format",
+            type=argparse.FileType(),
+        )
+        enable_tls_parser_append.add_argument(
             "-p", "--port", help="HTTPS port", default=5443, type=int
         )
 
@@ -75,13 +87,16 @@ class Command(BaseCommand):
         if reply != "y":
             return
 
+        cacerts = options["cacert"].read() if options["cacert"] else ""
         cert = Certificate.from_pem(
-            options["key"].read(), options["cert"].read()
+            options["key"].read(),
+            options["cert"].read(),
+            ca_certs_material=cacerts,
         )
-
         _update_tls_config(
             config_manager,
-            cert.private_key_pem(),
-            cert.certificate_pem(),
-            options["port"],
+            key=cert.private_key_pem(),
+            cert=cert.certificate_pem(),
+            cacert=cert.ca_certificates_pem(),
+            port=options["port"],
         )

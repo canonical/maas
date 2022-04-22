@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass
 import os
+from pathlib import Path
 from typing import Optional
 
 from twisted.application.service import Service
@@ -48,10 +49,13 @@ class RegionHTTPService(Service):
 
     def _getConfiguration(self):
         configs = Config.objects.get_configs(
-            ["tls_key", "tls_cert", "tls_port"]
+            ("tls_key", "tls_cert", "tls_cacert", "tls_port")
         )
         return _Configuration(
-            configs["tls_key"], configs["tls_cert"], configs["tls_port"]
+            key=configs["tls_key"],
+            cert=configs["tls_cert"],
+            cacert=configs["tls_cacert"],
+            port=configs["tls_port"],
         )
 
     def _configure(self, configuration):
@@ -62,17 +66,13 @@ class RegionHTTPService(Service):
             get_maas_data_path("maas-regiond-webapp.sock"),
         )
 
-        tls_enabled = all(
-            (configuration.port, configuration.key, configuration.cert)
-        )
-
-        key_path, cert_path = "", ""
-        if tls_enabled:
+        if configuration.tls_enabled:
             key_path, cert_path = self._create_cert_files(configuration)
-
+        else:
+            key_path, cert_path = "", ""
         environ = {
             "http_port": 5240,
-            "tls_enabled": tls_enabled,
+            "tls_enabled": configuration.tls_enabled,
             "tls_port": configuration.port,
             "tls_key_path": key_path,
             "tls_cert_path": cert_path,
@@ -80,25 +80,24 @@ class RegionHTTPService(Service):
             "static_dir": str(get_root_path() / "usr/share/maas"),
         }
         rendered = template.substitute(environ).encode()
-        target_path = compose_http_config_path("regiond.nginx.conf")
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        target_path = Path(compose_http_config_path("regiond.nginx.conf"))
+        target_path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write(rendered, target_path, overwrite=True, mode=0o644)
 
     def _create_cert_files(self, configuration):
-        cert = Certificate.from_pem(configuration.key, configuration.cert)
-
-        cert_path = os.path.join(
-            get_http_config_dir(), "certs", "regiond-proxy.pem"
-        )
-        key_path = os.path.join(
-            get_http_config_dir(), "certs", "regiond-proxy-key.pem"
+        cert = Certificate.from_pem(
+            configuration.key,
+            configuration.cert,
+            ca_certs_material=configuration.cacert or "",
         )
 
-        os.makedirs(os.path.dirname(cert_path), exist_ok=True)
-        os.makedirs(os.path.dirname(key_path), exist_ok=True)
+        certs_dir = Path(get_http_config_dir()) / "certs"
+        certs_dir.mkdir(parents=True, exist_ok=True)
+        cert_path = certs_dir / "regiond-proxy.pem"
+        key_path = certs_dir / "regiond-proxy-key.pem"
 
         atomic_write(
-            cert.certificate_pem().encode(),
+            cert.fullchain_pem().encode(),
             cert_path,
             overwrite=True,
             mode=0o644,
@@ -109,8 +108,7 @@ class RegionHTTPService(Service):
             overwrite=True,
             mode=0o600,
         )
-
-        return (key_path, cert_path)
+        return key_path, cert_path
 
     def _reload_service(self):
         if snap.running_in_snap():
@@ -130,4 +128,9 @@ class _Configuration:
 
     key: Optional[str] = None
     cert: Optional[str] = None
+    cacert: Optional[str] = None
     port: Optional[int] = None
+
+    @property
+    def tls_enabled(self) -> bool:
+        return all((self.port, self.key, self.cert))

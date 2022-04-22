@@ -4,6 +4,7 @@
 """Test the config-tls command."""
 
 from contextlib import contextmanager
+from pathlib import Path
 import tempfile
 
 from django.core.management import call_command
@@ -14,7 +15,10 @@ from maasserver.models import Config, Event
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.certificates import CertificateError
 from provisioningserver.events import AUDIT, EVENT_TYPES
-from provisioningserver.testing.certificates import get_sample_cert
+from provisioningserver.testing.certificates import (
+    get_sample_cert,
+    get_sample_cert_with_cacerts,
+)
 
 
 class TestConfigTLSCommand(MAASServerTestCase):
@@ -30,12 +34,19 @@ class TestConfigTLSCommand(MAASServerTestCase):
             yield key_file.name
 
     def _get_config(self):
-        return Config.objects.get_configs(["tls_key", "tls_cert", "tls_port"])
+        return Config.objects.get_configs(
+            ("tls_key", "tls_cert", "tls_cacert", "tls_port")
+        )
 
     def test_config_tls_disable(self):
         call_command("config_tls", "disable")
         self.assertEqual(
-            {"tls_port": None, "tls_key": None, "tls_cert": None},
+            {
+                "tls_port": None,
+                "tls_key": None,
+                "tls_cert": None,
+                "tls_cacert": None,
+            },
             self._get_config(),
         )
 
@@ -51,8 +62,36 @@ class TestConfigTLSCommand(MAASServerTestCase):
                 "tls_port": 5234,
                 "tls_key": sample_cert.private_key_pem(),
                 "tls_cert": sample_cert.certificate_pem(),
+                "tls_cacert": "",
             },
             self._get_config(),
+        )
+
+    def test_config_tls_enable_with_cacert(self):
+        sample_cert = get_sample_cert_with_cacerts()
+        cert_path, key_path = sample_cert.tempfiles()
+        cacert_path = Path(self.make_dir()) / "cacert.pem"
+        cacert_path.write_text(sample_cert.ca_certificates_pem())
+
+        self.read_input.return_value = "y"
+        call_command(
+            "config_tls",
+            "enable",
+            key_path,
+            cert_path,
+            "--cacert",
+            str(cacert_path),
+            "-p",
+            "5234",
+        )
+        self.assertEqual(
+            self._get_config(),
+            {
+                "tls_port": 5234,
+                "tls_key": sample_cert.private_key_pem(),
+                "tls_cert": sample_cert.certificate_pem(),
+                "tls_cacert": sample_cert.ca_certificates_pem(),
+            },
         )
 
     def test_config_tls_enable_break(self):
@@ -79,6 +118,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
                 "tls_port": 5443,
                 "tls_key": sample_cert.private_key_pem(),
                 "tls_cert": sample_cert.certificate_pem(),
+                "tls_cacert": "",
             },
             self._get_config(),
         )
@@ -127,12 +167,13 @@ class TestConfigTLSCommand(MAASServerTestCase):
                 "tls_port": 5443,
                 "tls_key": sample_cert.private_key_pem(),
                 "tls_cert": sample_cert.certificate_pem(),
+                "tls_cacert": "",
             },
             self._get_config(),
         )
         events = list(Event.objects.filter(type__level=AUDIT))
-        self.assertEqual(3, len(events))
-        config = ["tls_key", "tls_cert", "tls_port"]
+        self.assertEqual(4, len(events))
+        config = ("tls_key", "tls_cert", "tls_cacert", "tls_port")
 
         for key, event in zip(config, events):
             self.assertEqual(EVENT_TYPES.SETTINGS, event.type.name)

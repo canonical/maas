@@ -15,6 +15,9 @@ from maasserver.triggers.system import register_system_triggers
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
+from provisioningserver.testing.certificates import (
+    get_sample_cert_with_cacerts,
+)
 from provisioningserver.utils.twisted import DeferredValue
 
 wait_for_reactor = wait_for()
@@ -99,7 +102,9 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(http._Configuration("maas-key", "maas-cert", 5443))
+        service._configure(
+            http._Configuration(key="maas-key", cert="maas-cert", port=5443)
+        )
 
         # MAASDataFixture updates `MAAS_DATA` in the environment to point to this new location.
         data_path = os.getenv("MAAS_DATA")
@@ -130,7 +135,9 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(http._Configuration("maas-key", "maas-cert", 5443))
+        service._configure(
+            http._Configuration(key="maas-key", cert="maas-cert", port=5443)
+        )
 
         nginx_config = nginx_conf.read_text()
         self.assertIn(
@@ -154,12 +161,38 @@ class TestRegionHTTPService(
         mock_create_cert_files = self.patch(service, "_create_cert_files")
         mock_create_cert_files.return_value = ("key_path", "cert_path")
 
-        service._configure(http._Configuration("maas-key", "maas-cert", 5443))
+        service._configure(
+            http._Configuration(key="maas-key", cert="maas-cert", port=5443)
+        )
 
         nginx_config = nginx_conf.read_text()
         self.assertIn("listen 5443 ssl http2;", nginx_config)
         self.assertIn("listen 5240;", nginx_config)
         self.assertIn("location /MAAS/api/2.0/machines {", nginx_config)
+
+    def test_create_cert_files_writes_full_chain(self):
+        sample_cert = get_sample_cert_with_cacerts()
+        tempdir = Path(self.make_dir())
+        certs_dir = tempdir / "certs"
+        certs_dir.mkdir()
+        self.patch(http, "get_http_config_dir").return_value = tempdir
+
+        config = http._Configuration(
+            key=sample_cert.private_key_pem(),
+            cert=sample_cert.certificate_pem(),
+            cacert=sample_cert.ca_certificates_pem(),
+            port=5443,
+        )
+        service = http.RegionHTTPService()
+        service._create_cert_files(config)
+        self.assertEqual(
+            (certs_dir / "regiond-proxy.pem").read_text(),
+            sample_cert.fullchain_pem(),
+        )
+        self.assertEqual(
+            (certs_dir / "regiond-proxy-key.pem").read_text(),
+            sample_cert.private_key_pem(),
+        )
 
     @wait_for_reactor
     @inlineCallbacks

@@ -67,11 +67,11 @@ class Certificate(NamedTuple):
     @classmethod
     def generate(
         cls,
-        cn,
-        organization_name=None,
-        organizational_unit_name=None,
-        key_bits=4096,
-        validity=timedelta(days=3650),
+        cn: str,
+        organization_name: Optional[str] = None,
+        organizational_unit_name: Optional[str] = None,
+        key_bits: int = 4096,
+        validity: timedelta = timedelta(days=3650),
     ):
         """Low-level method for generating an X509 certificate.
 

@@ -62,7 +62,7 @@ server {
     location ~ ^/MAAS/docs/(.*)$ {
         root {{static_dir}}/web/static/docs;
         # redirect to the UI version if the page is not found by default
-        try_files /$1 /$1.html /ui/$1 ui/$1/html /$1/index.html =404;
+        try_files /$1 /$1.html /ui/$1 ui/$1.html /$1/index.html =404;
 
     }
 

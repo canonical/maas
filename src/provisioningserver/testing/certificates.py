@@ -7,7 +7,22 @@ from provisioningserver.certificates import Certificate
 
 @lru_cache()
 def get_sample_cert(name: str = "maas", *args, **kwargs) -> Certificate:
+    """Return a sample Certificate for tests."""
     return Certificate.generate(name, *args, **kwargs)
+
+
+@lru_cache()
+def get_sample_cert_with_cacerts(
+    name: str = "maas", ca_name: str = "CA", *args, **kwargs
+) -> Certificate:
+    """Return a sample Certificate with CA material for tests."""
+    cert = get_sample_cert(name, *args, **kwargs)
+    ca_cert = get_sample_cert(name=ca_name)
+    return Certificate.from_pem(
+        cert.private_key_pem(),
+        cert.certificate_pem(),
+        ca_certs_material=ca_cert.certificate_pem(),
+    )
 
 
 class SampleCertificateFixture(Fixture):
