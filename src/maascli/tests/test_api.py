@@ -1,11 +1,14 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from argparse import Namespace
 from base64 import b64encode
 from functools import partial
 import http.client
 import json
+from pathlib import Path
 import sys
+import tempfile
 from textwrap import dedent
 from unittest.mock import Mock, sentinel
 from urllib.parse import parse_qs, urlparse
@@ -13,17 +16,18 @@ from urllib.parse import parse_qs, urlparse
 import httplib2
 import pytest
 
-from maascli import api
+from maascli import api, utils
 from maascli.actions.boot_resources_create import BootResourcesCreateAction
 from maascli.actions.sshkeys_import import SSHKeysImportAction
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
 from maascli.parser import ArgumentParser
-from maascli.testing.config import make_configs
+from maascli.testing.config import make_configs, make_profile
 from maascli.utils import handler_command_name, safe_name
 from maastesting.factory import factory
 from maastesting.fixtures import CaptureStandardIO
 from maastesting.testcase import MAASTestCase
+from provisioningserver.testing.certificates import get_sample_cert
 
 
 class TestRegisterAPICommands(MAASTestCase):
@@ -196,6 +200,26 @@ class TestFunctions(MAASTestCase):
             (SSHKeysImportAction,), api.get_action_class_bases(handler, action)
         )
 
+    def test_materialize_certificate_profile_no_cacerts(self):
+        profile = make_profile()
+        self.assertIsNone(api.materialize_certificate(profile))
+
+    def test_materialize_certificate_profile_cacerts_is_none(self):
+        profile = make_profile()
+        profile["cacerts"] = None
+        self.assertIsNone(api.materialize_certificate(profile))
+
+    def test_materialize_certificate_creates_cacert_file(self):
+        profile = make_profile()
+        sample_cert = get_sample_cert()
+        cert = sample_cert.certificate_pem()
+        profile["cacerts"] = cert
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_dir = Path(tmp)
+            api.materialize_certificate(profile, tmp)
+            cert_path = temp_dir = temp_dir / (profile["name"] + ".pem")
+            self.assertEqual(cert, cert_path.open().read())
+
 
 class TestAction(MAASTestCase):
     """Tests for :class:`maascli.api.Action`."""
@@ -274,6 +298,49 @@ class TestAction(MAASTestCase):
                 """
             ),
         )
+
+    def test_action_call_materialize_certificate(self):
+        handler = {
+            "name": factory.make_name("handler"),
+            "handler_name": factory.make_name("handler"),
+            "params": [],
+            "uri": "http://example.com/api/2.0/",
+        }
+        action = {"name": "action", "op": "test", "method": "GET"}
+        action_name = safe_name(action["name"])
+        action_bases = api.get_action_class_bases(handler, action)
+        profile = make_profile()
+        profile["credentials"] = None
+
+        action_ns = {"action": action, "handler": handler, "profile": profile}
+        action_class = type(action_name, action_bases, action_ns)
+
+        parser = ArgumentParser()
+        action_parser = action_class(parser)
+
+        options = Namespace(
+            insecure=False,
+            cacerts=None,
+            data={},
+            debug=False,
+        )
+
+        response = httplib2.Response(
+            {
+                "content-type": "application/json",
+                "status": "200",
+                "content-length": 0,
+            }
+        )
+
+        self.patch(api, "http_request").return_value = (response, {})
+        mock_materializer = self.patch(api, "materialize_certificate")
+        mock_materializer.return_value = None
+
+        self.patch(action_parser, "compare_api_hashes").return_value = None
+        self.patch(utils, "print_response_content")
+        action_parser(options)
+        mock_materializer.assert_called_once()
 
 
 class TestActionHelp(MAASTestCase):

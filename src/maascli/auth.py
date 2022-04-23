@@ -71,7 +71,7 @@ def obtain_credentials(url, credentials):
         return None
 
 
-def check_valid_apikey(url, credentials, insecure=False):
+def check_valid_apikey(url, credentials, ca_certs=None, insecure=False):
     """Check for valid apikey.
 
     :param credentials: A 3-tuple of credentials.
@@ -94,7 +94,12 @@ def check_valid_apikey(url, credentials, insecure=False):
     Action.sign(uri, headers, credentials)
 
     response, content = http_request(
-        uri, method="GET", body=body, headers=headers, insecure=insecure
+        uri,
+        method="GET",
+        body=body,
+        headers=headers,
+        ca_certs=ca_certs,
+        insecure=insecure,
     )
 
     status = int(response["status"])

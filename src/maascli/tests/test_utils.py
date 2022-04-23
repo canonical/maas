@@ -300,3 +300,35 @@ class TestPrintResponseContent(MAASTestCase):
             b"Success.\n"
             b"Machine-readable output follows:\n" + response["content"] + b"\n"
         )
+
+
+class TestPrintServerCertificate(MAASTestCase):
+    """Tests for `dump_certificate_info`."""
+
+    def test_dump_certificate_info_when_scheme_http(self):
+        buf = io.TextIOWrapper(io.BytesIO())
+        url = "http://example.com"
+        utils.dump_certificate_info(url, buf)
+        buf.seek(0)
+        assert buf.read() == ""
+
+    def test_dump_certificate_info_when_scheme_https(self):
+        import ssl
+
+        from provisioningserver.testing.certificates import get_sample_cert
+
+        cert = get_sample_cert()
+        self.patch(
+            ssl, "get_server_certificate"
+        ).return_value = cert.certificate_pem()
+
+        url = "https://example.com:5443"
+
+        buf = io.TextIOWrapper(io.BytesIO())
+
+        utils.dump_certificate_info(url, buf)
+        buf.seek(0)
+        output = buf.read()
+        assert "Subject: maas" in output
+        assert "Issuer:" in output
+        assert f"Fingerprint (SHA-256): {cert.cert_hash()}" in output

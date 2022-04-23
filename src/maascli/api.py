@@ -10,6 +10,7 @@ from functools import partial
 import http.client
 import json
 from operator import itemgetter
+from pathlib import Path
 import re
 import sys
 from textwrap import dedent, fill, wrap
@@ -34,9 +35,13 @@ from maascli.utils import (
 )
 
 
-def http_request(url, method, body=None, headers=None, insecure=False):
+def http_request(
+    url, method, body=None, headers=None, ca_certs=None, insecure=False
+):
     """Issue an http request."""
-    http = httplib2.Http(disable_ssl_certificate_validation=insecure)
+    http = httplib2.Http(
+        ca_certs=ca_certs, disable_ssl_certificate_validation=insecure
+    )
     try:
         # XXX mpontillo 2015-12-15: Should force input to be in bytes here.
         # This calls into httplib2, which is going to call a parser which
@@ -51,11 +56,11 @@ def http_request(url, method, body=None, headers=None, insecure=False):
         )
 
 
-def fetch_api_description(url, insecure=False):
+def fetch_api_description(url, ca_certs=None, insecure=False):
     """Obtain the description of remote API given its base URL."""
     url_describe = urljoin(url, "describe/")
     response, content = http_request(
-        ascii_url(url_describe), "GET", insecure=insecure
+        ascii_url(url_describe), "GET", ca_certs=ca_certs, insecure=insecure
     )
     if response.status != http.client.OK:
         raise CommandError(
@@ -134,8 +139,14 @@ class Action(Command):
         # create custom MAASDispatcher to use httplib2 so that MAASClient can
         # be used.
         insecure = options.insecure
+        cacerts = materialize_certificate(self.profile)
         response, content = http_request(
-            uri, self.method, body=body, headers=headers, insecure=insecure
+            uri,
+            self.method,
+            body=body,
+            headers=headers,
+            ca_certs=cacerts,
+            insecure=insecure,
         )
 
         # Compare API hashes to see if our version of the API is old.
@@ -143,6 +154,7 @@ class Action(Command):
 
         # Output.
         if options.debug:
+            utils.dump_certificate_info(uri)
             utils.dump_response_summary(response)
         utils.print_response_content(response, content)
 
@@ -493,3 +505,27 @@ def register_api_commands(parser):
                 epilog=profile_help,
             )
             register_resources(profile, profile_parser)
+
+
+def materialize_certificate(profile, cert_dir="~/.maascli.certs"):
+    """Create CA certificate file, from profile config data.
+
+    This will take CA certificates data stored in user profile
+    and create a file <profile>.pem under ~/.maascli.certs
+    File is needed for httplib2 ca_cert (for server cert validation)
+    """
+
+    cacerts = profile.get("cacerts")
+    if cacerts is None:
+        return None
+
+    cert_dir = Path(cert_dir).expanduser()
+    if not cert_dir.exists():
+        cert_dir.mkdir()
+
+    profile_name = profile["name"]
+    cert_path = cert_dir / (profile_name + ".pem")
+    cert_path = Path(cert_path)
+
+    cert_path.write_text(cacerts)
+    return cert_path

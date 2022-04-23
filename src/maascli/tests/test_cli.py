@@ -3,7 +3,8 @@
 
 """Tests for `maascli.cli`."""
 
-
+from argparse import Namespace
+import http.client
 from io import StringIO
 import json
 import os
@@ -11,14 +12,17 @@ import sys
 from unittest.mock import sentinel
 
 from django.core import management
+import httplib2
 
 from apiclient.creds import convert_string_to_tuple
 from maascli import cli, init, snap
 from maascli.auth import UnexpectedResponse
+from maascli.config import ProfileConfig
 from maascli.parser import ArgumentParser
-from maascli.tests.test_auth import make_options
+from maascli.tests.test_auth import make_credentials, make_options
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.testing.certificates import get_sample_cert
 
 
 class TestRegisterCommands(MAASTestCase):
@@ -134,6 +138,7 @@ class TestLogin(MAASTestCase):
         check_key.assert_called_once_with(
             options.url,
             convert_string_to_tuple(options.credentials),
+            options.cacerts,
             options.insecure,
         )
 
@@ -161,6 +166,51 @@ class TestLogin(MAASTestCase):
             output,
         )
         self.assertIn(f"maas {profile['name']} --help", output)
+
+    def test_cmd_login_raises_error_when_cacerts_and_insecure_specified(self):
+        parser = ArgumentParser()
+        options = Namespace(
+            insecure=True,
+            cacerts="cacerts.pem",
+        )
+        login = cli.cmd_login(parser)
+        self.assertRaises(SystemExit, login, options)
+
+    def test_cmd_login_stores_provided_cacerts_in_profile(self):
+        sample_cert = get_sample_cert()
+        cert_path, _ = sample_cert.tempfiles()
+        parser = ArgumentParser()
+        credentials = ":".join(make_credentials())
+        url = "https://example.com/api/2.0/"
+        profile_name = "test_with_cacerts_in_profile"
+        options = Namespace(
+            credentials=credentials,
+            execute=None,
+            insecure=False,
+            profile_name=profile_name,
+            url=url,
+            cacerts=open(cert_path),
+        )
+
+        check_key = self.patch(cli, "check_valid_apikey")
+        check_key.return_value = True
+
+        fetch_description = self.patch(cli, "fetch_api_description")
+        fetch_description.return_value = {}
+
+        content = factory.make_name("content")
+        mock_request = self.patch(httplib2.Http, "request")
+        response = httplib2.Response({})
+        response["status"] = http.client.OK
+        mock_request.return_value = response, json.dumps(content)
+
+        login = cli.cmd_login(parser)
+        login(options)
+        with ProfileConfig.open() as config:
+            self.assertEqual(
+                sample_cert.certificate_pem(), config[profile_name]["cacerts"]
+            )
+            del config[profile_name]
 
 
 class TestCmdInit(MAASTestCase):

@@ -3,9 +3,10 @@
 
 """CLI management commands."""
 
-
+import argparse
 from functools import partial
 import os
+from pathlib import Path
 import pkgutil
 import sys
 from textwrap import fill
@@ -26,6 +27,7 @@ from maascli.init import (
     init_maas,
 )
 from maascli.utils import api_url, parse_docstring, safe_name
+from provisioningserver.certificates import check_certificate
 
 
 class cmd_login(Command):
@@ -67,6 +69,11 @@ class cmd_login(Command):
             ),
         )
         parser.add_argument(
+            "--cacerts",
+            help="Certificate CA file in PEM format",
+            type=argparse.FileType(),
+        )
+        parser.add_argument(
             "-k",
             "--insecure",
             action="store_true",
@@ -76,15 +83,40 @@ class cmd_login(Command):
         parser.set_defaults(credentials=None)
 
     def __call__(self, options):
+        if options.insecure and options.cacerts:
+            raise SystemExit(
+                "You cannot use both cacerts and insecure arguments."
+            )
+
         # Try and obtain credentials interactively if they're not given, or
         # read them from stdin if they're specified as "-".
         credentials = obtain_credentials(options.url, options.credentials)
+
+        cacerts = None
+        # temporary cacerts file, used to check for bogus credentials
+        # if credentials are correct, cacerts content is stored in profile
+        cacerts_path = None
+        if options.cacerts is not None:
+            cacerts = options.cacerts.read()
+            check_certificate(cacerts)
+
+            cert_dir = Path("~/.maascli.certs").expanduser()
+            if not cert_dir.exists():
+                cert_dir.mkdir()
+            profile_name = options.profile_name
+            cacerts_path = cert_dir / (profile_name + ".pem")
+            cacerts_path = Path(cacerts_path)
+            cacerts_path.write_text(cacerts)
+
         # Check for bogus credentials. Do this early so that the user is not
         # surprised when next invoking the MAAS CLI.
         if credentials is not None:
             try:
                 valid_apikey = check_valid_apikey(
-                    options.url, credentials, options.insecure
+                    options.url,
+                    credentials,
+                    cacerts_path,
+                    options.insecure,
                 )
             except UnexpectedResponse as e:
                 raise SystemExit("%s" % e)
@@ -92,7 +124,9 @@ class cmd_login(Command):
                 if not valid_apikey:
                     raise SystemExit("The MAAS server rejected your API key.")
         # Get description of remote API.
-        description = fetch_api_description(options.url, options.insecure)
+        description = fetch_api_description(
+            options.url, cacerts_path, options.insecure
+        )
         # Save the config.
         profile_name = options.profile_name
         with ProfileConfig.open(create=True) as config:
@@ -101,6 +135,7 @@ class cmd_login(Command):
                 "description": description,
                 "name": profile_name,
                 "url": options.url,
+                "cacerts": cacerts,
             }
             profile = config[profile_name]
         self.print_whats_next(profile)

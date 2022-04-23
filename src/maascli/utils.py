@@ -8,8 +8,11 @@ from functools import partial
 from inspect import cleandoc, getdoc
 import io
 import re
+import ssl
 import sys
 from urllib.parse import urlparse
+
+from OpenSSL import crypto
 
 re_paragraph_splitter = re.compile(r"(?:\r\n){2,}|\r{2,}|\n{2,}", re.MULTILINE)
 
@@ -186,3 +189,38 @@ def dump_response_summary(response, file=None):
     print(file=file)
     print_response_headers(response, file=file)
     print(file=file)
+
+
+def dump_certificate_info(url, file=None):
+    """Dump certificate info to stderr.
+
+    Intended for debugging.
+    """
+    parsed_url = urlparse(url)
+    if parsed_url.scheme != "https":
+        return
+
+    host = parsed_url.hostname
+    port = 443
+    if parsed_url.port:
+        port = parsed_url.port
+
+    cert = ssl.get_server_certificate((host, port))
+    try:
+        cert = crypto.load_certificate(crypto.FILETYPE_PEM, cert)
+        file = sys.stderr if file is None else file
+        subject_cn = cert.get_subject().CN
+        issuer_cn = cert.get_issuer().CN
+        fingerprint = cert.digest("sha256").decode()
+        data = {
+            "Subject": subject_cn,
+            "Issuer": str(issuer_cn or ""),
+            "Fingerprint (SHA-256)": fingerprint,
+        }
+
+        form = "%%%ds: %%s" % (max(len(k) for k in data.keys()) + 2)
+        for k, v in data.items():
+            print(form % (k, v), file=file)
+        print(file=file)
+    except Exception:
+        pass

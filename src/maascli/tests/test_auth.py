@@ -34,6 +34,7 @@ def make_options():
         insecure=False,
         profile_name="test",
         url=url,
+        cacerts=None,
     )
     return options
 
