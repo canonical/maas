@@ -63,7 +63,6 @@ server {
         root {{static_dir}}/web/static/docs;
         # redirect to the UI version if the page is not found by default
         try_files /$1 /$1.html /ui/$1 ui/$1.html /$1/index.html =404;
-
     }
 
     location ~ ^/MAAS/assets/(.*)$ {
@@ -98,6 +97,10 @@ server {
 
     # required for enlistment
     location /MAAS/api/2.0/machines {
+        proxy_pass http://regiond-webapp;
+    }
+
+    location = /MAAS/maas-run-scripts {
         proxy_pass http://regiond-webapp;
     }
 
