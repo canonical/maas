@@ -29,6 +29,8 @@ from maascli.init import (
 from maascli.utils import api_url, parse_docstring, safe_name
 from provisioningserver.certificates import check_certificate
 
+CERTS_DIR = Path("~/.maascli.certs").expanduser()
+
 
 class cmd_login(Command):
     """Log in to a remote API, and remember its description and credentials.
@@ -100,11 +102,10 @@ class cmd_login(Command):
             cacerts = options.cacerts.read()
             check_certificate(cacerts)
 
-            cert_dir = Path("~/.maascli.certs").expanduser()
-            if not cert_dir.exists():
-                cert_dir.mkdir()
+            if not CERTS_DIR.exists():
+                CERTS_DIR.mkdir()
             profile_name = options.profile_name
-            cacerts_path = cert_dir / (profile_name + ".pem")
+            cacerts_path = CERTS_DIR / (profile_name + ".pem")
             cacerts_path = Path(cacerts_path)
             cacerts_path.write_text(cacerts)
 
@@ -197,6 +198,9 @@ class cmd_logout(Command):
     def __call__(self, options):
         with ProfileConfig.open() as config:
             del config[options.profile_name]
+        profile_name = options.profile_name
+        cacerts_path = CERTS_DIR / (profile_name + ".pem")
+        cacerts_path.unlink(missing_ok=True)
 
 
 class cmd_list(Command):

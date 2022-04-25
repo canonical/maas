@@ -8,6 +8,7 @@ import http.client
 from io import StringIO
 import json
 import os
+from pathlib import Path
 import sys
 from unittest.mock import sentinel
 
@@ -17,6 +18,7 @@ import httplib2
 from apiclient.creds import convert_string_to_tuple
 from maascli import cli, init, snap
 from maascli.auth import UnexpectedResponse
+from maascli.cli import CERTS_DIR
 from maascli.config import ProfileConfig
 from maascli.parser import ArgumentParser
 from maascli.tests.test_auth import make_credentials, make_options
@@ -260,3 +262,20 @@ class TestReconfigureSupervisord(MAASTestCase):
         cmd(parser.parse_args([]))
         mock_render_supervisord.assert_called_once_with("region+rack")
         mock_sighup_supervisord.assert_called_once()
+
+
+class TestLogout(MAASTestCase):
+    def test_cmd_logout_cleans_profile_cacerts(self):
+        parser = ArgumentParser()
+        profile_name = "test"
+        options = Namespace(profile_name=profile_name)
+
+        ProfileConfig.create_database(Path("~/.maascli.db").expanduser())
+
+        if not CERTS_DIR.exists():
+            CERTS_DIR.mkdir()
+        cacerts_path = CERTS_DIR / (profile_name + ".pem")
+        cacerts_path.touch()
+        logout = cli.cmd_logout(parser)
+        logout(options)
+        self.assertFalse(cacerts_path.exists())
