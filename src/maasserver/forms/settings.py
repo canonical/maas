@@ -1040,7 +1040,7 @@ CONFIG_ITEMS = {
                 "Configure notification when certificate is "
                 "due to expire in (days)."
             ),
-            "min_value": 0,
+            "min_value": 1,
             "max_value": 90,
         },
     },
