@@ -1456,6 +1456,39 @@ class TestInstallingAPI(MAASServerTestCase):
         script_result = reload_object(script_result)
         self.assertEqual(script_status, script_result.status)
 
+    def test_signaling_store_results_updates_hw_sync_last_sync(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED,
+            owner=factory.make_User(),
+            enable_hw_sync=True,
+            with_empty_script_sets=True,
+        )
+        old_last_sync = node.last_sync = datetime.now()
+        node.save()
+
+        script_result = (
+            node.current_installation_script_set.scriptresult_set.first()
+        )
+        script_status = factory.pick_choice(
+            SCRIPT_STATUS_CHOICES,
+            but_not=[
+                SCRIPT_STATUS.PENDING,
+                SCRIPT_STATUS.APPLYING_NETCONF,
+                SCRIPT_STATUS.INSTALLING,
+            ],
+        )
+        script_result.status = script_status
+        script_result.save()
+        client = make_node_client(node=node)
+        response = call_signal(
+            client,
+            status=SIGNAL_STATUS.WORKING,
+            script_result_id=script_result.id,
+        )
+        self.assertEqual(response.status_code, http.client.OK)
+        node.refresh_from_db()
+        self.assertTrue(node.last_sync > old_last_sync)
+
 
 class TestMAASScripts(MAASServerTestCase):
     def setUp(self):

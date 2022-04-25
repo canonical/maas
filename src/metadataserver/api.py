@@ -583,6 +583,9 @@ class VersionIndexHandler(MetadataViewHandler):
                 ]:
                     script_result.status = SCRIPT_STATUS.RUNNING
                     script_result.save(update_fields=["status"])
+        if node.enable_hw_sync:
+            node.last_sync = datetime.now()
+            node.save()
 
     def _process_new(self, node, request, status):
         if status != SIGNAL_STATUS.COMMISSIONING:
