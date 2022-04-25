@@ -49,7 +49,7 @@ Most resources offer a choice of GET or POST operations.  In those cases these
 methods will take one special parameter, called `op`, to indicate what it is
 you want to do.
 
-For example, to list all machines, you might GET "/MAAS/api/2.0/machines".
+For example, to list all machines, you might GET "/MAAS/api/2.0/machines/".
 """
 
 
