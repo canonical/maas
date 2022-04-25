@@ -223,6 +223,14 @@ def make_PrometheusExporterService():
     return create_prometheus_exporter_service(reactor, REGION_PROMETHEUS_PORT)
 
 
+def make_CertificateExpirationCheckService():
+    from maasserver.regiondservices.certificate_expiration_check import (
+        CertificateExpirationCheckService,
+    )
+
+    return CertificateExpirationCheckService(reactor)
+
+
 class MAASServices(MultiService):
     def __init__(self, eventloop):
         self.eventloop = eventloop
@@ -401,10 +409,15 @@ class RegionEventLoop:
             "factory": make_IPCWorkerService,
             "requires": [],
         },
-        "reverse_proxy": {
+        "reverse-proxy": {
             "only_on_master": True,
             "factory": make_HTTPService,
             "requires": ["postgres-listener-master"],
+        },
+        "certificate-expiration-check": {
+            "only_on_master": True,
+            "factory": make_CertificateExpirationCheckService,
+            "requires": [],
         },
     }
 

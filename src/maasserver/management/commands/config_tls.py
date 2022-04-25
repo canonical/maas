@@ -12,6 +12,9 @@ from maascli.init import read_input
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models import Config
+from maasserver.regiondservices.certificate_expiration_check import (
+    clear_tls_notifications,
+)
 from provisioningserver.certificates import Certificate
 from provisioningserver.events import EVENT_TYPES
 
@@ -33,6 +36,7 @@ def _update_tls_config(
                 ENDPOINT.CLI,
                 description=f"Updated configuration setting '{key}'.",
             )
+        clear_tls_notifications()
 
 
 class Command(BaseCommand):

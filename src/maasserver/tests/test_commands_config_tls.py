@@ -11,7 +11,12 @@ from django.core.management import call_command
 
 from maasserver.enum import ENDPOINT
 from maasserver.management.commands import config_tls
-from maasserver.models import Config, Event
+from maasserver.models import Config, Event, Notification
+from maasserver.regiondservices.certificate_expiration_check import (
+    REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
+    REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
+)
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.certificates import CertificateError
 from provisioningserver.events import AUDIT, EVENT_TYPES
@@ -37,6 +42,15 @@ class TestConfigTLSCommand(MAASServerTestCase):
         return Config.objects.get_configs(
             ("tls_key", "tls_cert", "tls_cacert", "tls_port")
         )
+
+    def get_notifications(self):
+        notifications = Notification.objects.filter(
+            ident__in=[
+                REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
+                REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
+            ]
+        ).order_by("ident")
+        return list(notifications)
 
     def test_config_tls_disable(self):
         call_command("config_tls", "disable")
@@ -179,3 +193,40 @@ class TestConfigTLSCommand(MAASServerTestCase):
             self.assertEqual(EVENT_TYPES.SETTINGS, event.type.name)
             self.assertEqual(ENDPOINT.CLI, event.endpoint)
             self.assertIn(key, event.description)
+
+    def test_config_tls_disable_removes_tls_notifications(self):
+        factory.make_Notification(
+            ident=REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
+            admins=True,
+            dismissable=True,
+        )
+        factory.make_Notification(
+            ident=REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
+            admins=True,
+            dismissable=True,
+        )
+
+        call_command("config_tls", "disable")
+
+        notifications = self.get_notifications()
+        self.assertEqual(0, len(notifications))
+
+    def test_config_tls_enable_removes_tls_notifications(self):
+        factory.make_Notification(
+            ident=REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
+            admins=True,
+            dismissable=True,
+        )
+        factory.make_Notification(
+            ident=REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
+            admins=True,
+            dismissable=True,
+        )
+
+        sample_cert = get_sample_cert()
+        cert_path, key_path = sample_cert.tempfiles()
+
+        self.read_input.return_value = "y"
+        call_command("config_tls", "enable", key_path, cert_path)
+        notifications = self.get_notifications()
+        self.assertEqual(0, len(notifications))

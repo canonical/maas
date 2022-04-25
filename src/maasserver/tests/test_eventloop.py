@@ -29,6 +29,9 @@ from maasserver.eventloop import MAASServices
 from maasserver.prometheus.service import REGION_PROMETHEUS_PORT
 from maasserver.prometheus.stats import PrometheusService
 from maasserver.regiondservices import ntp, service_monitor_service, syslog
+from maasserver.regiondservices.certificate_expiration_check import (
+    CertificateExpirationCheckService,
+)
 from maasserver.regiondservices.version_update_check import (
     RegionVersionUpdateCheckService,
 )
@@ -615,6 +618,16 @@ class TestFactories(MAASServerTestCase):
         )
         self.assertTrue(
             eventloop.loop.factories["prometheus-exporter"]["only_on_master"]
+        )
+
+    def test_make_CertificateExpirationCheckService(self):
+        service = eventloop.make_CertificateExpirationCheckService()
+        self.assertIsInstance(service, CertificateExpirationCheckService)
+        self.assertIs(
+            eventloop.loop.factories["certificate-expiration-check"][
+                "factory"
+            ],
+            eventloop.make_CertificateExpirationCheckService,
         )
 
 
