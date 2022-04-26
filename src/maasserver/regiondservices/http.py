@@ -118,7 +118,7 @@ class RegionHTTPService(Service):
 
     @inlineCallbacks
     def _consume_event(self, channel, message):
-        self.stopService()
+        yield self.stopService()
         yield self.startService()
 
 
