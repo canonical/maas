@@ -15,6 +15,7 @@ __all__ = [
 from itertools import count
 import sys
 import threading
+from unittest.util import strclass
 
 from django.db import (
     close_old_connections,
@@ -85,6 +86,7 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
     def setUp(self):
         reset_queries()  # Formerly this was handled by... Django?
         super().setUp()
+        self._set_db_application_name()
         if self.mock_cache_boot_source:
             self.patch(signals.bootsources, "post_commit_do")
         if self.mock_delete_large_object_content_later:
@@ -110,6 +112,12 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
             connection.in_atomic_block,
             "Default connection is engaged in a transaction.",
         )
+
+    def _set_db_application_name(self):
+        """Set the application name to the current test, for debug."""
+        testname = f"{strclass(self.__class__)}.{self._testMethodName}"
+        with connection.cursor() as cursor:
+            cursor.execute(f"SET application_name = '{testname}'")
 
 
 class MAASLegacyServerTestCase(MAASRegionTestCaseBase, DjangoTestCase):
