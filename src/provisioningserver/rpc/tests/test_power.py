@@ -564,6 +564,7 @@ class TestMaybeChangePowerState(MAASTestCase):
             current_power_change,
             sentinel.d,
         )
+        self.addCleanup(power.power_action_registry.pop, system_id)
         with ExpectedException(exceptions.PowerActionAlreadyInProgress):
             yield power.maybe_change_power_state(
                 system_id, hostname, power_driver.name, power_change, context
@@ -586,6 +587,7 @@ class TestMaybeChangePowerState(MAASTestCase):
             current_power_change,
             sentinel.d,
         )
+        self.addCleanup(power.power_action_registry.pop, system_id)
         yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context
         )
@@ -1115,7 +1117,9 @@ class TestPowerQueryAsync(MAASTestCase):
         nodes = self.make_nodes()
 
         # First node is in the registry.
-        power.power_action_registry[nodes[0]["system_id"]] = sentinel.action
+        first_system_id = nodes[0]["system_id"]
+        power.power_action_registry[first_system_id] = sentinel.action
+        self.addCleanup(power.power_action_registry.pop, first_system_id)
 
         # Report back power state of nodes' not in registry.
         power_states = [node["power_state"] for node in nodes[1:]]
