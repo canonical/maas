@@ -128,6 +128,10 @@ class ControllerHandler(NodeHandler):
             "cpu_speed",
         ]
         listen_channels = ["controller"]
+        create_permission = NodePermission.admin
+        view_permission = NodePermission.view
+        edit_permission = NodePermission.admin
+        delete_permission = NodePermission.admin
 
     def get_form_class(self, action):
         """Return the form class used for `action`."""
@@ -143,7 +147,7 @@ class ControllerHandler(NodeHandler):
         else:
             qs = self._meta.queryset
         return Controller.controllers.get_nodes(
-            self.user, NodePermission.view, from_nodes=qs
+            self.user, self._meta.view_permission, from_nodes=qs
         )
 
     def dehydrate(self, obj, data, for_list=False):

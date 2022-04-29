@@ -5,7 +5,7 @@
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
-from maasserver.models import Config, ControllerInfo, VLAN
+from maasserver.models import Config, Controller, ControllerInfo, VLAN
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
@@ -438,4 +438,20 @@ class TestControllerHandler(MAASServerTestCase):
             maas_url = config.maas_url
         self.assertEqual(
             {"url": maas_url, "secret": rpc_shared_secret}, observed
+        )
+
+    def test_permissions_view_admin(self):
+        admin = factory.make_admin()
+        handler = ControllerHandler(admin, {}, None)
+        controller = factory.make_RegionRackController()
+        result = handler.get({"system_id": controller.system_id})
+        self.assertCountEqual(["edit", "delete"], result["permissions"])
+
+    def test_permissions_delete_admin(self):
+        admin = factory.make_admin()
+        handler = ControllerHandler(admin, {}, None)
+        controller = factory.make_RegionRackController()
+        handler.delete({"system_id": controller.system_id})
+        self.assertRaises(
+            Controller.DoesNotExist, Controller.objects.get, id=controller.id
         )
