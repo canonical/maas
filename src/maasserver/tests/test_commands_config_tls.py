@@ -64,6 +64,25 @@ class TestConfigTLSCommand(MAASServerTestCase):
             self._get_config(),
         )
 
+    def test_config_tls_enable_skip_confirm(self):
+        sample_cert = get_sample_cert()
+        cert_path, key_path = sample_cert.tempfiles()
+
+        call_command(
+            "config_tls", "enable", key_path, cert_path, "-p=5234", "--yes"
+        )
+        # the command is not interactive
+        self.read_input.assert_not_called()
+        self.assertEqual(
+            {
+                "tls_port": 5234,
+                "tls_key": sample_cert.private_key_pem(),
+                "tls_cert": sample_cert.certificate_pem(),
+                "tls_cacert": "",
+            },
+            self._get_config(),
+        )
+
     def test_config_tls_enable(self):
         sample_cert = get_sample_cert()
         cert_path, key_path = sample_cert.tempfiles()
@@ -87,7 +106,6 @@ class TestConfigTLSCommand(MAASServerTestCase):
         cacert_path = Path(self.make_dir()) / "cacert.pem"
         cacert_path.write_text(sample_cert.ca_certificates_pem())
 
-        self.read_input.return_value = "y"
         call_command(
             "config_tls",
             "enable",
@@ -97,6 +115,7 @@ class TestConfigTLSCommand(MAASServerTestCase):
             str(cacert_path),
             "-p",
             "5234",
+            "--yes",
         )
         self.assertEqual(
             self._get_config(),

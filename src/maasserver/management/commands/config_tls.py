@@ -73,6 +73,12 @@ class Command(BaseCommand):
         enable_tls_parser_append.add_argument(
             "-p", "--port", help="HTTPS port", default=5443, type=int
         )
+        enable_tls_parser_append.add_argument(
+            "--yes",
+            help="Skip interactive confirmation",
+            action="store_true",
+            default=False,
+        )
 
     def handle(self, *args, **options):
         config_manager = Config.objects.db_manager(DEFAULT_DB_ALIAS)
@@ -81,15 +87,16 @@ class Command(BaseCommand):
             _update_tls_config(config_manager)
             return
 
-        reply = (
-            read_input(
-                "Once TLS is enabled, the MAAS UI and API won't be accessible over HTTP anymore, proceed? (y/n): "
+        if not options["yes"]:
+            reply = (
+                read_input(
+                    "Once TLS is enabled, the MAAS UI and API won't be accessible over HTTP anymore, proceed? (y/n): "
+                )
+                .lower()
+                .strip()
             )
-            .lower()
-            .strip()
-        )
-        if reply != "y":
-            return
+            if reply != "y":
+                return
 
         cacerts = options["cacert"].read() if options["cacert"] else ""
         cert = Certificate.from_pem(
