@@ -18,9 +18,11 @@ from django.db.models import (
 )
 
 from maasserver.config import RegionConfiguration
+from maasserver.exceptions import NodeActionError
 from maasserver.forms import ControllerForm
 from maasserver.models import Config, Controller, Event, RackController, VLAN
 from maasserver.models.controllerinfo import get_target_version
+from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
 from maasserver.websockets.base import HandlerError, HandlerPermissionError
 from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
@@ -149,6 +151,21 @@ class ControllerHandler(NodeHandler):
         return Controller.controllers.get_nodes(
             self.user, self._meta.view_permission, from_nodes=qs
         )
+
+    def action(self, params):
+        """Perform the action on the object."""
+        # `compile_node_actions` handles the permission checking internally
+        # the default view permission check is enough at this level.
+        obj = self.get_object(params)
+        action_name = params.get("action")
+        actions = compile_node_actions(obj, self.user, request=self.request)
+        action = actions.get(action_name)
+        if action is None:
+            raise NodeActionError(
+                f"{action_name} action is not available for this node."
+            )
+        extra_params = params.get("extra", {})
+        return action.execute(**extra_params)
 
     def dehydrate(self, obj, data, for_list=False):
         obj = obj.as_self()

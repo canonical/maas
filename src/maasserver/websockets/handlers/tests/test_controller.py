@@ -455,3 +455,17 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertRaises(
             Controller.DoesNotExist, Controller.objects.get, id=controller.id
         )
+
+    def test_action(self):
+        admin = factory.make_admin()
+        handler = ControllerHandler(admin, {}, None)
+        controller = factory.make_RegionRackController()
+        request = {
+            "action": "delete",
+            "extra": {},
+            "system_id": controller.system_id,
+        }
+        handler.action(request)
+        controller.refresh_from_db()
+        # deleting a region+rack controller changes it to just a region controller
+        self.assertEqual(controller.node_type, NODE_TYPE.REGION_CONTROLLER)
