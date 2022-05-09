@@ -1770,7 +1770,7 @@ class Node(CleanSave, TimestampedModel):
         # addresses will only be returned if the node has no static IP
         # addresses.
         ips = self.static_ip_addresses(ifaces=ifaces)
-        if len(ips) == 0:
+        if not ips:
             ips = self.dynamic_ip_addresses(ifaces=ifaces)
         return ips
 
@@ -1778,7 +1778,7 @@ class Node(CleanSave, TimestampedModel):
         """Static IP addresses allocated to this node."""
         # DHCP is included here because it is a configured type. Its not
         # just set randomly by the lease parser.
-        if not ifaces:
+        if ifaces is None:
             ifaces = self.current_config.interface_set.all()
         return [
             ip_address.get_ip()
@@ -1796,7 +1796,7 @@ class Node(CleanSave, TimestampedModel):
 
     def dynamic_ip_addresses(self, ifaces=None):
         """Dynamic IP addresses allocated to this node."""
-        if not ifaces:
+        if ifaces is None:
             ifaces = self.current_config.interface_set.all()
         return [
             ip_address.ip

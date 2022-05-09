@@ -1197,7 +1197,13 @@ class TestCreateVMHostForDeployment(MAASServerTestCase):
             agent_name="maas-kvm-pod",
             install_kvm=True,
         )
-        ip = factory.make_StaticIPAddress(interface=node.boot_interface)
+        # deploying a machine as a VM host bridges the boot interface
+        bridge = factory.make_Interface(
+            iftype=INTERFACE_TYPE.BRIDGE,
+            node=node,
+            parents=[node.boot_interface],
+        )
+        ip = factory.make_StaticIPAddress(interface=bridge)
         another_if = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_StaticIPAddress(interface=another_if)
 

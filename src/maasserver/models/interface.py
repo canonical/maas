@@ -564,9 +564,9 @@ class Interface(CleanSave, TimestampedModel):
     parents = ManyToManyField(
         "self",
         blank=True,
-        editable=True,
         through="InterfaceRelationship",
         symmetrical=False,
+        related_name="children",
     )
 
     vlan = ForeignKey(

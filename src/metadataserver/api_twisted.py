@@ -203,8 +203,11 @@ def _create_vmhost_for_deployment(node):
         )
         return
 
+    # the IP is associated to the bridge the boot interface is in, not the
+    # interface itself
     boot_if = node.get_boot_interface()
-    ip = node.ip_addresses([boot_if])[0]
+    ifaces = list(boot_if.children.all())
+    ip = node.ip_addresses(ifaces=ifaces + [boot_if])[0]
     if ":" in ip:
         ip = f"[{ip}]"
 

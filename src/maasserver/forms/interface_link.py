@@ -76,14 +76,14 @@ class InterfaceLinkForm(forms.Form):
             ].queryset = self.instance.vlan.subnet_set.all()
 
     def clean(self):
-        for interface_set in self.instance.interface_set.all():
-            if isinstance(interface_set, BondInterface):
+        for interface in self.instance.children.all():
+            if isinstance(interface, BondInterface):
                 set_form_error(
                     self,
                     "bond",
                     (
-                        "Cannot link interface(%s) when interface is in a "
-                        "bond(%s)." % (self.instance.name, interface_set.name)
+                        f"Cannot link interface({self.instance.name}) when "
+                        f"interface is in a bond({interface.name})."
                     ),
                 )
         cleaned_data = super().clean()
