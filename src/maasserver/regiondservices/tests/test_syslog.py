@@ -4,7 +4,6 @@
 """Tests for `maasserver.regiondservices.syslog`."""
 
 
-from crochet import wait_for
 from netaddr import IPAddress
 from testtools.matchers import (
     AllMatch,
@@ -26,6 +25,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.fixtures import MAASRootFixture
 from maastesting.matchers import (
     DocTestMatches,
@@ -37,7 +37,7 @@ from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.testing import MAASIDFixture
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 def make_region_rack_with_address(space):

@@ -4,15 +4,15 @@
 """Testing utilities for the region event-loop."""
 
 
-from crochet import wait_for
 from fixtures import Fixture
 from twisted.application.service import Service
 from twisted.internet import defer
 
 from maasserver import eventloop
 from maasserver.eventloop import loop
+from maastesting.crochet import wait_for
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class RegionEventLoopFixture(Fixture):

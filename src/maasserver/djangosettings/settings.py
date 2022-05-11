@@ -18,7 +18,7 @@ def _read_timezone(tzfilename="/etc/timezone"):
         try:
             with open(tzfilename, "rb") as tzfile:
                 return tzfile.read().decode("ascii").strip()
-        except IOError:
+        except OSError:
             pass
     return None
 

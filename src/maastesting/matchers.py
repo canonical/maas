@@ -397,7 +397,7 @@ class FileContains(Matcher):
                 actual_contents = fd.read()
         else:
             # Text/Unicode match.
-            with open(path, "r", encoding=self.encoding) as fd:
+            with open(path, encoding=self.encoding) as fd:
                 actual_contents = fd.read()
         return self.matcher.match(actual_contents)
 

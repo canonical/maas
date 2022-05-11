@@ -1,0 +1,40 @@
+#!/bin/bash -e
+
+exit_error() {
+    echo "$@" >&2
+    exit 1
+}
+
+msg() {
+    echo "---" "$@"
+}
+
+have_pending_migration() {
+    bin/maas-region showmigrations --list | grep -q '^ \[ \]'
+}
+
+
+sql_dump_file="$1"
+
+if [ -z "$sql_dump_file" ]; then
+    exit_error "SQL dump file not specified"
+fi
+
+if [ ! -r "$sql_dump_file" ]; then
+    exit_error "SQL dump file not found"
+fi
+
+msg "importing SQL dump"
+psql -c "\i $sql_dump_file" >/dev/null
+
+msg "checking pending migrations"
+if ! have_pending_migration; then
+    echo "no pending migration, $sql_dump_file is up to date"
+    exit 0
+fi
+
+msg "upgrading schema"
+bin/maas-region dbupgrade --internal-no-triggers
+
+msg "dumping updated database file"
+pg_dump "$PGDATABASE" --no-owner --no-privileges --format=plain -f "$sql_dump_file"

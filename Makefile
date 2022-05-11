@@ -39,6 +39,7 @@ bin/maas-common \
 bin/maas-power \
 bin/maas-rack \
 bin/maas-region \
+bin/maas-sampledata \
 bin/postgresfixture \
 bin/pytest \
 bin/rackd \
@@ -47,6 +48,7 @@ bin/subunit-1to2 \
 bin/subunit2junitxml \
 bin/subunit2pyunit \
 bin/test.parallel \
+bin/test.perf \
 bin/test.rack \
 bin/test.region \
 bin/test.region.legacy
@@ -134,13 +136,21 @@ test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyu
 	@utilities/run-py-tests-ci
 .PHONY: test-py
 
-src/maasserver/testing/initial.maas_test.sql: bin/maas-region bin/database
-    # Run migrations without any triggers created.
-	$(dbrun) bin/maas-region dbupgrade --internal-no-triggers
-    # Data migration will create a notification, that will break tests. Want
-    # the database to be a clean schema.
-	$(dbrun) bin/maas-region shell -c "from maasserver.models.notification import Notification; Notification.objects.all().delete()"
-	$(dbrun) pg_dump maas --no-owner --no-privileges --format=plain > $@
+test-perf: bin/test.perf
+	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
+	GIT_HASH=$(shell git rev-parse HEAD) \
+	find . -type d -name perf | xargs bin/test.perf
+.PHONY: test-perf
+
+test-perf-quiet: bin/test.perf
+	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
+	GIT_HASH=$(shell git rev-parse HEAD) \
+	find . -type d -name perf | xargs bin/test.perf -q --disable-warnings --show-capture=no --no-header --no-summary
+.PHONY: test-perf-quiet
+
+update-initial-sql: bin/database bin/maas-region cleandb
+	$(dbrun) utilities/update-initial-sql src/maasserver/testing/initial.maas_test.sql
+.PHONY: update-initial-sql
 
 lint: lint-py lint-py-imports lint-py-linefeeds lint-go lint-shell
 .PHONY: lint
@@ -188,7 +198,8 @@ lint-shell: bin/shellcheck
 		utilities/package-version \
 		utilities/release-* \
 		utilities/run-performanced \
-		utilities/run-py-tests-ci
+		utilities/run-py-tests-ci \
+		utilities/update-initial-sql
 .PHONY: lint-shell
 
 format.parallel:
@@ -212,10 +223,6 @@ check: clean test
 
 api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_api_doc > $@
-
-sampledata: bin/maas-region bin/database syncdb machine-resources
-	$(dbrun) bin/maas-region generate_sample_data
-.PHONY: sampledata
 
 doc: api-docs.rst
 .PHONY: doc
@@ -274,6 +281,22 @@ dbharness: bin/database
 syncdb: bin/maas-region bin/database
 	$(dbrun) bin/maas-region dbupgrade
 .PHONY: syncdb
+
+dumpdb: DB_DUMP ?= maasdb.dump
+dumpdb: bin/database
+	$(dbrun) pg_dump $(PGDATABASE) --format=custom -f $(DB_DUMP)
+.PHONY: dumpdb
+
+cleandb:
+	while fuser db --kill -TERM; do sleep 1; done
+	$(RM) -r db
+	$(RM) .db.lock
+.PHONY: cleandb
+
+sampledata: SAMPLEDATA_MACHINES ?= 100
+sampledata: syncdb bin/maas-sampledata
+	$(dbrun) bin/maas-sampledata --machine $(SAMPLEDATA_MACHINES)
+.PHONY: sampledata
 
 #
 # Package building

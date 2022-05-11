@@ -352,8 +352,8 @@ class TestMarkNodesFailedAfterMissingScriptTimeout(MAASServerTestCase):
         # 5. Get all testing ScriptResults
         # 6. Get all commissioning Scripts
         # 7. Get all testing Scripts
-        self.assertEqual(7, counter_one.num_queries)
-        self.assertEqual(7, counter_many.num_queries)
+        self.assertEqual(7, counter_one.count)
+        self.assertEqual(7, counter_many.count)
 
 
 class TestStatusMonitorService(MAASServerTestCase):

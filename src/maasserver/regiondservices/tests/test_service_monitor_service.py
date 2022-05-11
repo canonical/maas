@@ -7,7 +7,6 @@
 import random
 from unittest.mock import sentinel
 
-from crochet import wait_for
 from testtools.matchers import MatchesStructure
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.task import Clock
@@ -25,6 +24,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.service_monitor import (
@@ -32,7 +32,7 @@ from provisioningserver.utils.service_monitor import (
     ServiceState,
 )
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestServiceMonitorService(MAASTransactionServerTestCase):

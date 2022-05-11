@@ -45,20 +45,24 @@ HttpResponseBase.__init__ = patched_HttpResponseBase__init__
 
 
 class CountQueries:
-    """Context manager: count number of database queries issued in context.
+    """Context manager for counting database queries issued in context.
 
-    :ivar num_queries: The number of database queries that were performed while
-        this context was active.
+    If `reset` is true, also reset query count at enter.
+
     """
 
-    def __init__(self):
+    def __init__(self, reset=False):
+        self.reset = reset
         self.connection = connections[DEFAULT_DB_ALIAS]
-        self.num_queries = 0
+        self._start_count = 0
+        self._end_count = 0
 
     def __enter__(self):
         self.force_debug_cursor = self.connection.force_debug_cursor
         self.connection.force_debug_cursor = True
-        self.starting_count = len(self.connection.queries)
+        if self.reset:
+            reset_queries()
+        self._start_count = self._end_count = len(self.connection.queries)
         request_started.disconnect(reset_queries)
         return self
 
@@ -67,8 +71,20 @@ class CountQueries:
         request_started.connect(reset_queries)
         if exc_type is not None:
             return
-        final_count = len(self.connection.queries)
-        self.num_queries = final_count - self.starting_count
+        self._end_count = len(self.connection.queries)
+
+    @property
+    def count(self):
+        """Number of queries."""
+        return self._end_count - self._start_count
+
+    @property
+    def queries(self):
+        """Return the list of performed queries."""
+        count = self.count
+        if not count:
+            return []
+        return self.connection.queries[-count:]
 
 
 def count_queries(func, *args, **kwargs):
@@ -83,7 +99,7 @@ def count_queries(func, *args, **kwargs):
     counter = CountQueries()
     with counter:
         result = func(*args, **kwargs)
-    return counter.num_queries, result
+    return counter.count, result
 
 
 def get_rogue_database_activity():

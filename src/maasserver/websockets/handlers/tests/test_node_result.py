@@ -487,7 +487,7 @@ class TestNodeResultHandler(MAASServerTestCase):
         queries = CountQueries()
         with queries:
             ret = handler.get_history({"id": latest_script_result.id})
-        self.assertEqual(4, queries.num_queries)
+        self.assertEqual(4, queries.count)
         for script_result, out in zip(script_results, ret):
             self.assertDictEqual(
                 {

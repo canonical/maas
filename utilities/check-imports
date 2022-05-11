@@ -156,11 +156,13 @@ TestingLibraries = Pattern(
     "dns|dns.**",
     "fixtures|fixtures.**",
     "hypothesis|hypothesis.**",
+    "influxdb_client|influxdb_client.**",
     "junitxml|junitxml.**",
     "maastesting|maastesting.**",
     "nose|nose.**",
     "postgresfixture|postgresfixture.**",
     "pytest|pytest.**",
+    "pytest_django.plugin.*",
     "subunit|subunit.**",
     "testresources|testresources.**",
     "testscenarios|testscenarios.**",
@@ -178,6 +180,26 @@ def files(*patterns):
 
 
 APIClient = files("src/apiclient/**/*.py")
+
+PerfTestHarness = files("src/maastesting/perftest.py")
+PerfTestMigrations = files("src/maastesting/migrations/**/*.py")
+PerfTestModel = files("src/maastesting/models.py")
+PerfTestTests = files("src/maastesting/tests/test_perftest.py")
+PerfTestPerf = files("src/**/perf/test_*.py")
+PerfTestConftest = files("src/**/perf/conftest.py")
+PerfTests = (
+    PerfTestHarness
+    & PerfTestMigrations
+    & PerfTestModel
+    & PerfTestTests
+    & PerfTestPerf
+    & PerfTestConftest
+)
+PerfTestHarnessRule = Rule(
+    Allow("django|django.**"),
+    Allow(StandardLibraries),
+    Allow(TestingLibraries),
+)
 
 
 RackControllerConfig = files("src/provisioningserver/config.py")
@@ -298,12 +320,21 @@ RegionControllerRule = Rule(
 
 
 Tests = files(
-    "src/**/test_*.py", "src/**/testing/**/*.py", "src/**/testing.py"
+    "src/**/test_*.py",
+    "src/**/testing/**/*.py",
+    "src/**/testing.py",
+    "src/**/conftest.py",
 )
 
 
 TestScriptEntryPoints = files("src/maastesting/scripts.py")
-TestHelpers = files("src/maastesting/**/*.py") - TestScriptEntryPoints
+TestHelpers = (
+    files("src/maastesting/**/*.py")
+    - TestScriptEntryPoints
+    - PerfTestTests
+    - PerfTestMigrations
+    - PerfTestModel
+)
 
 TestHelpersRule = Rule(
     Allow("crochet|crochet.**"),
@@ -353,10 +384,17 @@ checks = [
         ),
     ),
     #
+    # PERF TEST HARNESS
+    #
+    (
+        PerfTests,
+        PerfTestHarnessRule,
+    ),
+    #
     # RACK CONTROLLER
     #
     (
-        RackController - Tests,
+        RackController - Tests - PerfTestConftest,
         RackControllerRule,
     ),
     (
@@ -394,7 +432,7 @@ checks = [
     # REGION CONTROLLER
     #
     (
-        RegionController - Tests,
+        RegionController - Tests - PerfTestConftest,
         RegionControllerRule | Rule(Allow("snippets.**")),
     ),
     (
@@ -450,18 +488,29 @@ checks = [
 ]
 
 
-def extract(node):
-    """Extract all imports from the given AST node."""
-    for node in ast.walk(node):
+def module_path_parts(filename):
+    if filename.startswith("src/"):
+        filename = filename[4:]
+    if filename.endswith(".py"):
+        filename = filename[:-3]
+    return filename.split("/")
+
+
+def extract(module, filename):
+    """Extract all imports from the given AST module."""
+    module_parts = module_path_parts(filename)
+    for node in module.body:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 yield alias.name
         elif isinstance(node, ast.ImportFrom):
             for alias in node.names:
-                # Note that `node.module is None` if the import in the format:
-                #     from . import <thing>
-                module = "." if node.module is None else node.module
-                yield "%s.%s" % (module, alias.name)
+                if node.level > 0:
+                    # relative import, make it absolute
+                    module = ".".join(module_parts[: node.level])
+                else:
+                    module = node.module
+                yield f"{module}.{alias.name}"
         else:
             pass  # Not an import.
 
@@ -495,8 +544,8 @@ def _expand(checks):
 def _scan1(rule, filename):
     """Scan one file and check against the given rule."""
     with tokenize.open(filename) as fd:
-        module = ast.parse(fd.read())
-    imports = set(extract(module))
+        module = ast.parse(source=fd.read(), filename=filename)
+    imports = set(extract(module, filename))
     allowed = set(filter(rule.check, imports))
     denied = imports.difference(allowed)
     return filename, allowed, denied

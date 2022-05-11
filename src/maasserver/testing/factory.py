@@ -1,7 +1,5 @@
-# Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Test object factories."""
 
 
 from datetime import datetime, timedelta
@@ -423,7 +421,7 @@ class Factory(maastesting.factory.Factory):
         if status is None:
             status = NODE_STATUS.DEFAULT
         if zone is None:
-            zone = self.make_Zone()
+            zone = Zone.objects.get_default_zone()
         if power_type is None:
             power_type = "virsh"
         if power_state is None:
@@ -570,8 +568,6 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(updated=updated)
         if created is not None:
             Node.objects.filter(id=node.id).update(created=created)
-        for _ in range(0, random.randint(10, 20)):
-            self.make_NodeDevice(node=node)
         return reload_object(node)
 
     def make_Machine(self, *args, **kwargs):
@@ -607,9 +603,6 @@ class Factory(maastesting.factory.Factory):
             hostname = self.make_string(prefix="controller")
         if owner is None:
             owner = get_worker_user()
-        if zone is None:
-            zone = self.make_Zone()
-
         node = self.make_Node_with_Interface_on_Subnet(
             node_type=controller_type,
             hostname=hostname,
@@ -1656,6 +1649,7 @@ class Factory(maastesting.factory.Factory):
         primary_rack=None,
         secondary_rack=None,
         relay_vlan=None,
+        mtu=1500,
     ):
         assert vid != 0, "VID=0 VLANs are auto-created"
         if name is RANDOM:
@@ -1675,6 +1669,7 @@ class Factory(maastesting.factory.Factory):
             primary_rack=primary_rack,
             secondary_rack=secondary_rack,
             relay_vlan=relay_vlan,
+            mtu=mtu,
         )
         vlan.save()
         for rack in [primary_rack, secondary_rack]:
@@ -1716,8 +1711,6 @@ class Factory(maastesting.factory.Factory):
             subnet = cluster_interface.subnet
         if subnet is not None and vlan is None:
             vlan = subnet.vlan
-        if iftype is None:
-            iftype = INTERFACE_TYPE.PHYSICAL
         if link_connected:
             if vlan is None:
                 if fabric is not None:
@@ -2702,9 +2695,9 @@ class Factory(maastesting.factory.Factory):
             firmware_version=firmware_version,
             numa_node=numa_node,
         )
-        # Only NVMe drives have a NodeDevice assoicated with them since
-        # they are PCIE devices. Don't always create them.
-        if pcie or self.pick_bool():
+        # Only NVMe drives have a NodeDevice associated with them since
+        # they are PCIE devices.
+        if pcie:
             self.make_NodeDevice(
                 bus=NODE_DEVICE_BUS.PCIE,
                 hardware_type=HARDWARE_TYPE.STORAGE,
@@ -3021,7 +3014,7 @@ class Factory(maastesting.factory.Factory):
         if project is None:
             project = self.make_name("project")
         if zone is None:
-            zone = self.make_Zone()
+            zone = Zone.objects.get_default_zone()
 
         cluster = VMCluster.objects.create(
             name=name,
@@ -3067,7 +3060,10 @@ class Factory(maastesting.factory.Factory):
         node=None,
     ):
         if node is None:
-            node = factory.make_Node()
+            if filesystem_group is None:
+                node = factory.make_Node()
+            else:
+                node = filesystem_group.get_node()
         if block_size is None:
             block_size = random.choice([512, 1024, 4096])
         if filesystem_group is None:

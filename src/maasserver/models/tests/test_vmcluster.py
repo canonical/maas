@@ -20,7 +20,7 @@ from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.certificates import Certificate
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 

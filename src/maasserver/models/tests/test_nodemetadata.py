@@ -4,14 +4,14 @@
 """Test maasserver NodeMetadata model."""
 
 
-from crochet import wait_for
 from django.core.exceptions import ValidationError
 
 from maasserver.models import NodeMetadata
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.crochet import wait_for
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestNodeMetadata(MAASServerTestCase):

@@ -6,7 +6,6 @@
 
 from unittest.mock import ANY, call, Mock, sentinel
 
-from crochet import wait_for
 from django.db import connections
 from testtools.matchers import Equals, IsInstance
 from twisted.application.internet import StreamServerEndpointService
@@ -38,13 +37,14 @@ from maasserver.testing.listener import FakePostgresListenerService
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import dbtasks
 from maasserver.utils.orm import DisabledDatabaseConnection, transactional
+from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
 from metadataserver import api_twisted
 from provisioningserver.utils.twisted import asynchronous
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestMAASServices(MAASServerTestCase):

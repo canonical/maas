@@ -834,6 +834,8 @@ class DisabledDatabaseConnection:
     thread (a.k.a. the reactor thread).
     """
 
+    connection = None
+
     def __getattr__(self, name):
         raise RuntimeError(
             "Database connections in this thread (%s) are "
@@ -851,6 +853,10 @@ class DisabledDatabaseConnection:
             "Database connections in this thread (%s) are "
             "disabled." % threading.currentThread().name
         )
+
+    def close(self):
+        """Nothing to close on a disabled connection."""
+        return
 
 
 def disable_all_database_connections():

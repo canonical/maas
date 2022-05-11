@@ -6,7 +6,6 @@
 
 import json
 
-from crochet import wait_for
 from django.urls import reverse
 from testtools.matchers import (
     Equals,
@@ -26,6 +25,7 @@ from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maastesting.crochet import wait_for
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.utils.testing import MAASIDFixture
 
@@ -81,7 +81,7 @@ class RPCViewTest(MAASTransactionServerTestCase):
         getServiceNamed = eventloop.services.getServiceNamed
         ipcMaster = getServiceNamed("ipc-master")
 
-        @wait_for(5)
+        @wait_for()
         @inlineCallbacks
         def wait_for_startup():
             # Wait for the service to complete startup.

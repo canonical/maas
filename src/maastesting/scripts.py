@@ -9,6 +9,7 @@ from maasserver import execute_from_command_line
 from maasserver.utils import orm, threads
 from maastesting.noseplug import main as test_main
 from maastesting.parallel import main as test_parallel_main
+from maastesting.perftest import run_perf_tests
 from provisioningserver import logger
 
 
@@ -23,7 +24,7 @@ def init_asyncio_reactor():
 def inject_test_options(options):
     # set default verbosity
     options = options.copy()
-    options.append("--verbosity={}".format(1 if sys.stdout.isatty() else 2))
+    options.append(f"--verbosity={1 if sys.stdout.isatty() else 2}")
     sys.argv[1:1] = options
 
 
@@ -50,6 +51,8 @@ def run_region():
         "--select-dir=src/metadataserver",
         "--cover-package=maas,maasserver,metadataserver",
         "--cover-branches",
+        # exclude perf tests
+        "--exclude=perf",
         # Reduce the logging level to INFO here as
         # DebuggingLoggerMiddleware logs the content of all the
         # requests at DEBUG level: we don't want this in the
@@ -92,6 +95,8 @@ def run_region_legacy():
         "--select-dir=src/metadataserver",
         "--cover-package=maas,maasserver,metadataserver",
         "--cover-branches",
+        # exclude perf tests
+        "--exclude=perf",
         # Reduce the logging level to INFO here as DebuggingLoggerMiddleware
         # logs the content of all the requests at DEBUG level: we don't want
         # this in the tests as it's too verbose.
@@ -118,6 +123,8 @@ def run_rack():
         "--select-dir=src/provisioningserver",
         "--cover-package=provisioningserver",
         "--cover-branches",
+        # exclude perf tests
+        "--exclude=perf",
     ]
     inject_test_options(options)
     update_environ()
@@ -130,3 +137,12 @@ def run_parallel():
     init_asyncio_reactor()
     update_environ()
     test_parallel_main()
+
+
+def run_perf():
+    """Entry point for historical performance test runner."""
+
+    update_environ()
+    init_asyncio_reactor()
+
+    run_perf_tests(os.environ)

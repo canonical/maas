@@ -8,16 +8,16 @@ import os
 from pathlib import Path
 import random
 
-from crochet import wait_for
 from fixtures import EnvironmentVariableFixture
 from testtools.matchers import Contains, FileContains
 
+from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.proxy import config
 from provisioningserver.utils import snap
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestGetConfigDir(MAASTestCase):

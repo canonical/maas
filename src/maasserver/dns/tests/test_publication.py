@@ -6,7 +6,6 @@
 
 from datetime import datetime, timedelta
 
-from crochet import wait_for
 from pytz import UTC
 from testtools.matchers import LessThan, MatchesAll
 from twisted.internet.defer import fail, inlineCallbacks
@@ -15,6 +14,7 @@ from twisted.internet.task import Clock
 from maasserver.dns import publication
 from maasserver.models.dnspublication import DNSPublication
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -101,7 +101,7 @@ class TestDNSPublicationGarbageServiceWithDatabase(
 
     run_tests_with = MAASCrochetRunTest
 
-    @wait_for(30.0)
+    @wait_for()
     @inlineCallbacks
     def test_garbage_is_collected(self):
         dnsgc = publication.DNSPublicationGarbageService()

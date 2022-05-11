@@ -4,7 +4,6 @@
 """Tests for networks monitor."""
 
 
-from crochet import wait_for
 from twisted.internet import reactor
 from twisted.internet.defer import Deferred, inlineCallbacks, returnValue
 
@@ -14,6 +13,7 @@ from maasserver.regiondservices.networks_monitoring import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils import services
 from provisioningserver.utils.testing import MAASIDFixture
@@ -41,7 +41,7 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
         setattr(obj, call_name, wrapped_call)
         return deferred
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_logs_error_when_running_region_controller_cannot_be_found(self):
         service = RegionNetworksMonitoringService(
@@ -59,7 +59,7 @@ class TestRegionNetworksMonitoringService(MAASTransactionServerTestCase):
             logger.output,
         )
 
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_get_refresh_details_running(self):
         region = yield deferToDatabase(factory.make_RegionController)

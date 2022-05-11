@@ -9,7 +9,6 @@ import json
 import random
 from unittest.mock import MagicMock, sentinel
 
-from crochet import wait_for
 from django.core.exceptions import ValidationError
 from django.http import HttpRequest
 from testtools.matchers import Equals, Is
@@ -34,6 +33,7 @@ from maasserver.websockets.protocol import (
     WebSocketProtocol,
 )
 from maasserver.websockets.websockets import STATUSES
+from maastesting.crochet import wait_for
 from maastesting.factory import factory as maastesting_factory
 from maastesting.matchers import (
     IsFiredDeferred,
@@ -46,7 +46,7 @@ from provisioningserver.refresh.node_info_scripts import LSHW_OUTPUT_NAME
 from provisioningserver.utils.twisted import synchronous
 from provisioningserver.utils.url import splithost
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestWebSocketProtocol(MAASTransactionServerTestCase):

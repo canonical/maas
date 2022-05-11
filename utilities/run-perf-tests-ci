@@ -1,0 +1,31 @@
+#!/bin/bash
+#
+# Helpers to run performance tests in CI.
+
+set -o pipefail
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+cd "${SCRIPT_DIR}/.." || exit 1
+
+GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+GIT_HASH="$(git rev-parse HEAD)"
+
+PYTHONHASHSEED="${PYTHONHASHSEED:-$(shuf -i 0-4294967295 -n 1)}"
+MAAS_RAND_SEED="${MAAS_RAND_SEED:-$(od -vAn -N8 -tx8 < /dev/urandom | tr -d ' ')}"
+
+OUTPUT_FILE="${OUTPUT_FILE:-maas-perf-results.json}"
+
+export MAAS_RAND_SEED PYTHONHASHSEED GIT_HASH GIT_BRANCH OUTPUT_FILE
+
+echo "MAAS_RAND_SEED=${MAAS_RAND_SEED}"
+echo "PYTHONHASHSEED=${PYTHONHASHSEED}"
+
+bin/database --preserve run make syncdb || exit 1
+exec bin/database --preserve run -- bin/test.perf \
+    -q \
+    --disable-warnings \
+    --show-capture=no \
+    --no-header \
+    --no-summary \
+    --junit-xml=junit-perf.xml \
+    ./src/

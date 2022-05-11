@@ -8,11 +8,13 @@ from itertools import count
 import os
 from pathlib import Path
 import re
-from sys import __stderr__
+import sys
+from textwrap import dedent
 
 from postgresfixture import ClusterFixture
 import psycopg2
 from psycopg2.errorcodes import DUPLICATE_DATABASE
+from psycopg2.errors import ObjectInUse
 from testresources import TestResourceManager
 
 here = Path(__file__).parent
@@ -35,7 +37,8 @@ else:
             for name, value in args.items()
         }
         print(
-            "<< " + message.format(**args) + " >>", file=__stderr__, flush=True
+            "<< " + message.format(**args) + " >>",
+            file=sys.stderr,
         )
 
 
@@ -47,6 +50,23 @@ class DatabaseClusterManager(TestResourceManager):
 
     def make(self, dependencies):
         cluster = ClusterFixture("db", preserve=True)
+        cluster.create()
+        postgres_path = Path(cluster.datadir)
+        postgres_conf = postgres_path / "postgresql.conf"
+        postgres_speed_conf = postgres_path / "postgresql.conf.speed"
+        if "postgresql.conf.speed" not in postgres_conf.read_text():
+            with postgres_conf.open("a") as fh:
+                fh.write("include = 'postgresql.conf.speed'\n")
+            with postgres_speed_conf.open("w") as fh:
+                fh.write(
+                    dedent(
+                        """\
+                    fsync = off
+                    full_page_writes = off
+                    synchronous_commit = off
+                    """
+                    )
+                )
         cluster.setUp()
         return cluster
 
@@ -100,19 +120,14 @@ class DjangoPristineDatabaseManager(TestResourceManager):
             with conn.cursor() as cursor:
                 for database in databases:
                     dbname = database["NAME"] + "_test"
-                    stmt = "CREATE DATABASE %s" % dbname
                     try:
-                        cursor.execute(stmt)
+                        cursor.execute(f"CREATE DATABASE {dbname}")
                     except psycopg2.ProgrammingError as error:
                         if error.pgcode != DUPLICATE_DATABASE:
                             raise
                     else:
                         created.add(dbname)
-                        debug(
-                            "Created {dbname}; statement: {stmt}",
-                            dbname=dbname,
-                            stmt=stmt,
-                        )
+                        debug(f"Created {dbname}")
                     database["NAME"] = dbname
 
         # Attempt to populate these databases from a dumped database script.
@@ -184,6 +199,10 @@ class DjangoDatabasesManager(TestResourceManager):
 
     resources = (("templates", DjangoPristineDatabaseManager()),)
 
+    DB_NAME_REGEX = re.compile(
+        r"^(?P<template>.+)_(?P<pid>\d+)_(?P<suffix>\d+)$"
+    )
+
     def __init__(self, assume_dirty=True):
         super().__init__()
         self._count = count(1)
@@ -196,25 +215,20 @@ class DjangoDatabasesManager(TestResourceManager):
             with conn.cursor() as cursor:
                 for database in databases:
                     template = database["NAME"]
-                    dbname = "%s_%d_%d" % (
-                        template,
-                        os.getpid(),
-                        next(self._count),
-                    )
-                    stmt = "CREATE DATABASE %s WITH TEMPLATE %s" % (
-                        dbname,
-                        template,
-                    )
+                    suffix = next(self._count)
+                    dbname = f"{template}_{os.getpid()}_{suffix}"
+                    assert self.DB_NAME_REGEX.match(dbname), dbname
+                    stmt = f"CREATE DATABASE {dbname} WITH TEMPLATE {template}"
                     # Create the database with a shared lock to the cluster to
                     # avoid racing a DjangoPristineDatabaseManager.make in a
                     # concurrently running test process.
-                    with clusterlock.shared:
-                        cursor.execute(stmt)
-                    debug(
-                        "Created {dbname}; statement: {stmt}",
-                        dbname=dbname,
-                        stmt=stmt,
-                    )
+                    try:
+                        with clusterlock.shared:
+                            cursor.execute(stmt)
+                    except ObjectInUse:
+                        self._log_db_activity(cursor, template)
+                        raise
+                    debug(f"Created {dbname}; statement: {stmt}")
                     database["NAME"] = dbname
         return databases
 
@@ -224,10 +238,31 @@ class DjangoDatabasesManager(TestResourceManager):
             with conn.cursor() as cursor:
                 for database in databases:
                     dbname = database["NAME"]
-                    template = re.search(r"^(.+)_\d+_\d+$", dbname).group(1)
+                    maybe_match = re.search(self.DB_NAME_REGEX, dbname)
+                    assert (
+                        maybe_match is not None
+                    ), f"Unable to extract original name from {dbname}"
+                    template = maybe_match.group("template")
                     self._stopOtherActivity(cursor, dbname)
                     self._dropDatabase(cursor, dbname)
                     database["NAME"] = template
+
+    @staticmethod
+    def _log_db_activity(cursor, dbname):
+        cursor.execute(
+            "SELECT state, application_name, query_start, query "
+            "FROM pg_stat_activity WHERE datname = %s",
+            [dbname],
+        )
+        entries = list(cursor.fetchall())
+        if entries:
+            print(f"Activity on database {dbname}:", file=sys.stderr)
+            for entry in entries:
+                print(
+                    f"  {entry[0]} query '{entry[1]}' started at {entry[2]}"
+                    f" SQL: {entry[3]}",
+                    file=sys.stderr,
+                )
 
     @staticmethod
     def _stopOtherActivity(cursor, dbname):
@@ -247,9 +282,8 @@ class DjangoDatabasesManager(TestResourceManager):
     @staticmethod
     def _dropDatabase(cursor, dbname):
         """Drop the given database."""
-        stmt = "DROP DATABASE %s" % dbname
-        cursor.execute(stmt)
-        debug("Dropped {dbname}; statement: {stmt}", dbname=dbname, stmt=stmt)
+        cursor.execute(f"DROP DATABASE IF EXISTS {dbname}")
+        debug(f"Dropped {dbname}")
 
     def isDirty(self):
         return self.dirty

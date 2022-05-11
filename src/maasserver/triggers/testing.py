@@ -5,7 +5,6 @@
 `maasserver.triggers.tests`."""
 
 
-from crochet import wait_for
 from django.contrib.auth.models import User
 from piston3.models import Token
 from testtools.matchers import GreaterThan, Is, Not
@@ -56,9 +55,10 @@ from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory, RANDOM
 from maasserver.utils.orm import reload_object, transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from metadataserver.models import Script, ScriptSet
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 def apply_update(record, params):

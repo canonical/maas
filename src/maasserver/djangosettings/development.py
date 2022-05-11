@@ -18,6 +18,7 @@ from maasserver.djangosettings import (
 # to silence lint warnings: import_settings() below will actually re-set it
 # to a tuple as set in settings.INSTALLED_APPS, and TEMPLATES to a dict.
 INSTALLED_APPS = None
+MIGRATION_MODULES = {}
 TEMPLATES = {}
 
 # Extend base settings.
@@ -106,7 +107,10 @@ if prevent_migrations:
         "maasserver.tests": "maastesting.empty",
         "metadataserver": "maastesting.empty",
         "metadataserver.tests": "maastesting.empty",
+        "maastesting": "maastesting.empty",
     }
+else:
+    MIGRATION_MODULES["maastesting"] = "maastesting.migrations"
 
 PASSWORD_HASHERS = ("django.contrib.auth.hashers.MD5PasswordHasher",)
 

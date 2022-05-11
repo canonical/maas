@@ -6,7 +6,6 @@
 
 from unittest.mock import ANY
 
-from crochet import wait_for
 from twisted.internet import defer
 from twisted.internet.task import Clock
 
@@ -22,10 +21,11 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import post_commit_hooks, transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from provisioningserver.rpc.exceptions import UnknownPowerType
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestStatusQueryEvent(MAASServerTestCase):

@@ -7,7 +7,6 @@
 import random
 from unittest.mock import Mock
 
-from crochet import wait_for
 from testtools import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import fail, inlineCallbacks, succeed
@@ -33,6 +32,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.rpc.cluster import (
     PowerCycle,
@@ -44,7 +44,7 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 @transactional

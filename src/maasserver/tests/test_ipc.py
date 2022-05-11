@@ -10,7 +10,6 @@ import random
 from unittest.mock import MagicMock
 import uuid
 
-from crochet import wait_for
 from fixtures import EnvironmentVariableFixture
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
@@ -38,6 +37,7 @@ from maasserver.testing.orm import reload_objects
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.runtest import MAASCrochetRunTest
@@ -46,7 +46,7 @@ from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.utils import ipaddr
 from provisioningserver.utils.twisted import callOut, DeferredValue
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestGetIPCSocketPath(MAASTestCase):

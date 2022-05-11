@@ -8,7 +8,6 @@ import random
 import threading
 from unittest.mock import sentinel
 
-from crochet import wait_for
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -33,11 +32,12 @@ from maasserver.utils.dbtasks import (
     DatabaseTasksService,
 )
 from maasserver.utils.orm import transactional
+from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 def noop():

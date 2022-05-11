@@ -7,7 +7,6 @@
 import random
 from unittest.mock import Mock, sentinel
 
-from crochet import wait_for
 from testtools.matchers import Equals, Is, IsInstance, MatchesAny, MatchesDict
 from twisted.internet import reactor
 from twisted.internet.defer import (
@@ -33,6 +32,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maastesting.crochet import wait_for
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver.models import NodeKey
@@ -49,7 +49,7 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.rpc.exceptions import PodActionFail, UnknownPodType
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestDiscoverPodProjects(MAASTransactionServerTestCase):

@@ -35,9 +35,13 @@ snippets
 order_by_type = false
 
 [tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "maasserver.djangosettings.development"
 filterwarnings = "error::BytesWarning"
 testpaths = [
   "src/apiclient",
   "src/maascli",
   "src/maastesting"
+]
+markers = [
+    "perftest: marks tests for performance testing"
 ]

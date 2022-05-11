@@ -9,7 +9,6 @@ from datetime import datetime, timedelta
 import json
 import random
 
-from crochet import wait_for
 from django.db import connection as db_connection
 from netaddr import IPAddress
 from testtools import ExpectedException
@@ -47,10 +46,11 @@ from maasserver.triggers.testing import (
 )
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.utils.twisted import DeferredValue
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestCoreRegionRackRPCConnectionInsertListener(

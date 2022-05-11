@@ -38,7 +38,7 @@ from maasserver.testing.factory import factory, RANDOM, RANDOM_OR_NONE
 from maasserver.testing.orm import rollback
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one, reload_object
-from maastesting.djangotestcase import count_queries, CountQueries
+from maastesting.djangotestcase import count_queries
 from maastesting.matchers import DocTestMatches
 from provisioningserver.utils.network import inet_ntop, MAASIPRange
 
@@ -1177,9 +1177,8 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
                 subnet=subnet,
                 interface=node.interface_set.first(),
             )
-        with CountQueries() as counter:
-            subnet.render_json_for_related_ips()
-        self.assertEqual(9, counter.num_queries)
+        count, _ = count_queries(subnet.render_json_for_related_ips)
+        self.assertEqual(9, count)
 
 
 class TestSubnetGetRelatedRanges(MAASServerTestCase):

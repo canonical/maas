@@ -1,7 +1,6 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-from crochet import wait_for
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -11,6 +10,7 @@ from maasserver.regiondservices.version_update_check import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from provisioningserver.rackdservices import version_update_check
 from provisioningserver.utils.snap import (
     SnapChannel,
@@ -21,7 +21,7 @@ from provisioningserver.utils.testing import MAASIDFixture
 
 
 class TestRegionVersionUpdateCheckService(MAASTransactionServerTestCase):
-    @wait_for(30)
+    @wait_for()
     @inlineCallbacks
     def test_update_version(self):
         region = yield deferToDatabase(factory.make_RegionController)

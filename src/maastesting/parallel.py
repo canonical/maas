@@ -6,7 +6,6 @@
 import abc
 import argparse
 import copy
-import io
 import os
 import queue
 import re
@@ -62,7 +61,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         return command
 
     def run(self, result):
-        with tempfile.NamedTemporaryFile() as log:
+        with tempfile.NamedTemporaryFile(prefix="maas-parallel-test") as log:
             try:
                 okay = self._run(result, log)
             except Exception:
@@ -97,7 +96,7 @@ class TestScriptBase(metaclass=abc.ABCMeta):
         # Run the script in a subprocess, capturing subunit output if
         # with_subunit is set.
         pread, pwrite = os.pipe()
-        with io.open(pread, "rb") as preader:
+        with open(pread, "rb") as preader:
             try:
                 args = [self.script]
                 if self.with_subunit:

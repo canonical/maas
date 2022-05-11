@@ -8,7 +8,6 @@ import random
 from textwrap import dedent
 from unittest.mock import Mock
 
-from crochet import wait_for
 from netaddr import IPNetwork
 from testtools.matchers import Equals, MatchesStructure
 from twisted.internet.defer import inlineCallbacks
@@ -21,6 +20,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,
@@ -28,7 +28,7 @@ from maastesting.matchers import (
 )
 from maastesting.twisted import TwistedLoggerFixture
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 class TestActiveDiscoveryService(MAASTransactionServerTestCase):

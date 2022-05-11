@@ -43,6 +43,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import (
     MockCalledOnce,
     MockCalledOnceWith,
@@ -65,7 +66,7 @@ from provisioningserver.drivers.pod import (
 )
 from provisioningserver.enum import MACVLAN_MODE, MACVLAN_MODE_CHOICES
 
-wait_for_reactor = crochet.wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 SAMPLE_CERT = Certificate.generate("maas-vmcluster")
 
 

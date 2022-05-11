@@ -8,7 +8,6 @@ from collections import namedtuple
 import errno
 from unittest.mock import ANY, call, MagicMock, Mock, sentinel
 
-from crochet import wait_for
 from django.db import connection
 from psycopg2 import OperationalError
 from testtools import ExpectedException
@@ -42,6 +41,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
+from maastesting.crochet import wait_for
 from maastesting.matchers import (
     DocTestMatches,
     MockCalledOnceWith,
@@ -52,7 +52,7 @@ from maastesting.matchers import (
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.utils.twisted import DeferredValue
 
-wait_for_reactor = wait_for(30)  # 30 seconds.
+wait_for_reactor = wait_for()
 
 
 FakeNotify = namedtuple("FakeNotify", ["channel", "payload"])
