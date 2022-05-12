@@ -3908,7 +3908,7 @@ class TestAnonymousAPI(MAASServerTestCase):
             response,
         )
 
-    def test_anonymous_get_enlist_preseed_uses_build_absolute_uri(self):
+    def test_anonymous_get_enlist_preseed_uses_rack_url(self):
         url = "http://%s" % factory.make_name("host")
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
@@ -3932,7 +3932,7 @@ class TestAnonymousAPI(MAASServerTestCase):
         # `build_absolute_uri` is used on the test.
         self.assertThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Contains("http://testserver/MAAS/"),
+            Contains(f"http://{rack.fqdn}:5248/MAAS/"),
         )
 
     def test_anonymous_get_enlist_preseed_uses_detected_region_ip(self):

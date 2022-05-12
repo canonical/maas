@@ -6,6 +6,7 @@
 
 from base64 import b64encode
 from crypt import crypt
+from ipaddress import ip_address
 from itertools import chain
 from os import urandom
 import pkgutil
@@ -72,7 +73,12 @@ def get_node_maas_url(node):
 
 
 def get_node_rack_url(node):
-    return f"http://{node.boot_cluster_ip}:5248/MAAS"
+    host = (
+        str(node.boot_cluster_ip)
+        if ip_address(node.boot_cluster_ip).version == 4
+        else f"[{node.boot_cluster_ip}]"
+    )
+    return f"http://{host}:5248/MAAS"
 
 
 def generate_system_info(node):

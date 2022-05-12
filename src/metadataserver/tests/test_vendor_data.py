@@ -744,6 +744,8 @@ class TestGenerateHardwareSyncSystemdConfiguration(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING,
             enable_hw_sync=True,
         )
+        node.boot_cluster_ip = factory.make_ip_address()
+        node.save()
         config = generate_hardware_sync_systemd_configuration(node)
         expected_interval = Config.objects.get_config("hardware_sync_interval")
 

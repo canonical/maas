@@ -20,6 +20,7 @@ import yaml
 from maasserver import logger
 from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
+    build_metadata_url,
     compose_debconf_cloud_init_preseed,
     compose_enlistment_preseed,
     compose_preseed,
@@ -93,14 +94,17 @@ def get_enlist_preseed(request, rack_controller=None):
 
 def curtin_maas_reporter(request, node, events_support=True):
     token = NodeKey.objects.get_token_for_node(node)
+    rack_controller = node.get_boot_rack_controller()
     if events_support:
+        route = reverse("metadata-status", args=[node.system_id])
+        reporter_url = build_metadata_url(
+            request, route, rack_controller, node=node
+        )
         return {
             "reporting": {
                 "maas": {
                     "type": "webhook",
-                    "endpoint": request.build_absolute_uri(
-                        reverse("metadata-status", args=[node.system_id])
-                    ),
+                    "endpoint": reporter_url,
                     "consumer_key": token.consumer.key,
                     "token_key": token.key,
                     "token_secret": token.secret,
@@ -114,13 +118,14 @@ def curtin_maas_reporter(request, node, events_support=True):
         }
     else:
         version = "latest"
+        route = reverse("curtin-metadata-version", args=[version])
+        reporter_url = build_metadata_url(
+            request, route, rack_controller, node=node, extra="?op=signal"
+        )
         return {
             "reporter": {
                 "maas": {
-                    "url": request.build_absolute_uri(
-                        reverse("curtin-metadata-version", args=[version])
-                    )
-                    + "?op=signal",
+                    "url": reporter_url,
                     "consumer_key": token.consumer.key,
                     "token_key": token.key,
                     "token_secret": token.secret,
@@ -145,15 +150,19 @@ def get_curtin_cloud_config(request, node):
     """Compose the curtin cloud-config, which is only applied to
     Ubuntu core (by curtin)."""
     token = NodeKey.objects.get_token_for_node(node)
+    rack_controller = node.get_boot_rack_controller()
+    route = reverse("metadata")
+    metadata_url = build_metadata_url(
+        request, route, rack_controller, node=node
+    )
+
     datasource = {
         "datasource": {
             "MAAS": {
                 "consumer_key": token.consumer.key,
                 "token_key": token.key,
                 "token_secret": token.secret,
-                "metadata_url": request.build_absolute_uri(
-                    reverse("metadata")
-                ),
+                "metadata_url": metadata_url,
             }
         }
     }
@@ -920,8 +929,10 @@ def get_node_preseed_context(request, node, osystem="", release=""):
     :return: The context dictionary.
     :rtype: dict.
     """
-    node_disable_pxe_url = request.build_absolute_uri(
-        reverse("metadata-node-by-id", args=["latest", node.system_id])
+    rack_controller = node.get_boot_rack_controller()
+    route = reverse("metadata-node-by-id", args=["latest", node.system_id])
+    node_disable_pxe_url = build_metadata_url(
+        request, route, rack_controller, node=node
     )
     node_disable_pxe_data = urlencode({"op": "netboot_off"})
     driver = get_third_party_driver(node, series=release)

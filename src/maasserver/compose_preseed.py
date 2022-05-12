@@ -5,6 +5,7 @@
 
 
 from datetime import timedelta
+from ipaddress import ip_address
 from urllib.parse import urlencode
 
 from django.urls import reverse
@@ -27,6 +28,24 @@ from provisioningserver.utils.url import compose_URL
 
 # Default port for RSYSLOG
 RSYSLOG_PORT = 5247
+
+# Default port for rack controller proxy
+RACK_CONTROLLER_PORT = 5248
+
+
+def build_metadata_url(request, route, rack_controller, node=None, extra=""):
+    host = rack_controller.fqdn if rack_controller else ""
+    if node and node.boot_cluster_ip:
+        host = (
+            str(node.boot_cluster_ip)
+            if ip_address(node.boot_cluster_ip).version == 4
+            else f"[{node.boot_cluster_ip}]"
+        )
+    return (
+        request.build_absolute_uri(route) + extra
+        if not host
+        else f"{request.scheme}://{host}:{RACK_CONTROLLER_PORT}{route}{extra}"
+    )
 
 
 def get_apt_proxy(request, rack_controller=None, node=None):
@@ -290,12 +309,13 @@ def get_enlist_archive_config(apt_proxy=None):
 
 def get_cloud_init_reporting(request, node, token):
     """Return the cloud-init metadata to enable reporting"""
+    route = reverse("metadata-status", args=[node.system_id])
     return {
         "reporting": {
             "maas": {
                 "type": "webhook",
-                "endpoint": request.build_absolute_uri(
-                    reverse("metadata-status", args=[node.system_id])
+                "endpoint": build_metadata_url(
+                    request, route, node.get_boot_rack_controller(), node=node
                 ),
                 "consumer_key": token.consumer.key,
                 "token_key": token.key,
@@ -434,6 +454,8 @@ def compose_debconf_cloud_init_preseed(request, node, token):
     # this is debconf escaping
     local_config = local_config_yaml.replace("\\", "\\\\").replace("\n", "\\n")
 
+    route = reverse("metadata")
+
     # Preseed data to send to cloud-init.  We set this as MAAS_PRESEED in
     # ks_meta, and it gets fed straight into debconf.
     preseed_items = [
@@ -441,7 +463,9 @@ def compose_debconf_cloud_init_preseed(request, node, token):
         (
             "maas-metadata-url",
             "string",
-            request.build_absolute_uri(reverse("metadata")),
+            build_metadata_url(
+                request, route, node.get_boot_rack_controller(), node=node
+            ),
         ),
         ("maas-metadata-credentials", "string", credentials),
         ("local-cloud-config", "string", local_config),
@@ -456,7 +480,10 @@ def compose_debconf_cloud_init_preseed(request, node, token):
 
 def compose_commissioning_preseed(request, node, token):
     """Compose the preseed value for a Commissioning node."""
-    metadata_url = request.build_absolute_uri(reverse("metadata"))
+    route = reverse("metadata")
+    metadata_url = build_metadata_url(
+        request, route, node.get_boot_rack_controller(), node=node
+    )
     if node.status == NODE_STATUS.DISK_ERASING:
         poweroff_timeout = timedelta(days=7).total_seconds()  # 1 week
     else:
@@ -472,7 +499,10 @@ def compose_commissioning_preseed(request, node, token):
 
 def compose_curtin_preseed(request, node, token):
     """Compose the preseed value for a node being installed with curtin."""
-    metadata_url = request.build_absolute_uri(reverse("curtin-metadata"))
+    route = reverse("curtin-metadata")
+    metadata_url = build_metadata_url(
+        request, route, node.get_boot_rack_controller(), node=node
+    )
     return _compose_cloud_init_preseed(request, node, token, metadata_url)
 
 
@@ -560,11 +590,13 @@ def _compose_cloud_init_preseed(
     return "#cloud-config\n%s" % yaml.safe_dump(cloud_config)
 
 
-def _get_metadata_url(request, preseed_type):
+def _get_metadata_url(request, preseed_type, node):
+    route = reverse("metadata")
     if preseed_type == PRESEED_TYPE.CURTIN:
-        return request.build_absolute_uri(reverse("curtin-metadata"))
-    else:
-        return request.build_absolute_uri(reverse("metadata"))
+        route = reverse("curtin-metadata")
+    return build_metadata_url(
+        request, route, node.get_boot_rack_controller(), node=node
+    )
 
 
 def compose_preseed(request, preseed_type, node):
@@ -587,7 +619,7 @@ def compose_preseed(request, preseed_type, node):
     if preseed_type == PRESEED_TYPE.COMMISSIONING:
         return compose_commissioning_preseed(request, node, token)
     else:
-        metadata_url = _get_metadata_url(request, preseed_type)
+        metadata_url = _get_metadata_url(request, preseed_type, node)
         try:
             return get_preseed_data(preseed_type, node, token, metadata_url)
         except NotImplementedError:
@@ -628,14 +660,15 @@ def compose_enlistment_preseed(request, rack_controller, context):
         to access the metadata service: its URL and auth token.
     """
     cloud_config = get_base_preseed()
+    route = reverse("metadata")
     cloud_config.update(
         {
             "datasource": {
                 "MAAS": {
-                    "metadata_url": request.build_absolute_uri(
-                        reverse("metadata")
-                    )
-                }
+                    "metadata_url": build_metadata_url(
+                        request, route, rack_controller
+                    ),
+                },
             },
             "rsyslog": {"remotes": {"maas": context["syslog_host_port"]}},
             "power_state": {

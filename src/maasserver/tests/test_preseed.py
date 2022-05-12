@@ -5,6 +5,7 @@
 
 
 import http.client
+from ipaddress import ip_address
 import json
 import os
 from pipes import quote
@@ -693,7 +694,9 @@ class TestRenderPreseed(
         self.assertThat(
             preseed.decode("utf-8"),
             MatchesAll(
-                Contains(request.build_absolute_uri("/")),
+                Contains(
+                    f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248/"
+                ),
                 Not(Contains(maas_url)),
             ),
         )
@@ -739,7 +742,7 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             )
         )
         self.assertEqual(
-            request.build_absolute_uri("/MAAS/metadata/"),
+            f"{request.scheme}://{rack_controller.fqdn}:5248/MAAS/metadata/",
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
         self.assertEqual(
@@ -749,6 +752,19 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             ],
             preseed["packages"],
         )
+
+
+# simulate nginx's proxying at the rack controller
+def _simulate_proxy(request, original_host, upstream_host, upstream_port):
+    new_request = make_HttpRequest(
+        server_name=upstream_host,
+        server_port=upstream_port,
+        http_host=original_host,
+    )
+    new_request.META["HTTP_X_FORWARDED_HOST"] = original_host
+    new_request.META["HTTP_X_FORWARDED_SERVER"] = original_host
+    new_request.META["HTTP_X_FORWARDED_PROTO"] = original_host
+    return new_request
 
 
 class TestComposeCurtinMAASReporter(MAASServerTestCase):
@@ -763,9 +779,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         reporter = curtin_maas_reporter(request, node, True)
         self.assertEqual({"reporting", "install"}, reporter.keys())
         self.assertEqual(
-            request.build_absolute_uri(
-                reverse("metadata-status", args=[node.system_id])
-            ),
+            f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248{reverse('metadata-status', args=[node.system_id])}",
             reporter["reporting"]["maas"]["endpoint"],
         )
         self.assertEqual("webhook", reporter["reporting"]["maas"]["type"])
@@ -798,10 +812,7 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
         reporter = curtin_maas_reporter(request, node, False)
         self.assertEqual(["reporter"], list(reporter.keys()))
         self.assertEqual(
-            request.build_absolute_uri(
-                reverse("curtin-metadata-version", args=["latest"])
-            )
-            + "?op=signal",
+            f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248{reverse('curtin-metadata-version', args=['latest'])}?op=signal",
             reporter["reporter"]["maas"]["url"],
         )
         self.assertEqual(
@@ -825,6 +836,47 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
 
         else:
             self.assertEqual({"reporter"}, reporter.keys())
+
+    def test_curtin_maas_reporter_uses_rack_controller_url(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        region_rack_controller = factory.make_RegionRackController()
+        factory.make_Interface(
+            ip=subnet1.get_next_ip_for_allocation(),
+            node=region_rack_controller,
+        )
+        rack_controller = factory.make_RackController()
+        factory.make_Interface(
+            ip=subnet1.get_next_ip_for_allocation(), node=rack_controller
+        )
+        rack_ip = subnet2.get_next_ip_for_allocation()
+        factory.make_Interface(ip=rack_ip, node=rack_controller)
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, primary_rack=rack_controller
+        )
+        machine.boot_cluster_ip = rack_ip
+        machine.save()
+
+        proxied_request = _simulate_proxy(
+            make_HttpRequest(
+                server_name=rack_controller.fqdn,
+                server_port=5248,
+                http_host=rack_controller.fqdn,
+            ),
+            rack_controller.fqdn,
+            region_rack_controller.fqdn,
+            5240,
+        )
+        reporter = curtin_maas_reporter(proxied_request, machine, False)
+        host = (
+            str(machine.boot_cluster_ip)
+            if ip_address(machine.boot_cluster_ip).version == 4
+            else f"[{machine.boot_cluster_ip}]"
+        )
+        self.assertEqual(
+            f"http://{host}:5248{reverse('curtin-metadata-version', args=['latest'])}?op=signal",
+            reporter["reporter"]["maas"]["url"],
+        )
 
 
 class TestComposeCurtinCloudConfig(MAASServerTestCase):
@@ -851,6 +903,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
     def test_get_curtin_cloud_config_includes_cloudconfig(self):
         owner = factory.make_User()
         node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
+        rack_controller = node.get_boot_rack_controller()
         token = NodeKey.objects.get_token_for_node(node)
         request = make_HttpRequest()
         config = get_curtin_cloud_config(request, node)
@@ -870,9 +923,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
                     "consumer_key": token.consumer.key,
                     "token_key": token.key,
                     "token_secret": token.secret,
-                    "metadata_url": request.build_absolute_uri(
-                        reverse("metadata")
-                    ),
+                    "metadata_url": f"http://{rack_controller.fqdn}:5248{reverse('metadata')}",
                 }
             }
         }
@@ -881,9 +932,7 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             "reporting": {
                 "maas": {
                     "type": "webhook",
-                    "endpoint": request.build_absolute_uri(
-                        reverse("metadata-status", args=[node.system_id])
-                    ),
+                    "endpoint": f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('metadata-status', args=[node.system_id])}",
                     "consumer_key": token.consumer.key,
                     "token_key": token.key,
                     "token_secret": token.secret,
@@ -918,6 +967,46 @@ class TestComposeCurtinCloudConfig(MAASServerTestCase):
             yaml.safe_load(config["cloudconfig"]["maas-reporting"]["content"]),
             Equals(reporting_config),
         )
+
+    def test_get_curtin_cloud_config_uses_rack_metadata_url(self):
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+        region_rack_controller = factory.make_RegionRackController()
+        factory.make_Interface(
+            ip=subnet1.get_next_ip_for_allocation(),
+            node=region_rack_controller,
+        )
+        rack_controller = factory.make_RackController()
+        factory.make_Interface(
+            ip=subnet1.get_next_ip_for_allocation(), node=rack_controller
+        )
+        rack_ip = subnet2.get_next_ip_for_allocation()
+        factory.make_Interface(ip=rack_ip, node=rack_controller)
+        machine = factory.make_Node_with_Interface_on_Subnet(
+            subnet=subnet2, primary_rack=rack_controller
+        )
+        machine.boot_cluster_ip = rack_ip
+        machine.save()
+
+        proxied_request = _simulate_proxy(
+            make_HttpRequest(
+                server_name=rack_controller.fqdn,
+                server_port=5248,
+                http_host=rack_controller.fqdn,
+            ),
+            rack_controller.fqdn,
+            region_rack_controller.fqdn,
+            5240,
+        )
+        config = get_curtin_cloud_config(proxied_request, machine)
+        cloud_config = yaml.safe_load(
+            config["cloudconfig"]["maas-cloud-config"]["content"]
+        )
+        metadata_url = urlparse(
+            cloud_config["datasource"]["MAAS"]["metadata_url"]
+        )
+        self.assertEqual(metadata_url.hostname, str(machine.boot_cluster_ip))
+        self.assertEqual(metadata_url.port, 5248)
 
 
 class TestComposeCurtinSwapSpace(MAASServerTestCase):
@@ -1399,9 +1488,7 @@ class TestCurtinUtilities(
         config = get_curtin_config(request, node)
         yaml_conf = yaml.safe_load(config)
         self.assertEqual(
-            request.build_absolute_uri(
-                "/MAAS/metadata/latest/by-id/%s/" % node.system_id
-            ),
+            f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248/MAAS/metadata/latest/by-id/{node.system_id}/",
             yaml_conf["late_commands"]["maas"][2],
         )
         self.assertTrue("debconf_selections" in yaml_conf)
@@ -2319,7 +2406,7 @@ class TestPreseedMethods(
         self.configure_get_boot_images_for_node(node, "xinstall")
         request = make_HttpRequest()
         preseed = get_preseed(request, node)
-        curtin_url = request.build_absolute_uri(reverse("curtin-metadata"))
+        curtin_url = f"{request.scheme}://{node.get_boot_rack_controller().fqdn}:5248/MAAS/metadata/curtin"
         self.assertIn(curtin_url.encode("utf-8"), preseed)
 
     def test_get_enlist_preseed_returns_enlist_preseed(self):

@@ -1,6 +1,7 @@
 # Copyright 2012-2021 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+from ipaddress import ip_address
 import random
 
 from django.urls import reverse
@@ -15,6 +16,7 @@ from testtools.matchers import (
 import yaml
 
 from maasserver.compose_preseed import (
+    build_metadata_url,
     compose_enlistment_preseed,
     compose_preseed,
     get_apt_proxy,
@@ -583,13 +585,11 @@ class TestComposePreseed(MAASServerTestCase):
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
         )
         self.assertEqual(
-            request.build_absolute_uri(reverse("metadata")),
+            f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('metadata')}",
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
         self.assertEqual(
-            request.build_absolute_uri(
-                reverse("metadata-status", args=[node.system_id])
-            ),
+            f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('metadata-status', args=[node.system_id])}",
             preseed["reporting"]["maas"]["endpoint"],
         )
 
@@ -607,13 +607,11 @@ class TestComposePreseed(MAASServerTestCase):
             compose_preseed(request, PRESEED_TYPE.COMMISSIONING, node)
         )
         self.assertEqual(
-            request.build_absolute_uri(reverse("metadata")),
+            f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('metadata')}",
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
         self.assertEqual(
-            request.build_absolute_uri(
-                reverse("metadata-status", args=[node.system_id])
-            ),
+            f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('metadata-status', args=[node.system_id])}",
             preseed["reporting"]["maas"]["endpoint"],
         )
 
@@ -871,7 +869,7 @@ class TestComposePreseed(MAASServerTestCase):
             preseed["power_state"],
         )
         self.assertEqual(
-            request.build_absolute_uri(reverse("curtin-metadata")),
+            f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('curtin-metadata')}",
             preseed["datasource"]["MAAS"]["metadata_url"],
         )
         self.assertAptConfig(preseed, expected_apt_proxy)
@@ -986,7 +984,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.useFixture(RunningClusterRPCFixture())
         token = NodeKey.objects.get_token_for_node(node)
         request = make_HttpRequest()
-        expected_url = request.build_absolute_uri(reverse("curtin-metadata"))
+        expected_url = f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('curtin-metadata')}"
         compose_preseed(request, PRESEED_TYPE.CURTIN, node)
         self.assertThat(
             compose_preseed_mock,
@@ -1060,9 +1058,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertDictEqual(
             {
                 "MAAS": {
-                    "metadata_url": request.build_absolute_uri(
-                        reverse("metadata")
-                    )
+                    "metadata_url": f"{request.scheme}://{rack_controller.fqdn}:5248{reverse('metadata')}",
                 }
             },
             preseed["datasource"],
@@ -1193,3 +1189,80 @@ class TestComposePreseed(MAASServerTestCase):
         )
         self.assertNotIn("restricted", preseed["apt"]["sources_list"])
         self.assertNotIn("multiverse", preseed["apt"]["sources_list"])
+
+    def test_compose_enlistment_preseed_uses_rack_controller_url(self):
+        rack_controller = factory.make_RackController()
+        request = make_HttpRequest()
+        url = factory.make_simple_http_url()
+        preseed = yaml.safe_load(
+            compose_enlistment_preseed(
+                request,
+                rack_controller,
+                {"metadata_enlist_url": url, "syslog_host_port": url},
+            )
+        )
+        self.assertEqual(
+            f"http://{rack_controller.fqdn}:5248/MAAS/metadata/",
+            preseed["datasource"]["MAAS"]["metadata_url"],
+        )
+
+
+class TestBuildMetadataURL(MAASServerTestCase):
+    def test_build_metadata_url_uses_original_request(self):
+        request = make_HttpRequest()
+        route = "/MAAS"
+        self.assertEqual(
+            build_metadata_url(request, route, None),
+            request.build_absolute_uri(route),
+        )
+
+    def test_build_metadata_url_uses_rack_controller_fqdn(self):
+        node = factory.make_Node()
+        controller = factory.make_RackController()
+        request = make_HttpRequest()
+        route = "/MAAS"
+        self.assertEqual(
+            f"{request.scheme}://{controller.fqdn}:5248/MAAS",
+            build_metadata_url(request, route, controller, node=node),
+        )
+
+    def test_build_metadata_url_uses_node_boot_cluster_ip(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        node.boot_cluster_ip = factory.make_ip_address()
+        node.save()
+        request = make_HttpRequest()
+        route = "/MAAS"
+        host = (
+            node.boot_cluster_ip
+            if ip_address(node.boot_cluster_ip).version == 4
+            else f"[{node.boot_cluster_ip}]"
+        )
+        self.assertEqual(
+            f"{request.scheme}://{host}:5248/MAAS",
+            build_metadata_url(
+                request, route, node.get_boot_rack_controller(), node=node
+            ),
+        )
+
+    def test_build_metadata_url_appends_extra(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        node.boot_cluster_ip = factory.make_ip_address()
+        node.save()
+        request = make_HttpRequest()
+        route = "/MAAS"
+        query = "?op=signal"
+        host = (
+            node.boot_cluster_ip
+            if ip_address(node.boot_cluster_ip).version == 4
+            else f"[{node.boot_cluster_ip}]"
+        )
+        self.assertEqual(
+            f"{request.scheme}://{host}:5248/MAAS?op=signal",
+            build_metadata_url(
+                request,
+                route,
+                node.get_boot_rack_controller(),
+                node=node,
+                extra=query,
+            ),
+        )
