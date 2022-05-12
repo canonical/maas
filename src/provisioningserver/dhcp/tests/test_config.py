@@ -629,6 +629,18 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
+
+            if method.user_class == "iPXE":
+                self.assertThat(
+                    output,
+                    Contains(f'option user-class = "{method.user_class}" or'),
+                )
+            elif method.user_class is not None:
+                self.assertThat(
+                    output,
+                    Contains(f'option user-class = "{method.user_class}" {{'),
+                )
+
             if method.path_prefix_http or method.http_url:
                 self.assertThat(output, Contains("http://%s:5248/" % ip))
             if method.path_prefix_force:
@@ -662,6 +674,21 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
+            if method.user_class == "iPXE":
+                self.assertThat(
+                    output,
+                    Contains(
+                        f'option dhcp6.user-class = "{method.user_class}" or'
+                    ),
+                )
+            elif method.user_class is not None:
+                self.assertThat(
+                    output,
+                    Contains(
+                        f'option dhcp6.user-class = "{method.user_class}" {{'
+                    ),
+                )
+
             if method.path_prefix_http or method.http_url:
                 self.assertThat(output, Contains("http://[%s]:5248/" % ip))
             if method.path_prefix_force:

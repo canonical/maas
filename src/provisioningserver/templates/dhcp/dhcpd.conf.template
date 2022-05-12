@@ -22,6 +22,15 @@ default-lease-time 600;
 max-lease-time 600;
 
 #
+# IPXE Options
+#
+option space ipxe;
+option ipxe-encap-opts code 175 = encapsulate ipxe;
+option ipxe.http      code 19 = unsigned integer 8;
+option ipxe.bzimage   code 24 = unsigned integer 8;
+option ipxe.efi       code 36 = unsigned integer 8;
+
+#
 # Global DHCP snippets
 #
 {{if len(global_dhcp_snippets) == 0}}

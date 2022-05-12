@@ -31,8 +31,14 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
     """
 {{if ipv6}}
 {{if user_class}}
+{{if user_class=="iPXE"}}
+  {{behaviour}} exists dhcp6.user-class and
+  option dhcp6.user-class = \"{{user_class}}\" or
+  (exists ipxe.http and ( exists ipxe.bzimage or exists ipxe.efi )) {
+{{else}}
 {{behaviour}} exists dhcp6.user-class and
   option dhcp6.user-class = \"{{user_class}}\" {
+{{endif}}
     # {{name}}
     option dhcp6.bootfile-url \"{{url}}\";
     {{if path_prefix_force}}
@@ -63,7 +69,11 @@ CONDITIONAL_BOOTLOADER = tempita.Template(
 {{endif}}
 {{else}}
 {{if user_class}}
-{{behaviour}} option user-class = \"{{user_class}}\" {
+{{if user_class=="iPXE"}}
+  {{behaviour}} option user-class = \"{{user_class}}\" or (exists ipxe.http and ( exists ipxe.bzimage or exists ipxe.efi )) {
+{{else}}
+  {{behaviour}} option user-class = \"{{user_class}}\" {
+{{endif}}
     # {{name}}
     filename \"{{bootloader}}\";
     {{if path_prefix}}
