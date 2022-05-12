@@ -45,7 +45,9 @@ install: $(MACHINE_RESOURCES_BINARIES)
 	install -t $(DESTDIR)/usr/share/maas/machine-resources -D $(MACHINE_RESOURCES_BINARIES)
 .PHONY: install
 
-vendor:
+vendor: vendor/modules.txt
+
+vendor/modules.txt: go.mod
 	go mod vendor
 
 update-deps:
