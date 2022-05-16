@@ -132,6 +132,40 @@ class TestVirtualMachineInterface(MAASServerTestCase):
         )
         self.assertEqual(vm_if1.mac_address, vm_if2.mac_address)
 
+    def test_objects_current_config(self):
+        node = factory.make_Node()
+        other_node_config = factory.make_NodeConfig(
+            node=node, name="deployment"
+        )
+        iface1 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth0",
+            node_config=node.current_config,
+        )
+        iface2 = factory.make_Interface(
+            INTERFACE_TYPE.PHYSICAL,
+            name="eth1",
+            node_config=other_node_config,
+        )
+        vm = factory.make_VirtualMachine()
+
+        vm_if1 = VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address=iface1.mac_address,
+            host_interface=iface1,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        VirtualMachineInterface.objects.create(
+            vm=vm,
+            mac_address=iface2.mac_address,
+            host_interface=iface2,
+            attachment_type=InterfaceAttachType.BRIDGE,
+        )
+        self.assertCountEqual(
+            VirtualMachineInterface.objects_current_config.filter(vm=vm),
+            [vm_if1],
+        )
+
 
 class TestVirtualMachineDisk(MAASServerTestCase):
     def test_unique_no_block_device(self):

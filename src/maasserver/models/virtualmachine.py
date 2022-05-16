@@ -92,8 +92,8 @@ class VirtualMachineInterfaceCurrentConfigManager(Manager):
             .filter(
                 Q(host_interface__isnull=True)
                 | Q(
-                    host_interface__node_config__in=F(
-                        "vm__bmc__hints__nodes__current_config"
+                    host_interface__node_config=F(
+                        "host_interface__node_config__node__current_config"
                     )
                 )
             )

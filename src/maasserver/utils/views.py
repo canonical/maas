@@ -63,13 +63,12 @@ def log_failed_attempt(request, attempt, elapsed, remaining, pause):
     )
 
 
-def log_final_failed_attempt(request, attempt, elapsed):
+def log_final_failed_attempt(request, attempt, elapsed, exc_info=None):
     """Log about the final failed attempt to answer the given request."""
     logger.error(
-        "Attempt #%d for %s failed; giving up (%.1fs elapsed in total)",
-        attempt,
-        request.path,
-        elapsed,
+        f"Attempt #{attempt} for {request.path} failed; "
+        f"giving up ({elapsed:.1f}s elapsed in total)",
+        exc_info=exc_info,
     )
 
 
@@ -147,6 +146,10 @@ class MAASDjangoTemplateResponse(SimpleTemplateResponse):
 class HttpResponseConflict(MAASDjangoTemplateResponse):
     status_code = int(http.client.CONFLICT)
     reason_phrase = http.client.responses[http.client.CONFLICT]
+
+    def __init__(self, response=None, exc_info=None):
+        super().__init__(response=response)
+        self.exc_info = exc_info
 
 
 class WebApplicationHandler(WSGIHandler):
@@ -243,18 +246,19 @@ class WebApplicationHandler(WSGIHandler):
         except SystemExit:
             raise
         except RetryTransaction:
-            response = HttpResponseConflict()
+            response = HttpResponseConflict(exc_info=sys.exc_info())
             self.__retry.add(response)
             return response
         except Exception as exc:
+            exc_info = sys.exc_info()
             if is_retryable_failure(exc):
-                response = HttpResponseConflict()
+                response = HttpResponseConflict(exc_info=exc_info)
                 self.__retry.add(response)
                 return response
             else:
                 logger.error(
                     "500 Internal Server Error @ %s" % request.path,
-                    exc_info=sys.exc_info(),
+                    exc_info=exc_info,
                 )
                 return HttpResponse(
                     content=str(exc).encode("utf-8"),
@@ -344,7 +348,10 @@ class WebApplicationHandler(WSGIHandler):
                     elapsed, remaining, wait = next(retry_details)
                     if attempt == retry_attempts or wait == 0:
                         # Time's up: this was the final attempt.
-                        log_final_failed_attempt(request, attempt, elapsed)
+                        exc_info = getattr(response, "exc_info", None)
+                        log_final_failed_attempt(
+                            request, attempt, elapsed, exc_info=exc_info
+                        )
                         conflict_response = HttpResponseConflict(response)
                         conflict_response.render()
                         return conflict_response

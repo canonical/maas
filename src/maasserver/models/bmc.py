@@ -1173,23 +1173,20 @@ class Pod(BMC):
             }
 
         iface_ids = set()
-        existing_vm_ifaces = list(
-            VirtualMachineInterface.objects_current_config.filter(vm=vm).all()
-        )
+        existing_vm_ifaces = {
+            iface.mac_address: iface
+            for iface in VirtualMachineInterface.objects_current_config.filter(
+                vm=vm
+            ).all()
+        }
         for discovered_interface in discovered_machine.interfaces:
-            found_iface = None
-            for existing_vm_iface in existing_vm_ifaces:
-                if discovered_interface.mac_address is not None:
-                    if (
-                        discovered_interface.mac_address
-                        == existing_vm_iface.mac_address
-                    ):
-                        found_iface = existing_vm_iface
-                        break
-            if found_iface is not None:
-                iface = found_iface
-                existing_vm_ifaces.remove(found_iface)
+            if discovered_interface.mac_address:
+                iface = existing_vm_ifaces.get(
+                    discovered_interface.mac_address
+                )
             else:
+                iface = None
+            if iface is None:
                 iface = VirtualMachineInterface.objects.create(
                     vm=vm,
                     mac_address=discovered_interface.mac_address,

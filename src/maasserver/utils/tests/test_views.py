@@ -1,9 +1,6 @@
 # Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for :py:module:`maasserver.utils.views`."""
-
-
 import http.client
 import io
 from itertools import count
@@ -439,8 +436,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         )
 
     def test_get_response_logs_retry_and_resets_request(self):
-        timeout = 1.0 + (random() * 99)
-        handler = views.WebApplicationHandler(2, timeout)
+        handler = views.WebApplicationHandler(attempts=2)
 
         def set_retry(request):
             response = HttpResponse(status=200)
@@ -459,14 +455,41 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         request.path = factory.make_name("path")
         handler.get_response(request)
 
-        self.expectThat(
-            views.log_failed_attempt,
-            MockCalledOnceWith(request, 1, ANY, ANY, ANY),
+        views.log_failed_attempt.assert_called_once_with(
+            request, 1, ANY, ANY, ANY
         )
-        self.expectThat(
-            views.log_final_failed_attempt, MockCalledOnceWith(request, 2, ANY)
+        views.log_final_failed_attempt.assert_called_once_with(
+            request, 2, ANY, exc_info=None
         )
-        self.expectThat(reset_request, MockCalledOnceWith(request))
+        reset_request.assert_called_once_with(request)
+
+    def test_get_response_logs_exception(self):
+        handler = views.WebApplicationHandler(attempts=2)
+
+        def set_retry(request):
+            response = HttpResponseConflict(exc_info=sentinel.exc_info)
+            handler._WebApplicationHandler__retry.add(response)
+            return response
+
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = set_retry
+
+        self.patch_autospec(views, "log_failed_attempt")
+        self.patch_autospec(views, "log_final_failed_attempt")
+        reset_request = self.patch_autospec(views, "reset_request")
+        reset_request.side_effect = lambda request: request
+
+        request = make_request()
+        request.path = factory.make_name("path")
+        handler.get_response(request)
+
+        views.log_failed_attempt.assert_called_once_with(
+            request, 1, ANY, ANY, ANY
+        )
+        views.log_final_failed_attempt.assert_called_once_with(
+            request, 2, ANY, exc_info=sentinel.exc_info
+        )
+        reset_request.assert_called_once_with(request)
 
     def test_get_response_up_calls_in_transaction(self):
         handler = views.WebApplicationHandler(2)
