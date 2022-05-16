@@ -589,7 +589,11 @@ class NodeHandler(TimestampedModelHandler):
             partition_table_type = partition_table.table_type
         else:
             partition_table_type = ""
-        is_boot = blockdevice.id == obj.get_boot_disk().id
+        is_boot = False
+        boot_disk = obj.get_boot_disk()
+        # there might not be any disk usable as boot disk
+        if boot_disk:
+            is_boot = blockdevice.id == boot_disk.id
         numa_node_index = (
             blockdevice.numa_node.index
             if hasattr(blockdevice, "numa_node")

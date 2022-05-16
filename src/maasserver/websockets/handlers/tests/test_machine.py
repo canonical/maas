@@ -78,6 +78,7 @@ from maasserver.permissions import NodePermission
 from maasserver.rbac import FakeRBACClient, rbac
 from maasserver.storage_layouts import (
     get_applied_storage_layout_for_node,
+    MIN_BOOT_PARTITION_SIZE,
     STORAGE_LAYOUT_CHOICES,
     VMFS6StorageLayout,
     VMFS7StorageLayout,
@@ -1038,6 +1039,18 @@ class TestMachineHandler(MAASServerTestCase):
             },
             handler.dehydrate_blockdevice(blockdevice, node),
         )
+
+    def test_dehydrate_block_device_no_boot_disk(self):
+        # regression test for LP:1952216
+        owner = factory.make_User()
+        node = factory.make_Node(owner=owner, with_boot_disk=False)
+        handler = MachineHandler(owner, {}, None)
+        # disk is too small to be a boot disk
+        size = MIN_BOOT_PARTITION_SIZE - 1024
+        blockdevice = factory.make_PhysicalBlockDevice(node=node, size=size)
+        result = handler.dehydrate_blockdevice(blockdevice, node)
+        # disk info gets serialized correctly
+        self.assertEqual(result["id"], blockdevice.id)
 
     def test_dehydrate_block_device_with_PhysicalBlockDevice_wo_ptable(self):
         owner = factory.make_User()
