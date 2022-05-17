@@ -543,7 +543,7 @@ class BMC(CleanSave, TimestampedModel):
 
     def is_accessible(self):
         """If the BMC is accessible by at least one rack controller."""
-        racks = self.get_usable_rack_controllers(with_connection=False)
+        racks = self.get_usable_rack_controllers(with_connection=True)
         return len(racks) > 0
 
     def update_routable_racks(
@@ -564,11 +564,12 @@ class BMC(CleanSave, TimestampedModel):
         from maasserver.models.node import RackController
 
         for rack_id in rack_ids:
+            rack = None
             try:
                 rack = RackController.objects.get(system_id=rack_id)
             except RackController.DoesNotExist:
                 # Possible it was delete before this call, but very very rare.
-                pass
+                continue
             BMCRoutableRackControllerRelationship(
                 bmc=self, rack_controller=rack, routable=routable
             ).save()

@@ -6099,6 +6099,77 @@ class TestNode(MAASServerTestCase):
             interface, list(node.current_config.interface_set.all())
         )
 
+    def test_get_bmc_client_connection_info_layer2(self):
+        admin = factory.make_admin()
+        subnet = factory.make_Subnet()
+
+        rack_controllers = [
+            factory.make_RackController(owner=admin) for _ in range(2)
+        ]
+        for rack_controller in rack_controllers:
+            ip = subnet.get_next_ip_for_allocation()
+            factory.make_Interface(node=rack_controller, ip=ip)
+
+        clients = [Mock() for _ in rack_controllers]
+        for i, rack_controller in enumerate(rack_controllers):
+            clients[i].ident = rack_controller.system_id
+
+        mock_getAllClients = self.patch(node_module, "getAllClients")
+        mock_getAllClients.return_value = clients
+
+        ip = subnet.get_next_ip_for_allocation()
+        ip_address = factory.make_StaticIPAddress(ip=ip)
+        bmc = factory.make_BMC(ip_address=ip_address)
+        node = factory.make_Node(bmc=bmc)
+        clients, _ = node._get_bmc_client_connection_info()
+        self.assertCountEqual(
+            [
+                rack_controller.system_id
+                for rack_controller in rack_controllers
+            ],
+            clients,
+        )
+
+    def test_get_bmc_client_connection_info_routable(self):
+        admin = factory.make_admin()
+        subnet1 = factory.make_Subnet()
+        subnet2 = factory.make_Subnet()
+
+        rack_controllers = [
+            factory.make_RackController(owner=admin) for _ in range(2)
+        ]
+        for rack_controller in rack_controllers:
+            ip = subnet1.get_next_ip_for_allocation()
+            factory.make_Interface(node=rack_controller, ip=ip)
+
+        clients = [Mock() for _ in rack_controllers]
+        for i, rack_controller in enumerate(rack_controllers):
+            clients[i].ident = rack_controller.system_id
+
+        mock_getAllClients_node = self.patch(node_module, "getAllClients")
+        mock_getAllClients_node.return_value = clients
+        mock_getAllClients_bmc = self.patch(bmc_module, "getAllClients")
+        mock_getAllClients_bmc.return_value = clients
+
+        ip = subnet2.get_next_ip_for_allocation()
+        ip_address = factory.make_StaticIPAddress(ip=ip, subnet=subnet2)
+        bmc = factory.make_BMC(ip_address=ip_address)
+        node = factory.make_Node(bmc=bmc)
+        [
+            BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack_controller, routable=True
+            ).save()
+            for rack_controller in rack_controllers
+        ]
+        clients, _ = node._get_bmc_client_connection_info()
+        self.assertCountEqual(
+            [
+                rack_controller.system_id
+                for rack_controller in rack_controllers
+            ],
+            clients,
+        )
+
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):
@@ -6372,6 +6443,119 @@ class TestNodePowerParameters(MAASServerTestCase):
         node.last_sync = now - (2 * timedelta(seconds=node.sync_interval))
         node.save()
         self.assertFalse(node.is_sync_healthy)
+
+
+class TestPowerControlNode(MAASTransactionServerTestCase):
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_power_control_node_updates_routable_rack_controllers(self):
+        bmc = yield deferToDatabase(factory.make_BMC)
+        node = yield deferToDatabase(
+            factory.make_Node_with_Interface_on_Subnet, bmc=bmc
+        )
+        rack_ip = yield deferToDatabase(factory.make_ip_address)
+        rack_controller = yield deferToDatabase(node.get_boot_rack_controller)
+        yield deferToDatabase(
+            factory.make_Interface, node=rack_controller, ip=rack_ip
+        )
+
+        def _create_initial_relationship():
+            b = BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack_controller, routable=True
+            )
+            b.save()
+
+        yield deferToDatabase(_create_initial_relationship)
+
+        other_rack_controller = yield deferToDatabase(
+            factory.make_RackController
+        )
+
+        def _assert_no_routable():
+            self.assertRaises(
+                BMCRoutableRackControllerRelationship.DoesNotExist,
+                BMCRoutableRackControllerRelationship.objects.get,
+                bmc=node.bmc,
+                rack_controller=other_rack_controller,
+            )
+
+        yield deferToDatabase(_assert_no_routable)
+
+        client = Mock()
+        client.ident = other_rack_controller.system_id
+        self.patch(bmc_module, "getAllClients").return_value = [client]
+        self.patch(node_module, "getAllClients").return_value = [client]
+        client2 = Mock()
+        client2.return_value = defer.succeed({"missing_packages": []})
+        d1 = defer.succeed(client2)
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(node_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(
+            node_module, "power_query_all"
+        ).return_value = defer.succeed(
+            (POWER_STATE.ON, set([other_rack_controller.system_id]), set())
+        )
+
+        power_info = yield deferToDatabase(node.get_effective_power_info)
+        yield node._power_control_node(
+            defer.succeed(None), power_query, power_info
+        )
+
+        def _assert_routable():
+            self.assertTrue(
+                BMCRoutableRackControllerRelationship.objects.get(
+                    bmc=node.bmc, rack_controller=other_rack_controller
+                )
+            )
+
+        yield deferToDatabase(_assert_routable)
+
+    @wait_for_reactor
+    @defer.inlineCallbacks
+    def test_power_control_node_removes_non_routable_rack_controllers(self):
+        bmc = yield deferToDatabase(factory.make_BMC)
+        node = yield deferToDatabase(
+            factory.make_Node_with_Interface_on_Subnet, bmc=bmc
+        )
+        rack_ip = yield deferToDatabase(factory.make_ip_address)
+        rack_controller = yield deferToDatabase(node.get_boot_rack_controller)
+        yield deferToDatabase(
+            factory.make_Interface, node=rack_controller, ip=rack_ip
+        )
+
+        def _create_initial_relationship():
+            b = BMCRoutableRackControllerRelationship(
+                bmc=bmc, rack_controller=rack_controller, routable=True
+            )
+            b.save()
+
+        yield deferToDatabase(_create_initial_relationship)
+
+        self.patch(bmc_module, "getAllClients").return_value = []
+        self.patch(node_module, "getAllClients").return_value = []
+        client2 = Mock()
+        client2.return_value = defer.succeed({"missing_packages": []})
+        d1 = defer.succeed(client2)
+        self.patch(bmc_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(node_module, "getClientFromIdentifiers").return_value = d1
+        self.patch(
+            node_module, "power_query_all"
+        ).return_value = defer.succeed((POWER_STATE.ON, set(), set()))
+
+        power_info = yield deferToDatabase(node.get_effective_power_info)
+        yield node._power_control_node(
+            defer.succeed(None), power_query, power_info
+        )
+
+        def _assert_no_routable():
+            self.assertRaises(
+                BMCRoutableRackControllerRelationship.DoesNotExist,
+                BMCRoutableRackControllerRelationship.objects.get,
+                bmc=node.bmc,
+                rack_controller=rack_controller,
+            )
+
+        yield deferToDatabase(_assert_no_routable)
 
 
 class TestDecomposeMachineMixin:

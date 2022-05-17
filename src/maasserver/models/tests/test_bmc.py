@@ -559,7 +559,7 @@ class TestBMC(MAASServerTestCase):
         bmc.is_accessible()
         self.assertThat(
             mock_get_usable_rack_controllers,
-            MockCalledOnceWith(with_connection=False),
+            MockCalledOnceWith(with_connection=True),
         )
 
     def test_is_accessible_returns_true(self):
