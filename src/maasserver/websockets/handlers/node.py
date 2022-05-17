@@ -1116,40 +1116,6 @@ class NodeHandler(TimestampedModelHandler):
             suppressed=False
         )
 
-    def get_suppressible_script_results(self, params):
-        """Return a dictionary with Nodes system_ids mapped to lists of
-        ScriptResults that can still be suppressed."""
-        node_result_handler = NodeResultHandler(self.user, {}, None)
-        system_ids = params.get("system_ids")
-
-        script_results = (
-            ScriptResult.objects.filter(
-                status__in=SCRIPT_STATUS_FAILED,
-                script_set__node__system_id__in=system_ids,
-                suppressed=False,
-            )
-            .defer("output", "stdout", "stderr")
-            .prefetch_related("script", "script_set", "script_set__node")
-            .defer("script__parameters", "script__packages")
-            .defer("script_set__requested_scripts")
-        )
-
-        # Create the node to script result mappings.
-        script_result_mappings = {}
-        for script_result in script_results:
-            if script_result.script_set.node.system_id not in (
-                script_result_mappings
-            ):
-                script_result_mappings[
-                    script_result.script_set.node.system_id
-                ] = []
-            script_result_mappings[
-                script_result.script_set.node.system_id
-            ].append(
-                node_result_handler.dehydrate(script_result, {}, for_list=True)
-            )
-        return script_result_mappings
-
     def get_latest_failed_testing_script_results(self, params):
         """Return a dictionary with Nodes system_ids mapped to a list of
         the latest failed ScriptResults."""
