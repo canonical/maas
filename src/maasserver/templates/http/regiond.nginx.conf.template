@@ -109,6 +109,11 @@ server {
         try_files /$1 =404;
     }
 
+    # required for rackd to get images
+    location /MAAS/images-stream {
+        proxy_pass http://regiond-webapp;
+    }   
+
     location /MAAS {
         return 301 https://$host:{{tls_port}}$request_uri;
     }
