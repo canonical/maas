@@ -25,8 +25,22 @@
 # timeout: 60
 # --- End MAAS 1.0 script metadata ---
 
+declare -A ARCH_MAP=(
+    [aarch64]=arm64
+    [i686]=i386
+    [mips64]=mips64el
+    [mips]=mips
+    [ppc64le]=ppc64el
+    [s390x]=s390x
+    [x86_64]=amd64
+)
+
+debian_arch() {
+    echo "${ARCH_MAP[$(uname -m)]}"
+}
+
 resources_bin=$(mktemp)
-[ "$SNAP_ARCH" ] && arch="$SNAP_ARCH" || arch="$(dpkg --print-architecture)"
+[ "$SNAP_ARCH" ] && arch="$SNAP_ARCH" || arch="$(debian_arch)"
 wget "$MAAS_BASE_URL/MAAS/machine-resources/$arch" -O "$resources_bin" >&2
 chmod +x "$resources_bin"
 

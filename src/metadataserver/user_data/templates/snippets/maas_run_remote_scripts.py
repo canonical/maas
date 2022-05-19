@@ -55,6 +55,7 @@ try:
     from maas_api_helper import (
         capture_script_output,
         Config,
+        debian_architecture,
         get_base_url,
         geturl,
         MD_VERSION,
@@ -66,6 +67,7 @@ except ImportError:
     from snippets.maas_api_helper import (
         capture_script_output,
         Config,
+        debian_architecture,
         get_base_url,
         geturl,
         MD_VERSION,
@@ -961,11 +963,7 @@ def enlist(config, power_type=None, power_parameters=None):
     OAUTH credentials.
     """
     post_data = {
-        "architecture": check_output(
-            ["dpkg", "--print-architecture"], timeout=60
-        )
-        .decode()
-        .strip(),
+        "architecture": debian_architecture(),
         "mac_addresses": get_mac_addresses_for_enlistment(),
         "commission": True,
     }

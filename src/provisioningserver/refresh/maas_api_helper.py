@@ -10,6 +10,7 @@ import json
 import mimetypes
 import os
 from pathlib import Path
+import platform
 import random
 import re
 import selectors
@@ -148,6 +149,20 @@ class Config:
             data = Path(url).read_text()
 
         self.update(yaml.safe_load(data))
+
+
+def debian_architecture():
+    """Return the Debian architecture name for the machine."""
+    kernel_to_debian_arches = {
+        "i686": "i386",
+        "x86_64": "amd64",
+        "aarch64": "arm64",
+        "ppc64le": "ppc64el",
+        "s390x": "s390x",
+        "mips": "mips",
+        "mips64": "mips64el",
+    }
+    return kernel_to_debian_arches.get(platform.machine())
 
 
 def warn(msg):
