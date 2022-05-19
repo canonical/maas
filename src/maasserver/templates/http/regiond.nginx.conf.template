@@ -34,7 +34,7 @@ server {
         return 301 /MAAS/r/;
     }
 
-    location = /MAAS/ {
+    location ~ ^/MAAS/?$ {
         return 301 /MAAS/r/;
     }
 
