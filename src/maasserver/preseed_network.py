@@ -115,9 +115,9 @@ class InterfaceConfiguration:
                 )
             else:
                 routes = self.secondary_gateway_routes
-            if len(routes) > 0:
+            if routes:
                 self.config["routes"] = routes
-            if len(self.secondary_gateway_policies) > 0:
+            if self.secondary_gateway_policies:
                 self.config["routing-policy"] = self.secondary_gateway_policies
 
     def _generate_route_operations(self, matching_routes, version=1):
@@ -147,8 +147,6 @@ class InterfaceConfiguration:
             physical_operation.update(
                 {
                     "match": {"macaddress": str(self.iface.mac_address)},
-                    # Unclear what we want, so just let it be the default.
-                    # "wakeonlan": True,
                     "set-name": self.name,
                 }
             )
@@ -289,7 +287,7 @@ class InterfaceConfiguration:
         self.secondary_gateway_policies.append(
             {"from": str(network), "to": str(network), "table": 254}
         )
-        if len(self.matching_routes) > 0:
+        if self.matching_routes:
             for route in sorted(self.matching_routes, key=attrgetter("id")):
                 self.secondary_gateway_policies.append(
                     {
@@ -407,7 +405,7 @@ class InterfaceConfiguration:
                         v1_subnet_operation["dns_nameservers"].append(ip)
                         v2_nameservers["addresses"].append(ip)
 
-                    if len(matching_subnet_routes) > 0 and version == 1:
+                    if matching_subnet_routes and version == 1:
                         # For the v1 YAML, the list of routes is rendered
                         # within the context of each subnet.
                         routes = self._generate_route_operations(
@@ -492,7 +490,7 @@ class InterfaceConfiguration:
                 }
             )
             bond_params = get_netplan_bond_parameters(self._get_bond_params())
-            if len(bond_params) > 0:
+            if bond_params:
                 bond_operation["parameters"] = bond_params
             bond_operation.update(addrs)
         return bond_operation
@@ -536,7 +534,7 @@ class InterfaceConfiguration:
             bridge_params = get_netplan_bridge_parameters(
                 self._get_bridge_params(version=version)
             )
-            if len(bridge_params) > 0:
+            if bridge_params:
                 bridge_operation["parameters"] = bridge_params
             bridge_operation.update(addrs)
         return bridge_operation
@@ -705,13 +703,13 @@ class NodeNetworkConfiguration:
                 "network": {"version": 1, "config": self.v1_config}
             }
         else:
-            if len(self.v2_ethernets) > 0:
+            if self.v2_ethernets:
                 self.v2_config.append(("ethernets", self.v2_ethernets))
-            if len(self.v2_vlans) > 0:
+            if self.v2_vlans:
                 self.v2_config.append(("vlans", self.v2_vlans))
-            if len(self.v2_bonds) > 0:
+            if self.v2_bonds:
                 self.v2_config.append(("bonds", self.v2_bonds))
-            if len(self.v2_bridges) > 0:
+            if self.v2_bridges:
                 self.v2_config.append(("bridges", self.v2_bridges))
             self.set_v2_default_dns()
             network_config = {"network": OrderedDict(self.v2_config)}
@@ -732,13 +730,13 @@ class NodeNetworkConfiguration:
         """
         # See also:
         # https://git.launchpad.net/cloud-init/commit/?id=d29eeccd
-        if len(self.default_dns_servers) > 0:
+        if self.default_dns_servers:
             v2_default_nameservers = {}
-            if len(self.default_search_list) > 0:
+            if self.default_search_list:
                 v2_default_nameservers.update(
                     {"search": self.default_search_list}
                 )
-            if len(self.default_dns_servers) > 0:
+            if self.default_dns_servers:
                 v2_default_nameservers.update(
                     {"addresses": self.default_dns_servers}
                 )
