@@ -13,6 +13,7 @@ from twisted.internet.defer import inlineCallbacks
 
 from maasserver.listener import PostgresListenerService
 from maasserver.models.config import Config
+from maasserver.regiondservices import certificate_expiration_check
 from maasserver.service_monitor import service_monitor
 from maasserver.utils import load_template
 from maasserver.utils.threads import deferToDatabase
@@ -37,7 +38,7 @@ class RegionHTTPService(Service):
     def startService(self):
         config = yield deferToDatabase(self._getConfiguration)
         self._configure(config)
-        self._reload_service()
+        yield self._reload_service()
         super().startService()
         if self.listener is not None:
             self.listener.register("sys_reverse_proxy", self._consume_event)
@@ -110,11 +111,15 @@ class RegionHTTPService(Service):
         )
         return key_path, cert_path
 
+    @inlineCallbacks
     def _reload_service(self):
         if snap.running_in_snap():
             service_monitor.restartService("reverse_proxy")
         else:
             service_monitor.reloadService("reverse_proxy")
+        yield deferToDatabase(
+            certificate_expiration_check.check_tls_certificate
+        )
 
     @inlineCallbacks
     def _consume_event(self, channel, message):

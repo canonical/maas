@@ -8,7 +8,7 @@ from unittest.mock import call, Mock
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver.models.config import Config
-from maasserver.regiondservices import http
+from maasserver.regiondservices import certificate_expiration_check, http
 from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maasserver.triggers.testing import TransactionalHelpersMixin
 from maasserver.utils.threads import deferToDatabase
@@ -40,10 +40,14 @@ class TestRegionHTTPService(
         service = http.RegionHTTPService()
         mock_reloadService = self.patch(http.service_monitor, "reloadService")
         mock_configure = self.patch(service, "_configure")
+        mock_cert_check = self.patch(
+            certificate_expiration_check, "check_tls_certificate"
+        )
 
         m = Mock()
         m.attach_mock(mock_reloadService, "mock_reloadService")
         m.attach_mock(mock_configure, "mock_configure")
+        m.attach_mock(mock_cert_check, "mock_cert_check")
 
         yield from self.create_tls_config()
         yield service.startService()
@@ -55,6 +59,7 @@ class TestRegionHTTPService(
                 )
             ),
             call.mock_reloadService("reverse_proxy"),
+            call.mock_cert_check(),
         ]
         yield service.stopService()
         self.assertEqual(m.mock_calls, expected_calls)
@@ -69,10 +74,14 @@ class TestRegionHTTPService(
             http.service_monitor, "restartService"
         )
         mock_configure = self.patch(service, "_configure")
+        mock_cert_check = self.patch(
+            certificate_expiration_check, "check_tls_certificate"
+        )
 
         m = Mock()
         m.attach_mock(mock_restartService, "mock_restartService")
         m.attach_mock(mock_configure, "mock_configure")
+        m.attach_mock(mock_cert_check, "mock_cert_check")
 
         yield from self.create_tls_config()
         yield service.startService()
@@ -84,6 +93,7 @@ class TestRegionHTTPService(
                 )
             ),
             call.mock_restartService("reverse_proxy"),
+            call.mock_cert_check(),
         ]
         yield service.stopService()
         self.assertEqual(m.mock_calls, expected_calls)

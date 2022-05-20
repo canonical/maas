@@ -25,6 +25,82 @@ def clear_tls_notifications():
     ).delete()
 
 
+@transactional
+def check_tls_certificate():
+    config = Config.objects.get_configs(
+        [
+            "tls_key",
+            "tls_cert",
+            "tls_cert_expiration_notification_enabled",
+            "tls_cert_expiration_notification_interval",
+        ]
+    )
+
+    if not config["tls_cert_expiration_notification_enabled"]:
+        clear_tls_notifications()
+        return
+
+    if not config["tls_key"] and not config["tls_cert"]:
+        return
+
+    cert = Certificate.from_pem(config["tls_key"], config["tls_cert"])
+    if not cert.expiration:
+        return
+
+    interval = config["tls_cert_expiration_notification_interval"]
+    expire_in = (cert.expiration() - datetime.utcnow()).days
+
+    if expire_in <= 0:
+        # cert already expired. remove previous notification about
+        # "due to expire in {days}" and create "has expired"
+        Notification.objects.filter(
+            ident=REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT
+        ).delete()
+        message = (
+            "The TLS certificate has expired. "
+            "You can renew it following the "
+            "<a href='https://maas.io/docs/how-to-enable-tls-encryption"
+            "#heading--renew-your-tls-certificate'>renew certificate instructions</a>."
+        )
+        Notification.objects.update_or_create(
+            ident=REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
+            defaults={
+                "category": "warning",
+                "message": message,
+                "users": False,
+                "admins": True,
+                "dismissable": True,
+            },
+        )
+        return
+
+    if expire_in <= interval:
+        # The certificate is within the expiration window, warn about
+        # expiration and ensure there's no leftover "already expired"
+        # notification.
+        Notification.objects.filter(
+            ident=REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT
+        ).delete()
+        Notification.objects.update_or_create(
+            ident=REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
+            defaults={
+                "category": "info",
+                "message": "Your TLS certificate is due to expire in {days} days. Please, contact your admin to renew it.",
+                "users": False,
+                "admins": True,
+                "dismissable": True,
+                "context": {
+                    "days": expire_in,
+                },
+            },
+        )
+        return
+
+    # Certificate expires later than the interval, ensure there's no
+    # leftover notification
+    clear_tls_notifications()
+
+
 class CertificateExpirationCheckService(SingleInstanceService):
     """Periodically check TLS cert expiration."""
 
@@ -33,79 +109,4 @@ class CertificateExpirationCheckService(SingleInstanceService):
 
     @inlineCallbacks
     def do_action(self):
-        yield deferToDatabase(self._process)
-
-    @transactional
-    def _process(self):
-        config = Config.objects.get_configs(
-            [
-                "tls_key",
-                "tls_cert",
-                "tls_cert_expiration_notification_enabled",
-                "tls_cert_expiration_notification_interval",
-            ]
-        )
-
-        if not config["tls_cert_expiration_notification_enabled"]:
-            clear_tls_notifications()
-            return
-
-        if not config["tls_key"] and not config["tls_cert"]:
-            return
-
-        cert = Certificate.from_pem(config["tls_key"], config["tls_cert"])
-        if not cert.expiration:
-            return
-
-        interval = config["tls_cert_expiration_notification_interval"]
-        expire_in = (cert.expiration() - datetime.utcnow()).days
-
-        if expire_in <= 0:
-            # cert already expired. remove previous notification about
-            # "due to expire in {days}" and create "has expired"
-            Notification.objects.filter(
-                ident=REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT
-            ).delete()
-            message = (
-                "The TLS certificate has expired. "
-                "You can renew it following the "
-                "<a href='https://maas.io/docs/how-to-enable-tls-encryption"
-                "#heading--renew-your-tls-certificate'>renew certificate instructions</a>."
-            )
-            Notification.objects.update_or_create(
-                ident=REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT,
-                defaults={
-                    "category": "warning",
-                    "message": message,
-                    "users": False,
-                    "admins": True,
-                    "dismissable": True,
-                },
-            )
-            return
-
-        if expire_in <= interval:
-            # The certificate is within the expiration window, warn about
-            # expiration and ensure there's no leftover "already expired"
-            # notification.
-            Notification.objects.filter(
-                ident=REGIOND_CERT_EXPIRED_NOTIFICATION_IDENT
-            ).delete()
-            Notification.objects.update_or_create(
-                ident=REGIOND_CERT_EXPIRE_NOTIFICATION_IDENT,
-                defaults={
-                    "category": "info",
-                    "message": "Your TLS certificate is due to expire in {days} days. Please, contact your admin to renew it.",
-                    "users": False,
-                    "admins": True,
-                    "dismissable": True,
-                    "context": {
-                        "days": expire_in,
-                    },
-                },
-            )
-            return
-
-        # Certificate expires later than the interval, ensure there's no
-        # leftover notification
-        clear_tls_notifications()
+        yield deferToDatabase(check_tls_certificate)
