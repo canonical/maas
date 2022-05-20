@@ -2199,6 +2199,29 @@ class BondInterfaceTest(MAASServerTestCase):
         self.assertFalse(interface.is_enabled())
         self.assertFalse(reload_object(interface).enabled)
 
+    def test_create_bond_with_no_link_parents(self):
+        node = factory.make_Node()
+        parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent2 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
+        parent1.clear_all_links()
+        parent2.clear_all_links()
+        parent1.remove_link_dhcp()
+        parent2.remove_link_dhcp()
+        parent1.remove_link_up()
+        parent2.remove_link_up()
+        parent1.vlan = None
+        parent2.vlan = None
+        parent1.link_connected = False
+        parent2.link_connected = False
+        parent1.save()
+        parent2.save()
+        interface = factory.make_Interface(
+            INTERFACE_TYPE.BOND,
+            mac_address=factory.make_mac_address(),
+            parents=[parent1, parent2],
+        )
+        self.assertTrue(interface.link_connected)
+
 
 class BridgeInterfaceTest(MAASServerTestCase):
     def test_manager_returns_bridge_interfaces(self):

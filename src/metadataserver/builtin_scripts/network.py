@@ -388,9 +388,28 @@ def update_vlan_interface(node, name, network, links):
         if vlan is None:
             # Since no suitable VLAN is found, create a new one in the same
             # fabric as the parent interface.
-            vlan, _ = VLAN.objects.get_or_create(
-                fabric=parent_nic.vlan.fabric, vid=vid
-            )
+            if parent_nic.vlan:
+                vlan, _ = VLAN.objects.get_or_create(
+                    fabric=parent_nic.vlan.fabric, vid=vid
+                )
+            elif network["addresses"]:  # use IP address to find VLAN
+                address = network["addresses"][0]["address"]
+                try:
+                    subnet = Subnet.objects.get_subnet_for_ip(address)
+                except Subnet.DoesNotExist:
+                    pass
+                else:
+                    vlan, _ = VLAN.objects.get_or_create(
+                        fabric=subnet.vlan.fabric, vid=vid
+                    )
+            if vlan is None:
+                maaslog.error(
+                    f"Unable to detect fabric VLAN Interface '{name}', using default"
+                )
+                vlan, _ = VLAN.objects.get_or_create(
+                    fabric=Fabric.objects.get_default_fabric(), vid=vid
+                )
+
         interface, created = VLANInterface.objects.get_or_create(
             node_config=node.current_config,
             name=name,

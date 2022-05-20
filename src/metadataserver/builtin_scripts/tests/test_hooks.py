@@ -3770,6 +3770,168 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
             ).count(),
         )
 
+    def test_create_bond_with_no_link_parents(self):
+        boot_subnet = factory.make_Subnet(cidr="192.168.0.3/24")
+        node = factory.make_Node(
+            boot_cluster_ip="192.168.0.1",
+            boot_interface=factory.make_Interface(subnet=boot_subnet),
+        )
+        output = make_lxd_output()
+        mac1 = factory.make_mac_address()
+        mac2 = factory.make_mac_address()
+        output["networks"] = {
+            "bond0": {
+                "addresses": [],
+                "counters": {
+                    "bytes_received": 0,
+                    "bytes_sent": 0,
+                    "packets_received": 0,
+                    "packets_sent": 0,
+                },
+                "hwaddr": mac1,
+                "mtu": 1500,
+                "state": "up",
+                "type": "broadcast",
+                "bond": {
+                    "mode": "802.3ad",
+                    "transmit_policy": "layer3+4",
+                    "up_delay": 0,
+                    "down_delay": 0,
+                    "mii_frequency": 100,
+                    "mii_state": "down",
+                    "lower_devices": ["ens6f0", "ens5f0"],
+                },
+                "bridge": None,
+                "vlan": None,
+            },
+            "bond0.108": {
+                "addresses": [],
+                "counters": {
+                    "bytes_received": 0,
+                    "bytes_sent": 0,
+                    "packets_received": 0,
+                    "packets_sent": 0,
+                },
+                "hwaddr": mac1,
+                "mtu": 1500,
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": {"lower_device": "bond0", "vid": 108},
+            },
+            "br0": {
+                "addresses": [
+                    {
+                        "family": "inet",
+                        "address": factory.make_ipv4_address(),
+                        "netmask": "24",
+                        "scope": "global",
+                    },
+                    {
+                        "family": "inet6",
+                        "address": factory.make_ipv6_address(),
+                        "netmask": "64",
+                        "scope": "link",
+                    },
+                ],
+                "counters": {
+                    "bytes_received": 0,
+                    "bytes_sent": 634,
+                    "packets_received": 0,
+                    "packets_sent": 7,
+                },
+                "hwaddr": mac1,
+                "mtu": 1500,
+                "state": "up",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": {
+                    "id": "8000.46145500a9dc",
+                    "stp": False,
+                    "forward_delay": 1500,
+                    "vlan_default": 1,
+                    "vlan_filtering": False,
+                    "upper_devices": ["bond0.108"],
+                },
+                "vlan": None,
+            },
+            "ens5f0": {
+                "addresses": [],
+                "counters": {
+                    "bytes_received": 0,
+                    "bytes_sent": 0,
+                    "packets_received": 0,
+                    "packets_sent": 0,
+                },
+                "hwaddr": mac1,
+                "mtu": 1500,
+                "state": "down",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+            "ens6f0": {
+                "addresses": [],
+                "counters": {
+                    "bytes_received": 0,
+                    "bytes_sent": 0,
+                    "packets_received": 0,
+                    "packets_sent": 0,
+                },
+                "hwaddr": mac2,
+                "mtu": 1500,
+                "state": "down",
+                "type": "broadcast",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+            "lo": {
+                "addresses": [
+                    {
+                        "family": "inet",
+                        "address": "127.0.0.1",
+                        "netmask": "8",
+                        "scope": "local",
+                    },
+                    {
+                        "family": "inet6",
+                        "address": "::1",
+                        "netmask": "128",
+                        "scope": "local",
+                    },
+                ],
+                "counters": {
+                    "bytes_received": 9125228383,
+                    "bytes_sent": 9125228383,
+                    "packets_received": 2211361,
+                    "packets_sent": 2211361,
+                },
+                "hwaddr": "",
+                "mtu": 65536,
+                "state": "up",
+                "type": "loopback",
+                "bond": None,
+                "bridge": None,
+                "vlan": None,
+            },
+        }
+        process_lxd_results(node, json.dumps(output).encode(), 0)
+        node.refresh_from_db()
+        ens5 = node.current_config.interface_set.get(name="ens5f0")
+        ens6 = node.current_config.interface_set.get(name="ens6f0")
+        bond = node.current_config.interface_set.get(name="bond0")
+        vlan = node.current_config.interface_set.get(name="bond0.108")
+        bridge = node.current_config.interface_set.get(name="br0")
+        self.assertCountEqual(list(bond.parents.all()), [ens5, ens6])
+        self.assertFalse(ens5.link_connected)
+        self.assertFalse(ens6.link_connected)
+        self.assertTrue(bond.link_connected)
+        self.assertTrue(vlan.link_connected)
+        self.assertTrue(bridge.link_connected)
+
 
 class TestUpdateBootInterface(MAASServerTestCase):
     def setUp(self):
