@@ -185,7 +185,7 @@ lint-shell: bin/shellcheck
 		snap/local/tree/sbin/* \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-kernel-cmdline \
-		src/provisioningserver/refresh/40-maas-01-machine-resources \
+		src/provisioningserver/refresh/20-maas-03-machine-resources \
 		src/provisioningserver/refresh/maas-list-modaliases \
 		src/provisioningserver/refresh/maas-lshw \
 		src/provisioningserver/refresh/maas-serial-ports \

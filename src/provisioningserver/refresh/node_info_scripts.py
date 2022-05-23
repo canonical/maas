@@ -19,9 +19,9 @@ import os
 LLDP_INSTALL_OUTPUT_NAME = "20-maas-01-install-lldpd"
 # Bring up DHCP early so all connected subnets are detected by MAAS.
 DHCP_EXPLORE_OUTPUT_NAME = "20-maas-02-dhcp-unconfigured-ifaces"
+RUN_MACHINE_RESOURCES = "20-maas-03-machine-resources"
 # Run BMC config early as it will enlist new machines.
 BMC_DETECTION = "30-maas-01-bmc-config"
-RUN_MACHINE_RESOURCES = "40-maas-01-machine-resources"
 COMMISSIONING_OUTPUT_NAME = "50-maas-01-commissioning"
 # The remaining scripts can run in parallel
 SUPPORT_INFO_OUTPUT_NAME = "maas-support-info"

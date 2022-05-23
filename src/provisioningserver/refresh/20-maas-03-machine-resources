@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# 40-maas-01-machine-resources - Download and run binary to collect machine details
+# 20-maas-03-machine-resources - Download and run binary to collect machine details
 #
 # Copyright (C) 2021 Canonical
 #
@@ -18,7 +18,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 # --- Start MAAS 1.0 script metadata ---
-# name: 40-maas-01-machine-resources
+# name: 20-maas-03-machine-resources
 # title: Download and run binary to collect machine details
 # description: Download and run binary to collect machine details
 # script_type: commissioning
