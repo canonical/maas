@@ -55,6 +55,7 @@ from metadataserver.builtin_scripts.hooks import (
     get_dmi_data,
     NODE_INFO_SCRIPTS,
     parse_bootif_cmdline,
+    parse_interfaces,
     process_lxd_results,
     retag_node_for_hardware_by_modalias,
     update_node_fruid_metadata,
@@ -583,6 +584,350 @@ SAMPLE_LXD_RESOURCES_LP1906834 = {
         },
     },
 }
+# This sample is from LP:1939456
+SAMPLE_LXD_RESOURCES_NETWORK_LP1939456 = {
+    "network": {
+        "cards": [
+            {
+                "driver": "ixgbe",
+                "driver_version": "5.1.0-k",
+                "ports": [
+                    {
+                        "id": "eno1",
+                        "address": "44:a8:42:ba:a3:b4",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "supported_modes": [
+                            "1000baseKX/Full",
+                            "10000baseKX4/Full",
+                            "10000baseKR/Full",
+                        ],
+                        "supported_ports": ["fibre"],
+                        "port_type": "other",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": True,
+                        "link_detected": True,
+                        "link_speed": 10000,
+                        "link_duplex": "full",
+                    }
+                ],
+                "sriov": {"current_vfs": 0, "maximum_vfs": 63, "vfs": None},
+                "numa_node": 0,
+                "pci_address": "0000:01:00.0",
+                "vendor": "Intel Corporation",
+                "vendor_id": "8086",
+                "product": "82599 10 Gigabit Dual Port Backplane Connection",
+                "product_id": "10f8",
+                "firmware_version": "0x8000093f, 19.0.12",
+            },
+            {
+                "driver": "ixgbe",
+                "driver_version": "5.1.0-k",
+                "ports": [
+                    {
+                        "id": "eno2",
+                        "address": "44:a8:42:ba:a3:b6",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "supported_modes": [
+                            "1000baseKX/Full",
+                            "10000baseKX4/Full",
+                            "10000baseKR/Full",
+                        ],
+                        "supported_ports": ["fibre"],
+                        "port_type": "other",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": True,
+                        "link_detected": False,
+                    }
+                ],
+                "sriov": {"current_vfs": 0, "maximum_vfs": 63, "vfs": None},
+                "numa_node": 0,
+                "pci_address": "0000:01:00.1",
+                "vendor": "Intel Corporation",
+                "vendor_id": "8086",
+                "product": "82599 10 Gigabit Dual Port Backplane Connection",
+                "product_id": "10f8",
+                "firmware_version": "0x8000093f, 19.0.12",
+            },
+            {
+                "driver": "mlx4_core",
+                "driver_version": "4.9-3.1.5",
+                "ports": [
+                    {
+                        "id": "ibp4s0",
+                        "address": "a0:00:02:20:fe:80:00:00:00:00:00:00:e4:1d:2d:03:00:4f:06:e1",
+                        "port": 0,
+                        "protocol": "infiniband",
+                        "port_type": "other",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": True,
+                        "link_detected": False,
+                        "infiniband": {
+                            "issm_name": "issm0",
+                            "issm_device": "231:64",
+                            "mad_name": "umad0",
+                            "mad_device": "231:0",
+                            "verb_name": "uverbs0",
+                            "verb_device": "231:192",
+                        },
+                    },
+                    {
+                        "id": "ibp4s0d1",
+                        "address": "a0:00:03:00:fe:80:00:00:00:00:00:00:e4:1d:2d:03:00:4f:06:e2",
+                        "port": 1,
+                        "protocol": "infiniband",
+                        "port_type": "other",
+                        "transceiver_type": "internal",
+                        "auto_negotiation": True,
+                        "link_detected": False,
+                        "infiniband": {
+                            "issm_name": "issm1",
+                            "issm_device": "231:65",
+                            "mad_name": "umad1",
+                            "mad_device": "231:1",
+                            "verb_name": "uverbs0",
+                            "verb_device": "231:192",
+                        },
+                    },
+                ],
+                "numa_node": 0,
+                "pci_address": "0000:04:00.0",
+                "vendor": "Mellanox Technologies",
+                "vendor_id": "15b3",
+                "product": "MT27500 Family [ConnectX-3]",
+                "product_id": "1003",
+                "firmware_version": "2.36.5000",
+            },
+            {
+                "driver": "cdc_ether",
+                "driver_version": "5.4.0-80-generic",
+                "ports": [
+                    {
+                        "id": "idrac",
+                        "address": "10:98:36:99:7d:9e",
+                        "port": 0,
+                        "protocol": "ethernet",
+                        "auto_negotiation": False,
+                        "link_detected": False,
+                    }
+                ],
+                "numa_node": 0,
+                "firmware_version": "CDC Ethernet Device",
+                "usb_address": "1:4",
+            },
+        ],
+        "total": 4,
+    }
+}
+
+SAMPLE_LXD_NETWORK_LP1939456 = {
+    "bond0": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "10.206.123.143",
+                "netmask": "24",
+                "scope": "global",
+            },
+            {
+                "family": "inet6",
+                "address": "fe80::60af:27ff:fe86:a7b5",
+                "netmask": "64",
+                "scope": "link",
+            },
+        ],
+        "counters": {
+            "bytes_received": 61539371832,
+            "bytes_sent": 12363017514,
+            "packets_received": 46790270,
+            "packets_sent": 26046855,
+        },
+        "hwaddr": "62:af:27:86:a7:b5",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": {
+            "mode": "802.3ad",
+            "transmit_policy": "layer2",
+            "up_delay": 0,
+            "down_delay": 0,
+            "mii_frequency": 100,
+            "mii_state": "up",
+            "lower_devices": ["eno2", "eno1"],
+        },
+        "bridge": None,
+        "vlan": None,
+    },
+    "bond0.1": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "10.128.210.1",
+                "netmask": "20",
+                "scope": "global",
+            },
+            {
+                "family": "inet6",
+                "address": "fe80::60af:27ff:fe86:a7b5",
+                "netmask": "64",
+                "scope": "link",
+            },
+        ],
+        "counters": {
+            "bytes_received": 3264146,
+            "bytes_sent": 1093111,
+            "packets_received": 57665,
+            "packets_sent": 5266,
+        },
+        "hwaddr": "62:af:27:86:a7:b5",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": {"lower_device": "bond0", "vid": 1},
+    },
+    "bond0.240": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "10.240.0.1",
+                "netmask": "24",
+                "scope": "global",
+            },
+            {
+                "family": "inet6",
+                "address": "fe80::60af:27ff:fe86:a7b5",
+                "netmask": "64",
+                "scope": "link",
+            },
+        ],
+        "counters": {
+            "bytes_received": 7156780,
+            "bytes_sent": 1035310179,
+            "packets_received": 116634,
+            "packets_sent": 75712,
+        },
+        "hwaddr": "62:af:27:86:a7:b5",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": {"lower_device": "bond0", "vid": 240},
+    },
+    "eno1": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 11639365749,
+            "bytes_sent": 3271900148,
+            "packets_received": 9125767,
+            "packets_sent": 5627403,
+        },
+        "hwaddr": "62:af:27:86:a7:b5",
+        "mtu": 1500,
+        "state": "up",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+    },
+    "eno2": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 49900006083,
+            "bytes_sent": 9091117366,
+            "packets_received": 37664503,
+            "packets_sent": 20419452,
+        },
+        "hwaddr": "62:af:27:86:a7:b5",
+        "mtu": 1500,
+        "state": "down",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+    },
+    "ibp4s0": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 0,
+            "bytes_sent": 0,
+            "packets_received": 0,
+            "packets_sent": 0,
+        },
+        "hwaddr": "a0:00:02:20:fe:80:00:00:00:00:00:00:e4:1d:2d:03:00:4f:06:e1",
+        "mtu": 4092,
+        "state": "down",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+    },
+    "ibp4s0d1": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 0,
+            "bytes_sent": 0,
+            "packets_received": 0,
+            "packets_sent": 0,
+        },
+        "hwaddr": "a0:00:03:00:fe:80:00:00:00:00:00:00:e4:1d:2d:03:00:4f:06:e2",
+        "mtu": 4092,
+        "state": "down",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+    },
+    "idrac": {
+        "addresses": [],
+        "counters": {
+            "bytes_received": 0,
+            "bytes_sent": 0,
+            "packets_received": 0,
+            "packets_sent": 0,
+        },
+        "hwaddr": "10:98:36:99:7d:9e",
+        "mtu": 1500,
+        "state": "down",
+        "type": "broadcast",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+    },
+    "lo": {
+        "addresses": [
+            {
+                "family": "inet",
+                "address": "127.0.0.1",
+                "netmask": "8",
+                "scope": "local",
+            },
+            {
+                "family": "inet6",
+                "address": "::1",
+                "netmask": "128",
+                "scope": "local",
+            },
+        ],
+        "counters": {
+            "bytes_received": 15773896406,
+            "bytes_sent": 15773896406,
+            "packets_received": 14090610,
+            "packets_sent": 14090610,
+        },
+        "hwaddr": "",
+        "mtu": 65536,
+        "state": "up",
+        "type": "loopback",
+        "bond": None,
+        "bridge": None,
+        "vlan": None,
+    },
+}
+
 
 KERNEL_CMDLINE_OUTPUT = (
     "BOOT_IMAGE=http://10.245.136.6:5248/images/ubuntu/amd64/generic/bionic/"
@@ -4170,4 +4515,19 @@ class TestHardwareSyncMemoryNotify(MAASServerTestCase):
         self.assertEqual(
             event.description,
             f"1.1 GB of memory was added on node {node.system_id}",
+        )
+
+
+class TestParseInterfaces(MAASServerTestCase):
+    def test_skips_ipoib_mac(self):
+        node = factory.make_Node(with_boot_disk=False, interface=True)
+        resources = deepcopy(SAMPLE_LXD_RESOURCES)
+        resources.update(SAMPLE_LXD_RESOURCES_NETWORK_LP1939456)
+        data = make_lxd_output(
+            resources=resources, networks=SAMPLE_LXD_NETWORK_LP1939456
+        )
+        interfaces = parse_interfaces(node, data)
+        self.assertEqual(
+            interfaces.keys(),
+            {"44:a8:42:ba:a3:b4", "44:a8:42:ba:a3:b6", "10:98:36:99:7d:9e"},
         )

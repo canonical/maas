@@ -32,6 +32,20 @@ def get_ip_addr():
     return ifaces
 
 
+def is_ipoib_mac(mac: str) -> bool:
+    """Is the given mac an IP over Infiniband device?"""
+    # Regular MAC address as a string is 17 bytes: 6 octets, with 5
+    # colons e.g.
+    #
+    # DE:FE:C8:BE:EF:01
+    # ----|----|----|-|
+    #     5   10   15 17
+    #
+    # We skip longer ones which come from IP over Infiniband. See
+    # LP:1939456
+    return len(mac) > 17
+
+
 def get_mac_addresses():
     """Returns a list of this system's MAC addresses.
 
@@ -39,7 +53,13 @@ def get_mac_addresses():
         gathered.
     """
     ip_addr = get_ip_addr()
-    return list({iface["mac"] for iface in ip_addr.values() if iface["mac"]})
+    return list(
+        {
+            iface["mac"]
+            for iface in ip_addr.values()
+            if iface["mac"] and not is_ipoib_mac(iface["mac"])
+        }
+    )
 
 
 def get_machine_default_gateway_ip():

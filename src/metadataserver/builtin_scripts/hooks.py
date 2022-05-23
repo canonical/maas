@@ -50,6 +50,7 @@ from provisioningserver.refresh.node_info_scripts import (
     NODE_INFO_SCRIPTS,
 )
 from provisioningserver.utils import kernel_to_debian_architecture
+from provisioningserver.utils.ipaddr import is_ipoib_mac
 from provisioningserver.utils.lxd import parse_lxd_cpuinfo, parse_lxd_networks
 
 logger = logging.getLogger(__name__)
@@ -99,7 +100,9 @@ def parse_interfaces(node, data):
 
     def process_port(card, port):
         mac = port.get("address")
-
+        # See LP:1939456
+        if is_ipoib_mac(mac):
+            return
         interface = {
             "name": port.get("id"),
             "link_connected": port.get("link_detected"),

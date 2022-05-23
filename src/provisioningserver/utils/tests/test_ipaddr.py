@@ -176,6 +176,20 @@ class TestGetIPAddr(MAASTestCase):
         observed = get_mac_addresses()
         self.assertCountEqual(mac_addresses, observed)
 
+    def test_get_mac_addresses_skips_ipoib_mac_addresses(self):
+        mac_addresses = []
+        results = {}
+        for _ in range(3):
+            mac = factory.make_mac_address()
+            mac_addresses.append(mac)
+            results[factory.make_name("eth")] = {"mac": mac}
+        results[factory.make_name("ibp")] = {
+            "mac": "a0:00:02:20:fe:80:00:00:00:00:00:00:e4:1d:2d:03:00:4f:06:e1"
+        }
+        self.patch(ipaddr_module, "get_ip_addr").return_value = results
+        observed = get_mac_addresses()
+        self.assertCountEqual(mac_addresses, observed)
+
 
 class TestUpdateInterfaceType(FakeSysProcTestCase):
     def test_ipip(self):
