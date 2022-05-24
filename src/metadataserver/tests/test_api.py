@@ -37,7 +37,12 @@ from maasserver.enum import (
     NODE_TYPE_CHOICES,
     POWER_STATE,
 )
-from maasserver.exceptions import MAASAPINotFound, Unauthorized
+from maasserver.exceptions import (
+    ClusterUnavailable,
+    MAASAPIBadRequest,
+    MAASAPINotFound,
+    Unauthorized,
+)
 from maasserver.forms.parameters import ParametersForm
 from maasserver.models import (
     Config,
@@ -50,6 +55,7 @@ from maasserver.models.node import Node
 from maasserver.models.signals.testing import SignalsDisabled
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
+from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.matchers import HasStatusCode
 from maasserver.testing.testcase import MAASServerTestCase
@@ -74,6 +80,7 @@ from metadataserver.api import (
     MetaDataHandler,
     NETPLAN_TAR_PATH,
     process_file,
+    store_node_power_parameters,
     UnknownMetadataVersion,
 )
 from metadataserver.builtin_scripts import load_builtin_scripts
@@ -4050,3 +4057,143 @@ class TestEnlistViews(MAASServerTestCase):
             response.content.decode(settings.DEFAULT_CHARSET).splitlines(),
             ContainsAll(("user-data", "meta-data")),
         )
+
+
+class TestStoreNodeParameters(APITestCase.ForUser):
+    """Tests for `store_node_power_parameters`."""
+
+    def setUp(self):
+        super().setUp()
+        self.node = factory.make_Node()
+        self.save = self.patch(self.node, "save")
+        self.request = Mock()
+
+    def test_no_connected_rack_controllers(self):
+        # When get_driver_types returns empty dictionary.
+        mock_get_driver_types = self.patch(api, "get_driver_types")
+        mock_get_driver_types.return_value = {}
+        power_type = factory.pick_power_type()
+        self.request.POST = {"power_type": power_type}
+        error = self.assertRaises(
+            ClusterUnavailable,
+            store_node_power_parameters,
+            self.node,
+            self.request,
+        )
+        self.assertEqual(
+            "No rack controllers connected to validate the power_type.",
+            str(error),
+        )
+        mock_get_driver_types.assert_called_once()
+
+    def test_power_type_not_given(self):
+        # When power_type is not specified, nothing happens.
+        self.request.POST = {}
+        self.node.set_power_config("", {})
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual("", self.node.power_type)
+        self.assertEqual({}, self.node.power_parameters)
+        self.save.assert_has_calls([])
+
+    def test_power_type_redfish(self):
+        power_parameters = {"foo": [1, 2, 3]}
+        self.request.POST = {
+            "power_type": "ipmi",
+            "power_parameters": json.dumps(power_parameters),
+        }
+        self.node.set_power_config("redfish", {"node_id": "1"})
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual("redfish", self.node.power_type)
+        self.assertEqual(
+            {**power_parameters, **self.node.instance_power_parameters},
+            self.node.power_parameters,
+        )
+        self.save.assert_has_calls([])
+
+    def test_power_type_redfish_no_parameters(self):
+        self.node.set_power_config("redfish", {"node_id": "1"})
+        self.request.POST = {}
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual("redfish", self.node.power_type)
+        self.assertEqual(
+            self.node.instance_power_parameters, self.node.power_parameters
+        )
+        self.save.assert_has_calls([])
+
+    def test_power_type_redfish_update_parameters_from_ipmi(self):
+        self.node.set_power_config("redfish", {"foo": 1})
+        power_parameters = {"foo": 2, "bar": 3}
+        self.request.POST = {
+            "power_type": "ipmi",
+            "power_parameters": json.dumps(power_parameters),
+        }
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual("redfish", self.node.power_type)
+        self.assertEqual(self.node.power_parameters, power_parameters)
+        self.assertEqual(
+            self.node.instance_power_parameters, self.node.power_parameters
+        )
+        self.save.assert_called_once_with()
+
+    def test_power_type_set_but_no_parameters(self):
+        # When power_type is valid, it is set. However, if power_parameters is
+        # not specified, the node's power_parameters is left alone, and the
+        # node is saved.
+        self.node.set_power_config("ipmi", {"some": "param"})
+        self.request.POST = {"power_type": "virsh"}
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual(self.node.power_type, "virsh")
+        self.assertEqual({"some": "param"}, self.node.power_parameters)
+        self.save.assert_called_once_with()
+
+    def test_power_type_set_with_parameters(self):
+        # When power_type is valid, and power_parameters is valid JSON, both
+        # fields are set on the node, and the node is saved.
+        power_type = factory.pick_power_type()
+        power_parameters = {"foo": [1, 2, 3]}
+        self.request.POST = {
+            "power_type": power_type,
+            "power_parameters": json.dumps(power_parameters),
+        }
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual(power_type, self.node.power_type)
+        self.assertEqual(power_parameters, self.node.power_parameters)
+        self.save.assert_called_once_with()
+
+    def test_power_type_set_with_invalid_parameters(self):
+        # When power_type is valid, but power_parameters is invalid JSON, the
+        # node is not saved, and an exception is raised.
+        power_type = factory.pick_power_type()
+        self.request.POST = {
+            "power_type": power_type,
+            "power_parameters": "Not JSON.",
+        }
+        self.assertRaises(
+            MAASAPIBadRequest,
+            store_node_power_parameters,
+            self.node,
+            self.request,
+        )
+        self.save.assert_has_calls([])
+
+    def test_invalid_power_type(self):
+        # When power_type is invalid, the node is not saved, and an exception
+        # is raised.
+        self.request.POST = {"power_type": factory.make_name("bogus")}
+        self.assertRaises(
+            MAASAPIBadRequest,
+            store_node_power_parameters,
+            self.node,
+            self.request,
+        )
+        self.save.assert_has_calls([])
+
+    def test_unknown_power_type(self):
+        # Sometimes a node doesn't know its power type, and will declare its
+        # powertype as ''; store_node_power_parameters will store that
+        # appropriately.
+        power_type = ""
+        self.request.POST = {"power_type": ""}
+        store_node_power_parameters(self.node, self.request)
+        self.assertEqual(power_type, self.node.power_type)
+        self.save.assert_called_once_with()

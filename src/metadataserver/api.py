@@ -35,7 +35,6 @@ from formencode.validators import Int, Number, String
 from piston3.utils import rc
 import yaml
 
-from maasserver.api.nodes import store_node_power_parameters
 from maasserver.api.support import (
     AnonymousOperationsHandler,
     operation,
@@ -46,9 +45,11 @@ from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
 )
+from maasserver.clusterrpc.driver_parameters import get_driver_types
 from maasserver.compose_preseed import get_apt_proxy
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT, NODE_TYPE
 from maasserver.exceptions import (
+    ClusterUnavailable,
     MAASAPIBadRequest,
     MAASAPINotFound,
     NodeStateViolation,
@@ -99,6 +100,7 @@ from metadataserver.user_data import (
     generate_user_data_for_status,
 )
 from metadataserver.vendor_data import get_vendor_data
+from provisioningserver.drivers.power import UNKNOWN_POWER_TYPE
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_STATUS_MESSAGES,
@@ -334,6 +336,44 @@ def process_file(
         runtime = get_optional_param(request, "runtime", None, Number)
         if runtime:
             results[script_result]["runtime"] = runtime
+
+
+def store_node_power_parameters(node, request):
+    """Store power parameters in request.
+
+    The parameters should be JSON, passed with key `power_parameters`.
+    """
+    power_type = request.POST.get("power_type", None)
+    if power_type is None:
+        return
+    # Don't overwrite redfish power type with ipmi.
+    if node.power_type == "redfish":
+        power_type = node.power_type
+
+    power_types = list(get_driver_types())
+    if not power_types:
+        raise ClusterUnavailable(
+            "No rack controllers connected to validate the power_type."
+        )
+
+    if power_type not in power_types + [UNKNOWN_POWER_TYPE]:
+        raise MAASAPIBadRequest("Bad power_type '%s'" % power_type)
+
+    power_parameters = request.POST.get("power_parameters", None)
+    if power_parameters:
+        try:
+            power_parameters = json.loads(power_parameters)
+        except ValueError:
+            raise MAASAPIBadRequest("Failed to parse JSON power_parameters")
+    else:
+        power_parameters = node.power_parameters
+    if power_type == "redfish":
+        power_parameters = {
+            **node.instance_power_parameters,
+            **power_parameters,
+        }
+    node.set_power_config(power_type, power_parameters)
+    node.save()
 
 
 class MetadataViewHandler(OperationsHandler):
