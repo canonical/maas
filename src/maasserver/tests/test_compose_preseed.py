@@ -1277,9 +1277,10 @@ class TestBuildMetadataURL(MAASServerTestCase):
         original_ip = subnet.get_next_ip_for_allocation()
         request.META["HTTP_X_FORWARDED_FOR"] = str(original_ip)
         route = "/MAAS"
+        Config.objects.set_config("maas_internal_domain", factory.make_name())
         # not passing node to simulate anonymous request, i.e enlistment
         self.assertEqual(
-            f"{request.scheme}://{get_resource_name_for_subnet(subnet)}:5248/MAAS",
+            f"{request.scheme}://{get_resource_name_for_subnet(subnet)}.{Config.objects.get_config('maas_internal_domain')}:5248/MAAS",
             build_metadata_url(
                 request, route, node.get_boot_rack_controller()
             ),

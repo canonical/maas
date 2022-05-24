@@ -39,7 +39,8 @@ def _get_anon_rack_host(request, rack_controller):
         client_ip = forwarded_for.split(",")[0]
         subnet = Subnet.objects.get_best_subnet_for_ip(client_ip)
         if subnet:
-            return get_resource_name_for_subnet(subnet)
+            internal_domain = Config.objects.get_config("maas_internal_domain")
+            return f"{get_resource_name_for_subnet(subnet)}.{internal_domain}"
     return rack_controller.fqdn if rack_controller else ""
 
 
