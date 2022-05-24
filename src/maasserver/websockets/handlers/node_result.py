@@ -23,12 +23,15 @@ from metadataserver.models import ScriptResult
 
 class NodeResultHandler(TimestampedModelHandler):
     class Meta:
-        queryset = (
-            ScriptResult.objects.all()
-            .defer("output", "stdout", "stderr")
-            .prefetch_related("script", "script_set")
-            .defer("script__parameters", "script__packages")
-            .defer("script_set__requested_scripts")
+        queryset = ScriptResult.objects.prefetch_related(
+            "script", "script_set"
+        ).defer(
+            "output",
+            "stdout",
+            "stderr",
+            "script__parameters",
+            "script__packages",
+            "script_set__tags",
         )
         pk = "id"
         allowed_methods = [
@@ -167,10 +170,14 @@ class NodeResultHandler(TimestampedModelHandler):
         :param has_surfaced: Only return results if they have surfaced.
         """
         node = self.get_node(params)
-        queryset = node.get_latest_script_results
-        queryset = queryset.defer("output", "stdout", "stderr")
-        queryset = queryset.defer("script__parameters", "script__packages")
-        queryset = queryset.defer("script_set__requested_scripts")
+        queryset = node.get_latest_script_results.defer(
+            "output",
+            "stdout",
+            "stderr",
+            "script__parameters",
+            "script__packages",
+            "script_set__tags",
+        )
 
         if "result_type" in params:
             queryset = queryset.filter(

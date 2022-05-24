@@ -601,7 +601,7 @@ class VersionIndexHandler(MetadataViewHandler):
             SCRIPT_STATUS_RUNNING_OR_PENDING
         ):
             script_set = ScriptSet.objects.create_commissioning_script_set(
-                node, ["none"]
+                node, scripts=["none"]
             )
             node.current_commissioning_script_set = script_set
 

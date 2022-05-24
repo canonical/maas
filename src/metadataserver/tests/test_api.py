@@ -1894,7 +1894,7 @@ class TestMAASScripts(MAASServerTestCase):
             script_type=SCRIPT_TYPE.COMMISSIONING,
             for_hardware=["pci:8086:1918"],
         )
-        commissioning_script_set.requested_scripts = for_hardware_script.tags
+        commissioning_script_set.tags = for_hardware_script.tags
         commissioning_script_set.save()
         response = make_node_client(node=node).get(
             reverse("maas-scripts", args=["latest"])

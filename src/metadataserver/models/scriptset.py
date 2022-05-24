@@ -12,7 +12,9 @@ from django.db.models import (
     CharField,
     Count,
     DateTimeField,
+    F,
     ForeignKey,
+    Func,
     IntegerField,
     Manager,
     Model,
@@ -130,22 +132,26 @@ class ScriptSetManager(Manager):
         scripts = (
             [] if scripts is None else list(scripts)
         )  # ensure it's always a list
+        requested_tags = self._filter_tags(scripts)
         builtin_scripts = Script.objects.filter(default=True)
         builtin_scripts_names = list(
             builtin_scripts.values_list("name", flat=True)
         )
         if node.is_controller:
             # Controllers can only run the builtin scripts for them.
+            requested_tags = ["deploy-info"]
             scripts = list(
                 builtin_scripts.filter(
-                    tags__contains=["deploy-info"]
+                    tags__contains=requested_tags,
                 ).values_list("name", flat=True)
             )
         elif enlisting:
+            requested_tags = ["enlisting"]
             if Config.objects.get_config("enlist_commissioning"):
-                scripts = builtin_scripts_names + ["enlisting"]
+                scripts = builtin_scripts_names + requested_tags
+
             else:
-                scripts = ["bmc-config"]
+                requested_tags = scripts = ["bmc-config"]
         elif not scripts:
             # No user selected scripts, select all scripts below.
             pass
@@ -159,7 +165,7 @@ class ScriptSetManager(Manager):
             node=node,
             result_type=RESULT_TYPE.COMMISSIONING,
             power_state_before_transition=node.power_state,
-            requested_scripts=scripts,
+            tags=requested_tags,
         )
 
         if not scripts:
@@ -182,16 +188,12 @@ class ScriptSetManager(Manager):
         Optionally a list of user scripts and tags can be given to create
         ScriptResults for. If None all Scripts tagged 'commissioning' will be
         assumed. Script may also have parameters passed to them."""
-        if scripts is None or len(scripts) == 0:
-            scripts = ["commissioning"]
-        else:
-            scripts = [str(i) for i in scripts]
-
+        scripts = [str(i) for i in scripts] if scripts else ["commissioning"]
         script_set = self.create(
             node=node,
             result_type=RESULT_TYPE.TESTING,
             power_state_before_transition=node.power_state,
-            requested_scripts=scripts,
+            tags=self._filter_tags(scripts),
         )
 
         self._add_user_selected_scripts(script_set, scripts, script_input)
@@ -232,19 +234,28 @@ class ScriptSetManager(Manager):
 
         Built-in scripts with deploy-info tag are queued up.
         """
-        scripts = list(
-            Script.objects.filter(
-                script_type=SCRIPT_TYPE.COMMISSIONING,
-                default=True,
-                tags__contains=["deploy-info"],
-            )
-        )
-        script_set = machine.scriptset_set.create(
-            requested_scripts=[script.name for script in scripts]
+        tags = ["deploy-info"]
+        script_set = machine.scriptset_set.create(tags=tags)
+        scripts = Script.objects.filter(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            default=True,
+            tags__contains=tags,
         )
         for script in scripts:
             script_set.add_pending_script(script)
         return script_set
+
+    def _filter_tags(self, names):
+        """Return a list of script tags from a list containing names and tags."""
+        if not names:
+            return []
+
+        all_tags = set(
+            Script.objects.annotate(tag=Func(F("tags"), function="unnest"))
+            .distinct("tag")
+            .values_list("tag", flat=True)
+        )
+        return list(set(names) & all_tags)
 
     def _find_scripts(self, script_qs, hw_pairs, modaliases):
         for script in script_qs:
@@ -377,9 +388,7 @@ class ScriptSet(CleanSave, Model):
         editable=False,
     )
 
-    requested_scripts = ArrayField(
-        TextField(), blank=True, null=True, default=list
-    )
+    tags = ArrayField(TextField(), blank=True, null=True, default=list)
 
     def __str__(self):
         return f"{self.node.system_id}/{self.result_type_name}"
@@ -522,14 +531,18 @@ class ScriptSet(CleanSave, Model):
                 script_result.delete()
 
         # Add Scripts which match the node with current commissioning data.
-        scripts = Script.objects.all()
-        if self.result_type == RESULT_TYPE.COMMISSIONING:
-            scripts = scripts.filter(script_type=SCRIPT_TYPE.COMMISSIONING)
-        else:
-            scripts = scripts.filter(script_type=SCRIPT_TYPE.TESTING)
-        scripts = scripts.filter(tags__overlap=self.requested_scripts)
-        scripts = scripts.exclude(for_hardware=[])
-        scripts = scripts.exclude(name__in=[s.name for s in self])
+        scripts = (
+            Script.objects.filter(
+                script_type=(
+                    SCRIPT_TYPE.COMMISSIONING
+                    if self.result_type == RESULT_TYPE.COMMISSIONING
+                    else SCRIPT_TYPE.TESTING
+                ),
+                tags__overlap=self.tags,
+            )
+            .exclude(for_hardware=[])
+            .exclude(name__in=[s.name for s in self])
+        )
         for script in scripts:
             found_hw_match = False
             if hw_pairs:

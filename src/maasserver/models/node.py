@@ -2231,8 +2231,8 @@ class Node(CleanSave, TimestampedModel):
         skip_bmc_config=False,
         skip_networking=False,
         skip_storage=False,
-        commissioning_scripts=[],
-        testing_scripts=[],
+        commissioning_scripts=None,
+        testing_scripts=None,
         script_input=None,
     ):
         """Install OS and self-test a new node.
@@ -2274,7 +2274,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Create a new ScriptSet for this commissioning run.
         commis_script_set = ScriptSet.objects.create_commissioning_script_set(
-            self, commissioning_scripts, script_input
+            self, scripts=commissioning_scripts, script_input=script_input
         )
 
         # The UI displays the latest ScriptResult for all scripts which have
@@ -2303,7 +2303,7 @@ class Node(CleanSave, TimestampedModel):
         # Create a new ScriptSet for any tests to be run after commissioning.
         try:
             testing_script_set = ScriptSet.objects.create_testing_script_set(
-                self, testing_scripts, script_input
+                self, scripts=testing_scripts, script_input=script_input
             )
         except NoScriptsFound:
             # Commissioning can run without running tests after.
@@ -2447,7 +2447,7 @@ class Node(CleanSave, TimestampedModel):
 
     @transactional
     def start_testing(
-        self, user, enable_ssh=False, testing_scripts=[], script_input=None
+        self, user, enable_ssh=False, testing_scripts=None, script_input=None
     ):
         """Run tests on a node."""
         # Avoid circular imports.
@@ -2480,7 +2480,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Create a new ScriptSet for the tests to be run.
         script_set = ScriptSet.objects.create_testing_script_set(
-            self, testing_scripts, script_input
+            self, scripts=testing_scripts, script_input=script_input
         )
         commissioning_distro_series = Config.objects.get_config(
             "commissioning_distro_series"

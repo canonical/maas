@@ -617,6 +617,26 @@ class TestScriptSetManager(MAASServerTestCase):
             ],
         )
 
+    def test_create_commissioning_script_set_only_tags(self):
+        node = factory.make_Node()
+        tag = factory.make_name("tag")
+        script1 = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+        )
+        script2 = factory.make_Script(
+            script_type=SCRIPT_TYPE.COMMISSIONING,
+            tags=[tag],
+        )
+        script_set = ScriptSet.objects.create_commissioning_script_set(
+            node, [script1.name, tag]
+        )
+        self.assertEqual(script_set.tags, [tag])
+        script_names = [
+            script_result.script.name for script_result in script_set
+        ]
+        self.assertIn(script1.name, script_names)
+        self.assertIn(script2.name, script_names)
+
     def test_create_commissioning_script_set_errors_params(self):
         script = factory.make_Script(
             script_type=SCRIPT_TYPE.COMMISSIONING,

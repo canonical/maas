@@ -503,31 +503,33 @@ class NodeHandler(TimestampedModelHandler):
 
     def _cache_script_results(self, nodes):
         """Refresh the ScriptResult cache from the given node."""
-        script_results = ScriptResult.objects.filter(
-            script_set__node__in=nodes
-        )
-        script_results = script_results.defer(
-            "parameters", "output", "stdout", "stderr", "result"
-        )
-        script_results = script_results.select_related("script_set", "script")
-        script_results = script_results.defer(
-            "script_set__requested_scripts",
-            "script__results",
-            "script__parameters",
-            "script__packages",
-        )
-        script_results = script_results.order_by(
-            "script_name",
-            "physical_blockdevice_id",
-            "interface_id",
-            "script_set__node_id",
-            "-id",
-        )
-        script_results = script_results.distinct(
-            "script_name",
-            "physical_blockdevice_id",
-            "interface_id",
-            "script_set__node_id",
+        script_results = (
+            ScriptResult.objects.filter(script_set__node__in=nodes)
+            .defer(
+                "parameters",
+                "output",
+                "stdout",
+                "stderr",
+                "result",
+                "script_set__tags",
+                "script__results",
+                "script__parameters",
+                "script__packages",
+            )
+            .select_related("script_set", "script")
+            .order_by(
+                "script_name",
+                "physical_blockdevice_id",
+                "interface_id",
+                "script_set__node_id",
+                "-id",
+            )
+            .distinct(
+                "script_name",
+                "physical_blockdevice_id",
+                "interface_id",
+                "script_set__node_id",
+            )
         )
         nodes_reset = set()
         for script_result in script_results:
@@ -1129,10 +1131,15 @@ class NodeHandler(TimestampedModelHandler):
                 script_set__node__system_id__in=system_ids,
                 script_set__result_type=RESULT_TYPE.TESTING,
             )
-            .defer("output", "stdout", "stderr")
             .prefetch_related("script", "script_set", "script_set__node")
-            .defer("script__parameters", "script__packages")
-            .defer("script_set__requested_scripts")
+            .defer(
+                "output",
+                "stdout",
+                "stderr",
+                "script__parameters",
+                "script__packages",
+                "script_set__tags",
+            )
             .order_by(
                 "script_set__node_id",
                 "script_name",

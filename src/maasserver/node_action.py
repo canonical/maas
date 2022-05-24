@@ -364,8 +364,8 @@ class Commission(NodeAction):
         skip_bmc_config=False,
         skip_networking=False,
         skip_storage=False,
-        commissioning_scripts=[],
-        testing_scripts=[],
+        commissioning_scripts=None,
+        testing_scripts=None,
         script_input=None,
     ):
         """See `NodeAction.execute`."""
