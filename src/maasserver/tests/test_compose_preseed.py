@@ -21,6 +21,7 @@ from maasserver.compose_preseed import (
     compose_preseed,
     get_apt_proxy,
 )
+from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -1266,3 +1267,21 @@ class TestBuildMetadataURL(MAASServerTestCase):
                 extra=query,
             ),
         )
+
+    def test_uses_forwarded_ip_if_set(self):
+        node = factory.make_Node_with_Interface_on_Subnet()
+        node.boot_cluster_ip = factory.make_ip_address()
+        node.save()
+        request = make_HttpRequest()
+        subnet = factory.make_Subnet()
+        original_ip = subnet.get_next_ip_for_allocation()
+        request.META["HTTP_X_FORWARDED_FOR"] = str(original_ip)
+        route = "/MAAS"
+        # not passing node to simulate anonymous request, i.e enlistment
+        self.assertEqual(
+            f"{request.scheme}://{get_resource_name_for_subnet(subnet)}:5248/MAAS",
+            build_metadata_url(
+                request, route, node.get_boot_rack_controller()
+            ),
+        )
+        route = "/MAAS"

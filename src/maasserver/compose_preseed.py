@@ -33,8 +33,18 @@ RSYSLOG_PORT = 5247
 RACK_CONTROLLER_PORT = 5248
 
 
+def _get_anon_rack_host(request, rack_controller):
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded_for:
+        client_ip = forwarded_for.split(",")[0]
+        subnet = Subnet.objects.get_best_subnet_for_ip(client_ip)
+        if subnet:
+            return get_resource_name_for_subnet(subnet)
+    return rack_controller.fqdn if rack_controller else ""
+
+
 def build_metadata_url(request, route, rack_controller, node=None, extra=""):
-    host = rack_controller.fqdn if rack_controller else ""
+    host = _get_anon_rack_host(request, rack_controller)
     if node and node.boot_cluster_ip:
         host = (
             str(node.boot_cluster_ip)
