@@ -371,6 +371,15 @@ class IPMI(BMCConfig):
                 first_unused = section_name
         return first_unused
 
+    def _check_ciphers_enabled(self):
+        rmcpp_section = "Rmcpplus_Conf_Privilege"
+
+        if rmcpp_section not in self._bmc_config:
+            # RMCP+ not supported, IPMI < 2.0
+            return True
+
+        return "Administrator" in self._bmc_config[rmcpp_section].values()
+
     def add_bmc_user(self):
         if not self.username:
             self.username = "maas"
@@ -515,6 +524,11 @@ class IPMI(BMCConfig):
         # None of these settings should effect current environments. Settings
         # can be overriden with a custom commissioning script which runs after
         # this one.
+
+        if not self._check_ciphers_enabled():
+            print("ERROR: No cipher enabled!", file=sys.stderr)
+            sys.exit(1)
+
         self._config_ipmi_lan_channel_settings()
         self._config_lan_conf_auth()
         self._config_kg()

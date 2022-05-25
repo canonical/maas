@@ -663,10 +663,14 @@ EndSection
         )
         mock_config_kg = self.patch(self.ipmi, "_config_kg")
         mock_bmc_set_keys = self.patch(self.ipmi, "_bmc_set_keys")
+        mock_check_ciphers_enabled = self.patch(
+            self.ipmi, "_check_ciphers_enabled"
+        )
 
         self.ipmi.configure()
 
         self.assertThat(mock_bmc_get_config, MockCalledOnce())
+        self.assertThat(mock_check_ciphers_enabled, MockCalledOnce())
         self.assertThat(
             mock_config_ipmi_lan_channel_settings, MockCalledOnce()
         )
@@ -898,6 +902,29 @@ EndSection
             },
             self.ipmi.get_credentials(),
         )
+
+    def test_ciphers_detects_enabled(self):
+        self.ipmi._bmc_config = {
+            "Rmcpplus_Conf_Privilege": {
+                "Maximum_Privilege_Cipher_Suite_Id_0": "Unused",
+                "Maximum_Privilege_Cipher_Suite_Id_1": "Unused",
+                "Maximum_Privilege_Cipher_Suite_Id_2": "Unused",
+                "Maximum_Privilege_Cipher_Suite_Id_3": "Administrator",
+                "Maximum_Privilege_Cipher_Suite_Id_4": "Unused",
+            },
+        }
+        self.assertEqual(True, self.ipmi._check_ciphers_enabled())
+
+    def test_ciphers_not_enable(self):
+        self.ipmi._bmc_config = {
+            "Rmcpplus_Conf_Privilege": {
+                "Maximum_Privilege_Cipher_Suite_Id_0": "Unused",
+                "Maximum_Privilege_Cipher_Suite_Id_3": "Operator",
+                "Maximum_Privilege_Cipher_Suite_Id_4": "User",
+                "Maximum_Privilege_Cipher_Suite_Id_5": "Unused",
+            },
+        }
+        self.assertEqual(False, self.ipmi._check_ciphers_enabled())
 
 
 class TestHPMoonshot(MAASTestCase):
