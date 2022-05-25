@@ -248,6 +248,10 @@ class MAC:
     def __bytes__(self):
         return self._wrapped.encode("ascii")
 
+    def __len__(self):
+        """Defer to len of the wrapped value."""
+        return len(self._wrapped)
+
     def __eq__(self, other):
         """Two `MAC`s are equal if they wrap the same value.
 

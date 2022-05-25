@@ -37,6 +37,7 @@ from metadataserver.builtin_scripts import network as network_module
 from metadataserver.builtin_scripts.network import (
     _hardware_sync_network_device_notify,
     get_interface_dependencies,
+    update_interface,
     update_node_interfaces,
 )
 from provisioningserver.events import EVENT_DETAILS, EVENT_TYPES
@@ -2869,6 +2870,20 @@ class TestGetInterfaceDependencies(MAASTestCase):
             },
             dependencies,
         )
+
+
+class TestUpdateInterface(MAASServerTestCase):
+    def test_update_interface_skips_ipoib_mac(self):
+        node = factory.make_Node(with_boot_disk=False, interface=True)
+        data = FakeCommissioningData()
+        data.create_physical_network(
+            "ibp4s0",
+            mac_address="a0:00:02:20:fe:80:00:00:00:00:00:00:e4:1d:2d:03:00:4f:06:e1",
+        )
+        result = update_interface(
+            node, "ibp4s0", data.render(), address_extra={}
+        )
+        self.assertIsNone(result)
 
 
 class TestHardwareSyncNetworkDeviceNotify(MAASServerTestCase):

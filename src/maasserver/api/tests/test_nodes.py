@@ -133,7 +133,7 @@ class TestIsRegisteredAnonAPI(APITestCase.ForAnonymousAndUserAndAdmin):
         interface = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
         response = self.client.get(
             reverse("nodes_handler"),
-            {"op": "is_registered", "mac_address": interface.mac_address},
+            {"op": "is_registered", "mac_address": str(interface.mac_address)},
         )
         self.assertEqual(
             (http.client.OK.value, "false"),

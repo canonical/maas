@@ -111,6 +111,10 @@ class TestMAC(MAASServerTestCase):
         addr = factory.make_mac_address()
         self.assertEqual("'%s'::macaddr" % addr, MAC(MAC(addr)).getquoted())
 
+    def test_mac_is_len_able(self):
+        mac = factory.make_MAC()
+        self.assertEqual(len(mac), len(mac.raw))
+
     def test_mac_equals_self(self):
         mac = factory.make_MAC()
         self.assertTrue(mac == mac)

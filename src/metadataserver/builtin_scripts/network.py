@@ -18,6 +18,7 @@ from maasserver.utils.orm import transactional
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import flatten, sorttop
+from provisioningserver.utils.ipaddr import is_ipoib_mac
 from provisioningserver.utils.network import fix_link_addresses
 from provisioningserver.utils.twisted import synchronous
 
@@ -169,6 +170,9 @@ def update_interface(node, name, data, address_extra, hints=None):
     if network["hwaddr"] == SWITCH_OPENBMC_MAC:
         # Ignore OpenBMC interfaces on switches which all share the
         # same, hard-coded OpenBMC MAC address.
+        return None
+    # See LP:1939456
+    if is_ipoib_mac(network["hwaddr"]):
         return None
 
     links = []
