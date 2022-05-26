@@ -374,7 +374,10 @@ class IPMI(BMCConfig):
     def _check_ciphers_enabled(self):
         rmcpp_section = "Rmcpplus_Conf_Privilege"
 
-        if rmcpp_section not in self._bmc_config:
+        if (
+            rmcpp_section not in self._bmc_config
+            or len(self._bmc_config[rmcpp_section]) == 0
+        ):
             # RMCP+ not supported, IPMI < 2.0
             return True
 
