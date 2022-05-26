@@ -3,8 +3,7 @@
 
 import dataclasses
 from functools import lru_cache
-from os import environ
-from os.path import exists, join
+from os import environ, path
 from pathlib import Path
 import random
 import tempfile
@@ -281,12 +280,7 @@ def _make_context(
     with_cert=True, with_password=True, extra=(), sample_cert=None
 ):
     params = {
-        "power_address": "".join(
-            [
-                factory.make_name("power_address"),
-                ":%s" % factory.pick_port(),
-            ]
-        ),
+        "power_address": f"{factory.make_name('power_address')}:{factory.pick_port()}",
         "instance_name": factory.make_name("instance_name"),
         "project": factory.make_name("project"),
     }
@@ -436,21 +430,21 @@ class TestLXDPodDriver(MAASTestCase):
 
         # Test ip adds protocol and port
         self.assertEqual(
-            join("https://", "%s:%d" % (context["power_address"], 8443)),
+            f"https://{context['power_address']}:8443",
             self.driver.get_url(context),
         )
 
         # Test ip:port adds protocol
         context["power_address"] += ":1234"
         self.assertEqual(
-            join("https://", "%s" % context["power_address"]),
+            f"https://{context['power_address']}",
             self.driver.get_url(context),
         )
 
         # Test protocol:ip adds port
-        context["power_address"] = join("https://", factory.make_hostname())
+        context["power_address"] = f"https://{factory.make_hostname()}"
         self.assertEqual(
-            "%s:%d" % (context.get("power_address"), 8443),
+            f"{context['power_address']}:8443",
             self.driver.get_url(context),
         )
 
@@ -483,8 +477,8 @@ class TestLXDPodDriver(MAASTestCase):
                 self.assertEqual(fd.read(), context["certificate"])
             with open(client.cert[1]) as fd:
                 self.assertEqual(fd.read(), context["key"])
-        self.assertFalse(exists(client.cert[0]))
-        self.assertFalse(exists(client.cert[1]))
+        self.assertFalse(path.exists(client.cert[0]))
+        self.assertFalse(path.exists(client.cert[1]))
 
     def test_get_client_with_invalid_certificate_or_key(self):
         context = self.make_context(
