@@ -29,7 +29,7 @@ def urlencode(data):
     must be of overall length 2, i.e. a name/value pair.
 
     Unicode strings will be encoded to UTF-8. This is what Django expects; see
-    `smart_text` in the Django documentation.
+    `smart_str` in the Django documentation.
     """
     return "&".join(
         f"{quote_plus(name)}={quote_plus(value)}" for name, value in data

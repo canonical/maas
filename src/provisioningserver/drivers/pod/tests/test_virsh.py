@@ -2198,7 +2198,7 @@ class TestVirshSSH(MAASTestCase):
                 call(b"\n"),
             ]
         )
-        conn.run.asert_called_once_with(["define", ANY])
+        conn.run.assert_called_once_with(["define", ANY])
         mock_attach_disk.assert_called_once_with(
             ANY, disk_info[0], disk_info[1], "vda"
         )

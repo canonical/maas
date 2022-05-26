@@ -34,7 +34,6 @@ from django.db.models import Field as _BrokenField
 from django.db.models import GenericIPAddressField, IntegerField, Q, URLField
 from django.utils.deconstruct import deconstructible
 from django.utils.encoding import force_text
-from django.utils.translation import ugettext_lazy as _
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 import psycopg2.extensions
 
@@ -332,7 +331,7 @@ class JSONObjectField(Field):
 
         Django's base model field defaults to returning a `CharField`, which
         means that anything that's not character data gets smooshed to text by
-        `CharField.to_pytnon` in forms (via the woefully named `smart_text`).
+        `CharField.to_python` in forms (via the woefully named `smart_str`).
         This is not helpful.
         """
         if form_class is None:
@@ -856,7 +855,7 @@ class VersionedTextFileField(forms.ModelChoiceField):
 
 @deconstructible
 class URLOrPPAValidator(URLValidator):
-    message = _("Enter a valid repository URL or PPA location.")
+    message = "Enter a valid repository URL or PPA location."
 
     ppa_re = (
         r"ppa:" + URLValidator.hostname_re + r"/" + URLValidator.hostname_re
@@ -872,7 +871,7 @@ class URLOrPPAValidator(URLValidator):
 class URLOrPPAFormField(forms.URLField):
     widget = forms.URLInput
     default_error_messages = {
-        "invalid": _("Enter a valid repository URL or PPA location.")
+        "invalid": "Enter a valid repository URL or PPA location."
     }
     default_validators = [URLOrPPAValidator()]
 
@@ -886,7 +885,7 @@ class URLOrPPAFormField(forms.URLField):
 
 class URLOrPPAField(URLField):
     default_validators = [URLOrPPAValidator()]
-    description = _("URLOrPPAField")
+    description = "URLOrPPAField"
 
     # Copied from URLField, with modified form_class.
     def formfield(self, **kwargs):

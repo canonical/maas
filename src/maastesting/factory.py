@@ -525,7 +525,7 @@ class Factory:
     def make_date(self, year=2017):
         start = time.mktime(datetime.datetime(year, 1, 1).timetuple())
         end = time.mktime(datetime.datetime(year + 1, 1, 1).timetuple())
-        stamp = random.randrange(start, end)
+        stamp = random.uniform(start, end)
         return datetime.datetime.fromtimestamp(stamp)
 
     def make_timedelta(self):

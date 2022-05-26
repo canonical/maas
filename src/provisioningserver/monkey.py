@@ -182,7 +182,7 @@ def fix_twisted_web_http_Request():
     from netaddr import IPAddress
     from netaddr.core import AddrFormatError
     from twisted.internet import address
-    from twisted.python.compat import intToBytes, networkString
+    from twisted.python.compat import networkString
     import twisted.web.http
     from twisted.web.server import Request
     from twisted.web.test.requesthelper import DummyChannel
@@ -232,9 +232,9 @@ def fix_twisted_web_http_Request():
         elif ip.version == 4:
             hostHeader = host
         else:
-            hostHeader = b"[" + host + b"]"
+            hostHeader = networkString(f"[{host}]")
         if port != default:
-            hostHeader += b":" + intToBytes(port)
+            hostHeader += networkString(f":{port}")
         self.requestHeaders.setRawHeaders(b"host", [hostHeader])
         if ip is None:
             # Pretend that a host or domain name is an IPv4 address.

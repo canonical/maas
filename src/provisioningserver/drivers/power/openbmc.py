@@ -5,13 +5,13 @@
 
 
 from http import HTTPStatus
+from http.cookiejar import CookieJar
 from io import BytesIO
 import json
 from os.path import join
 
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from twisted.python import compat
 from twisted.web.client import Agent, CookieAgent, FileBodyProducer, readBody
 from twisted.web.http_headers import Headers
 
@@ -55,7 +55,7 @@ class OpenBMCPowerDriver(PowerDriver):
     ]
     ip_extractor = make_ip_extractor("power_address")
 
-    cookie_jar = compat.cookielib.CookieJar()
+    cookie_jar = CookieJar()
     agent = CookieAgent(
         Agent(reactor, contextFactory=WebClientContextFactory()), cookie_jar
     )

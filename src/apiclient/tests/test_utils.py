@@ -1,12 +1,10 @@
 # Copyright 2012-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test general utilities."""
-
 from unittest import TestCase
 from urllib.parse import unquote
 
-from django.utils.encoding import smart_text
+from django.utils.encoding import smart_str
 
 from apiclient.utils import ascii_url, urlencode
 
@@ -38,5 +36,5 @@ class TestHelpers(TestCase):
         query = urlencode(data)
         name, value = query.split("=")
         name, value = unquote(name), unquote(value)
-        name, value = smart_text(name), smart_text(value)
+        name, value = smart_str(name), smart_str(value)
         self.assertEqual(data, [(name, value)])
