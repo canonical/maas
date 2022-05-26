@@ -25,7 +25,6 @@ from provisioningserver.drivers.power import (
 )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import asynchronous, threadDeferred
 
 try:
@@ -66,7 +65,6 @@ class HMCZPowerDriver(PowerDriver):
         else:
             return []
 
-    @typed
     def _get_partition(self, context: dict):
         session = Session(
             context["power_address"],
@@ -91,7 +89,6 @@ class HMCZPowerDriver(PowerDriver):
     # IBM Z partitions can take awhile to start/stop. Don't wait for completion
     # so power actions don't consume a thread.
 
-    @typed
     @asynchronous
     @threadDeferred
     def power_on(self, system_id: str, context: dict):
@@ -122,7 +119,6 @@ class HMCZPowerDriver(PowerDriver):
 
         partition.start(wait_for_completion=False)
 
-    @typed
     @asynchronous
     @threadDeferred
     def power_off(self, system_id: str, context: dict):
@@ -145,7 +141,6 @@ class HMCZPowerDriver(PowerDriver):
                 )
         partition.stop(wait_for_completion=False)
 
-    @typed
     @asynchronous
     @threadDeferred
     def power_query(self, system_id: str, context: dict):
@@ -170,7 +165,6 @@ class HMCZPowerDriver(PowerDriver):
         else:
             return "unknown"
 
-    @typed
     @asynchronous
     @threadDeferred
     def set_boot_order(self, system_id: str, context: dict, order: list):
@@ -220,7 +214,6 @@ class HMCZPowerDriver(PowerDriver):
             )
 
 
-@typed
 @asynchronous
 @inlineCallbacks
 def probe_hmcz_and_enlist(

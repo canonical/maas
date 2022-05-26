@@ -19,7 +19,6 @@ from provisioningserver.logger._common import (
     is_dev_environment,
     LoggingMode,
 )
-from provisioningserver.utils import typed
 
 # Map verbosity numbers to `logging` levels.
 DEFAULT_LOGGING_VERBOSITY_LEVELS = {
@@ -36,13 +35,11 @@ assert (
 ), "Logging verbosity map does not match expectations."
 
 
-@typed
 def set_standard_verbosity(verbosity: int):
     """Reconfigure verbosity of the standard library's `logging` module."""
     logging.config.dictConfig(get_logging_config(verbosity))
 
 
-@typed
 def configure_standard_logging(verbosity: int, mode: LoggingMode):
     """Configure the standard library's `logging` module.
 
@@ -71,7 +68,6 @@ def configure_standard_logging(verbosity: int, mode: LoggingMode):
     )
 
 
-@typed
 def get_syslog_address_path() -> str:
     """Return the path to the syslog unix socket."""
     path = os.getenv("MAAS_SYSLOG_CONFIG_DIR", "/var/lib/maas")
@@ -81,7 +77,6 @@ def get_syslog_address_path() -> str:
     return os.sep.join([path, "rsyslog", "log.sock"])
 
 
-@typed
 def get_logging_config(verbosity: int):
     """Return a configuration dict usable with `logging.config.dictConfig`.
 
@@ -136,7 +131,6 @@ def get_logging_config(verbosity: int):
     }
 
 
-@typed
 def get_logging_level(verbosity: int) -> int:
     """Return the `logging` level corresponding to `verbosity`.
 

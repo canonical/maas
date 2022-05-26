@@ -49,7 +49,6 @@ from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
-    typed,
 )
 from provisioningserver.utils.lxd import lxd_cpu_speed
 from provisioningserver.utils.network import generate_mac_address
@@ -248,7 +247,6 @@ class LXDPodDriver(PodDriver):
         # for maas and is installed by default.
         return []
 
-    @typed
     def get_url(self, context: dict):
         """Return url for the LXD host."""
         power_address = context.get("power_address")
@@ -266,7 +264,6 @@ class LXDPodDriver(PodDriver):
 
         return url.geturl()
 
-    @typed
     @asynchronous
     @threadDeferred
     def power_on(self, pod_id: int, context: dict):
@@ -275,7 +272,6 @@ class LXDPodDriver(PodDriver):
             if LXD_VM_POWER_STATE[machine.status_code] == "off":
                 machine.start()
 
-    @typed
     @asynchronous
     @threadDeferred
     def power_off(self, pod_id: int, context: dict):
@@ -284,7 +280,6 @@ class LXDPodDriver(PodDriver):
             if LXD_VM_POWER_STATE[machine.status_code] == "on":
                 machine.stop()
 
-    @typed
     @asynchronous
     @threadDeferred
     def power_query(self, pod_id: int, context: dict):
@@ -823,7 +818,6 @@ class LXDPodDriver(PodDriver):
         )
 
     @PROMETHEUS_METRICS.failure_counter("maas_lxd_fetch_machine_failure")
-    @typed
     @contextmanager
     def _get_machine(self, pod_id: int, context: dict, fail: bool = True):
         """Retrieve LXD VM.
@@ -841,7 +835,6 @@ class LXDPodDriver(PodDriver):
                     )
                 yield None
 
-    @typed
     @contextmanager
     def _get_client(
         self,

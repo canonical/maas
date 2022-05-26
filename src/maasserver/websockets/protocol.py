@@ -27,7 +27,6 @@ from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import handlers
 from maasserver.websockets.websockets import STATUSES
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import deferred, synchronous
 from provisioningserver.utils.url import splithost
 
@@ -57,7 +56,6 @@ class RESPONSE_TYPE:
     ERROR = 1
 
 
-@typed
 def get_cookie(cookies: Optional[str], cookie_name: str) -> Optional[str]:
     """Return the sessionid value from `cookies`."""
     if cookies is None:

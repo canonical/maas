@@ -70,7 +70,6 @@ import urllib.request
 from lxml.etree import Element, tostring, XML
 
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -413,7 +412,6 @@ def power_state_ucsm(url, username, password, uuid):
 
 
 @synchronous
-@typed
 def probe_and_enlist_ucsm(
     user: str,
     url: str,

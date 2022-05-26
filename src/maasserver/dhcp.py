@@ -50,7 +50,6 @@ from provisioningserver.rpc.cluster import (
 )
 from provisioningserver.rpc.clusterservice import DHCP_TIMEOUT
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.utils import typed
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.text import split_string_list
 from provisioningserver.utils.twisted import asynchronous, synchronous
@@ -252,7 +251,6 @@ def get_ip_address_for_rack_controller(rack_controller, vlan):
     return get_ip_address_for_interface(interface, vlan)
 
 
-@typed
 def get_ntp_server_addresses_for_rack(rack: RackController) -> dict:
     """Return a map of rack IP addresses suitable for NTP.
 
@@ -420,7 +418,6 @@ def make_pools_for_subnet(subnet, dhcp_snippets, failover_peer=None):
     return pools
 
 
-@typed
 def make_subnet_config(
     rack_controller,
     subnet,
@@ -548,7 +545,6 @@ def get_ntp_servers(ntp_servers, subnet, peer_rack):
         return ntp_servers
 
 
-@typed
 def get_dns_server_addresses_for_rack(
     rack_controller: RackController, subnet: Subnet
 ) -> dict:
@@ -637,7 +633,6 @@ def get_default_dns_servers(rack_controller, subnet, use_rack_proxy=True):
     return dns_servers
 
 
-@typed
 def get_dhcp_configure_for(
     ip_version: int,
     rack_controller,

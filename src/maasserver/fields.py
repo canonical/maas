@@ -42,7 +42,6 @@ from maasserver.models.versionedtextfile import VersionedTextFile
 from maasserver.utils.converters import parse_systemd_interval
 from maasserver.utils.dns import validate_domain_name, validate_hostname
 from maasserver.utils.orm import get_one, validate_in_transaction
-from provisioningserver.utils import typed
 
 # Validator for the name attribute of model entities.
 MODEL_NAME_VALIDATOR = RegexValidator(r"^\w[ \w-]*$")
@@ -401,7 +400,6 @@ class LargeObjectFile:
     def __iter__(self):
         return self
 
-    @typed
     def write(self, data: bytes):
         """Write `data` to the underlying large object.
 

@@ -37,7 +37,6 @@ from twisted.web.server import NOT_DONE_YET
 from zope.interface import directlyProvides, implementer, Interface, providedBy
 
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils import typed
 
 log = LegacyLogger()
 
@@ -88,7 +87,6 @@ class STATUSES(Values):
 _WS_GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
 
-@typed
 def _makeAccept(key: bytes) -> bytes:
     """
     Create an B{accept} response for a given key.
@@ -103,7 +101,6 @@ def _makeAccept(key: bytes) -> bytes:
     return base64.encodebytes(digest).strip()
 
 
-@typed
 def _mask(buf: bytes, key: bytes) -> bytes:
     """
     Mask or unmask a buffer of bytes with a masking key.
@@ -120,7 +117,6 @@ def _mask(buf: bytes, key: bytes) -> bytes:
     return bytes((b ^ k) for b, k in zip(buf, cycle(key)))
 
 
-@typed
 def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes = None) -> bytes:
     """
     Make a frame.
@@ -174,7 +170,6 @@ def _makeFrame(buf: bytes, opcode, fin: bool, mask: bytes = None) -> bytes:
     return frame
 
 
-@typed
 def _parseFrames(frameBuffer: List[bytes], needMask: bool = True):
     """
     Parse frames in a highly compliant manner. It modifies C{frameBuffer}
@@ -323,7 +318,6 @@ class WebSocketsTransport:
     def __init__(self, transport):
         self._transport = transport
 
-    @typed
     def sendFrame(self, opcode, data: bytes, fin: bool):
         """
         Build a frame packet and send it over the wire.
@@ -340,7 +334,6 @@ class WebSocketsTransport:
         packet = _makeFrame(data, opcode, fin)
         self._transport.write(packet)
 
-    @typed
     def loseConnection(self, code=STATUSES.NORMAL, reason: bytes = b""):
         """
         Close the connection.
@@ -421,7 +414,6 @@ class WebSocketsProtocol(Protocol):
                 # provoking PING.
                 self.transport.write(_makeFrame(data, CONTROLS.PONG, True))
 
-    @typed
     def dataReceived(self, data: bytes):
         """
         Append the data to the buffer list and parse the whole.
@@ -465,7 +457,6 @@ class _WebSocketsProtocolWrapperReceiver:
         self._transport = transport
         self._messages = []
 
-    @typed
     def frameReceived(self, opcode, data, fin: bool):
         """
         For each frame received, accumulate the data (ignoring the opcode), and
@@ -523,7 +514,6 @@ class WebSocketsProtocolWrapper(WebSocketsProtocol):
         WebSocketsProtocol.makeConnection(self, transport)
         self.wrappedProtocol.makeConnection(self)
 
-    @typed
     def write(self, data: bytes):
         """
         Write to the websocket protocol, transforming C{data} in a frame.
@@ -533,7 +523,6 @@ class WebSocketsProtocolWrapper(WebSocketsProtocol):
         """
         self._receiver._transport.sendFrame(self.defaultOpcode, data, True)
 
-    @typed
     def writeSequence(self, data: Sequence):
         """
         Send all chunks from C{data} using C{write}.

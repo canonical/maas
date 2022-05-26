@@ -13,7 +13,6 @@ from provisioningserver.boot import BootMethod, BytesReader, get_parameters
 from provisioningserver.events import EVENT_TYPES, try_send_rack_event
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import typed
 from provisioningserver.utils.fs import atomic_symlink
 from provisioningserver.utils.network import convert_host_to_uri_str
 
@@ -192,7 +191,6 @@ class UEFIAMD64BootMethod(BootMethod):
                 return False
         return True
 
-    @typed
     def link_bootloader(self, destination: str):
         super().link_bootloader(destination)
         config_path = os.path.join(destination, "grub")

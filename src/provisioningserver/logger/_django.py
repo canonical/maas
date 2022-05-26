@@ -11,10 +11,8 @@ from provisioningserver.logger._common import (
     LoggingMode,
     warn_unless,
 )
-from provisioningserver.utils import typed
 
 
-@typed
 def configure_django_logging(verbosity: int, mode: LoggingMode):
     """Do basic logging configuration for Django, if possible.
 

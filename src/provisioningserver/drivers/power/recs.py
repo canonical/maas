@@ -20,7 +20,6 @@ from provisioningserver.drivers import (
 from provisioningserver.drivers.power import PowerConnError, PowerDriver
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 maaslog = get_maas_logger("drivers.power.recs")
@@ -310,7 +309,6 @@ class RECSPowerDriver(PowerDriver):
 
 
 @synchronous
-@typed
 def probe_and_enlist_recs(
     user: str,
     ip: str,

@@ -124,7 +124,6 @@ from formencode.validators import Number, Set
 import yaml
 
 from provisioningserver.path import get_maas_data_path, get_tentative_data_path
-from provisioningserver.utils import typed
 from provisioningserver.utils.config import (
     DirectoryString,
     ExtendedURL,
@@ -395,7 +394,6 @@ class ConfigurationDatabase:
 
     @classmethod
     @contextmanager
-    @typed
     def open(cls, dbpath: str):
         """Open a configuration database.
 
@@ -417,7 +415,6 @@ class ConfigurationDatabase:
 
     @classmethod
     @contextmanager
-    @typed
     def open_for_update(cls, dbpath: str):
         """Open a configuration database.
 
@@ -520,7 +517,6 @@ class ConfigurationFile:
 
     @classmethod
     @contextmanager
-    @typed
     def open(cls, path: str):
         """Open a configuration file read-only.
 
@@ -539,7 +535,6 @@ class ConfigurationFile:
 
     @classmethod
     @contextmanager
-    @typed
     def open_for_update(cls, path: str):
         """Open a configuration file.
 

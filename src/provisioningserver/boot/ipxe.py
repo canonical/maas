@@ -12,7 +12,6 @@ from textwrap import dedent
 import tempita
 
 from provisioningserver.boot import BootMethod, BytesReader, get_parameters
-from provisioningserver.utils import typed
 
 CONFIG_FILE = dedent(
     """\
@@ -113,7 +112,6 @@ class IPXEBootMethod(BootMethod):
             tempita.Template(step1).substitute(namespace).encode("utf-8")
         )
 
-    @typed
     def link_bootloader(self, destination: str):
         """Install the ipxe.cfg to chainload with append MAC address."""
         super().link_bootloader(destination)

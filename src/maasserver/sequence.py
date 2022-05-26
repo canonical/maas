@@ -10,7 +10,6 @@ from django.db import connection, transaction, utils
 from psycopg2.errorcodes import UNDEFINED_TABLE
 
 from maasserver.utils.orm import get_psycopg2_exception
-from provisioningserver.utils import typed
 
 BIGINT_MAX = (2**63) - 1
 INT_MAX = (2**32) - 1
@@ -28,7 +27,6 @@ class Sequence:
     for details.
     """
 
-    @typed
     def __init__(
         self,
         name: str,

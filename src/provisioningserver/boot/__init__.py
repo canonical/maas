@@ -23,7 +23,7 @@ from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import GetArchiveMirrors
-from provisioningserver.utils import locate_template, tftp, typed
+from provisioningserver.utils import locate_template, tftp
 from provisioningserver.utils.fs import atomic_copy, atomic_symlink
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
@@ -75,7 +75,6 @@ class BootMethodError(Exception):
     """Exception raised for errors from a BootMethod."""
 
 
-@typed
 def get_parameters(match) -> Dict[str, str]:
     """Helper that gets the matched parameters from the regex match."""
     return {
@@ -257,7 +256,6 @@ class BootMethod(metaclass=ABCMeta):
                     maaslog.error(err_msg)
         return files_found
 
-    @typed
     def link_bootloader(self, destination: str):
         """Installs the required files for this boot method into the
         destination.

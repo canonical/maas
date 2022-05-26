@@ -29,7 +29,6 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
 )
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 cartridge_mapping = {
@@ -170,7 +169,6 @@ class MSCMPowerDriver(PowerDriver):
 
 
 @synchronous
-@typed
 def probe_and_enlist_mscm(
     user: str,
     host: str,

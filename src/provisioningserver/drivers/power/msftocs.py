@@ -23,7 +23,6 @@ from provisioningserver.drivers.power import (
     PowerFatalError,
 )
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -207,7 +206,6 @@ class MicrosoftOCSPowerDriver(PowerDriver):
 
 
 @synchronous
-@typed
 def probe_and_enlist_msftocs(
     user: str,
     ip: str,

@@ -46,7 +46,6 @@ from provisioningserver.utils import (
     debian_to_kernel_architecture,
     kernel_to_debian_architecture,
     shell,
-    typed,
 )
 from provisioningserver.utils.network import generate_mac_address
 from provisioningserver.utils.shell import get_env_with_locale
@@ -1448,7 +1447,6 @@ class VirshPodDriver(PodDriver):
 
 
 @synchronous
-@typed
 def probe_virsh_and_enlist(
     user: str,
     poweraddr: str,

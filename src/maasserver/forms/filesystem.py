@@ -17,13 +17,11 @@ from maasserver.enum import FILESYSTEM_FORMAT_TYPE_CHOICES
 from maasserver.fields import StrippedCharField
 from maasserver.forms import AbsolutePathField
 from maasserver.models import Filesystem, Node
-from provisioningserver.utils import typed
 
 
 class MountFilesystemForm(Form):
     """Form used to mount a filesystem."""
 
-    @typed
     def __init__(self, filesystem: Optional[Filesystem], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.filesystem = filesystem
@@ -73,12 +71,10 @@ class MountNonStorageFilesystemForm(Form):
         ],
     )
 
-    @typed
     def __init__(self, node: Node, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
 
-    @typed
     def save(self) -> Filesystem:
         filesystem = Filesystem(
             node_config_id=self.node.current_config_id,
@@ -96,7 +92,6 @@ class UnmountNonStorageFilesystemForm(Form):
 
     mount_point = AbsolutePathField(required=True)
 
-    @typed
     def __init__(self, node: Node, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.node = node
@@ -118,6 +113,5 @@ class UnmountNonStorageFilesystemForm(Form):
                 )
         return cleaned_data
 
-    @typed
     def save(self) -> None:
         self.filesystem.delete()

@@ -18,7 +18,7 @@ from twisted.internet.defer import (
 )
 
 from provisioningserver.logger import get_maas_logger, LegacyLogger
-from provisioningserver.utils import snap, typed
+from provisioningserver.utils import snap
 from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -82,7 +82,6 @@ class ServiceState(ServiceStateBase):
 
     __slots__ = ()
 
-    @typed
     def __new__(cls, active_state: SERVICE_STATE = None, process_state=None):
         if active_state is None:
             active_state = SERVICE_STATE.UNKNOWN

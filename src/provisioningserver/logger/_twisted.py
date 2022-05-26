@@ -22,7 +22,6 @@ from provisioningserver.logger._common import (
     LoggingMode,
     warn_unless,
 )
-from provisioningserver.utils import typed
 
 # Map verbosity numbers to `twisted.logger` levels.
 DEFAULT_TWISTED_VERBOSITY_LEVELS = {
@@ -39,7 +38,6 @@ assert (
 ), "Twisted verbosity map does not match expectations."
 
 
-@typed
 def set_twisted_verbosity(verbosity: int):
     """Reconfigure verbosity of the standard library's `logging` module."""
     # Convert `verbosity` into a Twisted `LogLevel`.
@@ -51,7 +49,6 @@ def set_twisted_verbosity(verbosity: int):
     }
 
 
-@typed
 def configure_twisted_logging(verbosity: int, mode: LoggingMode):
     """Configure Twisted's legacy logging system.
 
@@ -314,7 +311,6 @@ class VerbosityOptions(usage.Options):
     opt_q = opt_quiet
 
 
-@typed
 def get_twisted_logging_level(verbosity: int):  # -> LogLevel
     """Return the Twisted logging level corresponding to `verbosity`.
 

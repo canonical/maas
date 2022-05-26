@@ -8,10 +8,8 @@ from twisted.logger import globalLogPublisher, LogLevel
 
 from provisioningserver.logger._common import LoggingMode
 from provisioningserver.logger._twisted import LegacyLogger
-from provisioningserver.utils import typed
 
 
-@typed
 def configure_tftp_logging(verbosity: int, mode: LoggingMode):
     """Configure logging in `python-tx-tftp`.
 

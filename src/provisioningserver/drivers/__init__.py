@@ -6,7 +6,6 @@
 
 from jsonschema import validate
 
-from provisioningserver.utils import typed
 from provisioningserver.utils.registry import Registry
 
 
@@ -196,7 +195,6 @@ class ArchitectureRegistry(Registry):
     """Registry for architecture classes."""
 
     @classmethod
-    @typed
     def get_by_pxealias(cls, alias: str):
         for _, arch in cls:
             if alias in arch.pxealiases:

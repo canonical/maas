@@ -51,7 +51,6 @@ from metadataserver.user_data.snippets import get_snippet_context
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.utils import typed
 from provisioningserver.utils.url import compose_URL
 
 maaslog = get_maas_logger("preseed")
@@ -673,7 +672,6 @@ def get_preseed_type_for(node):
         return PRESEED_TYPE.CURTIN
 
 
-@typed
 def get_preseed(request, node) -> bytes:
     """Return the preseed for a given node. Depending on the node's
     status this will be a commissioning preseed (if the node is

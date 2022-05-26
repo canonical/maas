@@ -15,13 +15,11 @@ from maastesting.matchers import DocTestMatches
 from maastesting.testcase import MAASTestCase
 from provisioningserver.logger import LoggingMode
 from provisioningserver.logger.testing import find_log_lines
-from provisioningserver.utils import typed
 from provisioningserver.utils.shell import get_env_with_locale
 
 here = pathlib.Path(__file__).parent
 
 
-@typed
 def log_something(
     name: str, *, verbosity: int, set_verbosity: int = None, mode: LoggingMode
 ):

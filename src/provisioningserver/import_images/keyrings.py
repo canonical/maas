@@ -8,12 +8,10 @@ import os
 
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.logger import LegacyLogger
-from provisioningserver.utils import typed
 
 log = LegacyLogger()
 
 
-@typed
 def write_keyring(keyring_path, keyring_data: bytes):
     """Write a keyring blob to a file.
 

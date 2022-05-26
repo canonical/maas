@@ -29,12 +29,10 @@ from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
 
 
-@typed
 def compose_config_path(mac: str) -> TFTPPath:
     """Compose the TFTP/HTTP path for a iPXE configuration file.
 
@@ -232,7 +230,6 @@ class TestIPXEBootMethodRegex(MAASTestCase):
     "Tests for `provisioningserver.boot.ipxe.IPXEBootMethod.re_config_file`." ""
 
     @staticmethod
-    @typed
     def get_example_path_and_components() -> TFTPPathAndComponents:
         """Return a plausible path and its components.
 

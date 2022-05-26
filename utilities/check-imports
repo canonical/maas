@@ -405,7 +405,6 @@ checks = [
         RackControllerUtilsInit,
         RackControllerRule
         | Rule(
-            Allow("maastesting.typecheck.typed"),
             Allow("provisioningserver.path.get_tentative_path"),
             Allow("tempita"),
             Allow(StandardLibraries),

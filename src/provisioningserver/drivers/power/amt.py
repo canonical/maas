@@ -20,7 +20,7 @@ from provisioningserver.drivers.power import (
     PowerDriver,
     PowerSettingError,
 )
-from provisioningserver.utils import shell, snap, typed
+from provisioningserver.utils import shell, snap
 
 AMT_ERRORS = {
     "401 Unauthorized": {
@@ -64,7 +64,6 @@ class AMTPowerDriver(PowerDriver):
                 missing_packages.append(package)
         return missing_packages
 
-    @typed
     def _render_wsman_state_xml(self, power_change) -> bytes:
         """Render wsman state XML."""
         wsman_state_filename = join(dirname(__file__), "amt.wsman-state.xml")
@@ -80,7 +79,6 @@ class AMTPowerDriver(PowerDriver):
         ps.text = power_states[power_change]
         return etree.tostring(tree)
 
-    @typed
     def _parse_multiple_xml_docs(self, xml: bytes):
         """Parse multiple XML documents.
 
@@ -97,7 +95,6 @@ class AMTPowerDriver(PowerDriver):
         frags = (xml[start:end] for start, end in zip(starts, ends))
         return (etree.fromstring(frag) for frag in frags)
 
-    @typed
     def get_power_state(self, xml: bytes) -> str:
         """Get PowerState text from XML."""
         namespaces = {
@@ -160,7 +157,6 @@ class AMTPowerDriver(PowerDriver):
                 )
                 self._run(command, power_pass, stdin=fd.read())
 
-    @typed
     def _run(
         self, command: tuple, power_pass: str, stdin: bytes = None
     ) -> bytes:
@@ -178,7 +174,6 @@ class AMTPowerDriver(PowerDriver):
             )
         return result.stdout
 
-    @typed
     def _issue_amttool_command(
         self,
         cmd: str,
@@ -193,7 +188,6 @@ class AMTPowerDriver(PowerDriver):
             command += (amttool_boot_mode,)
         return self._run(command, power_pass, stdin=stdin)
 
-    @typed
     def _issue_wsman_command(
         self, power_change: str, ip_address: str, power_pass: str
     ) -> bytes:

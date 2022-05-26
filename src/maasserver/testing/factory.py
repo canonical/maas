@@ -122,7 +122,6 @@ from maasserver.utils.osystems import get_release_from_distro_info
 from maasserver.worker_user import get_worker_user
 import maastesting.factory
 from maastesting.factory import TooManyRandomRetries
-from maastesting.typecheck import typed
 from metadataserver.builtin_scripts import load_builtin_scripts
 from metadataserver.enum import (
     HARDWARE_TYPE,
@@ -2283,7 +2282,6 @@ class Factory(maastesting.factory.Factory):
             description=description,
         )
 
-    @typed
     def make_LargeFile(self, content: bytes = None, size=512):
         """Create `LargeFile`.
 

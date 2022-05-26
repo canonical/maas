@@ -11,8 +11,6 @@ import re
 from django.conf import settings
 from lxml import etree
 
-from provisioningserver.utils import typed
-
 
 class XMLToYAML:
     """Convert XML to YAML."""
@@ -119,7 +117,6 @@ def round_size_to_nearest_block(size, block_size, round_up=True):
     return block_size * number_of_blocks
 
 
-@typed
 def json_load_bytes(input: bytes, encoding=None):
     """Load JSON from `input`.
 

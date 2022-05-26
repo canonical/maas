@@ -14,7 +14,7 @@ import tempita
 
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.path import get_maas_data_path, get_path
-from provisioningserver.utils import load_template, snap, typed
+from provisioningserver.utils import load_template, snap
 import provisioningserver.utils.network as net_utils
 from provisioningserver.utils.text import (
     normalise_to_comma_list,
@@ -337,7 +337,6 @@ def _get_addresses(*hostnames):
     return ipv4, ipv6
 
 
-@typed
 def get_config(
     template_name: str,
     global_dhcp_snippets: Sequence[dict],
@@ -417,7 +416,6 @@ def get_rack_ip_for_subnet(version, cidr, interface):
     return None
 
 
-@typed
 def get_config_v4(
     template_name: str,
     global_dhcp_snippets: Sequence[dict],
@@ -476,7 +474,6 @@ def get_config_v4(
         ) from error
 
 
-@typed
 def get_config_v6(
     template_name: str,
     global_dhcp_snippets: Sequence[dict],

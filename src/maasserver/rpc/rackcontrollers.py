@@ -31,7 +31,6 @@ from maasserver.utils.orm import transactional, with_connection
 from metadataserver.models import ScriptSet
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchNode, NoSuchScope
-from provisioningserver.utils import typed
 from provisioningserver.utils.deb import DebVersionsInfo
 from provisioningserver.utils.snap import SnapVersionsInfo
 from provisioningserver.utils.twisted import synchronous
@@ -176,7 +175,6 @@ def register(
     return rackcontroller
 
 
-@typed
 def find(system_id: Optional[str], hostname: str, interfaces: dict):
     """Find an existing node by `system_id`, `hostname`, and `interfaces`.
 

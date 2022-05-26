@@ -36,7 +36,7 @@ from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import BootConfigNoResponse
 from provisioningserver.rpc.region import GetBootConfig, MarkNodeFailed
-from provisioningserver.utils import network, tftp, typed
+from provisioningserver.utils import network, tftp
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.tftp import TFTPPath
 from provisioningserver.utils.twisted import deferred, RPCFetcher
@@ -185,7 +185,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
             return self.client_service.getClientNow()
 
     @inlineCallbacks
-    @typed
     def get_boot_method(self, file_name: TFTPPath):
         """Finds the correct boot method."""
         for _, method in BootMethodRegistry:
@@ -323,7 +322,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
         raise FileNotFound(file_name)
 
     @deferred
-    @typed
     def handle_boot_method(self, file_name: TFTPPath, protocol: str, result):
         boot_method, params = result
         if boot_method is None:
@@ -358,7 +356,6 @@ class TFTPBackend(FilesystemSynchronousBackend):
             raise BackendError(failure.getErrorMessage())
 
     @deferred
-    @typed
     def get_reader(
         self,
         file_name: TFTPPath,

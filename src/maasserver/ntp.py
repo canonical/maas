@@ -12,11 +12,9 @@ from maasserver.routablepairs import (
     get_routable_address_map,
     reduce_routable_address_map,
 )
-from provisioningserver.utils import typed
 from provisioningserver.utils.text import split_string_list
 
 
-@typed
 def get_servers_for(node: Optional[Node]) -> FrozenSet[str]:
     """Return NTP servers to use for the given node."""
     if node is None or node.is_region_controller or _ntp_external_only():
@@ -62,13 +60,11 @@ def get_peers_for(node: Node) -> FrozenSet[str]:
         return frozenset()
 
 
-@typed
 def _ntp_external_only() -> bool:
     """Has `ntp_external_only` been set?"""
     return Config.objects.get_config("ntp_external_only")
 
 
-@typed
 def _get_external_servers() -> Iterable[str]:
     """Get the configured external NTP servers."""
     ntp_servers = Config.objects.get_config("ntp_servers")

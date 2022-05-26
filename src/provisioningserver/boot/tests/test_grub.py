@@ -31,12 +31,10 @@ from provisioningserver.boot.testing import TFTPPath, TFTPPathAndComponents
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.utils import typed
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.network import convert_host_to_uri_str
 
 
-@typed
 def compose_config_path(
     mac: str = None, arch: str = None, subarch: str = None
 ) -> TFTPPath:
@@ -267,7 +265,6 @@ class TestUEFIAMD64BootMethodRegex(MAASTestCase):
     `provisioningserver.boot.uefi_amd64.UEFIAMD64BootMethod.re_config_file`."""
 
     @staticmethod
-    @typed
     def get_example_path_and_components() -> TFTPPathAndComponents:
         """Return a plausible UEFI path and its components.
 

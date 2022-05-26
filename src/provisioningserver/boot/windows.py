@@ -26,7 +26,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
-from provisioningserver.utils import tftp, typed
+from provisioningserver.utils import tftp
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import asynchronous, deferred
 
@@ -261,7 +261,6 @@ class WindowsPXEBootMethod(BootMethod):
             return self.compose_bcd(kernel_params, local_host)
         return self.output_static(kernel_params, path)
 
-    @typed
     def link_bootloader(self, destination: str):
         """Installs the required files for Windows booting into the
         tftproot.

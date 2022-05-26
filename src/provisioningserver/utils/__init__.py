@@ -14,16 +14,7 @@ import tempita
 
 from provisioningserver.utils import snap
 
-# Use typecheck-decorator if it's available.
-try:
-    from maastesting.typecheck import typed
-except ImportError:
 
-    def typed(func):
-        return func
-
-
-@typed
 def locate_config(*path: Tuple[str]):
     """Return the location of a given config file or directory.
 

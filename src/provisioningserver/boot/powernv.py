@@ -16,7 +16,6 @@ from provisioningserver.boot import (
 )
 from provisioningserver.boot.pxe import ARP_HTYPE, re_mac_address
 from provisioningserver.kernel_opts import compose_kernel_command_line
-from provisioningserver.utils import typed
 
 # The pxelinux.cfg path is prefixed with the architecture for the
 # PowerNV nodes. This prefix is set by the path-prefix dhcpd option.
@@ -147,7 +146,6 @@ class PowerNVBootMethod(BootMethod):
         namespace["kernel_command"] = kernel_command
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
-    @typed
     def link_bootloader(self, destination: str):
         """Does nothing. No extra boot files are required."""
         # PowerNV doesn't actually use the provided pxelinux.0. It emulates

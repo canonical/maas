@@ -12,7 +12,6 @@ from urllib.parse import unquote
 
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.utils import commission_node, create_node
-from provisioningserver.utils import typed
 from provisioningserver.utils.twisted import synchronous
 
 vmomi_api = None
@@ -405,7 +404,6 @@ def get_vmware_servers(host, username, password, port=None, protocol=None):
 
 
 @synchronous
-@typed
 def probe_vmware_and_enlist(
     user: str,
     host: str,

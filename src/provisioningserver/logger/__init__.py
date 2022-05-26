@@ -81,7 +81,6 @@ from provisioningserver.logger._twisted import (
     set_twisted_verbosity,
     VerbosityOptions,
 )
-from provisioningserver.utils import typed
 
 # Current verbosity level. Configured initial in `configure()` call.
 # Can be set afterward at runtime with `set_verbosity()`.
@@ -89,7 +88,6 @@ from provisioningserver.utils import typed
 current_verbosity = DEFAULT_LOG_VERBOSITY
 
 
-@typed
 def configure(verbosity: int = None, mode: LoggingMode = None):
     """Configure logging for both Twisted and Python.
 
@@ -134,7 +132,6 @@ configurators = [
 ]
 
 
-@typed
 def set_verbosity(verbosity: int = None):
     """Resets the logging verbosity to the specified level.
 

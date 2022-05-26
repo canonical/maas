@@ -31,10 +31,8 @@ from provisioningserver.boot.tests.test_pxe import parse_pxe_config
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.utils import typed
 
 
-@typed
 def compose_config_path(mac: str) -> bytes:
     """Compose the TFTP path for a S390x PXE configuration file.
 
@@ -55,7 +53,6 @@ def compose_config_path(mac: str) -> bytes:
     ).encode("ascii")
 
 
-@typed
 def get_example_path_and_components() -> TFTPPathAndComponents:
     """Return a plausible path and its components.
 

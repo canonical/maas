@@ -11,8 +11,6 @@ from typing import Iterable, Mapping, Sequence, TypeVar
 from django.db import connection
 from netaddr import IPAddress
 
-from provisioningserver.utils import typed
-
 Node = TypeVar("Node")
 
 
@@ -35,7 +33,6 @@ _find_addresses_sql = dedent(
 )
 
 
-@typed
 def find_addresses_between_nodes(nodes_left: Iterable, nodes_right: Iterable):
     """Find routable addresses between `nodes_left` and `nodes_right`.
 
@@ -80,7 +77,6 @@ def find_addresses_between_nodes(nodes_left: Iterable, nodes_right: Iterable):
 AddressMap = Mapping[Node, Sequence[IPAddress]]
 
 
-@typed
 def get_routable_address_map(
     destinations: Iterable[Node], whence: Node
 ) -> AddressMap:
@@ -93,7 +89,6 @@ def get_routable_address_map(
     return group_addresses_by_right_node(routable_addrs)
 
 
-@typed
 def group_addresses_by_right_node(addresses) -> AddressMap:
     """Group `addresses` by the "right" node.
 
@@ -109,7 +104,6 @@ def group_addresses_by_right_node(addresses) -> AddressMap:
     return collated
 
 
-@typed
 def reduce_routable_address_map(
     routable_addrs_map: AddressMap,
 ) -> Iterable[IPAddress]:
