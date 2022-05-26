@@ -915,6 +915,16 @@ EndSection
         }
         self.assertEqual(True, self.ipmi._check_ciphers_enabled())
 
+    def test_ciphers_empty(self):
+        self.ipmi._bmc_config = {
+            "Rmcpplus_Conf_Privilege": {},
+        }
+        self.assertEqual(True, self.ipmi._check_ciphers_enabled())
+
+    def test_ciphers_list_nonexistent(self):
+        self.ipmi._bmc_config = {}
+        self.assertEqual(True, self.ipmi._check_ciphers_enabled())
+
     def test_ciphers_not_enable(self):
         self.ipmi._bmc_config = {
             "Rmcpplus_Conf_Privilege": {
