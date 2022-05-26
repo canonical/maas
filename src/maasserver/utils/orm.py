@@ -837,21 +837,18 @@ class DisabledDatabaseConnection:
     connection = None
 
     def __getattr__(self, name):
-        raise RuntimeError(
-            "Database connections in this thread (%s) are "
-            "disabled." % threading.currentThread().name
-        )
+        self._raise_error()
 
     def __setattr__(self, name, value):
-        raise RuntimeError(
-            "Database connections in this thread (%s) are "
-            "disabled." % threading.currentThread().name
-        )
+        self._raise_error()
 
     def __delattr__(self, name):
+        self._raise_error()
+
+    def _raise_error(self):
         raise RuntimeError(
-            "Database connections in this thread (%s) are "
-            "disabled." % threading.currentThread().name
+            "Database connections in this thread "
+            f"({threading.current_thread().name}) are disabled."
         )
 
     def close(self):

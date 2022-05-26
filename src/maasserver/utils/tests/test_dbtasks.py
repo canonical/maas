@@ -90,7 +90,7 @@ class TestDatabaseTaskService(MAASTestCase):
 
     def test_task_is_executed_in_other_thread(self):
         def get_thread_ident():
-            return threading.currentThread().ident
+            return threading.current_thread().ident
 
         service = DatabaseTasksService()
         service.startService()

@@ -1,9 +1,6 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for Twisted/Crochet-related utilities."""
-
-
 from functools import partial
 import io
 from itertools import cycle
@@ -24,7 +21,6 @@ from testtools.content import content_from_stream
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
-    Contains,
     Equals,
     HasLength,
     Is,
@@ -764,10 +760,10 @@ class TestCallOutToThread(MAASTestCase):
 
     @inlineCallbacks
     def test_defers_to_thread(self):
-        threads = {threading.currentThread()}
+        threads = {threading.current_thread()}
 
         def captureThread():
-            threads.add(threading.currentThread())
+            threads.add(threading.current_thread())
 
         yield callOutToThread(None, captureThread)
         self.expectThat(threads, HasLength(2))
@@ -1261,21 +1257,21 @@ class TestDeferToNewThread(MAASTestCase):
     @inlineCallbacks
     def test_runs_given_func_in_new_thread(self):
         def thing_to_call(*args, **kwargs):
-            thread = threading.currentThread()
+            thread = threading.current_thread()
             return thread, args, kwargs
 
         thread, args, kwargs = yield deferToNewThread(
             thing_to_call, sentinel.arg, thing=sentinel.kwarg
         )
 
-        self.expectThat(thread, Not(Is(threading.currentThread())))
+        self.assertIsNot(thread, threading.current_thread())
         self.expectThat(args, Equals((sentinel.arg,)))
         self.expectThat(kwargs, Equals({"thing": sentinel.kwarg}))
 
     @inlineCallbacks
     def test_gives_new_thread_informative_name(self):
         def get_name_of_thread():
-            return threading.currentThread().name
+            return threading.current_thread().name
 
         name = yield deferToNewThread(get_name_of_thread)
         self.assertThat(name, Equals("deferToNewThread(get_name_of_thread)"))
@@ -1283,7 +1279,7 @@ class TestDeferToNewThread(MAASTestCase):
     @inlineCallbacks
     def test_gives_new_thread_generic_name_if_func_has_no_name(self):
         def get_name_of_thread():
-            return threading.currentThread().name
+            return threading.current_thread().name
 
         # Mocks don't have a __name__ property by default.
         func = Mock(side_effect=get_name_of_thread)
@@ -1483,17 +1479,17 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
         class Context:
             def __enter__(self):
                 steps.append("__enter__")
-                ct = threading.currentThread()
+                ct = threading.current_thread()
                 threads.append(ct.ident)
 
             def __exit__(self, *exc_info):
                 steps.append("__exit__")
-                ct = threading.currentThread()
+                ct = threading.current_thread()
                 threads.append(ct.ident)
 
         def function():
             steps.append("function")
-            ct = threading.currentThread()
+            ct = threading.current_thread()
             threads.append(ct.ident)
 
         unpool = ThreadUnpool(self.make_semaphore(), Context)
@@ -1504,8 +1500,8 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
         # All steps happened in the same thread.
         self.assertThat(threads, AfterPreprocessing(set, HasLength(1)))
         # That thread was not this thread.
-        currentThread = threading.currentThread()
-        self.assertThat(threads, Not(Contains(currentThread.ident)))
+        current_thread = threading.current_thread()
+        self.assertNotIn(current_thread.ident, threads)
 
 
 class ContextBrokenOnEntry:
@@ -1666,17 +1662,17 @@ class TestThreadPoolCommonBehaviour(MAASTestCase):
         class Context:
             def __enter__(self):
                 steps.append("__enter__")
-                ct = threading.currentThread()
+                ct = threading.current_thread()
                 threads.append(ct.ident)
 
             def __exit__(self, *exc_info):
                 steps.append("__exit__")
-                ct = threading.currentThread()
+                ct = threading.current_thread()
                 threads.append(ct.ident)
 
         def function():
             steps.append("function")
-            ct = threading.currentThread()
+            ct = threading.current_thread()
             threads.append(ct.ident)
 
         pool = ThreadPool(minthreads=1, maxthreads=1, contextFactory=Context)
@@ -1696,8 +1692,8 @@ class TestThreadPoolCommonBehaviour(MAASTestCase):
         # All steps happened in the same thread.
         self.assertThat(threads, AfterPreprocessing(set, HasLength(1)))
         # That thread was not this thread.
-        currentThread = threading.currentThread()
-        self.assertThat(threads, Not(Contains(currentThread.ident)))
+        current_thread = threading.current_thread()
+        self.assertNotIn(current_thread.ident, threads)
 
 
 class DummyThreadPool:
