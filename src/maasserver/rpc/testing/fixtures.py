@@ -29,6 +29,7 @@ from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
 )
+from maastesting.crochet import get_timeout
 from provisioningserver.rpc import cluster, clusterservice, region
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
@@ -69,6 +70,16 @@ class RunningClusterRPCFixture(fixtures.Fixture):
         self.useFixture(MockRegionToClusterRPCFixture())
 
 
+def _get_shared_secret_for_tests():
+    """Get the shared secret, but wait longer."""
+    wrapped_gss = security.get_shared_secret
+    # Undo functools.wraps
+    gss = wrapped_gss.__wrapped__
+    timeout = get_timeout()
+    rewrapped_gss = asynchronous(timeout=timeout)(gss)
+    return rewrapped_gss()
+
+
 def authenticate_with_secret(secret, message):
     """Patch-in for `Authenticate` calls.
 
@@ -103,7 +114,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
     def setUp(self):
         super().setUp()
         # Ensure there's a shared-secret.
-        self.secret = security.get_shared_secret()
+        self.secret = _get_shared_secret_for_tests()
         # We need the event-loop up and running.
         if not eventloop.loop.running:
             raise RuntimeError(
@@ -206,7 +217,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         self.rpc.stopService().wait(10)
 
         # Ensure there's a shared-secret.
-        self.secret = security.get_shared_secret()
+        self.secret = _get_shared_secret_for_tests()
 
         # The RPC service uses a list to manage endpoints, but let's check
         # those assumptions.

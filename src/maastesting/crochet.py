@@ -111,19 +111,21 @@ class EventualResultCatchingMixin:
         )
 
 
+def get_timeout(timeout=None):
+    """Get a timeout to wait for things."""
+    wait_time = (
+        os.environ.get("MAAS_WAIT_FOR_REACTOR", 60.0)
+        if timeout is None
+        else timeout
+    )
+    return float(wait_time)
+
+
 def wait_for(timeout=None):
     """Backport of wait_for from Crochet 2.0.
 
     This allows async def definitions to be used.
     """
-
-    def get_timeout():
-        wait_time = (
-            os.environ.get("MAAS_WAIT_FOR_REACTOR", 60.0)
-            if timeout is None
-            else timeout
-        )
-        return float(wait_time)
 
     def decorator(function):
         def wrapper(function, _, args, kwargs):
@@ -136,7 +138,7 @@ def wait_for(timeout=None):
 
             eventual_result = run()
             try:
-                return eventual_result.wait(get_timeout())
+                return eventual_result.wait(get_timeout(timeout))
             except TimeoutError:
                 eventual_result.cancel()
                 raise
