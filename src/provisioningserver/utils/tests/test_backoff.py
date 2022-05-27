@@ -1,9 +1,6 @@
 # Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.utils.backoff`."""
-
-
 from itertools import islice
 
 from hypothesis import given
@@ -36,7 +33,7 @@ class TestFunctions(MAASTestCase):
         self.assertEqual((base * rate), growth_seq[0])
         self.assertEqual((base * (rate**10)), growth_seq[-1])
 
-    @given(lists(floats(0.0, 10000.0), 0, 100))
+    @given(lists(floats(0.0, 10000.0), min_size=0, max_size=100))
     def test_full_jitter(self, values):
         jittered = list(full_jitter(values))
 

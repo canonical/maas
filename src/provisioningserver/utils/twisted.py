@@ -815,7 +815,7 @@ class ThreadPool(threadpool.ThreadPool):
         """
 
         def worker(log, context, target):
-            ct = self.currentThread()
+            ct = threading.current_thread()
             try:
                 try:
                     return target()

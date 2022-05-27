@@ -599,12 +599,26 @@ class TestClusterClientService(MAASTestCase):
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
             ),
         )
@@ -661,22 +675,50 @@ class TestClusterClientService(MAASTestCase):
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
                 call(
                     b"GET",
                     ascii_url("http://127.0.0.1/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
                 call(
                     b"GET",
                     ascii_url("http://127.0.0.1/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
             ),
         )
@@ -748,22 +790,50 @@ class TestClusterClientService(MAASTestCase):
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
                 call(
                     b"GET",
                     ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                    Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                    Headers(
+                        {
+                            "User-Agent": [
+                                "provisioningserver.rpc.clusterservice.ClusterClientService"
+                            ],
+                            "Host": ["127.0.0.1"],
+                        }
+                    ),
                 ),
             ),
         )
@@ -814,7 +884,14 @@ class TestClusterClientService(MAASTestCase):
             MockCalledOnceWith(
                 b"GET",
                 ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                Headers({"User-Agent": [ANY], "Host": ["127.0.0.1"]}),
+                Headers(
+                    {
+                        "User-Agent": [
+                            "provisioningserver.rpc.clusterservice.ClusterClientService"
+                        ],
+                        "Host": ["127.0.0.1"],
+                    }
+                ),
             ),
         )
         dump = logger.dump()
@@ -848,7 +925,14 @@ class TestClusterClientService(MAASTestCase):
             MockCalledOnceWith(
                 b"GET",
                 ascii_url("http://[::ffff:127.0.0.1]/MAAS"),
-                Headers({"User-Agent": [ANY], "Host": [fqdn]}),
+                Headers(
+                    {
+                        "User-Agent": [
+                            "provisioningserver.rpc.clusterservice.ClusterClientService"
+                        ],
+                        "Host": [fqdn],
+                    }
+                ),
             ),
         )
 

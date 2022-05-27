@@ -596,7 +596,7 @@ class TestHTTPBootResource(MAASTestCase):
         yield self.render_GET(resource, request)
 
         self.assertEqual(
-            [100], request.responseHeaders.getRawHeaders(b"Content-Length")
+            [b"100"], request.responseHeaders.getRawHeaders(b"Content-Length")
         )
         self.assertEqual(content, b"".join(request.written))
 

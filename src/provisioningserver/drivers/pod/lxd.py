@@ -250,18 +250,12 @@ class LXDPodDriver(PodDriver):
     def get_url(self, context: dict):
         """Return url for the LXD host."""
         power_address = context.get("power_address")
+        if "://" not in power_address:
+            # must have a scheme to be a valid URL
+            power_address = f"https://{power_address}"
         url = urlparse(power_address)
-        if not url.scheme:
-            # When the scheme is not included in the power address
-            # urlparse puts the url into path.
-            url = url._replace(scheme="https", netloc="%s" % url.path, path="")
         if not url.port:
-            if url.netloc:
-                url = url._replace(netloc="%s:8443" % url.netloc)
-            else:
-                # Similar to above, we need to swap netloc and path.
-                url = url._replace(netloc="%s:8443" % url.path, path="")
-
+            url = url._replace(netloc=f"{url.netloc}:8443")
         return url.geturl()
 
     @asynchronous

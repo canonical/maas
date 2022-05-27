@@ -26,7 +26,7 @@ from twisted.internet.error import ProcessDone, ProcessTerminated
 from twisted.internet.interfaces import IReactorMulticast
 from twisted.internet.protocol import DatagramProtocol, ProcessProtocol
 from twisted.internet.threads import deferToThread
-from zope.interface.exceptions import DoesNotImplement
+from zope.interface.exceptions import Invalid
 from zope.interface.verify import verifyObject
 
 from provisioningserver.config import is_dev_environment
@@ -469,7 +469,7 @@ class BeaconingSocketProtocol(DatagramProtocol):
             # Need to ensure that the passed-in reactor is, in fact, a "real"
             # reactor, and not None, or a mock reactor used in tests.
             verifyObject(IReactorMulticast, self.reactor)
-        except DoesNotImplement:
+        except Invalid:
             return
         if self.listen_port is None:
             self.listen_port = self.reactor.listenMulticast(

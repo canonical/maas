@@ -1014,8 +1014,9 @@ class TestCaptureScriptOutput(MAASTestCase):
         proc = Popen(("lshw", "-xml"), stdout=PIPE, stderr=PIPE)
         returncode, stdout, stderr, combined = self.capture(proc)
         self.assertThat(returncode, Equals(0), stderr)
-        # This is a complete XML document; we've captured all output.
-        self.assertThat(etree.fromstring(stdout).tag, Equals("list"))
+        # This is a complete XML document that can be parsed; we've captured
+        # all output.
+        self.assertIsNotNone(etree.fromstring(stdout))
 
     def test_interprets_backslash(self):
         proc = Popen(

@@ -283,8 +283,9 @@ class HTTPBootResource(resource.Resource):
             # Some readers from `tftp` do not provide a way to get the size
             # of the generated content. Only set `Content-Length` when size
             # can be determined for the response.
-            if hasattr(reader, "size"):
-                request.setHeader(b"Content-Length", reader.size)
+            size = getattr(reader, "size", None)
+            if size is not None:
+                request.setHeader(b"Content-Length", str(size))
 
             # The readers from `tftp` use `finish` instead of `close`, but
             # `NoRangeStaticProducer` expects `close` instead of `finish`. Map

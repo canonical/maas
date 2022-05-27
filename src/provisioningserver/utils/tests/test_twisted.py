@@ -2149,12 +2149,12 @@ class TestReducedWebLogFormatter(MAASTestCase):
         request.client = address.IPv4Address(
             "TCP", self.prep(self.client), 12345
         )
-        request.requestHeaders.addRawHeader(
-            "referer", self.prep(self.referrer)
-        )
-        request.requestHeaders.addRawHeader(
-            "user-agent", self.prep(self.agent)
-        )
+        referer = self.prep(self.referrer)
+        if referer is not None:
+            request.requestHeaders.addRawHeader("referer", referer)
+        user_agent = self.prep(self.agent)
+        if user_agent is not None:
+            request.requestHeaders.addRawHeader("user-agent", user_agent)
         request.uri = self.prep(self.uri)
         request.code = self.status
 
