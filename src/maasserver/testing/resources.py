@@ -4,6 +4,7 @@
 """Resources for testing the MAAS region application."""
 
 
+from contextlib import contextmanager
 from itertools import count
 import os
 from pathlib import Path
@@ -39,6 +40,23 @@ else:
             "<< " + message.format(**args) + " >>",
             file=sys.stderr,
         )
+
+
+@contextmanager
+def connect_no_transaction(cluster):
+    """Wrap psycopg2 connect method so that it doesn't start a transaction.
+
+    Since psycopg2 2.9, using connect() in a with statement automatically
+    starts a transaction. This wrapper reverts to the old behaviour in cases
+    where no transaction is required, e.g. for CREATE DATABASE calls.
+    """
+    conn = None
+    try:
+        conn = cluster.connect()
+        yield conn
+    finally:
+        if conn:
+            conn.close()
 
 
 class DatabaseClusterManager(TestResourceManager):
@@ -115,7 +133,7 @@ class DjangoPristineDatabaseManager(TestResourceManager):
         )
 
         created = set()
-        with cluster.connect() as conn:
+        with connect_no_transaction(cluster) as conn:
             with conn.cursor() as cursor:
                 for database in databases:
                     dbname = database["NAME"] + "_test"
@@ -210,7 +228,7 @@ class DjangoDatabasesManager(TestResourceManager):
     def make(self, dependencies):
         databases = dependencies["templates"]
         clusterlock = databases.cluster.lock
-        with databases.cluster.connect() as conn:
+        with connect_no_transaction(databases.cluster) as conn:
             with conn.cursor() as cursor:
                 for database in databases:
                     template = database["NAME"]
@@ -233,7 +251,7 @@ class DjangoDatabasesManager(TestResourceManager):
 
     def clean(self, databases):
         close_all_connections()
-        with databases.cluster.connect() as conn:
+        with connect_no_transaction(databases.cluster) as conn:
             with conn.cursor() as cursor:
                 for database in databases:
                     dbname = database["NAME"]
