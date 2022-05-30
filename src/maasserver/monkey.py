@@ -78,13 +78,6 @@ def fix_piston_emitter_related():
             emitters.Emitter.construct = local_vars["emitter_new_construct"]
 
 
-def fix_piston_consumer_delete():
-    """Fix Piston so it doesn't try to send an email when a user is delete."""
-    from piston3 import signals
-
-    signals.send_consumer_mail = lambda consumer: None
-
-
 def fix_ordereddict_yaml_representer():
     """Fix PyYAML so an OrderedDict can be dumped."""
 
@@ -129,6 +122,5 @@ def add_patches():
     add_patches_to_twisted()
     fix_django_deferred_attribute()
     fix_piston_emitter_related()
-    fix_piston_consumer_delete()
     fix_ordereddict_yaml_representer()
     fix_twisted_disconnect_write()
