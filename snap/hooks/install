@@ -3,6 +3,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 mkdir -p \
+      "$SNAP_COMMON/maas" \
       "$SNAP_DATA/preseeds" \
       "$SNAP_DATA/root" \
       "$SNAP_DATA/supervisord"
