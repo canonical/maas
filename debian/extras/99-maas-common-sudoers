@@ -55,7 +55,7 @@ maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/ppc64el
 maas ALL= NOPASSWD:SETENV: /usr/share/maas/machine-resources/s390x
 
 # Allow running refresh scripts on controllers
-maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/40-maas-01-machine-resources
+maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/20-maas-03-machine-resources
 maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/50-maas-01-commissioning
 maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/maas-list-modaliases
 maas ALL= NOPASSWD:SETENV: /usr/lib/python3/dist-packages/provisioningserver/refresh/maas-lshw
