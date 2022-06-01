@@ -4049,14 +4049,15 @@ class TestReportVID(MAASServerTestCase):
         vlan = fabric.get_default_vlan()
         iface = factory.make_Interface(vlan=vlan)
         vid = random.randint(1, 4094)
+        ip = factory.make_ip_address()
         vlan_before = get_one(VLAN.objects.filter(fabric=fabric, vid=vid))
         self.assertIsNone(vlan_before)
-        iface.report_vid(vid)
+        iface.report_vid(vid, ip=ip)
         vlan_after = get_one(VLAN.objects.filter(fabric=fabric, vid=vid))
         self.assertIsNotNone(vlan_after)
         # Report it one more time to make sure we can handle it if we already
         # observed it. (expect nothing to happen.)
-        iface.report_vid(vid)
+        iface.report_vid(vid, ip=ip)
 
     def test_logs_vlan_creation_and_sets_description(self):
         fabric = factory.make_Fabric()
@@ -4074,6 +4075,20 @@ class TestReportVID(MAASServerTestCase):
             % (iface.get_log_string()),
             new_vlan.description,
         )
+
+    def test_report_vid_handles_existing_vlan(self):
+        fabric1 = factory.make_Fabric()
+        fabric2 = factory.make_Fabric()
+        observing_vlan = fabric1.get_default_vlan()
+        neighbour_vlan = factory.make_VLAN(fabric=fabric2)
+        subnet1 = factory.make_Subnet(vlan=observing_vlan)
+        subnet2 = factory.make_Subnet(vlan=neighbour_vlan)
+        iface = factory.make_Interface(subnet=subnet1)
+        iface.report_vid(
+            neighbour_vlan.vid, ip=subnet2.get_next_ip_for_allocation()
+        )
+        neighbour_vlan.refresh_from_db()
+        self.assertEqual(observing_vlan.fabric, neighbour_vlan.fabric)
 
 
 class TestInterfaceGetDefaultBridgeName(MAASServerTestCase):

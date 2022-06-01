@@ -6416,7 +6416,7 @@ class Controller(Node):
                         vid=vid,
                     )
                 if vid is not None:
-                    interface.report_vid(vid)
+                    interface.report_vid(vid, ip=neighbour["ip"])
 
     def report_mdns_entries(self, entries):
         """Update the mDNS entries on this controller.
