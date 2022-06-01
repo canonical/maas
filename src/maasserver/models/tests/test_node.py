@@ -103,6 +103,7 @@ from maasserver.models import (
     StaticIPAddress,
     Subnet,
     UnknownInterface,
+    VLAN,
     VolumeGroup,
 )
 from maasserver.models import Bcache, BMC
@@ -10913,7 +10914,38 @@ class TestReportNeighbours(MAASServerTestCase):
             },
         ]
         rack.report_neighbours(neighbours)
-        report_vid.assert_has_calls([call(3), call(7)])
+        report_vid.assert_has_calls(
+            [call(3, ip=neighbours[0]["ip"]), call(7, ip=neighbours[1]["ip"])]
+        )
+
+    def test_updates_fabric_of_existing_vlan(self):
+        rack = factory.make_RackController()
+        observing_fabric = factory.make_Fabric()
+        other_fabric = factory.make_Fabric()
+        vlan = factory.make_VLAN(fabric=observing_fabric)
+        observed_vlan = factory.make_VLAN(fabric=other_fabric)
+        subnet1 = factory.make_Subnet(vlan=vlan)
+        subnet2 = factory.make_Subnet(vlan=observed_vlan)
+        factory.make_Interface(name="eth0", subnet=subnet1, node=rack)
+        iface2 = factory.make_Interface(name="eth1", node=rack)
+        neighbours = [
+            {
+                "interface": "eth0",
+                "ip": subnet2.get_next_ip_for_allocation(),
+                "time": datetime.now(),
+                "mac": iface2.mac_address,
+                "vid": observed_vlan.vid,
+            }
+        ]
+        rack.report_neighbours(neighbours)
+        observed_vlan.refresh_from_db()
+        self.assertEqual(observing_fabric, observed_vlan.fabric)
+        self.assertEqual(
+            VLAN.objects.filter(
+                vid=observed_vlan.vid, fabric=observing_fabric
+            ).count(),
+            1,
+        )
 
 
 class TestReportMDNSEntries(MAASServerTestCase):

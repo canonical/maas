@@ -1533,7 +1533,7 @@ class Interface(CleanSave, TimestampedModel):
             tags.remove(tag)
             self.tags = tags
 
-    def report_vid(self, vid):
+    def report_vid(self, vid, ip=None):
         """Report that the specified VID was seen on this interface.
 
         Automatically creates the related VLAN on this interface's associated
@@ -1542,7 +1542,22 @@ class Interface(CleanSave, TimestampedModel):
         if self.vlan is not None and vid is not None:
             fabric = self.vlan.fabric
             # Circular imports
+            from maasserver.models.subnet import Subnet
             from maasserver.models.vlan import VLAN
+
+            if ip:
+                subnet = Subnet.objects.get_best_subnet_for_ip(ip)
+                if subnet:
+                    vlan = subnet.vlan
+                    vlan.fabric = fabric
+                    vlan.save()
+                    maaslog.info(
+                        "%s: Automatically updated VLAN %d (observed on %s).",
+                        self.get_log_string(),
+                        vid,
+                        vlan.fabric.get_name(),
+                    )
+                    return
 
             vlan, created = VLAN.objects.get_or_create(
                 fabric=fabric,
