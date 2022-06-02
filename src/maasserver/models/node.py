@@ -2020,16 +2020,10 @@ class Node(CleanSave, TimestampedModel):
                 Config.objects.get_config("hardware_sync_interval")
             )
 
+        if not self.hostname:
+            self.set_random_hostname()
         super().save(*args, **kwargs)
 
-        # We let hostname be blank for the initial save, but fix it before the
-        # save completes.  This is because set_random_hostname() operates by
-        # trying to re-save the node with a random hostname, and retrying until
-        # there is no conflict.  The end result is that no IP addresses will
-        # ever be linked to any node that has a blank hostname, since the node
-        # must be saved for there to be any linkage to it from an interface.
-        if self.hostname == "":
-            self.set_random_hostname()
         self.remove_orphaned_bmcs()
 
     def display_status(self):
@@ -3028,14 +3022,7 @@ class Node(CleanSave, TimestampedModel):
 
     def set_random_hostname(self):
         """Set a random `hostname`."""
-        while True:
-            self.hostname = petname.Generate(2, "-")
-            try:
-                self.save()
-            except ValidationError:
-                pass
-            else:
-                break
+        self.hostname = petname.generate()
 
     def get_effective_power_type(self):
         """Get power-type to use for this node.

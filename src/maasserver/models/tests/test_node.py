@@ -1630,16 +1630,6 @@ class TestNode(MAASServerTestCase):
         self.assertNotEqual(original_hostname, node.hostname)
         self.assertNotEqual("", node.hostname)
 
-    def test_set_random_hostname_checks_hostname_existence(self):
-        existing_node = factory.make_Node(hostname="hostname")
-
-        hostnames = [existing_node.hostname, "new-hostname"]
-        self.patch(node_module.petname, "Generate").side_effect = hostnames
-
-        node = factory.make_Node()
-        node.set_random_hostname()
-        self.assertEqual("new-hostname", node.hostname)
-
     def test_get_effective_power_type_raises_if_not_set(self):
         node = factory.make_Node(power_type=None)
         self.assertRaises(UnknownPowerType, node.get_effective_power_type)

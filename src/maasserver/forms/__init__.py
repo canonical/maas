@@ -1498,6 +1498,7 @@ class WithMACAddressesMixin:
         # that was randomized in Node.save().
         if IP_BASED_HOSTNAME_REGEXP.match(node.hostname) is not None:
             node.set_random_hostname()
+            node.save()
         return node
 
 
