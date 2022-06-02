@@ -3,14 +3,19 @@
 
 from collections import OrderedDict
 import io
+from io import BytesIO
 import os
 import random
 import re
 from subprocess import CalledProcessError, DEVNULL, TimeoutExpired
+import textwrap
 from unittest.mock import call, MagicMock
+import urllib
+import urllib.request
 
 import yaml
 
+from maasserver.testing.commissioning import DeviceType, FakeCommissioningData
 from maasserver.testing.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import (
@@ -1122,6 +1127,297 @@ class TestHPMoonshot(MAASTestCase):
         )
 
 
+class TestRedfish(MAASTestCase):
+    class FakeSocket:
+        def __init__(self, response_bytes):
+            self._file = BytesIO(response_bytes)
+
+        def makefile(self, *args, **kwargs):
+            return self._file
+
+    def setUp(self):
+        super().setUp()
+        self.redfish = bmc_config.Redfish()
+        self.mock_check_output = self.patch(bmc_config, "check_output")
+
+    def test_str(self):
+        self.assertEqual("Redfish", str(self.redfish))
+
+    def test_get_smbios_data_no_redfish_detected(self):
+        data = textwrap.dedent(
+            """\
+            # dmidecode 3.3
+            Reading SMBIOS/DMI data from file skolar/skolar.dmi.
+            SMBIOS 3.4.0 present.
+            # SMBIOS implementations newer than version 3.3.0 are not
+            # fully supported by this version of dmidecode.
+
+            Handle 0x0039, DMI type 42, 16 bytes
+            Management Controller Host Interface
+            Host Interface Type: OEM"""
+        ).encode()
+
+        self.mock_check_output.return_value = data
+        self.assertEqual(None, self.redfish._get_smbios_data())
+
+    def test_get_smbios_data_redfish_detected(self):
+        data = textwrap.dedent(
+            """\
+            # dmidecode 3.3
+            Reading SMBIOS/DMI data from file skolar/skolar.dmi.
+            SMBIOS 3.4.0 present.
+            # SMBIOS implementations newer than version 3.3.0 are not
+            # fully supported by this version of dmidecode.
+
+            Handle 0x0039, DMI type 42, 16 bytes
+            Management Controller Host Interface
+            Host Interface Type: OEM
+
+            Handle 0x004E, DMI type 42, 129 bytes
+            Management Controller Host Interface
+            Host Interface Type: Network
+            Device Type: USB
+            idVendor: 0x046b
+            idProduct: 0xffb0
+            Protocol ID: 04 (Redfish over IP)
+            Service UUID: a0635470-debf-0010-9c04-d85ed302b24a
+            Host IP Assignment Type: Static
+            Host IP Address Format: IPv4
+            IPv4 Address: 169.254.95.120
+            IPv4 Mask: 255.255.0.0
+            Redfish Service IP Discovery Type: Static
+            Redfish Service IP Address Format: IPv4
+            IPv4 Redfish Service Address: 169.254.95.118
+            IPv4 Redfish Service Mask: 255.255.0.0
+            Redfish Service Port: 443
+            Redfish Service Vlan: 0
+            Redfish Service Hostname:"""
+        ).encode()
+
+        expected = textwrap.dedent(
+            """\
+            Device Type: USB
+            idVendor: 0x046b
+            idProduct: 0xffb0
+            Protocol ID: 04 (Redfish over IP)
+            Service UUID: a0635470-debf-0010-9c04-d85ed302b24a
+            Host IP Assignment Type: Static
+            Host IP Address Format: IPv4
+            IPv4 Address: 169.254.95.120
+            IPv4 Mask: 255.255.0.0
+            Redfish Service IP Discovery Type: Static
+            Redfish Service IP Address Format: IPv4
+            IPv4 Redfish Service Address: 169.254.95.118
+            IPv4 Redfish Service Mask: 255.255.0.0
+            Redfish Service Port: 443
+            Redfish Service Vlan: 0
+            Redfish Service Hostname:"""
+        )
+
+        self.mock_check_output.return_value = data
+        self.assertEqual(expected, self.redfish._get_smbios_data())
+
+    def test_get_smbios_data_redfish_detected_with_two_interfaces(self):
+        data = textwrap.dedent(
+            """\
+            # dmidecode 3.3
+            Getting SMBIOS data from sysfs.
+            SMBIOS 3.3.0 present.
+
+            Handle 0x00D0, DMI type 42, 169 bytes
+            Management Controller Host Interface
+            Host Interface Type: Network
+            Device Type: USB
+            idVendor: 0x04b3
+            idProduct: 0x4010
+            Protocol ID: 04 (Redfish over IP)
+            Service UUID: a4b13f22-d0f3-11ea-aca9-e5b8d327f39f
+            Host IP Assignment Type: Static
+            Host IP Address Format: IPv4
+            IPv4 Address: 169.254.95.120
+            IPv4 Mask: 255.255.0.0
+            Redfish Service IP Discovery Type: Static
+            Redfish Service IP Address Format: IPv4
+            IPv4 Redfish Service Address: 169.254.95.118
+            IPv4 Redfish Service Mask: 255.255.0.0
+            Redfish Service Port: 443
+            Redfish Service Vlan: 0
+            Redfish Service Hostname: garamond
+
+            Handle 0x00D1, DMI type 42, 169 bytes
+            Management Controller Host Interface
+            Host Interface Type: Network
+            Device Type: USB
+            idVendor: 0x04b3
+            idProduct: 0x4010
+            Protocol ID: 04 (Redfish over IP)
+            Service UUID: a4b13f22-d0f3-11ea-aca9-e5b8d327f39f
+            Host IP Assignment Type: Static
+            Host IP Address Format: IPv4
+            IPv4 Address: 169.254.95.120
+            IPv4 Mask: 255.255.0.0
+            Redfish Service IP Discovery Type: Static
+            Redfish Service IP Address Format: IPv6
+            IPv6 Redfish Service Address: fe80::7ed3:aff:fe54:60e6
+            IPv6 Redfish Service Mask: ffff::
+            Redfish Service Port: 443
+            Redfish Service Vlan: 0
+            Redfish Service Hostname: garamond"""
+        ).encode()
+
+        expected = textwrap.dedent(
+            """\
+            Device Type: USB
+            idVendor: 0x04b3
+            idProduct: 0x4010
+            Protocol ID: 04 (Redfish over IP)
+            Service UUID: a4b13f22-d0f3-11ea-aca9-e5b8d327f39f
+            Host IP Assignment Type: Static
+            Host IP Address Format: IPv4
+            IPv4 Address: 169.254.95.120
+            IPv4 Mask: 255.255.0.0
+            Redfish Service IP Discovery Type: Static
+            Redfish Service IP Address Format: IPv4
+            IPv4 Redfish Service Address: 169.254.95.118
+            IPv4 Redfish Service Mask: 255.255.0.0
+            Redfish Service Port: 443
+            Redfish Service Vlan: 0
+            Redfish Service Hostname: garamond"""
+        )
+
+        self.mock_check_output.return_value = data
+        self.assertEqual(expected, self.redfish._get_smbios_data())
+
+    def test_generate_netplan_config_dhcp_on(self):
+        expected_config = textwrap.dedent(
+            """
+            network:
+              version: 2
+              ethernets:
+                enx7ed30a5460e7:
+                    addresses: []
+                    dhcp4: true
+            """
+        )
+
+        self.assertEqual(
+            yaml.safe_dump((yaml.safe_load(expected_config))),
+            self.redfish._generate_netplan_config(
+                "enx7ed30a5460e7", True, None
+            ),
+        )
+
+    def test_generate_netplan_config_dhcp_off(self):
+        expected_config = textwrap.dedent(
+            """
+            network:
+              version: 2
+              ethernets:
+                enx7ed30a5460e7:
+                    addresses: [192.168.1.10/24]
+                    dhcp4: false
+            """
+        )
+
+        self.assertEqual(
+            yaml.safe_dump((yaml.safe_load(expected_config))),
+            self.redfish._generate_netplan_config(
+                "enx7ed30a5460e7", False, "192.168.1.10/24"
+            ),
+        )
+
+    def test_get_bmc_ip_missing_token(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        response = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close"""
+        ).encode()
+
+        sock = self.FakeSocket(response)
+        response = urllib.request.http.client.HTTPResponse(sock)
+        response.begin()
+
+        mock_urlopen.return_value = response
+
+        self.assertIsNone(self.redfish.get_bmc_ip())
+
+    def test_get_bmc_ip_not_200(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        response = textwrap.dedent(
+            """\
+            HTTP/1.1 401 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close"""
+        ).encode()
+
+        sock = self.FakeSocket(response)
+        response = urllib.request.http.client.HTTPResponse(sock)
+        response.begin()
+
+        mock_urlopen.return_value = response
+
+        self.assertIsNone(self.redfish.get_bmc_ip())
+
+    def test_get_bmc_ip(self):
+        self.redfish.username = "maas"
+        self.redfish.password = "password"
+        self.redfish_ip = "127.0.0.1"
+        self.redfish_port = "443"
+        self.patch(self.redfish, "_detect").return_value = True
+
+        mock_urlopen = self.patch(bmc_config.urllib.request, "urlopen")
+        token_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            X-Auth-Token: token
+            Connection: close"""
+        ).encode()
+
+        address_data = textwrap.dedent(
+            """\
+            HTTP/1.1 200 OK
+            Date: Thu, May  27 15:27:54 2022
+            Content-Type: application/json; charset="utf-8"
+            Connection: close
+
+            {"IPv4Addresses":[{"Address":"127.0.0.1"}]}"""
+        ).encode()
+
+        sock_response_token = self.FakeSocket(token_data)
+        response_token = urllib.request.http.client.HTTPResponse(
+            sock_response_token
+        )
+        response_token.begin()
+
+        sock_response_address = self.FakeSocket(address_data)
+        response_address = urllib.request.http.client.HTTPResponse(
+            sock_response_address
+        )
+        response_address.begin()
+
+        mock_urlopen.side_effect = (response_token, response_address)
+
+        self.assertEqual("127.0.0.1", self.redfish.get_bmc_ip())
+
+
 class TestGetIPMILocateOutput(MAASTestCase):
     def test_get_ipmi_locate_output(self):
         mock_check_output = self.patch(bmc_config, "check_output")
@@ -1311,7 +1607,7 @@ class TestDetectAndConfigure(MAASTestCase):
                 {"power_type": "moonshot", **creds}, yaml.safe_load(f)
             )
 
-    def test_finds_second(self):
+    def test_finds_third(self):
         bmc_config_path = os.path.join(
             self.useFixture(TempDirectory()).path, "bmc-config.yaml"
         )
@@ -1323,6 +1619,7 @@ class TestDetectAndConfigure(MAASTestCase):
         args.user = factory.make_name("user")
         args.password = factory.make_name("password")
         self.patch(bmc_config.HPMoonshot, "detected").return_value = False
+        self.patch(bmc_config.Redfish, "detected").return_value = False
         self.patch(bmc_config.IPMI, "detected").return_value = True
         self.patch(bmc_config.IPMI, "configure")
         self.patch(bmc_config.IPMI, "add_bmc_user")
@@ -1343,6 +1640,7 @@ class TestDetectAndConfigure(MAASTestCase):
         args.user = factory.make_name("user")
         args.password = factory.make_name("password")
         self.patch(bmc_config.HPMoonshot, "detected").return_value = False
+        self.patch(bmc_config.Redfish, "detected").return_value = False
         self.patch(bmc_config.IPMI, "detected").return_value = False
         self.patch(bmc_config.Wedge, "detected").return_value = False
 
@@ -1446,3 +1744,55 @@ class TestMain(MAASTestCase):
 
         self.assertThat(mock_detect_and_configure, MockNotCalled())
         self.assertThat(mock_exit_skipped, MockCalledOnce())
+
+    def test_get_network_interface_usb(self):
+        data = FakeCommissioningData()
+        card = data.create_network_card(DeviceType.USB)
+        network = data.create_physical_network(card=card)
+
+        self.assertEqual(
+            network.name,
+            bmc_config.get_network_interface(
+                data.render(), card.vendor_id, card.product_id
+            ),
+        )
+
+    def test_get_network_interface_pci(self):
+        data = FakeCommissioningData()
+        card = data.create_network_card(DeviceType.PCI)
+        network = data.create_physical_network(card=card)
+
+        self.assertEqual(
+            network.name,
+            bmc_config.get_network_interface(
+                data.render(), card.vendor_id, card.product_id
+            ),
+        )
+
+    def test_get_smbios_value(self):
+        data = (
+            "Device Type: USB\n"
+            "idVendor: 0x046b\n"
+            "idProduct: 0xffb0\n"
+            "Protocol ID: 04 (Redfish over IP)\n"
+            "Service UUID: a0635470-debf-0010-9c04-d85ed302b24a\n"
+            "Host IP Assignment Type: Static\n"
+            "Host IP Address Format: IPv4\n"
+            "IPv4 Address: 169.254.95.120\n"
+            "IPv4 Mask: 255.255.0.0\n"
+            "Redfish Service IP Discovery Type: Static\n"
+            "Redfish Service IP Address Format: IPv4\n"
+            "IPv4 Redfish Service Address: 169.254.95.118\n"
+            "IPv4 Redfish Service Mask: 255.255.0.0\n"
+            "Redfish Service Port: 443\n"
+            "Redfish Service Vlan: 0\n"
+            "Redfish Service Hostname:"
+        )
+
+        self.assertEqual(
+            "Static",
+            bmc_config.get_smbios_value(data, "Host IP Assignment Type"),
+        )
+        self.assertEqual(
+            "169.254.95.120", bmc_config.get_smbios_value(data, "IPv4 Address")
+        )

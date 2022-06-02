@@ -59,10 +59,13 @@ import argparse
 from collections import OrderedDict
 from functools import lru_cache
 import glob
+import ipaddress
+import json
 import os
 import platform
 import random
 import re
+import ssl
 import string
 from subprocess import (
     CalledProcessError,
@@ -76,6 +79,7 @@ from subprocess import (
 import sys
 import time
 import urllib
+import urllib.request
 
 from paramiko.client import MissingHostKeyPolicy, SSHClient
 import yaml
@@ -148,29 +152,75 @@ class BMCConfig(metaclass=ABCMeta):
         }
 
 
-class IPMI(BMCConfig):
-    """Handle detection and configuration of IPMI BMCs."""
+class IPMIBase(BMCConfig):
+    def _pick_user_number(self, search_username):
+        """Pick the best user number for a user from a list of user numbers.
 
-    power_type = "ipmi"
+        If any any existing user's username matches the search username, pick
+        that user.
 
-    def __init__(
-        self,
-        username=None,
-        password=None,
-        ipmi_k_g="",
-        ipmi_privilege_level="",
-        ipmi_cipher_suite_id="3",
-        **kwargs,
-    ):
-        self.username = username
-        self.password = password
-        self._kg = ipmi_k_g
-        self._cipher_suite_id = ipmi_cipher_suite_id
-        self._privilege_level = ipmi_privilege_level
-        self._bmc_config = {}
+        Otherwise, pick the first user that has no username set.
+        """
+        first_unused = None
+        for section_name, section in self._bmc_config.items():
+            if not section_name.startswith("User"):
+                continue
+            # The IPMI spec reserves User1 as anonymous.
+            if section_name == "User1":
+                continue
 
-    def __str__(self):
-        return "IPMI"
+            if search_username and search_username == section.get("Username"):
+                print('INFO: Found existing IPMI user "%s"!' % search_username)
+                return section_name
+            elif (
+                not section.get("Username")
+                or section.get("Username") == "(Empty User)"
+            ) and first_unused is None:
+                # Usually a BMC won't include a Username value if the user is
+                # unused. Some HP BMCs use "(Empty User)" to indicate a user in
+                # unused.
+                first_unused = section_name
+        return first_unused
+
+    def add_bmc_user(self):
+        if not self.username:
+            self.username = "maas"
+        user_number = self._pick_user_number(self.username)
+        print('INFO: Configuring IPMI BMC user "%s"...' % self.username)
+        print("INFO: IPMI user number - %s" % user_number)
+        print("INFO: IPMI user privilege level - %s" % self._get_ipmi_priv())
+        if not self.password:
+            passwords = [
+                self._generate_random_password(),
+                self._generate_random_password(with_special_chars=True),
+            ]
+        else:
+            passwords = [self.password]
+        for password in passwords:
+            try:
+                for key, value in self._make_ipmi_user_settings(
+                    self.username, password
+                ).items():
+                    if self._bmc_config[user_number].get(key) != value:
+                        self._bmc_set(user_number, key, value)
+            except Exception:
+                pass
+            else:
+                self.password = password
+                # Not all user settings are available on all BMC keys, its
+                # okay if these fail to be set.
+                self._bmc_set_keys(
+                    user_number,
+                    [
+                        "Lan_Enable_Link_Auth",
+                        "SOL_Payload_Access",
+                        "Serial_Enable_Link_Auth",
+                    ],
+                    "Yes",
+                )
+                return
+        print("ERROR: Unable to add BMC user!", file=sys.stderr)
+        sys.exit(1)
 
     def _bmc_get_config(self, section=None):
         """Fetch and cache all BMC settings."""
@@ -251,22 +301,6 @@ class IPMI(BMCConfig):
                         % (section, key, value)
                     )
 
-    def detected(self):
-        # Verify the BMC uses IPMI.
-        try:
-            output = _get_ipmi_locate_output()
-        except Exception:
-            return False
-        else:
-            m = re.search(r"(IPMI\ Version:) (\d\.\d)", output)
-            # ipmi-locate always returns 0. If The regex doesn't match
-            # check if /dev/ipmi[0-9] exists. This is needed on the PPC64
-            # host in the MAAS CI.
-            if m or len(glob.glob("/dev/ipmi[0-9]")):
-                return True
-            else:
-                return False
-
     def _generate_random_password(
         self, min_length=10, max_length=15, with_special_chars=False
     ):
@@ -342,35 +376,6 @@ class IPMI(BMCConfig):
         )
         return user_settings
 
-    def _pick_user_number(self, search_username):
-        """Pick the best user number for a user from a list of user numbers.
-
-        If any any existing user's username matches the search username, pick
-        that user.
-
-        Otherwise, pick the first user that has no username set.
-        """
-        first_unused = None
-        for section_name, section in self._bmc_config.items():
-            if not section_name.startswith("User"):
-                continue
-            # The IPMI spec reserves User1 as anonymous.
-            if section_name == "User1":
-                continue
-
-            if search_username and search_username == section.get("Username"):
-                print('INFO: Found existing IPMI user "%s"!' % search_username)
-                return section_name
-            elif (
-                not section.get("Username")
-                or section.get("Username") == "(Empty User)"
-            ) and first_unused is None:
-                # Usually a BMC won't include a Username value if the user is
-                # unused. Some HP BMCs use "(Empty User)" to indicate a user in
-                # unused.
-                first_unused = section_name
-        return first_unused
-
     def _check_ciphers_enabled(self):
         rmcpp_section = "Rmcpplus_Conf_Privilege"
 
@@ -382,46 +387,6 @@ class IPMI(BMCConfig):
             return True
 
         return "Administrator" in self._bmc_config[rmcpp_section].values()
-
-    def add_bmc_user(self):
-        if not self.username:
-            self.username = "maas"
-        user_number = self._pick_user_number(self.username)
-        print('INFO: Configuring IPMI BMC user "%s"...' % self.username)
-        print("INFO: IPMI user number - %s" % user_number)
-        print("INFO: IPMI user privilege level - %s" % self._get_ipmi_priv())
-        if not self.password:
-            passwords = [
-                self._generate_random_password(),
-                self._generate_random_password(with_special_chars=True),
-            ]
-        else:
-            passwords = [self.password]
-        for password in passwords:
-            try:
-                for key, value in self._make_ipmi_user_settings(
-                    self.username, password
-                ).items():
-                    if self._bmc_config[user_number].get(key) != value:
-                        self._bmc_set(user_number, key, value)
-            except Exception:
-                pass
-            else:
-                self.password = password
-                # Not all user settings are available on all BMC keys, its
-                # okay if these fail to be set.
-                self._bmc_set_keys(
-                    user_number,
-                    [
-                        "Lan_Enable_Link_Auth",
-                        "SOL_Payload_Access",
-                        "Serial_Enable_Link_Auth",
-                    ],
-                    "Yes",
-                )
-                return
-        print("ERROR: Unable to add BMC user!", file=sys.stderr)
-        sys.exit(1)
 
     def _config_ipmi_lan_channel_settings(self):
         """Enable IPMI-over-Lan (Lan_Channel) if it is disabled"""
@@ -520,6 +485,47 @@ class IPMI(BMCConfig):
                 "WARNING: No K_g BMC key found or configured, "
                 "communication with BMC will not use a session key!"
             )
+
+
+class IPMI(IPMIBase):
+    """Handle detection and configuration of IPMI BMCs."""
+
+    power_type = "ipmi"
+
+    def __init__(
+        self,
+        username=None,
+        password=None,
+        ipmi_k_g="",
+        ipmi_privilege_level="",
+        ipmi_cipher_suite_id="3",
+        **kwargs,
+    ):
+        self.username = username
+        self.password = password
+        self._kg = ipmi_k_g
+        self._cipher_suite_id = ipmi_cipher_suite_id
+        self._privilege_level = ipmi_privilege_level
+        self._bmc_config = {}
+
+    def __str__(self):
+        return "IPMI"
+
+    def detected(self):
+        # Verify the BMC uses IPMI.
+        try:
+            output = _get_ipmi_locate_output()
+        except Exception:
+            return False
+        else:
+            m = re.search(r"(IPMI\ Version:) (\d\.\d)", output)
+            # ipmi-locate always returns 0. If The regex doesn't match
+            # check if /dev/ipmi[0-9] exists. This is needed on the PPC64
+            # host in the MAAS CI.
+            if m or len(glob.glob("/dev/ipmi[0-9]")):
+                return True
+            else:
+                return False
 
     def configure(self):
         self._bmc_get_config()
@@ -878,26 +884,217 @@ class Wedge(BMCConfig):
             return None
 
 
+class Redfish(IPMIBase):
+    """Handle detection and configuration of Redfish device."""
+
+    power_type = "redfish"
+    username = None
+    password = None
+
+    _bmc_ip = None
+
+    _redfish_ip = None
+    _redfish_port = None
+
+    def __str__(self):
+        return "Redfish"
+
+    def _get_smbios_data(self):
+        # SMBIOS Type 42 is a Redfish Host Interface
+        # https://www.dmtf.org/sites/default/files/standards/documents/DSP0270_1.0.0.pdf
+
+        # Handle 0x00D0, DMI type 42, 169 bytes
+        # Management Controller Host Interface
+        # 	Host Interface Type: Network
+        # 	Device Type: USB
+        # 	idVendor: 0x04b3
+        # 	idProduct: 0x4010
+        # 	Protocol ID: 04 (Redfish over IP)
+        # 		Service UUID: a4b13f22-d0f3-11ea-aca9-e5b8d327f39f
+        # 		Host IP Assignment Type: Static
+        # 		Host IP Address Format: IPv4
+        # 		IPv4 Address: 169.254.95.120
+        # 		IPv4 Mask: 255.255.0.0
+        # 		Redfish Service IP Discovery Type: Static
+        # 		Redfish Service IP Address Format: IPv4
+        # 		IPv4 Redfish Service Address: 169.254.95.118
+        # 		IPv4 Redfish Service Mask: 255.255.0.0
+        # 		Redfish Service Port: 443
+        # 		Redfish Service Vlan: 0
+        # 		Redfish Service Hostname: garamond
+        smbios_data = check_output(
+            ["dmidecode", "-t", "42"], timeout=COMMAND_TIMEOUT
+        ).decode()
+
+        splitted = smbios_data.split("\n\n")
+        # skip first item, because it is a SMBIOS header text
+        for entry in splitted[1:]:
+            for key in (
+                "Management Controller Host Interface\n",
+                "Host Interface Type: Network\n",
+            ):
+                _, _, entry = entry.partition(key)
+
+            if "Protocol ID: 04 (Redfish over IP)\n" in entry:
+                return entry
+
+    def _generate_netplan_config(self, iface, dhcp_enabled, addr=None):
+        return yaml.safe_dump(
+            {
+                "network": {
+                    "version": 2,
+                    "ethernets": {
+                        iface: {
+                            "dhcp4": dhcp_enabled,
+                            "addresses": [addr] if not dhcp_enabled else [],
+                        }
+                    },
+                }
+            }
+        )
+
+    def _configure_network(self, iface, data):
+        # Host IP Assignment Type:
+        #   Possible values: Unknown, Static, DHCP, AutoConfigure, HostSelected
+        netplan_config = None
+        assignment_type = get_smbios_value(data, "Host IP Assignment Type")
+        if assignment_type in ("Unknown", "AutoConfigure", "HostSelected"):
+            raise ValueError("Unsupported Host IP Assignment Type")
+
+        if assignment_type == "Static":
+            ipv4_addr = get_smbios_value(data, "IPv4 Address")
+            ipv4_mask = get_smbios_value(data, "IPv4 Mask")
+            if not all((ipv4_addr, ipv4_mask)):
+                raise ValueError("Missing Host IPv4 information")
+
+            ipv4 = ipaddress.IPv4Network((ipv4_addr, ipv4_mask)).with_prefixlen
+            netplan_config = self._generate_netplan_config(iface, False, ipv4)
+
+        if assignment_type == "DHCP":
+            netplan_config = self._generate_netplan_config(iface, True)
+
+        with open("/etc/netplan/99-redfish.yaml", "w") as netplan:
+            netplan.write(netplan_config)
+
+        # TODO: How to determine if netplan was applied?
+        check_output(["netplan", "apply"], timeout=COMMAND_TIMEOUT).decode()
+
+    def _detect(self):
+        data = self._get_smbios_data()
+        if data is None:
+            raise ValueError("Missing SMBIOS data")
+
+        vendor_id = get_smbios_value(data, "idVendor")[2:]
+        product_id = get_smbios_value(data, "idProduct")[2:]
+
+        if not all((vendor_id, product_id)):
+            raise ValueError("Missing idVendor and idProduct information")
+
+        iface = None
+        with open(os.environ["MAAS_RESOURCES_FILE"]) as fd:
+            iface = self._get_network_interface(
+                fd.read(), vendor_id, product_id
+            )
+            if iface is None:
+                raise ValueError("Missing Redfish Host Interface")
+
+        self._configure_network(iface, data)
+
+        self.add_bmc_user()
+
+        self.redfish_ip = get_smbios_value(
+            data, "IPv4 Redfish Service Address"
+        )
+        self.redfish_port = get_smbios_value(data, "Redfish Service Port")
+
+        if not all((self.redfish_ip, self.redfish_port)):
+            raise ValueError("Missing Redfish Service information.")
+
+    def detected(self):
+        try:
+            self._detect()
+            return self.get_bmc_ip() is not None
+        # XXX: we should know which exceptions to expect, so we can handle them
+        except ValueError as err:
+            print(f"ERROR: {err}")
+            return False
+
+    def _get_bmc_ip(self):
+        credentials = {
+            "UserName": self.username,
+            "Password": self.password,
+        }
+
+        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/SessionService/Sessions"
+        req = urllib.request.Request(
+            url,
+            json.dumps(credentials).encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        response = urllib.request.urlopen(
+            req, context=ssl._create_unverified_context()
+        )
+        if response.status != 200:
+            print(
+                f"WARNING: Failed to get token. {response.getheaders()} {response.read()}"
+            )
+            return
+
+        token = response.getheader("X-Auth-Token")
+        if token is None:
+            print(
+                f"WARNING: Missing X-Auth-Token header. {response.getheaders()}"
+            )
+            return
+
+        url = f"https://{self._redfish_ip}:{self._redfish_port}/redfish/v1/Managers/1/EthernetInterfaces/NIC"
+        req = urllib.request.Request(url)
+        req.add_header("X-Auth-Token", token)
+        response = urllib.request.urlopen(
+            req, context=ssl._create_unverified_context()
+        )
+        if response.status != 200:
+            print(
+                f"WARNING: Failed to read NIC info. {response.getheaders()} {response.read()}"
+            )
+            return
+
+        response = json.loads(response.read().decode())
+        addresses = response.get("IPv4Addresses")
+        if not addresses or len(addresses) == 0:
+            print(f"WARNING: Missinng Redfish IPv4 Address. {response.read()}")
+            return
+        return addresses[0].get("Address")
+
+    def get_bmc_ip(self):
+        if self._bmc_ip is None:
+            self._bmc_ip = self._get_bmc_ip()
+        return self._bmc_ip
+
+
 def detect_and_configure(args, bmc_config_path):
     # Order matters here. HPMoonshot is a specical IPMI device, so try to
     # detect it first.
-    for bmc_class in [HPMoonshot, IPMI, Wedge]:
-        bmc = bmc_class(**vars(args))
-        print("INFO: Checking for %s..." % bmc)
-        if bmc.detected():
-            print("INFO: %s detected!" % bmc)
-            bmc.configure()
-            bmc.add_bmc_user()
-            with open(bmc_config_path, "w") as f:
-                yaml.safe_dump(
-                    {
-                        "power_type": bmc.power_type,
-                        **bmc.get_credentials(),
-                    },
-                    f,
-                    default_flow_style=False,
-                )
-            return
+    for bmc_class in [HPMoonshot, Redfish, IPMI, Wedge]:
+        try:
+            bmc = bmc_class(**vars(args))
+            print("INFO: Checking for %s..." % bmc)
+            if bmc.detected():
+                print("INFO: %s detected!" % bmc)
+                bmc.configure()
+                bmc.add_bmc_user()
+                with open(bmc_config_path, "w") as f:
+                    yaml.safe_dump(
+                        {
+                            "power_type": bmc.power_type,
+                            **bmc.get_credentials(),
+                        },
+                        f,
+                        default_flow_style=False,
+                    )
+                return
+        except Exception as e:
+            print(f"ERROR: {bmc_class.__name__} {e}")
     print("INFO: No BMC automatically detected!")
 
 
@@ -1020,6 +1217,42 @@ def _get_wedge_local_addr():
         return "fe80::1%%%s" % output.split()[1]
     except Exception:
         return None
+
+
+def get_smbios_value(data, key):
+    for item in data.split("\n"):
+        if key in item:
+            return item.split(":")[1].strip()
+
+
+def get_network_interface(machine_resources, vendor_id, product_id):
+    """Searches machine-resources data and returns network interface name
+    that maches idVendor and idProduct fetched from SMBIOS
+    """
+    # XXX: this can be simplified once this is resolved
+    # https://chat.canonical.com/canonical/pl/9fkoiwr837rr8yb99bx1qwzmkh
+    device_type_addresses = (
+        ("usb", ("bus_address", "device_address")),
+        ("pci", ("pci_address",)),
+    )
+
+    for device_type, addresses in device_type_addresses:
+        if device_type not in machine_resources["resources"]:
+            continue
+        for device in machine_resources["resources"][device_type]["devices"]:
+            if (
+                device["vendor_id"] != vendor_id
+                or device["product_id"] != product_id
+            ):
+                continue
+
+            for card in machine_resources["resources"]["network"]["cards"]:
+                address_type = f"{device_type}_address"
+                # pci_address holds address as 0000:0001:00.0
+                # but usb_address is a combination of bus_address:device_address
+                address_value = f'{":".join(f"{device[address]}" for address in addresses)}'
+                if card.get(address_type, "") == address_value:
+                    return card["ports"][0]["id"]
 
 
 if __name__ == "__main__":
