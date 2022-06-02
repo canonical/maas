@@ -55,6 +55,7 @@ class TestControllerForm(MAASServerTestCase):
         power_parameters_field = factory.make_string()
         form = ControllerForm(
             data={
+                "power_type": "ipmi",
                 "power_parameters_field": power_parameters_field,
                 "power_parameters_skip_check": "true",
             },

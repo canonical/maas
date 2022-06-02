@@ -380,7 +380,7 @@ class Factory(maastesting.factory.Factory):
         zone=None,
         networks=None,
         sortable_name=False,
-        power_type=None,
+        power_type="virsh",
         power_parameters=None,
         power_state=None,
         power_state_updated=undefined,
@@ -420,8 +420,6 @@ class Factory(maastesting.factory.Factory):
             status = NODE_STATUS.DEFAULT
         if zone is None:
             zone = Zone.objects.get_default_zone()
-        if power_type is None:
-            power_type = "virsh"
         if power_state is None:
             power_state = self.pick_enum(POWER_STATE)
         if power_state_updated is undefined:
@@ -449,7 +447,7 @@ class Factory(maastesting.factory.Factory):
             cpu_speed=random.randint(1000, 5000),
             **kwargs,
         )
-        if bmc is None:
+        if bmc is None and power_type:
             # These setters will overwrite the BMC, so don't use them if the
             # BMC was specified.
             node.set_power_config(power_type, power_parameters or {})

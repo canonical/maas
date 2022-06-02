@@ -549,10 +549,10 @@ class TestRegionProtocol_ListNodePowerParameters(
                 }
             )
 
-        # Create a node with an invalid power type (i.e. the empty string).
+        # Create a node with an invalid power type.
         # This will not be reported by the call to ListNodePowerParameters.
         yield deferToDatabase(
-            self.create_node, power_type="", power_state_updated=None
+            self.create_node, power_type="invalid", power_state_updated=None
         )
 
         response = yield call_responder(

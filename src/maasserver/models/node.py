@@ -1396,19 +1396,13 @@ class Node(CleanSave, TimestampedModel):
                     power_type=power_type, power_parameters=bmc_params
                 ).first()
                 if existing_bmc and existing_bmc.id != self.bmc_id:
-                    if self.bmc:
-                        # Point all nodes using old BMC at the new one.
-                        for node in self.bmc.node_set.exclude(id=self.id):
-                            node.bmc = existing_bmc
-                            node.save()
+                    # Point all nodes using old BMC at the new one.
+                    for node in self.bmc.node_set.exclude(id=self.id):
+                        node.bmc = existing_bmc
+                        node.save()
                     self.bmc = existing_bmc
                 elif not existing_bmc:
-                    if self.bmc:
-                        self.bmc.power_parameters = bmc_params
-                    else:
-                        self.bmc = BMC.objects.create(
-                            power_type=power_type, power_parameters=bmc_params
-                        )
+                    self.bmc.power_parameters = bmc_params
                     self.bmc.save()
         elif chassis:
             self.bmc, _ = BMC.objects.get_or_create(
