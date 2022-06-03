@@ -629,6 +629,23 @@ class TestHelpers(MAASServerTestCase):
             {"exit_status": request["exit_status"], "output": output}, value
         )
 
+    def test_creates_new_script_result_linked_to_script(self):
+        results = {}
+        script = factory.make_Script()
+        script_set = factory.make_ScriptSet()
+        output = factory.make_string()
+        request = {"exit_status": random.randint(0, 255)}
+
+        process_file(results, script_set, script.name, output, request)
+        script_result, value = list(results.items())[0]
+
+        self.assertEqual(script.name, script_result.name)
+        self.assertEqual(script_result.script, script)
+        self.assertEqual(SCRIPT_STATUS.RUNNING, script_result.status)
+        self.assertDictEqual(
+            {"exit_status": request["exit_status"], "output": output}, value
+        )
+
     def test_uses_default_exit_status_when_undef(self):
         results = {}
         script_result = factory.make_ScriptResult(status=SCRIPT_STATUS.RUNNING)

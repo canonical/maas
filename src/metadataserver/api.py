@@ -287,19 +287,21 @@ def process_file(
     )
     if script_result is None:
         # If the script_result_id doesn't exist or wasn't sent try to find the
-        # ScriptResult by script_name. Since ScriptResults can get their name
-        # from the Script they are linked to or its own script_name field we
-        # have to iterate over the list of script_results.
-        script_result_found = False
-        for script_result in script_set:
-            if script_result.name == script_name:
-                script_result_found = True
-                break
+        # ScriptResult by script_name.
+        script_result = script_set.scriptresult_set.filter(
+            script_name=script_name
+        ).first()
 
         # If the ScriptResult wasn't found by id or name create an entry for
         # it.
-        if not script_result_found:
+        if not script_result:
+            script_id = (
+                Script.objects.filter(name=script_name)
+                .values_list("id", flat=True)
+                .first()
+            )
             script_result = ScriptResult.objects.create(
+                script_id=script_id,
                 script_set=script_set,
                 script_name=script_name,
                 status=SCRIPT_STATUS.RUNNING,
@@ -1318,7 +1320,7 @@ class MAASScriptsHandler(OperationsHandler):
     anonymous = AnonMAASScriptsHandler
 
     def _add_script_set_to_tar(
-        self, script_set, tar, prefix, mtime, include_finshed=False
+        self, script_set, tar, prefix, mtime, include_finished=False
     ):
         if script_set is None:
             return []
@@ -1326,7 +1328,7 @@ class MAASScriptsHandler(OperationsHandler):
         for script_result in script_set:
             # Don't rerun Scripts which have already run.
             if (
-                not include_finshed
+                not include_finished
                 and script_result.status
                 not in SCRIPT_STATUS_RUNNING_OR_PENDING
             ):
@@ -1425,9 +1427,11 @@ class MAASScriptsHandler(OperationsHandler):
                 )
                 and node.current_commissioning_script_set is not None
             ):
+                script_set = node.current_commissioning_script_set
                 # Prefetch all the data we need.
-                qs = node.current_commissioning_script_set.scriptresult_set
-                qs = qs.select_related("script", "script__script")
+                qs = script_set.scriptresult_set.select_related(
+                    "script", "script__script"
+                )
                 # After the script runner finishes sending all commissioning
                 # results it redownloads the script tar. It does this in-case
                 # a commissioning script discovers hardware associated with
@@ -1439,7 +1443,6 @@ class MAASScriptsHandler(OperationsHandler):
                 # data.
                 for script_result in qs:
                     if script_result.status != SCRIPT_STATUS.PENDING:
-                        script_set = node.current_commissioning_script_set
                         script_set.select_for_hardware_scripts()
                         break
                 meta_data = self._add_script_set_to_tar(
@@ -1447,9 +1450,9 @@ class MAASScriptsHandler(OperationsHandler):
                     tar,
                     "commissioning",
                     mtime,
-                    include_finshed=node.status == NODE_STATUS.DEPLOYED,
+                    include_finished=node.status == NODE_STATUS.DEPLOYED,
                 )
-                if meta_data != []:
+                if meta_data:
                     tar_meta_data["commissioning_scripts"] = sorted(
                         meta_data, key=itemgetter("name", "script_result_id")
                     )
@@ -1457,12 +1460,13 @@ class MAASScriptsHandler(OperationsHandler):
             # Always send testing scripts.
             if node.current_testing_script_set is not None:
                 # prefetch all the data we need
-                qs = node.current_testing_script_set.scriptresult_set
-                qs = qs.select_related("script", "script__script")
+                qs = node.current_testing_script_set.scriptresult_set.select_related(
+                    "script", "script__script"
+                )
                 meta_data = self._add_script_set_to_tar(
                     qs, tar, "testing", mtime
                 )
-                if meta_data != []:
+                if meta_data:
                     tar_meta_data["testing_scripts"] = sorted(
                         meta_data, key=itemgetter("name", "script_result_id")
                     )

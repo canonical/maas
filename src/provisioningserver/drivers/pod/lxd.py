@@ -44,6 +44,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
+    RUN_MACHINE_RESOURCES,
 )
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.utils import (
@@ -421,7 +422,11 @@ class LXDPodDriver(PodDriver):
                 # /1.0/networks/<network>/state
                 "networks": _get_lxd_network_states(client),
             }
-        return {COMMISSIONING_OUTPUT_NAME: resources}
+        # return the output for both scripts to match what commissioning does
+        return {
+            RUN_MACHINE_RESOURCES: resources,
+            COMMISSIONING_OUTPUT_NAME: resources,
+        }
 
     @threadDeferred
     def compose(self, pod_id: int, context: dict, request: RequestedMachine):
