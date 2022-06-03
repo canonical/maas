@@ -33,6 +33,7 @@ from provisioningserver.drivers.pod import (
 from provisioningserver.drivers.pod import lxd as lxd_module
 from provisioningserver.refresh.node_info_scripts import (
     COMMISSIONING_OUTPUT_NAME,
+    RUN_MACHINE_RESOURCES,
 )
 from provisioningserver.rpc.exceptions import PodInvalidResources
 from provisioningserver.testing.certificates import (
@@ -1159,18 +1160,20 @@ class TestLXDPodDriver(MAASTestCase):
             1, self.make_context()
         )
 
-        self.assertEqual(
-            {
-                COMMISSIONING_OUTPUT_NAME: {
-                    **self.fake_lxd.host_info,
-                    "resources": self.fake_lxd.resources,
-                    "networks": {
-                        "eth0": {"hwaddr": "aa:bb:cc:dd:ee:ff"},
-                        "eth1": {"hwaddr": "ff:ee:dd:cc:bb:aa"},
-                    },
-                }
+        details = {
+            **self.fake_lxd.host_info,
+            "resources": self.fake_lxd.resources,
+            "networks": {
+                "eth0": {"hwaddr": "aa:bb:cc:dd:ee:ff"},
+                "eth1": {"hwaddr": "ff:ee:dd:cc:bb:aa"},
             },
+        }
+        self.assertEqual(
             commissioning_data,
+            {
+                RUN_MACHINE_RESOURCES: details,
+                COMMISSIONING_OUTPUT_NAME: details,
+            },
         )
 
     @inlineCallbacks
@@ -1205,17 +1208,19 @@ class TestLXDPodDriver(MAASTestCase):
             1, self.make_context()
         )
 
-        self.assertEqual(
-            {
-                COMMISSIONING_OUTPUT_NAME: {
-                    **self.fake_lxd.host_info,
-                    "resources": self.fake_lxd.resources,
-                    "networks": {
-                        "eth2": {"hwaddr": "ee:dd:cc:bb:aa:ff"},
-                    },
-                }
+        details = {
+            **self.fake_lxd.host_info,
+            "resources": self.fake_lxd.resources,
+            "networks": {
+                "eth2": {"hwaddr": "ee:dd:cc:bb:aa:ff"},
             },
+        }
+        self.assertEqual(
             commissioning_data,
+            {
+                RUN_MACHINE_RESOURCES: details,
+                COMMISSIONING_OUTPUT_NAME: details,
+            },
         )
 
     @inlineCallbacks
