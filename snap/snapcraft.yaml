@@ -21,11 +21,6 @@ environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
 
 plugs:
-  maas-cli:
-    interface: content
-    content: maas-cli
-    target: $SNAP/maas-cli/lib
-    default-provider: maas-cli
   test-db-socket:
     interface: content
     content: db-socket
