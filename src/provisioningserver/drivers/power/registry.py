@@ -22,6 +22,7 @@ from provisioningserver.drivers.power.msftocs import MicrosoftOCSPowerDriver
 from provisioningserver.drivers.power.nova import NovaPowerDriver
 from provisioningserver.drivers.power.openbmc import OpenBMCPowerDriver
 from provisioningserver.drivers.power.proxmox import ProxmoxPowerDriver
+from provisioningserver.drivers.power.raritan import RaritanPowerDriver
 from provisioningserver.drivers.power.recs import RECSPowerDriver
 from provisioningserver.drivers.power.redfish import RedfishPowerDriver
 from provisioningserver.drivers.power.seamicro import SeaMicroPowerDriver
@@ -65,6 +66,7 @@ power_drivers = [
     NovaPowerDriver(),
     OpenBMCPowerDriver(),
     ProxmoxPowerDriver(),
+    RaritanPowerDriver(),
     RECSPowerDriver(),
     RedfishPowerDriver(),
     SeaMicroPowerDriver(),
