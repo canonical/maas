@@ -972,7 +972,7 @@ class MachineForm(NodeForm):
             and self.cleaned_data["commission"]
         )
         if commission:
-            self.instance.status = NODE_STATUS.COMMISSIONING
+            self.instance.update_status(NODE_STATUS.COMMISSIONING)
         machine = super().save(*args, **kwargs)
         # For a ScriptSet to be created it must be associated with a Node
         # object in the database.
@@ -1207,7 +1207,7 @@ class AdminMachineForm(MachineForm, AdminNodeForm, WithPowerTypeMixin):
         from metadataserver.models import NodeKey
         from metadataserver.models.scriptset import ScriptSet
 
-        machine.status = NODE_STATUS.DEPLOYED
+        machine.update_status(NODE_STATUS.DEPLOYED, validate_transition=False)
         machine.owner = self.request.user
         # Foreign relations need to have an id to relate to, have to
         # save here

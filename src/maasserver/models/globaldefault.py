@@ -42,11 +42,14 @@ class GlobalDefault(CleanSave, TimestampedModel):
     )
 
     def save(self, *args, **kwargs):
-        if self._state.has_changed("domain_id"):
-            # Circular imports.
+        previous_domain_id = (
+            GlobalDefault.objects.filter(id=self.id)
+            .values_list("domain_id", flat=True)
+            .first()
+        )
+        if previous_domain_id not in (None, self.domain_id):
             from maasserver.models import Node
 
-            old_domain = self._state.get_old_value("domain_id")
             # Don't change the domain for allocated nodes, or nodes booted
             # into an ephemeral environment for commissioning, testing, or
             # rescue (since DNS changes in the middle of these could impact
@@ -59,7 +62,7 @@ class GlobalDefault(CleanSave, TimestampedModel):
             unallocated_nodes = Node.objects.exclude(
                 status__in=status_change_exceptions
             )
-            unallocated_nodes.filter(domain=old_domain).update(
+            unallocated_nodes.filter(domain_id=previous_domain_id).update(
                 domain=self.domain
             )
         return super().save(*args, **kwargs)

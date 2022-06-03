@@ -812,12 +812,12 @@ class TestGetNodeRackURL(MAASServerTestCase):
             ip="10.0.1.1",
             link_connected=True,
         )
-        node = factory.make_Node(
-            boot_interface=factory.make_Interface(
-                vlan=vlan1, ip="10.0.0.2", subnet=subnet1, link_connected=True
-            )
+        boot_interface = factory.make_Interface(
+            vlan=vlan1, ip="10.0.0.2", subnet=subnet1, link_connected=True
         )
+        node = boot_interface.node_config.node
         node.boot_cluster_ip = "10.0.0.1"
+        node.boot_interface = boot_interface
         node.save()
 
         expected_url = "http://10.0.0.1:5248/MAAS"

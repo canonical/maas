@@ -20,27 +20,9 @@ class CleanSaveModelState(ModelState):
         super().__init__()
         self._changed_fields = {}
 
-    def get_changed(self):
-        """Return set of all fields that have changed."""
-        return set(self._changed_fields)
-
-    def has_changed(self, name):
-        """Return `True` if field with `name` has changed."""
-        return name in self._changed_fields
-
     def has_any_changed(self, names):
         """Return `True` if any of the provided field names have changed."""
         return max(name in self._changed_fields for name in names)
-
-    def get_old_value(self, name):
-        """
-        Return the old value for the field with `name`.
-
-        This is the value that was in the database when this object was loaded.
-        If the field has not changed it returns None.
-        """
-        if self.has_changed(name):
-            return self._changed_fields[name]
 
 
 class CleanSave:

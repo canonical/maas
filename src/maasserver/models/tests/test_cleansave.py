@@ -303,20 +303,6 @@ class TestCleanSave(MAASLegacyServerTestCase):
             mock_validate_unique, MockCalledOnceWith(exclude={"id", "field"})
         )
 
-    def test_utils_get_changed(self):
-        obj = CleanSaveTestModel.objects.create()
-        obj.field = "test"
-        self.assertEqual({"field"}, obj._state.get_changed())
-
-    def test_utils_has_changed_True(self):
-        obj = CleanSaveTestModel.objects.create()
-        obj.field = "test"
-        self.assertTrue(obj._state.has_changed("field"))
-
-    def test_utils_has_changed_False(self):
-        obj = CleanSaveTestModel.objects.create()
-        self.assertFalse(obj._state.has_changed("field"))
-
     def test_utils_has_any_changed_True(self):
         obj = CleanSaveTestModel.objects.create()
         obj.field = "test"
@@ -325,14 +311,3 @@ class TestCleanSave(MAASLegacyServerTestCase):
     def test_utils_has_any_changed_False(self):
         obj = CleanSaveTestModel.objects.create()
         self.assertFalse(obj._state.has_any_changed(["field"]))
-
-    def test_utils_get_old_value(self):
-        related = GenericTestModel.objects.create(field="")
-        new_related = GenericTestModel.objects.create(field="")
-        obj = CleanSaveTestModel.objects.create(related=related)
-        obj.related = new_related
-        self.assertEqual(related.id, obj._state.get_old_value("related_id"))
-
-    def test_utils_get_old_value_returns_None_when_not_changed(self):
-        obj = CleanSaveTestModel.objects.create()
-        self.assertIsNone(obj._state.get_old_value("field"))

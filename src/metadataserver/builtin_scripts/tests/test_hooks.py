@@ -4117,10 +4117,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
     def test_create_bond_with_no_link_parents(self):
         boot_subnet = factory.make_Subnet(cidr="192.168.0.3/24")
-        node = factory.make_Node(
-            boot_cluster_ip="192.168.0.1",
-            boot_interface=factory.make_Interface(subnet=boot_subnet),
-        )
+        interface = factory.make_Interface(subnet=boot_subnet)
+        node = interface.node_config.node
+        node.boot_cluster_ip = "192.168.0.1"
+        node.boot_interface = interface
+        node.save()
         output = make_lxd_output()
         mac1 = factory.make_mac_address()
         mac2 = factory.make_mac_address()

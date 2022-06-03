@@ -16,6 +16,7 @@ from maasserver.api import auth
 from maasserver.api import machines as machines_module
 from maasserver.api.machines import AllocationOptions, get_allocation_options
 from maasserver.enum import (
+    BMC_TYPE,
     BRIDGE_TYPE,
     INTERFACE_TYPE,
     NODE_STATUS,
@@ -137,8 +138,9 @@ class TestMachinesAPI(APITestCase.ForUser):
         self.assertEqual("/MAAS/api/2.0/machines/", self.machines_url)
 
     def test_GET_includes_virtualmachine_id(self):
-        machine1 = factory.make_Node()
-        vm1 = factory.make_VirtualMachine(machine=machine1)
+        vmhost = factory.make_BMC(bmc_type=BMC_TYPE.POD)
+        machine1 = factory.make_Node(bmc=vmhost)
+        vm1 = factory.make_VirtualMachine(machine=machine1, bmc=vmhost)
         machine2 = factory.make_Node()
         parsed_result = self.get_json()
         result = sorted(

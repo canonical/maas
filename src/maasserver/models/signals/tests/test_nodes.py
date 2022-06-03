@@ -58,7 +58,7 @@ class TestNodePreviousStatus(MAASServerTestCase):
         node = factory.make_Node()
         old_status = node.status
         new_status = random.choice(NODE_TRANSITIONS[node.status])
-        node.status = new_status
+        node.update_status(new_status)
         node.save()
         self.assertThat(
             node,
@@ -83,7 +83,7 @@ class TestNodePreviousStatus(MAASServerTestCase):
         node = factory.make_Node(
             previous_status=previous_status, status=status
         )
-        node.status = random.choice(NODE_TRANSITIONS[node.status])
+        node.update_status(random.choice(NODE_TRANSITIONS[node.status]))
         node.save()
         self.assertEqual(previous_status, node.previous_status)
 
@@ -103,13 +103,13 @@ class TestNodeClearsOwnerNEWOrREADYStatus(MAASServerTestCase):
         node = factory.make_Node(
             owner=factory.make_User(), status=NODE_STATUS.COMMISSIONING
         )
-        node.status = NODE_STATUS.NEW
+        node.update_status(NODE_STATUS.NEW)
         node.save()
         self.assertIsNone(node.owner)
 
     def test_changing_to_ready_status_clears_owner(self):
         node = factory.make_Node(owner=factory.make_User())
-        node.status = NODE_STATUS.READY
+        node.update_status(NODE_STATUS.READY)
         node.save()
         self.assertIsNone(node.owner)
 

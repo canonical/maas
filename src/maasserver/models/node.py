@@ -1744,7 +1744,7 @@ class Node(CleanSave, TimestampedModel):
         # Ephemeral deployments need to be re-deployed on a power cycle
         # and will already be in a DEPLOYED state.
         if self.status == NODE_STATUS.ALLOCATED:
-            self.status = NODE_STATUS.DEPLOYING
+            self.update_status(NODE_STATUS.DEPLOYING)
         script_set = ScriptSet.objects.create_installation_script_set(self)
         self.current_installation_script_set = script_set
         self.save()
@@ -1757,7 +1757,7 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular imports.
         from maasserver.models.event import Event
 
-        self.status = NODE_STATUS.DEPLOYED
+        self.update_status(NODE_STATUS.DEPLOYED)
         if self.enable_hw_sync:
             self.last_sync = datetime.now()
         self.save()
@@ -1921,45 +1921,53 @@ class Node(CleanSave, TimestampedModel):
                 {"boot_interface": ["Must be one of the node's interfaces."]}
             )
 
-    def clean_status(self, old_status):
+    def update_status(self, status, validate_transition=True):
+        """Update the machine status, validating the transition by default.
+
+        The previous status is returned.
+        """
+        current_status = self.status
+        if validate_transition:
+            self._validate_status_transition(current_status, status)
+        self.status = status
+        return current_status
+
+    def _validate_status_transition(self, old_status, new_status):
         """Check a node's status transition against the node-status FSM."""
-        if self.status == old_status:
+        if old_status is None:
+            return
+        if new_status == old_status:
             # No transition is always a safe transition.
-            pass
+            return
         elif old_status is None:
             # No transition to check as it has no previous status.
-            pass
-        elif self.status in NODE_TRANSITIONS.get(old_status, ()):
+            return
+        elif new_status in NODE_TRANSITIONS.get(old_status, ()):
             # Valid transition.
             stat = map_enum_reverse(NODE_STATUS, ignore=["DEFAULT"])
             maaslog.info(
-                "%s: Status transition from %s to %s",
-                self.hostname,
-                stat[old_status],
-                stat[self.status],
+                f"{self.hostname}: Status transition "
+                f"from {stat[old_status]} to {stat[new_status]}"
             )
         else:
             # Transition not permitted.
-            error_text = "Invalid transition: {} -> {}.".format(
-                NODE_STATUS_CHOICES_DICT.get(old_status, "Unknown"),
-                NODE_STATUS_CHOICES_DICT.get(self.status, "Unknown"),
-            )
-            raise NodeStateViolation(error_text)
+            old = NODE_STATUS_CHOICES_DICT.get(old_status, "Unknown")
+            new = NODE_STATUS_CHOICES_DICT.get(new_status, "Unknown")
+            raise NodeStateViolation(f"Invalid transition: {old} -> {new}.")
 
     def clean_hostname_domain(self):
         # If you set the hostname to a name with dots, that you mean for that
         # to be the FQDN of the host. Se we check that a domain exists for
         # the remaining portion of the hostname.
-        if self.hostname.find(".") > -1:
+        if "." in self.hostname:
             # They have specified an FQDN.  Split up the pieces, and throw
             # an error if the domain does not exist.
-            name, domainname = self.hostname.split(".", 1)
-            domains = Domain.objects.filter(name=domainname)
-            if domains.count() == 1:
-                self.hostname = name
-                self.domain = domains[0]
-            else:
+            name, domain_name = self.hostname.split(".", 1)
+            domain = Domain.objects.filter(name=domain_name).first()
+            if domain is None:
                 raise ValidationError({"hostname": ["Nonexistant domain."]})
+            self.hostname = name
+            self.domain = domain
         elif self.domain is None:
             self.domain = Domain.objects.get_default_domain()
 
@@ -1975,44 +1983,10 @@ class Node(CleanSave, TimestampedModel):
 
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
-        self.prev_bmc_id = self._state.get_old_value("bmc_id")
-        if self._state.has_changed("hostname"):
-            self.clean_hostname_domain()
-        if self.id is None or self._state.has_any_changed(
-            ["node_type", "owner_id", "pool_id"]
-        ):
-            self.clean_pool()
-        if self._state.has_changed("status"):
-            self.clean_status(self._state.get_old_value("status"))
-        if self._state.has_changed("boot_disk_id"):
-            self.clean_boot_disk()
-        if self._state.has_changed("boot_interface_id"):
-            self.clean_boot_interface()
-
-    def remove_orphaned_bmcs(self):
-        # If bmc has changed post-save, clean up any potentially orphaned BMC.
-        # With CleanSave field tracking it is possible that `clean` was never
-        # performed because it was un-needed. No action needs to be performed
-        # if nothing has changed.
-        prev_bmc_id = getattr(self, "prev_bmc_id", None)
-        if prev_bmc_id is not None and prev_bmc_id != self.bmc_id:
-            # Circular imports.
-            from maasserver.models.bmc import BMC
-
-            try:
-                used_bmc_ids = Node.objects.filter(
-                    bmc_id__isnull=False
-                ).distinct()
-                used_bmc_ids = used_bmc_ids.values_list("bmc_id", flat=True)
-                unused_bmc = BMC.objects.exclude(bmc_type=BMC_TYPE.POD)
-                unused_bmc = unused_bmc.exclude(id__in=list(used_bmc_ids))
-                unused_bmc.delete()
-            except Exception as error:
-                maaslog.info(
-                    "%s: Failure cleaning orphaned BMC's: %s",
-                    self.hostname,
-                    error,
-                )
+        self.clean_hostname_domain()
+        self.clean_pool()
+        self.clean_boot_disk()
+        self.clean_boot_interface()
 
     def save(self, *args, **kwargs):
         # Reset the status_expires if not a monitored status. This prevents
@@ -2035,8 +2009,14 @@ class Node(CleanSave, TimestampedModel):
         if not self.hostname:
             self.set_random_hostname()
         super().save(*args, **kwargs)
+        self._remove_orphaned_bmcs()
 
-        self.remove_orphaned_bmcs()
+    def _remove_orphaned_bmcs(self):
+        from maasserver.models.bmc import BMC
+
+        BMC.objects.filter(node__isnull=True).exclude(
+            bmc_type=BMC_TYPE.POD
+        ).delete()
 
     def display_status(self):
         """Return status text as displayed to the user."""
@@ -2358,8 +2338,7 @@ class Node(CleanSave, TimestampedModel):
         # We need to mark the node as COMMISSIONING now to avoid a race
         # when starting multiple nodes. We hang on to old_status just in
         # case the power action fails.
-        old_status = self.status
-        self.status = NODE_STATUS.COMMISSIONING
+        old_status = self.update_status(NODE_STATUS.COMMISSIONING)
         self.owner = user
 
         # Set min_hwe_kernel to default_min_hwe_kernel.
@@ -2380,7 +2359,7 @@ class Node(CleanSave, TimestampedModel):
                 config=config,
             )
         except Exception as error:
-            self.status = old_status
+            self.update_status(old_status)
             self.enable_ssh = False
             self.skip_networking = False
             self.skip_storage = False
@@ -2543,8 +2522,7 @@ class Node(CleanSave, TimestampedModel):
         # We need to mark the node as TESTING now to avoid a race when starting
         # multiple nodes. We hang on to old_status just in case the power
         # action fails.
-        old_status = self.status
-        self.status = NODE_STATUS.TESTING
+        old_status = self.update_status(NODE_STATUS.TESTING)
         # Testing can be run in statuses which define an owner, only set one
         # if the node has no owner
         if self.owner is None:
@@ -2556,7 +2534,7 @@ class Node(CleanSave, TimestampedModel):
                 user, testing_user_data, old_status, allow_power_cycle=True
             )
         except Exception as error:
-            self.status = old_status
+            self.update_status(old_status)
             self.enable_ssh = False
             self.save()
             maaslog.error(
@@ -3359,7 +3337,7 @@ class Node(CleanSave, TimestampedModel):
             action="acquire",
             comment=comment,
         )
-        self.status = NODE_STATUS.ALLOCATED
+        self.update_status(NODE_STATUS.ALLOCATED)
         self.owner = user
         self.agent_name = agent_name
         if bridge_all:
@@ -3427,8 +3405,7 @@ class Node(CleanSave, TimestampedModel):
 
         # Change the status of the node now to avoid races when starting
         # nodes in bulk.
-        old_status = self.status
-        self.status = NODE_STATUS.DISK_ERASING
+        old_status = self.update_status(NODE_STATUS.DISK_ERASING)
         self.save()
 
         try:
@@ -3447,7 +3424,7 @@ class Node(CleanSave, TimestampedModel):
             # potentially move it back to the state it was in previously. For
             # now, though, this is safer, since it marks the node as needing
             # attention.
-            self.status = NODE_STATUS.FAILED_DISK_ERASING
+            self.update_status(NODE_STATUS.FAILED_DISK_ERASING)
             self.save()
             maaslog.error(
                 "%s: Could not start node for disk erasure: %s",
@@ -3692,7 +3669,7 @@ class Node(CleanSave, TimestampedModel):
             # not much else we can do.
             finalize_release = True
 
-        self.status = NODE_STATUS.RELEASING
+        self.update_status(NODE_STATUS.RELEASING)
         self.agent_name = ""
         self.set_netboot()
         self.set_ephemeral_deploy()
@@ -3751,7 +3728,7 @@ class Node(CleanSave, TimestampedModel):
                 and self.current_commissioning_script_set.status
                 == SCRIPT_STATUS.PASSED
             )
-            self.status = (
+            self.update_status(
                 NODE_STATUS.READY
                 if has_commissioning_data
                 else NODE_STATUS.NEW
@@ -3875,7 +3852,7 @@ class Node(CleanSave, TimestampedModel):
 
         new_status = get_failed_status(self.status)
         if new_status is not None:
-            self.status = new_status
+            self.update_status(new_status)
             self.error_description = comment if comment else ""
             if commit:
                 self.save()
@@ -3915,7 +3892,7 @@ class Node(CleanSave, TimestampedModel):
             self._release(user)
         # release() normally sets the status to RELEASING and leaves the
         # owner in place, override that here as we're broken.
-        self.status = NODE_STATUS.BROKEN
+        self.update_status(NODE_STATUS.BROKEN)
         self.owner = None
         self.error_description = comment if comment else ""
         self.save()
@@ -3937,10 +3914,11 @@ class Node(CleanSave, TimestampedModel):
                 "Can't mark a non-broken node as 'Ready'."
             )
         maaslog.info("%s: Marking node fixed", self.hostname)
-        if self.previous_status == NODE_STATUS.DEPLOYED:
-            self.status = NODE_STATUS.DEPLOYED
-        else:
-            self.status = NODE_STATUS.READY
+        self.update_status(
+            NODE_STATUS.DEPLOYED
+            if self.previous_status == NODE_STATUS.DEPLOYED
+            else NODE_STATUS.READY
+        )
         self.error_description = ""
         self.osystem = ""
         self.distro_series = ""
@@ -3962,14 +3940,14 @@ class Node(CleanSave, TimestampedModel):
                 "'Failed testing' status."
             )
         if self.osystem == "":
-            self.status = NODE_STATUS.READY
+            self.update_status(NODE_STATUS.READY)
             maaslog.info(
                 "%s: Machine status 'Failed testing' overridden by user %s. "
                 "Status transition from FAILED_TESTING to READY."
                 % (self.hostname, user)
             )
         else:
-            self.status = NODE_STATUS.DEPLOYED
+            self.update_status(NODE_STATUS.DEPLOYED)
             maaslog.info(
                 "%s: Machine status 'Failed testing' overridden by user %s. "
                 "Status transition from FAILED_TESTING to DEPLOYED."
@@ -4001,16 +3979,16 @@ class Node(CleanSave, TimestampedModel):
                     Event.objects.create_node_event(
                         self, EVENT_TYPES.EXITED_RESCUE_MODE
                     )
-                    self.status = self.previous_status
+                    self.update_status(self.previous_status)
                 else:
                     # Create a status message for FAILED_EXITING_RESCUE_MODE.
                     Event.objects.create_node_event(
                         self, EVENT_TYPES.FAILED_EXITING_RESCUE_MODE
                     )
-                    self.status = NODE_STATUS.FAILED_EXITING_RESCUE_MODE
+                    self.update_status(NODE_STATUS.FAILED_EXITING_RESCUE_MODE)
             else:
                 if power_state == POWER_STATE.OFF:
-                    self.status = self.previous_status
+                    self.update_status(self.previous_status)
                     self.owner = None
                     # Create a status message for EXITED_RESCUE_MODE.
                     Event.objects.create_node_event(
@@ -4021,7 +3999,7 @@ class Node(CleanSave, TimestampedModel):
                     Event.objects.create_node_event(
                         self, EVENT_TYPES.FAILED_EXITING_RESCUE_MODE
                     )
-                    self.status = NODE_STATUS.FAILED_EXITING_RESCUE_MODE
+                    self.update_status(NODE_STATUS.FAILED_EXITING_RESCUE_MODE)
         self.save()
 
     def is_in_allocated_state(self):
@@ -5627,7 +5605,7 @@ class Node(CleanSave, TimestampedModel):
             system_id=self.system_id,
         )
 
-        self.status = old_status
+        self.update_status(old_status)
         self.save()
 
         self.get_latest_script_results.filter(
@@ -6092,8 +6070,7 @@ class Node(CleanSave, TimestampedModel):
         # We need to mark the node as ENTERING_RESCUE_MODE now to avoid a race
         # when starting multiple nodes. We hang on to old_status just in
         # case the power action fails.
-        old_status = self.status
-        self.status = NODE_STATUS.ENTERING_RESCUE_MODE
+        old_status = self.update_status(NODE_STATUS.ENTERING_RESCUE_MODE)
         self.owner = user
         self.save()
 
@@ -6103,7 +6080,7 @@ class Node(CleanSave, TimestampedModel):
         try:
             cycling = self._power_cycle()
         except Exception as error:
-            self.status = old_status
+            self.update_status(old_status)
             self.save()
             maaslog.error(
                 "%s: Could not start rescue mode for node: %s",
@@ -6189,8 +6166,7 @@ class Node(CleanSave, TimestampedModel):
         # We need to mark the node as EXITING_RESCUE_MODE now to avoid a race
         # when starting multiple nodes. We hang on to old_status just in
         # case the power action fails.
-        old_status = self.status
-        self.status = NODE_STATUS.EXITING_RESCUE_MODE
+        old_status = self.update_status(NODE_STATUS.EXITING_RESCUE_MODE)
         self.save()
 
         try:
@@ -6199,7 +6175,7 @@ class Node(CleanSave, TimestampedModel):
             elif self.previous_status == NODE_STATUS.DEPLOYED:
                 self._power_cycle()
         except Exception as error:
-            self.status = old_status
+            self.update_status(old_status)
             self.save()
             maaslog.error(
                 "%s: Could not stop rescue mode for node: %s",
@@ -6215,7 +6191,7 @@ class Node(CleanSave, TimestampedModel):
         if not self.get_effective_power_info().can_be_queried:
             if self.previous_status != NODE_STATUS.DEPLOYED:
                 self.owner = None
-            self.status = self.previous_status
+            self.update_status(self.previous_status)
             self.save()
 
     def _as(self, model):

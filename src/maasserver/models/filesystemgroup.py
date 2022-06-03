@@ -759,15 +759,6 @@ class FilesystemGroup(CleanSave, TimestampedModel):
             raise ValidationError("Bcache requires an assigned cache set.")
 
     def save(self, *args, **kwargs):
-        # Prevent the group_type from changing. This is not supported and will
-        # break the linked filesystems and the created virtual block device(s).
-        if self.pk is not None and self._state.has_changed("group_type"):
-            orig_type = self._state.get_old_value("group_type")
-            if orig_type != self.group_type:
-                raise ValidationError(
-                    "Cannot change the group_type of a FilesystemGroup."
-                )
-
         # Prevent saving if the size of the volume group is now smaller than
         # the total size of logical volumes.
         if (

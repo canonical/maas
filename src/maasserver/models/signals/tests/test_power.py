@@ -33,7 +33,7 @@ class TestStatusQueryEvent(MAASServerTestCase):
         self.patch_autospec(power, "update_power_state_of_node_soon")
         old_status = NODE_STATUS.COMMISSIONING
         node = factory.make_Node(status=old_status, power_type="virsh")
-        node.status = get_failed_status(old_status)
+        node.update_status(get_failed_status(old_status))
 
         with post_commit_hooks:
             node.save()
@@ -54,7 +54,7 @@ class TestStatusQueryEvent(MAASServerTestCase):
         self.patch_autospec(power, "update_power_state_of_node_soon")
         old_status = NODE_STATUS.ALLOCATED
         node = factory.make_Node(status=old_status, power_type="virsh")
-        node.status = NODE_STATUS.DEPLOYING
+        node.update_status(NODE_STATUS.DEPLOYING)
         node.save()
         self.assertThat(power.update_power_state_of_node_soon, MockNotCalled())
 

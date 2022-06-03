@@ -227,5 +227,4 @@ class Fabric(CleanSave, TimestampedModel):
 
     def clean(self, *args, **kwargs):
         super().clean(*args, **kwargs)
-        if self._state.has_changed("name"):
-            self.clean_name()
+        self.clean_name()

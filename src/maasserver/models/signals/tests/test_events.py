@@ -27,7 +27,7 @@ class TestStatusTransitionEvent(MAASServerTestCase):
 
         old_status = NODE_STATUS.COMMISSIONING
         node = factory.make_Node(status=old_status)
-        node.status = get_failed_status(old_status)
+        node.update_status(get_failed_status(old_status))
         node.save()
 
         latest_event = Event.objects.filter(node=node).last()

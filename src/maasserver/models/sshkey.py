@@ -133,13 +133,10 @@ class SSHKey(CleanSave, TimestampedModel):
         can't be indexed.
         """
         super().clean(*args, **kwargs)
-        if not self._state.has_changed("key"):
-            return
-
-        existing_key = SSHKey.objects.filter(
+        duplicated_key = SSHKey.objects.filter(
             keysource=self.keysource, user=self.user, key=self.key
-        )
-        if existing_key.exists():
+        ).exclude(id=self.id)
+        if duplicated_key.exists():
             raise ValidationError(
                 "This key has already been added for this user."
             )

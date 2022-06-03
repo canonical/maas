@@ -1529,8 +1529,6 @@ class TestNetplan(MAASServerTestCase):
         )
         get_default_dns_servers_mock.return_value = ["127.0.0.2"]
         domain = Domain.objects.first()
-        domain.name = "ubuntu.com"
-        domain.save()
         domain2 = factory.make_Domain()
         expected_search_list = [domain.name, domain2.name]
         netplan = self._render_netplan_dict(node)
@@ -1652,8 +1650,6 @@ class TestNetplan(MAASServerTestCase):
         node.gateway_link_ipv4 = default_link
         node.save()
         domain = Domain.objects.first()
-        domain.name = "ubuntu.com"
-        domain.save()
         domain2 = factory.make_Domain()
         expected_search_list = [domain.name, domain2.name]
         netplan = self._render_netplan_dict(node)

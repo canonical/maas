@@ -270,7 +270,7 @@ def _create_vmhost_for_deployment(node):
             log.msg("Error while creating VM host: %s" % dict(pod_form.errors))
             return
 
-    node.status = NODE_STATUS.DEPLOYED
+    node.update_status(NODE_STATUS.DEPLOYED)
 
 
 class StatusWorkerService(TimerService):

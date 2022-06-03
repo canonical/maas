@@ -899,7 +899,7 @@ class VersionIndexHandler(MetadataViewHandler):
             node.node_type == NODE_TYPE.MACHINE
             or node.status == NODE_STATUS.TESTING
         ):
-            node.status = target_status
+            node.update_status(target_status)
 
         node.error = get_optional_param(request.POST, "error", "", String)
 

@@ -41,7 +41,7 @@ from provisioningserver.utils.network import get_source_address
 
 
 def get_config(*args, **kwargs):
-    query_count = kwargs.pop("query_count", 26)
+    query_count = kwargs.pop("query_count", 32)
     count, result = count_queries(orig_get_config, *args, **kwargs)
     assert (
         count <= query_count
@@ -208,7 +208,7 @@ class TestGetConfig(MAASServerTestCase):
             local_ip,
             remote_ip,
             mac=mac,
-            query_count=10,
+            query_count=11,
         )
         self.assertEqual(
             {
@@ -253,7 +253,7 @@ class TestGetConfig(MAASServerTestCase):
             local_ip,
             remote_ip,
             mac=mac,
-            query_count=10,
+            query_count=11,
         )
         self.assertEqual(
             {
@@ -297,7 +297,7 @@ class TestGetConfig(MAASServerTestCase):
             local_ip,
             remote_ip,
             mac=mac,
-            query_count=9,
+            query_count=10,
         )
         self.assertEqual(
             {

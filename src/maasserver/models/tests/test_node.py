@@ -3304,7 +3304,7 @@ class TestNode(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node()
         for status in accepted_states:
-            node.status = status
+            node.update_status(status)
             self.assertIsNone(node.accept_enlistment(user))
 
     def test_accept_enlistment_rejects_bad_state_change(self):
@@ -4295,47 +4295,42 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(0, ScriptSet.objects.count())
         self.assertEqual(0, ScriptResult.objects.count())
 
-    def test_save_logs_node_status_transition(self):
+    def test_udpate_status_logs_node_status_transition(self):
         self.disable_node_query()
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_User()
         )
-        node.status = NODE_STATUS.DEPLOYED
 
         with LoggerFixture("maas") as logger:
-            node.save()
+            node.update_status(NODE_STATUS.DEPLOYED)
 
         stat = map_enum_reverse(NODE_STATUS)
-        self.assertThat(
+        self.assertEqual(
             logger.output.strip(),
-            Equals(
-                "%s: Status transition from %s to %s"
-                % (
-                    node.hostname,
-                    stat[NODE_STATUS.DEPLOYING],
-                    stat[NODE_STATUS.DEPLOYED],
-                )
-            ),
+            f"{node.hostname}: Status transition "
+            f"from {stat[NODE_STATUS.DEPLOYING]} to {stat[NODE_STATUS.DEPLOYED]}",
         )
 
-    def test_save_checks_status_transition_and_raises_if_invalid(self):
+    def test_update_status_checks_status_transition_and_raises_if_invalid(
+        self,
+    ):
         self.disable_node_query()
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_Node(
             status=NODE_STATUS.RETIRED, owner=factory.make_User()
         )
-        node.status = NODE_STATUS.ALLOCATED
         self.assertRaisesRegex(
             NodeStateViolation,
             "Invalid transition: Retired -> Allocated.",
-            node.save,
+            node.update_status,
+            NODE_STATUS.ALLOCATED,
         )
 
     def test_save_passes_if_status_unchanged(self):
         self.disable_node_query()
         status = factory.pick_choice(NODE_STATUS_CHOICES)
         node = factory.make_Node(status=status)
-        node.status = status
+        node.update_status(status)
         node.save()
         # The test is that this does not raise an error.
 
@@ -4345,20 +4340,20 @@ class TestNode(MAASServerTestCase):
         # transition.
         status = NODE_STATUS.READY
         node = factory.make_Node(status=status)
-        node.status = NODE_STATUS.ALLOCATED
+        node.update_status(NODE_STATUS.ALLOCATED)
         node.save()
         # The test is that this does not raise an error.
 
-    def test_save_raises_node_state_violation_on_bad_transition(self):
+    def test_update_status_raises_node_state_violation_on_bad_transition(self):
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_Node(
             status=NODE_STATUS.RETIRED, owner=factory.make_User()
         )
-        node.status = NODE_STATUS.ALLOCATED
         self.assertRaisesRegex(
             NodeStateViolation,
             "Invalid transition: Retired -> Allocated.",
-            node.save,
+            node.update_status,
+            NODE_STATUS.ALLOCATED,
         )
 
     def test_save_resets_status_expires_on_non_monitored_status(self):
@@ -4366,7 +4361,7 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.RELEASING)
         Node._set_status_expires(node.system_id, 60)
         node = reload_object(node)
-        node.status = NODE_STATUS.READY
+        node.update_status(NODE_STATUS.READY)
         node.save()
         node = reload_object(node)
         self.assertIsNone(node.status_expires)
@@ -9333,7 +9328,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
         )
-        node.status = NODE_STATUS.BROKEN
+        node.update_status(NODE_STATUS.BROKEN)
         node.save()
         node.start(user)
         self.assertEqual(NODE_STATUS.BROKEN, node.status)
@@ -9353,7 +9348,7 @@ class TestNode_Start(MAASTransactionServerTestCase):
         node = self.make_acquired_node_with_interface(
             user, power_type="manual"
         )
-        node.status = NODE_STATUS.BROKEN
+        node.update_status(NODE_STATUS.BROKEN)
         node.save()
 
         claim_auto_ips = self.patch_autospec(

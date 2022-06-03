@@ -1543,17 +1543,6 @@ class TestFilesystemGroup(MAASServerTestCase):
         fsgroup = factory.make_FilesystemGroup(uuid=uuid)
         self.assertEqual("%s" % uuid, fsgroup.uuid)
 
-    def test_save_doesnt_allow_changing_group_type(self):
-        fsgroup = factory.make_FilesystemGroup(
-            group_type=FILESYSTEM_GROUP_TYPE.RAID_0
-        )
-        fsgroup.save()
-        fsgroup.group_type = FILESYSTEM_GROUP_TYPE.RAID_1
-        error = self.assertRaises(ValidationError, fsgroup.save)
-        self.assertEqual(
-            "Cannot change the group_type of a FilesystemGroup.", error.message
-        )
-
     def test_save_calls_create_or_update_for_when_filesystems_linked(self):
         mock_create_or_update_for = self.patch(
             VirtualBlockDevice.objects, "create_or_update_for"
