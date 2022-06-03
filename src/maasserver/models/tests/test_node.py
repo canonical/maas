@@ -6183,6 +6183,66 @@ class TestNodePowerParameters(MAASServerTestCase):
     def test_power_parameters_default(self):
         node = factory.make_Node(power_type=None)
         self.assertEqual({}, node.power_parameters)
+        self.assertIsNone(node.bmc)
+
+    def test_power_parameters_from_commissioning_not_new(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("ipmi", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_not_new(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("ipmi", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_not_new_chassis(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("redfish", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_not_new_chassis(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("redfish", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_new(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("ipmi", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_new(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("ipmi", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_new_chassis(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("redfish", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_new_chassis(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("redfish", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_same(self):
+        node = factory.make_Node(
+            power_type="ipmi",
+            power_parameters={"power_address": factory.make_ipv4_address()},
+        )
+        old_value = random.choice([None, True, False])
+        node.bmc.created_by_commissioning = old_value
+        node.bmc.save()
+        node.set_power_config(
+            "ipmi",
+            {"power_address": factory.make_ipv6_address()},
+            from_commissioning=True,
+        )
+        self.assertEqual(node.bmc.created_by_commissioning, old_value)
 
     def test_power_type_and_bmc_power_parameters_stored_in_bmc(self):
         node = factory.make_Node(power_type="hmc")

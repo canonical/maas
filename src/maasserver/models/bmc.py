@@ -289,6 +289,14 @@ class BMC(CleanSave, TimestampedModel):
         default=None,
         editable=False,
     )
+    created_by_commissioning = BooleanField(
+        # We allow None, since before 3.2 we didn't track this, and we
+        # don't know whether the BMC was created manually or
+        # automatically by commissioning.
+        null=True,
+        default=False,
+        editable=False,
+    )
 
     def __str__(self):
         return "{} ({})".format(
