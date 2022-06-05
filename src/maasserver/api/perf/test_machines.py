@@ -9,13 +9,13 @@ from maastesting.perftest import perf_test
 
 
 @perf_test()
-def test_perf_list_machines_MachineHandler_api_endpoint(api_client):
-    api_client.get(reverse("machines_handler"))
+def test_perf_list_machines_MachineHandler_api_endpoint(admin_api_client):
+    admin_api_client.get(reverse("machines_handler"))
 
 
 @perf_test(db_only=True)
-def test_perf_list_machines_MachinesHander_direct_call(maas_user):
+def test_perf_list_machines_MachinesHander_direct_call(admin):
     handler = MachinesHandler()
     request = make_HttpRequest()
-    request.user = maas_user
+    request.user = admin
     handler.read(request)
