@@ -1,5 +1,6 @@
 from copy import deepcopy
 import dataclasses
+from enum import Enum
 import random
 from typing import List, Optional
 
@@ -89,10 +90,15 @@ class LXDNetworkPort:
     link_duplex: str = "full"
 
 
+class DeviceType(Enum):
+    PCI = 1
+    USB = 2
+
+
 @dataclasses.dataclass
 class LXDNetworkCard:
-
-    pci_address: str
+    pci_address: Optional[str] = None
+    usb_address: Optional[str] = None
     vendor: str = "My Corporation"
     vendor_id: str = "1234"
     product: str = "My Gigabit Network Connection"
@@ -102,6 +108,29 @@ class LXDNetworkCard:
     driver: str = "mydriver"
     driver_version: str = "1.2.3"
     ports: Optional[List[LXDNetworkPort]] = None
+
+
+@dataclasses.dataclass
+class LXDPCIDevice:
+    pci_address: str
+    vendor_id: str
+    vendor: str
+    product_id: str
+    product: str
+    driver: str
+    driver_version: str
+
+
+@dataclasses.dataclass
+class LXDUSBDevice:
+    bus_address: int
+    device_address: int
+    vendor_id: str
+    vendor: str
+    product_id: str
+    product: str
+    driver: str
+    driver_version: str
 
 
 class FakeCommissioningData:
@@ -151,6 +180,9 @@ class FakeCommissioningData:
         }
         self.address_annotations = {}
         self._allocated_pci_addresses = []
+        self._pci_devices = []
+        self._allocated_usb_addresses = []
+        self._usb_devices = []
         self.networks = {}
         self._network_cards = []
         if disks is None:
@@ -181,6 +213,17 @@ class FakeCommissioningData:
         )
         return self._allocated_pci_addresses[-1]
 
+    def allocate_usb_address(self):
+        prev_address = (
+            self._allocated_usb_addresses[-1]
+            if self._allocated_usb_addresses
+            else "0:0"
+        )
+        bus, device = prev_address.split(":")
+        next_device = int(device, 16) + 1
+        self._allocated_usb_addresses.append(f"{bus}:{next_device:0>1x}")
+        return self._allocated_usb_addresses[-1]
+
     def get_available_vid(self):
         available_vids = set(range(2, 4095))
         used_vids = {
@@ -191,10 +234,78 @@ class FakeCommissioningData:
         available_vids = list(available_vids.difference(used_vids))
         return random.choice(available_vids)
 
-    def create_network_card(self):
-        card = LXDNetworkCard(self.allocate_pci_address())
+    def create_network_card(self, device_type=DeviceType.PCI):
+        card = None
+        if device_type == DeviceType.PCI:
+            addr = self.allocate_pci_address()
+            card = LXDNetworkCard(pci_address=addr)
+            self.create_pci_device(
+                addr,
+                card.vendor_id,
+                card.vendor,
+                card.product_id,
+                card.product,
+                card.driver,
+                card.driver_version,
+            )
+        if device_type == DeviceType.USB:
+            addr = self.allocate_usb_address()
+            card = LXDNetworkCard(usb_address=addr)
+            self.create_usb_device(
+                addr,
+                card.vendor_id,
+                card.vendor,
+                card.product_id,
+                card.product,
+                card.driver,
+                card.driver_version,
+            )
         self._network_cards.append(card)
         return card
+
+    def create_pci_device(
+        self,
+        addr,
+        vendor_id,
+        vendor,
+        product_id,
+        product,
+        driver,
+        driver_version,
+    ):
+        device = LXDPCIDevice(
+            addr,
+            vendor_id,
+            vendor,
+            product_id,
+            product,
+            driver,
+            driver_version,
+        )
+        self._pci_devices.append(device)
+
+    def create_usb_device(
+        self,
+        addr,
+        vendor_id,
+        vendor,
+        product_id,
+        product,
+        driver,
+        driver_version,
+    ):
+        bus, device = addr.split(":")
+        device = LXDUSBDevice(
+            bus,
+            device,
+            vendor_id,
+            vendor,
+            product_id,
+            product,
+            driver,
+            driver_version,
+        )
+        self._usb_devices.append(device)
 
     def create_physical_network(
         self,
@@ -298,7 +409,21 @@ class FakeCommissioningData:
         }
         network_resources = {
             "cards": [
-                dataclasses.asdict(card) for card in self._network_cards
+                dataclasses.asdict(
+                    card,
+                    # Network card can have pci_address or usb_address.
+                    # The one that is not set will be rendered as None,
+                    # but machine-resources has omitempty JSON tag,
+                    # thus it will not have empty property, and we want to be compliant
+                    dict_factory=lambda x: {
+                        k: v
+                        for (k, v) in x
+                        if not (
+                            k in ("pci_address", "usb_address") and v is None
+                        )
+                    },
+                )
+                for card in self._network_cards
             ],
             "total": len(self._network_cards),
         }
@@ -309,6 +434,19 @@ class FakeCommissioningData:
             name: dataclasses.asdict(network)
             for name, network in self.networks.items()
         }
+        pci_resources = {
+            "devices": [
+                dataclasses.asdict(device) for device in self._pci_devices
+            ],
+            "total": len(self._pci_devices),
+        }
+        usb_resources = {
+            "devices": [
+                dataclasses.asdict(device) for device in self._usb_devices
+            ],
+            "total": len(self._usb_devices),
+        }
+
         old_interfaces_data = self._generate_interfaces()
         data = {
             "api_extensions": self.api_extensions,
@@ -334,6 +472,8 @@ class FakeCommissioningData:
                 "gpu": {"cards": [], "total": 0},
                 "network": network_resources,
                 "storage": storage_resources,
+                "usb": usb_resources,
+                "pci": pci_resources,
             },
             "networks": networks,
         }
