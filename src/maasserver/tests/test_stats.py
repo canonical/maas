@@ -21,6 +21,7 @@ from maasserver.enum import (
 )
 from maasserver.forms import AdminMachineForm
 from maasserver.models import (
+    BMC,
     BootResourceFile,
     Config,
     Fabric,
@@ -31,6 +32,7 @@ from maasserver.models import (
     VLAN,
 )
 from maasserver.stats import (
+    get_bmc_stats,
     get_brownfield_stats,
     get_custom_images_deployed_stats,
     get_custom_images_uploaded_stats,
@@ -456,6 +458,11 @@ class TestMAASStats(MAASServerTestCase):
                 "tls_cert_validity_days": None,
                 "tls_enabled": False,
             },
+            "bmcs": {
+                "auto_detected": {},
+                "user_created": {"lxd": 1, "virsh": 2},
+                "unknown": {},
+            },
         }
         self.assertEqual(stats, expected)
 
@@ -627,6 +634,11 @@ class TestMAASStats(MAASServerTestCase):
             "tls_configuration": {
                 "tls_cert_validity_days": None,
                 "tls_enabled": False,
+            },
+            "bmcs": {
+                "auto_detected": {},
+                "user_created": {},
+                "unknown": {},
             },
         }
         self.assertEqual(get_maas_stats(), expected)
@@ -1044,6 +1056,36 @@ class TestGetSubnetsUtilisationStats(MAASServerTestCase):
                     "unavailable": 34,
                 }
             },
+        )
+
+
+class TestGetBMCStats(MAASServerTestCase):
+    def test_get_bmc_stats_no_bmcs(self):
+        self.assertEqual(0, BMC.objects.all().count())
+        self.assertEqual(
+            {
+                "auto_detected": {},
+                "user_created": {},
+                "unknown": {},
+            },
+            get_bmc_stats(),
+        )
+
+    def test_get_bmc_stats_with_bmcs(self):
+        factory.make_BMC(power_type="redfish", created_by_commissioning=True)
+        factory.make_BMC(power_type="ipmi", created_by_commissioning=False)
+        factory.make_BMC(power_type="lxd", created_by_commissioning=None)
+        self.assertEqual(
+            {
+                "auto_detected": {"redfish": 1},
+                "user_created": {
+                    "ipmi": 1,
+                },
+                "unknown": {
+                    "lxd": 1,
+                },
+            },
+            get_bmc_stats(),
         )
 
 

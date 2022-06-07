@@ -1374,7 +1374,12 @@ class Node(CleanSave, TimestampedModel):
     def is_commissioning(self):
         return self.status not in (NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING)
 
-    def set_power_config(self, power_type, power_params):
+    def set_power_config(
+        self,
+        power_type,
+        power_params,
+        from_commissioning=False,
+    ):
         """Update the power configuration for a node.
 
         If power_type is not changed, this will update power parameters for the
@@ -1383,6 +1388,7 @@ class Node(CleanSave, TimestampedModel):
         """
         from maasserver.models.bmc import BMC
 
+        created_by_commissioning = from_commissioning
         old_bmc = self.bmc
         chassis, bmc_params, node_params = BMC.scope_power_parameters(
             power_type, power_params
@@ -1396,27 +1402,27 @@ class Node(CleanSave, TimestampedModel):
                     power_type=power_type, power_parameters=bmc_params
                 ).first()
                 if existing_bmc and existing_bmc.id != self.bmc_id:
-                    if self.bmc:
-                        # Point all nodes using old BMC at the new one.
-                        for node in self.bmc.node_set.exclude(id=self.id):
-                            node.bmc = existing_bmc
-                            node.save()
+                    # Point all nodes using old BMC at the new one.
+                    for node in self.bmc.node_set.exclude(id=self.id):
+                        node.bmc = existing_bmc
+                        node.save()
                     self.bmc = existing_bmc
                 elif not existing_bmc:
-                    if self.bmc:
-                        self.bmc.power_parameters = bmc_params
-                    else:
-                        self.bmc = BMC.objects.create(
-                            power_type=power_type, power_parameters=bmc_params
-                        )
+                    self.bmc.power_parameters = bmc_params
                     self.bmc.save()
         elif chassis:
             self.bmc, _ = BMC.objects.get_or_create(
-                power_type=power_type, power_parameters=bmc_params
+                power_type=power_type,
+                power_parameters=bmc_params,
+                defaults={
+                    "created_by_commissioning": created_by_commissioning
+                },
             )
         else:
             self.bmc = BMC.objects.create(
-                power_type=power_type, power_parameters=bmc_params
+                power_type=power_type,
+                power_parameters=bmc_params,
+                created_by_commissioning=created_by_commissioning,
             )
             self.bmc.save()
 

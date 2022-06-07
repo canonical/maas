@@ -25,6 +25,7 @@ from maasserver.enum import (
     NODE_TYPE,
 )
 from maasserver.models import (
+    BMC,
     BootResourceFile,
     Config,
     Fabric,
@@ -408,6 +409,31 @@ def get_tls_configuration_stats():
     return {"tls_enabled": True, "tls_cert_validity_days": validity_days}
 
 
+def get_bmc_stats():
+    stats = (
+        BMC.objects.all()
+        .values("power_type")
+        .annotate(
+            auto_detected=count_of(created_by_commissioning=True),
+            user_created=count_of(created_by_commissioning__exact=False),
+            unknown=count_of(created_by_commissioning__exact=None),
+        )
+    )
+    result = {
+        # BMCs that were auto-detected and created by commissoning.
+        "auto_detected": {},
+        # BMCs that the user manually created.
+        "user_created": {},
+        # Before 3.2 we didn't track whether the BMC was auto-detected.
+        "unknown": {},
+    }
+    for entry in stats:
+        for key in result.keys():
+            if entry[key]:
+                result[key][entry["power_type"]] = entry[key]
+    return result
+
+
 def get_maas_stats():
     # TODO
     # - architectures
@@ -457,6 +483,7 @@ def get_maas_stats():
         "vmcluster": get_vmcluster_stats(),
         "storage_layouts": get_storage_layouts_stats(),
         "tls_configuration": get_tls_configuration_stats(),
+        "bmcs": get_bmc_stats(),
     }
 
 

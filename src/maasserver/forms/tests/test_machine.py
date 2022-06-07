@@ -572,7 +572,7 @@ class TestAdminMachineForm(MAASServerTestCase):
         self.assertEqual(power_type, node.power_type)
 
     def test_AdminMachineForm_needs_interface_for_power_types(self):
-        node = factory.make_Node(power_type="")
+        node = factory.make_Node(power_type=None)
         arch = make_usable_architecture(self)
         form = AdminMachineForm(
             data={

@@ -374,7 +374,9 @@ def store_node_power_parameters(node, request):
             **node.instance_power_parameters,
             **power_parameters,
         }
-    node.set_power_config(power_type, power_parameters)
+    node.set_power_config(
+        power_type, power_parameters, from_commissioning=True
+    )
     node.save()
 
 

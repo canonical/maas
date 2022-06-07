@@ -1641,7 +1641,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual("new-hostname", node.hostname)
 
     def test_get_effective_power_type_raises_if_not_set(self):
-        node = factory.make_Node(power_type="")
+        node = factory.make_Node(power_type=None)
         self.assertRaises(UnknownPowerType, node.get_effective_power_type)
 
     def test_get_effective_power_type_reads_node_field(self):
@@ -1706,7 +1706,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual("pxe", params["boot_mode"])
 
     def test_get_effective_power_info_is_False_for_unset_power_type(self):
-        node = factory.make_Node(power_type="")
+        node = factory.make_Node(power_type=None)
         self.assertEqual(
             (False, False, False, False, None, None),
             node.get_effective_power_info(),
@@ -3338,7 +3338,9 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_errors_for_unconfigured_power_type(self):
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.NEW, power_type=""
+            interface=True,
+            status=NODE_STATUS.NEW,
+            power_type=None,
         )
         admin = factory.make_admin()
         self.assertRaises(UnknownPowerType, node.start_commissioning, admin)
@@ -4026,7 +4028,9 @@ class TestNode(MAASServerTestCase):
 
     def test_start_testing_errors_for_unconfigured_power_type(self):
         node = factory.make_Node(
-            interface=True, status=NODE_STATUS.DEPLOYED, power_type=""
+            interface=True,
+            status=NODE_STATUS.DEPLOYED,
+            power_type=None,
         )
         admin = factory.make_admin()
         self.assertRaises(UnknownPowerType, node.start_testing, admin)
@@ -5673,7 +5677,7 @@ class TestNode(MAASServerTestCase):
             status=random.choice(
                 [NODE_STATUS.READY, NODE_STATUS.BROKEN, NODE_STATUS.DEPLOYED]
             ),
-            power_type="",
+            power_type=None,
         )
         self.assertRaises(
             UnknownPowerType, node.start_rescue_mode, factory.make_admin()
@@ -6179,14 +6183,76 @@ class TestNodePowerParameters(MAASServerTestCase):
 
     def test_power_parameters_are_stored(self):
         parameters = dict(user="tarquin", address="10.1.2.3")
-        node = factory.make_Node(power_type="", power_parameters=parameters)
+        node = factory.make_Node(
+            power_type="ipmi", power_parameters=parameters
+        )
         node.save()
         node = reload_object(node)
         self.assertEqual(parameters, node.power_parameters)
 
     def test_power_parameters_default(self):
-        node = factory.make_Node(power_type="")
+        node = factory.make_Node(power_type=None)
         self.assertEqual({}, node.power_parameters)
+        self.assertIsNone(node.bmc)
+
+    def test_power_parameters_from_commissioning_not_new(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("ipmi", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_not_new(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("ipmi", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_not_new_chassis(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("redfish", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_not_new_chassis(self):
+        node = factory.make_Node(power_type="virsh")
+        node.set_power_config("redfish", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_new(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("ipmi", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_new(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("ipmi", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_new_chassis(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("redfish", {}, from_commissioning=True)
+        self.assertTrue(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_not_from_commissioning_new_chassis(self):
+        node = factory.make_Node(power_type=None)
+        node.set_power_config("redfish", {}, from_commissioning=False)
+        self.assertIsNotNone(node.bmc.created_by_commissioning)
+        self.assertFalse(node.bmc.created_by_commissioning)
+
+    def test_power_parameters_from_commissioning_same(self):
+        node = factory.make_Node(
+            power_type="ipmi",
+            power_parameters={"power_address": factory.make_ipv4_address()},
+        )
+        old_value = random.choice([None, True, False])
+        node.bmc.created_by_commissioning = old_value
+        node.bmc.save()
+        node.set_power_config(
+            "ipmi",
+            {"power_address": factory.make_ipv6_address()},
+            from_commissioning=True,
+        )
+        self.assertEqual(node.bmc.created_by_commissioning, old_value)
 
     def test_power_type_and_bmc_power_parameters_stored_in_bmc(self):
         node = factory.make_Node(power_type="hmc")

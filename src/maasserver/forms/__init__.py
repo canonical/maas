@@ -385,7 +385,7 @@ class WithPowerTypeMixin:
             power_parameters["certificate"] = cert.certificate_pem()
             power_parameters["key"] = cert.private_key_pem()
 
-        if type_changed or initial_parameters:
+        if type_changed or initial_parameters and power_type:
             machine.set_power_config(power_type, power_parameters)
 
     def clean(self):

@@ -353,14 +353,12 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
     # Those tests have been left there for now because they also check
     # that the return values are being formatted correctly for RPC.
 
-    def make_Node(self, power_type=None, power_state_queried=None, **kwargs):
+    def make_Node(self, power_state_queried=None, **kwargs):
         if power_state_queried is None:
             # Ensure that this node was last queried at least 5 minutes ago.
             power_state_queried = now() - timedelta(minutes=randint(6, 16))
         node = factory.make_Node(
-            power_type=power_type,
-            power_state_queried=power_state_queried,
-            **kwargs
+            power_state_queried=power_state_queried, **kwargs
         )
         return node
 
@@ -452,10 +450,11 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
         rack = factory.make_RackController()
         node_queryable = self.make_Node(bmc_connected_to=rack)
 
-        factory.make_Device(power_type="")
-        factory.make_Device(power_type="")
+        factory.make_Device(power_type=None)
+        factory.make_Device(power_type=None)
         factory.make_Device(
-            power_type="", power_state_queried=(now() - timedelta(minutes=10))
+            power_type=None,
+            power_state_queried=(now() - timedelta(minutes=10)),
         )
 
         power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
