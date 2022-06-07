@@ -5,6 +5,7 @@
 
 
 from contextlib import contextmanager
+from cProfile import Profile
 from datetime import datetime
 from functools import wraps
 import json
@@ -116,3 +117,30 @@ def run_perf_tests(env):
         )
     finally:
         perf_test_finish(env.get("OUTPUT_FILE"))
+
+
+@contextmanager
+def profile(testname: str):
+    """Produces profiling info for tests
+
+    This functions uses cProfile module to provide deterministic
+    profiling data for tests. The overhead is reasonable, typically < 5%.
+
+    When enabled (MAAS_PROFILING is set in the environment) the profiling
+    data is written to a file called `<testname>.profile` in the current
+    directory. This file can be analized with external tools like `snakeviz`.
+
+    Args:
+        testname (str): name of the output file
+
+    Example:
+
+        with perftest.profile("my_test_case"):
+            <<block being profiled>>
+    """
+    if os.getenv("MAAS_PROFILING") == "1":
+        with Profile() as profiler:
+            yield
+        profiler.dump_stats(f"{testname}.profile")
+    else:
+        yield

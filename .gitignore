@@ -53,6 +53,8 @@
 /twisted
 /xunit.*.xml
 /junit-*.xml
+/test_*.profile
+/maas-perf-results.json
 __pycache__
 *.orig
 *~
