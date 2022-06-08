@@ -889,11 +889,20 @@ class Redfish(IPMIBase):
     """Handle detection and configuration of Redfish device."""
 
     power_type = "redfish"
-    username = None
-    password = None
+
+    def __init__(
+        self,
+        username=None,
+        password=None,
+        ipmi_privilege_level="",
+        **kwargs,
+    ):
+        self.username = username
+        self.password = password
+        self._privilege_level = ipmi_privilege_level
+        self._bmc_config = {}
 
     _bmc_ip = None
-
     _redfish_ip = None
     _redfish_port = None
 

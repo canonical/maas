@@ -1464,6 +1464,47 @@ class TestRedfish(MAASTestCase):
                 ["netplan", "apply"], timeout=bmc_config.COMMAND_TIMEOUT
             )
 
+    def test_add_bmc_user(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        self.redfish = bmc_config.Redfish(username, password)
+        mock_bmc_set = self.patch(self.redfish, "_bmc_set")
+        mock_bmc_set_keys = self.patch(self.redfish, "_bmc_set_keys")
+        self.redfish._bmc_config = {
+            "User1": {},
+            "User2": {
+                "Username": "",
+                "Password": factory.make_name("password"),
+                "Enable_User": "Yes",
+                "Lan_Privilege_Limit": "Administrator",
+                "Lan_Enable_IPMI_Msgs": "Yes",
+            },
+        }
+        self.redfish._privilege_level = "OPERATOR"
+
+        self.redfish.add_bmc_user()
+
+        self.assertEqual(username, self.redfish.username)
+        self.assertEqual(password, self.redfish.password)
+        # Verify bmc_set is only called for values that have changed
+        mock_bmc_set.assert_has_calls(
+            (
+                call("User2", "Username", username),
+                call("User2", "Password", password),
+                call("User2", "Lan_Privilege_Limit", "Operator"),
+            )
+        )
+
+        mock_bmc_set_keys.assert_called_once_with(
+            "User2",
+            [
+                "Lan_Enable_Link_Auth",
+                "SOL_Payload_Access",
+                "Serial_Enable_Link_Auth",
+            ],
+            "Yes",
+        )
+
 
 class TestGetIPMILocateOutput(MAASTestCase):
     def test_get_ipmi_locate_output(self):
