@@ -1,8 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for signals helpers."""
-
 
 import random
 from unittest.mock import call, Mock, sentinel
@@ -55,9 +53,7 @@ def pick_django_signal():
     )
 
 
-class ConnectToFieldChangeTest(MAASLegacyTransactionServerTestCase):
-    """Testing for the method `connect_to_field_change`."""
-
+class TestConnectToFieldChange(MAASLegacyTransactionServerTestCase):
     apps = ["maasserver.tests"]
 
     def connect(self, callback, fields, delete=False):

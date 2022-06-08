@@ -1,9 +1,6 @@
 # Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `ConfigForm`."""
-
-
 from django import forms
 from django.http import HttpRequest
 
@@ -31,7 +28,7 @@ class TestCompositeForm(ConfigForm):
     non_config_field = forms.CharField(label="Field 2", max_length=10)
 
 
-class ConfigFormTest(MAASServerTestCase):
+class TestConfigForm(MAASServerTestCase):
     def test_form_valid_saves_into_db(self):
         endpoint = factory.pick_choice(ENDPOINT_CHOICES)
         request = HttpRequest()

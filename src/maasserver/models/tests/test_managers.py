@@ -11,7 +11,7 @@ from maasserver.tests.models import (
 )
 
 
-class BulkManagerTest(MAASLegacyTransactionServerTestCase):
+class TestBulkManager(MAASLegacyTransactionServerTestCase):
 
     apps = ["maasserver.tests"]
 

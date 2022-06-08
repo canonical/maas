@@ -1,9 +1,6 @@
 # Copyright 2015-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for Interface forms."""
-
-
 import random
 from unittest import skip
 
@@ -30,7 +27,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
 
 
-class GetInterfaceFormTests(MAASServerTestCase):
+class TestGetInterfaceForm(MAASServerTestCase):
 
     scenarios = [
         (
@@ -47,13 +44,13 @@ class GetInterfaceFormTests(MAASServerTestCase):
         )
 
 
-class GetInterfaceFormErrorTests(MAASServerTestCase):
+class TestGetInterfaceFormError(MAASServerTestCase):
     def test_get_interface_form_returns_form(self):
         with ExpectedException(ValidationError):
             InterfaceForm.get_interface_form(factory.make_name())
 
 
-class ControllerInterfaceFormTest(MAASServerTestCase):
+class TestControllerInterfaceForm(MAASServerTestCase):
 
     scenarios = (
         ("region", {"maker": factory.make_RegionController}),
@@ -131,7 +128,7 @@ class ControllerInterfaceFormTest(MAASServerTestCase):
         )
 
 
-class DeployedInterfaceFormTest(MAASServerTestCase):
+class TestDeployedInterfaceForm(MAASServerTestCase):
     def test_updates_interface(self):
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, name="eth0", link_connected=False
@@ -657,7 +654,7 @@ class TestPhysicalInterfaceForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form.errors)
 
 
-class VLANInterfaceFormTest(MAASServerTestCase):
+class TestVLANInterfaceForm(MAASServerTestCase):
     def test_creates_vlan_interface(self):
         vlan = factory.make_VLAN(vid=10)
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
@@ -858,7 +855,7 @@ class VLANInterfaceFormTest(MAASServerTestCase):
         self.assertCountEqual([parent], interface.parents.all())
 
 
-class BondInterfaceFormTest(MAASServerTestCase):
+class TestBondInterfaceForm(MAASServerTestCase):
     def test_error_with_invalid_bond_mode(self):
         vlan = factory.make_VLAN(vid=10)
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, vlan=vlan)
@@ -1408,7 +1405,7 @@ class BondInterfaceFormTest(MAASServerTestCase):
         )
 
 
-class BridgeInterfaceFormTest(MAASServerTestCase):
+class TestBridgeInterfaceForm(MAASServerTestCase):
     def test_creates_bridge_interface(self):
         parent = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface_name = factory.make_name()
@@ -1762,7 +1759,7 @@ class BridgeInterfaceFormTest(MAASServerTestCase):
         )
 
 
-class AcquiredBridgeInterfaceFormTest(MAASServerTestCase):
+class TestAcquiredBridgeInterfaceForm(MAASServerTestCase):
     def test_creates_acquired_bridge_interface(self):
         interface_name = factory.make_name("br")
         node = factory.make_Node()

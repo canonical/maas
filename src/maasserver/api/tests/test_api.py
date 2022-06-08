@@ -142,7 +142,7 @@ class TestXSSBugs(APITestCase.ForUser):
         self.assertNotIn("text/html", response.get("Content-Type"))
 
 
-class AccountAPITest(APITestCase.ForUser):
+class TestAccountAPI(APITestCase.ForUser):
 
     clientfactories = {
         "user+pass": MAASSensibleClient,
@@ -600,7 +600,7 @@ class TestSSHKeyHandlers(APITestCase.ForUser):
         )
 
 
-class MAASAPIAnonTest(APITestCase.ForAnonymous):
+class TestMAASAPIAnon(APITestCase.ForAnonymous):
     """The MAAS' handler is not accessible to anon users."""
 
     def test_anon_get_config_unauthorized(self):
@@ -618,7 +618,7 @@ class MAASAPIAnonTest(APITestCase.ForAnonymous):
         self.assertEqual(http.client.UNAUTHORIZED, response.status_code)
 
 
-class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
+class TestMAASAPIVersioning(APITestCase.ForAnonymousAndUserAndAdmin):
 
     clientfactories = {
         "user+pass": MAASSensibleClient,
@@ -648,7 +648,7 @@ class MAASAPIVersioningTest(APITestCase.ForAnonymousAndUserAndAdmin):
         )
 
 
-class MAASAPITest(APITestCase.ForUser):
+class TestMAASAPI(APITestCase.ForUser):
 
     clientfactories = {
         "user+pass": MAASSensibleClient,
@@ -772,7 +772,7 @@ class MAASAPITest(APITestCase.ForUser):
         )
 
 
-class APIErrorsTest(APITransactionTestCase.ForUserAndAdmin):
+class TestAPIErrors(APITransactionTestCase.ForUserAndAdmin):
     def test_internal_error_generates_proper_api_response(self):
         error_message = factory.make_string()
 

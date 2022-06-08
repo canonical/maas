@@ -19,7 +19,7 @@ from maasserver.utils.orm import reload_object
 from maastesting.matchers import MockCalledOnce
 
 
-class DeviceOwnerDataTest(APITestCase.ForUser):
+class TestDeviceOwnerData(APITestCase.ForUser):
     def test_GET_returns_owner_data(self):
         owner_data = {factory.make_name("key"): factory.make_name("value")}
         factory.make_Device(owner=self.user, owner_data=owner_data)

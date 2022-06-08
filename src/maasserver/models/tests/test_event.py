@@ -1,9 +1,6 @@
 # Copyright 2014-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the Event model."""
-
-
 import logging
 import random
 
@@ -17,7 +14,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import EVENT_TYPES
 
 
-class EventTest(MAASServerTestCase):
+class TestEvent(MAASServerTestCase):
     def test_displays_event_node(self):
         event = factory.make_Event()
         self.assertIn("%s" % event.node, "%s" % event)

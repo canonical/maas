@@ -1,9 +1,6 @@
 # Copyright 2012-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test custom model fields."""
-
-
 import json
 from random import choice, randint
 import re
@@ -547,7 +544,7 @@ class TestIPv4CIDRField(MAASLegacyServerTestCase):
         )
 
 
-class IPListFormFieldTest(MAASTestCase):
+class TestIPListFormField(MAASTestCase):
     def test_accepts_none(self):
         self.assertIsNone(IPListFormField().clean(None))
 
@@ -584,7 +581,7 @@ class IPListFormFieldTest(MAASTestCase):
         )
 
 
-class HostListFormFieldTest(MAASTestCase):
+class TestHostListFormField(MAASTestCase):
     def test_accepts_none(self):
         self.assertIsNone(HostListFormField().clean(None))
 

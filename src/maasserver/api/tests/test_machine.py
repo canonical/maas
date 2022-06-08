@@ -80,7 +80,7 @@ from provisioningserver.refresh.node_info_scripts import NODE_INFO_SCRIPTS
 from provisioningserver.utils.enum import map_enum
 
 
-class MachineAnonAPITest(MAASServerTestCase):
+class TestMachineAnonAPI(MAASServerTestCase):
     def test_machine_init_user_cannot_access(self):
         token = NodeKey.objects.get_token_for_node(factory.make_Node())
         client = MAASSensibleOAuthClient(get_node_init_user(), token)
@@ -88,7 +88,7 @@ class MachineAnonAPITest(MAASServerTestCase):
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
 
-class MachinesAPILoggedInTest(APITestCase.ForUserAndAdmin):
+class TestMachinesAPILoggedIn(APITestCase.ForUserAndAdmin):
     """A logged-in user can access the API."""
 
     def setUp(self):

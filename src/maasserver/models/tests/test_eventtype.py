@@ -1,9 +1,6 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the Event model."""
-
-
 import random
 import threading
 import time
@@ -19,7 +16,7 @@ from maasserver.testing.testcase import (
 from maasserver.utils.orm import transactional
 
 
-class EventTypeTest(MAASServerTestCase):
+class TestEventType(MAASServerTestCase):
     def test_displays_event_type_description(self):
         event_type = factory.make_EventType()
         self.assertIn(event_type.description, "%s" % event_type)
@@ -71,7 +68,7 @@ class EventTypeTest(MAASServerTestCase):
         )
 
 
-class EventTypeConcurrencyTest(MAASTransactionServerTestCase):
+class TestEventTypeConcurrency(MAASTransactionServerTestCase):
     def test_register_is_safe_with_concurrency(self):
         name = factory.make_name("name")
         desc = factory.make_name("desc")

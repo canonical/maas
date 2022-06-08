@@ -1,9 +1,6 @@
 # Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver RPC views."""
-
-
 import json
 
 from django.urls import reverse
@@ -32,7 +29,7 @@ from provisioningserver.utils.testing import MAASIDFixture
 is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2**16))
 
 
-class RPCViewTest(MAASTransactionServerTestCase):
+class TestRPCView(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
         self.maas_id = None

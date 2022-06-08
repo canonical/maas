@@ -1,9 +1,6 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the VLAN model."""
-
-
 import random
 
 from django.core.exceptions import ValidationError
@@ -265,7 +262,7 @@ class TestVLANVidValidation(MAASServerTestCase):
                 vlan.save()
 
 
-class VLANMTUValidationTest(MAASServerTestCase):
+class TestVLANMTUValidation(MAASServerTestCase):
 
     scenarios = [
         ("551", {"mtu": 551, "valid": False}),

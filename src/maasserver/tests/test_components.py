@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver components module."""
-
-
 import random
 
 from maasserver.components import (
@@ -22,7 +19,7 @@ def get_random_component():
     return random.choice(list(map_enum(COMPONENT).values()))
 
 
-class PersistentErrorsUtilitiesTest(MAASServerTestCase):
+class TestPersistentErrorsUtilities(MAASServerTestCase):
     def test_register_persistent_error_registers_error(self):
         error_message = factory.make_string()
         component = get_random_component()

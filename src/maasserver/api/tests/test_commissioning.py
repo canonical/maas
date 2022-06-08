@@ -28,7 +28,7 @@ from metadataserver.models import Script
 from provisioningserver.events import AUDIT
 
 
-class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
+class TestAdminCommissioningScriptsAPI(APITestCase.ForAdmin):
     """Tests for `CommissioningScriptsHandler`."""
 
     def get_url(self):
@@ -94,7 +94,7 @@ class AdminCommissioningScriptsAPITest(APITestCase.ForAdmin):
         )
 
 
-class CommissioningScriptsAPITest(APITestCase.ForUser):
+class TestCommissioningScriptsAPI(APITestCase.ForUser):
     def get_url(self):
         return reverse("commissioning_scripts_handler")
 
@@ -109,7 +109,7 @@ class CommissioningScriptsAPITest(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
 
-class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
+class TestAdminCommissioningScriptAPI(APITestCase.ForAdmin):
     """Tests for `CommissioningScriptHandler`."""
 
     def get_url(self, script_name):
@@ -178,7 +178,7 @@ class AdminCommissioningScriptAPITest(APITestCase.ForAdmin):
         )
 
 
-class CommissioningScriptAPITest(APITestCase.ForUser):
+class TestCommissioningScriptAPI(APITestCase.ForUser):
     def get_url(self, script_name):
         return reverse("commissioning_script_handler", args=[script_name])
 
@@ -203,7 +203,7 @@ class CommissioningScriptAPITest(APITestCase.ForUser):
         self.assertThat(response, HasStatusCode(http.client.FORBIDDEN))
 
 
-class NodeCommissionResultHandlerAPITest(APITestCase.ForUser):
+class TestNodeCommissionResultHandlerAPI(APITestCase.ForUser):
     def store_result(
         self, script_result, output=None, stdout=None, stderr=None, **kwargs
     ):

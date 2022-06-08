@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver middleware classes."""
-
-
 import http.client
 import json
 import logging
@@ -55,7 +52,7 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.utils.shell import ExternalProcessError
 
 
-class IsPublicPathTest(MAASServerTestCase):
+class TestIsPublicPath(MAASServerTestCase):
     def test_public_path(self):
         self.assertTrue(is_public_path("/MAAS/accounts/login/"))
         self.assertTrue(is_public_path("/MAAS/rpc/someurl"))
@@ -90,7 +87,7 @@ class TestAccessMiddleware(MAASServerTestCase):
         )
 
 
-class ExceptionMiddlewareTest(MAASServerTestCase):
+class TestExceptionMiddleware(MAASServerTestCase):
     def make_base_path(self):
         """Return a path to handle exceptions for."""
         return "/%s" % factory.make_string()
@@ -268,7 +265,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         )
 
 
-class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
+class TestDebuggingLoggerMiddleware(MAASServerTestCase):
     def process_request(self, request, response=None):
         def get_response(request):
             if response:
@@ -333,7 +330,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
         self.assertThat(logger.output, Contains("non-utf-8 (binary?) content"))
 
 
-class RPCErrorsMiddlewareTest(MAASServerTestCase):
+class TestRPCErrorsMiddleware(MAASServerTestCase):
     def process_request(self, request, exception=None):
         def get_response(request):
             if exception:
@@ -410,7 +407,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         self.process_request(request, error)
 
 
-class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
+class TestAPIRPCErrorsMiddleware(MAASServerTestCase):
     def process_request(self, request, exception=None):
         def get_response(request):
             if exception:
@@ -532,9 +529,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         )
 
 
-class ExternalComponentsMiddlewareTest(MAASServerTestCase):
-    """Tests for the ExternalComponentsMiddleware."""
-
+class TestExternalComponentsMiddleware(MAASServerTestCase):
     def process_request(self, request):
         def get_response(request):
             return None
@@ -630,9 +625,7 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         )
 
 
-class CSRFHelperMiddlewareTest(MAASServerTestCase):
-    """Tests for the CSRFHelperMiddleware."""
-
+class TestCSRFHelperMiddleware(MAASServerTestCase):
     def process_request(self, request):
         def get_response(request):
             return None
@@ -716,9 +709,7 @@ class TestExternalAuthInfoMiddleware(MAASServerTestCase):
         self.assertEqual(request.external_auth_info.url, "https://example.com")
 
 
-class RBACMiddlewareTest(MAASServerTestCase):
-    """Tests for the RBACMiddleware."""
-
+class TestRBACMiddleware(MAASServerTestCase):
     def process_request(self, request):
         def get_response(request):
             return None

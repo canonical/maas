@@ -12,9 +12,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data
 
 
-class FileStorageTest(MAASServerTestCase):
-    """Testing of the :class:`FileStorage` model."""
-
+class TestFileStorage(MAASServerTestCase):
     def make_data(self, including_text="data"):
         """Return arbitrary data.
 

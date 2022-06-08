@@ -1,9 +1,6 @@
 # Copyright 2014-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the SSLKey model."""
-
-
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.utils.safestring import SafeString
@@ -22,7 +19,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
-class SSLKeyValidatorTest(MAASServerTestCase):
+class TestSSLKeyValidator(MAASServerTestCase):
     def test_validates_x509_public_key(self):
         key_string = get_data("data/test_x509_0.pem")
         validate_ssl_key(key_string)
@@ -33,9 +30,7 @@ class SSLKeyValidatorTest(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_ssl_key, key_string)
 
 
-class GetHTMLDisplayForKeyTest(MAASServerTestCase):
-    """Testing for the method `get_html_display_for_key`."""
-
+class TestGetHTMLDisplayForKey(MAASServerTestCase):
     def test_display_returns_only_md5(self):
         key_string = get_data("data/test_x509_0.pem")
         cert = crypto.load_certificate(crypto.FILETYPE_PEM, key_string)
@@ -60,9 +55,7 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         self.assertNotIn("b\\'", display)
 
 
-class SSLKeyTest(MAASServerTestCase):
-    """Testing for the :class:`SSLKey`."""
-
+class TestSSLKey(MAASServerTestCase):
     def test_sslkey_validation_with_valid_key(self):
         key_string = get_data("data/test_x509_0.pem")
         user = factory.make_User()
@@ -133,9 +126,7 @@ class SSLKeyTest(MAASServerTestCase):
         # No ValidationError.
 
 
-class SSLKeyManagerTest(MAASServerTestCase):
-    """Testing for the :class:`SSLKeyManager` model manager."""
-
+class TestSSLKeyManager(MAASServerTestCase):
     def test_get_keys_for_user_no_keys(self):
         user = factory.make_User()
         keys = SSLKey.objects.get_keys_for_user(user)

@@ -1,9 +1,6 @@
 # Copyright 2015-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the Subnet model."""
-
-
 from datetime import datetime, timedelta
 import random
 
@@ -43,45 +40,7 @@ from maastesting.matchers import DocTestMatches
 from provisioningserver.utils.network import inet_ntop, MAASIPRange
 
 
-class TestSubnet(MAASServerTestCase):
-    def test_can_create_update_and_delete_subnet_with_attached_range(self):
-        subnet = factory.make_Subnet(
-            cidr="10.0.0.0/8", gateway_ip=None, dns_servers=[]
-        )
-        iprange = factory.make_IPRange(
-            subnet, start_ip="10.0.0.1", end_ip="10.255.255.254"
-        )
-        subnet.description = "foo"
-        subnet.save()
-        subnet.delete()
-        iprange.delete()
-
-    def test_can_create_update_and_delete_subnet_with_assigned_ips(self):
-        subnet = factory.make_Subnet(
-            cidr="10.0.0.0/8", gateway_ip=None, dns_servers=[]
-        )
-        iprange = factory.make_IPRange(
-            subnet, start_ip="10.0.0.1", end_ip="10.255.255.252"
-        )
-        static_ip = factory.make_StaticIPAddress(
-            "10.255.255.254",
-            subnet=subnet,
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-        )
-        static_ip_2 = factory.make_StaticIPAddress(
-            "10.255.255.253",
-            subnet=subnet,
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
-        )
-        subnet.description = "foo"
-        subnet.save()
-        static_ip_2.delete()
-        subnet.delete()
-        iprange.delete()
-        static_ip.delete()
-
-
-class CreateCidrTest(MAASServerTestCase):
+class TestCreateCidr(MAASServerTestCase):
     def test_creates_cidr_from_ipv4_strings(self):
         cidr = create_cidr("169.254.0.0", "255.255.255.0")
         self.assertEqual("169.254.0.0/24", cidr)
@@ -511,7 +470,7 @@ class TestSubnetManagerGetSubnetOr404(MAASServerTestCase):
         )
 
 
-class SubnetTest(MAASServerTestCase):
+class TestSubnet(MAASServerTestCase):
     def assertIPBestMatchesSubnet(self, ip, expected):
         subnets = Subnet.objects.raw_subnets_containing_ip(IPAddress(ip))
         for tmp in subnets:
@@ -520,6 +479,42 @@ class SubnetTest(MAASServerTestCase):
         else:
             subnet = None
         self.assertThat(subnet, Equals(expected))
+
+    def test_can_create_update_and_delete_subnet_with_attached_range(self):
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/8", gateway_ip=None, dns_servers=[]
+        )
+        iprange = factory.make_IPRange(
+            subnet, start_ip="10.0.0.1", end_ip="10.255.255.254"
+        )
+        subnet.description = "foo"
+        subnet.save()
+        subnet.delete()
+        iprange.delete()
+
+    def test_can_create_update_and_delete_subnet_with_assigned_ips(self):
+        subnet = factory.make_Subnet(
+            cidr="10.0.0.0/8", gateway_ip=None, dns_servers=[]
+        )
+        iprange = factory.make_IPRange(
+            subnet, start_ip="10.0.0.1", end_ip="10.255.255.252"
+        )
+        static_ip = factory.make_StaticIPAddress(
+            "10.255.255.254",
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+        )
+        static_ip_2 = factory.make_StaticIPAddress(
+            "10.255.255.253",
+            subnet=subnet,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+        )
+        subnet.description = "foo"
+        subnet.save()
+        static_ip_2.delete()
+        subnet.delete()
+        iprange.delete()
+        static_ip.delete()
 
     def test_creates_subnet(self):
         name = factory.make_name("name")
@@ -825,7 +820,7 @@ class TestGetBestSubnetForIP(MAASServerTestCase):
         self.expectThat(subnet, Is(None))
 
 
-class SubnetLabelTest(MAASServerTestCase):
+class TestSubnetLabel(MAASServerTestCase):
     def test_returns_cidr_for_null_name(self):
         network = factory.make_ip4_or_6_network()
         subnet = Subnet(name=None, cidr=network)
@@ -849,7 +844,7 @@ class SubnetLabelTest(MAASServerTestCase):
         )
 
 
-class SubnetIPRangeTest(MAASServerTestCase):
+class TestSubnetIPRange(MAASServerTestCase):
     def test_finds_used_ranges_includes_allocated_ip(self):
         subnet = factory.make_Subnet(
             gateway_ip="", dns_servers=[], host_bits=8

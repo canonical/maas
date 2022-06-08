@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the UserProfile model."""
-
-
 from django.contrib.auth.models import User
 from piston3.models import Consumer, Token
 
@@ -19,7 +16,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
 
 
-class UserProfileTest(MAASServerTestCase):
+class TestUserProfile(MAASServerTestCase):
     def test_profile_creation(self):
         # A profile is created each time a user is created.
         user = factory.make_User()

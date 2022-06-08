@@ -145,7 +145,7 @@ class TestDomainManager(MAASServerTestCase):
         self.assertCountEqual(Domain.objects.get_forward_domains(), [domain1])
 
 
-class DomainTest(MAASServerTestCase):
+class TestDomain(MAASServerTestCase):
     def test_creates_domain(self):
         name = factory.make_name("name")
         domain = Domain(name=name)

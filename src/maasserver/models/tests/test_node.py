@@ -452,24 +452,6 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
         )
 
 
-class TestNodeManager(MAASServerTestCase):
-    def test_node_lists_all_node_types(self):
-        # Create machines.
-        machines = [
-            factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)
-        ]
-        # Create devices.
-        devices = [factory.make_Device() for _ in range(3)]
-        # Create rack_controllers.
-        rack_controllers = [
-            factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
-            for _ in range(3)
-        ]
-        self.assertCountEqual(
-            machines + devices + rack_controllers, Node.objects.all()
-        )
-
-
 class TestMachineManager(MAASServerTestCase):
     def make_machine(self, *args, **kwargs):
         return factory.make_Node(
@@ -6786,9 +6768,7 @@ class TestDecomposeMachineTransactional(
         self.assertIsNone(transactional(reload_object)(vm))
 
 
-class NodeTransitionsTests(MAASServerTestCase):
-    """Test the structure of NODE_TRANSITIONS."""
-
+class TestNodeTransitions(MAASServerTestCase):
     def test_NODE_TRANSITIONS_initial_states(self):
         allowed_states = set(list(NODE_STATUS_CHOICES_DICT.keys()) + [None])
 
@@ -6803,7 +6783,7 @@ class NodeTransitionsTests(MAASServerTestCase):
         self.assertTrue(set(all_destination_states) <= allowed_states)
 
 
-class NodeManagerTest(MAASServerTestCase):
+class TestNodeManager(MAASServerTestCase):
     def make_node(self, user=None, **kwargs):
         """Create a node, allocated to `user` if given."""
         if user is None:
@@ -6815,6 +6795,22 @@ class NodeManagerTest(MAASServerTestCase):
     def make_user_data(self):
         """Create a blob of arbitrary user-data."""
         return factory.make_string().encode("ascii")
+
+    def test_node_lists_all_node_types(self):
+        # Create machines.
+        machines = [
+            factory.make_Node(node_type=NODE_TYPE.MACHINE) for _ in range(3)
+        ]
+        # Create devices.
+        devices = [factory.make_Device() for _ in range(3)]
+        # Create rack_controllers.
+        rack_controllers = [
+            factory.make_Node(node_type=NODE_TYPE.RACK_CONTROLLER)
+            for _ in range(3)
+        ]
+        self.assertCountEqual(
+            machines + devices + rack_controllers, Node.objects.all()
+        )
 
     def test_filter_by_ids_filters_nodes_by_ids(self):
         nodes = [factory.make_Node() for counter in range(2)]
@@ -7230,7 +7226,7 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertFalse(node.ephemeral_deploy)
 
 
-class NodeManagerGetNodesRBACTest(MAASServerTestCase):
+class TestNodeManagerGetNodesRBAC(MAASServerTestCase):
     def setUp(self):
         super().setUp()
         Config.objects.set_config("rbac_url", "http://rbac.example.com")
@@ -7619,8 +7615,6 @@ class TestNodeParentRelationShip(MAASServerTestCase):
 
 
 class TestNodeNetworking(MAASTransactionServerTestCase):
-    """Tests for methods on the `Node` related to networking."""
-
     def test_create_acquired_bridges_doesnt_call_on_bridge(self):
         mock_create_acquired_bridge = self.patch(
             Interface, "create_acquired_bridge"
@@ -8230,8 +8224,6 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
 
 
 class TestGetGatewaysByPriority(MAASServerTestCase):
-    """Tests for `Node.get_gateways_by_priority`."""
-
     def assertGatewayPriorities(self, expected, actual):
         """Verifies the IPv4 and IPv6 gateways are in the correct order."""
         for expected_gw in expected:
@@ -8508,8 +8500,6 @@ def MatchesDefaultGateways(ipv4, ipv6):
 
 
 class TestGetDefaultGateways(MAASServerTestCase):
-    """Tests for `Node.get_default_gateways`."""
-
     def test_return_set_ipv4_and_ipv6(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -8667,8 +8657,6 @@ class TestGetDefaultGateways(MAASServerTestCase):
 
 
 class TestGetDefaultDNSServers(MAASServerTestCase):
-    """Tests for `Node.get_default_dns_servers`."""
-
     def make_Node_with_RackController(
         self,
         ipv4=True,
@@ -8985,8 +8973,6 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
 
 
 class TestNode_Start(MAASTransactionServerTestCase):
-    """Tests for Node.start()."""
-
     def setUp(self):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
@@ -10103,8 +10089,6 @@ class TestGetBMCClientConnectionInfo(MAASServerTestCase):
 
 
 class TestNode_Stop(MAASServerTestCase):
-    """Tests for Node.stop()."""
-
     def setUp(self):
         super().setUp()
         self.patch_autospec(node_module, "power_driver_check")
@@ -10188,8 +10172,6 @@ class TestNode_Stop(MAASServerTestCase):
 
 
 class TestNode_PowerQuery(MAASTransactionServerTestCase):
-    """Tests for Node.power_query()."""
-
     @wait_for_reactor
     @defer.inlineCallbacks
     def test_updates_power_state(self):
@@ -10276,8 +10258,6 @@ class TestNode_PowerQuery(MAASTransactionServerTestCase):
 
 
 class TestNode_PowerCycle(MAASServerTestCase):
-    """Tests for Node._power_cycle()."""
-
     def make_acquired_node_with_interface(
         self, user, bmc_connected_to=None, power_type="virsh"
     ):
@@ -10892,8 +10872,6 @@ class TestControllerUpdateDiscoveryState(MAASServerTestCase):
 
 
 class TestReportNeighbours(MAASServerTestCase):
-    """Tests for `Controller.report_neighbours()."""
-
     def test_no_update_neighbours_calls_if_discovery_disabled(self):
         rack = factory.make_RackController()
         factory.make_Interface(name="eth0", node=rack)
@@ -11000,8 +10978,6 @@ class TestReportNeighbours(MAASServerTestCase):
 
 
 class TestReportMDNSEntries(MAASServerTestCase):
-    """Tests for `Controller.report_mdns_entries()."""
-
     def test_calls_update_mdns_entry_for_each_entry(self):
         rack = factory.make_RackController()
         factory.make_Interface(name="eth0", node=rack)

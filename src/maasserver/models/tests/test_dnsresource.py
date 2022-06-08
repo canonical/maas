@@ -112,7 +112,7 @@ class TestDNSResourceManager(MAASServerTestCase):
         )
 
 
-class DNSResourceTest(MAASServerTestCase):
+class TestDNSResource(MAASServerTestCase):
     def test_separate_fqdn_splits_srv(self):
         self.assertEqual(
             ("_sip._tcp.voip", "example.com"),

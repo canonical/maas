@@ -66,7 +66,7 @@ class TestGetStorageLayoutParams(MAASTestCase):
         self.assertTrue(request.data._mutable)
 
 
-class MachineHostnameTest(APITestCase.ForUserAndAdmin):
+class TestMachineHostname(APITestCase.ForUserAndAdmin):
     def test_GET_returns_fqdn_with_domain_name_from_node(self):
         # If DNS management is enabled, the domain part of a hostname
         # still comes from the node.

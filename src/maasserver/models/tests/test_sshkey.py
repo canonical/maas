@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the SSHKey model."""
-
-
 import random
 
 from django.core.exceptions import ValidationError
@@ -22,7 +19,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
 
-class SSHKeyValidatorTest(MAASServerTestCase):
+class TestSSHKeyValidator(MAASServerTestCase):
     def test_validates_rsa_public_key(self):
         key_string = get_data("data/test_rsa0.pub")
         validate_ssh_public_key(key_string)
@@ -91,9 +88,7 @@ class SSHKeyValidatorTest(MAASServerTestCase):
         self.assertRaises(ValidationError, validate_ssh_public_key, key_string)
 
 
-class GetHTMLDisplayForKeyTest(MAASServerTestCase):
-    """Testing for the method `get_html_display_for_key`."""
-
+class TestGetHTMLDisplayForKey(MAASServerTestCase):
     def make_comment(self, length):
         """Create a comment of the desired length.
 
@@ -237,9 +232,7 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         )
 
 
-class SSHKeyTest(MAASServerTestCase):
-    """Testing for the :class:`SSHKey`."""
-
+class TestSSHKey(MAASServerTestCase):
     def test_sshkey_validation_with_valid_key(self):
         key_string = get_data("data/test_rsa0.pub")
         user = factory.make_User()
@@ -326,9 +319,7 @@ class SSHKeyTest(MAASServerTestCase):
         # No ValidationError.
 
 
-class SSHKeyManagerTest(MAASServerTestCase):
-    """Testing for the :class:`SSHKeyManager` model manager."""
-
+class TestSSHKeyManager(MAASServerTestCase):
     def test_get_keys_for_user_no_keys(self):
         user = factory.make_User()
         keys = SSHKey.objects.get_keys_for_user(user)

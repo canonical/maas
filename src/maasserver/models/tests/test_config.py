@@ -20,9 +20,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import AUDIT
 
 
-class ConfigDefaultTest(MAASServerTestCase, TestWithFixtures):
-    """Test config default values."""
-
+class TestConfigDefault(MAASServerTestCase, TestWithFixtures):
     def test_default_config_maas_name(self):
         default_config = get_default_config()
         self.assertEqual(gethostname(), default_config["maas_name"])
@@ -70,9 +68,7 @@ class CallRecorder:
         self.calls.append([args, kwargs])
 
 
-class ConfigTest(MAASServerTestCase):
-    """Testing of the :class:`Config` model and its related manager class."""
-
+class TestConfig(MAASServerTestCase):
     def test_config_name_uniqueness_enforced(self):
         name = factory.make_name("name")
         Config.objects.create(name=name, value=factory.make_name("value"))
@@ -233,7 +229,7 @@ class ConfigTest(MAASServerTestCase):
         self.assertTrue(Config.objects.is_external_auth_enabled())
 
 
-class SettingConfigTest(MAASServerTestCase):
+class TestSettingConfig(MAASServerTestCase):
     """Testing of the :class:`Config` model and setting each option."""
 
     scenarios = tuple((name, {"name": name}) for name in get_default_config())

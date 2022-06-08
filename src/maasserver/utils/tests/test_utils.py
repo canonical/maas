@@ -311,7 +311,7 @@ class TestGetDefaultRegionIP(MAASServerTestCase):
         )
 
 
-class GetRemoteIPTest(MAASTestCase):
+class TestGetRemoteIP(MAASTestCase):
     def test_gets_client_ipv4_for_HTTP_X_FORWARDED_FOR(self):
         ip_address = factory.make_ipv4_address()
         request = HttpRequest()

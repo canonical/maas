@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test permissions."""
-
-
 from functools import partial
 import http.client
 
@@ -23,7 +20,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.nodeinituser import get_node_init_user
 
 
-class LoginLogoutTest(MAASServerTestCase):
+class TestLoginLogout(MAASServerTestCase):
     def make_user(self, name="test", password="test"):
         """Create a user with a password."""
         return factory.make_User(username=name, password=password)

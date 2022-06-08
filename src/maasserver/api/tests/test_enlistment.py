@@ -23,7 +23,7 @@ from maasserver.utils.orm import get_one, reload_object
 from maastesting.matchers import MockNotCalled
 
 
-class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
+class TestEnlistmentAPI(APITestCase.ForAnonymousAndUserAndAdmin):
     """Enlistment tests."""
 
     def setUp(self):
@@ -291,7 +291,7 @@ class EnlistmentAPITest(APITestCase.ForAnonymousAndUserAndAdmin):
         self.assertEqual(architecture, diane.architecture)
 
 
-class MachineHostnameEnlistmentTest(APITestCase.ForAnonymousAndUserAndAdmin):
+class TestMachineHostnameEnlistment(APITestCase.ForAnonymousAndUserAndAdmin):
     def setUp(self):
         super().setUp()
         self.patch(Node, "get_effective_power_info").return_value = PowerInfo(
@@ -327,7 +327,7 @@ class MachineHostnameEnlistmentTest(APITestCase.ForAnonymousAndUserAndAdmin):
         self.assertEqual(expected_hostname, parsed_result.get("fqdn"))
 
 
-class NonAdminEnlistmentAPITest(APITestCase.ForAnonymousAndUser):
+class TestNonAdminEnlistmentAPI(APITestCase.ForAnonymousAndUser):
     """Enlistment tests for non-admin users."""
 
     def setUp(self):
@@ -357,7 +357,7 @@ class NonAdminEnlistmentAPITest(APITestCase.ForAnonymousAndUser):
         )
 
 
-class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
+class TestAnonymousEnlistmentAPI(APITestCase.ForAnonymous):
     """Enlistment tests specific to anonymous users."""
 
     def setUp(self):
@@ -598,7 +598,7 @@ class AnonymousEnlistmentAPITest(APITestCase.ForAnonymous):
         self.assertEqual(http.client.BAD_REQUEST, response.status_code)
 
 
-class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
+class TestSimpleUserLoggedInEnlistmentAPI(APITestCase.ForUser):
     """Enlistment tests from the perspective of regular, non-admin users."""
 
     def setUp(self):
@@ -765,7 +765,7 @@ class SimpleUserLoggedInEnlistmentAPITest(APITestCase.ForUser):
         )
 
 
-class AdminLoggedInEnlistmentAPITest(APITestCase.ForAdmin):
+class TestAdminLoggedInEnlistmentAPI(APITestCase.ForAdmin):
     """Enlistment tests from the perspective of admin users."""
 
     def setUp(self):

@@ -988,7 +988,7 @@ class TestAllInterfacesParentsFirst(MAASServerTestCase):
         self.expectThat(iface_list, Equals([eth0]))
 
 
-class InterfaceTest(MAASServerTestCase):
+class TestInterface(MAASServerTestCase):
     def test_rejects_invalid_name(self):
         self.assertRaises(
             ValidationError,
@@ -1742,9 +1742,7 @@ class TestPhysicalInterface(MAASServerTestCase):
         self.assertFalse(reload_object(interface).enabled)
 
 
-class PhysicalInterfaceTransactionalTest(MAASTransactionServerTestCase):
-    """Test `PhysicalInterface` in across multiple transactions."""
-
+class TestPhysicalInterfaceTransactional(MAASTransactionServerTestCase):
     def test_duplicate_physical_macs_not_allowed(self):
         def _create_physical(mac):
             node = factory.make_Node(power_type="manual")
@@ -1773,7 +1771,7 @@ class PhysicalInterfaceTransactionalTest(MAASTransactionServerTestCase):
             self.assertRaises(IntegrityError, _create_physical, mac)
 
 
-class InterfaceMTUTest(MAASServerTestCase):
+class TestInterfaceMTU(MAASServerTestCase):
     def test_get_effective_mtu_returns_default_mtu(self):
         nic1 = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, link_connected=False
@@ -1855,7 +1853,7 @@ class InterfaceMTUTest(MAASServerTestCase):
         self.assertEqual([parent.id], [p.id for p in bridge.parents.all()])
 
 
-class VLANInterfaceTest(MAASServerTestCase):
+class TestVLANInterface(MAASServerTestCase):
     def test_vlan_has_supplied_name(self):
         name = factory.make_name("eth", size=2)
         node_config = factory.make_NodeConfig()
@@ -2042,7 +2040,7 @@ class VLANInterfaceTest(MAASServerTestCase):
         self.assertFalse(interface.has_bootable_vlan())
 
 
-class BondInterfaceTest(MAASServerTestCase):
+class TestBondInterface(MAASServerTestCase):
     def test_manager_returns_bond_interfaces(self):
         node = factory.make_Node()
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -2223,7 +2221,7 @@ class BondInterfaceTest(MAASServerTestCase):
         self.assertTrue(interface.link_connected)
 
 
-class BridgeInterfaceTest(MAASServerTestCase):
+class TestBridgeInterface(MAASServerTestCase):
     def test_manager_returns_bridge_interfaces(self):
         node = factory.make_Node()
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
@@ -2376,7 +2374,7 @@ class BridgeInterfaceTest(MAASServerTestCase):
         self.assertFalse(reload_object(interface).enabled)
 
 
-class UnknownInterfaceTest(MAASServerTestCase):
+class TestUnknownInterface(MAASServerTestCase):
     def test_manager_returns_unknown_interfaces(self):
         unknown = factory.make_Interface(INTERFACE_TYPE.UNKNOWN)
         self.assertCountEqual([unknown], UnknownInterface.objects.all())
@@ -2413,7 +2411,7 @@ class UnknownInterfaceTest(MAASServerTestCase):
         )
 
 
-class UpdateIpAddressesTest(MAASServerTestCase):
+class TestUpdateIpAddresses(MAASServerTestCase):
     def test_finds_ipv6_subnet(self):
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         network = factory.make_ipv6_network()
@@ -4029,7 +4027,7 @@ class TestInterfaceUpdateDiscovery(MAASServerTestCase):
         self.assertTrue(iface.mdns_discovery_state)
 
 
-class TestInterfaceGetDiscoveryStateTest(MAASServerTestCase):
+class TestInterfaceGetDiscoveryState(MAASServerTestCase):
     def test_reports_correct_parameters(self):
         iface = factory.make_Interface()
         iface.neighbour_discovery_state = random.choice([True, False])
@@ -4042,8 +4040,6 @@ class TestInterfaceGetDiscoveryStateTest(MAASServerTestCase):
 
 
 class TestReportVID(MAASServerTestCase):
-    """Tests for `Interface.release_auto_ips`."""
-
     def test_creates_vlan_if_necessary(self):
         fabric = factory.make_Fabric()
         vlan = fabric.get_default_vlan()

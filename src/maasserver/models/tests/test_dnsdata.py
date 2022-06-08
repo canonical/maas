@@ -1,8 +1,6 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the DNSData model."""
-
 
 import random
 import re
@@ -101,7 +99,7 @@ class TestDNSDataManagerGetDNSDataOr404(MAASServerTestCase):
         )
 
 
-class DNSDataTest(MAASServerTestCase):
+class TestDNSData(MAASServerTestCase):
     def test_creates_dnsdata(self):
         name = factory.make_name("name")
         domain = factory.make_Domain()

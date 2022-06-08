@@ -1,9 +1,6 @@
 # Copyright 2016-2019 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the VersionedTextFile model."""
-
-
 import random
 from unittest.mock import Mock
 
@@ -26,7 +23,7 @@ culpa qui officia deserunt mollit anim id est laborum.
 """
 
 
-class VersionedTextFileTest(MAASServerTestCase):
+class TestVersionedTextFile(MAASServerTestCase):
     def test_creates_versionedtextfile(self):
         textfile = VersionedTextFile(data=SAMPLE_TEXT)
         textfile.save()

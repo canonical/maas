@@ -39,7 +39,7 @@ class FileStorageAPITestMixin:
         return self.client.get(reverse("files_handler"), params)
 
 
-class AnonymousFileStorageAPITest(
+class TestAnonymousFileStorageAPI(
     FileStorageAPITestMixin, APITestCase.ForAnonymous
 ):
     def test_get_does_not_work_anonymously(self):
@@ -83,7 +83,7 @@ class AnonymousFileStorageAPITest(
         self.assertEqual(http.client.UNAUTHORIZED, response.status_code)
 
 
-class FileStorageAPITest(FileStorageAPITestMixin, APITestCase.ForUser):
+class TestFileStorageAPI(FileStorageAPITestMixin, APITestCase.ForUser):
     def test_files_handler_path(self):
         self.assertEqual("/MAAS/api/2.0/files/", reverse("files_handler"))
 

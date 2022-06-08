@@ -1,9 +1,6 @@
 # Copyright 2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the Audit logging utilities."""
-
-
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest
 
@@ -15,7 +12,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import AUDIT, EVENT_TYPES
 
 
-class CreateAuditEventTest(MAASServerTestCase):
+class TestCreateAuditEvent(MAASServerTestCase):
     def test_create_audit_event_creates_audit_event_without_node(self):
         user = factory.make_User()
         request = HttpRequest()

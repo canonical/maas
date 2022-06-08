@@ -1,9 +1,6 @@
 # Copyright 2012-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for :class:`User`-related helpers."""
-
-
 from unittest.mock import sentinel
 
 from django.contrib.auth.models import User
@@ -22,7 +19,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 
 
-class UserTest(MAASServerTestCase):
+class TestUser(MAASServerTestCase):
     def test_user_email_null(self):
         user = User.objects.create_user(username=factory.make_string())
         self.assertIsNone(user.email)
@@ -53,7 +50,7 @@ class UserTest(MAASServerTestCase):
         )
 
 
-class AuthTokensTest(MAASServerTestCase):
+class TestAuthTokens(MAASServerTestCase):
     """Test creation and retrieval of auth tokens."""
 
     def assertTokenValid(self, token):

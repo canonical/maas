@@ -13,7 +13,7 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 
 
-class NotFoundHandlerTest(APITestCase.ForAnonymousAndUserAndAdmin):
+class TestNotFoundHandler(APITestCase.ForAnonymousAndUserAndAdmin):
 
     scenarios = (
         ("GET", dict(method="get")),

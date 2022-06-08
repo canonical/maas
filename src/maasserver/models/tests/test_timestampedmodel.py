@@ -1,9 +1,6 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-""":class:`TimestampedModel` tests."""
-
-
 from datetime import datetime, timedelta
 from random import randint
 
@@ -26,9 +23,7 @@ def make_time_in_the_recent_past():
     return datetime.now() - many_seconds_ago
 
 
-class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
-    """Testing for the class `TimestampedModel`."""
-
+class TestTimestampedModel(MAASLegacyTransactionServerTestCase):
     apps = ["maasserver.tests"]
 
     def test_created_populated_when_object_saved(self):
@@ -122,6 +117,6 @@ class TimestampedModelTest(MAASLegacyTransactionServerTestCase):
         self.assertIsNotNone(ts_1to1.updated)
 
 
-class UtilitiesTest(MAASServerTestCase):
+class TestUtilities(MAASServerTestCase):
     def test_now_returns_datetime(self):
         self.assertIsInstance(now(), datetime)

@@ -1,9 +1,6 @@
 # Copyright 2013-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the Node API."""
-
-
 from functools import partial
 import http.client
 import random
@@ -47,7 +44,7 @@ from provisioningserver.refresh.node_info_scripts import (
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 
 
-class NodeAnonAPITest(MAASServerTestCase):
+class TestNodeAnonAPI(MAASServerTestCase):
     def test_anonymous_user_cannot_access(self):
         client = MAASSensibleOAuthClient()
         response = client.get(reverse("nodes_handler"))
@@ -64,9 +61,7 @@ class NodeAnonAPITest(MAASServerTestCase):
         self.assertEqual(http.client.FORBIDDEN, response.status_code)
 
 
-class NodesAPILoggedInTest(APITestCase.ForUserAndAdmin):
-    """A logged-in user can access the API."""
-
+class TestNodesAPILoggedIn(APITestCase.ForUserAndAdmin):
     def setUp(self):
         super().setUp()
         self.patch(node_module, "wait_for_power_command")

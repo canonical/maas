@@ -1,9 +1,6 @@
 # Copyright 2015-2018 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for maas endpoint in the API."""
-
-
 import http.client
 import json
 from operator import itemgetter
@@ -63,7 +60,7 @@ class TestForbiddenNames(MAASTestCase):
         )
 
 
-class MAASHandlerAPITest(APITestCase.ForUser):
+class TestMAASHandlerAPI(APITestCase.ForUser):
     def test_get_config_default_distro_series(self):
         default_distro_series = factory.make_name("distro_series")
         Config.objects.set_config(
@@ -429,7 +426,7 @@ class MAASHandlerAPITest(APITestCase.ForUser):
         )
 
 
-class MAASHandlerAPITestForProxyPort(APITestCase.ForUser):
+class TestMAASHandlerAPIForProxyPort(APITestCase.ForUser):
 
     scenarios = [
         ("valid-port", {"port": random.randint(5300, 65535), "valid": True}),
