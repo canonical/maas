@@ -8,6 +8,7 @@ import os
 import random
 import re
 from subprocess import CalledProcessError, DEVNULL, TimeoutExpired
+import tempfile
 import textwrap
 from unittest.mock import call, MagicMock
 import urllib
@@ -1416,6 +1417,52 @@ class TestRedfish(MAASTestCase):
         mock_urlopen.side_effect = (response_token, response_address)
 
         self.assertEqual("127.0.0.1", self.redfish.get_bmc_ip())
+
+    def test_configure_network(self):
+        data = textwrap.dedent(
+            """\
+            Device Type: USB
+            idVendor: 0x046b
+            idProduct: 0xffb0
+            Protocol ID: 04 (Redfish over IP)
+            Service UUID: a0635470-debf-0010-9c04-d85ed302b24a
+            Host IP Assignment Type: Static
+            Host IP Address Format: IPv4
+            IPv4 Address: 169.254.95.120
+            IPv4 Mask: 255.255.0.0
+            Redfish Service IP Discovery Type: Static
+            Redfish Service IP Address Format: IPv4
+            IPv4 Redfish Service Address: 169.254.95.118
+            IPv4 Redfish Service Mask: 255.255.0.0
+            Redfish Service Port: 443
+            Redfish Service Vlan: 0
+            Redfish Service Hostname:"""
+        )
+
+        expected_config = textwrap.dedent(
+            """
+            network:
+              version: 2
+              ethernets:
+                eth0:
+                    addresses: [169.254.95.120/16]
+                    dhcp4: false
+            """
+        )
+
+        with tempfile.NamedTemporaryFile(
+            prefix="redfish-netplan", mode="w+"
+        ) as netconfig:
+            mock_check_output = self.patch(bmc_config, "check_output")
+            self.redfish._configure_network("eth0", data, netconfig.name)
+            self.assertEqual(
+                yaml.safe_dump((yaml.safe_load(expected_config))),
+                netconfig.read(),
+            )
+
+            mock_check_output.assert_called_once_with(
+                ["netplan", "apply"], timeout=bmc_config.COMMAND_TIMEOUT
+            )
 
 
 class TestGetIPMILocateOutput(MAASTestCase):
