@@ -1022,12 +1022,12 @@ class Redfish(IPMIBase):
 
         self.add_bmc_user()
 
-        self.redfish_ip = get_smbios_value(
+        self._redfish_ip = get_smbios_value(
             data, "IPv4 Redfish Service Address"
         )
-        self.redfish_port = get_smbios_value(data, "Redfish Service Port")
+        self._redfish_port = get_smbios_value(data, "Redfish Service Port")
 
-        if not all((self.redfish_ip, self.redfish_port)):
+        if not all((self._redfish_ip, self._redfish_port)):
             raise self.ConfigurationError(
                 "Missing Redfish Service information."
             )
