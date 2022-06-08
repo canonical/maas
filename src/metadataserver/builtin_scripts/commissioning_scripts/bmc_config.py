@@ -992,7 +992,8 @@ class Redfish(IPMIBase):
 
         iface = None
         with open(os.environ["MAAS_RESOURCES_FILE"]) as fd:
-            iface = get_network_interface(fd.read(), vendor_id, product_id)
+            data = json.load(fd)
+            iface = get_network_interface(data, vendor_id, product_id)
             if iface is None:
                 raise ValueError("Missing Redfish Host Interface")
 
