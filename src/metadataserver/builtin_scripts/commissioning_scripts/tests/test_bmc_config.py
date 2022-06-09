@@ -8,6 +8,7 @@ import os
 import random
 import re
 from subprocess import CalledProcessError, DEVNULL, TimeoutExpired
+import tempfile
 import textwrap
 from unittest.mock import call, MagicMock
 import urllib
@@ -1416,6 +1417,93 @@ class TestRedfish(MAASTestCase):
         mock_urlopen.side_effect = (response_token, response_address)
 
         self.assertEqual("127.0.0.1", self.redfish.get_bmc_ip())
+
+    def test_configure_network(self):
+        data = textwrap.dedent(
+            """\
+            Device Type: USB
+            idVendor: 0x046b
+            idProduct: 0xffb0
+            Protocol ID: 04 (Redfish over IP)
+            Service UUID: a0635470-debf-0010-9c04-d85ed302b24a
+            Host IP Assignment Type: Static
+            Host IP Address Format: IPv4
+            IPv4 Address: 169.254.95.120
+            IPv4 Mask: 255.255.0.0
+            Redfish Service IP Discovery Type: Static
+            Redfish Service IP Address Format: IPv4
+            IPv4 Redfish Service Address: 169.254.95.118
+            IPv4 Redfish Service Mask: 255.255.0.0
+            Redfish Service Port: 443
+            Redfish Service Vlan: 0
+            Redfish Service Hostname:"""
+        )
+
+        expected_config = textwrap.dedent(
+            """
+            network:
+              version: 2
+              ethernets:
+                eth0:
+                    addresses: [169.254.95.120/16]
+                    dhcp4: false
+            """
+        )
+
+        with tempfile.NamedTemporaryFile(
+            prefix="redfish-netplan", mode="w+"
+        ) as netconfig:
+            mock_check_output = self.patch(bmc_config, "check_output")
+            self.redfish._configure_network("eth0", data, netconfig.name)
+            self.assertEqual(
+                yaml.safe_dump((yaml.safe_load(expected_config))),
+                netconfig.read(),
+            )
+
+            mock_check_output.assert_called_once_with(
+                ["netplan", "apply"], timeout=bmc_config.COMMAND_TIMEOUT
+            )
+
+    def test_add_bmc_user(self):
+        username = factory.make_name("username")
+        password = factory.make_name("password")
+        self.redfish = bmc_config.Redfish(username, password)
+        mock_bmc_set = self.patch(self.redfish, "_bmc_set")
+        mock_bmc_set_keys = self.patch(self.redfish, "_bmc_set_keys")
+        self.redfish._bmc_config = {
+            "User1": {},
+            "User2": {
+                "Username": "",
+                "Password": factory.make_name("password"),
+                "Enable_User": "Yes",
+                "Lan_Privilege_Limit": "Administrator",
+                "Lan_Enable_IPMI_Msgs": "Yes",
+            },
+        }
+        self.redfish._privilege_level = "OPERATOR"
+
+        self.redfish.add_bmc_user()
+
+        self.assertEqual(username, self.redfish.username)
+        self.assertEqual(password, self.redfish.password)
+        # Verify bmc_set is only called for values that have changed
+        mock_bmc_set.assert_has_calls(
+            (
+                call("User2", "Username", username),
+                call("User2", "Password", password),
+                call("User2", "Lan_Privilege_Limit", "Operator"),
+            )
+        )
+
+        mock_bmc_set_keys.assert_called_once_with(
+            "User2",
+            [
+                "Lan_Enable_Link_Auth",
+                "SOL_Payload_Access",
+                "Serial_Enable_Link_Auth",
+            ],
+            "Yes",
+        )
 
 
 class TestGetIPMILocateOutput(MAASTestCase):

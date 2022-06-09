@@ -78,6 +78,7 @@ from subprocess import (
 )
 import sys
 import time
+import traceback
 import urllib
 import urllib.request
 
@@ -888,13 +889,26 @@ class Redfish(IPMIBase):
     """Handle detection and configuration of Redfish device."""
 
     power_type = "redfish"
-    username = None
-    password = None
+
+    def __init__(
+        self,
+        username=None,
+        password=None,
+        ipmi_privilege_level="",
+        **kwargs,
+    ):
+        self.username = username
+        self.password = password
+        self._privilege_level = ipmi_privilege_level
+        self._bmc_config = {}
 
     _bmc_ip = None
-
     _redfish_ip = None
     _redfish_port = None
+
+    class ConfigurationError(Exception):
+        def __init__(self, msg):
+            super().__init__(msg)
 
     def __str__(self):
         return "Redfish"
@@ -953,27 +967,32 @@ class Redfish(IPMIBase):
             }
         )
 
-    def _configure_network(self, iface, data):
+    def _configure_network(
+        self, iface, data, config_path="/etc/netplan/99-redfish.yaml"
+    ):
         # Host IP Assignment Type:
         #   Possible values: Unknown, Static, DHCP, AutoConfigure, HostSelected
         netplan_config = None
         assignment_type = get_smbios_value(data, "Host IP Assignment Type")
         if assignment_type in ("Unknown", "AutoConfigure", "HostSelected"):
-            raise ValueError("Unsupported Host IP Assignment Type")
+            raise self.ConfigurationError(
+                "Unsupported Host IP Assignment Type"
+            )
 
         if assignment_type == "Static":
             ipv4_addr = get_smbios_value(data, "IPv4 Address")
             ipv4_mask = get_smbios_value(data, "IPv4 Mask")
             if not all((ipv4_addr, ipv4_mask)):
-                raise ValueError("Missing Host IPv4 information")
+                raise self.ConfigurationError("Missing Host IPv4 information")
 
-            ipv4 = ipaddress.IPv4Network((ipv4_addr, ipv4_mask)).with_prefixlen
+            prefix_length = ipaddress.IPv4Network((0, ipv4_mask)).prefixlen
+            ipv4 = f"{ipv4_addr}/{prefix_length}"
             netplan_config = self._generate_netplan_config(iface, False, ipv4)
 
         if assignment_type == "DHCP":
             netplan_config = self._generate_netplan_config(iface, True)
 
-        with open("/etc/netplan/99-redfish.yaml", "w") as netplan:
+        with open(config_path, "w") as netplan:
             netplan.write(netplan_config)
 
         # TODO: How to determine if netplan was applied?
@@ -982,39 +1001,44 @@ class Redfish(IPMIBase):
     def _detect(self):
         data = self._get_smbios_data()
         if data is None:
-            raise ValueError("Missing SMBIOS data")
+            raise self.ConfigurationError("Missing SMBIOS data")
 
         vendor_id = get_smbios_value(data, "idVendor")[2:]
         product_id = get_smbios_value(data, "idProduct")[2:]
 
         if not all((vendor_id, product_id)):
-            raise ValueError("Missing idVendor and idProduct information")
+            raise self.ConfigurationError(
+                "Missing idVendor and idProduct information"
+            )
 
         iface = None
         with open(os.environ["MAAS_RESOURCES_FILE"]) as fd:
-            iface = get_network_interface(fd.read(), vendor_id, product_id)
+            data = json.load(fd)
+            iface = get_network_interface(data, vendor_id, product_id)
             if iface is None:
-                raise ValueError("Missing Redfish Host Interface")
+                raise self.ConfigurationError("Missing Redfish Host Interface")
 
         self._configure_network(iface, data)
 
         self.add_bmc_user()
 
-        self.redfish_ip = get_smbios_value(
+        self._redfish_ip = get_smbios_value(
             data, "IPv4 Redfish Service Address"
         )
-        self.redfish_port = get_smbios_value(data, "Redfish Service Port")
+        self._redfish_port = get_smbios_value(data, "Redfish Service Port")
 
-        if not all((self.redfish_ip, self.redfish_port)):
-            raise ValueError("Missing Redfish Service information.")
+        if not all((self._redfish_ip, self._redfish_port)):
+            raise self.ConfigurationError(
+                "Missing Redfish Service information."
+            )
 
     def detected(self):
         try:
             self._detect()
             return self.get_bmc_ip() is not None
         # XXX: we should know which exceptions to expect, so we can handle them
-        except ValueError as err:
-            print(f"ERROR: {err}")
+        except self.ConfigurationError as err:
+            print(f"ERROR: {err}\n{traceback.format_exc()}")
             return False
 
     def _get_bmc_ip(self):
