@@ -1020,6 +1020,7 @@ class Redfish(IPMIBase):
 
         self._configure_network(iface, data)
 
+        self._bmc_get_config()
         self.add_bmc_user()
 
         self._redfish_ip = get_smbios_value(
