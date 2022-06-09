@@ -1040,31 +1040,16 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             subnet=subnet,
             ip="10.0.0.3",
         )
-        # Make an IP addresses that shouldn't be preferred, but is also on
-        # an interface whose parent is a boot interface. (Some caution is
-        # advised when doing this, since we have interface signals that will
-        # automatically remove these addresses in some cases.)
-        bond0_extra_ip = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            interface=bond0,
-            subnet=subnet,
-            ip="10.0.0.4",
-        )
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(node.domain)
         expected_mapping = {
             node.fqdn: HostnameIPMapping(
                 node.system_id, 30, {bridge_ip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (eth0.name, node.fqdn): HostnameIPMapping(
+            f"{eth0.name}.{node.fqdn}": HostnameIPMapping(
                 node.system_id, 30, {phy_staticip.ip}, node.node_type
             ),
-            "%s.%s"
-            % (bond0.name, node.fqdn): HostnameIPMapping(
-                node.system_id, 30, {bond0_extra_ip.ip}, node.node_type
-            ),
         }
-        self.assertThat(mapping, Equals(expected_mapping))
+        self.assertEqual(mapping, expected_mapping)
 
     def test_get_hostname_ip_mapping_with_v4_and_v6_and_bridged_bonds(self):
         subnet_v4 = factory.make_Subnet(
@@ -1107,16 +1092,6 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
             interface=br_bond0,
             subnet=subnet_v6,
         )
-        # Make a few IP addresses that shouldn't be associated with the
-        # default hosname. (They'll show up as associated with bond0, however.)
-        # Technically MAAS should remove these since they belong to a parent
-        # interface, but in this case the interface won't be re-saved.
-        extra_ipv4 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, interface=bond0, subnet=subnet_v4
-        )
-        extra_ipv6 = factory.make_StaticIPAddress(
-            alloc_type=IPADDRESS_TYPE.STICKY, interface=bond0, subnet=subnet_v6
-        )
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(node.domain)
         expected_mapping = {
             node.fqdn: HostnameIPMapping(
@@ -1125,22 +1100,14 @@ class TestStaticIPAddressManagerMapping(MAASServerTestCase):
                 {bridge_ip_v4.ip, bridge_ip_v6.ip},
                 node.node_type,
             ),
-            "%s.%s"
-            % (eth0.name, node.fqdn): HostnameIPMapping(
+            f"{eth0.name}.{node.fqdn}": HostnameIPMapping(
                 node.system_id,
                 30,
                 {phy_staticip_v4.ip, phy_staticip_v6.ip},
                 node.node_type,
             ),
-            "%s.%s"
-            % (bond0.name, node.fqdn): HostnameIPMapping(
-                node.system_id,
-                30,
-                {extra_ipv4.ip, extra_ipv6.ip},
-                node.node_type,
-            ),
         }
-        self.assertThat(mapping, Equals(expected_mapping))
+        self.assertEqual(mapping, expected_mapping)
 
     def test_get_hostname_ip_mapping_returns_domain_head_ips(self):
         parent = factory.make_Domain()

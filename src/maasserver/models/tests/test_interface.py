@@ -165,7 +165,8 @@ class TestInterfaceManager(MAASServerTestCase):
     def test_get_or_create_with_parents(self):
         parent1 = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         parent2 = factory.make_Interface(
-            INTERFACE_TYPE.PHYSICAL, node_config=parent1.node_config
+            INTERFACE_TYPE.PHYSICAL,
+            node_config=parent1.node_config,
         )
         interface, created = BondInterface.objects.get_or_create(
             node_config=parent1.node_config,
@@ -1370,6 +1371,38 @@ class TestInterface(MAASServerTestCase):
         interface.link_connected = False
         interface.save()
         self.assertEqual(0, interface.link_speed)
+
+
+class TestUpdateInterfaceParentsOnSave(MAASServerTestCase):
+
+    scenarios = (
+        ("bond", {"iftype": INTERFACE_TYPE.BOND}),
+        ("bridge", {"iftype": INTERFACE_TYPE.BRIDGE}),
+    )
+
+    def test_updates_parents_vlan(self):
+        node_config = factory.make_NodeConfig()
+        parent1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
+        parent2 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
+        child = factory.make_Interface(self.iftype, parents=[parent1, parent2])
+        self.assertEqual(child.vlan, reload_object(parent1).vlan)
+        self.assertEqual(child.vlan, reload_object(parent2).vlan)
+
+    def test_update_interface_clears_parent_links(self):
+        node_config = factory.make_NodeConfig()
+        parent1 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
+        parent2 = factory.make_Interface(
+            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
+        )
+        static_ip = factory.make_StaticIPAddress(interface=parent1)
+        factory.make_Interface(self.iftype, parents=[parent1, parent2])
+        self.assertIsNone(reload_object(static_ip))
 
 
 class TestInterfaceUpdateNeighbour(MAASServerTestCase):

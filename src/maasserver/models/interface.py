@@ -12,6 +12,7 @@ __all__ = [
 
 from collections import OrderedDict
 from datetime import datetime
+import threading
 from zlib import crc32
 
 from django.contrib.postgres.fields import ArrayField
@@ -1672,7 +1673,32 @@ class Interface(CleanSave, TimestampedModel):
     def save(self, *args, **kwargs):
         if not self.link_connected:
             self.link_speed = 0
-        return super().save(*args, **kwargs)
+        super().save(*args, **kwargs)
+        self._update_parents()
+
+    def _update_parents(self):
+        if self.type not in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
+            return
+
+        visiting = _interface_locals.visiting
+        for parent in self.parents.all():
+            parent.clear_all_links(clearing_config=True)
+            if parent.vlan_id != self.vlan_id and parent.id not in visiting:
+                visiting.add(parent.id)
+                try:
+                    parent.vlan_id = self.vlan_id
+                    parent.save()
+                    maaslog.info(
+                        f"{parent.get_log_string}: "
+                        f"VLAN updated to match {self.get_log_string()} "
+                        f"(vlan={parent.vlan_id})."
+                    )
+                finally:
+                    visiting.discard(parent.id)
+
+
+_interface_locals = threading.local()
+_interface_locals.visiting = set()
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):

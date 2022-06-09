@@ -179,35 +179,6 @@ for klass in INTERFACE_CLASSES:
     )
 
 
-update_parents_thread_local = InterfaceVisitingThreadLocal()
-
-
-def update_interface_parents(sender, instance, created, **kwargs):
-    """Update parents when an interface is created."""
-    if instance.type not in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
-        return
-
-    visiting = update_parents_thread_local.visiting
-    for parent in instance.parents.all():
-        parent.clear_all_links(clearing_config=True)
-        if parent.vlan != instance.vlan and parent.id not in visiting:
-            visiting.add(parent.id)
-            try:
-                parent.vlan = instance.vlan
-                parent.save()
-                log.msg(
-                    f"{parent.get_log_string}: "
-                    f"VLAN updated to match {instance.get_log_string()} "
-                    f"(vlan={parent.vlan_id})."
-                )
-            finally:
-                visiting.discard(parent.id)
-
-
-for klass in INTERFACE_CLASSES:
-    signals.watch(post_save, update_interface_parents, sender=klass)
-
-
 def interface_vlan_update(instance, old_values, **kwargs):
     """When an interfaces VLAN is changed we need to do the following.
 

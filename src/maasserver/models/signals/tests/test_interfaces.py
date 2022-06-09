@@ -2,18 +2,12 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import random
-import threading
 from unittest.mock import call
-
-from testtools.matchers import Contains, Not
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_TYPE
 from maasserver.models import Controller, Interface
 from maasserver.models.config import Config, NetworkDiscoveryConfig
-from maasserver.models.signals.interfaces import (
-    ensure_link_up,
-    update_parents_thread_local,
-)
+from maasserver.models.signals.interfaces import ensure_link_up
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -159,51 +153,6 @@ class TestMTUParams(MAASServerTestCase):
         self.assertEqual(
             {"mtu": bond_mtu}, reload_object(physical3_interface).params
         )
-
-
-class TestUpdateChildInterfaceParents(MAASServerTestCase):
-
-    scenarios = (
-        ("bond", {"iftype": INTERFACE_TYPE.BOND}),
-        ("bridge", {"iftype": INTERFACE_TYPE.BRIDGE}),
-    )
-
-    def test_updates_interface_parents(self):
-        node_config = factory.make_NodeConfig()
-        parent1 = factory.make_Interface(
-            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
-        )
-        parent2 = factory.make_Interface(
-            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
-        )
-        child = factory.make_Interface(self.iftype, parents=[parent1, parent2])
-        self.assertEqual(child.vlan, reload_object(parent1).vlan)
-        self.assertEqual(child.vlan, reload_object(parent2).vlan)
-
-    def test_update_interface_clears_parent_links(self):
-        node_config = factory.make_NodeConfig()
-        parent1 = factory.make_Interface(
-            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
-        )
-        parent2 = factory.make_Interface(
-            iftype=INTERFACE_TYPE.PHYSICAL, node_config=node_config
-        )
-        static_ip = factory.make_StaticIPAddress(interface=parent1)
-        factory.make_Interface(self.iftype, parents=[parent1, parent2])
-        self.assertIsNone(reload_object(static_ip))
-
-    def test_visited_set_is_thread_local(self):
-        thread_local = update_parents_thread_local
-        thread_local.visiting.add("a")
-
-        def check_a_does_not_exist():
-            self.assertThat(thread_local.visiting, Not(Contains("a")))
-
-        thread = threading.Thread(target=check_a_does_not_exist)
-        thread.start()
-        thread.join()
-        self.assertThat(thread_local.visiting, Contains("a"))
-        thread_local.visiting.discard("a")
 
 
 class TestInterfaceVLANUpdateNotController(MAASServerTestCase):

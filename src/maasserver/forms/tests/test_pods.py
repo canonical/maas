@@ -100,6 +100,8 @@ def make_pod_with_hints(with_host=False, host=None, **pod_attributes):
     pod.hints.memory = pod.memory
     pod.hints.cpu_speed = pod.cpu_speed
     pod.hints.save()
+    if host:
+        pod.hints.nodes.add(host)
     return pod
 
 
