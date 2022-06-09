@@ -1505,6 +1505,20 @@ class TestRedfish(MAASTestCase):
             "Yes",
         )
 
+    def test_detected_unknown_exception(self):
+        self.patch(
+            self.redfish, "_detect"
+        ).side_effect = factory.make_exception_type((ValueError,))
+        self.assertRaises(ValueError, self.redfish.detected)
+
+    def test_detected_known_exception(self):
+        self.patch(
+            self.redfish, "_detect"
+        ).side_effect = factory.make_exception_type(
+            (bmc_config.ConfigurationError,)
+        )
+        self.assertEqual(False, self.redfish.detected())
+
 
 class TestGetIPMILocateOutput(MAASTestCase):
     def test_get_ipmi_locate_output(self):
