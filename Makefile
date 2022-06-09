@@ -139,13 +139,13 @@ test-py: bin/test.parallel bin/subunit-1to2 bin/subunit2junitxml bin/subunit2pyu
 test-perf: bin/test.perf
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
 	GIT_HASH=$(shell git rev-parse HEAD) \
-	find . -type d -name perf | xargs bin/test.perf
+	bin/test.perf
 .PHONY: test-perf
 
 test-perf-quiet: bin/test.perf
 	GIT_BRANCH=$(shell git rev-parse --abbrev-ref HEAD) \
 	GIT_HASH=$(shell git rev-parse HEAD) \
-	find . -type d -name perf | xargs bin/test.perf -q --disable-warnings --show-capture=no --no-header --no-summary
+	bin/test.perf -q --disable-warnings --show-capture=no --no-header --no-summary
 .PHONY: test-perf-quiet
 
 update-initial-sql: bin/database bin/maas-region cleandb

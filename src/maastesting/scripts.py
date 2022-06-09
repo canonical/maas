@@ -53,8 +53,6 @@ def run_region():
         "--cover-branches",
         # exclude pytest tests
         "--exclude-dir-file=src/maastesting/pytest.dirs",
-        # exclude perf tests
-        "--exclude=perf",
         # Reduce the logging level to INFO here as
         # DebuggingLoggerMiddleware logs the content of all the
         # requests at DEBUG level: we don't want this in the
@@ -99,8 +97,6 @@ def run_region_legacy():
         "--cover-branches",
         # exclude pytest tests
         "--exclude-dir-file=src/maastesting/pytest.dirs",
-        # exclude perf tests
-        "--exclude=perf",
         # Reduce the logging level to INFO here as DebuggingLoggerMiddleware
         # logs the content of all the requests at DEBUG level: we don't want
         # this in the tests as it's too verbose.
@@ -129,8 +125,6 @@ def run_rack():
         "--cover-branches",
         # exclude pytest tests
         "--exclude-dir-file=src/maastesting/pytest.dirs",
-        # exclude perf tests
-        "--exclude=perf",
     ]
     inject_test_options(options)
     update_environ()
