@@ -64,7 +64,6 @@ class PerfTester:
 def perf_test(commit_transaction=False, db_only=False):
     def inner(fn):
         @wraps(fn)
-        @mark.perftest
         @mark.django_db
         def wrapper(*args, **kwargs):
             from django.db import transaction
@@ -112,7 +111,7 @@ def run_perf_tests(env):
         perf_tester = PerfTester(env.get("GIT_BRANCH"), env.get("GIT_HASH"))
 
         pytest_main(
-            args=["--perf", "-m", "perftest", "--reuse-db"] + cmd_args,
+            args=["--reuse-db", "src/maasperf"] + cmd_args,
         )
     finally:
         perf_test_finish(env.get("OUTPUT_FILE"))
