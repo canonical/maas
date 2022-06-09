@@ -885,6 +885,10 @@ class Wedge(BMCConfig):
             return None
 
 
+class ConfigurationError(Exception):
+    """Thrown when there is a known configuration error"""
+
+
 class Redfish(IPMIBase):
     """Handle detection and configuration of Redfish device."""
 
@@ -905,10 +909,6 @@ class Redfish(IPMIBase):
     _bmc_ip = None
     _redfish_ip = None
     _redfish_port = None
-
-    class ConfigurationError(Exception):
-        def __init__(self, msg):
-            super().__init__(msg)
 
     def __str__(self):
         return "Redfish"
@@ -975,15 +975,13 @@ class Redfish(IPMIBase):
         netplan_config = None
         assignment_type = get_smbios_value(data, "Host IP Assignment Type")
         if assignment_type in ("Unknown", "AutoConfigure", "HostSelected"):
-            raise self.ConfigurationError(
-                "Unsupported Host IP Assignment Type"
-            )
+            raise ConfigurationError("Unsupported Host IP Assignment Type")
 
         if assignment_type == "Static":
             ipv4_addr = get_smbios_value(data, "IPv4 Address")
             ipv4_mask = get_smbios_value(data, "IPv4 Mask")
             if not all((ipv4_addr, ipv4_mask)):
-                raise self.ConfigurationError("Missing Host IPv4 information")
+                raise ConfigurationError("Missing Host IPv4 information")
 
             prefix_length = ipaddress.IPv4Network((0, ipv4_mask)).prefixlen
             ipv4 = f"{ipv4_addr}/{prefix_length}"
@@ -1001,22 +999,24 @@ class Redfish(IPMIBase):
     def _detect(self):
         data = self._get_smbios_data()
         if data is None:
-            raise self.ConfigurationError("Missing SMBIOS data")
+            raise ConfigurationError("Missing SMBIOS data")
 
         vendor_id = get_smbios_value(data, "idVendor")[2:]
         product_id = get_smbios_value(data, "idProduct")[2:]
 
         if not all((vendor_id, product_id)):
-            raise self.ConfigurationError(
+            raise ConfigurationError(
                 "Missing idVendor and idProduct information"
             )
 
         iface = None
         with open(os.environ["MAAS_RESOURCES_FILE"]) as fd:
-            data = json.load(fd)
-            iface = get_network_interface(data, vendor_id, product_id)
+            machine_resources_data = json.load(fd)
+            iface = get_network_interface(
+                machine_resources_data, vendor_id, product_id
+            )
             if iface is None:
-                raise self.ConfigurationError("Missing Redfish Host Interface")
+                raise ConfigurationError("Missing Redfish Host Interface")
 
         self._configure_network(iface, data)
 
@@ -1028,17 +1028,15 @@ class Redfish(IPMIBase):
         self._redfish_port = get_smbios_value(data, "Redfish Service Port")
 
         if not all((self._redfish_ip, self._redfish_port)):
-            raise self.ConfigurationError(
-                "Missing Redfish Service information."
-            )
+            raise ConfigurationError("Missing Redfish Service information.")
 
     def detected(self):
         try:
             self._detect()
             return self.get_bmc_ip() is not None
         # XXX: we should know which exceptions to expect, so we can handle them
-        except self.ConfigurationError as err:
-            print(f"ERROR: {err}\n{traceback.format_exc()}")
+        except ConfigurationError as err:
+            print(f"ERROR: Redfish configuration failed. {err}")
             return False
 
     def _get_bmc_ip(self):
@@ -1116,7 +1114,7 @@ def detect_and_configure(args, bmc_config_path):
                     )
                 return
         except Exception as e:
-            print(f"ERROR: {bmc_class.__name__} {e}")
+            print(f"ERROR: {bmc_class.__name__} {e}\n{traceback.format_exc()}")
     print("INFO: No BMC automatically detected!")
 
 
