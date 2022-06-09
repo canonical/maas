@@ -13,7 +13,6 @@ from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import succeed
 
-from maasserver.enum import NODE_STATUS
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
 from maasserver.models.node import Device, Node
 from maasserver.models.vlan import VLAN
@@ -60,8 +59,6 @@ class TestHandlerMeta(MAASTestCase):
                         "update",
                         "delete",
                         "set_active",
-                        "count",
-                        "stratify",
                     ]
                 ),
                 handler_name=Equals(""),
@@ -542,70 +539,6 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             handler.list(
                 {
                     "select_system_id": [nodes[1].system_id],
-                }
-            ),
-        )
-
-    def test_count(self):
-        _ = [factory.make_Node() for _ in range(5)]
-        output = {"count": 5}
-        handler = self.make_nodes_handler(
-            list_fields=["id", "hostname", "system_id"],
-        )
-        self.assertEqual(
-            output,
-            handler.count({}),
-        )
-
-    def test_count_with_filter(self):
-        nodes = [factory.make_Node() for _ in range(5)]
-        output = {"count": 1}
-        handler = self.make_nodes_handler(
-            list_fields=["id", "hostname", "system_id"],
-        )
-        self.assertEqual(
-            output,
-            handler.count(
-                {
-                    "search_hostname": nodes[1].hostname[:6],
-                }
-            ),
-        )
-
-    def test_stratify(self):
-        _ = [factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)]
-        _ = [factory.make_Node(status=NODE_STATUS.DEPLOYED) for _ in range(2)]
-        output = [
-            {NODE_STATUS.NEW: 5},
-            {NODE_STATUS.DEPLOYED: 2},
-        ]
-        handler = self.make_nodes_handler(
-            list_fields=["id", "hostname", "status"],
-        )
-        self.assertCountEqual(
-            output,
-            handler.stratify(
-                {
-                    "group_by": "status",
-                }
-            ),
-        )
-
-    def test_stratify_with_filter(self):
-        _ = [factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)]
-        _ = [factory.make_Node(status=NODE_STATUS.DEPLOYED) for _ in range(2)]
-        output = [
-            {NODE_STATUS.DEPLOYED: 2},
-        ]
-        handler = self.make_nodes_handler(
-            list_fields=["id", "hostname", "status"],
-        )
-        self.assertEqual(
-            output,
-            handler.stratify(
-                {
-                    "group_by": "status",
-                    "select_status": [NODE_STATUS.DEPLOYED],
                 }
             ),
         )

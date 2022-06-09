@@ -16,7 +16,7 @@ from operator import attrgetter
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db.models import Count, Model, Q
+from django.db.models import Model, Q
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 
@@ -93,8 +93,6 @@ class HandlerOptions:
         "update",
         "delete",
         "set_active",
-        "count",
-        "stratify",
     ]
     handler_name = None
     object_class = None
@@ -481,47 +479,6 @@ class Handler(metaclass=HandlerMetaclass):
                 )
         queryset = queryset.filter(search_filter).filter(select_filter)
         return queryset
-
-    def count(self, params):
-        """Count objects.
-
-        :param select_FIELD: selects rows where FIELD exactly matches the value.
-            Multiple `select` parameters are AND'ed together.
-        :param filter_FIELD: selects rows where FIELD contains the value. It's
-            and case-insensitive substring match. Multiple `filter` are OR'ed.
-        """
-        queryset = self.get_queryset(for_list=True)
-        queryset = self._filter(queryset, params)
-        cnt = queryset.count()
-
-        return {
-            "count": cnt,
-        }
-
-    def stratify(self, params):
-        """group and count objects.
-
-        :param group_by: group rows by this column
-        :param select_FIELD: selects rows where FIELD exactly matches the value.
-            Multiple `select` parameters are AND'ed together.
-        :param filter_FIELD: selects rows where FIELD contains the value. It's
-            and case-insensitive substring match. Multiple `filter` are OR'ed.
-        """
-        if "group_by" not in params:
-            raise HandlerValidationError(
-                {"group_by": ["This field is required"]}
-            )
-        field = params["group_by"]
-        queryset = self.get_queryset(for_list=True)
-        queryset = self._filter(queryset, params)
-
-        strata = (
-            queryset.all()
-            .values(field)
-            .annotate(total=Count(field))
-            .order_by("total")
-        )
-        return [{s[field]: s["total"]} for s in strata]
 
     def list(self, params):
         """List objects.
