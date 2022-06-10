@@ -484,61 +484,86 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             output, handler.list({"start": nodes[2].id, "limit": 3})
         )
 
-    def test_list_filter_one_field(self):
-        nodes = [factory.make_Node() for _ in range(3)]
-        output = [
-            {
-                "id": nodes[1].id,
-                "hostname": nodes[1].hostname,
-                "system_id": nodes[1].system_id,
-            }
-        ]
+    def test_list_pager_get_one(self):
+        nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
-            list_fields=["id", "hostname", "system_id"],
+            list_fields=["system_id"],
         )
-        self.assertEqual(
-            output, handler.list({"search_hostname": nodes[1].hostname[:6]})
-        )
-
-    def test_list_filter_two_fields(self):
-        nodes = [factory.make_Node() for _ in range(3)]
-        output = [
-            {
-                "id": nodes[1].id,
-                "hostname": nodes[1].hostname,
-                "system_id": nodes[1].system_id,
-            }
-        ]
-        handler = self.make_nodes_handler(
-            list_fields=["id", "hostname", "system_id"],
-        )
+        output = {
+            "count": 5,
+            "cur_page": 1,
+            "num_pages": 2,
+            "items": [{"system_id": n.system_id} for n in nodes[:3]],
+        }
         self.assertEqual(
             output,
             handler.list(
                 {
-                    "search_hostname": nodes[1].hostname[:6],
-                    "search_system_id": nodes[1].hostname[:6],
+                    "page_size": 3,
+                    "page_number": 1,
                 }
             ),
         )
 
-    def test_list_select(self):
-        nodes = [factory.make_Node() for _ in range(3)]
-        output = [
-            {
-                "id": nodes[1].id,
-                "hostname": nodes[1].hostname,
-                "system_id": nodes[1].system_id,
-            }
-        ]
+    def test_list_pager_get_second(self):
+        nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
-            list_fields=["id", "hostname", "system_id"],
+            list_fields=["system_id"],
         )
+        output = {
+            "count": 5,
+            "cur_page": 2,
+            "num_pages": 2,
+            "items": [{"system_id": n.system_id} for n in nodes[3:]],
+        }
         self.assertEqual(
             output,
             handler.list(
                 {
-                    "select_system_id": [nodes[1].system_id],
+                    "page_size": 3,
+                    "page_number": 2,
+                }
+            ),
+        )
+
+    def test_list_pager_get_invalid(self):
+        nodes = [factory.make_Node() for _ in range(5)]
+        handler = self.make_nodes_handler(
+            list_fields=["system_id"],
+        )
+        output = {
+            "count": 5,
+            "cur_page": 1,
+            "num_pages": 2,
+            "items": [{"system_id": n.system_id} for n in nodes[:3]],
+        }
+        self.assertEqual(
+            output,
+            handler.list(
+                {
+                    "page_size": 3,
+                    "page_number": None,
+                }
+            ),
+        )
+
+    def test_list_pager_get_beyond_last(self):
+        nodes = [factory.make_Node() for _ in range(5)]
+        handler = self.make_nodes_handler(
+            list_fields=["system_id"],
+        )
+        output = {
+            "count": 5,
+            "cur_page": 2,
+            "num_pages": 2,
+            "items": [{"system_id": n.system_id} for n in nodes[3:]],
+        }
+        self.assertEqual(
+            output,
+            handler.list(
+                {
+                    "page_size": 3,
+                    "page_number": 20,
                 }
             ),
         )

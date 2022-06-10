@@ -16,7 +16,8 @@ from operator import attrgetter
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
-from django.db.models import Model, Q
+from django.core.paginator import Paginator
+from django.db.models import Model
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 
@@ -461,52 +462,75 @@ class Handler(metaclass=HandlerMetaclass):
         getpk = attrgetter(self._meta.pk)
         self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
 
-    def _filter(self, queryset, params):
-        fields = self._meta.list_fields or self._meta.object_class._meta.fields
+    def _filter(self, qs, action, params):
+        """Return a filtered queryset
 
-        search_filter = Q()
-        for field in fields:
-            if f"search_{field}" in params:
-                search_filter |= Q(
-                    **{f"{field}__icontains": params[f"search_{field}"]}
-                )
+        Currently a NOP, override with the required logic.
+        """
+        return qs
 
-        select_filter = Q()
-        for field in fields:
-            if f"select_{field}" in params:
-                select_filter &= Q(
-                    **{f"{field}__in": params[f"select_{field}"]}
-                )
-        queryset = queryset.filter(search_filter).filter(select_filter)
-        return queryset
+    def _sort(self, qs, action, params):
+        """Return a sorted queryset
+
+        Override if you need to dinamically select a sorting key
+        """
+        return qs.order_by(self._meta.batch_key)
 
     def list(self, params):
         """List objects.
 
+        Pagination is activated by using both `page_number` and `page_size`
+        parameters.Mixing `start`/`limit` with pagination can produce
+        unexpected results, so don't do this.
+
         :param start: A value of the `batch_key` column and NOT `pk`. They are
             often the same but that is not a certainty. Make sure the client
             also understands this distinction.
-        :param offset: Offset into the queryset to return.
+        :param start: Offset into the queryset to return.
         :param limit: Maximum number of objects to return.
-        :param select_FIELD: selects rows where FIELD exactly matches the value.
-            Multiple `select` parameters are AND'ed together.
-        :param filter_FIELD: selects rows where FIELD contains the value. It's
-            and case-insensitive substring match. Multiple `filter` are OR'ed.
+        :param page_size: Number of items per page.
+        :param page_number: Request a specific page.
+        :param filter: a filter for the list. The `_filter()` method MUST be
+            overridden to implement the desired DSL.
         """
         queryset = self.get_queryset(for_list=True)
-        queryset = queryset.order_by(self._meta.batch_key)
+        queryset = self._filter(queryset, "list", params)
+        queryset = self._sort(queryset, "list", params)
+
         if "start" in params:
             queryset = queryset.filter(
                 **{"%s__gt" % self._meta.batch_key: params["start"]}
             )
 
-        queryset = self._filter(queryset, params)
-
         if "limit" in params:
             queryset = queryset[: params["limit"]]
 
-        objs = list(queryset)
+        pager = None
+        if "page_size" in params and "page_number" in params:
+            pager = Paginator(queryset, params["page_size"])
+            current_page = pager.get_page(params["page_number"])
+            objs = list(current_page)
+        else:
+            objs = list(queryset)
+
         self._cache_pks(objs)
+
+        if pager:
+            data = {
+                "count": pager.count,
+                "cur_page": current_page.number,
+                "num_pages": pager.num_pages,
+                "items": self.pack_list(objs),
+            }
+            return data
+        else:
+            return self.pack_list(objs)
+
+    def pack_list(self, objs):
+        """Build final list reponse
+
+        Override if you need something different from an array
+        """
         return [self.full_dehydrate(obj, for_list=True) for obj in objs]
 
     def get(self, params):
