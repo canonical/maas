@@ -5,6 +5,7 @@
 
 
 from django.db.models import (
+    BooleanField,
     CharField,
     DateTimeField,
     DO_NOTHING,
@@ -12,7 +13,6 @@ from django.db.models import (
     GenericIPAddressField,
     IntegerField,
     Manager,
-    NullBooleanField,
 )
 from django.db.models.query import QuerySet
 
@@ -298,7 +298,7 @@ class Discovery(CleanSave, ViewModel):
         blank=True, unique=False, editable=False, null=True
     )
 
-    is_external_dhcp = NullBooleanField(
+    is_external_dhcp = BooleanField(
         blank=True, unique=False, editable=False, null=True
     )
 

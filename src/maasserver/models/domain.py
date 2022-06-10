@@ -18,7 +18,7 @@ import re
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import RegexValidator
-from django.db.models import Manager, NullBooleanField, PositiveIntegerField, Q
+from django.db.models import BooleanField, Manager, PositiveIntegerField, Q
 from django.db.models.query import QuerySet
 from netaddr import IPAddress
 
@@ -170,8 +170,8 @@ class Domain(CleanSave, TimestampedModel):
     )
 
     # We manage the forward zone.
-    authoritative = NullBooleanField(
-        default=True, db_index=True, editable=True
+    authoritative = BooleanField(
+        blank=True, null=True, default=True, db_index=True, editable=True
     )
 
     # Default TTL for this Domain.
