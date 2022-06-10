@@ -1,16 +1,13 @@
 # Copyright 2012-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver API documentation functionality."""
-
-
 from inspect import getdoc
 import random
 import types
 from unittest.mock import sentinel
 
-from django.conf.urls import include, url
 from django.core.exceptions import ImproperlyConfigured
+from django.urls import include, re_path
 from piston3.doc import HandlerDocumentation
 from piston3.handler import BaseHandler
 from piston3.resource import Resource
@@ -105,7 +102,7 @@ class TestFindingResources(MAASTestCase):
     def test_urlpatterns_with_resource_for_incomplete_handler(self):
         # Resources for handlers that don't specify resource_uri are ignored.
         module = self.make_module()
-        module.urlpatterns = [url("^foo", BaseHandler)]
+        module.urlpatterns = [re_path("^foo", BaseHandler)]
         self.assertSetEqual(set(), find_api_resources(module))
 
     def test_urlpatterns_with_resource(self):
@@ -115,7 +112,7 @@ class TestFindingResources(MAASTestCase):
         handler = type("\\m/", (BaseHandler,), {"resource_uri": True})
         resource = Resource(handler)
         module = self.make_module()
-        module.urlpatterns = [url("^metal", resource)]
+        module.urlpatterns = [re_path("^metal", resource)]
         self.assertSetEqual({resource}, find_api_resources(module))
 
     def test_urlpatterns_with_resource_hidden(self):
@@ -126,7 +123,7 @@ class TestFindingResources(MAASTestCase):
         )
         resource = Resource(handler)
         module = self.make_module()
-        module.urlpatterns = [url("^metal", resource)]
+        module.urlpatterns = [re_path("^metal", resource)]
         self.assertSetEqual(set(), find_api_resources(module))
 
     def test_nested_urlpatterns_with_handler(self):
@@ -135,8 +132,8 @@ class TestFindingResources(MAASTestCase):
         resource = Resource(handler)
         module = self.make_module()
         submodule = self.make_module()
-        submodule.urlpatterns = [url("^metal", resource)]
-        module.urlpatterns = [url("^genre/", include(submodule))]
+        submodule.urlpatterns = [re_path("^metal", resource)]
+        module.urlpatterns = [re_path("^genre/", include(submodule))]
         self.assertSetEqual({resource}, find_api_resources(module))
 
     def test_smoke(self):

@@ -4,7 +4,7 @@
 """URL API routing configuration."""
 
 
-from django.conf.urls import url
+from django.urls import re_path
 
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
@@ -333,25 +333,25 @@ license_keys_handler = AdminRestrictedResource(
 
 # API URLs accessible to anonymous users.
 urlpatterns = [
-    url(r"describe/$", describe, name="describe"),
-    url(r"version/$", version_handler, name="version_handler"),
+    re_path(r"describe/$", describe, name="describe"),
+    re_path(r"version/$", version_handler, name="version_handler"),
 ]
 
 
 # API URLs for logged-in users.
 urlpatterns += [
-    url(r"^maas/$", maas_handler, name="maas_handler"),
-    url(
+    re_path(r"^maas/$", maas_handler, name="maas_handler"),
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/blockdevices/$",
         blockdevices_handler,
         name="blockdevices_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/blockdevices/(?P<id>[^/]+)/$",
         blockdevice_handler,
         name="blockdevice_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/blockdevices/"
         "(?P<device_id>[^/]+)/partitions/$",
         partitions_handler,
@@ -362,299 +362,323 @@ urlpatterns += [
     # while reading all resources did include the 's'. Both endpoints work with
     # and without the trailing 's' to be more REST-like while not breaking API
     # compatibility.
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/blockdevices/"
         "(?P<device_id>[^/]+)/partition[s]?/(?P<id>[^/]+)$",
         partition_handler,
         name="partition_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/volume-groups/$",
         volume_groups_handler,
         name="volume_groups_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/volume-group[s]?/" "(?P<id>[^/]+)/$",
         volume_group_handler,
         name="volume_group_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/raids/$",
         raid_devices_handler,
         name="raid_devices_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/raid/(?P<id>[^/]+)/$",
         raid_device_handler,
         name="raid_device_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/bcaches/$",
         bcache_devices_handler,
         name="bcache_devices_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/bcache/(?P<id>[^/]+)/$",
         bcache_device_handler,
         name="bcache_device_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/bcache-cache-sets/$",
         bcache_cache_sets_handler,
         name="bcache_cache_sets_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/bcache-cache-set/(?P<id>[^/]+)/$",
         bcache_cache_set_handler,
         name="bcache_cache_set_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/vmfs-datastores/$",
         vmfs_datastores_handler,
         name="vmfs_datastores_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/vmfs-datastore/(?P<id>[^/]+)/$",
         vmfs_datastore_handler,
         name="vmfs_datastore_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/interfaces/(?P<id>[^/]+)/$",
         interface_handler,
         name="interface_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/interfaces/$",
         interfaces_handler,
         name="interfaces_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/results/$",
         script_results_handler,
         name="script_results_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/results/(?P<id>[^/]+)/$",
         script_result_handler,
         name="script_result_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/devices/$",
         node_devices_handler,
         name="node_devices_handler",
     ),
-    url(
+    re_path(
         r"^nodes/(?P<system_id>[^/]+)/devices/(?P<id>[^/]+)/$",
         node_device_handler,
         name="node_device_handler",
     ),
-    url(r"^nodes/(?P<system_id>[^/]+)/$", node_handler, name="node_handler"),
-    url(r"^nodes/$", nodes_handler, name="nodes_handler"),
-    url(
+    re_path(
+        r"^nodes/(?P<system_id>[^/]+)/$", node_handler, name="node_handler"
+    ),
+    re_path(r"^nodes/$", nodes_handler, name="nodes_handler"),
+    re_path(
         r"^machines/(?P<system_id>[^/]+)/$",
         machine_handler,
         name="machine_handler",
     ),
-    url(r"^machines/$", machines_handler, name="machines_handler"),
-    url(
+    re_path(r"^machines/$", machines_handler, name="machines_handler"),
+    re_path(
         r"^rackcontrollers/(?P<system_id>[^/]+)/$",
         rackcontroller_handler,
         name="rackcontroller_handler",
     ),
-    url(
+    re_path(
         r"^rackcontrollers/$",
         rackcontrollers_handler,
         name="rackcontrollers_handler",
     ),
-    url(
+    re_path(
         r"^regioncontrollers/(?P<system_id>[^/]+)/$",
         regioncontroller_handler,
         name="regioncontroller_handler",
     ),
-    url(
+    re_path(
         r"^regioncontrollers/$",
         regioncontrollers_handler,
         name="regioncontrollers_handler",
     ),
-    url(
+    re_path(
         r"^devices/(?P<system_id>[^/]+)/$",
         device_handler,
         name="device_handler",
     ),
-    url(r"^devices/$", devices_handler, name="devices_handler"),
-    url(r"^pods/(?P<id>[^/]+)/$", pod_handler, name="pod_handler"),
-    url(r"^pods/$", pods_handler, name="pods_handler"),
+    re_path(r"^devices/$", devices_handler, name="devices_handler"),
+    re_path(r"^pods/(?P<id>[^/]+)/$", pod_handler, name="pod_handler"),
+    re_path(r"^pods/$", pods_handler, name="pods_handler"),
     # XXX: ltrager 2020-05-11 - Pods are being renamed vm-hosts. For now keep
     # pods to not break API compatibility.
-    url(r"^vm-hosts/(?P<id>[^/]+)/$", vm_host_handler, name="vm_host_handler"),
-    url(r"^vm-hosts/$", vm_hosts_handler, name="vm_hosts_handler"),
-    url(
+    re_path(
+        r"^vm-hosts/(?P<id>[^/]+)/$", vm_host_handler, name="vm_host_handler"
+    ),
+    re_path(r"^vm-hosts/$", vm_hosts_handler, name="vm_hosts_handler"),
+    re_path(
         r"^virtual-machines/(?P<id>[^/]+)$",
         virtual_machine_handler,
         name="virtual_machine_handler",
     ),
-    url(
+    re_path(
         r"^virtual-machines/$",
         virtual_machines_handler,
         name="virtual_machines_handler",
     ),
-    url(
+    re_path(
         r"^vm-clusters/(?P<id>[^/]+)$",
         vm_cluster_handler,
         name="vm_cluster_handler",
     ),
-    url(
+    re_path(
         r"^vm-clusters/$",
         vm_clusters_handler,
         name="vm_clusters_handler",
     ),
-    url(r"^events/$", events_handler, name="events_handler"),
-    url(r"^discovery/$", discoveries_handler, name="discoveries_handler"),
-    url(
+    re_path(r"^events/$", events_handler, name="events_handler"),
+    re_path(r"^discovery/$", discoveries_handler, name="discoveries_handler"),
+    re_path(
         r"^discovery/(?P<discovery_id>[.: \w=^]+)/*/$",
         discovery_handler,
         name="discovery_handler",
     ),
-    url(
+    re_path(
         r"^networks/(?P<name>[^/]+)/$", network_handler, name="network_handler"
     ),
-    url(r"^networks/$", networks_handler, name="networks_handler"),
-    url(r"^files/$", files_handler, name="files_handler"),
-    url(r"^files/(?P<filename>.+)/$", file_handler, name="file_handler"),
-    url(r"^account/$", account_handler, name="account_handler"),
-    url(
+    re_path(r"^networks/$", networks_handler, name="networks_handler"),
+    re_path(r"^files/$", files_handler, name="files_handler"),
+    re_path(r"^files/(?P<filename>.+)/$", file_handler, name="file_handler"),
+    re_path(r"^account/$", account_handler, name="account_handler"),
+    re_path(
         r"^account/prefs/sslkeys/(?P<id>[^/]+)/$",
         sslkey_handler,
         name="sslkey_handler",
     ),
-    url(r"^account/prefs/sslkeys/$", sslkeys_handler, name="sslkeys_handler"),
-    url(
+    re_path(
+        r"^account/prefs/sslkeys/$", sslkeys_handler, name="sslkeys_handler"
+    ),
+    re_path(
         r"^account/prefs/sshkeys/(?P<id>[^/]+)/$",
         sshkey_handler,
         name="sshkey_handler",
     ),
-    url(r"^account/prefs/sshkeys/$", sshkeys_handler, name="sshkeys_handler"),
-    url(r"^tags/(?P<name>[^/]+)/$", tag_handler, name="tag_handler"),
-    url(r"^tags/$", tags_handler, name="tags_handler"),
-    url(
+    re_path(
+        r"^account/prefs/sshkeys/$", sshkeys_handler, name="sshkeys_handler"
+    ),
+    re_path(r"^tags/(?P<name>[^/]+)/$", tag_handler, name="tag_handler"),
+    re_path(r"^tags/$", tags_handler, name="tags_handler"),
+    re_path(
         r"^commissioning-results/$",
         node_results_handler,
         name="node_results_handler",
     ),
-    url(
+    re_path(
         r"^installation-results/$",
         node_results_handler,
         name="node_results_handler",
     ),
-    url(r"^users/$", users_handler, name="users_handler"),
-    url(r"^users/(?P<username>[^/]+)/$", user_handler, name="user_handler"),
-    url(r"^zones/(?P<name>[^/]+)/$", zone_handler, name="zone_handler"),
-    url(r"^zones/$", zones_handler, name="zones_handler"),
-    url(r"^fabrics/$", fabrics_handler, name="fabrics_handler"),
-    url(r"^fabrics/(?P<id>[^/]+)/$", fabric_handler, name="fabric_handler"),
-    url(
+    re_path(r"^users/$", users_handler, name="users_handler"),
+    re_path(
+        r"^users/(?P<username>[^/]+)/$", user_handler, name="user_handler"
+    ),
+    re_path(r"^zones/(?P<name>[^/]+)/$", zone_handler, name="zone_handler"),
+    re_path(r"^zones/$", zones_handler, name="zones_handler"),
+    re_path(r"^fabrics/$", fabrics_handler, name="fabrics_handler"),
+    re_path(
+        r"^fabrics/(?P<id>[^/]+)/$", fabric_handler, name="fabric_handler"
+    ),
+    re_path(
         r"^fabrics/(?P<fabric_id>[^/]+)/vlans/$",
         vlans_handler,
         name="vlans_handler",
     ),
-    url(r"^vlans/(?P<vlan_id>[^/]+)/$", vlan_handler, name="vlanid_handler"),
-    url(
+    re_path(
+        r"^vlans/(?P<vlan_id>[^/]+)/$", vlan_handler, name="vlanid_handler"
+    ),
+    re_path(
         r"^fabrics/(?P<fabric_id>[^/]+)/vlans/(?P<vid>[^/]+)/$",
         vlan_handler,
         name="vlan_handler",
     ),
-    url(r"^spaces/$", spaces_handler, name="spaces_handler"),
-    url(r"^spaces/(?P<id>[^/]+)/$", space_handler, name="space_handler"),
-    url(r"^subnets/$", subnets_handler, name="subnets_handler"),
+    re_path(r"^spaces/$", spaces_handler, name="spaces_handler"),
+    re_path(r"^spaces/(?P<id>[^/]+)/$", space_handler, name="space_handler"),
+    re_path(r"^subnets/$", subnets_handler, name="subnets_handler"),
     # Note: Any changes to the regex here may need to be reflected in
     # models/subnets.py.
-    url(
+    re_path(
         r"^subnets/(?P<id>[.: \w-]+(?:/\d\d\d?)?)/$",
         subnet_handler,
         name="subnet_handler",
     ),
-    url(r"^ipaddresses/$", ipaddresses_handler, name="ipaddresses_handler"),
-    url(r"^ipranges/$", ipranges_handler, name="ipranges_handler"),
-    url(r"^ipranges/(?P<id>[^/]+)/$", iprange_handler, name="iprange_handler"),
-    url(
+    re_path(
+        r"^ipaddresses/$", ipaddresses_handler, name="ipaddresses_handler"
+    ),
+    re_path(r"^ipranges/$", ipranges_handler, name="ipranges_handler"),
+    re_path(
+        r"^ipranges/(?P<id>[^/]+)/$", iprange_handler, name="iprange_handler"
+    ),
+    re_path(
         r"^static-routes/$", staticroutes_handler, name="staticroutes_handler"
     ),
-    url(
+    re_path(
         r"^static-routes/(?P<id>[^/]+)/$",
         staticroute_handler,
         name="staticroute_handler",
     ),
-    url(
+    re_path(
         r"^dnsresourcerecords/$",
         dnsresourcerecords_handler,
         name="dnsresourcerecords_handler",
     ),
-    url(
+    re_path(
         r"^dnsresourcerecords/(?P<id>[^/]+)/$",
         dnsresourcerecord_handler,
         name="dnsresourcerecord_handler",
     ),
-    url(r"^dnsresources/$", dnsresources_handler, name="dnsresources_handler"),
-    url(
+    re_path(
+        r"^dnsresources/$", dnsresources_handler, name="dnsresources_handler"
+    ),
+    re_path(
         r"^dnsresources/(?P<id>[^/]+)/$",
         dnsresource_handler,
         name="dnsresource_handler",
     ),
-    url(r"^domains/$", domains_handler, name="domains_handler"),
-    url(r"^domains/(?P<id>[^/]+)/$", domain_handler, name="domain_handler"),
-    url(
+    re_path(r"^domains/$", domains_handler, name="domains_handler"),
+    re_path(
+        r"^domains/(?P<id>[^/]+)/$", domain_handler, name="domain_handler"
+    ),
+    re_path(
         r"^boot-resources/$",
         boot_resources_handler,
         name="boot_resources_handler",
     ),
-    url(
+    re_path(
         r"^boot-resources/(?P<id>[^/]+)/$",
         boot_resource_handler,
         name="boot_resource_handler",
     ),
-    url(
+    re_path(
         r"^boot-resources/(?P<id>[^/]+)/upload/(?P<file_id>[^/]+)/$",
         boot_resource_file_upload_handler,
         name="boot_resource_file_upload_handler",
     ),
-    url(
+    re_path(
         r"^package-repositories/$",
         package_repositories_handler,
         name="package_repositories_handler",
     ),
-    url(
+    re_path(
         r"^package-repositories/(?P<id>[^/]+)/$",
         package_repository_handler,
         name="package_repository_handler",
     ),
-    url(
+    re_path(
         r"^dhcp-snippets/$",
         dhcp_snippets_handler,
         name="dhcp_snippets_handler",
     ),
-    url(
+    re_path(
         r"^dhcp-snippets/(?P<id>[^/]+)/$",
         dhcp_snippet_handler,
         name="dhcp_snippet_handler",
     ),
-    url(
+    re_path(
         r"^notifications/$",
         notifications_handler,
         name="notifications_handler",
     ),
-    url(
+    re_path(
         r"^notifications/(?P<id>[^/]+)/$",
         notification_handler,
         name="notification_handler",
     ),
-    url(r"^scripts/$", scripts_handler, name="scripts_handler"),
-    url(r"^scripts/(?P<name>[^/]+)$", script_handler, name="script_handler"),
-    url(
+    re_path(r"^scripts/$", scripts_handler, name="scripts_handler"),
+    re_path(
+        r"^scripts/(?P<name>[^/]+)$", script_handler, name="script_handler"
+    ),
+    re_path(
         r"^resourcepool/(?P<id>[^/]+)/$",
         resourcepool_handler,
         name="resourcepool_handler",
     ),
-    url(
+    re_path(
         r"^resourcepools/$",
         resourcepools_handler,
         name="resourcepools_handler",
@@ -664,34 +688,38 @@ urlpatterns += [
 
 # API URLs for admin users.
 urlpatterns += [
-    url(
+    re_path(
         r"^commissioning-scripts/$",
         commissioning_scripts_handler,
         name="commissioning_scripts_handler",
     ),
-    url(
+    re_path(
         r"^commissioning-scripts/(?P<name>[^/]+)$",
         commissioning_script_handler,
         name="commissioning_script_handler",
     ),
-    url(r"^license-keys/$", license_keys_handler, name="license_keys_handler"),
-    url(
+    re_path(
+        r"^license-keys/$", license_keys_handler, name="license_keys_handler"
+    ),
+    re_path(
         r"^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)$",
         license_key_handler,
         name="license_key_handler",
     ),
-    url(r"^boot-sources/$", boot_sources_handler, name="boot_sources_handler"),
-    url(
+    re_path(
+        r"^boot-sources/$", boot_sources_handler, name="boot_sources_handler"
+    ),
+    re_path(
         r"^boot-sources/(?P<id>[^/]+)/$",
         boot_source_handler,
         name="boot_source_handler",
     ),
-    url(
+    re_path(
         r"^boot-sources/(?P<boot_source_id>[^/]+)/selections/$",
         boot_source_selections_handler,
         name="boot_source_selections_handler",
     ),
-    url(
+    re_path(
         r"^boot-sources/(?P<boot_source_id>[^/]+)/selections/(?P<id>[^/]+)/$",
         boot_source_selection_handler,
         name="boot_source_selection_handler",
@@ -700,4 +728,4 @@ urlpatterns += [
 
 
 # Last resort: return an API 404 response.
-urlpatterns += [url(r"^.*", not_found_handler, name="handler_404")]
+urlpatterns += [re_path(r"^.*", not_found_handler, name="handler_404")]

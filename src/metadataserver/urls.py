@@ -4,7 +4,7 @@
 """Metadata API URLs."""
 
 
-from django.conf.urls import url
+from django.conf.urls import re_path
 
 from maasserver.api.auth import api_auth
 from maasserver.api.support import OperationsResource
@@ -68,17 +68,17 @@ enlist_version_index_handler = OperationsResource(EnlistVersionIndexHandler)
 # cloud-init tends to add these.
 node_patterns = [
     # The webhook-style status reporting handler.
-    url(
+    re_path(
         r"^status/(?P<system_id>[\w\-]+)$",
         status_handler,
         name="metadata-status",
     ),
-    url(
+    re_path(
         r"^[/]*(?P<version>[^/]+)/meta-data/(?P<item>.*)$",
         meta_data_handler,
         name="metadata-meta-data",
     ),
-    url(
+    re_path(
         r"^[/]*(?P<version>[^/]+)/user-data$",
         user_data_handler,
         name="metadata-user-data",
@@ -89,44 +89,44 @@ node_patterns = [
     # reflected in the http filename.  The response's MIME type is
     # definitive. maas-scripts is xz compressed while
     # maas-commissioning-scripts is not.
-    url(
+    re_path(
         r"^[/]*(?P<version>[^/]+)/maas-scripts",
         maas_scripts_handler,
         name="maas-scripts",
     ),
-    url(
+    re_path(
         r"^[/]*(?P<version>[^/]+)/maas-commissioning-scripts",
         commissioning_scripts_handler,
         name="commissioning-scripts",
     ),
-    url(
+    re_path(
         r"^[/]*(?P<version>[^/]+)/",
         version_index_handler,
         name="metadata-version",
     ),
-    url(r"^[/]*", index_handler, name="metadata"),
+    re_path(r"^[/]*", index_handler, name="metadata"),
 ]
 
 # The curtin-specific metadata API.  Only the user-data end-point is
 # really curtin-specific, all the other end-points are similar to the
 # normal metadata API.
 curtin_patterns = [
-    url(
+    re_path(
         r"^[/]*curtin/(?P<version>[^/]+)/meta-data/(?P<item>.*)$",
         meta_data_handler,
         name="curtin-metadata-meta-data",
     ),
-    url(
+    re_path(
         r"^[/]*curtin/(?P<version>[^/]+)/user-data$",
         curtin_user_data_handler,
         name="curtin-metadata-user-data",
     ),
-    url(
+    re_path(
         r"^[/]*curtin/(?P<version>[^/]+)/",
         version_index_handler,
         name="curtin-metadata-version",
     ),
-    url(r"^[/]*curtin[/]*$", index_handler, name="curtin-metadata"),
+    re_path(r"^[/]*curtin[/]*$", index_handler, name="curtin-metadata"),
 ]
 
 
@@ -136,13 +136,13 @@ curtin_patterns = [
 by_id_patterns = [
     # XXX: rvb 2012-06-20 bug=1015559:  This method is accessible
     # without authentication.  This is a security threat.
-    url(
+    re_path(
         # could-init adds additional slashes in front of urls.
         r"^[/]*(?P<version>[^/]+)/by-id/(?P<system_id>[\w\-]+)/$",
         meta_data_anon_handler,
         name="metadata-node-by-id",
     ),
-    url(
+    re_path(
         # cloud-init adds additional slashes in front of urls.
         r"^[/]*(?P<version>[^/]+)/enlist-preseed/$",
         meta_data_anon_handler,
@@ -154,20 +154,20 @@ by_id_patterns = [
 # work unless ALLOW_UNSAFE_METADATA_ACCESS is enabled, which you should never
 # do on a production MAAS.
 by_mac_patterns = [
-    url(
+    re_path(
         # could-init adds additional slashes in front of urls.
         r"^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/"
         r"meta-data/(?P<item>.*)$",
         meta_data_by_mac_handler,
         name="metadata-meta-data-by-mac",
     ),
-    url(
+    re_path(
         # could-init adds additional slashes in front of urls.
         r"^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/user-data$",
         user_data_by_mac_handler,
         name="metadata-user-data-by-mac",
     ),
-    url(
+    re_path(
         # could-init adds additional slashes in front of urls.
         r"^[/]*(?P<version>[^/]+)/by-mac/(?P<mac>[^/]+)/",
         version_index_by_mac_handler,
@@ -177,22 +177,22 @@ by_mac_patterns = [
 
 # Anonymous enlistment entry point
 enlist_metadata_patterns = [
-    url(
+    re_path(
         r"^[/]*enlist/(?P<version>[^/]+)/meta-data/(?P<item>.*)$",
         enlist_meta_data_handler,
         name="enlist-metadata-meta-data",
     ),
-    url(
+    re_path(
         r"^[/]*enlist/(?P<version>[^/]+)/user-data$",
         enlist_user_data_handler,
         name="enlist-metadata-user-data",
     ),
-    url(
+    re_path(
         r"^[/]*enlist/(?P<version>[^/]+)[/]*$",
         enlist_version_index_handler,
         name="enlist-version",
     ),
-    url(r"^[/]*enlist[/]*$", enlist_index_handler, name="enlist"),
+    re_path(r"^[/]*enlist[/]*$", enlist_index_handler, name="enlist"),
 ]
 
 

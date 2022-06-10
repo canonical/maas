@@ -33,7 +33,7 @@ from django.db.models import BinaryField, CharField
 from django.db.models import Field as _BrokenField
 from django.db.models import GenericIPAddressField, IntegerField, Q, URLField
 from django.utils.deconstruct import deconstructible
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from netaddr import AddrFormatError, IPAddress, IPNetwork
 import psycopg2.extensions
 
@@ -82,7 +82,7 @@ class VerboseRegexValidator(RegexValidator):
 
     def __call__(self, value):
         """Validates that the input matches the regular expression."""
-        if not self.regex.search(force_text(value)):
+        if not self.regex.search(force_str(value)):
             raise ValidationError(
                 self.message % {"value": value}, code=self.code
             )
@@ -862,7 +862,7 @@ class URLOrPPAValidator(URLValidator):
     )
 
     def __call__(self, value):
-        match = re.search(URLOrPPAValidator.ppa_re, force_text(value))
+        match = re.search(URLOrPPAValidator.ppa_re, force_str(value))
         # If we don't have a PPA location, let URLValidator do its job.
         if not match:
             super().__call__(value)
