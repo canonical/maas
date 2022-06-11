@@ -34,6 +34,7 @@ from maasserver.models import (
 )
 from maasserver.models.nodeprobeddetails import script_output_nsmap
 from maasserver.node_action import compile_node_actions
+from maasserver.node_constraint_filter_forms import ReadNodesForm
 from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.third_party_drivers import get_third_party_driver
@@ -43,6 +44,7 @@ from maasserver.websockets.base import (
     dehydrate_datetime,
     HandlerError,
     HandlerPermissionError,
+    HandlerValidationError,
 )
 from maasserver.websockets.handlers.event import dehydrate_event_type_level
 from maasserver.websockets.handlers.node_result import NodeResultHandler
@@ -1180,3 +1182,11 @@ class NodeHandler(TimestampedModelHandler):
                     f"Cannot add tag {tag.name} to node because it has a definition"
                 )
         node.tags.set(tags)
+
+    def _filter(self, qs, action, params):
+        qs = super()._filter(qs, action, params)
+        form = ReadNodesForm(data=params)
+        if not form.is_valid():
+            raise HandlerValidationError(form.errors)
+        qs, _, _ = form.filter_nodes(qs)
+        return qs

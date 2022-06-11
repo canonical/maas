@@ -494,7 +494,8 @@ class Handler(metaclass=HandlerMetaclass):
             overridden to implement the desired DSL.
         """
         queryset = self.get_queryset(for_list=True)
-        queryset = self._filter(queryset, "list", params)
+        if "filter" in params:
+            queryset = self._filter(queryset, "list", params["filter"])
         queryset = self._sort(queryset, "list", params)
 
         if "start" in params:

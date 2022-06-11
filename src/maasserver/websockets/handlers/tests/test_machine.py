@@ -5718,3 +5718,75 @@ class TestMachineHandlerWorkloadAnnotations(MAASServerTestCase):
                 }
             ),
         )
+
+
+class TestMachineHandlerFilter(MAASServerTestCase):
+    def test_filter_simple(self):
+        user = factory.make_User()
+        nodes = [
+            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
+            for _ in range(3)
+        ]
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "filter": {
+                    "hostname": [nodes[1].hostname],
+                }
+            }
+        )
+        self.assertEqual(1, len(result))
+        self.assertEqual(
+            nodes[1].hostname,
+            result[0]["hostname"],
+        )
+
+    def test_filter_composed(self):
+        user = factory.make_User()
+        nodes = [
+            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
+            for _ in range(3)
+        ]
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "filter": {
+                    "hostname": [nodes[1].hostname],
+                    "status": "allocated",
+                }
+            }
+        )
+        self.assertEqual(1, len(result))
+        self.assertEqual(
+            nodes[1].hostname,
+            result[0]["hostname"],
+        )
+
+    def test_filter_no_response(self):
+        user = factory.make_User()
+        for _ in range(3):
+            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "filter": {
+                    "status": "new",
+                }
+            }
+        )
+        self.assertEqual(0, len(result))
+
+    def test_filter_invalid(self):
+        user = factory.make_User()
+        for _ in range(3):
+            factory.make_Node(owner=user, status=NODE_STATUS.ALLOCATED)
+        handler = MachineHandler(user, {}, None)
+        self.assertRaises(
+            HandlerValidationError,
+            handler.list,
+            {
+                "filter": {
+                    "status": "my_custom_status",
+                }
+            },
+        )
