@@ -6,12 +6,10 @@
 
 from contextlib import closing
 import os
-from pipes import quote
 from subprocess import PIPE, Popen, STDOUT
 
 from postgresfixture import ClusterFixture
 from testtools.content import Content, UTF8_TEXT
-from testtools.matchers import HasLength, Not
 
 from maasserver.testing.config import RegionConfigurationFixture
 from maastesting import dev_root
@@ -80,8 +78,8 @@ class TestDBUpgrade(MAASTestCase):
     def execute(self, command, env):
         process = Popen(command, stdout=PIPE, stderr=STDOUT, env=env)
         output, _ = process.communicate()
-        if len(output) != 0:
-            name = "stdout/err from `%s`" % " ".join(map(quote, command))
+        if output:
+            name = f"stdout/err from `{command!r}`"
             self.addDetail(name, Content(UTF8_TEXT, lambda: [output]))
         self.assertEqual(0, process.wait(), "(return code is not zero)")
 
@@ -106,11 +104,11 @@ class TestDBUpgrade(MAASTestCase):
         self.cluster.createdb(self.dbname)
         with closing(self.cluster.connect(self.dbname)) as conn:
             function_names = get_plpgsql_function_names(conn)
-            self.assertThat(function_names, HasLength(0))
+            self.assertEqual(function_names, [])
         self.execute_dbupgrade()
         with closing(self.cluster.connect(self.dbname)) as conn:
             function_names = get_plpgsql_function_names(conn)
-            self.assertThat(function_names, Not(HasLength(0)))
+            self.assertNotEqual(function_names, [])
 
     def test_dbupgrade_removes_maasserver_triggers(self):
         self.cluster.createdb(self.dbname)

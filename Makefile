@@ -273,7 +273,7 @@ dbshell: bin/database
 .PHONY: dbshell
 
 syncdb: bin/maas-region bin/database
-	$(dbrun) bin/maas-region dbupgrade
+	$(dbrun) bin/maas-region dbupgrade $(DBUPGRADE_ARGS)
 .PHONY: syncdb
 
 dumpdb: DB_DUMP ?= maasdb.dump

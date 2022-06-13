@@ -122,7 +122,9 @@ class Command(BaseCommand):
         self._drop_all_triggers(database)
 
         # Run the django builtin migrations.
-        call_command("migrate", interactive=False)
+        call_command(
+            "migrate", interactive=False, verbosity=options.get("verbosity")
+        )
 
         # Make sure we're going to see the same database as the migrations
         # have left behind.
