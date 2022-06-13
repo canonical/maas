@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.9 (Ubuntu 12.9-0ubuntu0.20.04.1)
--- Dumped by pg_dump version 12.9 (Ubuntu 12.9-0ubuntu0.20.04.1)
+-- Dumped from database version 12.11 (Ubuntu 12.11-0ubuntu0.20.04.1)
+-- Dumped by pg_dump version 12.11 (Ubuntu 12.11-0ubuntu0.20.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3713,6 +3713,8 @@ CREATE TABLE public.maasserver_node (
     last_applied_storage_layout character varying(50) NOT NULL,
     current_config_id integer,
     enable_hw_sync boolean NOT NULL,
+    last_sync timestamp with time zone,
+    sync_interval integer,
     CONSTRAINT maasserver_node_address_ttl_check CHECK ((address_ttl >= 0))
 );
 
@@ -6461,7 +6463,8 @@ CREATE TABLE public.maasserver_bmc (
     version text NOT NULL,
     created_with_cert_expiration_days integer,
     created_with_maas_generated_cert boolean,
-    created_with_trust_password boolean
+    created_with_trust_password boolean,
+    created_by_commissioning boolean
 );
 
 
@@ -7309,7 +7312,7 @@ CREATE TABLE public.maasserver_filesystem (
     id integer NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    uuid character varying(36) NOT NULL,
+    uuid text NOT NULL,
     fstype character varying(20) NOT NULL,
     label character varying(255),
     create_params character varying(255),
@@ -7352,7 +7355,7 @@ CREATE TABLE public.maasserver_filesystemgroup (
     id integer NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    uuid character varying(36) NOT NULL,
+    uuid text NOT NULL,
     group_type character varying(20) NOT NULL,
     name character varying(255) NOT NULL,
     create_params character varying(255),
@@ -8159,11 +8162,12 @@ CREATE TABLE public.maasserver_partition (
     id integer NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    uuid character varying(36),
+    uuid text,
     size bigint NOT NULL,
     bootable boolean NOT NULL,
     partition_table_id integer NOT NULL,
-    tags text[]
+    tags text[],
+    index integer NOT NULL
 );
 
 
@@ -8989,7 +8993,7 @@ ALTER SEQUENCE public.maasserver_versionedtextfile_id_seq OWNED BY public.maasse
 
 CREATE TABLE public.maasserver_virtualblockdevice (
     blockdevice_ptr_id integer NOT NULL,
-    uuid character varying(36) NOT NULL,
+    uuid text NOT NULL,
     filesystem_group_id integer NOT NULL
 );
 
@@ -9417,7 +9421,7 @@ CREATE TABLE public.metadataserver_scriptset (
     result_type integer NOT NULL,
     node_id integer NOT NULL,
     power_state_before_transition character varying(10) NOT NULL,
-    requested_scripts text[]
+    tags text[]
 );
 
 
@@ -11123,6 +11127,21 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 308	maasserver	0265_nodedevice_nodeconfig_migrate	2022-03-01 15:55:04.81799+00
 309	maasserver	0266_nodedevice_unlink_node	2022-03-01 15:55:05.13206+00
 310	maastesting	0001_initial	2022-03-08 14:01:53.649122+00
+311	maasserver	0267_add_machine_specific_sync_interval_fields	2022-06-13 14:48:40.504678+00
+312	maasserver	0268_partition_index	2022-06-13 14:48:40.670232+00
+313	maasserver	0269_interface_idx_include_nodeconfig	2022-06-13 14:48:40.68281+00
+314	maasserver	0270_storage_uuid_drop_unique	2022-06-13 14:48:40.781473+00
+315	maasserver	0271_interface_unique	2022-06-13 14:48:40.900017+00
+316	maasserver	0272_virtualmachine_resources_unique	2022-06-13 14:48:41.864679+00
+317	maasserver	0273_ipaddress_defaults	2022-06-13 14:48:41.907316+00
+318	maasserver	0274_audit_log_add_endpoint_cli_type	2022-06-13 14:48:41.94551+00
+319	maasserver	0275_interface_children	2022-06-13 14:48:42.048243+00
+320	maasserver	0276_bmc_autodetect_metric	2022-06-13 14:48:42.290065+00
+321	maasserver	0277_replace_nullbooleanfield	2022-06-13 14:48:42.308843+00
+322	metadataserver	0027_reorder_machine_resources_script	2022-06-13 14:48:42.420499+00
+323	metadataserver	0028_scriptset_requested_scripts_rename	2022-06-13 14:48:42.503381+00
+324	metadataserver	0029_scriptset_tags_cleanup	2022-06-13 14:48:42.510804+00
+325	metadataserver	0030_scriptresult_script_link	2022-06-13 14:48:42.738442+00
 \.
 
 
@@ -11155,7 +11174,7 @@ COPY public.maasserver_blockdevice (id, created, updated, name, id_path, size, b
 -- Data for Name: maasserver_bmc; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_bmc (id, created, updated, power_type, ip_address_id, architectures, bmc_type, capabilities, cores, cpu_speed, local_storage, memory, name, pool_id, zone_id, tags, cpu_over_commit_ratio, memory_over_commit_ratio, default_storage_pool_id, power_parameters, default_macvlan_mode, version, created_with_cert_expiration_days, created_with_maas_generated_cert, created_with_trust_password) FROM stdin;
+COPY public.maasserver_bmc (id, created, updated, power_type, ip_address_id, architectures, bmc_type, capabilities, cores, cpu_speed, local_storage, memory, name, pool_id, zone_id, tags, cpu_over_commit_ratio, memory_over_commit_ratio, default_storage_pool_id, power_parameters, default_macvlan_mode, version, created_with_cert_expiration_days, created_with_maas_generated_cert, created_with_trust_password, created_by_commissioning) FROM stdin;
 \.
 
 
@@ -11438,7 +11457,7 @@ COPY public.maasserver_neighbour (id, created, updated, ip, "time", vid, count, 
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync) FROM stdin;
+COPY public.maasserver_node (id, created, updated, system_id, hostname, status, bios_boot_method, osystem, distro_series, architecture, min_hwe_kernel, hwe_kernel, agent_name, error_description, cpu_count, memory, swap_size, power_state, power_state_updated, error, netboot, license_key, boot_cluster_ip, enable_ssh, skip_networking, skip_storage, boot_interface_id, gateway_link_ipv4_id, gateway_link_ipv6_id, owner_id, parent_id, zone_id, boot_disk_id, node_type, domain_id, dns_process_id, bmc_id, address_ttl, status_expires, power_state_queried, url, managing_process_id, last_image_sync, previous_status, default_user, cpu_speed, current_commissioning_script_set_id, current_installation_script_set_id, current_testing_script_set_id, install_rackd, locked, pool_id, instance_power_parameters, install_kvm, hardware_uuid, ephemeral_deploy, description, dynamic, register_vmhost, last_applied_storage_layout, current_config_id, enable_hw_sync, last_sync, sync_interval) FROM stdin;
 \.
 
 
@@ -11536,7 +11555,7 @@ COPY public.maasserver_packagerepository (id, created, updated, name, url, compo
 -- Data for Name: maasserver_partition; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.maasserver_partition (id, created, updated, uuid, size, bootable, partition_table_id, tags) FROM stdin;
+COPY public.maasserver_partition (id, created, updated, uuid, size, bootable, partition_table_id, tags, index) FROM stdin;
 \.
 
 
@@ -11834,7 +11853,7 @@ COPY public.metadataserver_scriptresult (id, created, updated, status, exit_stat
 -- Data for Name: metadataserver_scriptset; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.metadataserver_scriptset (id, last_ping, result_type, node_id, power_state_before_transition, requested_scripts) FROM stdin;
+COPY public.metadataserver_scriptset (id, last_ping, result_type, node_id, power_state_before_transition, tags) FROM stdin;
 \.
 
 
@@ -11915,7 +11934,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 108, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 310, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 325, true);
 
 
 --
@@ -12999,14 +13018,6 @@ ALTER TABLE ONLY public.maasserver_filesystemgroup
 
 
 --
--- Name: maasserver_filesystemgroup maasserver_filesystemgroup_uuid_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_filesystemgroup
-    ADD CONSTRAINT maasserver_filesystemgroup_uuid_key UNIQUE (uuid);
-
-
---
 -- Name: maasserver_forwarddnsserver_domains maasserver_forwarddnsser_forwarddnsserver_id_doma_1e95b8c5_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13287,6 +13298,14 @@ ALTER TABLE ONLY public.maasserver_nodemetadata
 
 
 --
+-- Name: maasserver_notification maasserver_notification_ident_d81e5931_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_notification
+    ADD CONSTRAINT maasserver_notification_ident_d81e5931_uniq UNIQUE (ident);
+
+
+--
 -- Name: maasserver_notification maasserver_notification_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -13367,19 +13386,19 @@ ALTER TABLE ONLY public.maasserver_packagerepository
 
 
 --
+-- Name: maasserver_partition maasserver_partition_partition_table_id_index_281198d5_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_partition
+    ADD CONSTRAINT maasserver_partition_partition_table_id_index_281198d5_uniq UNIQUE (partition_table_id, index);
+
+
+--
 -- Name: maasserver_partition maasserver_partition_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_partition
     ADD CONSTRAINT maasserver_partition_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_partition maasserver_partition_uuid_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_partition
-    ADD CONSTRAINT maasserver_partition_uuid_key UNIQUE (uuid);
 
 
 --
@@ -13719,27 +13738,11 @@ ALTER TABLE ONLY public.maasserver_virtualblockdevice
 
 
 --
--- Name: maasserver_virtualblockdevice maasserver_virtualblockdevice_uuid_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_virtualblockdevice
-    ADD CONSTRAINT maasserver_virtualblockdevice_uuid_key UNIQUE (uuid);
-
-
---
 -- Name: maasserver_virtualmachine maasserver_virtualmachin_bmc_id_identifier_projec_29edbd12_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_virtualmachine
     ADD CONSTRAINT maasserver_virtualmachin_bmc_id_identifier_projec_29edbd12_uniq UNIQUE (bmc_id, identifier, project);
-
-
---
--- Name: maasserver_virtualmachineinterface maasserver_virtualmachin_vm_id_mac_address_2b5531e9_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_virtualmachineinterface
-    ADD CONSTRAINT maasserver_virtualmachin_vm_id_mac_address_2b5531e9_uniq UNIQUE (vm_id, mac_address);
 
 
 --
@@ -13772,14 +13775,6 @@ ALTER TABLE ONLY public.maasserver_virtualmachinedisk
 
 ALTER TABLE ONLY public.maasserver_virtualmachinedisk
     ADD CONSTRAINT maasserver_virtualmachinedisk_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_virtualmachinedisk maasserver_virtualmachinedisk_vm_id_name_de7bb2ac_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_virtualmachinedisk
-    ADD CONSTRAINT maasserver_virtualmachinedisk_vm_id_name_de7bb2ac_uniq UNIQUE (vm_id, name);
 
 
 --
@@ -14374,13 +14369,6 @@ CREATE INDEX maasserver_filesystemgroup_cache_set_id_608e115e ON public.maasserv
 
 
 --
--- Name: maasserver_filesystemgroup_uuid_8867d00a_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_filesystemgroup_uuid_8867d00a_like ON public.maasserver_filesystemgroup USING btree (uuid varchar_pattern_ops);
-
-
---
 -- Name: maasserver_forwarddnsserve_forwarddnsserver_id_c975e5df; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14423,17 +14411,17 @@ CREATE INDEX maasserver_interface_node_config_id_a52b0f8a ON public.maasserver_i
 
 
 --
+-- Name: maasserver_interface_node_config_mac_address_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_interface_node_config_mac_address_uniq ON public.maasserver_interface USING btree (node_config_id, mac_address) WHERE ((type)::text = 'physical'::text);
+
+
+--
 -- Name: maasserver_interface_numa_node_id_6e790407; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX maasserver_interface_numa_node_id_6e790407 ON public.maasserver_interface USING btree (numa_node_id);
-
-
---
--- Name: maasserver_interface_type_mac_address_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX maasserver_interface_type_mac_address_idx ON public.maasserver_interface USING btree (type, mac_address) WHERE ((type)::text = 'physical'::text);
 
 
 --
@@ -14668,10 +14656,10 @@ CREATE INDEX maasserver_nodemetadata_node_id_4350cc04 ON public.maasserver_nodem
 
 
 --
--- Name: maasserver_notification_ident; Type: INDEX; Schema: public; Owner: -
+-- Name: maasserver_notification_ident_d81e5931_like; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX maasserver_notification_ident ON public.maasserver_notification USING btree (ident) WHERE (ident IS NOT NULL);
+CREATE INDEX maasserver_notification_ident_d81e5931_like ON public.maasserver_notification USING btree (ident varchar_pattern_ops);
 
 
 --
@@ -14728,13 +14716,6 @@ CREATE INDEX maasserver_packagerepository_name_ae83c436_like ON public.maasserve
 --
 
 CREATE INDEX maasserver_partition_partition_table_id_c94faed6 ON public.maasserver_partition USING btree (partition_table_id);
-
-
---
--- Name: maasserver_partition_uuid_22931ba0_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_partition_uuid_22931ba0_like ON public.maasserver_partition USING btree (uuid varchar_pattern_ops);
 
 
 --
@@ -14864,17 +14845,17 @@ CREATE INDEX maasserver_sslkey_user_id_d871db8c ON public.maasserver_sslkey USIN
 
 
 --
--- Name: maasserver_staticipaddress__discovered_unique; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX maasserver_staticipaddress__discovered_unique ON public.maasserver_staticipaddress USING btree (ip) WHERE (alloc_type <> 6);
-
-
---
 -- Name: maasserver_staticipaddress__ip_family; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX maasserver_staticipaddress__ip_family ON public.maasserver_staticipaddress USING btree (family(ip));
+
+
+--
+-- Name: maasserver_staticipaddress_discovered_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_staticipaddress_discovered_uniq ON public.maasserver_staticipaddress USING btree (ip) WHERE (NOT (alloc_type = 6));
 
 
 --
@@ -14962,13 +14943,6 @@ CREATE INDEX maasserver_virtualblockdevice_filesystem_group_id_405a7fc4 ON publi
 
 
 --
--- Name: maasserver_virtualblockdevice_uuid_f094d740_like; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX maasserver_virtualblockdevice_uuid_f094d740_like ON public.maasserver_virtualblockdevice USING btree (uuid varchar_pattern_ops);
-
-
---
 -- Name: maasserver_virtualmachine_bmc_id_e2b4f381; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14983,6 +14957,20 @@ CREATE INDEX maasserver_virtualmachinedisk_backing_pool_id_2fe2f82c ON public.ma
 
 
 --
+-- Name: maasserver_virtualmachinedisk_bdev_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_virtualmachinedisk_bdev_uniq ON public.maasserver_virtualmachinedisk USING btree (vm_id, name, block_device_id) WHERE (block_device_id IS NOT NULL);
+
+
+--
+-- Name: maasserver_virtualmachinedisk_no_bdev_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_virtualmachinedisk_no_bdev_uniq ON public.maasserver_virtualmachinedisk USING btree (vm_id, name) WHERE (block_device_id IS NULL);
+
+
+--
 -- Name: maasserver_virtualmachinedisk_vm_id_a5308b7c; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14994,6 +14982,20 @@ CREATE INDEX maasserver_virtualmachinedisk_vm_id_a5308b7c ON public.maasserver_v
 --
 
 CREATE INDEX maasserver_virtualmachineinterface_host_interface_id_9408be99 ON public.maasserver_virtualmachineinterface USING btree (host_interface_id);
+
+
+--
+-- Name: maasserver_virtualmachineinterface_iface_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_virtualmachineinterface_iface_uniq ON public.maasserver_virtualmachineinterface USING btree (vm_id, mac_address, host_interface_id) WHERE (host_interface_id IS NOT NULL);
+
+
+--
+-- Name: maasserver_virtualmachineinterface_no_iface_uniq; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX maasserver_virtualmachineinterface_no_iface_uniq ON public.maasserver_virtualmachineinterface USING btree (vm_id, mac_address) WHERE (host_interface_id IS NULL);
 
 
 --
