@@ -470,11 +470,20 @@ class Handler(metaclass=HandlerMetaclass):
         return qs
 
     def _sort(self, qs, action, params):
-        """Return a sorted queryset
+        """Return a sorted queryset"""
+        keys = []
 
-        Override if you need to dinamically select a sorting key
-        """
-        return qs.order_by(self._meta.batch_key)
+        if "sort_key" in params:
+            desc = (
+                "-"
+                if (params.get("sort_direction", None) == "descending")
+                else ""
+            )
+            keys.append(f"{desc}{params['sort_key']}")
+
+        keys.append(self._meta.batch_key)
+
+        return qs.order_by(*keys)
 
     def list(self, params):
         """List objects.

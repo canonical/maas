@@ -958,6 +958,29 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             MockCalledOnceWith({handler._meta.pk: sentinel.pk}),
         )
 
+    def test_sort_simple(self):
+        for idx in range(3):
+            factory.make_Node(hostname=f"host-{idx}")
+        handler = self.make_nodes_handler(fields=["hostname"])
+        result = handler.list({"sort_key": "hostname"})
+        self.assertEqual(3, len(result))
+        for idx in range(3):
+            self.assertEqual(f"host-{idx}", result[idx]["hostname"])
+
+    def test_sort_reverse(self):
+        for idx in range(3):
+            factory.make_Node(hostname=f"host-{idx}")
+        handler = self.make_nodes_handler(fields=["hostname"])
+        result = handler.list(
+            {
+                "sort_key": "hostname",
+                "sort_direction": "descending",
+            }
+        )
+        self.assertEqual(3, len(result))
+        for idx in range(3):
+            self.assertEqual(f"host-{2-idx}", result[idx]["hostname"])
+
 
 class TestHandlerTransaction(
     MAASTransactionServerTestCase, FakeNodesHandlerMixin
