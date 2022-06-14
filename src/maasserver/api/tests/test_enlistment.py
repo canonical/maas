@@ -103,10 +103,8 @@ class TestEnlistmentAPI(APITestCase.ForAnonymousAndUserAndAdmin):
         )
         self.assertEqual(http.client.OK, response.status_code)
         [machine] = Machine.objects.filter(hostname=hostname)
-        # The power form adds default values, don't validate those.
-        self.assertDictContainsSubset(
-            power_parameters, machine.bmc.power_parameters
-        )
+        for key, value in power_parameters.items():
+            self.assertEqual(machine.bmc.power_parameters[key], value)
         self.assertEqual(power_type, machine.power_type)
 
     def test_POST_create_creates_machine_with_arch_only(self):
@@ -464,11 +462,8 @@ class TestAnonymousEnlistmentAPI(APITestCase.ForAnonymous):
         machine = reload_object(machine)
         self.assertEqual(hostname, machine.hostname)
         self.assertEqual(architecture, machine.architecture)
-        # The power form add default values, matching is based on the IP
-        # address.
-        self.assertDictContainsSubset(
-            power_parameters, machine.bmc.power_parameters
-        )
+        for key, value in power_parameters.items():
+            self.assertEqual(machine.bmc.power_parameters[key], value)
         self.assertThat(mock_create_machine, MockNotCalled())
         self.assertEqual(
             machine.system_id, json_load_bytes(response.content)["system_id"]
