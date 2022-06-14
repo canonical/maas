@@ -13,8 +13,8 @@ def clean_bmcs(apps, schema_editor):
 
     # delete BMCs that are not linked to any node
     BMC.objects.exclude(
-        id__in=Node.objects.values("bmc_id")
-    ).distinct().delete()
+        id__in=Node.objects.values("bmc_id").distinct()
+    ).delete()
 
     # find duplicated BMCs and remove them, moving nodes to the only one left
     # for each group
