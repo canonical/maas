@@ -325,7 +325,7 @@ def _process_udpate_issues_notification():
         defaults = {
             "category": "warning",
             "admins": True,
-            "message": f"{message}. <a href='/MAAS/l/controllers'>Review controllers.</a>",
+            "message": f"{message}. <a href='/MAAS/r/controllers'>Review controllers.</a>",
             "context": {"reason": reason},
         }
         notification, created = Notification.objects.get_or_create(

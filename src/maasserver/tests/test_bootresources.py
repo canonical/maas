@@ -2190,7 +2190,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         until you import boot images into the region. Visit the
         <a href="%s">boot images</a> page to start the import.
         """
-        images_link = maas_url + urljoin(maas_url_path, "/l/images")
+        images_link = maas_url + urljoin(maas_url_path, "/r/images")
         self.assertEqual(
             normalise_whitespace(error_expected % images_link),
             normalise_whitespace(error_observed),
@@ -2211,7 +2211,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         provision without boot images. Visit the <a href="%s">boot images</a>
         page to start the import.
         """
-        images_link = maas_url + urljoin(maas_url_path, "/l/images")
+        images_link = maas_url + urljoin(maas_url_path, "/r/images")
         self.assertEqual(
             normalise_whitespace(error_expected % images_link),
             normalise_whitespace(error_observed),

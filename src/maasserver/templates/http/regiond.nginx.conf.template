@@ -70,7 +70,7 @@ server {
         try_files /$1 =404;
     }
 
-    location ~ ^/MAAS/[rl]/(.*)$ {
+    location ~ ^/MAAS/r/(.*)$ {
         root {{static_dir}}/web/static;
         try_files /$1 /index.html =404;
     }
