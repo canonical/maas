@@ -4936,7 +4936,7 @@ class Node(CleanSave, TimestampedModel):
                         exclude_addresses=exclude_addresses,
                     )
                     self_interface.ip_addresses.add(new_ip)
-                    exclude_addresses.append(new_ip.id)
+                    exclude_addresses.append(new_ip.ip)
                 elif ip_address.alloc_type != IPADDRESS_TYPE.DISCOVERED:
                     _clone_object(ip_address, ip=None)
                     self_interface.ip_addresses.add(ip_address)
