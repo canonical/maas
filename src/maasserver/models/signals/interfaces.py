@@ -4,8 +4,6 @@
 """Respond to interface changes."""
 
 
-import threading
-
 from django.db.models import Count
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 
@@ -24,6 +22,7 @@ from maasserver.models import (
     VLAN,
     VLANInterface,
 )
+from maasserver.models.interface import InterfaceVisitingThreadLocal
 from maasserver.utils.signals import SignalsManager
 from provisioningserver.logger import LegacyLogger
 
@@ -39,17 +38,6 @@ INTERFACE_CLASSES = [
 signals = SignalsManager()
 
 log = LegacyLogger()
-
-
-class InterfaceVisitingThreadLocal(threading.local):
-    """Since infinite recursion could occur in an arbitrary interface
-    hierarchy, use thread-local storage to ensure that each interface is only
-    visited once.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.visiting = set()
 
 
 enabled_or_disabled_thread_local = InterfaceVisitingThreadLocal()

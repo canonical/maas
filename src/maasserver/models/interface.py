@@ -1680,7 +1680,7 @@ class Interface(CleanSave, TimestampedModel):
         if self.type not in (INTERFACE_TYPE.BOND, INTERFACE_TYPE.BRIDGE):
             return
 
-        visiting = _interface_locals.visiting
+        visiting = _update_parents_thread_local.visiting
         for parent in self.parents.all():
             parent.clear_all_links(clearing_config=True)
             if parent.vlan_id != self.vlan_id and parent.id not in visiting:
@@ -1697,8 +1697,18 @@ class Interface(CleanSave, TimestampedModel):
                     visiting.discard(parent.id)
 
 
-_interface_locals = threading.local()
-_interface_locals.visiting = set()
+class InterfaceVisitingThreadLocal(threading.local):
+    """Since infinite recursion could occur in an arbitrary interface
+    hierarchy, use thread-local storage to ensure that each interface is only
+    visited once.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.visiting = set()
+
+
+_update_parents_thread_local = InterfaceVisitingThreadLocal()
 
 
 class InterfaceRelationship(CleanSave, TimestampedModel):
