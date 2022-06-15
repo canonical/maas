@@ -6142,6 +6142,16 @@ class TestNode(MAASServerTestCase):
             clients,
         )
 
+    def test_copy_between_interface_mappings_exclude_addresses(self):
+        source_node = factory.make_Node_with_Interface_on_Subnet(ifname="eth0")
+        iface = source_node.current_config.interface_set.first()
+        subnet = iface.vlan.subnet_set.first()
+        factory.make_StaticIPAddress(interface=iface, subnet=subnet)
+        node = factory.make_Node_with_Interface_on_Subnet(ifname="eth0")
+        mapping = node._get_interface_mapping_between_nodes(source_node)
+        [exclude_address] = node._copy_between_interface_mappings(mapping)
+        self.assertIn(IPAddress(exclude_address), IPNetwork(subnet.cidr))
+
 
 class TestNodePowerParameters(MAASServerTestCase):
     def setUp(self):
