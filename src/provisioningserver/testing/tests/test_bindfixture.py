@@ -19,7 +19,7 @@ from provisioningserver.testing.bindfixture import (
 from provisioningserver.utils.shell import get_env_with_locale
 
 
-def dig_call(port=53, server="127.0.0.1", commands=None):
+def dig_call(port=53, server="localhost", commands=None):
     """Call `dig` with the given command.
 
     Note that calling dig without a command will perform an NS
@@ -37,10 +37,8 @@ def dig_call(port=53, server="127.0.0.1", commands=None):
     # The time and tries below are high so that tests pass in environments
     # that are much slower than the average developer's machine, so beware
     # before lowering. Many Bothans died to discover these parameters.
-    cmd = ["dig", "+time=10", "+tries=5", "@%s" % server, "-p", "%d" % port]
+    cmd = ["dig", "+time=10", "+tries=5", f"@{server}", "-p", str(port)]
     if commands is not None:
-        if not isinstance(commands, list):
-            commands = (commands,)
         cmd.extend(commands)
     output = check_output(cmd, env=get_env_with_locale())
     return output.decode("utf-8").strip()
