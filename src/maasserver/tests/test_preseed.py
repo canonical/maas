@@ -38,6 +38,7 @@ from maasserver.compose_preseed import get_archive_config, make_clean_repo_name
 from maasserver.enum import FILESYSTEM_TYPE, NODE_STATUS, PRESEED_TYPE
 from maasserver.exceptions import ClusterUnavailable, MissingBootImage
 from maasserver.models import BootResource, Config, PackageRepository
+from maasserver.models.bootresource import LINUX_OSYSTEMS
 from maasserver.preseed import (
     compose_curtin_archive_config,
     compose_curtin_cloud_config,
@@ -323,20 +324,20 @@ class TestGetPreseedTemplate(MAASServerTestCase):
 class TestGetCustomImageDependencyValidation(MAASServerTestCase):
     """Tests for 'get_custom_image_dependency_validation"""
 
-    def test_get_custom_image_dependency_validation_for_custom_ubuntu(self):
+    def test_validation_for_custom_ubuntu(self):
+        distro_series = factory.make_name("ubuntu")
         boot_resource = factory.make_BootResource(
-            name="custom/%s" % factory.make_name("ubuntu"),
+            name=f"custom/{distro_series}",
             base_image="ubuntu/focal",
             architecture="amd64/generic",
         )
-        base_osystem, _ = boot_resource.split_base_image()
-        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
-        machine.osystem, machine.distro_series = boot_resource.name.split("/")
-        machine.architecture = boot_resource.architecture
-        machine.save()
-        validation = get_custom_image_dependency_validation(
-            machine, base_osystem
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED,
+            architecture=boot_resource.architecture,
+            osystem="custom",
+            distro_series=distro_series,
         )
+        validation = get_custom_image_dependency_validation(machine, "ubuntu")
         expected = {
             "98-validate-custom-image-has-cloud-init": [
                 "curtin",
@@ -355,23 +356,22 @@ class TestGetCustomImageDependencyValidation(MAASServerTestCase):
                 'dpkg-query -s netplan.io || (echo "netplan.io not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
         }
-        for k in expected:
-            self.assertCountEqual(validation[k], expected[k])
+        self.assertEqual(validation, expected)
 
-    def test_get_custom_image_dependency_validation_for_custom_centos(self):
+    def test_validation_for_custom_centos(self):
+        distro_series = factory.make_name("centos7")
         boot_resource = factory.make_BootResource(
-            name="custom/%s" % factory.make_name("centos7"),
+            name=f"custom/{distro_series}",
             base_image="centos/centos7",
             architecture="amd64/generic",
         )
-        base_osystem, _ = boot_resource.split_base_image()
-        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
-        machine.osystem, machine.distro_series = boot_resource.name.split("/")
-        machine.architecture = boot_resource.architecture
-        machine.save()
-        validation = get_custom_image_dependency_validation(
-            machine, base_osystem
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED,
+            architecture=boot_resource.architecture,
+            osystem="custom",
+            distro_series=distro_series,
         )
+        validation = get_custom_image_dependency_validation(machine, "centos")
         expected = {
             "98-validate-custom-image-has-cloud-init": [
                 "curtin",
@@ -379,31 +379,69 @@ class TestGetCustomImageDependencyValidation(MAASServerTestCase):
                 "--",
                 "bash",
                 "-c",
-                'dnf list cloud-init || (echo "cloud-init not detected, MAAS will not be able to configure this machine properly" && exit 1)',
+                'rpm -q cloud-init || (echo "cloud-init not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
-            "99-validate-custom-image-has-netplan.io": [
+        }
+        self.assertEqual(validation, expected)
+
+    def test_validation_for_custom_rhel(self):
+        distro_series = factory.make_name("rhel8")
+        boot_resource = factory.make_BootResource(
+            name=f"custom/{distro_series}",
+            base_image="rhel/rhel8",
+            architecture="amd64/generic",
+        )
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED,
+            architecture=boot_resource.architecture,
+            osystem="custom",
+            distro_series=distro_series,
+        )
+        validation = get_custom_image_dependency_validation(machine, "rhel")
+        expected = {
+            "98-validate-custom-image-has-cloud-init": [
                 "curtin",
                 "in-target",
                 "--",
                 "bash",
                 "-c",
-                'dnf list netplan.io || (echo "netplan.io not detected, MAAS will not be able to configure this machine properly" && exit 1)',
+                'rpm -q cloud-init || (echo "cloud-init not detected, MAAS will not be able to configure this machine properly" && exit 1)',
             ],
         }
-        for k in expected:
-            self.assertCountEqual(validation[k], expected[k])
+        self.assertEqual(validation, expected)
 
-    def test_get_custom_image_dependency_validation_for_non_custom(self):
+    def test_validation_for_non_custom(self):
         boot_resource = factory.make_BootResource(
             name="ubuntu/focal", architecture="amd64/generic"
         )
-        machine = factory.make_Machine(status=NODE_STATUS.DEPLOYED)
-        machine.osystem, machine.distro_series = boot_resource.name.split("/")
-        machine.architecture = boot_resource.architecture
-        machine.save()
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED,
+            architecture=boot_resource.architecture,
+            osystem="ubuntu",
+            distro_series="focal",
+        )
         self.assertIsNone(
             get_custom_image_dependency_validation(machine, boot_resource.name)
         )
+
+    def test_validation_for_linuxes(self):
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYED,
+            architecture="amd64/generic",
+            osystem="custom",
+        )
+        for osystem in LINUX_OSYSTEMS:
+            distro_series = factory.make_name(osystem)
+            factory.make_BootResource(
+                name=f"custom/{distro_series}",
+                base_image=f"{osystem}/{osystem}",
+                architecture="amd64/generic",
+            )
+            machine.distro_series = distro_series
+            machine.save()
+            self.assertIsNotNone(
+                get_custom_image_dependency_validation(machine, osystem)
+            )
 
 
 class TestLoadPreseedTemplate(MAASServerTestCase):
