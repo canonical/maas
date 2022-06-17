@@ -14,36 +14,6 @@ import yaml
 from provisioningserver.monkey import add_patches_to_twisted
 
 
-class DeferredValueAccessError(AttributeError):
-    """Raised when a deferred value is accessed."""
-
-
-def DeferredAttributePreventer__get__(self, instance, cls=None):
-    """Prevent retrieving the field.
-
-    This is to be a replacement of Django's DeferredAttribute.__get__
-    """
-    if instance is None:
-        return self
-    raise DeferredValueAccessError(
-        "Accessing deferred field is not allowed: %s" % self.field_name
-    )
-
-
-def fix_django_deferred_attribute():
-    """Dont' allow DeferredAttributes to be loaded.
-
-    If creating objects using Model.objects.all().only('id'), only the
-    id attribute will be loaded from the database, and the rest will be
-    DeferredAttributes. Howver, by default, Django will load such
-    attributes implicitly, which might cause performance issues, given
-    that you explicitly didn't want those attributes loaded.
-    """
-    from django.db.models.query_utils import DeferredAttribute
-
-    DeferredAttribute.__get__ = DeferredAttributePreventer__get__
-
-
 def fix_ordereddict_yaml_representer():
     """Fix PyYAML so an OrderedDict can be dumped."""
 
@@ -86,6 +56,5 @@ def fix_twisted_disconnect_write():
 
 def add_patches():
     add_patches_to_twisted()
-    fix_django_deferred_attribute()
     fix_ordereddict_yaml_representer()
     fix_twisted_disconnect_write()

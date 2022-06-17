@@ -280,32 +280,22 @@ def process_file(
     else:
         script_name = base_name
 
-    script_result = (
-        script_set.scriptresult_set.filter(id=script_result_id)
-        .defer("parameters", "output", "stdout", "stderr", "result")
-        .first()
-    )
+    script_result = script_set.scriptresult_set.filter(
+        id=script_result_id
+    ).first()
     if script_result is None:
-        # If the script_result_id doesn't exist or wasn't sent try to find the
-        # ScriptResult by script_name.
-        script_result = script_set.scriptresult_set.filter(
-            script_name=script_name
-        ).first()
-
-        # If the ScriptResult wasn't found by id or name create an entry for
-        # it.
-        if not script_result:
-            script_id = (
-                Script.objects.filter(name=script_name)
-                .values_list("id", flat=True)
-                .first()
-            )
-            script_result = ScriptResult.objects.create(
-                script_id=script_id,
-                script_set=script_set,
-                script_name=script_name,
-                status=SCRIPT_STATUS.RUNNING,
-            )
+        script_id = (
+            Script.objects.filter(name=script_name)
+            .values_list("id", flat=True)
+            .first()
+        )
+        script_result, _ = script_set.scriptresult_set.get_or_create(
+            script_name=script_name,
+            defaults={
+                "script_id": script_id,
+                "status": SCRIPT_STATUS.RUNNING,
+            },
+        )
 
     # Store the processed file in the given results dictionary. This allows
     # requests with multipart file uploads to include STDOUT and STDERR.
