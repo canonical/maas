@@ -1742,7 +1742,7 @@ class TestPhysicalInterface(MAASServerTestCase):
             INTERFACE_TYPE.PHYSICAL, node=node
         )
         interface_to_update.name = interface.name
-        self.assertRaises(IntegrityError, interface_to_update.save)
+        self.assertRaises(ValidationError, interface_to_update.save)
 
     def test_update_does_not_raise_error_on_unique(self):
         node = factory.make_Node()

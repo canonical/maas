@@ -10,7 +10,7 @@ __all__ = [
     "get_os_info_from_boot_sources",
 ]
 
-import datetime
+from datetime import datetime
 import html
 import os
 from urllib.parse import urlparse
@@ -211,31 +211,25 @@ def _update_cache(source, descriptions):
                 bulk_create = []
                 for spec, item in descriptions.mapping.items():
                     title = get_product_title(item)
-                    if title is None:
-                        extra = {}
-                    else:
-                        extra = {"title": title}
+                    new_values = {
+                        key.replace("-", "_"): item.get(key)
+                        for key in (
+                            "release_codename",
+                            "release_title",
+                            "support_eol",
+                            "bootloader-type",
+                        )
+                    }
+                    new_values["extra"] = {"title": title} if title else {}
+                    # Support EOL needs to be a datetime so it will only
+                    # be marked updated if actually different.
+                    if new_values["support_eol"]:
+                        new_values["support_eol"] = datetime.strptime(
+                            new_values["support_eol"], "%Y-%m-%d"
+                        ).date()
+
                     current = current_images.pop(make_image_tuple(spec), None)
-                    if current is not None:
-                        current.release_codename = item.get("release_codename")
-                        current.release_title = item.get("release_title")
-                        current.support_eol = item.get("support_eol")
-                        current.bootloader_type = item.get("bootloader-type")
-                        current.extra = extra
-
-                        # Support EOL needs to be a datetime so it will only
-                        # be marked updated if actually different.
-                        support_eol = item.get("support_eol")
-                        if support_eol:
-                            current.support_eol = datetime.datetime.strptime(
-                                support_eol, "%Y-%m-%d"
-                            ).date()
-                        else:
-                            current.support_eol = support_eol
-
-                        # Will do nothing if nothing has changed.
-                        current.save()
-                    else:
+                    if current is None:
                         created = now()
                         bulk_create.append(
                             BootSourceCache(
@@ -246,15 +240,21 @@ def _update_cache(source, descriptions):
                                 kflavor=spec.kflavor,
                                 release=spec.release,
                                 label=spec.label,
-                                release_codename=item.get("release_codename"),
-                                release_title=item.get("release_title"),
-                                support_eol=item.get("support_eol"),
-                                bootloader_type=item.get("bootloader-type"),
-                                extra=extra,
                                 created=created,
                                 updated=created,
+                                **new_values,
                             )
                         )
+                    else:
+                        item_changed = False
+                        for key, value in new_values.items():
+                            if getattr(current, key) != value:
+                                item_changed = True
+                                setattr(current, key, value)
+                        # avoid unnecessary queries
+                        if item_changed:
+                            current.save()
+
                 if bulk_create:
                     # Insert all cache items in 1 query.
                     BootSourceCache.objects.bulk_create(bulk_create)

@@ -142,7 +142,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_hosts(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         pods = []
         for _ in range(0, 3):
             pods.append(
@@ -159,7 +159,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_allocated_total_resources(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         storage_total = 0
         storage_allocated = 0
 
@@ -205,7 +205,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_allocated_total_resources_shared_pool(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         storage_allocated = 0
         storage_total = random.randint(10 * 1024**3, 100 * 1024**3)
         pool_name = factory.make_name("pool")
@@ -260,7 +260,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_allocated_total_resources_mixed_pool(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         storage_shared_allocated = 0
         storage_shared_total = random.randint(10 * 1024**3, 100 * 1024**3)
         storage_nonshared_allocated = 0
@@ -352,7 +352,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_no_allocated_total_resources(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         for _ in range(0, 3):
             pod = factory.make_Pod(
                 pod_type="lxd",
@@ -376,7 +376,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_no_hosts_total_resources(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         resources = cluster.total_resources()
         self.assertEqual(resources.cores.allocated, 0)
         self.assertEqual(resources.cores.free, 0)
@@ -390,7 +390,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_get_storage_pools(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         storage_shared_allocated = 0
         storage_shared_total = random.randint(10 * 1024**3, 100 * 1024**3)
         storage_nonshared_allocated = 0
@@ -465,7 +465,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_virtual_machines(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         expected_vms = []
         for _ in range(0, 3):
             pod = factory.make_Pod(
@@ -491,7 +491,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_virtual_machines_hosts_no_vms(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         for _ in range(0, 3):
             pod = factory.make_Pod(
                 pod_type="lxd",
@@ -506,7 +506,7 @@ class TestVMCluster(MAASServerTestCase):
     def test_virtual_machines_no_hosts(self):
         cluster_name = factory.make_name("name")
         project = factory.make_name("project")
-        cluster = VMCluster(name=cluster_name, project=project)
+        cluster = VMCluster.objects.create(name=cluster_name, project=project)
         self.assertEqual(list(cluster.virtual_machines()), [])
 
     def test_tracked_virtual_machines(self):

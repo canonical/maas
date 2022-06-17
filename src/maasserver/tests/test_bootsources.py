@@ -1,9 +1,6 @@
 # Copyright 2014-2020 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Test maasserver.bootsources."""
-
-
 import html
 from os import environ
 import random

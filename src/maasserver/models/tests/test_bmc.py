@@ -84,8 +84,7 @@ UNDEFINED = object()
 
 
 class TestBMC(MAASServerTestCase):
-    @staticmethod
-    def get_machine_ip_address(machine):
+    def get_machine_ip_address(self, machine):
         return machine.current_config.interface_set.all()[
             0
         ].ip_addresses.all()[0]
@@ -114,7 +113,7 @@ class TestBMC(MAASServerTestCase):
         )
         # Make sure they're sharing an IP.
         machine = reload_object(machine)
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        machine_ip_addr = self.get_machine_ip_address(machine)
         self.assertEqual(machine_ip_addr.id, bmc.ip_address.id)
         return machine, bmc, machine_ip
 
@@ -147,7 +146,7 @@ class TestBMC(MAASServerTestCase):
         )
         # Make sure they're not sharing an IP.
         machine = reload_object(machine)
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        machine_ip_addr = self.get_machine_ip_address(machine)
         self.assertNotEqual(machine_ip_addr.id, bmc.ip_address.id)
         return machine, bmc, machine_ip
 
@@ -274,7 +273,7 @@ class TestBMC(MAASServerTestCase):
 
         # Check Machine still has same IP address.
         machine = reload_object(machine)
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        machine_ip_addr = self.get_machine_ip_address(machine)
         self.assertEqual(old_ip, machine_ip_addr.ip)
         self.assertEqual(machine_ip.id, machine_ip_addr.id)
 
@@ -295,7 +294,7 @@ class TestBMC(MAASServerTestCase):
 
         # Check Machine has new IP address but kept same instance: machine_ip.
         machine = reload_object(machine)
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        machine_ip_addr = self.get_machine_ip_address(machine)
         self.assertEqual(new_ip, machine_ip_addr.ip)
         self.assertEqual(machine_ip.id, machine_ip_addr.id)
 
@@ -327,7 +326,7 @@ class TestBMC(MAASServerTestCase):
 
         # Check Machine has old IP address and kept same instance: machine_ip.
         machine = reload_object(machine)
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        machine_ip_addr = self.get_machine_ip_address(machine)
         self.assertEqual(old_ip, machine_ip_addr.ip)
         self.assertEqual(machine_ip.id, machine_ip_addr.id)
 
@@ -338,18 +337,15 @@ class TestBMC(MAASServerTestCase):
         # Make sure DB ID's of StaticIPAddress instances differ.
         self.assertNotEqual(machine_ip_addr.id, bmc.ip_address.id)
 
-    def test_merging_machine_into_bmc_ip(self):
-        machine, bmc, _ = self.make_machine_and_bmc_differing_ips()
-
-        # Now change the machine's address to match bmc's.
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
-        machine_ip_addr.ip = bmc.ip_address.ip
-        machine_ip_addr.save()
-
-        # Make sure BMC and Machine now using same StaticIPAddress instance.
-        machine = reload_object(machine)
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
-        self.assertEqual(machine_ip_addr.id, reload_object(bmc).ip_address.id)
+    def test_bmc_existing_ip_links_to_it(self):
+        ip = factory.make_StaticIPAddress(ip="10.10.10.10")
+        bmc = factory.make_BMC(
+            power_type="virsh",
+            power_parameters={
+                "power_address": f"virsh://{ip.ip}/path/to/thing#tag"
+            },
+        )
+        self.assertEqual(bmc.ip_address.id, ip.id)
 
     def test_merging_bmc_into_machine_ip(self):
         machine, bmc, machine_ip = self.make_machine_and_bmc_differing_ips()
@@ -363,7 +359,7 @@ class TestBMC(MAASServerTestCase):
 
         # Make sure BMC and Machine are using same StaticIPAddress instance.
         machine = reload_object(machine)
-        machine_ip_addr = TestBMC.get_machine_ip_address(machine)
+        machine_ip_addr = self.get_machine_ip_address(machine)
         self.assertEqual(machine_ip_addr.id, bmc.ip_address.id)
 
     def test_delete_bmc_deletes_orphaned_ip_address(self):

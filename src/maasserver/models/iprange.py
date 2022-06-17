@@ -49,7 +49,7 @@ class IPRangeQueriesMixin(MAASQueriesMixin):
             specifiers,
             specifier_types=specifier_types,
             separator=separator,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -212,7 +212,7 @@ class IPRange(CleanSave, TimestampedModel):
             self._raise_validation_error(
                 "IPv6 dynamic range must be at least 256 addresses in size."
             )
-        self.clean_prevent_dupes_and_overlaps()
+        self._validate_duplicates_and_overlaps()
 
     @property
     def netaddr_iprange(self):
@@ -226,7 +226,7 @@ class IPRange(CleanSave, TimestampedModel):
         return make_iprange(self.start_ip, self.end_ip, purpose=purpose)
 
     @transactional
-    def clean_prevent_dupes_and_overlaps(self):
+    def _validate_duplicates_and_overlaps(self):
         """Make sure the new or updated range isn't going to cause a conflict.
         If it will, raise ValidationError.
         """
@@ -240,14 +240,8 @@ class IPRange(CleanSave, TimestampedModel):
             self.subnet_id is None
             or self.start_ip is None
             or self.end_ip is None
-            or self.type is None
             or self.type not in valid_types
         ):
-            return
-
-        # No dupe checking is required if the object hasn't been materially
-        # modified.
-        if not self._state.has_any_changed(["type", "start_ip", "end_ip"]):
             return
 
         # Reserved ranges can overlap allocated IPs but not other ranges.
@@ -261,22 +255,21 @@ class IPRange(CleanSave, TimestampedModel):
                 exclude_ip_ranges=[self]
             )
 
-        if len(unused) == 0:
+        if not unused:
             self._raise_validation_error(
-                "There is no room for any %s ranges on this subnet."
-                % (self.type)
+                f"There is no room for any {self.type} ranges on this subnet."
             )
 
-        message = "Requested %s range conflicts with an existing " % self.type
+        message = f"Requested {self.type} range conflicts with an existing "
         if self.type == IPRANGE_TYPE.RESERVED:
             message += "range."
         else:
             message += "IP address or range."
 
         # Find unused range for start_ip
-        for range in unused:
-            if IPAddress(self.start_ip) in range:
-                if IPAddress(self.end_ip) in range:
+        for unused_range in unused:
+            if IPAddress(self.start_ip) in unused_range:
+                if IPAddress(self.end_ip) in unused_range:
                     # Success, start and end IP are in an unused range.
                     return
                 else:

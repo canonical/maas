@@ -106,7 +106,7 @@ class TestVlansAPI(APITestCase.ForUser):
         with CountQueries() as counter:
             response = self.client.get(uri)
         # XXX: These really should be equal.
-        self.assertEqual(base_count + 5, counter.count)
+        self.assertEqual(base_count + 6, counter.count)
 
     def test_create(self):
         self.become_admin()

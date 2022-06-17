@@ -1,15 +1,9 @@
 # Copyright 2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for updating services."""
-
-
-from unittest.mock import call
-
 from maasserver.models import RackController, RegionRackRPCConnection, Service
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 
 
 class TestRegionRackRPCConnection(MAASServerTestCase):
@@ -20,7 +14,7 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         RegionRackRPCConnection.objects.create(
             endpoint=endpoint, rack_controller=rack_controller
         )
-        self.assertThat(mock_create_for, MockCalledOnceWith(rack_controller))
+        mock_create_for.assert_called_once_with(rack_controller)
 
     def test_calls_update_rackd_status_on_create(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()
@@ -31,7 +25,7 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         RegionRackRPCConnection.objects.create(
             endpoint=endpoint, rack_controller=rack_controller
         )
-        self.assertThat(mock_update_rackd_status, MockCalledOnceWith())
+        mock_update_rackd_status.assert_called_once_with()
 
     def test_calls_create_services_for_on_update(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()
@@ -41,7 +35,7 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
             endpoint=endpoint, rack_controller=rack_controller
         )
         connection.save()
-        self.assertThat(mock_create_for, MockCalledOnceWith(rack_controller))
+        mock_create_for.assert_called_with(rack_controller)
 
     def test_calls_update_rackd_status_on_update(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()
@@ -52,8 +46,9 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         connection = RegionRackRPCConnection.objects.create(
             endpoint=endpoint, rack_controller=rack_controller
         )
+        mock_update_rackd_status.reset_mock()
         connection.save()
-        self.assertThat(mock_update_rackd_status, MockCalledOnceWith())
+        mock_update_rackd_status.assert_called_once_with()
 
     def test_calls_create_services_for_on_delete(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()
@@ -62,11 +57,9 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         connection = RegionRackRPCConnection.objects.create(
             endpoint=endpoint, rack_controller=rack_controller
         )
+        mock_create_for.reset_mock()
         connection.delete()
-        self.assertThat(
-            mock_create_for,
-            MockCallsMatch(call(rack_controller), call(rack_controller)),
-        )
+        mock_create_for.assert_called_once_with(rack_controller)
 
     def test_calls_update_rackd_status_on_delete(self):
         endpoint = factory.make_RegionControllerProcessEndpoint()
@@ -77,10 +70,9 @@ class TestRegionRackRPCConnection(MAASServerTestCase):
         connection = RegionRackRPCConnection.objects.create(
             endpoint=endpoint, rack_controller=rack_controller
         )
+        mock_update_rackd_status.reset_mock()
         connection.delete()
-        self.assertThat(
-            mock_update_rackd_status, MockCallsMatch(call(), call())
-        )
+        mock_update_rackd_status.assert_called_once_with()
 
 
 class TestRegionControllerProcess(MAASServerTestCase):
