@@ -5,6 +5,7 @@
 
 from asyncio import iscoroutinefunction
 from functools import wraps
+import inspect
 import os
 
 import crochet
@@ -121,11 +122,27 @@ def get_timeout(timeout=None):
     return float(wait_time)
 
 
+class TimeoutInTestException(Exception):
+    """Nicer reporting of what actually timed-out."""
+
+    def __init__(self, function, fargs, fkwargs, timeout, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # It's not useful to see all the decorators
+        self.function = inspect.unwrap(function)
+        self.args = fargs
+        self.kwargs = fkwargs
+        self.timeout = timeout
+
+    def __str__(self):
+        return f"Timeout after {self.timeout}s running {self.function.__name__} with args {self.args!r} and kwargs {self.kwargs!r}"
+
+
 def wait_for(timeout=None):
     """Backport of wait_for from Crochet 2.0.
 
     This allows async def definitions to be used.
     """
+    timeout = get_timeout(timeout)
 
     def decorator(function):
         def wrapper(function, _, args, kwargs):
@@ -138,10 +155,10 @@ def wait_for(timeout=None):
 
             eventual_result = run()
             try:
-                return eventual_result.wait(get_timeout(timeout))
-            except TimeoutError:
+                return eventual_result.wait(timeout)
+            except crochet.TimeoutError:
                 eventual_result.cancel()
-                raise
+                raise TimeoutInTestException(function, args, kwargs, timeout)
 
         if iscoroutinefunction(function):
             # Create a non-async wrapper with same signature.
