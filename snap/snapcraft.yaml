@@ -205,7 +205,7 @@ parts:
       NODE_ENV="production"
       npm install -g --prefix $SNAPCRAFT_PART_INSTALL yarn webpack webpack-cli
       yarn install
-      yarn build-all
+      yarn build
 
       INSTALL_DIR="$SNAPCRAFT_PART_INSTALL/usr/share/maas/web"
       mkdir -p "$INSTALL_DIR"

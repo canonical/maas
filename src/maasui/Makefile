@@ -43,7 +43,7 @@ src/yarn.lock:
 	git submodule update --init --remote
 
 src/build: $(NODEJS_BIN)/yarn src/yarn.lock
-	yarn --cwd src build-all
+	yarn --cwd src build
 
 build/index.html: src/build
 	mkdir -p build
