@@ -306,7 +306,6 @@ packaging-branch = "packaging"
 
 packaging-build-area := $(abspath ../build-area)
 packaging-version := $(shell utilities/package-version)
-tmp_changelog := $(shell tempfile)
 packaging-dir := maas_$(packaging-version)
 packaging-orig-tar := $(packaging-dir).orig.tar
 packaging-orig-targz := $(packaging-dir).orig.tar.gz
@@ -344,13 +343,13 @@ go_bins_vendor := src/host-info/vendor
 -packaging-export: -packaging-export-orig$(if $(export-uncommitted),-uncommitted,)
 .PHONY: -packaging-export
 
+-package-tree: changelog := $(packaging-build-area)/$(packaging-dir)/debian/changelog
 -package-tree: -packaging-export
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
-	(cp -r debian $(packaging-build-area)/$(packaging-dir))
+	cp -r debian $(packaging-build-area)/$(packaging-dir)
 	echo "maas (1:$(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
-	    > $(tmp_changelog)
-	tail -n +2 debian/changelog >> $(tmp_changelog)
-	mv $(tmp_changelog) $(packaging-build-area)/$(packaging-dir)/debian/changelog
+	    > $(changelog)
+	tail -n +2 debian/changelog >> $(changelog)
 .PHONY: -package-tree
 
 package-tree: -packaging-clean -package-tree
