@@ -26,16 +26,22 @@ DNSSEC_VALIDATION_CHOICES = [
 
 NETWORK_DISCOVERY_CHOICES = [("enabled", "Enabled"), ("disabled", "Disabled")]
 
+
+def _timedelta_to_whole_seconds(**kwargs) -> int:
+    """Convert arbitrary timedelta to whole seconds."""
+    return int(timedelta(**kwargs).total_seconds())
+
+
 ACTIVE_DISCOVERY_INTERVAL_CHOICES = [
     (0, "Never (disabled)"),
-    (int(timedelta(days=7).total_seconds()), "Every week"),
-    (int(timedelta(days=1).total_seconds()), "Every day"),
-    (int(timedelta(hours=12).total_seconds()), "Every 12 hours"),
-    (int(timedelta(hours=6).total_seconds()), "Every 6 hours"),
-    (int(timedelta(hours=3).total_seconds()), "Every 3 hours"),
-    (int(timedelta(hours=1).total_seconds()), "Every hour"),
-    (int(timedelta(minutes=30).total_seconds()), "Every 30 minutes"),
-    (int(timedelta(minutes=10).total_seconds()), "Every 10 minutes"),
+    (_timedelta_to_whole_seconds(days=7), "Every week"),
+    (_timedelta_to_whole_seconds(days=1), "Every day"),
+    (_timedelta_to_whole_seconds(hours=12), "Every 12 hours"),
+    (_timedelta_to_whole_seconds(hours=6), "Every 6 hours"),
+    (_timedelta_to_whole_seconds(hours=3), "Every 3 hours"),
+    (_timedelta_to_whole_seconds(hours=1), "Every hour"),
+    (_timedelta_to_whole_seconds(minutes=30), "Every 30 minutes"),
+    (_timedelta_to_whole_seconds(minutes=10), "Every 10 minutes"),
 ]
 
 
@@ -75,7 +81,7 @@ def get_default_config():
         "maas_syslog_port": 5247,
         # Network discovery.
         "network_discovery": "enabled",
-        "active_discovery_interval": int(timedelta(hours=3).total_seconds()),
+        "active_discovery_interval": _timedelta_to_whole_seconds(hours=3),
         "active_discovery_last_scan": 0,
         # RPC configuration.
         "rpc_region_certificate": None,
