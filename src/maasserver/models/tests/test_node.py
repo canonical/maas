@@ -10994,7 +10994,7 @@ class TestReportNeighbours(MAASServerTestCase):
             [call(3, ip=neighbours[0]["ip"]), call(7, ip=neighbours[1]["ip"])]
         )
 
-    def test_updates_fabric_of_existing_vlan(self):
+    def test_does_not_updates_fabric_of_existing_vlan(self):
         rack = factory.make_RackController()
         observing_fabric = factory.make_Fabric()
         other_fabric = factory.make_Fabric()
@@ -11015,10 +11015,10 @@ class TestReportNeighbours(MAASServerTestCase):
         ]
         rack.report_neighbours(neighbours)
         observed_vlan.refresh_from_db()
-        self.assertEqual(observing_fabric, observed_vlan.fabric)
+        self.assertEqual(other_fabric, observed_vlan.fabric)
         self.assertEqual(
             VLAN.objects.filter(
-                vid=observed_vlan.vid, fabric=observing_fabric
+                vid=observed_vlan.vid, fabric=other_fabric
             ).count(),
             1,
         )

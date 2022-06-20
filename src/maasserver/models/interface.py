@@ -1547,16 +1547,8 @@ class Interface(CleanSave, TimestampedModel):
 
             if ip:
                 subnet = Subnet.objects.get_best_subnet_for_ip(ip)
-                if subnet:
-                    vlan = subnet.vlan
-                    vlan.fabric = fabric
-                    vlan.save()
-                    maaslog.info(
-                        "%s: Automatically updated VLAN %d (observed on %s).",
-                        self.get_log_string(),
-                        vid,
-                        vlan.fabric.get_name(),
-                    )
+                # VLAN already exists, don't update it
+                if subnet and subnet.vlan.vid == vid:
                     return
 
             vlan, created = VLAN.objects.get_or_create(
