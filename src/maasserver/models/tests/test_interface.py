@@ -4105,7 +4105,7 @@ class TestReportVID(MAASServerTestCase):
             new_vlan.description,
         )
 
-    def test_report_vid_handles_existing_vlan(self):
+    def test_report_vid_does_not_modify_existing_vlan(self):
         fabric1 = factory.make_Fabric()
         fabric2 = factory.make_Fabric()
         observing_vlan = fabric1.get_default_vlan()
@@ -4117,7 +4117,7 @@ class TestReportVID(MAASServerTestCase):
             neighbour_vlan.vid, ip=subnet2.get_next_ip_for_allocation()
         )
         neighbour_vlan.refresh_from_db()
-        self.assertEqual(observing_vlan.fabric, neighbour_vlan.fabric)
+        self.assertEqual(observing_vlan.fabric, fabric1)
 
 
 class TestInterfaceGetDefaultBridgeName(MAASServerTestCase):
