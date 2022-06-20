@@ -10,4 +10,4 @@ chown root:root "$SNAP_COMMON/log/http"
 # Place nginx.conf from the one shipped with the snap.
 cp -f "$SNAP/usr/share/maas/nginx/nginx.conf" "$SNAP_DATA/http/"
 
-exec "$SNAP/bin/ld-preload" "$SNAP/usr/sbin/nginx" -c "$SNAP_DATA/http/nginx.conf"
+exec "$SNAP/usr/sbin/nginx" -c "$SNAP_DATA/http/nginx.conf"

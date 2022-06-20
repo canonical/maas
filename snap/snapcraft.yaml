@@ -19,6 +19,7 @@ epoch: 3
 
 environment:
   PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
+  LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
 
 plugs:
   test-db-socket:
@@ -35,9 +36,7 @@ slots:
 apps:
   supervisor:
     daemon: simple
-    command: bin/ld-preload $SNAP/bin/run-supervisord
-    environment:
-      LD_PRELOAD: $SNAP/usr/lib/stub_initgroups.so
+    command: bin/run-supervisord
     plugs:
       - avahi-observe
       - hardware-observe
@@ -52,7 +51,7 @@ apps:
       - time-control
 
   maas:
-    command: bin/ld-preload $SNAP/bin/maas
+    command: bin/maas
     plugs:
       - home
       - mount-observe  # to read /proc/*/mounts
@@ -230,22 +229,10 @@ parts:
     plugin: dump
     source: snap/local/tree
 
-  stub-initgroups:
+  snap-preload:
     plugin: make
-    source: snap/local/stub_initgroups
-
-  snapcraft-preload:
-    plugin: cmake
-    source: https://github.com/sergiusens/snapcraft-preload
+    source: https://github.com/maas/snap-preload
     source-type: git
-    build-packages:
-      - on amd64:
-          - g++-multilib
-          - gcc-multilib
-    organize:
-      usr/local/*: /
-    prime:
-      - -usr
 
 hooks:
   install:

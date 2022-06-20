@@ -21,7 +21,6 @@ snap connections maas | \
     xargs -r -n1 sudo snap connect
 
 # connect content interfaces too
-sudo snap connect maas:maas-cli maas-cli
 if is_installed maas-test-db; then
     sudo snap connect maas:test-db-socket maas-test-db
 fi
