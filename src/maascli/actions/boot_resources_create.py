@@ -14,7 +14,7 @@ from apiclient.multipart import (
     encode_multipart_message,
 )
 from maascli import utils
-from maascli.api import Action, http_request
+from maascli.api import Action, http_request, materialize_certificate
 from maascli.command import CommandError
 
 # Send 4MB of data per request.
@@ -77,6 +77,7 @@ class BootResourcesCreateAction(Action):
             self.method,
             body=body,
             headers=headers,
+            ca_certs=materialize_certificate(self.profile),
             insecure=options.insecure,
         )
 
@@ -145,7 +146,7 @@ class BootResourcesCreateAction(Action):
         _, rfile = resource_set["files"].popitem()
         return rfile
 
-    def put_upload(self, upload_uri, data, insecure=False):
+    def put_upload(self, upload_uri, data, ca_certs=None, insecure=False):
         """Send PUT method to upload data."""
         headers = {
             "Content-Type": "application/octet-stream",
@@ -156,7 +157,12 @@ class BootResourcesCreateAction(Action):
         # httplib2 expects the body to be file-like if its binary data
         data = BytesIO(data)
         response, content = http_request(
-            upload_uri, "PUT", body=data, headers=headers, insecure=insecure
+            upload_uri,
+            "PUT",
+            body=data,
+            headers=headers,
+            ca_certs=ca_certs,
+            insecure=insecure,
         )
         if response.status != 200:
             utils.print_response_content(response, content)
@@ -164,12 +170,15 @@ class BootResourcesCreateAction(Action):
 
     def upload_content(self, upload_uri, content, insecure=False):
         """Upload the content in chunks."""
+        ca_certs = materialize_certificate(self.profile)
         with content() as fd:
             while True:
                 buf = fd.read(CHUNK_SIZE)
                 length = len(buf)
                 if length > 0:
-                    self.put_upload(upload_uri, buf, insecure=insecure)
+                    self.put_upload(
+                        upload_uri, buf, ca_certs=ca_certs, insecure=insecure
+                    )
                 if length != CHUNK_SIZE:
                     break
 
