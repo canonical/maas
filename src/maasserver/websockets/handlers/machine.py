@@ -161,6 +161,7 @@ class MachineHandler(NodeHandler):
             "update",
             "action",
             "set_active",
+            "unsubscribe",
             "check_power",
             "create_physical",
             "create_vlan",

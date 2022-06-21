@@ -128,6 +128,7 @@ class NodeHandler(TimestampedModelHandler):
     class Meta:
         abstract = True
         pk = "system_id"
+        bulk_pk = "system_ids"
         pk_type = str
 
     def __init__(self, user, cache, request):

@@ -59,6 +59,7 @@ class TestHandlerMeta(MAASTestCase):
                         "update",
                         "delete",
                         "set_active",
+                        "unsubscribe",
                     ]
                 ),
                 handler_name=Equals(""),
@@ -980,6 +981,56 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         self.assertEqual(3, len(result))
         for idx in range(3):
             self.assertEqual(f"host-{2-idx}", result[idx]["hostname"])
+
+    def test_unsubscribe_prevents_further_updates_for_pk(self):
+        handler = self.make_nodes_handler()
+        node = factory.make_Node()
+        handler._meta.queryset = Node.objects.all()
+        handler._meta.listen_channels = ["node"]
+        handler._meta.bulk_pk = "system_ids"
+        handler._meta.pk = "system_id"
+        listen_result = handler.listen("node", "update", node.system_id)
+        self.assertIsNotNone(listen_result)
+        handler.unsubscribe({"system_ids": [node.system_id]})
+        self.assertIsNone(handler.listen("node", "update", node.system_id))
+        list_result = handler.list({})
+        self.assertEqual(len(list_result), 1)
+
+    def test_unsubscribe_raises_validation_error_with_no_pk(self):
+        handler = self.make_nodes_handler()
+        handler._meta.queryset = Node.objects.all()
+        handler._meta.listen_channels = ["node"]
+        handler._meta.bulk_pk = "system_ids"
+        handler._meta.pk = "system_id"
+        self.assertRaises(HandlerValidationError, handler.unsubscribe, {})
+
+    def test_read_an_unsubscribed_object_subscribes(self):
+        handler = self.make_nodes_handler()
+        node = factory.make_Node()
+        handler._meta.queryset = Node.objects.all()
+        handler._meta.listen_channels = ["node"]
+        handler._meta.bulk_pk = "system_ids"
+        handler._meta.pk = "system_id"
+        self.assertIsNotNone(handler.listen("node", "update", node.system_id))
+        handler.unsubscribe({"system_ids": [node.system_id]})
+        self.assertIsNone(handler.listen("node", "update", node.system_id))
+        self.assertIsNotNone(handler.get({"system_id": node.system_id}))
+        self.assertIsNotNone(handler.listen("node", "update", node.system_id))
+
+    def test_list_an_unsubscribed_object_subscribes(self):
+        handler = self.make_nodes_handler()
+        node = factory.make_Node()
+        handler._meta.queryset = Node.objects.all()
+        handler._meta.listen_channels = ["node"]
+        handler._meta.bulk_pk = "system_ids"
+        handler._meta.pk = "system_id"
+        listen_result = handler.listen("node", "update", node.system_id)
+        self.assertIsNotNone(listen_result)
+        handler.unsubscribe({"system_ids": [node.system_id]})
+        self.assertIsNone(handler.listen("node", "update", node.system_id))
+        list_result = handler.list({})
+        self.assertEqual(len(list_result), 1)
+        self.assertIsNotNone(handler.listen("node", "update", node.system_id))
 
 
 class TestHandlerTransaction(

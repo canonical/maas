@@ -20,7 +20,10 @@ from apiclient.utils import ascii_url
 from maasserver.eventloop import services
 from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.listener import FakePostgresListenerService
-from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+)
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets import protocol as protocol_module
@@ -1000,3 +1003,20 @@ class TestWebSocketFactoryTransactional(
                 controller.system_id,
             ),
         )
+
+
+class TestWebSocketFactoryServer(MAASServerTestCase, MakeProtocolFactoryMixin):
+    def test_processNotify_unsubscribed_object(self):
+        factory = self.make_factory()
+        machine = maas_factory.make_Machine()
+        handler = MachineHandler(maas_factory.make_User(), {}, None)
+        factory.handlers["machine"] = handler
+        result = factory.processNotify(
+            handler, "machine", "update", machine.system_id
+        )
+        self.assertIsNotNone(result)
+        handler.unsubscribe({"system_ids": [machine.system_id]})
+        result = factory.processNotify(
+            handler, "machine", "update", machine.system_id
+        )
+        self.assertIsNone(result)

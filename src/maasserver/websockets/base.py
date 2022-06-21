@@ -94,13 +94,16 @@ class HandlerOptions:
         "update",
         "delete",
         "set_active",
+        "unsubscribe",
     ]
     handler_name = None
     object_class = None
     queryset = None
     list_queryset = None
     pk = "id"
+    bulk_pk = "ids"
     pk_type = int
+    unsubscribed_pks = set()
     fields = None
     exclude = None
     list_fields = None
@@ -337,6 +340,7 @@ class Handler(metaclass=HandlerMetaclass):
                 permission = self._meta.view_permission
             if not self.user.has_perm(permission, obj):
                 raise HandlerPermissionError()
+        self._meta.unsubscribed_pks.discard(pk)
         return obj
 
     def get_queryset(self, for_list=False):
@@ -461,6 +465,7 @@ class Handler(metaclass=HandlerMetaclass):
         """Cache all loaded object pks."""
         getpk = attrgetter(self._meta.pk)
         self.cache["loaded_pks"].update(getpk(obj) for obj in objs)
+        [self._meta.unsubscribed_pks.discard(getpk(obj)) for obj in objs]
 
     def _filter(self, qs, action, params):
         """Return a filtered queryset
@@ -740,7 +745,11 @@ class Handler(metaclass=HandlerMetaclass):
         :param action: Action that caused this event.
         :param pk: Id of the object.
         """
-        return self.get_object({self._meta.pk: pk})
+        return (
+            self.get_object({self._meta.pk: pk})
+            if pk not in self._meta.unsubscribed_pks
+            else None
+        )
 
     def refetch(self, obj):
         """Refetch an object using the handler queryset.
@@ -749,6 +758,27 @@ class Handler(metaclass=HandlerMetaclass):
         object.
         """
         return self.get_object({self._meta.pk: getattr(obj, self._meta.pk)})
+
+    def _unsubscribe(self, pk):
+        if pk == self.cache.get("active_pk"):
+            del self.cache["active_pk"]
+
+        if pk in self.cache.get("loaded_pks", []):
+            self.cache["loaded_pks"].remove(pk)
+
+        self._meta.unsubscribed_pks.add(pk)
+
+        return pk
+
+    def unsubscribe(self, params):
+        if self._meta.pk in params:
+            return self._unsubscribe(params[self._meta.pk])
+        elif self._meta.bulk_pk in params:
+            return [self._unsubscribe(pk) for pk in params[self._meta.bulk_pk]]
+        else:
+            raise HandlerValidationError(
+                f"'{self._meta.pk}' or '{self._meta.bulk_pk}' must be provided in params for unsubscribe"
+            )
 
 
 class AdminOnlyMixin(Handler):
