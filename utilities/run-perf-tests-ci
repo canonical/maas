@@ -28,4 +28,4 @@ exec bin/database --preserve run -- bin/test.perf \
     --no-header \
     --no-summary \
     --junit-xml=junit-perf.xml \
-    ./src/
+    ./src/maasperf/
