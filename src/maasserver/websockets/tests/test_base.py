@@ -13,6 +13,7 @@ from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import succeed
 
+from maasserver.enum import NODE_STATUS
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
 from maasserver.models.node import Device, Node
 from maasserver.models.vlan import VLAN
@@ -1031,6 +1032,379 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         list_result = handler.list({})
         self.assertEqual(len(list_result), 1)
         self.assertIsNotNone(handler.listen("node", "update", node.system_id))
+
+
+class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
+    def test_group_simple(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(3)
+        ]
+        nodes_new = [
+            factory.make_Node(status=NODE_STATUS.NEW) for _ in range(2)
+        ]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list({"group_key": "status"})
+
+        output = [
+            {
+                "name": NODE_STATUS.NEW,
+                "count": 2,
+                "collapsed": False,
+                "items": [
+                    {"hostname": n.hostname, "status": n.status}
+                    for n in nodes_new
+                ],
+            },
+            {
+                "name": NODE_STATUS.READY,
+                "count": 3,
+                "collapsed": False,
+                "items": [
+                    {"hostname": n.hostname, "status": n.status}
+                    for n in nodes_ready
+                ],
+            },
+        ]
+        self.assertEqual(output, result)
+
+    def test_group_suppresion(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(3)
+        ]
+        _ = [factory.make_Node(status=NODE_STATUS.NEW) for _ in range(2)]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {"group_key": "status", "group_collapsed": [NODE_STATUS.NEW]}
+        )
+
+        output = [
+            {
+                "name": NODE_STATUS.NEW,
+                "count": 2,
+                "collapsed": True,
+                "items": [],
+            },
+            {
+                "name": NODE_STATUS.READY,
+                "count": 3,
+                "collapsed": False,
+                "items": [
+                    {"hostname": n.hostname, "status": n.status}
+                    for n in nodes_ready
+                ],
+            },
+        ]
+        self.assertEqual(output, result)
+
+    def test_group_suppresion_out_of_scope(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(3)
+        ]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {"group_key": "status", "group_collapsed": [NODE_STATUS.NEW]}
+        )
+
+        output = [
+            {
+                "name": NODE_STATUS.READY,
+                "count": 3,
+                "collapsed": False,
+                "items": [
+                    {"hostname": n.hostname, "status": n.status}
+                    for n in nodes_ready
+                ],
+            }
+        ]
+        self.assertEqual(output, result)
+
+    def test_group_page_first(self):
+        _ = [factory.make_Node(status=NODE_STATUS.READY) for _ in range(5)]
+        nodes_new = [
+            factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)
+        ]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {
+                "group_key": "status",
+                "page_size": 3,
+                "page_number": 1,
+            }
+        )
+
+        output = {
+            "count": 10,
+            "cur_page": 1,
+            "num_pages": 4,
+            "items": [
+                {
+                    "name": NODE_STATUS.NEW,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_new[:3]
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_page_next(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(5)
+        ]
+        nodes_new = [
+            factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)
+        ]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {
+                "group_key": "status",
+                "page_size": 3,
+                "page_number": 2,
+            }
+        )
+
+        output = {
+            "count": 10,
+            "cur_page": 2,
+            "num_pages": 4,
+            "items": [
+                {
+                    "name": NODE_STATUS.NEW,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_new[3:]
+                    ],
+                },
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready[:1]
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_page_last(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(5)
+        ]
+        _ = [factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {
+                "group_key": "status",
+                "page_size": 3,
+                "page_number": 4,
+            }
+        )
+
+        output = {
+            "count": 10,
+            "cur_page": 4,
+            "num_pages": 4,
+            "items": [
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready[4:]
+                    ],
+                }
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_page_suppresion_beginning(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(5)
+        ]
+        _ = [factory.make_Node(status=NODE_STATUS.DEPLOYED) for _ in range(5)]
+        _ = [factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {
+                "group_key": "status",
+                "group_collapsed": [NODE_STATUS.NEW],
+                "page_size": 4,
+                "page_number": 1,
+            }
+        )
+
+        output = {
+            "count": 15,
+            "cur_page": 1,
+            "num_pages": 3,
+            "items": [
+                {
+                    "name": NODE_STATUS.NEW,
+                    "count": 5,
+                    "collapsed": True,
+                    "items": [],
+                },
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready[:4]
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_page_suppresion_next_page(self):
+        _ = [factory.make_Node(status=NODE_STATUS.READY) for _ in range(5)]
+        nodes_deployed = [
+            factory.make_Node(status=NODE_STATUS.DEPLOYED) for _ in range(5)
+        ]
+        _ = [factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {
+                "group_key": "status",
+                "group_collapsed": [NODE_STATUS.READY],
+                "page_size": 5,
+                "page_number": 2,
+            }
+        )
+
+        output = {
+            "count": 15,
+            "cur_page": 2,
+            "num_pages": 2,
+            "items": [
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 5,
+                    "collapsed": True,
+                    "items": [],
+                },
+                {
+                    "name": NODE_STATUS.DEPLOYED,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_deployed
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_page_suppresion_middle(self):
+        _ = [factory.make_Node(status=NODE_STATUS.READY) for _ in range(5)]
+        nodes_deployed = [
+            factory.make_Node(status=NODE_STATUS.DEPLOYED) for _ in range(5)
+        ]
+        nodes_new = [
+            factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)
+        ]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {
+                "group_key": "status",
+                "group_collapsed": [NODE_STATUS.READY],
+                "page_size": 4,
+                "page_number": 2,
+            }
+        )
+
+        output = {
+            "count": 15,
+            "cur_page": 2,
+            "num_pages": 3,
+            "items": [
+                {
+                    "name": NODE_STATUS.NEW,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_new[4:]
+                    ],
+                },
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 5,
+                    "collapsed": True,
+                    "items": [],
+                },
+                {
+                    "name": NODE_STATUS.DEPLOYED,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_deployed[:3]
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_page_suppresion_end(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(5)
+        ]
+        _ = [factory.make_Node(status=NODE_STATUS.DEPLOYED) for _ in range(5)]
+        _ = [factory.make_Node(status=NODE_STATUS.NEW) for _ in range(5)]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list(
+            {
+                "group_key": "status",
+                "group_collapsed": [NODE_STATUS.DEPLOYED],
+                "page_size": 4,
+                "page_number": 3,
+            }
+        )
+
+        output = {
+            "count": 15,
+            "cur_page": 3,
+            "num_pages": 3,
+            "items": [
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 5,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready[3:]
+                    ],
+                },
+                {
+                    "name": NODE_STATUS.DEPLOYED,
+                    "count": 5,
+                    "collapsed": True,
+                    "items": [],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
 
 
 class TestHandlerTransaction(
