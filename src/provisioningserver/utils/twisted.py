@@ -5,6 +5,7 @@
 
 from collections import defaultdict
 from collections.abc import Iterable
+import contextlib
 from functools import partial, wraps
 from http import HTTPStatus
 from itertools import chain, repeat, starmap
@@ -1156,15 +1157,13 @@ def getProcessOutputAndValue(
         None,
     )
 
-    def _cleanup(result):
-        # Always reap the process
-        try:
-            proc.reapProcess()
-        except Exception:
-            # Allow the error to occur, in the case the process has
-            # already been reaped.
-            pass
+    def cleanup(result):
+        if proc.pid is not None:
+            with contextlib.suppress(Exception):
+                # Allow the error to occur, in the case the process has already
+                # been reaped.
+                proc.reapProcess()
         return result
 
-    d.addBoth(_cleanup)
+    d.addBoth(cleanup)
     return d
