@@ -5790,3 +5790,34 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 }
             },
         )
+
+    def test_filter_bulk_action(self):
+        user = factory.make_admin()
+        zone1 = factory.make_Zone()
+        zone2 = factory.make_Zone()
+        zone1_machines = [
+            factory.make_Machine(status=NODE_STATUS.READY, zone=zone1)
+            for _ in range(2)
+        ]
+        zone2_machines = [
+            factory.make_Machine(status=NODE_STATUS.READY, zone=zone2)
+            for _ in range(2)
+        ]
+        handler = MachineHandler(user, {}, None)
+        params = {
+            "action": "acquire",
+            "extra": {},
+            "filter": {"zone": zone1},
+        }
+        success_count = handler.action(params)
+        self.assertEqual(
+            len(zone1_machines),
+            success_count,
+        )
+        machines = zone1_machines + zone2_machines
+        for machine in machines:
+            machine.refresh_from_db()
+            if machine.zone == zone1:
+                self.assertEqual(machine.status, NODE_STATUS.ALLOCATED)
+            else:
+                self.assertEqual(machine.status, NODE_STATUS.READY)

@@ -952,20 +952,40 @@ class MachineHandler(NodeHandler):
                 % (storage_layout, str(e))
             )
 
-    def action(self, params):
-        """Perform the action on the object."""
-        # `compile_node_actions` handles the permission checking internally
-        # the default view permission check is enough at this level.
-        obj = self.get_object(params)
-        action_name = params.get("action")
+    def _action(self, obj, action_name, extra_params):
         actions = compile_node_actions(obj, self.user, request=self.request)
         action = actions.get(action_name)
         if action is None:
             raise NodeActionError(
                 f"{action_name} action is not available for this node."
             )
-        extra_params = params.get("extra", {})
         return action.execute(**extra_params)
+
+    def _bulk_action(self, filter_params, action_name, extra_params):
+        machines = self._filter(self._meta.queryset, None, filter_params)
+        success_count = 0
+        for machine in machines:
+            try:
+                self._action(machine, action_name, extra_params)
+            except NodeActionError as e:
+                log.error(f"Bulk action for {machine.system_id} failed: {e}")
+            else:
+                success_count += 1
+
+        return success_count
+
+    def action(self, params):
+        """Perform the action on the object."""
+        # `compile_node_actions` handles the permission checking internally
+        # the default view permission check is enough at this level.
+        action_name = params.get("action")
+        extra_params = params.get("extra", {})
+        if "filter" in params:
+            return self._bulk_action(
+                params["filter"], action_name, extra_params
+            )
+        obj = self.get_object(params)
+        return self._action(obj, action_name, extra_params)
 
     def _create_link_on_interface(self, interface, params):
         """Create a link on a new interface."""
