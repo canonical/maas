@@ -581,17 +581,43 @@ class TestLXDPodDriver(MAASTestCase):
 
     @inlineCallbacks
     def test_power_on(self):
+        pod_id = factory.make_name("pod_id")
         machine = self.fake_lxd.virtual_machines.get.return_value
         machine.status_code = 110
-        yield self.driver.power_on(None, self.make_context())
+        mock_log = self.patch(lxd_module, "maaslog")
+        yield self.driver.power_on(pod_id, self.make_context())
         machine.start.assert_called_once_with()
+        mock_log.debug.assert_called_once_with(f"power_on: {pod_id} is off")
+
+    @inlineCallbacks
+    def test_power_on_noop_if_on(self):
+        pod_id = factory.make_name("pod_id")
+        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine.status_code = 103
+        mock_log = self.patch(lxd_module, "maaslog")
+        yield self.driver.power_on(pod_id, self.make_context())
+        machine.start.assert_not_called()
+        mock_log.debug.assert_called_once_with(f"power_on: {pod_id} is on")
 
     @inlineCallbacks
     def test_power_off(self):
+        pod_id = factory.make_name("pod_id")
         machine = self.fake_lxd.virtual_machines.get.return_value
         machine.status_code = 103
-        yield self.driver.power_off(None, self.make_context())
+        mock_log = self.patch(lxd_module, "maaslog")
+        yield self.driver.power_off(pod_id, self.make_context())
         machine.stop.assert_called_once_with()
+        mock_log.debug.assert_called_once_with(f"power_off: {pod_id} is on")
+
+    @inlineCallbacks
+    def test_power_off_noop_if_off(self):
+        pod_id = factory.make_name("pod_id")
+        machine = self.fake_lxd.virtual_machines.get.return_value
+        machine.status_code = 110
+        mock_log = self.patch(lxd_module, "maaslog")
+        yield self.driver.power_off(pod_id, self.make_context())
+        machine.stop.assert_not_called()
+        mock_log.debug.assert_called_once_with(f"power_off: {pod_id} is off")
 
     @inlineCallbacks
     def test_power_query(self):

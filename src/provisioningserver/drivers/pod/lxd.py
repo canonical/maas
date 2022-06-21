@@ -264,7 +264,9 @@ class LXDPodDriver(PodDriver):
     def power_on(self, pod_id: int, context: dict):
         """Power on LXD VM."""
         with self._get_machine(pod_id, context) as machine:
-            if LXD_VM_POWER_STATE[machine.status_code] == "off":
+            power_state = LXD_VM_POWER_STATE[machine.status_code]
+            maaslog.debug(f"power_on: {pod_id} is {power_state}")
+            if power_state == "off":
                 machine.start()
 
     @asynchronous
@@ -272,7 +274,9 @@ class LXDPodDriver(PodDriver):
     def power_off(self, pod_id: int, context: dict):
         """Power off LXD VM."""
         with self._get_machine(pod_id, context) as machine:
-            if LXD_VM_POWER_STATE[machine.status_code] == "on":
+            power_state = LXD_VM_POWER_STATE[machine.status_code]
+            maaslog.debug(f"power_off: {pod_id} is {power_state}")
+            if power_state == "on":
                 machine.stop()
 
     @asynchronous
