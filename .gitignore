@@ -44,6 +44,7 @@
 /services/*/supervise
 /snap/.snapcraft
 /src/maasui/build
+/src/maasui/tarballs
 /src/maasui/nodejs
 /src/host-info/bin
 /src/host-info/vendor
