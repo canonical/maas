@@ -199,6 +199,8 @@ parts:
     plugin: npm
     source: src/maasui/src
     npm-node-version: "16.13.0"
+    build-packages:
+      - wget
     override-build: |
       UI_REVISION=$(git -C $SNAPCRAFT_PART_SRC rev-parse HEAD)
       TARBALL_NAME="maas-ui-${UI_REVISION}.tar.gz"
