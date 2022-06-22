@@ -36,7 +36,7 @@ fetch-build: $(TARBALL_FILE)
 .PHONY: fetch-build
 
 $(TARBALL_FILE): $(TARBALLS_DIR)
-	wget -nv -o $@ https://assets.ubuntu.com/v1/$(TARBALL_NAME)
+	wget -O $@ https://assets.ubuntu.com/v1/$(TARBALL_NAME) || (rm -f $(TARBALL_FILE); exit 1)
 
 # build UI locally
 
@@ -44,14 +44,14 @@ build-local: build/index.html
 .PHONY: build-local
 
 $(NODEJS_TARBALL): $(NODEJS_DIR)
-	wget -nv -O $(NODEJS_TARBALL) https://nodejs.org/dist/v$(NODEJS_VERSION)/node-v$(NODEJS_VERSION)-linux-x64.tar.xz
+	wget -O $(NODEJS_TARBALL) https://nodejs.org/dist/v$(NODEJS_VERSION)/node-v$(NODEJS_VERSION)-linux-x64.tar.xz
 
 $(NODEJS_BIN)/node: $(NODEJS_TARBALL)
 	tar -C $(NODEJS_DIR) -xf $< --strip-components=1
 	@touch --no-create $@
 
 $(YARN_TARBALL): $(NODEJS_DIR)
-	wget -nv -O $@ https://github.com/yarnpkg/yarn/releases/download/v$(YARN_VERSION)/yarn-v$(YARN_VERSION).tar.gz
+	wget -O $@ https://github.com/yarnpkg/yarn/releases/download/v$(YARN_VERSION)/yarn-v$(YARN_VERSION).tar.gz
 
 $(NODEJS_BIN)/yarn: $(YARN_TARBALL) $(NODEJS_BIN)/node
 	tar -C $(NODEJS_DIR) -xf $< --strip-components=1

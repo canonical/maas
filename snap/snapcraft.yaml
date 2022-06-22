@@ -202,10 +202,10 @@ parts:
     build-packages:
       - wget
     override-build: |
-      UI_REVISION=$(git -C $SNAPCRAFT_PART_SRC rev-parse HEAD)
+      UI_REVISION=$(git rev-parse HEAD)
       TARBALL_NAME="maas-ui-${UI_REVISION}.tar.gz"
 
-      wget -nv -O "$TARBALL_NAME" "https://assets.ubuntu.com/v1/$TARBALL_NAME" || true
+      wget -nv -O "$TARBALL_NAME" "https://assets.ubuntu.com/v1/$TARBALL_NAME" || rm -f "$TARBALL_NAME"
       if [ -f "$TARBALL_NAME" ]; then
         mkdir -p build
         tar xf "$TARBALL_NAME" -C build
