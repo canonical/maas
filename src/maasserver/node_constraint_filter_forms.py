@@ -645,6 +645,30 @@ class LabeledConstraintMapField(Field):
             return LabeledConstraintMap(value)
 
 
+STATIC_FILTER_FIELDS = (
+    "arch",
+    "pod_type",
+    "not_pod_type",
+    "status",
+)
+
+
+GROUPABLE_FIELDS = (
+    "arch",
+    "tags",
+    "fabrics",
+    "fabric_classes",
+    "subnets",
+    "vlans",
+    "zone",
+    "pool",
+    "pod",
+    "pod_type",
+    "domain",
+    "status",
+)
+
+
 class FilterNodeForm(RenamableFieldsForm):
     """A form for filtering nodes."""
 

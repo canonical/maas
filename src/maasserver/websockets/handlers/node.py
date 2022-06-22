@@ -4,12 +4,12 @@
 """The node handler for the WebSocket connection."""
 
 
-from collections import Counter
+from collections import Counter, Iterable
 from itertools import chain
 import logging
 from operator import attrgetter, itemgetter
 
-from django.db.models import Prefetch
+from django.db.models import Model, Prefetch
 from lxml import etree
 
 from maasserver.enum import (
@@ -18,23 +18,36 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_TYPE,
     POWER_STATE,
 )
+from maasserver.forms import list_all_usable_architectures
 from maasserver.models import (
     CacheSet,
     Config,
     Event,
+    Fabric,
     Interface,
+    Node,
+    NodeDevice,
     NUMANode,
+    Partition,
     PhysicalBlockDevice,
+    Pod,
+    Subnet,
     Tag,
     VirtualBlockDevice,
+    VLAN,
     VolumeGroup,
 )
 from maasserver.models.nodeprobeddetails import script_output_nsmap
 from maasserver.node_action import compile_node_actions
-from maasserver.node_constraint_filter_forms import ReadNodesForm
+from maasserver.node_constraint_filter_forms import (
+    GROUPABLE_FIELDS,
+    ReadNodesForm,
+    STATIC_FILTER_FIELDS,
+)
 from maasserver.permissions import NodePermission
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
 from maasserver.third_party_drivers import get_third_party_driver
@@ -1191,3 +1204,145 @@ class NodeHandler(TimestampedModelHandler):
             raise HandlerValidationError(form.errors)
         qs, _, _ = form.filter_nodes(qs)
         return qs
+
+    def filter_groups(self, params):
+        """List available fields to filter on"""
+        return [
+            {
+                "key": name,
+                "label": field.label,
+                "dynamic": name not in STATIC_FILTER_FIELDS,
+                "for_grouping": name in GROUPABLE_FIELDS,
+            }
+            for name, field in ReadNodesForm.declared_fields.items()
+        ]
+
+    def _get_dynamic_filter_options(self, key):
+        results = []
+        if key == "tags":
+            return [
+                {"key": tag.name, "label": tag.name}
+                for tag in Tag.objects.all()
+            ]
+        elif key == "fabrics":
+            results += [
+                {"key": value.id, "label": value.name}
+                for value in Fabric.objects.all()
+            ]
+        elif key == "fabric_classes":
+            results += [
+                {"key": fabric.class_type, "label": fabric.class_type}
+                for fabric in Fabric.objects.all()
+            ]
+        elif key == "subnets":
+            results += [
+                {"key": value.id, "label": value.name}
+                for value in Subnet.objects.all()
+            ]
+        elif key == "vlans":
+            results += [
+                {"key": value.id, "label": value.name}
+                for value in VLAN.objects.all()
+            ]
+        elif key == "link_speed":
+            results += [
+                {"key": link_speed, "label": human_readable_bytes(link_speed)}
+                for link_speeds in Interface.objects.order_by()
+                .values_list("link_speed")
+                .distinct()
+                for link_speed in link_speeds
+            ]
+        elif key == "storage":
+            results += [
+                {"key": value, "label": value}
+                for value in NodeDevice.objects.filter(
+                    hardware_type=HARDWARE_TYPE.STORAGE
+                )
+                .order_by()
+                .value_list("tags")
+                .distinct()
+            ]
+            results += [
+                {"key": value, "label": value}
+                for value in Partition.objects.order_by()
+                .value_list("tags")
+                .distinct()
+            ]
+        elif key == "interfaces":
+            for field in Interface._meta.get_fields():
+                results += [
+                    {"key": val, "label": val}
+                    for val in Interface.objects.order_by.value_list(
+                        field
+                    ).distinct()
+                ]
+        elif key == "devices":
+            for field in NodeDevice._meta.get_fields():
+                results += [
+                    {"key": f"{field}={val}", "label": f"{field}={val}"}
+                    for val in NodeDevice.objects.order_by()
+                    .value_list(field)
+                    .distinct()
+                ]
+        elif key == "mac_address":
+            results += [
+                {"key": iface.mac_address, "label": iface.mac_address}
+                for iface in Interface.objects.all()
+            ]
+        elif key == "pod":
+            results += [
+                {"key": pod.id, "label": pod.name} for pod in Pod.objects.all()
+            ]
+        else:
+            for value in Node.objects.order_by().values_list(key).distinct():
+                if isinstance(value, Node):
+                    results.append(
+                        {"key": value.system_id, "label": value.hostname}
+                    )
+                elif isinstance(value, Model):
+                    results.append({"key": value.id, "label": value.name})
+                elif isinstance(value, Iterable):
+                    results += [{"key": v, "label": str(v)} for v in value]
+                else:
+                    results.append({"key": value, "label": str(value)})
+        return results
+
+    def filter_options(self, params):
+        try:
+            key = params["group_key"]
+        except KeyError:
+            raise HandlerValidationError(
+                "a 'group_key' param must be provided for filter_options"
+            )
+        else:
+            if key not in ReadNodesForm.declared_fields.keys():
+                raise HandlerValidationError(
+                    f"{key} is not a valid 'group_key' for filter_options"
+                )
+
+            if key in STATIC_FILTER_FIELDS:
+                if key == "arch":
+                    return [
+                        {"key": arch, "label": arch}
+                        for arch in list_all_usable_architectures()
+                    ]
+                if key == "pod_type" or key == "not_pod_type":
+                    return [
+                        {"key": "lxd", "label": "LXD"},
+                        {"key": "virsh", "label": "Virsh"},
+                    ]
+                if key == "status":
+                    return [
+                        {"key": choice[0], "label": choice[1]}
+                        for choice in NODE_STATUS_CHOICES
+                    ]
+            else:
+                if key.startswith("not_in_"):
+                    return self._get_dynamic_filter_options(
+                        key[len("not_in_") :]
+                    )
+                if key.startswith("not_"):
+                    return self._get_dynamic_filter_options(key[len("not_") :])
+                if key == "mem":
+                    return self._get_dynamic_filter_options("memory")
+                return self._get_dynamic_filter_options(key)

@@ -5821,3 +5821,349 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 self.assertEqual(machine.status, NODE_STATUS.ALLOCATED)
             else:
                 self.assertEqual(machine.status, NODE_STATUS.READY)
+
+    def test_filter_groups(self):
+        self.maxDiff = None
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        self.assertCountEqual(
+            [
+                {
+                    "key": "id",
+                    "label": "System IDs to filter on",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "arch",
+                    "label": "Architecture",
+                    "dynamic": False,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "tags",
+                    "label": "Tags",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_tags",
+                    "label": "Not having tags",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "fabrics",
+                    "label": "Attached to fabrics",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_fabrics",
+                    "label": "Not attached to fabrics",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "fabric_classes",
+                    "label": "Attached to fabric with specified classes",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_fabric_classes",
+                    "label": "Not attached to fabric with specified classes",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "subnets",
+                    "label": "Attached to subnets",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_subnets",
+                    "label": "Not attached to subnets",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "link_speed",
+                    "label": "Link speed",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "vlans",
+                    "label": "Attached to VLANs",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_vlans",
+                    "label": "Not attached to VLANs",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "connected_to",
+                    "label": "Connected to",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "not_connected_to",
+                    "label": "Not connected to",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "zone",
+                    "label": "Physical zone",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_in_zone",
+                    "label": "Not in zone",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "pool",
+                    "label": "Resource pool",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_in_pool",
+                    "label": "Not in resource pool",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "storage",
+                    "label": "Storage",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "interfaces",
+                    "label": "Interfaces",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "devices",
+                    "label": "Devices",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "cpu_count",
+                    "label": "CPU count",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "mem",
+                    "label": "Memory",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "pod",
+                    "label": "The name of the desired pod",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_pod",
+                    "label": "The name of the undesired pod",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "pod_type",
+                    "label": "The power_type of the desired pod",
+                    "dynamic": False,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "not_pod_type",
+                    "label": "The power_type of the undesired pod",
+                    "dynamic": False,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "hostname",
+                    "label": "Hostnames to filter on",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "mac_address",
+                    "label": "MAC addresses to filter on",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "domain",
+                    "label": "Domain names to filter on",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "agent_name",
+                    "label": "Only include nodes with events matching the agent name",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "status",
+                    "label": "Only includes nodes with the specified status",
+                    "dynamic": False,
+                    "for_grouping": True,
+                },
+            ],
+            handler.filter_groups({}),
+        )
+
+    def test_filter_options(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        architectures = [
+            "amd64/generic",
+            "arm64/generic",
+            "ppc64el/generic",
+            "s390x/generic",
+        ]
+        [
+            factory.make_usable_boot_resource(architecture=arch)
+            for arch in architectures
+        ]
+        machines = [
+            factory.make_Machine_with_Interface_on_Subnet(
+                architecture=architectures[i % len(architectures)],
+                bmc=factory.make_Pod(),
+            )
+            for i in range(5)
+        ]
+
+        def _assert_value_in(value, field_name):
+            self.assertIn(
+                value,
+                [
+                    option["key"]
+                    for option in handler.filter_options(
+                        {"group_key": field_name}
+                    )
+                ],
+            )
+
+        def _assert_subset(subset, field_name):
+            self.assertTrue(
+                subset
+                <= {
+                    option["key"]
+                    for option in handler.filter_options(
+                        {"group_key": field_name}
+                    )
+                }
+            )
+
+        for machine in machines:
+            machine.tags.add(factory.make_Tag())
+            _assert_value_in(machine.architecture, "arch")
+            _assert_subset(set(machine.tag_names()), "tags")
+            _assert_subset(set(machine.tag_names()), "not_tags")
+            _assert_subset(
+                set(
+                    iface.vlan.fabric.id
+                    for iface in machine.current_config.interface_set.all()
+                ),
+                "fabrics",
+            )
+            _assert_subset(
+                set(
+                    iface.vlan.fabric.id
+                    for iface in machine.current_config.interface_set.all()
+                ),
+                "not_fabrics",
+            )
+            _assert_subset(
+                set(
+                    iface.vlan.fabric.class_type
+                    for iface in machine.current_config.interface_set.all()
+                    if iface.vlan.fabric.class_type
+                ),
+                "fabric_classes",
+            )
+            _assert_subset(
+                set(
+                    iface.vlan.fabric.class_type
+                    for iface in machine.current_config.interface_set.all()
+                    if iface.vlan.fabric.class_type
+                ),
+                "not_fabric_classes",
+            )
+            _assert_subset(
+                set(
+                    link["subnet"].id
+                    for iface in machine.current_config.interface_set.all()
+                    for link in iface.get_links()
+                ),
+                "subnets",
+            )
+            _assert_subset(
+                set(
+                    link["subnet"].id
+                    for iface in machine.current_config.interface_set.all()
+                    for link in iface.get_links()
+                ),
+                "not_subnets",
+            )
+            _assert_subset(
+                set(
+                    iface.link_speed
+                    for iface in machine.current_config.interface_set.all()
+                ),
+                "link_speed",
+            )
+            _assert_subset(
+                set(
+                    iface.vlan.id
+                    for iface in machine.current_config.interface_set.all()
+                ),
+                "vlans",
+            )
+            _assert_subset(
+                set(
+                    iface.vlan.id
+                    for iface in machine.current_config.interface_set.all()
+                ),
+                "not_vlans",
+            )
+            _assert_value_in(machine.zone.id, "zone")
+            _assert_value_in(machine.zone.id, "not_in_zone")
+            _assert_value_in(machine.pool.id, "pool")
+            _assert_value_in(machine.pool.id, "not_in_pool")
+            _assert_value_in(machine.cpu_count, "cpu_count")
+            _assert_value_in(machine.memory, "mem")
+            _assert_value_in(machine.hostname, "hostname")
+            _assert_value_in(machine.status, "status")
+            _assert_subset(
+                set(
+                    iface.mac_address
+                    for iface in machine.current_config.interface_set.all()
+                ),
+                "mac_address",
+            )
+            _assert_value_in(machine.domain.id, "domain")
+            _assert_value_in(machine.agent_name, "agent_name")
+            if machine.bmc.power_type == "lxd":
+                _assert_value_in(machine.bmc.power_type, "pod_type")
+                _assert_value_in(machine.bmc.power_type, "not_pod_type")
+                _assert_value_in(machine.bmc.id, "pod")
+                _assert_value_in(machine.bmc.id, "not_pod")
