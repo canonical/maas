@@ -9,6 +9,7 @@ import logging
 from operator import itemgetter
 import random
 import re
+from types import FunctionType
 from unittest.mock import ANY
 
 from django.core.exceptions import ValidationError
@@ -546,6 +547,67 @@ class TestMachineHandler(MAASServerTestCase):
                 factory.make_Node(
                     node_type=NODE_TYPE.DEVICE, parent=node, interface=True
                 )
+
+    def test_allowed_methods(self):
+        not_allowed_methods = [
+            "dehydrate",
+            "dehydrate_all_ip_addresses",
+            "dehydrate_blockdevice",
+            "dehydrate_cache_set",
+            "dehydrate_created",
+            "dehydrate_device",
+            "dehydrate_domain",
+            "dehydrate_events",
+            "dehydrate_filesystem",
+            "dehydrate_hugepages",
+            "dehydrate_interface",
+            "dehydrate_ip_address",
+            "dehydrate_last_image_sync",
+            "dehydrate_numanode",
+            "dehydrate_owner",
+            "dehydrate_partitions",
+            "dehydrate_pod",
+            "dehydrate_pool",
+            "dehydrate_power_parameters",
+            "dehydrate_script_set_status",
+            "dehydrate_show_os_info",
+            "dehydrate_test_statuses",
+            "dehydrate_updated",
+            "dehydrate_vlan",
+            "dehydrate_volume_group",
+            "dehydrate_zone",
+            "delete",
+            "execute",
+            "full_dehydrate",
+            "full_hydrate",
+            "get_all_fabric_names",
+            "get_all_space_names",
+            "get_all_storage_tags",
+            "get_all_subnets",
+            "get_blockdevices_for",
+            "get_form_class",
+            "get_grouped_storages",
+            "get_mac_addresses",
+            "get_object",
+            "get_providing_dhcp",
+            "get_queryset",
+            "hydrate",
+            "listen",
+            "on_listen",
+            "on_listen_for_active_pk",
+            "preprocess_form",
+            "preprocess_node_form",
+            "refetch",
+            "update_blockdevice_filesystem",
+            "update_partition_filesystem",
+        ]
+        [
+            self.assertIn(attr, MachineHandler.Meta.allowed_methods)
+            for attr in dir(MachineHandler)
+            if isinstance(getattr(MachineHandler, attr), FunctionType)
+            and attr not in not_allowed_methods
+            and not attr.startswith("_")
+        ]
 
     def test_get_refresh_script_result_cache(self):
         owner = factory.make_User()

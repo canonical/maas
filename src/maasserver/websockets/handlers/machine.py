@@ -199,6 +199,8 @@ class MachineHandler(NodeHandler):
             "get_latest_failed_testing_script_results",
             "get_workload_annotations",
             "set_workload_annotations",
+            "filter_groups",
+            "filter_options",
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [
