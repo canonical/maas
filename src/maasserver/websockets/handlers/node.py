@@ -4,7 +4,8 @@
 """The node handler for the WebSocket connection."""
 
 
-from collections import Counter, Iterable
+from collections import Counter
+from collections.abc import Iterable
 from itertools import chain
 import logging
 from operator import attrgetter, itemgetter
