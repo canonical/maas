@@ -196,28 +196,13 @@ parts:
       python3 -m compileall -j 0 -q .
 
   ui:
-    plugin: npm
-    source: src/maasui/src
-    npm-node-version: "16.13.0"
+    plugin: make
+    source: .
     build-packages:
       - wget
     override-build: |
-      UI_REVISION=$(git rev-parse HEAD)
-      TARBALL_NAME="maas-ui-${UI_REVISION}.tar.gz"
-
-      wget -nv -O "$TARBALL_NAME" "https://assets.ubuntu.com/v1/$TARBALL_NAME" || rm -f "$TARBALL_NAME"
-      if [ -f "$TARBALL_NAME" ]; then
-        mkdir -p build
-        tar xf "$TARBALL_NAME" -C build
-      else
-        snapcraftctl build
-        PATH="$PATH:$SNAPCRAFT_PART_BUILD/node_modules/.bin:$SNAPCRAFT_PART_INSTALL/bin"
-        NODE_ENV="production"
-        npm install -g --prefix "$SNAPCRAFT_PART_INSTALL" yarn webpack webpack-cli
-        yarn install
-        yarn build
-      fi
-
+      cd src/maasui
+      make
       INSTALL_DIR="$SNAPCRAFT_PART_INSTALL/usr/share/maas/web"
       mkdir -p "$INSTALL_DIR"
       cp -a build "$INSTALL_DIR/static"
