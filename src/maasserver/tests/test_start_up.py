@@ -19,6 +19,7 @@ from maasserver.testing.testcase import (
     MAASTransactionServerTestCase,
 )
 from maasserver.utils.orm import post_commit_hooks
+from maastesting import get_testing_timeout
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -47,7 +48,7 @@ class TestStartUp(MAASTransactionServerTestCase):
     def tearDown(self):
         super().tearDown()
         # start_up starts the Twisted event loop, so we need to stop it.
-        eventloop.reset().wait(5)
+        eventloop.reset().wait(get_testing_timeout())
 
     def test_inner_start_up_runs_in_exclusion(self):
         # Disable boot source cache signals.

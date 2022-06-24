@@ -13,6 +13,7 @@ from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
@@ -32,7 +33,9 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 class TestPeriodicImageDownloadService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def test_init(self):
         service = ImageDownloadService(

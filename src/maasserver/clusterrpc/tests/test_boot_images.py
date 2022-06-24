@@ -49,6 +49,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maastesting import get_testing_timeout
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.twisted import TwistedLoggerFixture
 from provisioningserver.boot.tests import test_tftppath
@@ -61,6 +62,8 @@ from provisioningserver.testing.boot_images import (
     make_image,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
+
+TIMEOUT = get_testing_timeout()
 
 
 def make_image_dir(image_params, tftp_root):
@@ -446,7 +449,7 @@ class TestRackControllersImporter(MAASServerTestCase):
         call.return_value = fail(ZeroDivisionError())
 
         with TwistedLoggerFixture() as logger:
-            RackControllersImporter([], []).run().wait(5)
+            RackControllersImporter([], []).run().wait(TIMEOUT)
 
         self.assertThat(call, MockCalledOnceWith(ANY))
         self.assertDocTestMatches(
@@ -531,7 +534,7 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
         importer = RackControllersImporter.new(
             [rack_1.system_id, rack_2.system_id]
         )
-        results = importer(lock=DeferredLock()).wait(5)
+        results = importer(lock=DeferredLock()).wait(TIMEOUT)
 
         # The results are a list (it's from a DeferredList).
         self.assertThat(
@@ -578,7 +581,7 @@ class TestRackControllersImporterInAction(MAASTransactionServerTestCase):
         )
 
         with TwistedLoggerFixture() as logger:
-            importer.run().wait(5)
+            importer.run().wait(TIMEOUT)
 
         self.assertDocTestMatches(
             """\

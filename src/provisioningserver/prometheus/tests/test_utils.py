@@ -6,6 +6,7 @@ from fixtures import EnvironmentVariable
 import prometheus_client
 from twisted.internet.defer import inlineCallbacks, returnValue
 
+from maastesting import get_testing_timeout
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.prometheus.utils import (
@@ -22,7 +23,9 @@ class FailureCounterTestException(Exception):
 
 class TestPrometheusMetrics(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def test_empty(self):
         prometheus_metrics = PrometheusMetrics()

@@ -79,6 +79,7 @@ from maasserver.utils.orm import (
     transactional,
 )
 from maasserver.utils.threads import deferToDatabase
+from maastesting import get_testing_timeout
 from maastesting.crochet import wait_for
 from maastesting.matchers import (
     MockCalledOnce,
@@ -94,6 +95,7 @@ from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.utils.text import normalise_whitespace
 from provisioningserver.utils.twisted import asynchronous, DeferredValue
 
+TIMEOUT = get_testing_timeout()
 wait_for_reactor = wait_for()
 
 
@@ -2100,7 +2102,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 
         service = bootresources.ImportResourcesService()
         maybe_import_resources = asynchronous(service.maybe_import_resources)
-        maybe_import_resources().wait(5)
+        maybe_import_resources().wait(TIMEOUT)
 
         self.assertThat(
             bootresources._import_resources_in_thread, MockCalledOnceWith()
@@ -2114,7 +2116,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 
         service = bootresources.ImportResourcesService()
         maybe_import_resources = asynchronous(service.maybe_import_resources)
-        maybe_import_resources().wait(5)
+        maybe_import_resources().wait(TIMEOUT)
 
         self.assertThat(
             bootresources._import_resources_in_thread, MockNotCalled()
@@ -2128,7 +2130,7 @@ class TestImportResourcesServiceAsync(MAASTransactionServerTestCase):
 
         service = bootresources.ImportResourcesService()
         maybe_import_resources = asynchronous(service.maybe_import_resources)
-        maybe_import_resources().wait(5)
+        maybe_import_resources().wait(TIMEOUT)
 
         self.assertThat(
             bootresources._import_resources_in_thread, MockNotCalled()
@@ -2181,7 +2183,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         self.patch_are_functions(service, False, True)
 
         check_boot_images = asynchronous(service.check_boot_images)
-        check_boot_images().wait(5)
+        check_boot_images().wait(TIMEOUT)
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         error_expected = """\
@@ -2203,7 +2205,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         self.patch_are_functions(service, False, False)
 
         check_boot_images = asynchronous(service.check_boot_images)
-        check_boot_images().wait(5)
+        check_boot_images().wait(TIMEOUT)
 
         error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         error_expected = """\
@@ -2227,7 +2229,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         self.patch_are_functions(service, True, False)
 
         check_boot_images = asynchronous(service.check_boot_images)
-        check_boot_images().wait(5)
+        check_boot_images().wait(TIMEOUT)
 
         error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         self.assertIsNone(error)
@@ -2240,7 +2242,7 @@ class TestImportResourcesProgressServiceAsync(MAASTransactionServerTestCase):
         check_boot_images = self.patch_autospec(service, "check_boot_images")
         check_boot_images.return_value = fail(exception)
         try_check_boot_images = asynchronous(service.try_check_boot_images)
-        try_check_boot_images().wait(5)
+        try_check_boot_images().wait(TIMEOUT)
 
         self.assertDocTestMatches(
             """\

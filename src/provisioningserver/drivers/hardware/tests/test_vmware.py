@@ -12,6 +12,7 @@ from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.drivers.hardware import vmware
@@ -210,7 +211,9 @@ class TestVMwarePyvmomi(MAASTestCase):
     """Tests for VMware probe-and-enlist, and power query/control using
     the python3-pyvmomi API."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def configure_vmomi_api(
         self, servers=10, has_instance_uuid=None, has_uuid=None

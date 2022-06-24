@@ -6,13 +6,14 @@
 from asyncio import iscoroutinefunction
 from functools import wraps
 import inspect
-import os
 
 import crochet
 from testtools.content import Content, UTF8_TEXT
 from testtools.matchers import Equals
 from twisted.internet.defer import ensureDeferred
 import wrapt
+
+from maastesting import get_testing_timeout
 
 
 class EventualResultCatchingMixin:
@@ -112,16 +113,6 @@ class EventualResultCatchingMixin:
         )
 
 
-def get_timeout(timeout=None):
-    """Get a timeout to wait for things."""
-    wait_time = (
-        os.environ.get("MAAS_WAIT_FOR_REACTOR", 60.0)
-        if timeout is None
-        else timeout
-    )
-    return float(wait_time)
-
-
 class TimeoutInTestException(Exception):
     """Nicer reporting of what actually timed-out."""
 
@@ -142,7 +133,7 @@ def wait_for(timeout=None):
 
     This allows async def definitions to be used.
     """
-    timeout = get_timeout(timeout)
+    timeout = get_testing_timeout(timeout)
 
     def decorator(function):
         def wrapper(function, _, args, kwargs):

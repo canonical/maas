@@ -10,6 +10,7 @@ from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.task import Clock
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -31,7 +32,9 @@ from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
 class TestDHCPProbeService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def setUp(self):
         super().setUp()

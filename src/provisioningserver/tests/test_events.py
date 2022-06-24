@@ -11,6 +11,7 @@ from testtools import ExpectedException
 from testtools.matchers import AllMatch, Equals, HasLength, Is, IsInstance
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnce,
@@ -34,6 +35,8 @@ from provisioningserver.rpc.exceptions import NoSuchEventType, NoSuchNode
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.testing import MAASIDFixture
+
+TIMEOUT = get_testing_timeout()
 
 
 class TestEvents(MAASTestCase):
@@ -119,7 +122,7 @@ class TestSendRackEvent(MAASTestCase):
 class TestNodeEventHubLogByID(MAASTestCase):
     """Tests for `NodeEventHub.logByID`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -219,7 +222,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
 class TestSendEventMACAddress(MAASTestCase):
     """Tests for `NodeEventHub.logByMAC`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -340,7 +343,7 @@ class TestSendEventMACAddress(MAASTestCase):
 class TestSendEventIPAddress(MAASTestCase):
     """Tests for `NodeEventHub.logByIP`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

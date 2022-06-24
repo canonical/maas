@@ -11,6 +11,7 @@ from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import FileBodyProducer
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCalledWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -51,7 +52,9 @@ class TestWebClientContextFactory(MAASTestCase):
 
 class TestOpenBMCPowerDriver(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def test_missing_packages(self):
         driver = OpenBMCPowerDriver()

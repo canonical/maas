@@ -19,6 +19,7 @@ from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.client import FileBodyProducer, PartialDownloadError
 from twisted.web.http_headers import Headers
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -164,7 +165,9 @@ class TestWebClientContextFactory(MAASTestCase):
 
 class TestRedfishPowerDriver(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def test_missing_packages(self):
         # there's nothing to check for, just confirm it returns []

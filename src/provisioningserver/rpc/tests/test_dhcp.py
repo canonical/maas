@@ -13,6 +13,7 @@ from testtools import ExpectedException
 from testtools.matchers import MatchesStructure
 from twisted.internet.defer import inlineCallbacks
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -602,7 +603,9 @@ class TestUpdateHosts(MAASTestCase):
 
 class TestConfigureDHCP(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     scenarios = (
         ("DHCPv4", {"server": dhcp.DHCPv4Server}),

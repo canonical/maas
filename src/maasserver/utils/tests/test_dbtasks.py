@@ -32,11 +32,13 @@ from maasserver.utils.dbtasks import (
     DatabaseTasksService,
 )
 from maasserver.utils.orm import transactional
+from maastesting import get_testing_timeout
 from maastesting.crochet import wait_for
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
 
+TIMEOUT = get_testing_timeout()
 wait_for_reactor = wait_for()
 
 
@@ -95,7 +97,7 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            ident_from_task = service.deferTask(get_thread_ident).wait(30)
+            ident_from_task = service.deferTask(get_thread_ident).wait(TIMEOUT)
             ident_from_here = get_thread_ident()
             self.expectThat(ident_from_task, IsInstance(int, int))
             self.expectThat(ident_from_task, Not(Equals(ident_from_here)))
@@ -111,7 +113,7 @@ class TestDatabaseTaskService(MAASTestCase):
         try:
             result = service.deferTask(
                 return_args, sentinel.arg, kw=sentinel.kw
-            ).wait(30)
+            ).wait(TIMEOUT)
             self.assertThat(
                 result,
                 Equals((sentinel.here, (sentinel.arg,), {"kw": sentinel.kw})),
@@ -198,7 +200,7 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            self.assertThat(service.syncTask().wait(30), Is(service))
+            self.assertThat(service.syncTask().wait(TIMEOUT), Is(service))
         finally:
             service.stopService()
 
@@ -212,11 +214,11 @@ class TestDatabaseTaskService(MAASTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            service.deferTask(things.append, 1).wait(30)
+            service.deferTask(things.append, 1).wait(TIMEOUT)
             self.assertRaises(
-                exception_type, service.deferTask(be_bad).wait, 30
+                exception_type, service.deferTask(be_bad).wait, TIMEOUT
             )
-            service.deferTask(things.append, 2).wait(30)
+            service.deferTask(things.append, 2).wait(TIMEOUT)
         finally:
             service.stopService()
 
@@ -273,7 +275,7 @@ class TestDatabaseTaskServiceWithActualDatabase(MAASTransactionServerTestCase):
         service = DatabaseTasksService()
         service.startService()
         try:
-            result = service.deferTask(database_task).wait(30)
+            result = service.deferTask(database_task).wait(TIMEOUT)
             self.assertThat(result, Is(sentinel.beenhere))
         finally:
             service.stopService()

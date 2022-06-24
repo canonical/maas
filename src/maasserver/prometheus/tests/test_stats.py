@@ -24,10 +24,13 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maastesting import get_testing_timeout
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import extract_result
 from provisioningserver.prometheus.utils import create_metrics
 from provisioningserver.utils.twisted import asynchronous
+
+TIMEOUT = get_testing_timeout()
 
 
 class TestPrometheusHandler(MAASServerTestCase):
@@ -276,7 +279,7 @@ class TestPrometheusServiceAsync(MAASTransactionServerTestCase):
         maybe_push_prometheus_stats = asynchronous(
             service.maybe_push_prometheus_stats
         )
-        maybe_push_prometheus_stats().wait(5)
+        maybe_push_prometheus_stats().wait(TIMEOUT)
 
         mock_call.assert_called_once()
 
@@ -290,5 +293,5 @@ class TestPrometheusServiceAsync(MAASTransactionServerTestCase):
         maybe_push_prometheus_stats = asynchronous(
             service.maybe_push_prometheus_stats
         )
-        maybe_push_prometheus_stats().wait(5)
+        maybe_push_prometheus_stats().wait(TIMEOUT)
         mock_prometheus_client.push_stats_to_prometheus.assert_not_called()

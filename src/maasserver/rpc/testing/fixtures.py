@@ -29,7 +29,7 @@ from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
 )
-from maastesting.crochet import get_timeout
+from maastesting import get_testing_timeout
 from provisioningserver.rpc import cluster, clusterservice, region
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.testing import (
@@ -38,6 +38,8 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.security import calculate_digest
 from provisioningserver.utils.twisted import asynchronous, synchronous
+
+TIMEOUT = get_testing_timeout()
 
 
 @run_in_reactor
@@ -75,8 +77,7 @@ def _get_shared_secret_for_tests():
     wrapped_gss = security.get_shared_secret
     # Undo functools.wraps
     gss = wrapped_gss.__wrapped__
-    timeout = get_timeout()
-    rewrapped_gss = asynchronous(timeout=timeout)(gss)
+    rewrapped_gss = asynchronous(timeout=TIMEOUT)(gss)
     return rewrapped_gss()
 
 
@@ -120,7 +121,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
             raise RuntimeError(
                 "Please start the event-loop before using this fixture."
             )
-        self.rpc = get_service_in_eventloop("rpc").wait(10)
+        self.rpc = get_service_in_eventloop("rpc").wait(TIMEOUT)
         # The RPC service uses a defaultdict(set) to manage connections, but
         # let's check those assumptions.
         assert isinstance(self.rpc.connections, defaultdict)
@@ -214,7 +215,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
     @synchronous
     def start(self):
         # Shutdown the RPC service, switch endpoints, then start again.
-        self.rpc.stopService().wait(10)
+        self.rpc.stopService().wait(TIMEOUT)
 
         # Ensure there's a shared-secret.
         self.secret = _get_shared_secret_for_tests()
@@ -237,16 +238,16 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         self.monkey.patch()
 
         # Start the service back up again.
-        self.rpc.startService().wait(10)
+        self.rpc.startService().wait(TIMEOUT)
 
     @synchronous
     def stop(self):
         # Shutdown the RPC service, switch endpoints, then start again.
-        self.rpc.stopService().wait(10)
+        self.rpc.stopService().wait(TIMEOUT)
         # Restore the state of the service.
         self.monkey.restore()
         # Start the service back up again.
-        self.rpc.startService().wait(10)
+        self.rpc.startService().wait(TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -256,7 +257,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
             raise RuntimeError(
                 "Please start the event-loop before using this fixture."
             )
-        self.rpc = get_service_in_eventloop("rpc").wait(10)
+        self.rpc = get_service_in_eventloop("rpc").wait(TIMEOUT)
         # Where we're going to put the UNIX socket files.
         self.sockdir = self.useFixture(fixtures.TempDir()).path
         self.sockfile = path.join(self.sockdir, "sock")
@@ -322,9 +323,9 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         protocol.Authenticate.side_effect = (
             lambda _, message: authenticate_with_secret(self.secret, message)
         )
-        self.addCluster(protocol, rack_controller).wait(5)
+        self.addCluster(protocol, rack_controller).wait(TIMEOUT)
         # The connection is now established, but there is a brief
         # handshake that takes place immediately upon connection.  We
         # wait for that to finish before returning.
-        getClientFor(rack_controller.system_id, timeout=5)
+        getClientFor(rack_controller.system_id, timeout=TIMEOUT)
         return protocol

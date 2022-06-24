@@ -24,6 +24,7 @@ from twisted.internet.defer import (
 from twisted.internet.task import Clock
 from twisted.python.failure import Failure
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -52,6 +53,8 @@ from provisioningserver.rpc.testing import (
 )
 from provisioningserver.testing.events import EventTypesAllRegistered
 
+TIMEOUT = get_testing_timeout()
+
 
 def suppress_reporting(test):
     # Skip telling the region; just pass-through the query result.
@@ -61,7 +64,7 @@ def suppress_reporting(test):
 
 class TestPowerHelpers(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -158,7 +161,7 @@ class TestPowerHelpers(MAASTestCase):
 
 class TestChangePowerState(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -437,7 +440,7 @@ class TestChangePowerState(MAASTestCase):
 
 class TestMaybeChangePowerState(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -756,7 +759,7 @@ class TestMaybeChangePowerState(MAASTestCase):
 
 class TestPowerQuery(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -1028,7 +1031,7 @@ class TestPowerQueryExceptions(MAASTestCase):
 
 class TestPowerQueryAsync(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

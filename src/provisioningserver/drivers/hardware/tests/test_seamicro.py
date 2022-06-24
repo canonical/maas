@@ -12,6 +12,7 @@ import urllib.parse
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -216,7 +217,9 @@ class TestSeaMicroAPIV09(MAASTestCase):
 class TestSeaMicro(MAASTestCase):
     """Tests for SeaMicro custom hardware."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def test_select_seamicro15k_api_version_ipmi(self):
         versions = select_seamicro15k_api_version("ipmi")

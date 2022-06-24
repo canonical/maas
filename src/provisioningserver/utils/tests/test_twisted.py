@@ -51,6 +51,7 @@ from twisted.python import context, threadable
 from twisted.python.failure import Failure
 from twisted.web.test import requesthelper
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     DocTestMatches,
@@ -93,6 +94,8 @@ from provisioningserver.utils.twisted import (
     ThreadUnpool,
 )
 
+TIMEOUT = get_testing_timeout()
+
 
 def return_args(*args, **kwargs):
     return args, kwargs
@@ -100,7 +103,7 @@ def return_args(*args, **kwargs):
 
 class TestAsynchronousDecorator(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_calls_in_current_thread_when_current_thread_is_reactor(self):
         result = asynchronous(return_args)(1, 2, three=3)
@@ -121,7 +124,7 @@ class TestAsynchronousDecorator(MAASTestCase):
         def do_stuff_in_thread():
             result = asynchronous(return_args)(3, 4, five=5)
             self.assertThat(result, IsInstance(EventualResult))
-            return result.wait(30)
+            return result.wait(TIMEOUT)
 
         # Call do_stuff_in_thread() from another thread.
         result = yield deferToThread(do_stuff_in_thread)
@@ -141,7 +144,7 @@ def noop():
 
 class TestThreadDeferred(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_thread_deferred(self):
@@ -155,7 +158,7 @@ class TestThreadDeferred(MAASTestCase):
 
 class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_timeout_cannot_be_None(self):
         self.assertRaises(ValueError, asynchronous, noop, timeout=None)
@@ -178,7 +181,7 @@ class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
 
 class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     scenarios = (
         ("finite", {"timeout": random()}),
@@ -236,7 +239,7 @@ class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
 
 class TestSynchronousDecorator(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @synchronous
     def return_args(self, *args, **kwargs):
@@ -731,7 +734,7 @@ class TestCallOut(MAASTestCase):
 class TestCallOutToThread(MAASTestCase):
     """Tests for `callOutToThread`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_without_arguments(self):
@@ -772,7 +775,7 @@ class TestCallOutToThread(MAASTestCase):
 class TestCallInReactor(MAASTestCase):
     """Tests for `callInReactor`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def returnThreadIdent(self, *_, **__):
         return threading.get_ident()
@@ -809,7 +812,7 @@ class TestCallInReactor(MAASTestCase):
 class TestCallInReactorErrors(MAASTestCase):
     """Tests for error behaviour in `callInReactor`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_propagates_exceptions_in_reactor(self):
         with ExpectedException(ZeroDivisionError):
@@ -824,7 +827,7 @@ class TestCallInReactorErrors(MAASTestCase):
 class TestCallInReactorWithTimeout(MAASTestCase):
     """Tests for `callInReactorWithTimeout`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -886,7 +889,7 @@ class TestCallInReactorWithTimeout(MAASTestCase):
 class TestCallInReactorWithTimeoutErrors(MAASTestCase):
     """Tests for error behaviour in `callInReactorWithTimeout`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_propagates_exceptions_in_reactor(self):
@@ -1252,7 +1255,7 @@ class TestRPCFetcher(MAASTestCase):
 
 class TestDeferToNewThread(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_runs_given_func_in_new_thread(self):
@@ -1340,7 +1343,7 @@ class ThreadUnpoolMixin:
 class TestThreadUnpool(MAASTestCase, ThreadUnpoolMixin):
     """Tests for `ThreadUnpool`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_init(self):
         lock = self.make_semaphore()
@@ -1410,7 +1413,7 @@ class TestThreadUnpoolCommonBehaviour(MAASTestCase, ThreadUnpoolMixin):
     `callInThreadWithCallback`.
     """
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     scenarios = (
         (
@@ -1531,7 +1534,7 @@ class ContextBrokenOnExit:
 class TestThreadPool(MAASTestCase):
     """Tests for `ThreadPool`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_init(self):
         pool = ThreadPool()
@@ -1705,7 +1708,7 @@ class DummyThreadPool:
 class TestThreadPoolLimiter(MAASTestCase):
     """Tests for `ThreadPoolLimiter`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_init(self):
         pool_beneath = DummyThreadPool()
@@ -1858,7 +1861,7 @@ class TestThreadPoolLimiter(MAASTestCase):
 
 class TestMakeDeferredWithProcessProtocol(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_calls_callback_when_processended_called_with_none(self):
@@ -1952,7 +1955,7 @@ class SignalPrinterProtocol(ProcessProtocol):
 class TestTerminateProcess(MAASTestCase):
     """Tests for `terminateProcess`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=10)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

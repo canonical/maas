@@ -16,6 +16,7 @@ from testtools.matchers import Is
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import inlineCallbacks
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -31,6 +32,8 @@ from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+
+TIMEOUT = get_testing_timeout()
 
 
 class TestBcd(MAASTestCase):
@@ -144,7 +147,7 @@ class TestBcd(MAASTestCase):
 
 class TestRequestNodeInfoByMACAddress(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_returns_None_when_MAC_is_None(self):
         d = windows_module.request_node_info_by_mac_address(None)
@@ -172,7 +175,7 @@ class TestRequestNodeInfoByMACAddress(MAASTestCase):
 
 class TestWindowsPXEBootMethod(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         self.patch(windows_module, "get_hivex_module")

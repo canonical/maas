@@ -15,6 +15,7 @@ from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -38,7 +39,9 @@ from provisioningserver.utils.twisted import asynchronous
 class TestRECSPowerDriver(MAASTestCase):
     """Tests for RECS|Box custom hardware."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def test_no_missing_packages(self):
         mock = self.patch(has_command_available)

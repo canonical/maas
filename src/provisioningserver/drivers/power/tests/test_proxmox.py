@@ -9,6 +9,7 @@ from unittest.mock import ANY, call
 from testtools import ExpectedException
 from twisted.internet.defer import inlineCallbacks, succeed
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -21,10 +22,12 @@ from provisioningserver.drivers.power import PowerActionError
 import provisioningserver.drivers.power.proxmox as proxmox_module
 from provisioningserver.drivers.power.webhook import SSL_INSECURE_NO
 
+TIMEOUT = get_testing_timeout()
+
 
 class TestProxmoxPowerDriver(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -463,7 +466,7 @@ class TestProxmoxPowerDriver(MAASTestCase):
 
 class TestProxmoxProbeAndEnlist(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

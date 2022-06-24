@@ -13,6 +13,7 @@ import tempita
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.python import context
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnce, MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -34,6 +35,8 @@ from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.utils.fs import atomic_symlink, tempdir
+
+TIMEOUT = get_testing_timeout()
 
 
 class FakeBootMethod(BootMethod):
@@ -57,7 +60,7 @@ class FakeBootMethod(BootMethod):
 class TestBootMethod(MAASTestCase):
     """Test for `BootMethod` in `provisioningserver.boot`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_get_remote_mac(self):
@@ -372,7 +375,7 @@ class TestBootMethod(MAASTestCase):
 
 class TestGetArchiveUrl(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

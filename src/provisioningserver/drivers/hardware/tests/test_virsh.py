@@ -15,6 +15,7 @@ from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -251,7 +252,9 @@ class TestVirshSSH(MAASTestCase):
 class TestVirsh(MAASTestCase):
     """Tests for `probe_virsh_and_enlist`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def _probe_and_enlist_mock_run(self, *args):
         args = args[0]

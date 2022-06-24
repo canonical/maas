@@ -12,6 +12,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import Clock
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -26,7 +27,9 @@ from provisioningserver.utils import services as services_module
 
 class TestRackNetworksMonitoringService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        debug=True, timeout=get_testing_timeout()
+    )
 
     def setUp(self):
         super().setUp()

@@ -13,6 +13,7 @@ from urllib.parse import urlparse
 from testtools import ExpectedException
 from twisted.internet.defer import fail, inlineCallbacks, returnValue, succeed
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -33,10 +34,12 @@ from provisioningserver.refresh.maas_api_helper import (
 )
 from provisioningserver.rpc import exceptions, pods
 
+TIMEOUT = get_testing_timeout()
+
 
 class TestDiscoverPodProjects(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):
@@ -77,7 +80,7 @@ class TestDiscoverPodProjects(MAASTestCase):
 
 class TestDiscoverPod(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):
@@ -197,7 +200,7 @@ class TestDiscoverPod(MAASTestCase):
 
 class TestComposeMachine(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def make_requested_machine(self):
         return RequestedMachine(
@@ -387,7 +390,7 @@ class TestComposeMachine(MAASTestCase):
 
 class TestSendPodCommissioningResults(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):
@@ -578,7 +581,7 @@ class TestSendPodCommissioningResults(MAASTestCase):
 
 class TestDecomposeMachine(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_unknown_pod_raises_UnknownPodType(self):

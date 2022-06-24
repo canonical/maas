@@ -9,6 +9,7 @@ from testtools.matchers import Equals
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.monkey import (
@@ -20,7 +21,9 @@ from provisioningserver.monkey import (
 class TestAugmentDeferToThreadPool(MAASTestCase):
     """Tests for `augment_twisted_deferToThreadPool`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def setUp(self):
         super().setUp()

@@ -13,6 +13,7 @@ from twisted.internet.defer import fail, succeed
 from twisted.internet.error import ConnectionDone
 from twisted.internet.task import Clock
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -29,7 +30,9 @@ from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 
 class TestNodePowerMonitorService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def setUp(self):
         super().setUp()

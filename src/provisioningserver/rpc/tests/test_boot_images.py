@@ -14,6 +14,7 @@ from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, succeed
 from twisted.internet.task import Clock
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -37,6 +38,8 @@ from provisioningserver.testing.config import (
     ClusterConfigurationFixture,
 )
 from provisioningserver.utils.twisted import pause
+
+TIMEOUT = get_testing_timeout()
 
 
 def make_sources():
@@ -258,7 +261,7 @@ class TestRunImport(MAASTestCase):
 
 class TestImportBootImages(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -410,7 +413,7 @@ class TestImportBootImages(MAASTestCase):
 
 class TestIsImportBootImagesRunning(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @defer.inlineCallbacks
     def test_returns_True_when_lock_is_held(self):

@@ -14,6 +14,7 @@ from testtools.matchers import Equals
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -550,7 +551,9 @@ class TestUCSMPowerState(MAASTestCase):
 
 class TestProbeAndEnlistUCSM(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     @inlineCallbacks
     def test_probe_and_enlist(self):

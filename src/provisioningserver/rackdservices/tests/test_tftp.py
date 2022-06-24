@@ -41,6 +41,7 @@ from twisted.internet.task import Clock
 from twisted.python import context
 from zope.interface.verify import verifyObject
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -71,6 +72,8 @@ from provisioningserver.testing.boot_images import (
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+
+TIMEOUT = get_testing_timeout()
 
 
 class TestGetBootImage(MAASTestCase):
@@ -196,7 +199,7 @@ class TestBytesReader(MAASTestCase):
 class TestTFTPBackend(MAASTestCase):
     """Tests for `TFTPBackend`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -1050,7 +1053,7 @@ class TestTransferTimeTrackingTFTP(MAASTestCase):
 
 class TestTransferTimeTrackingTFTPStartSession(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_wb_start_session(self):
@@ -1130,7 +1133,7 @@ class DummyProtocol(Protocol):
 class TestPort(MAASTestCase):
     """Tests for :py:class:`Port`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_getHost_works_with_IPv4_address(self):
         port = Port(0, DummyProtocol(), "127.0.0.1")
@@ -1154,7 +1157,7 @@ class TestPort(MAASTestCase):
 
 class TestUDPServer(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def test_getPort_calls__listenUDP_with_args_from_constructor(self):
         server = UDPServer(sentinel.foo, bar=sentinel.bar)

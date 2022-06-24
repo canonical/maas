@@ -6,6 +6,7 @@ from unittest.mock import sentinel
 
 from twisted.internet.defer import inlineCallbacks, returnValue
 
+from maastesting import get_testing_timeout
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import services
 from provisioningserver.rackdservices import version_update_check
@@ -37,7 +38,9 @@ class SampleVersionUpdateCheckService(VersionUpdateCheckService):
 
 class TestVersionUpdateCheckService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        debug=True, timeout=get_testing_timeout()
+    )
 
     @inlineCallbacks
     def test_process_version_info_not_called_without_versions(self):
@@ -60,7 +63,9 @@ class TestVersionUpdateCheckService(MAASTestCase):
 
 class TestRackVersionUpdateCheckService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(debug=True, timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        debug=True, timeout=get_testing_timeout()
+    )
 
     @inlineCallbacks
     def create_fake_rpc_service(self):

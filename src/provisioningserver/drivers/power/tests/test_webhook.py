@@ -12,6 +12,7 @@ from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.web.client import PartialDownloadError
 from twisted.web.http_headers import Headers
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -26,7 +27,9 @@ from provisioningserver.utils.version import get_running_version
 
 class TestWebhookPowerDriver(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def setUp(self):
         super().setUp()

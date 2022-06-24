@@ -14,6 +14,7 @@ from twisted.internet.defer import inlineCallbacks, returnValue, succeed
 from zhmcclient import StatusTimeout
 from zhmcclient_mock import FakedSession
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnce,
@@ -26,10 +27,12 @@ from provisioningserver.drivers.power import PowerActionError, PowerError
 from provisioningserver.rpc import clusterservice, region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 
+TIMEOUT = get_testing_timeout()
+
 
 class TestHMCZPowerDriver(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -577,7 +580,7 @@ class FakeRPCService:
 
 class TestProbeHMCZAndEnlist(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

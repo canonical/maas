@@ -17,6 +17,7 @@ from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -290,7 +291,9 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
 class TestMicrosoftOCSProbeAndEnlist(MAASTestCase):
     """Tests for `probe_and_enlist_msftocs`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     @inlineCallbacks
     def test_probe_and_enlist_msftocs_probes_and_enlists(self):

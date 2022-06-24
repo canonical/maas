@@ -24,6 +24,7 @@ from twisted.internet.defer import (
 )
 from twisted.internet.task import deferLater
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -49,6 +50,8 @@ from provisioningserver.utils.service_monitor import (
 from provisioningserver.utils.shell import get_env_with_bytes_locale
 from provisioningserver.utils.snap import SnapPaths
 from provisioningserver.utils.twisted import pause
+
+TIMEOUT = get_testing_timeout()
 
 EMPTY_SET = frozenset()
 
@@ -88,7 +91,7 @@ def make_fake_service(expected_state=None, status_info=None):
 class TestServiceState(MAASTestCase):
     """Tests for `ServiceState`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     scenarios_observed = tuple(
         ("observed=%s" % state.name, dict(state_observed=state))
@@ -174,7 +177,7 @@ class TestServiceState(MAASTestCase):
 class TestServiceMonitor(MAASTestCase):
     """Tests for `ServiceMonitor`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def run_under_snap(self):
         self.patch(snap, "running_in_snap").return_value = True

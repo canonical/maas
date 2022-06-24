@@ -32,6 +32,7 @@ from twisted.names.error import (
     ResolverError,
 )
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsNonEmptyString,
@@ -2310,7 +2311,9 @@ class TestReverseResolveMixIn:
 class TestReverseResolve(TestReverseResolveMixIn, MAASTestCase):
     """Tests for `reverseResolve`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=30)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     @inlineCallbacks
     def test_uses_resolver_from_getResolver_by_default(self):

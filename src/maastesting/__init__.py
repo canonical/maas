@@ -5,10 +5,21 @@
 
 
 import copy
+from os import environ
 from os.path import abspath, dirname, join, pardir, realpath
 import re
 from unittest import mock
 from warnings import filterwarnings
+
+
+def get_testing_timeout(timeout=None):
+    wait_time = (
+        environ.get("MAAS_WAIT_FOR_REACTOR", 60.0)
+        if timeout is None
+        else timeout
+    )
+    return float(wait_time)
+
 
 # The root of the source tree.
 dev_root = abspath(join(dirname(realpath(__file__)), pardir, pardir))

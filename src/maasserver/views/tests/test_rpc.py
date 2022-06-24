@@ -22,10 +22,12 @@ from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maastesting import get_testing_timeout
 from maastesting.crochet import wait_for
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.utils.testing import MAASIDFixture
 
+TIMEOUT = get_testing_timeout()
 is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2**16))
 
 
@@ -72,8 +74,8 @@ class TestRPCView(MAASTransactionServerTestCase):
             )
         )
 
-        eventloop.start(master=True, all_in_one=True).wait(5)
-        self.addCleanup(lambda: eventloop.reset().wait(5))
+        eventloop.start(master=True, all_in_one=True).wait(TIMEOUT)
+        self.addCleanup(lambda: eventloop.reset().wait(TIMEOUT))
 
         getServiceNamed = eventloop.services.getServiceNamed
         ipcMaster = getServiceNamed("ipc-master")

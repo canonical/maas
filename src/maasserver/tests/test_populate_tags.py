@@ -45,6 +45,7 @@ from maasserver.testing.testcase import (
 )
 from maasserver.utils.orm import post_commit_hooks
 from maasserver.utils.threads import deferToDatabase
+from maastesting import get_testing_timeout
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
 from maastesting.twisted import (
     always_fail_with,
@@ -281,7 +282,7 @@ class TestPopulateTagsEndToNearlyEnd(MAASTransactionServerTestCase):
         # `d` is a testing-only convenience. We must wait for it to fire, and
         # we must do that from the reactor thread.
         wait_for_populate = asynchronous(lambda: d)
-        wait_for_populate().wait(10)
+        wait_for_populate().wait(get_testing_timeout())
 
         for rack, protocol, creds in zip(
             rack_controllers, protocols, rack_creds

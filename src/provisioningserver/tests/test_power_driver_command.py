@@ -9,6 +9,7 @@ from argparse import ArgumentParser, Namespace
 from twisted.internet import reactor
 from twisted.internet.defer import ensureDeferred, inlineCallbacks
 
+from maastesting import get_testing_timeout
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver import power_driver_command
 from provisioningserver.drivers.power import PowerDriver
@@ -38,7 +39,9 @@ class FakeDriver(PowerDriver):
 
 class TestPowerDriverCommand(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5000)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def test_create_subparser(self):
 

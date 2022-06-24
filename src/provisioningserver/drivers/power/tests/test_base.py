@@ -13,6 +13,7 @@ from testtools.testcase import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks, succeed
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -36,6 +37,8 @@ from provisioningserver.drivers.power import (
     PowerToolError,
 )
 from provisioningserver.utils.twisted import asynchronous
+
+TIMEOUT = get_testing_timeout()
 
 
 class FakePowerDriverBase(PowerDriverBase):
@@ -365,7 +368,7 @@ def make_async_power_driver(
 
 class TestPowerDriverPowerAction(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     scenarios = [
         ("on", dict(action="on", action_func="power_on", bad_state="off")),
@@ -483,7 +486,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
 
 class TestPowerDriverCycle(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     @inlineCallbacks
     def test_cycles_power_when_node_is_powered_on(self):
@@ -517,7 +520,7 @@ class TestPowerDriverCycle(MAASTestCase):
 
 class TestPowerDriverQuery(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

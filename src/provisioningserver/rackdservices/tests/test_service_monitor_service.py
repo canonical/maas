@@ -12,6 +12,7 @@ from testtools.matchers import MatchesStructure
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 from twisted.internet.task import Clock
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockNotCalled
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -30,7 +31,9 @@ from provisioningserver.utils.service_monitor import (
 
 class TestServiceMonitorService(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def setUp(self):
         super().setUp()

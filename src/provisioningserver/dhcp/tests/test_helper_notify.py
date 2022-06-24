@@ -11,7 +11,7 @@ from unittest.mock import sentinel
 from testtools.matchers import Equals, IsInstance, MatchesDict
 from twisted.internet import defer, reactor
 
-from maastesting import dev_root
+from maastesting import dev_root, get_testing_timeout
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from provisioningserver.rackdservices import lease_socket_service
@@ -21,10 +21,12 @@ from provisioningserver.rackdservices.lease_socket_service import (
 from provisioningserver.utils.shell import call_and_check
 from provisioningserver.utils.twisted import DeferredValue
 
+TIMEOUT = get_testing_timeout()
+
 
 class TestDHCPNotify(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def patch_socket_path(self):
         path = self.make_dir()
@@ -79,7 +81,7 @@ class TestDHCPNotify(MAASTestCase):
                 socket_path,
             ]
         )
-        yield done.get(timeout=10)
+        yield done.get(timeout=TIMEOUT)
 
         self.assertThat(
             done.value[0],

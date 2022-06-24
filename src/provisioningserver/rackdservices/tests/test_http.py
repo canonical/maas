@@ -23,6 +23,7 @@ from twisted.web.http_headers import Headers
 from twisted.web.server import NOT_DONE_YET, Request
 from twisted.web.test.test_web import DummyChannel, DummyRequest
 
+from maastesting import get_testing_timeout
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
 from maastesting.matchers import DocTestMatches, MockCalledOnceWith
@@ -34,6 +35,8 @@ from provisioningserver.events import EVENT_TYPES
 from provisioningserver.rackdservices import http
 from provisioningserver.rpc import clusterservice, common, exceptions
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
+
+TIMEOUT = get_testing_timeout()
 
 
 def prepareRegion(test):
@@ -65,7 +68,7 @@ class StubClusterClientService:
 class TestRackHTTPService(MAASTestCase):
     """Tests for `RackHTTPService`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5000)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()
@@ -251,7 +254,7 @@ class TestRackHTTPService(MAASTestCase):
 class TestRackHTTPService_Errors(MAASTestCase):
     """Tests for error handing in `RackHTTPService`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     scenarios = (
         ("_getConfiguration", dict(method="_getConfiguration")),
@@ -384,7 +387,7 @@ class TestHTTPLogResource(MAASTestCase):
 
 class TestHTTPBootResource(MAASTestCase):
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=TIMEOUT)
 
     def setUp(self):
         super().setUp()

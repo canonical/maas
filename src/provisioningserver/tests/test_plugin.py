@@ -25,6 +25,7 @@ from twisted.application.internet import StreamServerEndpointService
 from twisted.application.service import MultiService
 from twisted.internet.task import Clock
 
+from maastesting import get_testing_timeout
 from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
@@ -79,7 +80,9 @@ class TestOptions(MAASTestCase):
 class TestProvisioningServiceMaker(MAASTestCase):
     """Tests for `provisioningserver.plugin.ProvisioningServiceMaker`."""
 
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(
+        timeout=get_testing_timeout()
+    )
 
     def setUp(self):
         super().setUp()
