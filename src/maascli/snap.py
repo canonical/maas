@@ -280,6 +280,8 @@ def print_config(
         if not parsable:
             print_msg("Settings:")
         print_config_value(config, "maas_url")
+        if "debug" in config:
+            print_config_value(config, "debug")
         if current_mode in ["region+rack", "region"]:
             print_config_value(config, "database_host")
             print_config_value(config, "database_port")
@@ -296,8 +298,6 @@ def print_config(
         if current_mode != "rack":
             if "num_workers" in config:
                 print_config_value(config, "num_workers")
-            if "debug" in config:
-                print_config_value(config, "debug")
             if "debug_queries" in config:
                 print_config_value(config, "debug_queries")
 

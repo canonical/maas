@@ -22,9 +22,14 @@ class MAASConfiguration:
 
     def update(self, configs):
         """Add or update specified configuration entries."""
+        rackd_config = {}
         self._update_file(configs, "regiond.conf")
         if "maas_url" in configs:
-            self._update_file({"maas_url": configs["maas_url"]}, "rackd.conf")
+            rackd_config["maas_url"] = configs["maas_url"]
+        if "debug" in configs:
+            rackd_config["debug"] = configs["debug"]
+        if rackd_config:
+            self._update_file(rackd_config, "rackd.conf")
 
     def write_to_file(self, data, filename):
         """Write the configuration data to `regiond.conf`."""

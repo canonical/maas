@@ -107,6 +107,13 @@ class TestMAASConfiguration(MAASTestCase):
         # MAAS url is set in rackd config as well
         self.assertEqual(self.read_config("rackd.conf"), expected)
 
+    def test_update_with_debug(self):
+        self.config_manager.update({"debug": True})
+        expected = {"debug": True}
+        self.assertEqual(self.read_config("regiond.conf"), expected)
+        # Debug is set in rackd config as well
+        self.assertEqual(self.read_config("rackd.conf"), expected)
+
     def test_unset_maas_url(self):
         config = {"maas_url": factory.make_name("url")}
         self.write_config(config, "regiond.conf")
