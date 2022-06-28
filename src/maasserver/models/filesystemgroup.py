@@ -935,7 +935,7 @@ class VolumeGroup(FilesystemGroup):
             node_config=self.get_node().current_config,
             name=name,
             uuid=uuid,
-            size=size,
+            size=self.get_lvm_free_space() if size is None else size,
             block_size=self.get_virtual_block_device_block_size(),
             filesystem_group=self,
         )

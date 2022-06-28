@@ -4244,7 +4244,7 @@ class CreateLogicalVolumeForm(Form):
         self.fields["size"] = BytesField(
             min_value=MIN_BLOCK_DEVICE_SIZE,
             max_value=self.volume_group.get_lvm_free_space(),
-            required=True,
+            required=False,
         )
 
     def clean(self):

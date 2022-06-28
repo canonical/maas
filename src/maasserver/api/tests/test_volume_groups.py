@@ -502,6 +502,31 @@ class TestVolumeGroupAPI(APITestCase.ForUser):
             ),
         )
 
+    def test_create_logical_volume_creates_max_logical_volume_if_size_empty(
+        self,
+    ):
+        self.become_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        volume_group = factory.make_VolumeGroup(node=node)
+        name = factory.make_name("lv")
+        free_space = volume_group.get_lvm_free_space()
+        uri = get_volume_group_uri(volume_group)
+        response = self.client.post(
+            uri,
+            {
+                "op": "create_logical_volume",
+                "name": name,
+            },
+        )
+        self.assertEqual(
+            http.client.OK, response.status_code, response.content
+        )
+        logical_volume = response.json()
+        expected_size = round_size_to_nearest_block(
+            free_space, PARTITION_ALIGNMENT_SIZE, False
+        )
+        self.assertEqual(logical_volume.get("size"), expected_size)
+
     def test_delete_logical_volume_204_when_invalid_id(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)

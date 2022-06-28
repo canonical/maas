@@ -450,7 +450,7 @@ class TestCreateLogicalVolumeForm(MAASServerTestCase):
         volume_group = factory.make_VolumeGroup()
         form = CreateLogicalVolumeForm(volume_group, data={})
         self.assertFalse(form.is_valid(), form.errors)
-        self.assertEqual({"name", "size"}, form.errors.keys())
+        self.assertEqual({"name"}, form.errors.keys())
 
     def test_is_not_valid_if_invalid_uuid(self):
         volume_group = factory.make_VolumeGroup()

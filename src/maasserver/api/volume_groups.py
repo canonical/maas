@@ -304,8 +304,8 @@ class VolumeGroupHandler(OperationsHandler):
         @param (string) "uuid" [required=false] (optional) UUID of the logical
         volume.
 
-        @param (string) "size" [required=true] Size of the logical volume. Must
-        be larger than or equal to 4,194,304 bytes. E.g. ``4194304``.
+        @param (string) "size" [required=false] (optional) Size of the logical
+        volume. Must be larger than or equal to 4,194,304 bytes. E.g. ``4194304``. Will default to free space in the volume group if not given.
 
         @success (http-status-code) "server-success" 200
         @success (json) "success-json" A JSON object containing the requested
