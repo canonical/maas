@@ -126,7 +126,9 @@ class MachineHandler(NodeHandler):
                 "current_config__interface_set__ip_addresses__subnet__vlan__fabric"
             )
             .prefetch_related("current_config__interface_set__numa_node")
+            .prefetch_related("current_config__interface_set__vlan__space")
             .prefetch_related("current_config__interface_set__vlan__fabric")
+            .prefetch_related("boot_interface__vlan__space")
             .prefetch_related("boot_interface__vlan__fabric")
             .prefetch_related("tags")
             .prefetch_related("pool")

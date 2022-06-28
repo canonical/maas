@@ -683,8 +683,11 @@ class TestMachineHandler(MAASServerTestCase):
         self.useFixture(RBACForceOffFixture())
 
         owner = factory.make_User()
+        vlan = factory.make_VLAN(space=factory.make_Space())
         for _ in range(2):
-            node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
+            node = factory.make_Node_with_Interface_on_Subnet(
+                owner=owner, vlan=vlan
+            )
             commissioning_script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.COMMISSIONING
             )
@@ -711,7 +714,7 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 23
+        expected_query_count = 25
         self.assertEqual(
             queries_one,
             expected_query_count,
@@ -734,9 +737,12 @@ class TestMachineHandler(MAASServerTestCase):
         rbac.store.allow(owner.username, pool, "view")
         rbac.store.allow(owner.username, pool, "admin-machines")
 
+        vlan = factory.make_VLAN(space=factory.make_Space())
         for _ in range(2):
             node = factory.make_Node_with_Interface_on_Subnet(
-                owner=owner, pool=pool
+                owner=owner,
+                pool=pool,
+                vlan=vlan,
             )
             commissioning_script_set = factory.make_ScriptSet(
                 node=node, result_type=RESULT_TYPE.COMMISSIONING
@@ -764,7 +770,7 @@ class TestMachineHandler(MAASServerTestCase):
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 23
+        expected_query_count = 25
         self.assertEqual(
             queries_one,
             expected_query_count,
@@ -815,7 +821,10 @@ class TestMachineHandler(MAASServerTestCase):
 
     def test_get_num_queries_is_the_expected_number(self):
         owner = factory.make_User()
-        node = factory.make_Node_with_Interface_on_Subnet(owner=owner)
+        vlan = factory.make_VLAN(space=factory.make_Space())
+        node = factory.make_Node_with_Interface_on_Subnet(
+            owner=owner, vlan=vlan
+        )
         commissioning_script_set = factory.make_ScriptSet(
             node=node, result_type=RESULT_TYPE.COMMISSIONING
         )

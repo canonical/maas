@@ -198,7 +198,8 @@ class TestTagAPI(APITestCase.ForUser):
         query_counts = []
         node_counts = []
 
-        machine = factory.make_Node_with_Interface_on_Subnet()
+        vlan = factory.make_VLAN(space=factory.make_Space())
+        machine = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
         machine.tags.add(tag)
         num_queries, response = count_queries(
             self.client.get, self.get_tag_uri(tag), {"op": "nodes"}
@@ -226,10 +227,8 @@ class TestTagAPI(APITestCase.ForUser):
         # of queries is not the same but it is proportional to the number of
         # machines.
         base_count = 92
-        self.assertEqual(
-            query_counts,
-            [base_count + (n * 6) for n in node_counts],
-        )
+        for idx, node_count in enumerate(node_counts):
+            self.assertEqual(query_counts[idx], base_count + (node_count * 6))
 
     def test_GET_machines_returns_machines(self):
         tag = factory.make_Tag()
@@ -293,10 +292,10 @@ class TestTagAPI(APITestCase.ForUser):
         # of queries is not the same but it is proportional to the number of
         # machines.
         base_count = 92
-        self.assertEqual(
-            query_counts,
-            [base_count + (n * 6) for n in machine_counts],
-        )
+        for idx, machine_count in enumerate(machine_counts):
+            self.assertLessEqual(
+                query_counts[idx], base_count + (machine_count * 6)
+            )
 
     def test_GET_devices_returns_devices(self):
         tag = factory.make_Tag()

@@ -222,6 +222,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
             node_type=NODE_TYPE.DEVICE, interface=True, owner=owner
         )
         interface = device.get_boot_interface()
+        # always attach to a space so queries counts are consistent
+        space = factory.make_Space()
+        interface.vlan.space = space
+        interface.vlan.save()
         if ip_assignment == DEVICE_IP_ASSIGNMENT_TYPE.EXTERNAL:
             subnet = factory.make_Subnet()
             factory.make_StaticIPAddress(
@@ -279,7 +283,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             queries,
-            19,
+            20,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -347,7 +351,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             query_10_count,
-            10,
+            11,
             "Number of queries has changed; make sure this is expected.",
         )
 

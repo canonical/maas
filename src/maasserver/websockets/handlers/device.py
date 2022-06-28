@@ -63,6 +63,7 @@ class DeviceHandler(NodeHandler):
             .prefetch_related(
                 "current_config__interface_set__ip_addresses__subnet__vlan__fabric"
             )
+            .prefetch_related("current_config__interface_set__vlan__space")
             .prefetch_related("current_config__interface_set__vlan__fabric")
             .prefetch_related("tags")
         )

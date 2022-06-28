@@ -132,7 +132,8 @@ class TestControllerHandler(MAASServerTestCase):
 
     def test_get_num_queries_is_the_expected_number(self):
         owner = factory.make_admin()
-        node = factory.make_RegionRackController(owner=owner)
+        vlan = factory.make_VLAN(space=factory.make_Space())
+        node = factory.make_RegionRackController(owner=owner, vlan=vlan)
         commissioning_script_set = factory.make_ScriptSet(
             node=node, result_type=RESULT_TYPE.COMMISSIONING
         )

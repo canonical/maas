@@ -530,28 +530,26 @@ class TestMachinesAPI(APITestCase.ForUser):
             queries_count.append(counter.count)
             machines_count.append(len(result))
 
-        node = factory.make_Node_with_Interface_on_Subnet()
+        vlan = factory.make_VLAN(space=factory.make_Space())
+        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
         factory.make_VirtualBlockDevice(node=node)
         exec_request()
 
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
         factory.make_VirtualBlockDevice(node=node)
         exec_request()
 
-        node = factory.make_Node_with_Interface_on_Subnet()
+        node = factory.make_Node_with_Interface_on_Subnet(vlan=vlan)
         factory.make_VirtualBlockDevice(node=node)
         exec_request()
 
         expected_counts = [1, 2, 3]
         self.assertEqual(machines_count, expected_counts)
         base_count = 98
-        self.assertEqual(
-            queries_count,
-            [
-                base_count + (machine_count * 7)
-                for machine_count in machines_count
-            ],
-        )
+        for idx, machine_count in enumerate(machines_count):
+            self.assertEqual(
+                queries_count[idx], base_count + (machine_count * 7)
+            )
 
     def test_GET_without_machines_returns_empty_list(self):
         # If there are no machines to list, the "read" op still works but
