@@ -1,3 +1,9 @@
+maas (2.7.4~rc2-0ubuntu1) bionic; urgency=medium
+
+  * New upstream release, MAAS 2.7.4 RC2.
+
+ -- Dan Streetman <ddstreet@ieee.org>  Wed, 29 Jun 2022 16:50:37 +0000
+
 maas (2.7.4~rc1-0ubuntu1) bionic; urgency=medium
 
   * New upstream release, MAAS 2.7.4 RC1.
