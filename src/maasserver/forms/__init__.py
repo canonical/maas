@@ -1706,6 +1706,7 @@ class MAASForm(ConfigForm):
     """Settings page, MAAS section."""
 
     maas_name = get_config_field("maas_name")
+    theme = get_config_field("theme")
     enable_analytics = get_config_field("enable_analytics")
 
 

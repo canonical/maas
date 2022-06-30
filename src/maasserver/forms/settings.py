@@ -287,6 +287,14 @@ CONFIG_ITEMS = {
         "form": forms.CharField,
         "form_kwargs": {"label": "MAAS name"},
     },
+    "theme": {
+        "default": "",
+        "form": forms.CharField,
+        "form_kwargs": {
+            "label": "MAAS theme",
+            "required": False,
+        },
+    },
     "kernel_opts": {
         "default": None,
         "form": forms.CharField,

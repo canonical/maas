@@ -59,6 +59,7 @@ def get_default_config():
         # Network section configuration.
         "maas_url": "http://localhost:5240/MAAS",
         "maas_name": gethostname(),
+        "theme": "",
         "default_osystem": DEFAULT_OS.name,
         "default_distro_series": DEFAULT_OS.get_default_release(),
         # Proxy settings

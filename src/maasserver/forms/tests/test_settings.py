@@ -107,3 +107,19 @@ class TestMAASSyslogPortConfigSettings(MAASServerTestCase):
     def test_doesnt_allow_port_5248(self):
         field = get_config_field("maas_syslog_port")
         self.assertRaises(ValidationError, field.clean, "5248")
+
+
+class TestMAASThemeConfigSettings(MAASServerTestCase):
+    def test_default_value(self):
+        form = get_config_form("theme")
+        self.assertEqual({"theme": ""}, form.initial)
+
+    def test_theme_config(self):
+        value = factory.make_hex_string(size=6)
+        field = get_config_field("theme")
+        self.assertEqual(value, field.clean(value))
+
+    def test_theme_string_like(self):
+        value = [1, 2, 3]
+        field = get_config_field("theme")
+        self.assertEqual(str(value), field.clean(value))
