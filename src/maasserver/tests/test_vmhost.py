@@ -282,11 +282,13 @@ class TestCleanPowerAddress(MAASServerTestCase):
         cases = [
             ("10.0.0.1", "10.0.0.1:8443"),
             ("10.0.0.1:8443", "10.0.0.1:8443"),
+            ("2001:db8::1", "[2001:db8::1]:8443"),
             ("[2001:db8::1]", "[2001:db8::1]:8443"),
             ("lxd-1", "lxd-1:8443"),
             ("lxd.cluster.com", "lxd.cluster.com:8443"),
             ("https://lxd-1", "lxd-1:8443"),
             ("https://lxd-1:8080", "lxd-1:8080"),
+            ("https://[2001:db8::1]", "[2001:db8::1]:8443"),
             ("https://[2001:db8::1]:8080", "[2001:db8::1]:8080"),
             ("qemu+ssh://10.0.0.1/system", "qemu+ssh://10.0.0.1/system"),
             (

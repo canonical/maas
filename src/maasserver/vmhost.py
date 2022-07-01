@@ -141,6 +141,12 @@ def _clean_power_address(vmhost_address):
 
     # urlparse() doesn't work if scheme is missing
     if "://" not in vmhost_address:
+        if (
+            vmhost_address.count(":") > 1
+            and "[" not in vmhost_address
+            and "]" not in vmhost_address
+        ):
+            vmhost_address = f"[{vmhost_address}]"
         vmhost_address = f"{lxd_schemes[0]}://{vmhost_address}"
 
     vmhost_url = urlparse(vmhost_address)
