@@ -90,10 +90,6 @@ class cmd_login(Command):
                 "You cannot use both cacerts and insecure arguments."
             )
 
-        # Try and obtain credentials interactively if they're not given, or
-        # read them from stdin if they're specified as "-".
-        credentials = obtain_credentials(options.url, options.credentials)
-
         cacerts = None
         # temporary cacerts file, used to check for bogus credentials
         # if credentials are correct, cacerts content is stored in profile
@@ -108,6 +104,12 @@ class cmd_login(Command):
             cacerts_path = CERTS_DIR / (profile_name + ".pem")
             cacerts_path = Path(cacerts_path)
             cacerts_path.write_text(cacerts)
+
+        # Try and obtain credentials interactively if they're not given, or
+        # read them from stdin if they're specified as "-".
+        credentials = obtain_credentials(
+            options.url, options.credentials, cacerts_path, options.insecure
+        )
 
         # Check for bogus credentials. Do this early so that the user is not
         # surprised when next invoking the MAAS CLI.

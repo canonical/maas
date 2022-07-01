@@ -27,7 +27,7 @@ def try_getpass(prompt):
         return None
 
 
-def get_apikey_via_macaroon(url):
+def get_apikey_via_macaroon(url, ca_certs=None, insecure=False):
     """Try to get an API key using a macaroon.
 
     httpbakery is used to create a new API token. If the MAAS server supports
@@ -38,10 +38,15 @@ def get_apikey_via_macaroon(url):
     If the MAAS server doesn't support macaroons, None is returned.
 
     """
+    verify = True
+    if insecure:
+        verify = False
+    elif ca_certs:
+        verify = str(ca_certs)
     url = url.strip("/")
     client = httpbakery.Client()
     resp = client.request(
-        "POST", f"{url}/account/?op=create_authorisation_token"
+        "POST", f"{url}/account/?op=create_authorisation_token", verify=verify
     )
     if resp.status_code != 200:
         # Most likely the MAAS server doesn't support macaroons.
@@ -50,7 +55,7 @@ def get_apikey_via_macaroon(url):
     return "{consumer_key}:{token_key}:{token_secret}".format(**result)
 
 
-def obtain_credentials(url, credentials):
+def obtain_credentials(url, credentials, ca_certs=None, insecure=False):
     """Prompt for credentials if possible.
 
     If the credentials are "-" then read from stdin without interactive
@@ -59,7 +64,9 @@ def obtain_credentials(url, credentials):
     if credentials == "-":
         credentials = sys.stdin.readline().strip()
     elif credentials is None:
-        credentials = get_apikey_via_macaroon(url)
+        credentials = get_apikey_via_macaroon(
+            url, ca_certs=ca_certs, insecure=insecure
+        )
         if credentials is None:
             credentials = try_getpass(
                 "API key (leave empty for anonymous access): "
