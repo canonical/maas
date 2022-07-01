@@ -223,7 +223,7 @@ class Domain(CleanSave, TimestampedModel):
             .filter(Q(dnsresource__name="@") | Q(dnsresource__name=""))
             .filter(dnsresource__domain_id=self.id)
         )
-        if rrset.count() > 0:
+        if rrset.exists():
             return rrset.first().ttl
         elif self.ttl is not None:
             return self.ttl

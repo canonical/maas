@@ -21,7 +21,7 @@ def save_boot_source_cache(sender, instance, *args, **kwargs):
     triggers this signal. This prevents updating the cache twice.
     """
     # Don't run if the first row and newly created.
-    if instance.id != 1 and BootSource.objects.count() != 0:
+    if instance.id != 1 and BootSource.objects.exists():
         update_boot_source_cache(sender, instance, *args, **kwargs)
 
 

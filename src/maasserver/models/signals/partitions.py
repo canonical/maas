@@ -21,7 +21,7 @@ def delete_partition_table(sender, instance, **kwargs):
     except PartitionTable.DoesNotExist:
         pass  # Nothing to do.
     else:
-        if partition_table.partitions.count() == 0:
+        if not partition_table.partitions.exists():
             partition_table.delete()
 
 

@@ -1090,7 +1090,7 @@ class Pod(BMC):
                     if host_vlan != interface.vlan:
                         interface.vlan = host_vlan
                         interface.save()
-                    if interface.ip_addresses.count() == 0:
+                    if not interface.ip_addresses.exists():
                         interface.force_auto_or_dhcp_link()
                     continue
 

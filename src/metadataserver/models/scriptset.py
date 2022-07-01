@@ -63,10 +63,10 @@ def get_status_from_qs(qs):
     """Given a QuerySet or list of ScriptResults return the set's status."""
     # If no tests have been run the QuerySet or list has no status.
     if isinstance(qs, QuerySet):
-        count = qs.count()
+        has_status = qs.exists()
     else:
-        count = len(qs)
-    if count == 0:
+        has_status = len(qs) > 0
+    if not has_status:
         return -1
     # The status order below represents the order of precedence.
     # Skipped is omitted here otherwise one skipped test will show

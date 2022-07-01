@@ -782,7 +782,7 @@ class FilesystemGroup(CleanSave, TimestampedModel):
         # is saved. Does nothing if group_type is LVM_VG. Virtual block device
         # is not created until filesystems are linked because the filesystems
         # contain the node that this filesystem group belongs to.
-        if self.filesystems.count() > 0:
+        if self.filesystems.exists():
             from maasserver.models.virtualblockdevice import VirtualBlockDevice
 
             VirtualBlockDevice.objects.create_or_update_for(self)

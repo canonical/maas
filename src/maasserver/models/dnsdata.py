@@ -395,28 +395,28 @@ class DNSData(CleanSave, TimestampedModel):
         # other resource records on the name.  See how many CNAME and other
         # items that saving this would create, and reject things if needed.
         if self.id is None:
-            num_cname = DNSData.objects.filter(
+            cname_exists = DNSData.objects.filter(
                 dnsresource_id=self.dnsresource_id, rrtype="CNAME"
-            ).count()
+            ).exists()
             if self.rrtype == "CNAME":
-                num_other = (
+                other_exists = (
                     DNSData.objects.filter(dnsresource__id=self.dnsresource_id)
                     .exclude(rrtype="CNAME")
-                    .count()
+                    .exists()
                 )
                 # account for ipaddresses
-                num_other += self.dnsresource.ip_addresses.count()
-                if num_other > 0:
+                other_exists |= self.dnsresource.ip_addresses.exists()
+                if other_exists:
                     raise ValidationError(CNAME_AND_OTHER_MSG)
-                elif num_cname > 0:
+                elif cname_exists:
                     raise ValidationError(MULTI_CNAME_MSG)
             else:
-                if num_cname > 0:
+                if cname_exists:
                     raise ValidationError(CNAME_AND_OTHER_MSG)
             rrset = DNSData.objects.filter(
                 rrtype=self.rrtype, dnsresource_id=self.dnsresource.id
             ).exclude(ttl=self.ttl)
-            if rrset.count() > 0:
+            if rrset.exists():
                 maaslog.warning(
                     DIFFERENT_TTL_MSG % (self.ttl, rrset.first().ttl)
                 )

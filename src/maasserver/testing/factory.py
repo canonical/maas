@@ -795,10 +795,7 @@ class Factory(maastesting.factory.Factory):
         else:
             exclude = ["CNAME"]
         if rrtype is None or rrdata is None:
-            if (
-                dnsresource is not None
-                and dnsresource.ip_addresses.count() > 0
-            ):
+            if dnsresource is not None and dnsresource.ip_addresses.exists():
                 exclude = ["CNAME"]
             (rrtype, rrdata) = self.pick_rrset(rrtype, rrdata, exclude=exclude)
         if dnsresource is None:

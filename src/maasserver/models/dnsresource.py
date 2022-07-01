@@ -217,7 +217,7 @@ class DNSResourceManager(Manager, DNSResourceQueriesMixin):
                     f"Updated dynamic hostname '{dnsrr.fqdn}'."
                     f" Removed IP address '{sip.ip}'."
                 )
-            if dnsrr.ip_addresses.count() == 0:
+            if not dnsrr.ip_addresses.exists():
                 dnsrr.delete()
                 log.msg(
                     f"Deleted dynamic hostname '{dnsrr.fqdn}' for IP address "
@@ -320,22 +320,22 @@ class DNSResource(CleanSave, TimestampedModel):
             rrset = DNSResource.objects.filter(
                 name=self.name, domain=self.domain
             )
-            if rrset.count() > 0:
+            if rrset.exists():
                 raise ValidationError(
                     "Labels must be unique within their zone."
                 )
         # If we have an ip addresses, then we need to have a valid name.
         # TXT records don't require that we have much at all.
-        if self.id is not None and self.ip_addresses.count() > 0:
+        if self.id is not None and self.ip_addresses.exists():
             validate_dnsresource_name(self.name, "A")
             # This path could be followed if the user is adding a USER_RESERVED
             # ip address, where the FQDN already has a CNAME assigned to it.
             # Node.fqdn takes a different path, and should win when it comes to
             # DNS generation.
-            num_cname = DNSData.objects.filter(
+            cname_exists = DNSData.objects.filter(
                 dnsresource_id=self.id, rrtype="CNAME"
-            ).count()
-            if num_cname > 0:
+            ).exists()
+            if cname_exists:
                 raise ValidationError("Cannot add address: CNAME present.")
         super().clean(*args, **kwargs)
 

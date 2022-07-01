@@ -268,6 +268,6 @@ class DNSResourceRecordHandler(OperationsHandler):
         )
         dnsrr = dnsdata.dnsresource
         dnsdata.delete()
-        if dnsrr.dnsdata_set.count() == 0 and dnsrr.ip_addresses.count() == 0:
+        if not dnsrr.dnsdata_set.exists() and not dnsrr.ip_addresses.exists():
             dnsrr.delete()
         return rc.DELETED

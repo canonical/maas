@@ -34,7 +34,7 @@ def post_delete_bmc_clean_orphaned_ip(sender, instance, **kwargs):
         return
     if instance.__previous_ip_address.get_node() is not None:
         return
-    if instance.__previous_ip_address.bmc_set.count() > 0:
+    if instance.__previous_ip_address.bmc_set.exists():
         return
     # Delete the orphaned interface.
     instance.__previous_ip_address.delete()

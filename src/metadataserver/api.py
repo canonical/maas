@@ -724,7 +724,7 @@ class VersionIndexHandler(MetadataViewHandler):
             qs = node.current_commissioning_script_set.scriptresult_set.filter(
                 status=SCRIPT_STATUS.FAILED
             )
-            if qs.count() > 0:
+            if qs.exists():
                 target_status = NODE_STATUS.FAILED_COMMISSIONING
             else:
                 # Recalculate tags when commissioning ends.

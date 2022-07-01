@@ -173,10 +173,10 @@ class VLANHandler(TimestampedModelHandler):
         if "extra" in parameters:
             self._configure_iprange_and_gateway(parameters["extra"])
         if "relay_vlan" not in parameters:
-            iprange_count = IPRange.objects.filter(
+            iprange_exists = IPRange.objects.filter(
                 type=IPRANGE_TYPE.DYNAMIC, subnet__vlan=vlan
-            ).count()
-            if iprange_count == 0:
+            ).exists()
+            if not iprange_exists:
                 raise ValueError(
                     "Cannot configure DHCP: At least one dynamic range is "
                     "required."

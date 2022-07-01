@@ -123,7 +123,7 @@ class SubnetHandler(TimestampedModelHandler):
                 "Cannot scan subnet: only IPv4 subnets can be scanned."
             )
         cidrs = [cidr]
-        if RackController.objects.filter_by_subnet_cidrs(cidrs).count() == 0:
+        if not RackController.objects.filter_by_subnet_cidrs(cidrs).exists():
             raise ValueError("Subnet must be configured on a rack controller.")
         rpc_results = scan_all_rack_networks(cidrs=[cidr])
         maaslog.info(

@@ -519,8 +519,8 @@ def guess_vlan_for_interface(node, links):
         default_vlan = VLAN.objects.get_default_vlan()
         interfaces_on_default_vlan = Interface.objects.filter(
             vlan=default_vlan
-        ).count()
-        if interfaces_on_default_vlan == 0:
+        ).exists()
+        if not interfaces_on_default_vlan:
             new_vlan = default_vlan
         else:
             new_fabric = Fabric.objects.create()

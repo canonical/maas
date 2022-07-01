@@ -81,7 +81,7 @@ class DNSResourceForm(MAASModelForm):
             # We have no idea, pass it on through and see what happens.
             return ipaddr
         ips = StaticIPAddress.objects.filter(ip=ipaddr)
-        if ips.count() > 0:
+        if ips.exists():
             return ips.first().id
         return ipaddr
 

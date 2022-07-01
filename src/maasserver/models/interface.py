@@ -909,7 +909,7 @@ class Interface(CleanSave, TimestampedModel):
                     if prev_address.is_linked_to_one_unknown_interface():
                         prev_address.interface_set.all().delete()
                     prev_address.delete()
-                elif prev_address.interface_set.count() == 0:
+                elif not prev_address.interface_set.exists():
                     # Previous address is just hanging around, this should not
                     # happen. But just in-case we delete the IP address.
                     prev_address.delete()
@@ -1833,7 +1833,7 @@ class ChildInterface(Interface):
         if self.id is None:
             return True
         else:
-            if self.parents.count() > 0:
+            if self.parents.exists():
                 is_enabled = {
                     parent.is_enabled()
                     for parent in self.parents.all()

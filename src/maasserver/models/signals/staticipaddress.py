@@ -69,7 +69,7 @@ def post_delete_clean_up_dns(sender, instance, **kwargs):
     DNS records should be deleted.
     """
     for dnsrr in instance.__previous_dnsresources:
-        if dnsrr.ip_addresses.count() == 0:
+        if not dnsrr.ip_addresses.exists():
             dnsrr.delete()
             log.msg(
                 "Removed orphan DNS record '%s' for deleted IP address '%s'."

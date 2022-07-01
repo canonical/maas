@@ -192,7 +192,7 @@ def create_node(
     nodes = Node.objects.filter(
         current_config__interface__mac_address__in=mac_addresses
     )
-    if nodes.count() > 0:
+    if nodes.exists():
         raise NodeAlreadyExists(
             "One of the MACs %s is already in use by a node." % mac_addresses
         )

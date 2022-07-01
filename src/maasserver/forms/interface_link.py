@@ -153,12 +153,9 @@ class InterfaceLinkForm(forms.Form):
         # LINK_UP address. And exclude DISCOVERED because what MAAS discovered
         # doesn't matter with regard to the user's intention.
         exclude_types = (IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.DISCOVERED)
-        has_active_links = (
-            self.instance.ip_addresses.exclude(
-                alloc_type__in=exclude_types, ip__isnull=True
-            ).count()
-            > 0
-        )
+        has_active_links = self.instance.ip_addresses.exclude(
+            alloc_type__in=exclude_types, ip__isnull=True
+        ).exists()
         if has_active_links and self.force is not True:
             set_form_error(
                 self,
