@@ -21,16 +21,18 @@ HARDWARE_SYNC_DIR := $(CMD_DIR)/hardware-sync
 VENDOR_DIR := $(PACKAGE_DIR)/vendor
 GO_CACHE_DIR := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
 
+# build static binaries since they need to run on different Ubuntu releases
+GO_BUILD := CGO_ENABLED=0 go build -mod vendor -ldflags '-s -w -extldflags "-static"'
+
 .DEFAULT_GOAL := build
 
 # XXX: Explicitly set GOCACHE to avoid situations where we can't mkdir $HOME/.cache (autopkgtest VM)
-$(MACHINE_RESOURCES_BINARIES): vendor
-	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(DEB_GO_ARCH_$(notdir $@)) go build -mod vendor -ldflags '-s -w' -o $@ $(PACKAGE_DIR)
+$(MACHINE_RESOURCES_BINARIES): TARGET_DIR=$(PACKAGE_DIR)
+$(HARDWARE_SYNC_BINARIES): TARGET_DIR=$(HARDWARE_SYNC_DIR)
+$(HARDWARE_SYNC_BINARIES) $(MACHINE_RESOURCES_BINARIES): vendor
+	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(DEB_GO_ARCH_$(notdir $@)) $(GO_BUILD) -o $@ $(TARGET_DIR)
 
-$(HARDWARE_SYNC_BINARIES): vendor
-	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(DEB_GO_ARCH_$(notdir $@)) go build -mod vendor -ldflags '-s -w' -o $@ $(HARDWARE_SYNC_DIR)
-
-build: $(MACHINE_RESOURCES_BINARIES)
+build: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
 .PHONY: build
 
 clean:

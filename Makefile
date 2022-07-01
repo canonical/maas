@@ -122,7 +122,7 @@ go-bin-vendor:
 .PHONY: go-bin-vendor
 
 go-bins: go-bin-vendor
-	$(MAKE) -C src/host-info build
+	$(MAKE) -j -C src/host-info build
 .PHONY: go-bins
 
 test: test-missing-migrations test-py
