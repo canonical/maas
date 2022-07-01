@@ -166,8 +166,8 @@ lint-py-imports:
 # Only Unix line ends should be accepted
 lint-py-linefeeds:
 	@find src/ -name \*.py -exec file "{}" ";" | \
-	    awk '/CRLF/ { print $0; count++ } END {exit count}' || \
-	    (echo "Lint check failed; run make format to fix DOS linefeeds."; false)
+		awk '/CRLF/ { print $0; count++ } END {exit count}' || \
+		(echo "Lint check failed; run make format to fix DOS linefeeds."; false)
 .PHONY: lint-py-linefeeds
 
 # Go fmt
@@ -319,8 +319,8 @@ go_bins_vendor := src/host-info/vendor
 
 -packaging-export-orig: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area)
 	git archive --format=tar $(packaging-export-extra) \
-            --prefix=$(packaging-dir)/ \
-	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
+		--prefix=$(packaging-dir)/ \
+		-o $(packaging-build-area)/$(packaging-orig-tar) HEAD
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) go-bin-vendor
@@ -331,7 +331,7 @@ go_bins_vendor := src/host-info/vendor
 
 -packaging-export-orig-uncommitted: $(UI_BUILD) $(OFFLINE_DOCS) $(packaging-build-area)
 	git ls-files --others --exclude-standard --cached | grep -v '^debian' | \
-	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
+		xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
 	$(MAKE) go-bin-vendor
@@ -348,7 +348,7 @@ go_bins_vendor := src/host-info/vendor
 	(cd $(packaging-build-area) && tar xfz $(packaging-orig-targz))
 	cp -r debian $(packaging-build-area)/$(packaging-dir)
 	echo "maas (1:$(packaging-version)-0ubuntu1) UNRELEASED; urgency=medium" \
-	    > $(changelog)
+		> $(changelog)
 	tail -n +2 debian/changelog >> $(changelog)
 .PHONY: -package-tree
 
