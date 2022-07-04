@@ -24,8 +24,13 @@ from maasserver.models import Config, Controller, Event, RackController, VLAN
 from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
-from maasserver.websockets.base import HandlerError, HandlerPermissionError
+from maasserver.websockets.base import (
+    dehydrate_certificate,
+    HandlerError,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.node import node_prefetch, NodeHandler
+from provisioningserver.certificates import Certificate
 
 # return the list of VLAN ids connected to a controller
 _vlan_ids_aggr = ArrayAgg(
@@ -183,6 +188,14 @@ class ControllerHandler(NodeHandler):
                 interface.vlan_id
                 for interface in obj.current_config.interface_set.all()
             ]
+
+            # include certificate info if present
+            certificate = obj.power_parameters.get("certificate")
+            key = obj.power_parameters.get("key")
+            if certificate and key:
+                cert = Certificate.from_pem(certificate, key)
+                data["certificate"] = dehydrate_certificate(cert)
+
         return data
 
     def dehydrate_versions(self, info):
