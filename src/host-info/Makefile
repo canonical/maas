@@ -19,18 +19,19 @@ CMD_DIR := ./cmd
 PACKAGE_DIR := $(CMD_DIR)/machine-resources
 HARDWARE_SYNC_DIR := $(CMD_DIR)/hardware-sync
 VENDOR_DIR := $(PACKAGE_DIR)/vendor
-GO_CACHE_DIR := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
+# Explicitly set cache dirs to avoid situations where we can't mkdir under $HOME (e.g. Launchpad builds)
+export GOCACHE := $(shell [ -d $(HOME)/.cache ] && echo $(HOME)/.cache/go-cache || mktemp --tmpdir -d tmp.go-cacheXXX)
+export GOMODCACHE := $(shell [ -d $(HOME)/go ] && echo $(HOME)/go/pkg/mod || mktemp --tmpdir -d tmp.go-mod-cacheXXX)
 
 # build static binaries since they need to run on different Ubuntu releases
-GO_BUILD := CGO_ENABLED=0 go build -mod vendor -ldflags '-s -w -extldflags "-static"'
+GO_BUILD := CGO_ENABLED=0 go build -mod=vendor -ldflags '-s -w -extldflags "-static"'
 
 .DEFAULT_GOAL := build
 
-# XXX: Explicitly set GOCACHE to avoid situations where we can't mkdir $HOME/.cache (autopkgtest VM)
 $(MACHINE_RESOURCES_BINARIES): TARGET_DIR=$(PACKAGE_DIR)
 $(HARDWARE_SYNC_BINARIES): TARGET_DIR=$(HARDWARE_SYNC_DIR)
-$(HARDWARE_SYNC_BINARIES) $(MACHINE_RESOURCES_BINARIES): vendor
-	GOCACHE=$(GO_CACHE_DIR) GOARCH=$(DEB_GO_ARCH_$(notdir $@)) $(GO_BUILD) -o $@ $(TARGET_DIR)
+$(HARDWARE_SYNC_BINARIES) $(MACHINE_RESOURCES_BINARIES):
+	GOARCH=$(DEB_GO_ARCH_$(notdir $@)) $(GO_BUILD) -o $@ $(TARGET_DIR)
 
 build: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
 .PHONY: build
