@@ -33,8 +33,12 @@ $(HARDWARE_SYNC_BINARIES): TARGET_DIR=$(HARDWARE_SYNC_DIR)
 $(HARDWARE_SYNC_BINARIES) $(MACHINE_RESOURCES_BINARIES):
 	GOARCH=$(DEB_GO_ARCH_$(notdir $@)) $(GO_BUILD) -o $@ $(TARGET_DIR)
 
-build: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
+build: vendor/modules.txt $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
 .PHONY: build
+
+# don't vendor dependencies before building binaries
+build-no-vendor: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
+.PHONY: build-no-vendor
 
 clean:
 	rm -rf $(BINDIR) $(VENDOR_DIR)
@@ -49,6 +53,7 @@ install: $(MACHINE_RESOURCES_BINARIES)
 .PHONY: install
 
 vendor: vendor/modules.txt
+.PHONY: vendor
 
 vendor/modules.txt: go.mod
 	go mod vendor
