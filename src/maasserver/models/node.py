@@ -2341,10 +2341,12 @@ class Node(CleanSave, TimestampedModel):
         old_status = self.update_status(NODE_STATUS.COMMISSIONING)
         self.owner = user
 
-        # Set min_hwe_kernel to default_min_hwe_kernel.
-        # This makes sure that the min_hwe_kernel is up to date
-        # with what is stored in the settings.
-        self.min_hwe_kernel = config["default_min_hwe_kernel"]
+        # Set to default_min_hwe_kernel if min_hwe_kernel not given, and
+        # default_min_hwe_kernel is defined. Should ensure that set kernels
+        # are respected on commission, while still allowing the MAAS-wide
+        # defaults to be set.
+        if not self.min_hwe_kernel and config["default_min_hwe_kernel"]:
+            self.min_hwe_kernel = config["default_min_hwe_kernel"]
         self.save()
 
         try:
