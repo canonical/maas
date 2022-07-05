@@ -1863,6 +1863,13 @@ class AnonMachinesHandler(AnonNodesHandler):
                 ),
             ).first()
             if machine is not None:
+                maaslog.info(
+                    "Updating %s, with %s, %s, %s",
+                    machine,
+                    architecture,
+                    power_type,
+                    params.get("power_address", ""),
+                )
                 machine = self._update_new_node(
                     machine, architecture, power_type, power_parameters
                 )
