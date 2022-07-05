@@ -29,6 +29,10 @@ def test_perf_list_machines_MachinesHander_direct_call(admin):
 
     with profile("test_perf_list_machines_MachinesHander_direct_call"):
         emitter = DummyEmitter(
-            handler.read(request), typemapper, handler, handler.fields
+            handler.read(request),
+            typemapper,
+            handler,
+            handler.fields,
+            anonymous=False,
         )
         emitter.render(request)
