@@ -45,8 +45,8 @@ from maasserver.models import (
 from maasserver.models.nodeprobeddetails import script_output_nsmap
 from maasserver.node_action import compile_node_actions
 from maasserver.node_constraint_filter_forms import (
+    FreeTextFilterNodeForm,
     GROUPABLE_FIELDS,
-    ReadNodesForm,
     STATIC_FILTER_FIELDS,
 )
 from maasserver.permissions import NodePermission
@@ -1200,7 +1200,7 @@ class NodeHandler(TimestampedModelHandler):
 
     def _filter(self, qs, action, params):
         qs = super()._filter(qs, action, params)
-        form = ReadNodesForm(data=params)
+        form = FreeTextFilterNodeForm(data=params)
         if not form.is_valid():
             raise HandlerValidationError(form.errors)
         qs, _, _ = form.filter_nodes(qs)
@@ -1215,7 +1215,7 @@ class NodeHandler(TimestampedModelHandler):
                 "dynamic": name not in STATIC_FILTER_FIELDS,
                 "for_grouping": name in GROUPABLE_FIELDS,
             }
-            for name, field in ReadNodesForm.declared_fields.items()
+            for name, field in FreeTextFilterNodeForm.declared_fields.items()
         ]
 
     def _get_dynamic_filter_options(self, key):
@@ -1316,7 +1316,7 @@ class NodeHandler(TimestampedModelHandler):
                 "a 'group_key' param must be provided for filter_options"
             )
         else:
-            if key not in ReadNodesForm.declared_fields.keys():
+            if key not in FreeTextFilterNodeForm.declared_fields.keys():
                 raise HandlerValidationError(
                     f"{key} is not a valid 'group_key' for filter_options"
                 )
