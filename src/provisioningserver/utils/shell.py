@@ -5,6 +5,7 @@
 
 import os
 from pipes import quote
+import shutil
 from string import printable
 from subprocess import CalledProcessError, PIPE, Popen
 from typing import Mapping, NamedTuple, Optional
@@ -109,11 +110,7 @@ def call_and_check(command, *args, **kwargs):
 
 def has_command_available(command):
     """Return True if `command` is available on the system."""
-    try:
-        call_and_check(["which", command])
-    except ExternalProcessError:
-        return False
-    return True
+    return shutil.which(command) is not None
 
 
 def get_env_with_locale(environ=os.environ, locale="C.UTF-8"):

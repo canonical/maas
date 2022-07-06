@@ -249,8 +249,7 @@ class InterfaceInfo(NamedTuple):
 
 
 REQUIRED_PACKAGES = [
-    ["virsh", "libvirt-clients"],
-    ["virt-login-shell", "libvirt-clients"],
+    ("virsh", "libvirt-clients"),
 ]
 
 

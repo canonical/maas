@@ -182,23 +182,16 @@ class TestExternalProcessError(MAASTestCase):
 
 
 class TestHasCommandAvailable(MAASTestCase):
-    def test_calls_which(self):
-        mock_call_and_check = self.patch(shell_module, "call_and_check")
-        cmd = factory.make_name("cmd")
-        has_command_available(cmd)
-        self.assertThat(
-            mock_call_and_check, MockCalledOnceWith(["which", cmd])
-        )
-
-    def test_returns_False_when_ExternalProcessError_raised(self):
-        self.patch(
-            shell_module, "call_and_check"
-        ).side_effect = ExternalProcessError(1, "cmd")
+    def test_returns_False_when_not_found_raised(self):
+        self.patch(shell_module.shutil, "which").return_value = None
         self.assertFalse(has_command_available(factory.make_name("cmd")))
 
     def test_returns_True_when_ExternalProcessError_not_raised(self):
-        self.patch(shell_module, "call_and_check")
-        self.assertTrue(has_command_available(factory.make_name("cmd")))
+        command = factory.make_name("cmd")
+        self.patch(
+            shell_module.shutil, "which"
+        ).return_value = f"/bin/{command}"
+        self.assertTrue(has_command_available(command))
 
 
 # Taken from locale(7).
