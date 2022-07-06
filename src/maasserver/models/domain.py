@@ -38,6 +38,17 @@ def validate_domain_name(value):
     namespec = re.compile("^%s$" % NAMESPEC)
     if not namespec.search(value) or len(value) > 255:
         raise ValidationError("Invalid domain name: %s." % value)
+    if value == Config.objects.get_config("maas_internal_domain"):
+        raise ValidationError(
+            "Domain name cannot duplicate maas internal domain name"
+        )
+
+
+def validate_internal_domain_name(value):
+    """Django validator: `value` must be a valid DNS Zone name."""
+    namespec = re.compile("^%s$" % NAMESPEC)
+    if not namespec.search(value) or len(value) > 255:
+        raise ValidationError("Invalid domain name: %s." % value)
 
 
 NAME_VALIDATOR = RegexValidator("^%s$" % NAMESPEC)

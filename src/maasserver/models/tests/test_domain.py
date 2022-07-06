@@ -170,6 +170,19 @@ class TestDomain(MAASServerTestCase):
             ValidationError, factory.make_Domain, name="invalid*name"
         )
 
+    def test_duplicating_internal_name_raises_exception(self):
+        internal_domain = Config.objects.get_config("maas_internal_domain")
+        self.assertRaises(
+            ValidationError, factory.make_Domain, name=internal_domain
+        )
+
+    def test_setting_internal_name_allows_old_internal_domain_name(self):
+        internal_domain_old = Config.objects.get_config("maas_internal_domain")
+        internal_domain_new = factory.make_name("internal")
+        Config.objects.set_config("maas_internal_domain", internal_domain_new)
+        domain = factory.make_Domain(name=internal_domain_old)
+        self.assertEqual(internal_domain_old, domain.name)
+
     def test_get_default_domain_is_idempotent(self):
         default_domain = Domain.objects.get_default_domain()
         default_domain2 = Domain.objects.get_default_domain()

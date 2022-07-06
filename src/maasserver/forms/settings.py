@@ -33,7 +33,7 @@ from maasserver.models.config import (
     DNSSEC_VALIDATION_CHOICES,
     NETWORK_DISCOVERY_CHOICES,
 )
-from maasserver.models.domain import validate_domain_name
+from maasserver.models.domain import validate_internal_domain_name
 from maasserver.storage_layouts import STORAGE_LAYOUT_CHOICES
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
@@ -263,7 +263,9 @@ def make_active_discovery_interval_field(*args, **kwargs):
 
 def make_maas_internal_domain_field(*args, **kwargs):
     """Build and return the maas_internal_domain field."""
-    return forms.CharField(validators=[validate_domain_name], **kwargs)
+    return forms.CharField(
+        validators=[validate_internal_domain_name], **kwargs
+    )
 
 
 class RemoteSyslogField(forms.CharField):
