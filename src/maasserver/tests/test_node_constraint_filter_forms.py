@@ -22,6 +22,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    POWER_STATE,
 )
 from maasserver.models import Domain, Machine, NodeDevice, Zone
 from maasserver.node_constraint_filter_forms import (
@@ -1437,6 +1438,24 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
         self.assertCountEqual([node1, node2], filtered_nodes)
 
+    def test_owner(self):
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        factory.make_Node(owner=user1)
+        node2 = factory.make_Node(owner=user2)
+        form = FilterNodeForm({"owner": user2.username})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
+        self.assertCountEqual([node2], filtered_nodes)
+
+    def test_power_state(self):
+        factory.make_Node(power_state=POWER_STATE.OFF)
+        node2 = factory.make_Node(power_state=POWER_STATE.ON)
+        form = FilterNodeForm({"power_state": POWER_STATE.ON})
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, _, _ = form.filter_nodes(Machine.objects)
+        self.assertCountEqual([node2], filtered_nodes)
+
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name="big")
         arch = "%s/generic" % factory.make_name("arch")
@@ -1538,8 +1557,6 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "link_speed": random.randint(100, 10000),
             "vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
             "not_vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
-            "connected_to": [factory.make_mac_address()],
-            "not_connected_to": [factory.make_mac_address()],
             "zone": factory.make_Zone(),
             "not_in_zone": [factory.make_Zone().name],
             "pool": factory.make_ResourcePool(),
@@ -1558,6 +1575,8 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "not_fabric_classes": [
                 factory.make_Fabric(class_type="1g").class_type
             ],
+            "owner": factory.make_User().username,
+            "power_state": POWER_STATE.ON,
         }
         form = FilterNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)
@@ -1665,8 +1684,6 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "link_speed": random.randint(100, 10000),
             "vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
             "not_vlans": ["name:" + factory.make_VLAN(name=RANDOM).name],
-            "connected_to": [factory.make_mac_address()],
-            "not_connected_to": [factory.make_mac_address()],
             "zone": factory.make_Zone(),
             "not_in_zone": [factory.make_Zone().name],
             "pool": factory.make_ResourcePool(),
@@ -1685,6 +1702,8 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             "not_fabric_classes": [
                 factory.make_Fabric(class_type="1g").class_type
             ],
+            "owner": factory.make_User().username,
+            "power_state": POWER_STATE.ON,
         }
         form = AcquireNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)
@@ -1696,7 +1715,6 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             constraint.split("=", 1)[0]
             for constraint in form.describe_constraints().split()
         }
-
         self.assertEqual(constraints.keys(), described_constraints)
 
     def test_pod_not_pod_pod_type_or_not_pod_type_for_pod(self):

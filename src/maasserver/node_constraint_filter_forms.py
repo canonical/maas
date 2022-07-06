@@ -14,7 +14,12 @@ from django.db.models import Model, Q
 from django.forms.fields import Field
 from netaddr import IPAddress
 
-from maasserver.enum import NODE_STATUS, NODE_STATUS_SHORT_LABEL_CHOICES
+from maasserver.enum import (
+    NODE_STATUS,
+    NODE_STATUS_SHORT_LABEL_CHOICES,
+    POWER_STATE,
+    POWER_STATE_CHOICES,
+)
 from maasserver.fields import mac_validator, MODEL_NAME_VALIDATOR
 import maasserver.forms as maasserver_forms
 from maasserver.forms import (
@@ -32,6 +37,7 @@ from maasserver.models import (
     ResourcePool,
     Subnet,
     Tag,
+    User,
     VLAN,
     Zone,
 )
@@ -266,7 +272,7 @@ class RenamableFieldsForm(forms.Form):
                 setattr(self, "clean_%s" % new_name, method)
 
 
-def detect_nonexistent_names(model_class, names):
+def detect_nonexistent_names(model_class, names, name_field="name"):
     """Check for, and return, names of nonexistent objects.
 
     Used for checking object names as passed to the `FilterNodeForm`.
@@ -279,7 +285,7 @@ def detect_nonexistent_names(model_class, names):
     if len(names) == 0:
         return []
     existing_names = set(
-        model_class.objects.all().values_list("name", flat=True)
+        model_class.objects.all().values_list(name_field, flat=True)
     )
     return sorted(set(names) - existing_names)
 
@@ -650,6 +656,7 @@ STATIC_FILTER_FIELDS = (
     "pod_type",
     "not_pod_type",
     "status",
+    "power_state",
 )
 
 
@@ -666,6 +673,8 @@ GROUPABLE_FIELDS = (
     "pod_type",
     "domain",
     "status",
+    "power_state",
+    "owner",
 )
 
 
@@ -761,24 +770,6 @@ class FilterNodeForm(RenamableFieldsForm):
         },
     )
 
-    connected_to = ValidatorMultipleChoiceField(
-        validator=mac_validator,
-        label="Connected to",
-        required=False,
-        error_messages={
-            "invalid_list": "Invalid parameter: list of MAC addresses required."
-        },
-    )
-
-    not_connected_to = ValidatorMultipleChoiceField(
-        validator=mac_validator,
-        label="Not connected to",
-        required=False,
-        error_messages={
-            "invalid_list": "Invalid parameter: list of MAC addresses required."
-        },
-    )
-
     zone = forms.CharField(label="Physical zone", required=False)
 
     not_in_zone = ValidatorMultipleChoiceField(
@@ -837,6 +828,14 @@ class FilterNodeForm(RenamableFieldsForm):
 
     not_pod_type = forms.CharField(
         label="The power_type of the undesired pod", required=False
+    )
+
+    owner = forms.CharField(label="Owner", required=False)
+
+    power_state = forms.ChoiceField(
+        label="Power State",
+        choices=POWER_STATE_CHOICES,
+        required=False,
     )
 
     ignore_unknown_constraints = False
@@ -968,6 +967,19 @@ class FilterNodeForm(RenamableFieldsForm):
         value = self.cleaned_data[self.get_field_name("not_vlans")]
         return self._clean_specifiers(VLAN, value)
 
+    def clean_owner(self):
+        value = self.cleaned_data[self.get_field_name("owner")]
+        if value:
+            nonexistent_names = detect_nonexistent_names(
+                User, [value], "username"
+            )
+            if nonexistent_names:
+                error_msg = "No such owner: '%s'." % value
+                set_form_error(self, self.get_field_name("owner"), error_msg)
+                return None
+            return value
+        return None
+
     def clean(self):
         if not self.ignore_unknown_constraints:
             unknown_constraints = set(self.data).difference(
@@ -1051,6 +1063,8 @@ class FilterNodeForm(RenamableFieldsForm):
         nodes = self.filter_by_mem(nodes)
         nodes = self.filter_by_pod_or_pod_type(nodes)
         nodes = self.filter_by_devices(nodes)
+        nodes = self.filter_by_owner(nodes)
+        nodes = self.filter_by_power_state(nodes)
         return nodes.distinct()
 
     def filter_by_interfaces(self, filtered_nodes):
@@ -1239,6 +1253,20 @@ class FilterNodeForm(RenamableFieldsForm):
                 key, value = f.split("=", 1)
                 filters[f"current_config__nodedevice__{key}__iexact"] = value
             filtered_nodes = filtered_nodes.filter(**filters)
+        return filtered_nodes
+
+    def filter_by_owner(self, filtered_nodes):
+        owner = self.cleaned_data.get(self.get_field_name("owner"))
+        if owner:
+            user = User.objects.get(username=owner)
+            filtered_nodes = filtered_nodes.filter(owner=user)
+        return filtered_nodes
+
+    def filter_by_power_state(self, filtered_nodes):
+        power_state = self.cleaned_data.get(self.get_field_name("power_state"))
+        if power_state:
+            power_state_id = getattr(POWER_STATE, power_state.upper())
+            filtered_nodes = filtered_nodes.filter(power_state=power_state_id)
         return filtered_nodes
 
 

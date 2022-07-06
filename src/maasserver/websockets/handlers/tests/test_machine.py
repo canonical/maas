@@ -5978,18 +5978,6 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                     "for_grouping": False,
                 },
                 {
-                    "key": "connected_to",
-                    "label": "Connected to",
-                    "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
-                    "key": "not_connected_to",
-                    "label": "Not connected to",
-                    "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
                     "key": "zone",
                     "label": "Physical zone",
                     "dynamic": True,
@@ -6094,6 +6082,18 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 {
                     "key": "status",
                     "label": "Only includes nodes with the specified status",
+                    "dynamic": False,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "owner",
+                    "label": "Owner",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
+                {
+                    "key": "power_state",
+                    "label": "Power State",
                     "dynamic": False,
                     "for_grouping": True,
                 },
