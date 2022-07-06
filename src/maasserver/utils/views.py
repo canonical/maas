@@ -242,7 +242,12 @@ class WebApplicationHandler(WSGIHandler):
             try:
                 raise exc from exc.__cause__
             except Exception as exc:
-                return self.process_exception_by_middleware(exc, request)
+                response = self.process_exception_by_middleware(exc, request)
+                if response:
+                    return response
+                else:
+                    # if no middleware has returned a response, re-raise the original exception
+                    raise
         except SystemExit:
             raise
         except RetryTransaction:

@@ -15,6 +15,6 @@ if [ $# -ne 1 ]; then
     exit 32
 fi
 
-exec /usr/sbin/tcpdump -Z root --interface "$1" --no-promiscuous-mode \
+exec /usr/bin/tcpdump -Z root --interface "$1" --no-promiscuous-mode \
     --packet-buffered --immediate-mode --snapshot-length=1500 -n -w - \
     "udp and (port 67 or port 68) or (vlan and udp and (port 67 or port 68))"

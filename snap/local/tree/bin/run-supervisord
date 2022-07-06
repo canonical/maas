@@ -12,7 +12,7 @@ rm -rf "$prometheus_multiproc_dir"
 mkdir -p "$prometheus_multiproc_dir"
 
 # Render the supervisord.conf based on the current mode.
-"$SNAP/bin/maas-wrapper" config --render
+"$SNAP/bin/maas" config --render
 
 # Run the supervisor for the snap.
 exec "$SNAP/bin/supervisord" -d "$SNAP_DATA/supervisord" -c "$SNAP_DATA/supervisord/supervisord.conf" -n > "$SNAP_COMMON/log/supervisor-run.log" 2>&1

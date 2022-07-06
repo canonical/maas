@@ -24,7 +24,12 @@ original_HttpResponseBase__init__ = HttpResponseBase.__init__
 
 
 def patched_HttpResponseBase__init__(
-    self, content_type=None, status=None, reason=None, charset=None
+    self,
+    content_type=None,
+    status=None,
+    reason=None,
+    charset=None,
+    headers=None,
 ):
     # This will raise a ValueError if this status cannot be converted to str
     # and then into integer.

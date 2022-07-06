@@ -1,6 +1,0 @@
-#!/bin/bash
-#
-# Wrap the actual maas binary to setup exports (PATH, LD_LIBRARY_PATH, ...) the
-# same way it's run from outside the snap.
-
-exec "$SNAP/snap/command-chain/snapcraft-runner" "$SNAP/bin/maas" "$@"

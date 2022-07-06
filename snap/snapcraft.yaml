@@ -5,7 +5,7 @@ description: |
   Total automation of your physical servers for amazing data center operational efficiency.
 grade: stable
 confinement: strict
-base: core20
+base: core22
 assumes:
   - snapd2.53
 system-usernames:
@@ -17,8 +17,12 @@ system-usernames:
 # 3: (2.9) drop "all" mode and builtin PostgresSQL server
 epoch: 3
 
+package-repositories:
+  - type: apt
+    ppa: maas-committers/latest-deps
+
 environment:
-  PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.8/dist-packages
+  PYTHONPATH: $SNAP/usr/lib/python3/dist-packages:$SNAP/usr/lib/python3.10/dist-packages
   LD_PRELOAD: $SNAP/usr/lib/snap-preload.so
 
 plugs:
@@ -67,7 +71,7 @@ parts:
   maas:
     plugin: python
     source: .
-    requirements:
+    python-requirements:
       - snap/local/requirements.txt
     build-packages:
       - build-essential
@@ -101,6 +105,7 @@ parts:
       - nmap
       - openssh-client
       - python3-attr
+      - python3-babel
       - python3-bson
       - python3-certifi # for macaroonbakery
       - python3-cffi # for macaroonbakery
@@ -144,6 +149,7 @@ parts:
       - python3-tempita
       - python3-twisted
       - python3-txtftp
+      - python3-tz
       - python3-urllib3 # for macaroonbakery
       - python3-yaml
       - python3-zhmcclient
@@ -157,42 +163,54 @@ parts:
       - wget # DLI
       - wsmancli # AMT
     organize:
-      lib/python3.*/site-packages/etc/*: etc
-      lib/python3.*/site-packages/usr/bin/*: usr/bin
-      lib/python3.*/site-packages/usr/lib/*: usr/lib
-      lib/python3.*/site-packages/usr/sbin/*: usr/sbin
-      lib/python3.*/site-packages/usr/share/*: usr/share
-      usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers
-    filesets:
-      remove:
-        - -lib/python3.*/site-packages/etc
-        - -lib/python3.*/site-packages/usr
-        - -lib/python3/dist-packages/maastesting
-        - -share
-        - -usr/bin/xdg-*
-        - -usr/share/applications
-        - -usr/share/bug
-        - -usr/share/debhelper
-        - -usr/share/dh-python
-        - -usr/share/doc
-        - -usr/share/doc-base
-        - -usr/share/lintian
-        - -usr/share/man
-        - -var/lib/ieee-data/mam.txt
-        - -var/lib/ieee-data/oui36.txt
+      lib/python3.*/site-packages/etc/*: etc/
+      lib/python3.*/site-packages/usr/bin/*: usr/bin/
+      lib/python3.*/site-packages/usr/lib/*: usr/lib/
+      lib/python3.*/site-packages/usr/sbin/*: usr/sbin/
+      lib/python3.*/site-packages/usr/share/*: usr/share/
+      usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers/
     stage:
-      - $remove
+      - -lib/python3.*/site-packages/etc
+      - -lib/python3.*/site-packages/usr
+      - -lib/python3/dist-packages/maastesting
+      - -share
+      - -usr/bin/xdg-*
+      - -usr/share/applications
+      - -usr/share/bug
+      - -usr/share/debhelper
+      - -usr/share/dh-python
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -usr/share/man
+      - -var/lib/ieee-data/mam.txt
+      - -var/lib/ieee-data/oui36.txt
+    # same list as above, should use "filesets" once they're available again
     prime:
-      - $remove
+      - -lib/python3.*/site-packages/etc
+      - -lib/python3.*/site-packages/usr
+      - -lib/python3/dist-packages/maastesting
+      - -share
+      - -usr/bin/xdg-*
+      - -usr/share/applications
+      - -usr/share/bug
+      - -usr/share/debhelper
+      - -usr/share/dh-python
+      - -usr/share/doc
+      - -usr/share/doc-base
+      - -usr/share/lintian
+      - -usr/share/man
+      - -var/lib/ieee-data/mam.txt
+      - -var/lib/ieee-data/oui36.txt
     override-build: |
-      snapcraftctl build
+      craftctl default
       # If python3-netaddr contains absolute symlinks.
       # See https://bugs.launchpad.net/snapcraft/+bug/1774410
-      ln -s -f ../../../../../../var/lib/ieee-data/oui.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
-      ln -s -f ../../../../../../var/lib/ieee-data/iab.txt $SNAPCRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
+      ln -sf ../../../../../../var/lib/ieee-data/oui.txt $CRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/oui.txt
+      ln -sf ../../../../../../var/lib/ieee-data/iab.txt $CRAFT_PART_INSTALL/usr/lib/python3/dist-packages/netaddr/eui/iab.txt
     override-prime: |
-      (cd $SNAPCRAFT_PART_SRC; snapcraftctl set-version $($SNAPCRAFT_PART_SRC/utilities/package-version))
-      snapcraftctl prime
+      (cd $CRAFT_PART_SRC; craftctl set version="$(utilities/package-version)")
+      craftctl default
       python3 -m compileall -j 0 -q .
 
   ui:
@@ -203,7 +221,7 @@ parts:
     override-build: |
       cd src/maasui
       make
-      INSTALL_DIR="$SNAPCRAFT_PART_INSTALL/usr/share/maas/web"
+      INSTALL_DIR="$CRAFT_PART_INSTALL/usr/share/maas/web"
       mkdir -p "$INSTALL_DIR"
       cp -a build "$INSTALL_DIR/static"
     prime:
@@ -232,14 +250,10 @@ parts:
 
 hooks:
   install:
-    command-chain:
-      - snap/command-chain/snapcraft-runner
     plugs:
       - mount-observe  # to read /proc/*/mounts
       - network  # to connect to the db for running upgrades
   post-refresh:
-    command-chain:
-      - snap/command-chain/snapcraft-runner
     plugs:
       - mount-observe  # to read /proc/*/mounts
       - network  # to connect to the db for running upgrades

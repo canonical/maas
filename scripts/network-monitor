@@ -16,6 +16,6 @@ if [ $# -ne 1 ]; then
     exit 32
 fi
 
-exec "${SNAP:-}/usr/sbin/tcpdump" -Z root --interface "$1" --no-promiscuous-mode \
+exec "${SNAP:-}/usr/bin/tcpdump" -Z root --interface "$1" --no-promiscuous-mode \
     --packet-buffered --immediate-mode --snapshot-length=64 -n -w - \
     "arp or (vlan and arp)"

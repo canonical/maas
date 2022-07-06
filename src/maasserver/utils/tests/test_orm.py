@@ -31,7 +31,7 @@ from testtools.matchers import (
     MatchesPredicate,
     Not,
 )
-from twisted.internet.defer import CancelledError, Deferred, passthru
+from twisted.internet.defer import _failthru, CancelledError, Deferred
 from twisted.python.failure import Failure
 
 from maasserver.models import Node
@@ -1059,14 +1059,14 @@ class TestPostCommitDo(MAASTestCase):
     def test_returns_actual_hook(self):
         hook = Mock()
         hook_added = post_commit_do(hook, sentinel.foo, bar=sentinel.bar)
-        self.assertThat(hook_added, IsInstance(Deferred))
+        self.assertIsInstance(hook_added, Deferred)
         callback, errback = hook_added.callbacks.pop(0)
         # Errors are passed through; they're not passed to our hook.
-        self.expectThat(errback, Equals((passthru, None, None)))
+        self.assertEqual(errback, (_failthru, (), {}))
         # Our hook is set to be called via callOut.
-        self.expectThat(
+        self.assertEqual(
             callback,
-            Equals((callOut, (hook, sentinel.foo), {"bar": sentinel.bar})),
+            (callOut, (hook, sentinel.foo), {"bar": sentinel.bar}),
         )
 
     def test_fire_passes_only_args_to_hook(self):

@@ -1,45 +1,14 @@
-argparse==1.1
-blessings==1.6
-extras==1.0.0
-fixtures==3.0.0
-hypothesis==4.36.2
-ipdb==0.10.3
+fixtures==4.0.0
+hypothesis==6.46.9
+ipdb==0.13.9
 junitxml==0.7
-linecache2==1.0.0
-nose-timer==0.6.0
-postgresfixture==0.4.1
-prompt-toolkit==2.0.10
-ptyprocess==0.6.0
-pytest==6.2.2
+postgresfixture==0.4.2
+pytest==7.1.2
 pytest-django==4.5.2
-pytest-mock==3.5.1
-pytest-xdist==2.2.1
+pytest-mock==3.7.0
+pytest-xdist==2.5.0
 python-subunit==1.4.0
-simplegeneric==0.8.1
-termcolor==1.1.0
 testresources==2.0.1
 testscenarios==0.5.0
-testtools==2.4.0
-traceback2==1.4.0
-# Explicit versions for PACKAGED dependencies. This is where a TEST
-# dependency itself depends on an INSTALL/RUNTIME dependency which is, by
-# force, provided by a system package.
-decorator==4.4.2
-django-nose==1.4.6
-ipython==7.13.0
-ipython-genutils==0.2.0
-jedi==0.17.2
-nose==1.3.7
-nose-exclude==0.5.0
-pbr==5.4.5
-pexpect==4.6.0
-pickleshare==0.7.5
-psycopg2==2.8.4
-ptyprocess==0.6.0
-setuptools==45.2.0
-six==1.14.0
-sqlparse==0.2.4
-traitlets==4.3.3
-wcwidth==0.1.8
 # Install MAAS itself in editable mode
 -e .

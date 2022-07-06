@@ -208,18 +208,18 @@ snap. Instead of building a real snap, though, you can run
 
 ::
 
-    $ make snap-prime
+    $ make snap-tree
 
-to create an unpacked snap in the ``build/dev-snap/prime`` directory. That has
-all the contents of the snap, but it's in a plain directory insted of in a
-squashfs image. Using a directory is better for testing, since you can change
-the files in there and not rebuild the snap.
+to create an unpacked snap in the ``dev-snap/tree`` directory. That has all the
+contents of the snap, but it's in a plain directory insted of in a squashfs
+image. Using a directory is better for testing, since you can change the files
+in there and not rebuild the snap.
 
 You can now install the snap:
 
 ::
 
-    $ sudo snap try build/dev-snap/prime
+    $ sudo snap try dev-snap/tree
     $ utilities/connect-snap-interfaces
 
 Note that ``snap try`` is used instead of ``snap install``. The maas snap
@@ -251,7 +251,7 @@ target again:
 
 ::
 
-    $ make sync-dev-snap
+    $ make snap-tree-sync
 
 You should now see that you files were synced to the prime directory. Restart
 the supervisor service to use the synced code:

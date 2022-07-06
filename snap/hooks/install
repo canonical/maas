@@ -25,6 +25,6 @@ for preseed in "${PRESEEDS[@]}"; do
 done
 
 # Perform migrations. Does nothing in 'rack' or 'none' mode.
-"$SNAP/bin/maas-wrapper" migrate --configure
+"$SNAP/bin/maas" migrate --configure
 # Force reconfigure of supervisord as config template might have changed
-"$SNAP/bin/maas-wrapper" reconfigure-supervisord
+"$SNAP/bin/maas" reconfigure-supervisord

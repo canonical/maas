@@ -1173,7 +1173,7 @@ class TestRenderJSONForRelatedIPs(MAASServerTestCase):
                 interface=node.current_config.interface_set.first(),
             )
         count, _ = count_queries(subnet.render_json_for_related_ips)
-        self.assertEqual(10, count)
+        self.assertEqual(9, count)
 
 
 class TestSubnetGetRelatedRanges(MAASServerTestCase):

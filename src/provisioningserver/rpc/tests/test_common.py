@@ -12,8 +12,8 @@ from testtools import ExpectedException
 from testtools.matchers import Equals, Is, IsInstance, Not
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
+from twisted.internet.testing import StringTransport
 from twisted.protocols import amp
-from twisted.test.proto_helpers import StringTransport
 
 from maastesting.factory import factory
 from maastesting.matchers import (

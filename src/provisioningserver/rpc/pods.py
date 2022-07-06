@@ -6,7 +6,7 @@
 
 import json
 
-from twisted.internet.defer import Deferred, ensureDeferred
+from twisted.internet.defer import Deferred, ensureDeferred, NotACoroutineError
 from twisted.internet.threads import deferToThread
 
 from provisioningserver.drivers.pod import (
@@ -76,7 +76,7 @@ def discover_pod(pod_type, context, pod_id=None, name=None):
         raise UnknownPodType(pod_type)
     try:
         d = ensureDeferred(pod_driver.discover(pod_id, context))
-    except ValueError:
+    except NotACoroutineError:
         raise PodActionFail(
             "bad pod driver '%s'; 'discover' did not return Deferred."
             % pod_type
@@ -168,7 +168,7 @@ def send_pod_commissioning_results(
         raise UnknownPodType(pod_type)
     try:
         d = ensureDeferred(pod_driver.get_commissioning_data(pod_id, context))
-    except ValueError:
+    except NotACoroutineError:
         raise PodActionFail(
             f"bad pod driver '{pod_type}'; 'get_commissioning_data' did not return Deferred."
         )

@@ -18,7 +18,7 @@ fi
 
 FILTER="udp dst port 5240"
 
-exec "${SNAP:-}/usr/sbin/tcpdump" -Z root --interface "$1" --direction=in \
+exec "${SNAP:-}/usr/bin/tcpdump" -Z root --interface "$1" --direction=in \
     --no-promiscuous-mode --packet-buffered --immediate-mode \
     --snapshot-length=16384 -n -w - \
     "($FILTER) or (vlan and $FILTER)"

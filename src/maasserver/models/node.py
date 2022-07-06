@@ -30,7 +30,6 @@ import uuid
 
 from crochet import TimeoutError
 from django.contrib.auth.models import User
-from django.contrib.postgres.fields import JSONField
 from django.core.exceptions import (
     ObjectDoesNotExist,
     PermissionDenied,
@@ -46,6 +45,7 @@ from django.db.models import (
     ForeignKey,
     GenericIPAddressField,
     IntegerField,
+    JSONField,
     Manager,
     ManyToManyField,
     Model,

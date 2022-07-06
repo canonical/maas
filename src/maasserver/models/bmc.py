@@ -9,7 +9,7 @@ from functools import partial
 import re
 from statistics import mean
 
-from django.contrib.postgres.fields import ArrayField, JSONField
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.postgres.indexes import HashIndex
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
@@ -22,6 +22,7 @@ from django.db.models import (
     FloatField,
     ForeignKey,
     IntegerField,
+    JSONField,
     Manager,
     ManyToManyField,
     PROTECT,

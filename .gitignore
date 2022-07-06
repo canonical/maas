@@ -18,7 +18,7 @@
 /.vscode
 /*.orig.tar.gz
 /bin
-/build
+/dev-snap
 /build_pkg
 /db
 /debian/build/

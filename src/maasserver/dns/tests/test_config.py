@@ -193,7 +193,7 @@ class TestDNSServer(MAASServerTestCase):
             serial = undefined = object()
             while serial is undefined:
                 try:
-                    ans = self.resolver.query(
+                    ans = self.resolver.resolve(
                         query_name, "SOA", raise_on_no_answer=False
                     )
                 except dns.resolver.NXDOMAIN:
@@ -220,10 +220,15 @@ class TestDNSServer(MAASServerTestCase):
                     # Either way, we get exactly one SOA in the reply: in the
                     # first case, it's in the Authority section, in the second,
                     # it's in the Answer section.
-                    if ans.rrset is None:
-                        serial = ans.response.authority[0].items[0].serial
-                    else:
-                        serial = ans.rrset.items[0].serial
+                    rrset = (
+                        ans.rrset
+                        if ans.rrset is not None
+                        else ans.response.authority[0]
+                    )
+                    # items are tracked as a dict where the key is the item and
+                    # value is None. Future versions provide a pop() method
+                    # directly on the rrset to get the item
+                    serial = rrset.items.popitem()[0].serial
 
             if serial == DNSPublication.objects.get_most_recent().serial:
                 # The zone is up-to-date; we're done.

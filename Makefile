@@ -1,5 +1,5 @@
 python := python3
-snapcraft := SNAPCRAFT_BUILD_INFO=1 /snap/bin/snapcraft
+snapcraft := SNAPCRAFT_BUILD_INFO=1 snapcraft -v
 
 VENV := .ve
 
@@ -407,46 +407,50 @@ print-%:
 #
 
 snap-clean:
-# build locally instead of --use-lxd until support for additional repositories
-# is enabled by default in snapcraft
-	$(snapcraft) clean --destructive-mode
+	$(snapcraft) clean
 .PHONY: snap-clean
 
 snap:
-# build locally instead of --use-lxd until support for additional repositories
-# is enabled by default in snapcraft
-	$(snapcraft) --destructive-mode
+	$(snapcraft)
 .PHONY: snap
 
-#
-# Helpers for using the snap for development testing.
-#
+SNAP_DEV_DIR = dev-snap
+SNAP_UNPACKED_DIR = $(SNAP_DEV_DIR)/tree
+SNAP_UNPACKED_DIR_MARKER = $(SNAP_DEV_DIR)/tree.marker
+SNAP_FILE = $(SNAP_DEV_DIR)/maas.snap
 
-DEV_SNAP_DIR ?= $(PWD)/build/dev-snap
-DEV_SNAP_PRIME_DIR = $(DEV_SNAP_DIR)/prime
-DEV_SNAP_PRIME_MARKER = $(DEV_SNAP_PRIME_DIR)/snap/primed
+snap-tree: $(SNAP_UNPACKED_DIR_MARKER)
+.PHONY: snap-tree
 
-$(DEV_SNAP_DIR): ## Check out a clean version of the working tree.
-	git clone --recurse-submodules $(PWD) $(DEV_SNAP_DIR)
+snap-tree-clean:
+	rm -rf $(SNAP_DEV_DIR)
+.PHONY: snap-tree-clean
 
-$(DEV_SNAP_PRIME_MARKER): $(DEV_SNAP_DIR)
-	cd $(DEV_SNAP_DIR) && $(snapcraft) prime --destructive-mode
+$(SNAP_UNPACKED_DIR_MARKER): $(SNAP_FILE)
+	mkdir -p $(SNAP_DEV_DIR)
+	unsquashfs -f -d $(SNAP_UNPACKED_DIR) $^
 	touch $@
 
-snap-prime: $(DEV_SNAP_PRIME_MARKER)
-.PHONY: snap-prime
+$(SNAP_FILE):
+	$(snapcraft) -o $(SNAP_FILE)
 
-sync-dev-snap: RSYNC := rsync -v -r -u -l -t -W -L
-sync-dev-snap: $(UI_BUILD) $(DEV_SNAP_PRIME_MARKER)
+snap-tree-sync: RSYNC := rsync -v -r -u -l -t -W -L
+snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) --exclude 'maastesting' --exclude 'tests' --exclude 'testing' \
 		--exclude 'maasui' --exclude 'machine-resources' --exclude 'host-info' --exclude 'maas-offline-docs' \
 		--exclude '*.pyc' --exclude '__pycache__' \
-		src/ $(DEV_SNAP_PRIME_DIR)/lib/python3.8/site-packages/
+		src/ \
+		$(SNAP_UNPACKED_DIR)/lib/python3.10/site-packages/
 	$(RSYNC) \
-		$(UI_BUILD)/ $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/
+		$(UI_BUILD)/ \
+		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/
 	$(RSYNC) \
-		$(OFFLINE_DOCS)/production-html-snap/ $(DEV_SNAP_PRIME_DIR)/usr/share/maas/web/static/docs/
-	$(RSYNC) snap/local/tree/ $(DEV_SNAP_PRIME_DIR)/
-	$(RSYNC) src/host-info/bin/machine-resources/ \
-		$(DEV_SNAP_PRIME_DIR)/usr/share/maas/machine-resources/
+		$(OFFLINE_DOCS)/production-html-snap/ \
+		$(SNAP_UNPACKED_DIR)/usr/share/maas/web/static/docs/
+	$(RSYNC) \
+		snap/local/tree/ \
+		$(SNAP_UNPACKED_DIR)/
+	$(RSYNC) \
+		src/host-info/bin/machine-resources/ \
+		$(SNAP_UNPACKED_DIR)/usr/share/maas/machine-resources/
 .PHONY: sync-dev-snap

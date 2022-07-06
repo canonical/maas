@@ -54,7 +54,7 @@ class TestArgumentParser(MAASTestCase):
             parser.parse_args(argv[1:])
         except TypeError:
             pass
-        mock_print_help.assert_called_once_with(sys.stderr)
+        mock_print_help.assert_called_with(sys.stderr)
 
     def test_bad_arguments_calls_sys_exit_2(self):
         argv = ["maas", factory.make_name(prefix="profile"), "nodes"]
@@ -70,7 +70,7 @@ class TestArgumentParser(MAASTestCase):
             parser.parse_args(argv[1:])
         except TypeError:
             pass
-        mock_exit.assert_called_once_with(2)
+        mock_exit.assert_called_with(2)
 
 
 class TestGetDeepestSubparser(MAASTestCase):

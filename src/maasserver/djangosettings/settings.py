@@ -230,6 +230,8 @@ MIDDLEWARE = (
 
 ROOT_URLCONF = "maasserver.djangosettings.urls"
 
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
 MIGRATION_MODULES = {
     # Migrations for MAAS >=2.0.
     "auth": "maasserver.migrations.auth",

@@ -545,7 +545,7 @@ class TestMachinesAPI(APITestCase.ForUser):
 
         expected_counts = [1, 2, 3]
         self.assertEqual(machines_count, expected_counts)
-        base_count = 98
+        base_count = 94
         for idx, machine_count in enumerate(machines_count):
             self.assertEqual(
                 queries_count[idx], base_count + (machine_count * 7)
