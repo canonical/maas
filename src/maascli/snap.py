@@ -655,12 +655,8 @@ class cmd_init(SnapCommand):
             set_current_mode(mode)
             sighup_supervisord()
 
-        perform_work(
-            "Starting services" if mode != "none" else "Stopping services",
-            start_services,
-        )
-
-        if mode in ("region", "region+rack") and db_need_init():
+        init_db = mode in ("region", "region+rack") and db_need_init()
+        if init_db:
             # When in 'region' or 'region+rack' the migrations for the database
             # must be at the same level as this controller.
             perform_work(
@@ -668,6 +664,12 @@ class cmd_init(SnapCommand):
                 migrate_db,
                 capture=sys.stdout.isatty(),
             )
+
+        perform_work(
+            "Starting services" if mode != "none" else "Stopping services",
+            start_services,
+        )
+        if init_db:
             print_msg(
                 dedent(
                     """\
