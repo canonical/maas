@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 12.11 (Ubuntu 12.11-0ubuntu0.20.04.1)
--- Dumped by pg_dump version 12.11 (Ubuntu 12.11-0ubuntu0.20.04.1)
+-- Dumped from database version 14.3 (Ubuntu 14.3-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.3 (Ubuntu 14.3-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6175,7 +6175,7 @@ CREATE TABLE public.auth_user (
     last_login timestamp with time zone,
     is_superuser boolean NOT NULL,
     username character varying(150) NOT NULL,
-    first_name character varying(30) NOT NULL,
+    first_name character varying(150) NOT NULL,
     last_name character varying(150) NOT NULL,
     email character varying(254),
     is_staff boolean NOT NULL,
@@ -6971,7 +6971,7 @@ CREATE TABLE public.maasserver_subnet (
 
 CREATE VIEW public.maasserver_discovery AS
  SELECT DISTINCT ON (neigh.mac_address, neigh.ip) neigh.id,
-    replace(encode((((rtrim((neigh.ip)::text, '/32'::text) || ','::text) || (neigh.mac_address)::text))::bytea, 'base64'::text), chr(10), ''::text) AS discovery_id,
+    replace(encode((((TRIM(TRAILING '/32'::text FROM (neigh.ip)::text) || ','::text) || (neigh.mac_address)::text))::bytea, 'base64'::text), chr(10), ''::text) AS discovery_id,
     neigh.id AS neighbour_id,
     neigh.ip,
     neigh.mac_address,
@@ -9269,7 +9269,6 @@ CREATE TABLE public.metadataserver_nodekey (
 --
 
 CREATE SEQUENCE public.metadataserver_nodekey_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -9300,7 +9299,6 @@ CREATE TABLE public.metadataserver_nodeuserdata (
 --
 
 CREATE SEQUENCE public.metadataserver_nodeuserdata_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -9349,7 +9347,6 @@ CREATE TABLE public.metadataserver_script (
 --
 
 CREATE SEQUENCE public.metadataserver_script_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -9396,7 +9393,6 @@ CREATE TABLE public.metadataserver_scriptresult (
 --
 
 CREATE SEQUENCE public.metadataserver_scriptresult_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -9430,7 +9426,6 @@ CREATE TABLE public.metadataserver_scriptset (
 --
 
 CREATE SEQUENCE public.metadataserver_scriptset_id_seq
-    AS integer
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -11142,6 +11137,10 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 323	metadataserver	0028_scriptset_requested_scripts_rename	2022-06-13 14:48:42.503381+00
 324	metadataserver	0029_scriptset_tags_cleanup	2022-06-13 14:48:42.510804+00
 325	metadataserver	0030_scriptresult_script_link	2022-06-13 14:48:42.738442+00
+326	auth	0006_default_auto_field	2022-07-07 11:09:02.38743+00
+327	maasserver	0278_generic_jsonfield	2022-07-07 11:09:02.563813+00
+328	metadataserver	0031_id_field_bigint	2022-07-07 11:09:03.047446+00
+329	metadataserver	0032_default_auto_field	2022-07-07 11:09:03.68517+00
 \.
 
 
@@ -11934,7 +11933,7 @@ SELECT pg_catalog.setval('public.django_content_type_id_seq', 108, true);
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 325, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 329, true);
 
 
 --
@@ -15627,35 +15626,11 @@ ALTER TABLE ONLY public.maasserver_node
 
 
 --
--- Name: maasserver_node maasserver_node_current_commissionin_9ae2ec39_fk_metadatas; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_current_commissionin_9ae2ec39_fk_metadatas FOREIGN KEY (current_commissioning_script_set_id) REFERENCES public.metadataserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
 -- Name: maasserver_node maasserver_node_current_config_id_d9cbacad_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.maasserver_node
     ADD CONSTRAINT maasserver_node_current_config_id_d9cbacad_fk_maasserve FOREIGN KEY (current_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_node maasserver_node_current_installation_a6e40738_fk_metadatas; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_current_installation_a6e40738_fk_metadatas FOREIGN KEY (current_installation_script_set_id) REFERENCES public.metadataserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: maasserver_node maasserver_node_current_testing_scri_4636f4f9_fk_metadatas; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.maasserver_node
-    ADD CONSTRAINT maasserver_node_current_testing_scri_4636f4f9_fk_metadatas FOREIGN KEY (current_testing_script_set_id) REFERENCES public.metadataserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -16243,27 +16218,27 @@ ALTER TABLE ONLY public.metadataserver_script
 
 
 --
--- Name: metadataserver_scriptresult metadataserver_scrip_script_id_c5ff7318_fk_metadatas; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_scriptresult
-    ADD CONSTRAINT metadataserver_scrip_script_id_c5ff7318_fk_metadatas FOREIGN KEY (script_id) REFERENCES public.metadataserver_script(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: metadataserver_scriptresult metadataserver_scrip_script_set_id_625a037b_fk_metadatas; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.metadataserver_scriptresult
-    ADD CONSTRAINT metadataserver_scrip_script_set_id_625a037b_fk_metadatas FOREIGN KEY (script_set_id) REFERENCES public.metadataserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
 -- Name: metadataserver_scriptresult metadataserver_scrip_script_version_id_932ffdd1_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.metadataserver_scriptresult
     ADD CONSTRAINT metadataserver_scrip_script_version_id_932ffdd1_fk_maasserve FOREIGN KEY (script_version_id) REFERENCES public.maasserver_versionedtextfile(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: metadataserver_scriptresult metadataserver_scriptresult_script_id_c5ff7318_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.metadataserver_scriptresult
+    ADD CONSTRAINT metadataserver_scriptresult_script_id_c5ff7318_fk FOREIGN KEY (script_id) REFERENCES public.metadataserver_script(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: metadataserver_scriptresult metadataserver_scriptresult_script_set_id_625a037b_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.metadataserver_scriptresult
+    ADD CONSTRAINT metadataserver_scriptresult_script_set_id_625a037b_fk FOREIGN KEY (script_set_id) REFERENCES public.metadataserver_scriptset(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
