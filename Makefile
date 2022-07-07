@@ -453,4 +453,4 @@ snap-tree-sync: $(UI_BUILD) go-bins $(SNAP_UNPACKED_DIR_MARKER)
 	$(RSYNC) \
 		src/host-info/bin/machine-resources/ \
 		$(SNAP_UNPACKED_DIR)/usr/share/maas/machine-resources/
-.PHONY: sync-dev-snap
+.PHONY: snap-tree-sync

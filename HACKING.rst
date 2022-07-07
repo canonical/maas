@@ -246,19 +246,19 @@ Next you need to initialize the snap, just like you would normally do:
     $ sudo maas init
 
 And now you're ready to make changes to the code. After you've change
-some source files and want to test them out, run the ``sync-dev-snap``
+some source files and want to test them out, run the ``snap-tree-sync``
 target again:
 
 ::
 
     $ make snap-tree-sync
 
-You should now see that you files were synced to the prime directory. Restart
-the supervisor service to use the synced code:
+You should now see that you files were synced to the ``dev-snap/tree``
+directory. Restart the supervisor service to use the synced code:
 
 ::
 
-    $ sudo service snap.maas.supervisor restart
+    $ sudo snap restart maas
 
 VMs or even real machines can now PXE boot off your development snap.
 But of course, you need to set up the networking first. If you want to
