@@ -30,17 +30,24 @@ from maasserver.utils.orm import MAASQueriesMixin
 
 # Labels are at most 63 octets long, and a name can be many of them.
 LABEL = r"[a-zA-Z0-9]([-a-zA-Z0-9]{0,62}[a-zA-Z0-9]){0,1}"
-NAMESPEC = rf"({LABEL}.)*{LABEL}.?"
+NAMESPEC = rf"({LABEL}[.])*{LABEL}[.]?"
 
 
 def validate_domain_name(value):
     """Django validator: `value` must be a valid DNS Zone name."""
-    namespec = re.compile("^%s$" % NAMESPEC)
-    if not namespec.search(value) or len(value) > 255:
-        raise ValidationError("Invalid domain name: %s." % value)
+    namespec = re.compile(f"^{NAMESPEC}$")
+    if len(value) > 255:
+        raise ValidationError(
+            "Domain name length cannot exceed 255 characters."
+        )
+    if not namespec.match(value):
+        disallowed_chars = re.sub("[a-zA-Z0-9-.]*", "", value)
+        if disallowed_chars:
+            raise ValidationError("Domain name contains invalid characters.")
+        raise ValidationError(f"Invalid domain name: {value}.")
     if value == Config.objects.get_config("maas_internal_domain"):
         raise ValidationError(
-            "Domain name cannot duplicate maas internal domain name"
+            "Domain name cannot duplicate maas internal domain name."
         )
 
 
