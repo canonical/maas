@@ -679,6 +679,25 @@ GROUPABLE_FIELDS = (
 )
 
 
+ARGUMENT_TYPES_BY_FIELD_TYPE = {
+    "int": (forms.IntegerField, forms.ChoiceField),
+    "float": (forms.FloatField,),
+    "string": (forms.CharField,),
+    "list": (ValidatorMultipleChoiceField, UnconstrainedMultipleChoiceField),
+    "dict[string,string]": (LabeledConstraintMapField,),
+}
+
+
+def get_field_argument_type(field):
+    for arg_type, field_types in ARGUMENT_TYPES_BY_FIELD_TYPE.items():
+        if type(field) in field_types:
+            if arg_type == "list":
+                # currently all multichoice fields take strings, this will need to be expanded if that changes
+                return "list[string]"
+            return arg_type
+    return "unknown"
+
+
 class FilterNodeForm(RenamableFieldsForm):
     """A form for filtering nodes."""
 

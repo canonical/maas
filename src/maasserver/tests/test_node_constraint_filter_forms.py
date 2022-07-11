@@ -24,6 +24,10 @@ from maasserver.enum import (
     NODE_STATUS,
     POWER_STATE,
 )
+from maasserver.forms import (
+    UnconstrainedMultipleChoiceField,
+    ValidatorMultipleChoiceField,
+)
 from maasserver.models import Domain, Machine, NodeDevice, Tag, Zone
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
@@ -32,6 +36,7 @@ from maasserver.node_constraint_filter_forms import (
     FreeTextFilterNodeForm,
     generate_architecture_wildcards,
     get_architecture_wildcards,
+    get_field_argument_type,
     get_storage_constraints_from_string,
     JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
     nodes_by_interface,
@@ -2209,3 +2214,33 @@ class TestReadNodesForm(MAASServerTestCase, FilterConstraintsMixin):
         node3 = factory.make_Node(status=NODE_STATUS.NEW)
         self.assertConstrainedNodes([node1, node3], {"status": "new"})
         self.assertConstrainedNodes([node2], {"status": "deploying"})
+
+
+class TestGetFieldArgumentType(MAASServerTestCase):
+    def test_get_IntegerField_type(self):
+        field = forms.IntegerField()
+        self.assertEqual(get_field_argument_type(field), "int")
+
+    def test_get_ChoiceField_type(self):
+        field = forms.ChoiceField()
+        self.assertEqual(get_field_argument_type(field), "int")
+
+    def test_get_FloatField_type(self):
+        field = forms.FloatField()
+        self.assertEqual(get_field_argument_type(field), "float")
+
+    def test_get_CharField_type(self):
+        field = forms.CharField()
+        self.assertEqual(get_field_argument_type(field), "string")
+
+    def test_get_ValidatorMultipleChoiceField_type(self):
+        field = ValidatorMultipleChoiceField(validator=lambda x: True)
+        self.assertEqual(get_field_argument_type(field), "list[string]")
+
+    def test_get_UnconstrainedMultipleChoiceField_type(self):
+        field = UnconstrainedMultipleChoiceField()
+        self.assertEqual(get_field_argument_type(field), "list[string]")
+
+    def test_get_unknown_type(self):
+        field = forms.Field()
+        self.assertEqual(get_field_argument_type(field), "unknown")

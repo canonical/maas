@@ -46,6 +46,7 @@ from maasserver.models.nodeprobeddetails import script_output_nsmap
 from maasserver.node_action import compile_node_actions
 from maasserver.node_constraint_filter_forms import (
     FreeTextFilterNodeForm,
+    get_field_argument_type,
     GROUPABLE_FIELDS,
     STATIC_FILTER_FIELDS,
 )
@@ -1212,6 +1213,7 @@ class NodeHandler(TimestampedModelHandler):
             {
                 "key": name,
                 "label": field.label,
+                "type": get_field_argument_type(field),
                 "dynamic": name not in STATIC_FILTER_FIELDS,
                 "for_grouping": name in GROUPABLE_FIELDS,
             }
