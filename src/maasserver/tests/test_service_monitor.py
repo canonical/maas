@@ -1,7 +1,5 @@
-# Copyright 2016 Canonical Ltd.  This software is licensed under the
+# Copyright 2016-2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
-
-"""Tests for service monitoring in the regiond."""
 
 
 import os
@@ -32,6 +30,11 @@ class TestGlobalServiceMonitor(MAASTestCase):
 
 
 class TestProxyService(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        self.addCleanup(bootsources.signals.enable)
+        bootsources.signals.disable()
+
     def make_proxy_service(self):
         class FakeProxyService(ProxyService):
             name = factory.make_name("name")
@@ -41,27 +44,27 @@ class TestProxyService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_getExpectedState_returns_on_for_proxy_off_and_unset(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
+    def test_getExpectedState_returns_off_for_proxy_off_and_unset(self):
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config),
             "enable_http_proxy",
             False,
         )
-        yield deferToDatabase(
-            transactional(Config.objects.set_config), "http_proxy", ""
-        )
         self.patch(config, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
-        self.assertEqual((SERVICE_STATE.ON, None), expected_state)
+        self.assertEqual(
+            (SERVICE_STATE.OFF, "proxy disabled."), expected_state
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_getExpectedState_returns_off_for_no_config(self):
+        yield deferToDatabase(
+            transactional(Config.objects.set_config),
+            "enable_http_proxy",
+            True,
+        )
         service = self.make_proxy_service()
         os.environ["MAAS_PROXY_CONFIG_DIR"] = "/tmp/%s" % factory.make_name()
         expected_state = yield maybeDeferred(service.getExpectedState)
@@ -73,11 +76,7 @@ class TestProxyService(MAASTransactionServerTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_getExpectedState_returns_on_for_proxy_off_and_set(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
+    def test_getExpectedState_returns_off_for_proxy_off_and_set(self):
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config),
@@ -91,15 +90,13 @@ class TestProxyService(MAASTransactionServerTestCase):
         )
         self.patch(config, "is_config_present").return_value = True
         expected_state = yield maybeDeferred(service.getExpectedState)
-        self.assertEqual((SERVICE_STATE.ON, None), expected_state)
+        self.assertEqual(
+            (SERVICE_STATE.OFF, "proxy disabled."), expected_state
+        )
 
     @wait_for_reactor
     @inlineCallbacks
     def test_getExpectedState_returns_on_for_proxy_on_but_unset(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config), "enable_http_proxy", True
@@ -114,10 +111,6 @@ class TestProxyService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_getExpectedState_returns_off_for_proxy_on_and_set(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config), "enable_http_proxy", True
@@ -140,10 +133,6 @@ class TestProxyService(MAASTransactionServerTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_getExpectedState_returns_on_for_proxy_on_and_set_peer_proxy(self):
-        # Disable boot source cache signals.
-        self.addCleanup(bootsources.signals.enable)
-        bootsources.signals.disable()
-
         service = self.make_proxy_service()
         yield deferToDatabase(
             transactional(Config.objects.set_config), "enable_http_proxy", True

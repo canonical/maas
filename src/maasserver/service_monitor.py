@@ -56,19 +56,24 @@ class ProxyService(Service):
     def getExpectedState(self):
         @transactional
         def db_getExpectedState():
+            configs = Config.objects.get_configs(
+                ("enable_http_proxy", "http_proxy", "use_peer_proxy")
+            )
+            if not configs["enable_http_proxy"]:
+                return (SERVICE_STATE.OFF, "proxy disabled.")
             if (
-                Config.objects.get_config("enable_http_proxy")
-                and Config.objects.get_config("http_proxy")
-                and not Config.objects.get_config("use_peer_proxy")
+                configs["enable_http_proxy"]
+                and configs["http_proxy"]
+                and not configs["use_peer_proxy"]
             ):
                 return (
                     SERVICE_STATE.OFF,
                     "disabled, alternate proxy is configured in settings.",
                 )
-            elif config.is_config_present() is False:
+            if not config.is_config_present():
                 return (SERVICE_STATE.OFF, "no configuration file present.")
-            else:
-                return (SERVICE_STATE.ON, None)
+
+            return (SERVICE_STATE.ON, None)
 
         return deferToDatabase(db_getExpectedState)
 
