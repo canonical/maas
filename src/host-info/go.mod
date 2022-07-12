@@ -2,7 +2,7 @@ module host-info
 
 go 1.18
 
-require github.com/lxc/lxd v0.0.0-20220514153915-f381aadd178a
+require github.com/lxc/lxd v0.0.0-20220711133913-8b2bcb6dc937
 
 require (
 	github.com/digitalocean/go-smbios v0.0.0-20180907143718-390a4f403a8e // indirect
@@ -16,7 +16,8 @@ require (
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	golang.org/x/crypto v0.0.0-20220513210258-46612604a0f9 // indirect
-	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
-	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
+	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e // indirect
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
+	golang.org/x/text v0.3.7 // indirect
 )
