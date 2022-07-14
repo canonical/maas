@@ -68,6 +68,21 @@ from provisioningserver.utils.network import parse_integer
 from provisioningserver.utils.twisted import callOut
 
 
+def postgresql_major_version(conn=None) -> int:
+    """Return PostgreSQL major version as an integer.
+
+    https://www.postgresql.org/docs/current/libpq-status.html#LIBPQ-PQSERVERVERSION
+
+    The server version is formed by multiplying the server's major version
+    number by 10000 and adding the minor version number.
+
+    """
+    if conn is None:
+        conn = connection.cursor().connection
+    version = conn.server_version
+    return version // 10000
+
+
 def ArrayLength(field):
     """Expression to return the length of a PostgreSQL array."""
     return Coalesce(

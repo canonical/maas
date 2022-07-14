@@ -12,7 +12,10 @@ from twisted.internet.defer import inlineCallbacks
 
 from maasserver import locks, security
 from maasserver.config import RegionConfiguration
-from maasserver.deprecations import sync_deprecation_notifications
+from maasserver.deprecations import (
+    log_deprecations,
+    sync_deprecation_notifications,
+)
 from maasserver.fields import register_mac_type
 from maasserver.models import (
     Config,
@@ -152,5 +155,6 @@ def inner_start_up(master=False):
         with RegionConfiguration.open() as config:
             Config.objects.set_config("maas_url", config.maas_url)
 
-        # Update deprecation notifications if needed
+        # Log deprecations and Update related notifications if needed
+        log_deprecations(logger=log)
         sync_deprecation_notifications()

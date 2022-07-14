@@ -67,6 +67,7 @@ from maasserver.utils.orm import (
     post_commit,
     post_commit_do,
     post_commit_hooks,
+    postgresql_major_version,
     psql_array,
     request_transaction_retry,
     retry_on_retryable_failure,
@@ -120,6 +121,12 @@ class FakeQueryResult:
 
     def __repr__(self):
         return "<FakeQueryResult: %r>" % self.items
+
+
+class TestPostgreSQLMajorVersion(MAASServerTestCase):
+    def test_version(self):
+        conn = Mock(server_version=140002)
+        self.assertEqual(postgresql_major_version(conn=conn), 14)
 
 
 class TestGetOne(MAASTestCase):

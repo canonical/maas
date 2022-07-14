@@ -29,13 +29,13 @@ from provisioningserver.utils.debug import (
 
 log = LegacyLogger()
 
-PGSQL_MIN_VERSION = 1200
+PGSQL_MIN_VERSION = 12
 
 
 class UnsupportedDBException(Exception):
     """Unsupported PGSQL server version detected"""
 
-    def __init__(self, version, *args: object):
+    def __init__(self, version: int, *args: object):
         super().__init__(
             f"Unsupported postgresql server version ({version}) detected"
         )
@@ -173,9 +173,11 @@ class RegionMasterServiceMaker(RegionWorkerServiceMaker):
         self.description = description
 
     def _ensureConnection(self):
-        # If connection is already made close it.
         from django.db import connection
 
+        from maasserver.utils.orm import postgresql_major_version
+
+        # If connection is already made close it.
         if connection.connection is not None:
             connection.close()
 
@@ -183,12 +185,9 @@ class RegionMasterServiceMaker(RegionWorkerServiceMaker):
         while True:
             try:
                 connection.ensure_connection()
-                pg_ver = connection.cursor().connection.server_version
-                # https://www.postgresql.org/docs/current/libpq-status.html#LIBPQ-PQSERVERVERSION
-                # 'server_version' is formed by multiplying the server's major version number by
-                # 10000 and adding the minor version number. For purposes of determining feature
-                # compatibility, applications should divide the 'server_version' by 100
-                if pg_ver // 100 < PGSQL_MIN_VERSION:
+
+                pg_ver = postgresql_major_version()
+                if pg_ver < PGSQL_MIN_VERSION:
                     raise UnsupportedDBException(pg_ver)
 
             except Exception:

@@ -6,7 +6,7 @@ from unittest.mock import call
 
 from testtools.matchers import HasLength, Is, Not
 
-from maasserver import eventloop, locks, start_up
+from maasserver import deprecations, eventloop, locks, start_up
 from maasserver.models.config import Config
 from maasserver.models.node import RegionController
 from maasserver.models.notification import Notification
@@ -210,6 +210,13 @@ class TestInnerStartUp(MAASServerTestCase):
             ).count(),
             0,
         )
+
+    def test_logs_deprecation_notifications(self):
+        self.patch(deprecations, "postgresql_major_version").return_value = 12
+        mock_log = self.patch(start_up, "log")
+        with post_commit_hooks:
+            start_up.inner_start_up(master=True)
+        mock_log.msg.assert_called_once()
 
     def test_updates_version(self):
         with post_commit_hooks:
