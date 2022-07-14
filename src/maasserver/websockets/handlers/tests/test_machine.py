@@ -6271,3 +6271,74 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 _assert_value_in(machine.bmc.power_type, "not_pod_type")
                 _assert_value_in(machine.bmc.id, "pod")
                 _assert_value_in(machine.bmc.id, "not_pod")
+
+    def test_unsubscribe_prevents_further_updates_for_pk(self):
+        admin = factory.make_admin()
+        handler = MachineHandler(admin, {}, None)
+        node = factory.make_Node()
+        handler.list({})
+        listen_result = handler.on_listen("machine", "update", node.system_id)
+        self.assertIsNotNone(listen_result)
+        handler.unsubscribe({"system_ids": [node.system_id]})
+        self.assertIsNone(
+            handler.on_listen("machine", "update", node.system_id)
+        )
+        list_result = handler.list({})
+        self.assertEqual(len(list_result), 1)
+
+    def test_unsubscribe_raises_validation_error_with_no_pk(self):
+        admin = factory.make_admin()
+        handler = MachineHandler(admin, {}, None)
+        self.assertRaises(HandlerValidationError, handler.unsubscribe, {})
+
+    def test_read_an_unsubscribed_object_subscribes(self):
+        admin = factory.make_admin()
+        handler = MachineHandler(admin, {}, None)
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        handler.list({})
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node1.system_id)
+        )
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node2.system_id)
+        )
+        handler.unsubscribe({"system_ids": [node2.system_id]})
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node1.system_id)
+        )
+        self.assertIsNone(
+            handler.on_listen("machine", "update", node2.system_id)
+        )
+        self.assertIsNotNone(handler.get({"system_id": node2.system_id}))
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node2.system_id)
+        )
+
+    def test_list_an_unsubscribed_object_subscribes(self):
+        admin = factory.make_admin()
+        handler = MachineHandler(admin, {}, None)
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        handler.list({})
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node1.system_id)
+        )
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node2.system_id)
+        )
+        handler.unsubscribe({"system_ids": [node1.system_id]})
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node2.system_id)
+        )
+        self.assertIsNone(
+            handler.on_listen("machine", "update", node1.system_id)
+        )
+        list_result = handler.list({})
+        self.assertEqual(len(list_result), 2)
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node1.system_id)
+        )
+        self.assertIsNotNone(
+            handler.on_listen("machine", "update", node2.system_id)
+        )

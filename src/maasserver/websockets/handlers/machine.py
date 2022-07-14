@@ -521,6 +521,18 @@ class MachineHandler(NodeHandler):
                 % (op, " or ".join(status_names))
             )
 
+    def listen(self, channel, action, pk):
+        """Called when the handler listens for events on channels with
+        `Meta.listen_channels`.
+
+        :param channel: Channel event occured on.
+        :param action: Action that caused this event.
+        :param pk: Id of the object.
+        """
+        # if loaded / not unsubscrived, allow listen events
+        if pk in self.cache["loaded_pks"] or pk == self.cache.get("active_pk"):
+            return self.get_object({self._meta.pk: pk})
+
     def update_filesystem(self, params):
         node = self._get_node_or_permission_error(
             params, permission=NodePermission.edit
