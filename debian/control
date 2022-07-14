@@ -58,6 +58,7 @@ Description: "Metal as a Service" is a physical cloud and IPAM
 Package: maas-common
 Architecture: all
 Depends: avahi-utils,
+         nginx-core,
          rsyslog,
          ${misc:Depends},
          ${python3:Depends},
@@ -207,7 +208,6 @@ Depends: avahi-utils,
          maas-common (=${binary:Version}),
          maas-dhcp (=${binary:Version}),
          maas-proxy (= ${binary:Version}),
-         nginx-core,
          chrony,
          pxelinux | syslinux-common (<< 3:6.00~pre4+dfsg-5),
          python3-httplib2,

@@ -42,10 +42,6 @@ case "$1" in
             rm -rf /etc/maas/templates/dhcp.maas-old
         fi
 
-        # Remove http directory
-        rm -rf /var/lib/maas/http
-        rm -rf /var/log/maas/http
-
         # Remove rpc.state file
         rm -f /var/lib/maas/rpc.state
 
@@ -55,9 +51,3 @@ esac
 if [ -L /etc/tgt/conf.d/maas.conf ]; then
     rm -rf /etc/tgt/conf.d/maas.conf
 fi
-
-# MAAS installation disables system nginx so it doesn't
-# prevent MAAS from running our own nginx daemon. As such,
-# on removal, reenable nginx.
-deb-systemd-helper enable 'nginx.service' >/dev/null || true
-deb-systemd-invoke start 'nginx.service' >/dev/null || true

@@ -2,6 +2,11 @@
 
 set -e
 
+disable_nginx() {
+    deb-systemd-invoke stop 'nginx.service' >/dev/null || true
+    deb-systemd-helper disable 'nginx.service' >/dev/null || true
+}
+
 configure_logging() {
     # Logging directory (/var/log/maas)
     chown maas:maas /var/log/maas/
@@ -21,6 +26,9 @@ configure_lib_dir() {
     if [ -d /var/lib/maas/gnupg ]; then
         chown -R maas:maas /var/lib/maas/gnupg
     fi
+    if [ -d /var/lib/maas/http ]; then
+        chown -R maas:maas /var/lib/maas/http
+    fi
 }
 
 add_user_group(){
@@ -31,6 +39,7 @@ add_user_group(){
     adduser --quiet --system --group --home "$home" "$user" || true
 }
 
+disable_nginx
 add_user_group
 configure_logging
 configure_lib_dir
