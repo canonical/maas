@@ -203,6 +203,7 @@ class MachineHandler(NodeHandler):
             "set_workload_annotations",
             "filter_groups",
             "filter_options",
+            "count",
         ]
         form = AdminMachineWithMACAddressesForm
         exclude = [
@@ -1204,3 +1205,9 @@ class MachineHandler(NodeHandler):
         except ValueError as e:
             raise HandlerValidationError(str(e))
         return OwnerData.objects.get_owner_data(machine)
+
+    def count(self, params):
+        qs = self.get_queryset()
+        if "filter" in params:
+            qs = self._filter(qs, "list", params["filter"])
+        return {"count": qs.count()}

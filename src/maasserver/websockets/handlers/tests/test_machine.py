@@ -6342,3 +6342,24 @@ class TestMachineHandlerFilter(MAASServerTestCase):
         self.assertIsNotNone(
             handler.on_listen("machine", "update", node2.system_id)
         )
+
+    def test_count_endpoint_no_filter(self):
+        owner = factory.make_User()
+        nodes = [factory.make_Node(owner=owner) for _ in range(3)]
+        handler = MachineHandler(owner, {}, None)
+        self.assertEqual(len(nodes), handler.count({})["count"])
+
+    def test_count_endpoint_filter(self):
+        owner = factory.make_User()
+        zone = factory.make_Zone()
+        nodes_without_zone = [factory.make_Node() for _ in range(2)]
+        nodes_in_zone = [factory.make_Node(zone=zone) for _ in range(2)]
+        handler = MachineHandler(owner, {}, None)
+        self.assertEqual(
+            len(nodes_without_zone) + len(nodes_in_zone),
+            handler.count({})["count"],
+        )
+        self.assertEqual(
+            len(nodes_in_zone),
+            handler.count({"filter": {"zone": zone.name}})["count"],
+        )
