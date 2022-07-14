@@ -143,7 +143,7 @@ class EventsHandler(OperationsHandler):
 
         # Check first for AUDIT level.
         if level == LOGGING_LEVELS[AUDIT]:
-            events = Event.objects.filter(type__level=AUDIT)
+            events = Event.objects.filter(type__level=AUDIT, node__in=nodes)
         elif level in LOGGING_LEVELS_BY_NAME:
             events = Event.objects.filter(node__in=nodes)
             # Eliminate logs below the requested level.

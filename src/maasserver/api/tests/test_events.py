@@ -640,6 +640,28 @@ class TestEventsAPI(APITestCase.ForUser):
         parsed_result = json_load_bytes(response.content)
         self.assertEqual([event1.id], extract_event_ids(parsed_result))
 
+    def test_audit_query_filters_nodes(self):
+        nodes = [factory.make_Node() for _ in range(3)]
+        events = [
+            factory.make_Event(
+                node=node, type=factory.make_EventType(level=AUDIT)
+            )
+            for node in nodes
+        ]
+        first_node = nodes[0]
+        first_event = events[0]  # Pertains to the first node.
+        response = self.client.get(
+            reverse("events_handler"),
+            {
+                "op": "query",
+                "hostname": [first_node.hostname],
+                "level": "AUDIT",
+            },
+        )
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual([first_event.id], extract_event_ids(parsed_result))
+        self.assertEqual(1, parsed_result["count"])
+
     def test_GET_query_with_owner_returns_matching_events(self):
         # Only events for user will be returned
         user1 = factory.make_User()
