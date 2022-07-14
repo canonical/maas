@@ -14,14 +14,21 @@ case "$1" in
         # clean-up /var/log/maas
         rm -f /var/log/maas/maas.log
         rm -rf /var/log/maas/rsyslog
+        rm -rf /var/log/maas/http
         # clean-up /var/lib/maas
         rm -rf /var/lib/maas/gnupg
         rm -f /var/lib/maas/secret
         rm -f /var/lib/maas/maas_id
         rm -rf /var/lib/maas/rsyslog
         rm -f /var/lib/maas/rsyslog.conf
+        rm -rf /var/lib/maas/http
         rm -f /run/lock/maas:*
-
 esac
 
 rm -f /etc/rsyslog.d/99-maas.conf
+
+# MAAS installation disables system nginx so it doesn't
+# prevent MAAS from running our own nginx daemon. As such,
+# on removal, reenable nginx.
+deb-systemd-helper enable 'nginx.service' >/dev/null || true
+deb-systemd-invoke start 'nginx.service' >/dev/null || true

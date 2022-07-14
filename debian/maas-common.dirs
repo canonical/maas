@@ -1,3 +1,5 @@
-var/log/maas
 var/lib/maas
+var/lib/maas/http
 var/lib/maas/prometheus
+var/log/maas
+var/log/maas/http

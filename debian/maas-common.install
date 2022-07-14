@@ -1,4 +1,5 @@
 debian/extras/99-maas-common-sudoers etc/sudoers.d
+debian/extras/nginx.conf var/lib/maas/http
 debian/tmp/usr/lib/maas/maas-delete-file
 debian/tmp/usr/lib/maas/maas-write-file
 
