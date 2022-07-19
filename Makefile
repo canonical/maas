@@ -174,11 +174,9 @@ lint-go:
 .PHONY: lint-go
 
 lint-shell: bin/shellcheck
-# skip files that have a non-shell shebang (e.g. Python files)
-	@bin/shellcheck -x -e 1071 \
+	@bin/shellcheck -x \
 		snap/hooks/* \
 		snap/local/tree/bin/* \
-		snap/local/tree/sbin/* \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-get-fruid-api-data \
 		src/metadataserver/builtin_scripts/commissioning_scripts/maas-kernel-cmdline \
 		src/provisioningserver/refresh/20-maas-03-machine-resources \

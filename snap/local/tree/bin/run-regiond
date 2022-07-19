@@ -25,4 +25,4 @@ mkdir -p \
       "$MAAS_PROXY_CONFIG_DIR" \
       "$MAAS_SYSLOG_CONFIG_DIR"
 
-exec "$SNAP/sbin/regiond"
+exec "$SNAP/bin/regiond"
