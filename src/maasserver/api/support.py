@@ -16,7 +16,7 @@ from abc import ABCMeta, abstractproperty
 from functools import wraps
 
 from django.core.exceptions import PermissionDenied
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404
 from piston3.authentication import NoAuthentication
 from piston3.emitters import Emitter
@@ -61,9 +61,11 @@ class OperationsResource(Resource):
         """
         Override piston's error_handler to fix bug #1228205 and generally
         do not hide exceptions.
+        Also override Djangos default 404 handler to fix bug #1951229 and
+        provide a more informative error message in the cli
         """
         if isinstance(e, Http404):
-            return rc.NOT_FOUND
+            return HttpResponse(str(e), content_type="text/plain", status=404)
         elif isinstance(e, HttpStatusCode):
             return e.response
         else:

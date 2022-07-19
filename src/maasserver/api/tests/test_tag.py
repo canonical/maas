@@ -598,6 +598,11 @@ class TestTagAPI(APITestCase.ForUser):
             reverse("tag_handler", args=[name]), {"op": "update_nodes"}
         )
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
+        # check we have a verbose output
+        self.assertEqual(
+            "No Tag matches the given query.",
+            response.content.decode(settings.DEFAULT_CHARSET),
+        )
 
     def test_POST_update_nodes_changes_associations(self):
         tag = factory.make_Tag()

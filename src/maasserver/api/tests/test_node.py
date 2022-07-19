@@ -101,7 +101,8 @@ class TestNodeAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
         self.assertEqual(
-            "Not Found", response.content.decode(settings.DEFAULT_CHARSET)
+            "No Node matches the given query.",
+            response.content.decode(settings.DEFAULT_CHARSET),
         )
 
     def test_GET_returns_404_if_node_name_contains_invalid_characters(self):
@@ -113,7 +114,8 @@ class TestNodeAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
         self.assertEqual(
-            "Not Found", response.content.decode(settings.DEFAULT_CHARSET)
+            "No Node matches the given query.",
+            response.content.decode(settings.DEFAULT_CHARSET),
         )
 
     def test_resource_uri_points_back_at_machine(self):

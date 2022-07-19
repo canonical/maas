@@ -275,7 +275,8 @@ class TestMachineAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
         self.assertEqual(
-            "Not Found", response.content.decode(settings.DEFAULT_CHARSET)
+            "No Machine matches the given query.",
+            response.content.decode(settings.DEFAULT_CHARSET),
         )
 
     def test_GET_returns_404_if_machine_name_contains_invld_characters(self):
@@ -287,7 +288,8 @@ class TestMachineAPI(APITestCase.ForUser):
 
         self.assertEqual(http.client.NOT_FOUND, response.status_code)
         self.assertEqual(
-            "Not Found", response.content.decode(settings.DEFAULT_CHARSET)
+            "No Machine matches the given query.",
+            response.content.decode(settings.DEFAULT_CHARSET),
         )
 
     def test_GET_returns_owner_name_when_allocated_to_self(self):
