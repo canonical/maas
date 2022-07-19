@@ -6291,6 +6291,16 @@ class TestMachineHandlerFilter(MAASServerTestCase):
         handler = MachineHandler(admin, {}, None)
         self.assertRaises(HandlerValidationError, handler.unsubscribe, {})
 
+    def test_unsubscribe_returns_serializable_type(self):
+        admin = factory.make_admin()
+        handler = MachineHandler(admin, {}, None)
+        nodes = [factory.make_Node() for _ in range(3)]
+        handler.list({})
+        resp = handler.unsubscribe(
+            {"system_ids": [node.system_id for node in nodes]}
+        )
+        self.assertIsInstance(resp, list)
+
     def test_read_an_unsubscribed_object_subscribes(self):
         admin = factory.make_admin()
         handler = MachineHandler(admin, {}, None)

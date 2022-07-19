@@ -831,7 +831,7 @@ class Handler(metaclass=HandlerMetaclass):
             if self.cache.get("active_pk") in pks:
                 del self.cache["active_pk"]
             self.cache["loaded_pks"] = self.cache["loaded_pks"] - pks
-            return pks
+            return list(pks)
         else:
             raise HandlerValidationError(
                 f"'{self._meta.pk}' or '{self._meta.bulk_pk}' must be provided in params for unsubscribe"
