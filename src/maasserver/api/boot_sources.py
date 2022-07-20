@@ -52,7 +52,7 @@ class BootSourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested boot-source is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
         """
         return get_object_or_404(BootSource, id=id)
 
@@ -79,7 +79,8 @@ class BootSourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested boot-source is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
+
         """
         boot_source = get_object_or_404(BootSource, id=id)
         form = BootSourceForm(
@@ -101,7 +102,7 @@ class BootSourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested boot-source is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
         """
         boot_source = get_object_or_404(BootSource, id=id)
         boot_source.delete()

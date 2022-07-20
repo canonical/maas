@@ -323,7 +323,7 @@ class BootResourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested boot resource is not found.
         @error-example "not-found"
-            Not Found
+            No BootResource matches the given query.
         """
         resource = get_object_or_404(BootResource, id=id)
         stream = json_object(
@@ -347,7 +347,7 @@ class BootResourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested boot resource is not found.
         @error-example "not-found"
-            Not Found
+            No BootResource matches the given query.
         """
         resource = BootResource.objects.get(id=id)
         if resource is not None:

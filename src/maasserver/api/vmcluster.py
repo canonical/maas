@@ -147,7 +147,7 @@ class VmClusterHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM cluster with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No VMCluster matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions

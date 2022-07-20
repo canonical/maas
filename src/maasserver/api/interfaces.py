@@ -159,7 +159,7 @@ class InterfacesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NodePermission.view
@@ -203,7 +203,8 @@ class InterfacesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
+
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NodePermission.edit
@@ -335,7 +336,7 @@ class InterfacesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin
@@ -381,7 +382,7 @@ class InterfacesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin
@@ -449,7 +450,7 @@ class InterfacesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin
@@ -553,7 +554,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         return Interface.objects.get_interface_or_404(
             system_id, id, request.user, NodePermission.view
@@ -718,7 +719,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         interface = Interface.objects.get_interface_or_404(
             system_id,
@@ -781,7 +782,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         interface = Interface.objects.get_interface_or_404(
             system_id,
@@ -858,7 +859,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         force = get_optional_param(
             request.POST, "force", default=False, validator=StringBool
@@ -917,7 +918,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         interface = Interface.objects.get_interface_or_404(
             system_id,
@@ -962,7 +963,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         interface = Interface.objects.get_interface_or_404(
             system_id,
@@ -1016,7 +1017,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         interface = Interface.objects.get_interface_or_404(
             system_id,
@@ -1067,7 +1068,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         interface = Interface.objects.get_interface_or_404(
             system_id,
@@ -1106,7 +1107,7 @@ class InterfaceHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or interface is not
         found.
         @error-example "not-found"
-            Not Found
+            No Interface matches the given query.
         """
         interface = Interface.objects.get_interface_or_404(
             system_id,

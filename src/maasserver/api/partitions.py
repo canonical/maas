@@ -94,7 +94,7 @@ class PartitionsHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or device is not
         found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.view
@@ -131,7 +131,7 @@ class PartitionsHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or device is not
         found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin
@@ -213,7 +213,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.view
@@ -235,7 +235,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin
@@ -282,7 +282,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
@@ -318,7 +318,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
@@ -376,7 +376,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
@@ -422,7 +422,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.edit
@@ -468,7 +468,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin
@@ -504,7 +504,7 @@ class PartitionHandler(OperationsHandler):
         @error (content) "not-found" The requested machine, device or partition
         is not found.
         @error-example "not-found"
-            Not Found
+            No BlockDevice matches the given query.
         """
         device = BlockDevice.objects.get_block_device_or_404(
             system_id, device_id, request.user, NodePermission.admin

@@ -58,7 +58,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "notfound" The resource pool name is not found.
         @error-example "notfound"
-            Not Found
+            No ResourcePool matches the given query.
         """
         return ResourcePool.objects.get_resource_pool_or_404(
             id, request.user, self.permission_read
@@ -93,7 +93,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "notfound" Zone not found
         @error-example "notfound"
-            Not Found
+            No ResourcePool matches the given query.
         """
         pool = ResourcePool.objects.get_resource_pool_or_404(
             id, request.user, self.permission_edit

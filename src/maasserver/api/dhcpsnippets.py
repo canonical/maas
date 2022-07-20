@@ -84,7 +84,7 @@ class DHCPSnippetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DHCP snippet is not found.
         @error-example "not-found"
-            Not Found
+            No DHCPSnippet matches the given query.
         """
         return DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
 
@@ -125,7 +125,7 @@ class DHCPSnippetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DHCP snippet is not found.
         @error-example "not-found"
-            Not Found
+            No DHCPSnippet matches the given query.
         """
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         form = DHCPSnippetForm(instance=dhcp_snippet, data=request.data)
@@ -146,7 +146,7 @@ class DHCPSnippetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DHCP snippet is not found.
         @error-example "not-found"
-            Not Found
+            No DHCPSnippet matches the given query.
         """
         dhcp_snippet = DHCPSnippet.objects.get_dhcp_snippet_or_404(id)
         dhcp_snippet.delete()
@@ -181,7 +181,7 @@ class DHCPSnippetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DHCP snippet is not found.
         @error-example "not-found"
-            Not Found
+            No DHCPSnippet matches the given query.
         """
         revert_to = request.data.get("to")
         if revert_to is None:

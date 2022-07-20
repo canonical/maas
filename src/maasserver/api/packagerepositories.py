@@ -64,7 +64,7 @@ class PackageRepositoryHandler(OperationsHandler):
         @error (content) "not-found" The requested package repository is not
         found.
         @error-example "not-found"
-            Not Found
+            No PackageRepository matches the given query.
         """
         return PackageRepository.objects.get_object_or_404(id)
 
@@ -116,7 +116,7 @@ class PackageRepositoryHandler(OperationsHandler):
         @error (content) "not-found" The requested package repository is not
         found.
         @error-example "not-found"
-            Not Found
+            No PackageRepository matches the given query.
         """
         package_repository = PackageRepository.objects.get_object_or_404(id)
         form = PackageRepositoryForm(
@@ -140,7 +140,7 @@ class PackageRepositoryHandler(OperationsHandler):
         @error (content) "not-found" The requested package repository is not
         found.
         @error-example "not-found"
-            Not Found
+            No PackageRepository matches the given query.
         """
         package_repository = PackageRepository.objects.get_object_or_404(id)
         package_repository.delete()

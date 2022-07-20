@@ -149,7 +149,7 @@ class DNSResourcesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DNS resources are not found.
         @error-example "not-found"
-            Not Found
+            No DNSResource matches the given query.
         """
         data = request.GET
         fqdn = data.get("fqdn", None)
@@ -283,7 +283,7 @@ class DNSResourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DNS resource is not found.
         @error-example "not-found"
-            Not Found
+            No DNSResource matches the given query.
         """
         return DNSResource.objects.get_dnsresource_or_404(
             id, request.user, NodePermission.view
@@ -324,7 +324,7 @@ class DNSResourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DNS resource is not found.
         @error-example "not-found"
-            Not Found
+            No DNSResource matches the given query.
         """
         data = request.data.copy()
         fqdn = data.get("fqdn", None)
@@ -377,7 +377,7 @@ class DNSResourceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested DNS resource is not found.
         @error-example "not-found"
-            Not Found
+            No DNSResource matches the given query.
         """
         dnsresource = DNSResource.objects.get_dnsresource_or_404(
             id, request.user, NodePermission.admin

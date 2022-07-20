@@ -65,7 +65,7 @@ class NodeDevicesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
@@ -222,7 +222,7 @@ class NodeDeviceHandler(OperationsHandler):
         @error (content) "not-found" The requested node or node device is
         not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         return self._get_node_device(request, system_id, id)
 
@@ -243,7 +243,7 @@ class NodeDeviceHandler(OperationsHandler):
         @error (content) "not-found" The requested node or node device is
         not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node_device = self._get_node_device(request, system_id, id)
         node_device.delete()

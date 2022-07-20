@@ -55,7 +55,7 @@ class VmfsDatastoresHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = Machine.objects.get_node_or_404(
             system_id, request.user, NodePermission.view
@@ -92,7 +92,7 @@ class VmfsDatastoresHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
 
         @error (http-status-code) "409" 409
         @error (content) "not-ready" The requested machine is not ready.
@@ -184,7 +184,7 @@ class VmfsDatastoreHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No VMFS matches the given query.
         """
         return VMFS.objects.get_object_or_404(
             system_id, id, request.user, NodePermission.view
@@ -221,7 +221,7 @@ class VmfsDatastoreHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No VMFS matches the given query.
 
         @error (http-status-code) "409" 409
         @error (content) "not-ready" The requested machine is not ready.
@@ -255,7 +255,7 @@ class VmfsDatastoreHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No VMFS matches the given query.
 
         @error (http-status-code) "409" 409
         @error (content) "not-ready" The requested machine is not ready.

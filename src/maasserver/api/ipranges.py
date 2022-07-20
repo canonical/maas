@@ -128,7 +128,7 @@ class IPRangeHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested IP range is not found.
         @error-example "not-found"
-            Not Found
+            No IPRange matches the given query.
         """
         iprange = IPRange.objects.get_iprange_or_404(id)
         return iprange
@@ -161,7 +161,7 @@ class IPRangeHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested IP range is not found.
         @error-example "not-found"
-            Not Found
+            No IPRange matches the given query.
         """
         iprange = IPRange.objects.get_iprange_or_404(id)
         raise_error_if_not_owner(iprange, request.user)
@@ -186,7 +186,7 @@ class IPRangeHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested IP range is not found.
         @error-example "not-found"
-            Not Found
+            No IPRange matches the given query.
         """
         iprange = IPRange.objects.get_iprange_or_404(id)
         raise_error_if_not_owner(iprange, request.user)

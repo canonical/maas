@@ -87,7 +87,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         return Tag.objects.get_tag_or_404(name=name, user=request.user)
 
@@ -117,7 +117,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True
@@ -157,7 +157,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True
@@ -206,7 +206,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         return self._get_node_type(Node, request, name)
 
@@ -226,7 +226,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         return self._get_node_type(Machine, request, name)
 
@@ -246,7 +246,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         return self._get_node_type(Device, request, name)
 
@@ -266,7 +266,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         return self._get_node_type(RackController, request, name)
 
@@ -286,7 +286,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         return self._get_node_type(RegionController, request, name)
 
@@ -316,7 +316,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True
@@ -371,7 +371,7 @@ class TagHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested tag name is not found.
         @error-example "not-found"
-            Not Found
+            No Tag matches the given query.
         """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         rack_controller = None

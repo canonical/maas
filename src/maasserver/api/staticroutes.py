@@ -105,7 +105,7 @@ class StaticRouteHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested static-route is not found.
         @error-example "not-found"
-            Not Found
+            No StaticRoute matches the given query.
         """
         return StaticRoute.objects.get_staticroute_or_404(
             id, request.user, NodePermission.view
@@ -138,7 +138,7 @@ class StaticRouteHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested static-route is not found.
         @error-example "not-found"
-            Not Found
+            No StaticRoute matches the given query.
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
             id, request.user, NodePermission.admin
@@ -160,7 +160,7 @@ class StaticRouteHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested static-route is not found.
         @error-example "not-found"
-            Not Found
+            No StaticRoute matches the given query.
         """
         staticroute = StaticRoute.objects.get_staticroute_or_404(
             id, request.user, NodePermission.admin

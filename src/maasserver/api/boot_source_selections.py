@@ -49,7 +49,7 @@ class BootSourceSelectionHandler(OperationsHandler):
         @error (content) "not-found" The requested boot-source or boot-source
         selection is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
         """
         boot_source = get_object_or_404(BootSource, id=boot_source_id)
         return get_object_or_404(
@@ -88,7 +88,7 @@ class BootSourceSelectionHandler(OperationsHandler):
         @error (content) "not-found" The requested boot-source or boot-source
         selection is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
         """
         boot_source = get_object_or_404(BootSource, id=boot_source_id)
         boot_source_selection = get_object_or_404(
@@ -115,7 +115,8 @@ class BootSourceSelectionHandler(OperationsHandler):
         @error (content) "not-found" The requested boot-source or boot-source
         selection is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
+
         """
         boot_source = get_object_or_404(BootSource, id=boot_source_id)
         boot_source_selection = get_object_or_404(
@@ -166,7 +167,7 @@ class BootSourceSelectionsHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested boot-source is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
         """
         boot_source = get_object_or_404(BootSource, id=boot_source_id)
         return BootSourceSelection.objects.filter(boot_source=boot_source)
@@ -201,7 +202,8 @@ class BootSourceSelectionsHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested boot-source is not found.
         @error-example "not-found"
-            Not Found
+            No BootSource matches the given query.
+
         """
         boot_source = get_object_or_404(BootSource, id=boot_source_id)
         form = BootSourceSelectionForm(

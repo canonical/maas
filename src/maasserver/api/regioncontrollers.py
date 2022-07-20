@@ -93,7 +93,7 @@ class RegionControllerHandler(NodeHandler):
         @error (content) "not-found" The requested rack controller system_id
         is not found.
         @error-example "not-found"
-            Not Found
+            No RegionController matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have permission to
@@ -151,7 +151,7 @@ class RegionControllerHandler(NodeHandler):
         @error (content) "not-found" The requested region controller system_id
         is not found.
         @error-example "not-found"
-            Not Found
+            No RegionController matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have permission to

@@ -177,7 +177,7 @@ class VmHostHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM host with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No Pod matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions
@@ -208,7 +208,7 @@ class VmHostHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM host with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No Pod matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions
@@ -239,7 +239,7 @@ class VmHostHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM host with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No Pod matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions
@@ -321,7 +321,7 @@ class VmHostHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM host with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No Pod matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions
@@ -365,7 +365,7 @@ class VmHostHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM host with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No Pod matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions
@@ -400,7 +400,7 @@ class VmHostHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM host with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No Pod matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions
@@ -502,7 +502,7 @@ class VmHostsHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" No VM host with that ID can be found.
         @error-example "not-found"
-            Not Found
+            No Pod matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have the permissions

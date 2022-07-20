@@ -400,7 +400,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested static-route is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -635,7 +635,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have permission to update
@@ -756,7 +756,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have permission to deploy
@@ -919,7 +919,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have permission to
@@ -1022,7 +1022,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1096,7 +1096,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have permission to set
@@ -1171,7 +1171,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit
@@ -1214,7 +1214,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit
@@ -1267,7 +1267,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1297,7 +1297,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
@@ -1339,7 +1339,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1377,7 +1377,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1414,7 +1414,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1458,7 +1458,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         node = self.model.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NodePermission.edit
@@ -1495,7 +1495,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         comment = get_optional_param(request.POST, "comment")
         node = self.model.objects.get_node_or_404(
@@ -1533,7 +1533,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1570,7 +1570,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1607,7 +1607,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.lock
@@ -1642,7 +1642,7 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Machine matches the given query.
         """
         machine = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.lock

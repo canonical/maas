@@ -175,7 +175,7 @@ class SubnetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested subnet is not found.
         @error-example "not-found"
-            Not Found
+            No Subnet matches the given query.
         """
         return Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view
@@ -260,7 +260,7 @@ class SubnetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested subnet is not found.
         @error-example "not-found"
-            Not Found
+            No Subnet matches the given query.
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.admin
@@ -282,7 +282,7 @@ class SubnetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested subnet is not found.
         @error-example "not-found"
-            Not Found
+            No Subnet matches the given query.
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.admin
@@ -306,7 +306,7 @@ class SubnetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested subnet is not found.
         @error-example "not-found"
-            Not Found
+            No Subnet matches the given query.
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view
@@ -329,7 +329,7 @@ class SubnetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested subnet is not found.
         @error-example "not-found"
-            Not Found
+            No Subnet matches the given query.
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view
@@ -377,7 +377,7 @@ class SubnetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested subnet is not found.
         @error-example "not-found"
-            Not Found
+            No Subnet matches the given query.
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view
@@ -425,7 +425,7 @@ class SubnetHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested subnet is not found.
         @error-example "not-found"
-            Not Found
+            No Subnet matches the given query.
         """
         subnet = Subnet.objects.get_subnet_or_404(
             id, request.user, NodePermission.view

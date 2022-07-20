@@ -146,7 +146,7 @@ class UserHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The given user was not found.
         @error-example "not-found"
-            Not Found
+            No User matches the given query.
         """
         return get_object_or_404(User, username=username)
 

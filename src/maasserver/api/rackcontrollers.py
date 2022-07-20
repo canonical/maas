@@ -106,7 +106,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error (content) "not-found" The requested rack controller system_id
         is not found.
         @error-example "not-found"
-            Not Found
+            No RackController matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user does not have permssions to
@@ -165,7 +165,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error (content) "not-found" The requested rack controller system_id
         is not found.
         @error-example "not-found"
-            Not Found
+            No RackController matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" This method is reserved for admin users.
@@ -198,7 +198,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error (content) "not-found" The requested rack controller system_id
         is not found.
         @error-example "not-found"
-            Not Found
+            No RackController matches the given query.
         """
         # Avoid circular import.
         from maasserver.clusterrpc.boot_images import RackControllersImporter
@@ -227,7 +227,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         @error (content) "not-found" The requested rack controller system_id
         is not found.
         @error-example "not-found"
-            Not Found
+            No RackController matches the given query.
         """
         rack = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
@@ -262,7 +262,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
         @error (content) "not-found" The requested rack controller system_id
         is not found.
         @error-example "not-found"
-            Not Found
+            No RackController matches the given query.
         """
         # Avoid circular import.
         from maasserver.clusterrpc.boot_images import RackControllersImporter

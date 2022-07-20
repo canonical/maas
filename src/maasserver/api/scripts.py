@@ -265,7 +265,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
-            Not Found
+            No Script matches the given query.
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -288,7 +288,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
-            Not Found
+            No Script matches the given query.
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -374,7 +374,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
-            Not Found
+            No Script matches the given query.
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -414,7 +414,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
-            Not Found
+            No Script matches the given query.
         """
         if name.isdigit():
             script = get_object_or_404(Script, id=int(name))
@@ -455,7 +455,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
-            Not Found
+            No Script matches the given query.
         """
         revert_to = get_mandatory_param(request.data, "to", Int)
 
@@ -505,7 +505,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
-            Not Found
+            No Script matches the given query.
         """
         tag = get_mandatory_param(request.data, "tag", String)
 
@@ -547,7 +547,7 @@ class NodeScriptHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested script is not found.
         @error-example "not-found"
-            Not Found
+            No Script matches the given query.
         """
         tag = get_mandatory_param(request.data, "tag", String)
 

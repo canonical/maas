@@ -37,7 +37,7 @@ def get_file_by_name(handler, request):
     @error (http-status-code) "404" 404
     @error (content) "not-found" The requested file is not found.
     @error-example "not-found"
-        Not Found
+        File not found
     """
     filename = get_mandatory_param(request.GET, "filename")
     try:
@@ -62,7 +62,7 @@ def get_file_by_key(handler, request):
     @error (http-status-code) "404" 404
     @error (content) "not-found" The requested file is not found.
     @error-example "not-found"
-        Not Found
+        No FileStorage matches the given query.
     """
     key = get_mandatory_param(request.GET, "key")
     db_file = get_object_or_404(FileStorage, key=key)
@@ -180,7 +180,7 @@ class FileHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested file is not found.
         @error-example "not-found"
-            Not Found
+            No FileStorage matches the given query.
         """
         stored_file = get_object_or_404(
             FileStorage, filename=filename, owner=request.user
@@ -280,7 +280,7 @@ class FilesHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested file is not found.
         @error-example "not-found"
-            Not Found
+            No FileStorage matches the given query.
         """
         # It is valid for a path in a POST, PUT, or DELETE (or any other HTTP
         # method) to contain a query string. However, Django only makes

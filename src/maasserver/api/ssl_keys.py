@@ -107,7 +107,7 @@ class SSLKeyHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested SSH key is not found.
         @error-example "not-found"
-            Not Found
+            No SSLKey matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The requesting user does not own the key.
@@ -130,7 +130,7 @@ class SSLKeyHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested SSH key is not found.
         @error-example "not-found"
-            Not Found
+            No SSLKey matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The requesting user does not own the key.

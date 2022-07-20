@@ -56,7 +56,7 @@ class VlansHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested fabric_id is not found.
         @error-example "not-found"
-            Not Found
+            No Fabric matches the given query.
         """
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NodePermission.view
@@ -91,7 +91,7 @@ class VlansHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested fabric_id is not found.
         @error-example "not-found"
-            Not Found
+            No Fabric matches the given query.
         """
         fabric = Fabric.objects.get_fabric_or_404(
             fabric_id, request.user, NodePermission.admin
@@ -197,7 +197,7 @@ class VlanHandler(OperationsHandler):
         @error (content) "not-found" The requested fabric_id or vid is not
         found.
         @error-example "not-found"
-            Not Found
+            No Fabric matches the given query.
         """
         vlan = self._get_vlan(request.user, NodePermission.view, **kwargs)
         return vlan
@@ -246,7 +246,7 @@ class VlanHandler(OperationsHandler):
         @error (content) "not-found" The requested fabric_id or vid is not
         found.
         @error-example "not-found"
-            Not Found
+            No Fabric matches the given query.
         """
         vlan = self._get_vlan(request.user, NodePermission.admin, **kwargs)
         data = {}
@@ -278,7 +278,7 @@ class VlanHandler(OperationsHandler):
         @error (content) "not-found" The requested fabric_id or vid is not
         found.
         @error-example "not-found"
-            Not Found
+            No Fabric matches the given query.
         """
         vlan = self._get_vlan(request.user, NodePermission.admin, **kwargs)
         vlan.delete()

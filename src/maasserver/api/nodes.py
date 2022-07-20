@@ -453,7 +453,7 @@ class NodeHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
@@ -476,7 +476,7 @@ class NodeHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user is not authorized to delete the
@@ -542,7 +542,7 @@ class NodeHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = get_object_or_404(self.model, system_id=system_id)
         probe_details = get_single_probed_details(node)
@@ -577,7 +577,7 @@ class NodeHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = Node.objects.get_node_or_404(
             system_id, request.user, NodePermission.admin_read
@@ -943,7 +943,7 @@ class PowerMixin:
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
@@ -969,7 +969,7 @@ class PowerMixin:
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user is not authorized to power on the
@@ -1070,7 +1070,7 @@ class PowerMixin:
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user is not authorized to power off the
@@ -1121,7 +1121,7 @@ class PowerMixin:
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -1147,7 +1147,7 @@ class PowerMixin:
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user is not authorized to override
@@ -1172,7 +1172,7 @@ class PowerMixin:
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested node is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The user is not authorized to abort the

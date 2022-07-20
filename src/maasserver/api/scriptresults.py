@@ -116,7 +116,7 @@ class NodeScriptResultsHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested machine is not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.view
@@ -308,7 +308,7 @@ class NodeScriptResultHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or script result is
         not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         script_set = self._get_script_set(request, system_id, id)
         include_output = get_optional_param(
@@ -346,7 +346,7 @@ class NodeScriptResultHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or script result is
         not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         script_set = self._get_script_set(request, system_id, id)
         script_set.delete()
@@ -413,7 +413,7 @@ class NodeScriptResultHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or script result is
         not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         script_set = self._get_script_set(request, system_id, id)
         filters = get_optional_param(request.GET, "filters", None, String)
@@ -547,7 +547,7 @@ class NodeScriptResultHandler(OperationsHandler):
         @error (content) "not-found" The requested machine or script result is
         not found.
         @error-example "not-found"
-            Not Found
+            No Node matches the given query.
         """
         script_set = self._get_script_set(request, system_id, id)
         include_output = get_optional_param(

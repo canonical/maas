@@ -183,7 +183,7 @@ class SSHKeyHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested SSH key is not found.
         @error-example "not-found"
-            Not Found
+            No SSHKey matches the given query.
         """
         key = get_object_or_404(SSHKey, id=id)
         return key
@@ -199,7 +199,7 @@ class SSHKeyHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested SSH key is not found.
         @error-example "not-found"
-            Not Found
+            No SSHKey matches the given query.
 
         @error (http-status-code) "403" 403
         @error (content) "no-perms" The requesting user does not own the key.

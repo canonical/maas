@@ -121,7 +121,7 @@ class NotificationHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested notification is not found.
         @error-example "not-found"
-            Not Found
+            No Notification matches the given query.
         """
         notification = get_object_or_404(Notification, id=id)
         if notification.is_relevant_to(request.user):
@@ -179,7 +179,7 @@ class NotificationHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested notification is not found.
         @error-example "not-found"
-            Not Found
+            No Notification matches the given query.
         """
         notification = get_object_or_404(Notification, id=id)
         form = NotificationForm(data=request.data, instance=notification)
@@ -200,7 +200,7 @@ class NotificationHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested notification is not found.
         @error-example "not-found"
-            Not Found
+            No Notification matches the given query.
         """
         notification = get_object_or_404(Notification, id=id)
         notification.delete()
@@ -224,7 +224,7 @@ class NotificationHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested notification is not found.
         @error-example "not-found"
-            Not Found
+            No Notification matches the given query.
         """
         notification = get_object_or_404(Notification, id=id)
         if notification.is_relevant_to(request.user):

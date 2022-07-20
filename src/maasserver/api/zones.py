@@ -63,7 +63,7 @@ class ZoneHandler(ModelOperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "notfound" The zone name is not found.
         @error-example "notfound"
-            Not Found
+            No Zone matches the given query.
         """
         return super().read(request, name=name)
 
@@ -95,7 +95,7 @@ class ZoneHandler(ModelOperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "notfound" Zone not found
         @error-example "notfound"
-            Not Found
+            No Zone matches the given query.
         """
         return super().update(request, name=name)
 

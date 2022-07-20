@@ -68,7 +68,7 @@ class DiscoveryHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested discovery is not found.
         @error-example "not-found"
-            Not Found
+            No Discovery matches the given query.
         """
         discovery_id = kwargs.get("discovery_id", None)
         discovery = Discovery.objects.get_discovery_or_404(discovery_id)

@@ -201,7 +201,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         @error (content) "not-found" The requested DNS resource record was not
         found.
         @error-example "not-found"
-            Not Found
+            No DNSData matches the given query.
         """
         return DNSData.objects.get_dnsdata_or_404(
             id, request.user, NodePermission.view
@@ -232,7 +232,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         @error (content) "not-found" The requested DNS resource record is not
         found.
         @error-example "not-found"
-            Not Found
+            No DNSData matches the given query.
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
             id, request.user, NodePermission.admin
@@ -261,7 +261,7 @@ class DNSResourceRecordHandler(OperationsHandler):
         @error (content) "not-found" The requested DNS resource record is not
         found.
         @error-example "not-found"
-            Not Found
+            No DNSData matches the given query.
         """
         dnsdata = DNSData.objects.get_dnsdata_or_404(
             id, request.user, NodePermission.admin

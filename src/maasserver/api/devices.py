@@ -93,7 +93,7 @@ class DeviceHandler(NodeHandler, WorkloadAnnotationsMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested device is not found.
         @error-example "not-found"
-            Not Found
+            No Device matches the given query.
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit
@@ -120,7 +120,7 @@ class DeviceHandler(NodeHandler, WorkloadAnnotationsMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested device is not found.
         @error-example "not-found"
-            Not Found
+            No Device matches the given query.
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.edit
@@ -149,7 +149,7 @@ class DeviceHandler(NodeHandler, WorkloadAnnotationsMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested device is not found.
         @error-example "not-found"
-            Not Found
+            No Device matches the given query.
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin
@@ -178,7 +178,8 @@ class DeviceHandler(NodeHandler, WorkloadAnnotationsMixin):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested device is not found.
         @error-example "not-found"
-            Not Found
+            No Device matches the given query.
+
         """
         device = self.model.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NodePermission.admin

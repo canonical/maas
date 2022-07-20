@@ -147,7 +147,7 @@ class SpaceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested space is not found.
         @error-example "not-found"
-            Not Found
+            No Space matches the given query.
         """
         # Backward compatibility for Juju 2.0. This is a special case to check
         # if the user requested to read the undefined space.
@@ -174,7 +174,7 @@ class SpaceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested space is not found.
         @error-example "not-found"
-            Not Found
+            No Space matches the given query.
         """
         if id == "-1" or id == Space.UNDEFINED:
             raise MAASAPIBadRequest(
@@ -200,7 +200,7 @@ class SpaceHandler(OperationsHandler):
         @error (http-status-code) "404" 404
         @error (content) "not-found" The requested space is not found.
         @error-example "not-found"
-            Not Found
+            No Space matches the given query.
         """
         if id == "-1" or id == Space.UNDEFINED:
             raise MAASAPIBadRequest(
