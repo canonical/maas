@@ -654,8 +654,7 @@ class LabeledConstraintMapField(Field):
 
 STATIC_FILTER_FIELDS = (
     "arch",
-    "pod_type",
-    "not_pod_type",
+    "power_state",
     "status",
     "power_state",
 )
@@ -663,19 +662,14 @@ STATIC_FILTER_FIELDS = (
 
 GROUPABLE_FIELDS = (
     "arch",
-    "tags",
-    "fabrics",
-    "fabric_classes",
-    "subnets",
-    "vlans",
-    "zone",
-    "pool",
-    "pod",
-    "pod_type",
     "domain",
-    "status",
-    "power_state",
     "owner",
+    "pod_type",
+    "pod",
+    "pool",
+    "power_state",
+    "status",
+    "zone",
 )
 
 
@@ -1566,11 +1560,11 @@ class FreeTextFilterNodeForm(ReadNodesForm):
             )
         if pod_type:
             filtered_nodes = self._substring_filter(
-                filtered_nodes, "bmc__type", pod_type
+                filtered_nodes, "bmc__power_type", pod_type
             )
         if not_pod_type:
             filtered_nodes = self._substring_filter(
-                Pod.objects, "bmc__type", not_pod_type, exclude=True
+                Pod.objects, "bmc__power_type", not_pod_type, exclude=True
             )
         return filtered_nodes
 

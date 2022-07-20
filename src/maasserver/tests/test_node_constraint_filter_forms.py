@@ -1605,7 +1605,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         node2 = factory.make_Node()
         form = FreeTextFilterNodeForm(data={})
         result = form._substring_filter(
-            Machine.objects, "hostname", name[0 : len("hostname-") + 1]
+            Machine.objects, "hostname", name[len("hostname-") + 1 :]
         )
         self.assertIn(node1, list(result))
         self.assertNotIn(node2, list(result))
@@ -1619,7 +1619,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         result = form._substring_filter(
             Tag.objects,
             "name",
-            [tag.name[0 : len("tag-") + 1] for tag in tags],
+            [tag.name[len("tag-") + 1 :] for tag in tags],
         )
         self.assertCountEqual(tags, list(result))
 
@@ -1656,7 +1656,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         node2 = factory.make_Node()
         [node1.tags.add(tag) for tag in tags]
         constraints = {
-            "tags": [tag.name[: len("tag-") + 1] for tag in tags],
+            "tags": [tag.name[len("tag-") + 1 :] for tag in tags],
         }
         form = FreeTextFilterNodeForm(data=constraints)
         self.assertTrue(form.is_valid())
@@ -1695,7 +1695,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         node1 = factory.make_Node(pool=pool)
         node2 = factory.make_Node()
         constraints = {
-            "pool": pool.name[: len("resourcepool-") + 1],
+            "pool": pool.name[len("resourcepool-") + 1 :],
         }
         form = FreeTextFilterNodeForm(data=constraints)
         self.assertTrue(form.is_valid())
@@ -1708,7 +1708,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         node1 = factory.make_Node(pool=pool)
         node2 = factory.make_Node()
         constraints = {
-            "not_in_pool": [pool.name[: len("resourcepool-") + 1]],
+            "not_in_pool": [pool.name[len("resourcepool-") + 1 :]],
         }
         form = FreeTextFilterNodeForm(data=constraints)
         self.assertTrue(form.is_valid())
@@ -1720,7 +1720,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         pod = factory.make_Pod()
         node1 = factory.make_Node(bmc=pod.as_bmc())
         node2 = factory.make_Node()
-        constraints = {"pod": pod.name[: len("pod-") + 1]}
+        constraints = {"pod": pod.name[len("pod-") + 1 :]}
         form = FreeTextFilterNodeForm(data=constraints)
         self.assertTrue(form.is_valid())
         filtered_nodes = form.filter_nodes(Machine.objects.all())[0]

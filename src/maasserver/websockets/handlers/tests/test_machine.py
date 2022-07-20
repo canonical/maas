@@ -45,6 +45,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
+    NODE_STATUS_SHORT_LABEL_CHOICES,
     NODE_TYPE,
     PARTITION_TABLE_TYPE,
     POWER_STATE,
@@ -5918,7 +5919,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                     "label": "Tags",
                     "dynamic": True,
                     "type": "list[string]",
-                    "for_grouping": True,
+                    "for_grouping": False,
                 },
                 {
                     "key": "not_tags",
@@ -5932,7 +5933,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                     "label": "Attached to fabrics",
                     "dynamic": True,
                     "type": "list[string]",
-                    "for_grouping": True,
+                    "for_grouping": False,
                 },
                 {
                     "key": "not_fabrics",
@@ -5946,7 +5947,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                     "label": "Attached to fabric with specified classes",
                     "dynamic": True,
                     "type": "list[string]",
-                    "for_grouping": True,
+                    "for_grouping": False,
                 },
                 {
                     "key": "not_fabric_classes",
@@ -5960,7 +5961,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                     "label": "Attached to subnets",
                     "dynamic": True,
                     "type": "list[string]",
-                    "for_grouping": True,
+                    "for_grouping": False,
                 },
                 {
                     "key": "not_subnets",
@@ -5981,7 +5982,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                     "label": "Attached to VLANs",
                     "dynamic": True,
                     "type": "list[string]",
-                    "for_grouping": True,
+                    "for_grouping": False,
                 },
                 {
                     "key": "not_vlans",
@@ -6070,14 +6071,14 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 {
                     "key": "pod_type",
                     "label": "The power_type of the desired pod",
-                    "dynamic": False,
+                    "dynamic": True,
                     "type": "string",
                     "for_grouping": True,
                 },
                 {
                     "key": "not_pod_type",
                     "label": "The power_type of the undesired pod",
-                    "dynamic": False,
+                    "dynamic": True,
                     "type": "string",
                     "for_grouping": False,
                 },
@@ -6151,15 +6152,16 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             factory.make_Machine_with_Interface_on_Subnet(
                 architecture=architectures[i % len(architectures)],
                 bmc=factory.make_Pod(),
+                owner=user,
             )
             for i in range(5)
         ]
 
         def _assert_value_in(value, field_name):
             self.assertIn(
-                value,
+                str(value),
                 [
-                    option["key"]
+                    option["label"]
                     for option in handler.filter_options(
                         {"group_key": field_name}
                     )
@@ -6170,7 +6172,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             self.assertTrue(
                 subset
                 <= {
-                    option["key"]
+                    option["label"]
                     for option in handler.filter_options(
                         {"group_key": field_name}
                     )
@@ -6180,18 +6182,22 @@ class TestMachineHandlerFilter(MAASServerTestCase):
         for machine in machines:
             machine.tags.add(factory.make_Tag())
             _assert_value_in(machine.architecture, "arch")
+            _assert_value_in(machine.owner.username, "owner")
+            _assert_value_in(
+                str.capitalize(machine.power_state), "power_state"
+            )
             _assert_subset(set(machine.tag_names()), "tags")
             _assert_subset(set(machine.tag_names()), "not_tags")
             _assert_subset(
                 set(
-                    iface.vlan.fabric.id
+                    iface.vlan.fabric.name
                     for iface in machine.current_config.interface_set.all()
                 ),
                 "fabrics",
             )
             _assert_subset(
                 set(
-                    iface.vlan.fabric.id
+                    iface.vlan.fabric.name
                     for iface in machine.current_config.interface_set.all()
                 ),
                 "not_fabrics",
@@ -6230,33 +6236,35 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             )
             _assert_subset(
                 set(
-                    iface.link_speed
+                    human_readable_bytes(iface.link_speed)
                     for iface in machine.current_config.interface_set.all()
                 ),
                 "link_speed",
             )
             _assert_subset(
                 set(
-                    iface.vlan.id
+                    iface.vlan.name
                     for iface in machine.current_config.interface_set.all()
                 ),
                 "vlans",
             )
             _assert_subset(
                 set(
-                    iface.vlan.id
+                    iface.vlan.name
                     for iface in machine.current_config.interface_set.all()
                 ),
                 "not_vlans",
             )
-            _assert_value_in(machine.zone.id, "zone")
-            _assert_value_in(machine.zone.id, "not_in_zone")
-            _assert_value_in(machine.pool.id, "pool")
-            _assert_value_in(machine.pool.id, "not_in_pool")
+            _assert_value_in(machine.zone.name, "zone")
+            _assert_value_in(machine.zone.name, "not_in_zone")
+            _assert_value_in(machine.pool.name, "pool")
+            _assert_value_in(machine.pool.name, "not_in_pool")
             _assert_value_in(machine.cpu_count, "cpu_count")
             _assert_value_in(machine.memory, "mem")
             _assert_value_in(machine.hostname, "hostname")
-            _assert_value_in(machine.status, "status")
+            _assert_value_in(
+                NODE_STATUS_SHORT_LABEL_CHOICES[machine.status][0], "status"
+            )
             _assert_subset(
                 set(
                     iface.mac_address
@@ -6264,7 +6272,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 ),
                 "mac_address",
             )
-            _assert_value_in(machine.domain.id, "domain")
+            _assert_value_in(machine.domain.name, "domain")
             _assert_value_in(machine.agent_name, "agent_name")
             if machine.bmc.power_type == "lxd":
                 _assert_value_in(machine.bmc.power_type, "pod_type")
@@ -6373,3 +6381,27 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             len(nodes_in_zone),
             handler.count({"filter": {"zone": zone.name}})["count"],
         )
+
+    def test_filter_dynamic_options(self):
+        user = factory.make_User()
+        tag = factory.make_Tag()
+        fabric = factory.make_Fabric(class_type="test-fabric-class")
+        factory.make_usable_boot_resource(architecture="amd64/generic")
+        node = factory.make_Machine_with_Interface_on_Subnet(
+            architecture="amd64/generic",
+            bmc=factory.make_Pod(),
+            owner=user,
+            fabric=fabric,
+            interface_speed=1000,
+        )
+        node.tags.add(tag)
+        handler = MachineHandler(user, {}, None)
+        for filter_grp in handler.filter_groups({}):
+            key = filter_grp["key"]
+            if filter_grp["dynamic"] and not key.startswith("not_"):
+                opts = handler.filter_options({"group_key": key})
+                if filter_grp["type"] == "list[string]":
+                    filter = {key: [k["key"] for k in opts]}
+                else:
+                    filter = {key: opts[0]["key"]}
+                handler.list({"filter": filter})

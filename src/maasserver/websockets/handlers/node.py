@@ -19,14 +19,18 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
-    NODE_STATUS_CHOICES,
+    NODE_STATUS_SHORT_LABEL_CHOICES,
     NODE_TYPE,
     POWER_STATE,
+    POWER_STATE_CHOICES,
 )
 from maasserver.forms import list_all_usable_architectures
 from maasserver.models import (
+    BlockDevice,
+    BMC,
     CacheSet,
     Config,
+    Domain,
     Event,
     Fabric,
     Interface,
@@ -35,12 +39,14 @@ from maasserver.models import (
     NUMANode,
     Partition,
     PhysicalBlockDevice,
-    Pod,
+    ResourcePool,
     Subnet,
     Tag,
+    User,
     VirtualBlockDevice,
     VLAN,
     VolumeGroup,
+    Zone,
 )
 from maasserver.models.nodeprobeddetails import script_output_nsmap
 from maasserver.node_action import compile_node_actions
@@ -1234,57 +1240,65 @@ class NodeHandler(TimestampedModelHandler):
             ]
         elif key == "fabric_classes":
             results += [
-                {"key": fabric.class_type, "label": fabric.class_type}
-                for fabric in Fabric.objects.all()
+                {"key": fabric, "label": fabric}
+                for fabric in Fabric.objects.order_by()
+                .values_list("class_type", flat=True)
+                .distinct()
             ]
         elif key == "subnets":
             results += [
-                {"key": value.id, "label": value.name}
+                {"key": value.cidr, "label": value.name}
                 for value in Subnet.objects.all()
             ]
         elif key == "vlans":
             results += [
-                {"key": value.id, "label": value.name}
+                {"key": value.name, "label": value.name}
                 for value in VLAN.objects.all()
             ]
         elif key == "link_speed":
             results += [
                 {"key": link_speed, "label": human_readable_bytes(link_speed)}
-                for link_speeds in Interface.objects.order_by()
-                .values_list("link_speed")
+                for link_speed in Interface.objects.order_by()
+                .values_list("link_speed", flat=True)
                 .distinct()
-                for link_speed in link_speeds
             ]
         elif key == "storage":
             results += [
-                {"key": value, "label": value}
-                for value in NodeDevice.objects.filter(
-                    hardware_type=HARDWARE_TYPE.STORAGE
-                )
-                .order_by()
-                .value_list("tags")
+                {"key": f"0({tag})", "label": tag}
+                for values in BlockDevice.objects.order_by()
+                .values_list("tags", flat=True)
                 .distinct()
+                for tag in values
             ]
             results += [
-                {"key": value, "label": value}
-                for value in Partition.objects.order_by()
-                .value_list("tags")
+                {"key": f"0(partition,{tag})", "label": tag}
+                for values in Partition.objects.order_by()
+                .values_list("tags", flat=True)
                 .distinct()
+                for tag in values
             ]
         elif key == "interfaces":
-            for field in Interface._meta.get_fields():
+            for field in ["name", "type"]:
                 results += [
-                    {"key": val, "label": val}
-                    for val in Interface.objects.order_by.value_list(
-                        field
-                    ).distinct()
+                    {"key": f"iface:{field}={val}", "label": f"{field}={val}"}
+                    for val in Interface.objects.order_by(field)
+                    .values_list(field, flat=True)
+                    .distinct()
+                ]
+            for field in ["tags"]:
+                results += [
+                    {"key": f"iface:{field}={val}", "label": f"{field}={val}"}
+                    for tags in Interface.objects.order_by(field)
+                    .values_list(field, flat=True)
+                    .distinct()
+                    for val in tags
                 ]
         elif key == "devices":
-            for field in NodeDevice._meta.get_fields():
+            for field in ["vendor_name", "product_name"]:
                 results += [
                     {"key": f"{field}={val}", "label": f"{field}={val}"}
                     for val in NodeDevice.objects.order_by()
-                    .value_list(field)
+                    .values_list(field, flat=True)
                     .distinct()
                 ]
         elif key == "mac_address":
@@ -1292,9 +1306,42 @@ class NodeHandler(TimestampedModelHandler):
                 {"key": iface.mac_address, "label": iface.mac_address}
                 for iface in Interface.objects.all()
             ]
+        elif key == "pod_type":
+            results += [
+                {"key": value, "label": str.capitalize(value)}
+                for value in BMC.objects.order_by()
+                .values_list("power_type", flat=True)
+                .distinct()
+            ]
         elif key == "pod":
             results += [
-                {"key": pod.id, "label": pod.name} for pod in Pod.objects.all()
+                {"key": pod.name, "label": pod.name}
+                for pod in BMC.objects.all()
+            ]
+        elif key == "zone":
+            results += [
+                {"key": zone.name, "label": zone.name}
+                for zone in Zone.objects.all()
+            ]
+        elif key == "pool":
+            results += [
+                {"key": pool.name, "label": pool.name}
+                for pool in ResourcePool.objects.all()
+            ]
+        elif key == "owner":
+            results += [
+                {"key": user.username, "label": user.username}
+                for user in User.objects.all()
+            ]
+        elif key == "domain":
+            results += [
+                {"key": dom.name, "label": dom.name}
+                for dom in Domain.objects.all()
+            ]
+        elif key == "id":
+            results += [
+                {"key": value.system_id, "label": value.hostname}
+                for value in Node.objects.all()
             ]
         else:
             for value in Node.objects.order_by().values_list(key).distinct():
@@ -1329,15 +1376,15 @@ class NodeHandler(TimestampedModelHandler):
                         {"key": arch, "label": arch}
                         for arch in list_all_usable_architectures()
                     ]
-                if key == "pod_type" or key == "not_pod_type":
-                    return [
-                        {"key": "lxd", "label": "LXD"},
-                        {"key": "virsh", "label": "Virsh"},
-                    ]
                 if key == "status":
                     return [
+                        {"key": choice[1], "label": choice[1]}
+                        for choice in NODE_STATUS_SHORT_LABEL_CHOICES
+                    ]
+                if key == "power_state":
+                    return [
                         {"key": choice[0], "label": choice[1]}
-                        for choice in NODE_STATUS_CHOICES
+                        for choice in POWER_STATE_CHOICES
                     ]
             else:
                 if key.startswith("not_in_"):
