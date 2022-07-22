@@ -2,6 +2,7 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from inspect import getdoc
+import json
 import random
 import types
 from unittest.mock import sentinel
@@ -40,7 +41,7 @@ from maasserver.api.doc import (
     generate_power_types_doc,
     get_api_description,
 )
-from maasserver.api.doc_handler import render_api_docs
+from maasserver.api.doc_handler import api_landing_page, render_api_docs
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -77,6 +78,19 @@ class TestGetAPIDescription(MAASTestCase):
         self.assertEqual(get_api_description(), description)
         mock_describe_api.assert_called_once()
         mock_get_api_description_hash.assert_called_once()
+
+
+class TestLandingPage(MAASTestCase):
+    def test_links(self):
+        request = factory.make_fake_request()
+        landing_page = api_landing_page(request)
+        content = json.loads(landing_page.content)
+        resources = content["resources"]
+        host = request.get_host()
+        for link in resources:
+            href = f"http://{host}{link['path']}"
+            self.assertEqual(link["href"], href)
+        self.assertEqual(resources[0]["type"], landing_page["content-type"])
 
 
 class TestFindingResources(MAASTestCase):

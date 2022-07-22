@@ -36,6 +36,35 @@ def get_api_description():
     return description
 
 
+def get_api_landing_page():
+    """Return the API landing page"""
+    description = {
+        "title": "MAAS API",
+        "description": "API landing page for MAAS",
+        "resources": [
+            {
+                "path": "/MAAS/api",
+                "rel": "self",
+                "type": "application/json",
+                "title": "this document",
+            },
+            {
+                "path": "/MAAS/api/2.0/openapi.yaml",
+                "rel": "service-desc",
+                "type": "application/openapi+yaml",
+                "title": "the API definition",
+            },
+            {
+                "path": "/MAAS/docs/api.html",
+                "rel": "service-doc",
+                "type": "text/html",
+                "title": "the API documentation",
+            },
+        ],
+    }
+    return description
+
+
 def find_api_resources(urlconf=None):
     """Find the API resources defined in `urlconf`.
 
