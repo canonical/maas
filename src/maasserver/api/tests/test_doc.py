@@ -49,8 +49,10 @@ from maasserver.api.support import (
     OperationsHandler,
     OperationsResource,
 )
+from maasserver.models.config import Config
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import IsCallable
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
@@ -95,7 +97,7 @@ class TestLandingPage(MAASTestCase):
         self.assertEqual(resources[0]["type"], page["content-type"])
 
 
-class TestApiEndpoint(MAASTestCase):
+class TestApiEndpoint(MAASServerTestCase):
     def test_required_fields(self):
         request = factory.make_fake_request()
         page = endpoint(request)
@@ -107,6 +109,17 @@ class TestApiEndpoint(MAASTestCase):
         self.assertIsInstance(info, dict)
         self.assertIn("title", info)
         self.assertIn("version", info)
+
+    def test_discovered_servers(self):
+        request = factory.make_fake_request()
+        page = endpoint(request)
+        content = yaml.safe_load(page.content)
+        self.assertIn("servers", content)
+        servers = content["servers"]
+        maas_name = Config.objects.get_config("maas_name")
+        maas_url = Config.objects.get_config("maas_url")
+        self.assertEqual(servers["url"], f"{maas_url}/api/2.0")
+        self.assertEqual(servers["description"], f"{maas_name} API")
 
 
 class TestFindingResources(MAASTestCase):

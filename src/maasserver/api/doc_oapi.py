@@ -6,6 +6,7 @@ import json
 from django.http import HttpResponse
 import yaml
 
+from maasserver.models.config import Config
 from maasserver.utils import build_absolute_uri
 
 
@@ -32,12 +33,10 @@ def endpoint(request):
         with the OpenApi spec 3.0.
     """
     description = get_api_endpoint()
-    doc = description["externalDocs"]
-    doc["url"] = build_absolute_uri(request, doc["url"])
     # Return as a YAML document
     return HttpResponse(
         yaml.dump(description),
-        content_type="application/yaml",
+        content_type="application/openapi+yaml",
     )
 
 
@@ -81,4 +80,18 @@ def get_api_endpoint():
             "url": "/MAAS/docs/api.html",
         },
     }
+    description["servers"] = _get_maas_servers()
     return description
+
+
+def _get_maas_servers():
+    """Return a servers defintion of the public-facing MAAS address.
+
+    :return: An object describing the MAAS public-facing server.
+    """
+    maas_url = Config.objects.get_config("maas_url")
+    maas_name = Config.objects.get_config("maas_name")
+    return {
+        "url": f"{maas_url}/api/2.0",
+        "description": f"{maas_name} API",
+    }
