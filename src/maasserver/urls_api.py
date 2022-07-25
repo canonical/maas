@@ -37,6 +37,7 @@ from maasserver.api.dnsresourcerecords import (
 )
 from maasserver.api.dnsresources import DNSResourceHandler, DNSResourcesHandler
 from maasserver.api.doc_handler import describe
+from maasserver.api.doc_oapi import endpoint
 from maasserver.api.domains import DomainHandler, DomainsHandler
 from maasserver.api.events import EventsHandler
 from maasserver.api.fabrics import FabricHandler, FabricsHandler
@@ -330,11 +331,11 @@ license_keys_handler = AdminRestrictedResource(
     LicenseKeysHandler, authentication=api_auth
 )
 
-
 # API URLs accessible to anonymous users.
 urlpatterns = [
     re_path(r"describe/$", describe, name="describe"),
     re_path(r"version/$", version_handler, name="version_handler"),
+    re_path(r"openapi.yaml$", endpoint, name="openapi_endpoint"),
 ]
 
 

@@ -26,6 +26,7 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
+import yaml
 
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
@@ -41,7 +42,8 @@ from maasserver.api.doc import (
     generate_power_types_doc,
     get_api_description,
 )
-from maasserver.api.doc_handler import api_landing_page, render_api_docs
+from maasserver.api.doc_handler import render_api_docs
+from maasserver.api.doc_oapi import endpoint, landing_page
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -83,14 +85,28 @@ class TestGetAPIDescription(MAASTestCase):
 class TestLandingPage(MAASTestCase):
     def test_links(self):
         request = factory.make_fake_request()
-        landing_page = api_landing_page(request)
-        content = json.loads(landing_page.content)
+        page = landing_page(request)
+        content = json.loads(page.content)
         resources = content["resources"]
         host = request.get_host()
         for link in resources:
             href = f"http://{host}{link['path']}"
             self.assertEqual(link["href"], href)
-        self.assertEqual(resources[0]["type"], landing_page["content-type"])
+        self.assertEqual(resources[0]["type"], page["content-type"])
+
+
+class TestApiEndpoint(MAASTestCase):
+    def test_required_fields(self):
+        request = factory.make_fake_request()
+        page = endpoint(request)
+        content = yaml.safe_load(page.content)
+        self.assertIn("openapi", content)
+        self.assertIn("info", content)
+        self.assertIn("paths", content)
+        info = content["info"]
+        self.assertIsInstance(info, dict)
+        self.assertIn("title", info)
+        self.assertIn("version", info)
 
 
 class TestFindingResources(MAASTestCase):

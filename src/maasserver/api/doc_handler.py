@@ -71,7 +71,6 @@ from maasserver.api.doc import (
     generate_pod_types_doc,
     generate_power_types_doc,
     get_api_description,
-    get_api_landing_page,
 )
 from maasserver.api.templates import APITemplateRenderer
 from maasserver.utils import build_absolute_uri
@@ -241,21 +240,5 @@ def describe(request):
     # Return as a JSON document.
     return HttpResponse(
         json.dumps(description, sort_keys=True),
-        content_type="application/json",
-    )
-
-
-def api_landing_page(request):
-    """Render a landing page with pointers for the MAAS API.
-
-    :return: An `HttpResponse` containing a JSON page with pointers to both
-        human-readable documentation and api definitions.
-    """
-    description = get_api_landing_page()
-    for link in description["resources"]:
-        link["href"] = build_absolute_uri(request, link["path"])
-    # Return as a JSON document
-    return HttpResponse(
-        json.dumps(description),
         content_type="application/json",
     )
