@@ -873,13 +873,9 @@ class TestGetUsableKernels(MAASServerTestCase):
                 architecture=f"{self.arch}/{self.subarch}",
                 rolling=True,
             )
-        self.assertEqual(
-            sorted(self.kernels),
-            sorted(
-                BootResource.objects.get_usable_hwe_kernels(
-                    self.name, self.arch
-                )
-            ),
+        self.assertCountEqual(
+            self.kernels,
+            BootResource.objects.get_usable_hwe_kernels(self.name, self.arch),
             "%s should return %s as its usable kernel"
             % (self.name, self.kernels),
         )

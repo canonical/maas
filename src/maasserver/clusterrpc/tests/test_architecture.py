@@ -65,7 +65,7 @@ class TestListSupportedArchitectures(MAASServerTestCase):
                 }
             ]
         )
-        self.assertEqual(
-            sorted(architectures),
-            sorted(architecture.list_supported_architectures()),
+        self.assertCountEqual(
+            architectures,
+            architecture.list_supported_architectures(),
         )

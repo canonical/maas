@@ -908,13 +908,13 @@ class TestWebSocketsResource(MAASTestCase):
         request.client = IPv6Address("TCP", "fe80::1", "80")
         result = self.resource.render(request)
         self.assertEqual(NOT_DONE_YET, result)
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 (b"Connection", [b"Upgrade"]),
                 (b"Sec-Websocket-Accept", [b"oYBv54i42V5dw6KnZqOFroecUTc="]),
                 (b"Upgrade", [b"WebSocket"]),
             ],
-            sorted(request.responseHeaders.getAllRawHeaders()),
+            request.responseHeaders.getAllRawHeaders(),
         )
         self.assertThat(
             channel.transport.value(),

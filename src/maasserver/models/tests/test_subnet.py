@@ -1820,7 +1820,7 @@ class TestGetAllocatedIps(MAASServerTestCase):
         )
         [(returned_subnet1, ips1), (returned_subnet2, ips2)] = result
         self.assertIs(subnet1, returned_subnet1)
-        self.assertEqual(
+        self.assertCountEqual(
             [(ip1.ip, ip1.alloc_type), (ip2.ip, ip2.alloc_type)], ips1
         )
         self.assertIs(subnet2, returned_subnet2)
@@ -1832,7 +1832,7 @@ class TestGetAllocatedIps(MAASServerTestCase):
         ip1 = factory.make_StaticIPAddress(subnet=subnet)
         ip2 = factory.make_StaticIPAddress(subnet=subnet)
         queries, ips = count_queries(subnet.get_allocated_ips)
-        self.assertEqual(
+        self.assertCountEqual(
             [(ip1.ip, ip1.alloc_type), (ip2.ip, ip2.alloc_type)], ips
         )
         self.assertEqual(1, queries)
@@ -1844,7 +1844,7 @@ class TestGetAllocatedIps(MAASServerTestCase):
         [(_, ips)] = get_allocated_ips([subnet])
         subnet.cache_allocated_ips(ips)
         queries, ips = count_queries(subnet.get_allocated_ips)
-        self.assertEqual(
+        self.assertCountEqual(
             [(ip1.ip, ip1.alloc_type), (ip2.ip, ip2.alloc_type)], ips
         )
         self.assertEqual(0, queries)

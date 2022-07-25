@@ -167,9 +167,9 @@ class TestAccountAPI(APITestCase.ForUser):
             "application/json; charset=utf-8", response["content-type"]
         )
         parsed_result = json_load_bytes(response.content)
-        self.assertEqual(
+        self.assertCountEqual(
             ["consumer_key", "name", "token_key", "token_secret"],
-            sorted(parsed_result),
+            parsed_result,
         )
         self.assertIsInstance(parsed_result["consumer_key"], str)
         self.assertIsInstance(parsed_result["token_key"], str)
@@ -367,7 +367,7 @@ class TestAccountAPI(APITestCase.ForUser):
         parsed_list_response = json_load_bytes(response.content)
         self.assertIsInstance(parsed_list_response, list)
         for token in parsed_list_response:
-            self.assertEqual(["name", "token"], sorted(token))
+            self.assertCountEqual(["name", "token"], token)
             self.assertIsInstance(token["name"], str)
             self.assertIsInstance(token["token"], str)
 

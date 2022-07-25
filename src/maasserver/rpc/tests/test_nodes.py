@@ -383,7 +383,7 @@ class TestListClusterNodesPowerParameters(MAASServerTestCase):
 
         power_parameters = list_cluster_nodes_power_parameters(rack.system_id)
         system_ids = [params["system_id"] for params in power_parameters]
-        self.assertEqual(sorted(node_ids), sorted(system_ids))
+        self.assertCountEqual(node_ids, system_ids)
 
     def test_returns_unchecked_nodes_first(self):
         rack = factory.make_RackController()

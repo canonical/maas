@@ -323,9 +323,9 @@ class TestRBACWrapperGetResourcePools(MAASServerTestCase):
         self.store.add_pool(pool1)
         self.store.add_pool(pool2)
         self.store.allow("user", pool1, "view")
-        self.assertEqual(
-            sorted([pool1.id]),
-            sorted(self.rbac.get_resource_pool_ids("user", "view")["view"]),
+        self.assertCountEqual(
+            [pool1.id],
+            self.rbac.get_resource_pool_ids("user", "view")["view"],
         )
 
     def test_get_resource_pool_ids_one_request_per_clear_cache(self):

@@ -347,12 +347,12 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             )
             script_results.append(script_result)
 
-        self.assertEqual(
-            sorted(script_result.id for script_result in script_results),
-            sorted(
+        self.assertCountEqual(
+            [script_result.id for script_result in script_results],
+            [
                 script_result.id
                 for script_result in node.get_latest_script_results
-            ),
+            ],
         )
 
     def test_get_latest_script_results_interface(self):
@@ -372,12 +372,12 @@ class TestNodeGetLatestScriptResults(MAASServerTestCase):
             )
             script_results.append(script_result)
 
-        self.assertEqual(
-            sorted(script_result.id for script_result in script_results),
-            sorted(
+        self.assertCountEqual(
+            [script_result.id for script_result in script_results],
+            [
                 script_result.id
                 for script_result in node.get_latest_script_results
-            ),
+            ],
         )
 
     def test_get_latest_commissioning_script_results(self):
@@ -8095,12 +8095,12 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         test_hooks.create_numa_nodes(node)
         # reset network intefaces from commissioning data
         node.restore_network_interfaces()
-        self.assertEqual(
+        self.assertCountEqual(
             ["eth0", "eth1", "eth2"],
-            sorted(
+            [
                 interface.name
                 for interface in node.current_config.interface_set.all()
-            ),
+            ],
         )
 
     def test_restore_commissioned_network_interfaces_missing_data(self):
@@ -8158,12 +8158,12 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         test_hooks.create_numa_nodes(node)
         # reset network intefaces from commissioning data
         node.restore_network_interfaces()
-        self.assertEqual(
+        self.assertCountEqual(
             ["eth0", "eth1", "eth2"],
-            sorted(
+            [
                 interface.name
                 for interface in node.current_config.interface_set.all()
-            ),
+            ],
         )
 
     def test_restore_network_interfaces_extra(self):
@@ -8205,12 +8205,12 @@ class TestNodeNetworking(MAASTransactionServerTestCase):
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         factory.make_Interface(INTERFACE_TYPE.PHYSICAL, node=node)
         node.restore_network_interfaces()
-        self.assertEqual(
+        self.assertCountEqual(
             ["eth0", "eth1", "eth2"],
-            sorted(
+            [
                 interface.name
                 for interface in node.current_config.interface_set.all()
-            ),
+            ],
         )
 
     def test_restore_network_interfaces_includes_hardware_sync_discovered_physical_interfaces(

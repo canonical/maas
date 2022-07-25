@@ -2287,9 +2287,7 @@ class TestMachineHandler(MAASServerTestCase):
         dehydrated_ips = [
             info["ip"] for info in dehydrated_machine["ip_addresses"]
         ]
-        self.assertEqual(
-            sorted(dehydrated_ips), sorted([ip_address1.ip, ip_address2.ip])
-        )
+        self.assertCountEqual(dehydrated_ips, [ip_address1.ip, ip_address2.ip])
 
     def test_get_numa_nodes_prefetched(self):
         user = factory.make_User()

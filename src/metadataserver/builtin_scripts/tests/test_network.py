@@ -186,8 +186,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         interface_names = VLANInterface.objects.filter(
             node_config=host.current_config
         ).values_list("name", flat=True)
-        self.assertEqual(
-            ["eth0.0102", "vlan0100", "vlan101"], sorted(interface_names)
+        self.assertCountEqual(
+            ["eth0.0102", "vlan0100", "vlan101"], interface_names
         )
 
     def test_vlans_with_alternate_naming_conventions_host(self):
@@ -203,8 +203,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         interface_names = VLANInterface.objects.filter(
             node_config=host.current_config
         ).values_list("name", flat=True)
-        self.assertEqual(
-            ["eth0.0102", "vlan0100", "vlan101"], sorted(interface_names)
+        self.assertCountEqual(
+            ["eth0.0102", "vlan0100", "vlan101"], interface_names
         )
 
     def test_vlan_interface_moved_vlan(self):
@@ -223,12 +223,12 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         eth0_fabric_id = eth0.vlan.fabric_id
         self.assertEqual(eth0_fabric_id, eth0_100.vlan.fabric_id)
-        self.assertEqual(
+        self.assertCountEqual(
             [0, 100],
-            sorted(
+            [
                 vlan.vid
                 for vlan in VLAN.objects.filter(fabric_id=eth0_fabric_id)
-            ),
+            ],
         )
 
         # Simulate someone moving the VLAN of the VLAN interface, but
@@ -252,17 +252,17 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         self.assertEqual(eth0_fabric_id, eth0.vlan.fabric_id)
         self.assertEqual(new_fabric.id, eth0_100.vlan.fabric_id)
-        self.assertEqual(
+        self.assertCountEqual(
             [0, 100],
-            sorted(
+            list(
                 VLAN.objects.filter(fabric=new_fabric).values_list(
                     "vid", flat=True
                 )
             ),
         )
-        self.assertEqual(
+        self.assertCountEqual(
             [0],
-            sorted(
+            list(
                 VLAN.objects.filter(fabric_id=eth0_fabric_id).values_list(
                     "vid", flat=True
                 )
@@ -417,7 +417,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             name="eth0", node_config=controller.current_config
         )
         eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 (IPADDRESS_TYPE.STICKY, str(ip4), subnet4),
                 (IPADDRESS_TYPE.STICKY, str(ip6), subnet6),
@@ -453,7 +453,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         # subnets with full netmask are created
         subnet4 = Subnet.objects.get(cidr=f"{ip4}/32")
         subnet6 = Subnet.objects.get(cidr=f"{ip6}/128")
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 (IPADDRESS_TYPE.STICKY, str(ip4), subnet4),
                 (IPADDRESS_TYPE.STICKY, str(ip6), subnet6),
@@ -490,7 +490,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(default_vlan, subnet.vlan)
         self.assertEqual(gateway_ip, subnet.gateway_ip)
         eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -598,9 +598,9 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         discovered_addresses = list(
             eth0.ip_addresses.filter(alloc_type=IPADDRESS_TYPE.DISCOVERED)
         )
-        self.assertEqual(
-            sorted([ip1, ip2]),
-            sorted(address.ip for address in discovered_addresses),
+        self.assertCountEqual(
+            [ip1, ip2],
+            [address.ip for address in discovered_addresses],
         )
 
     def test_new_physical_with_resource_info(self):
@@ -708,7 +708,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(vlan, eth0.vlan)
 
         eth0_addresses = list(eth0.ip_addresses.order_by("id"))
-        self.assertEqual(
+        self.assertCountEqual(
             [
                 (IPADDRESS_TYPE.STICKY, ip1, subnet1),
                 (IPADDRESS_TYPE.STICKY, ip2, subnet2),
@@ -752,7 +752,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(vlan, eth0.vlan)
 
         eth0_addresses = list(interface.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -789,7 +789,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(interface.mac_address, eth0.mac_address)
         self.assertEqual(vlan, eth0.vlan)
         eth0_addresses = list(interface.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -918,7 +918,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(vlan, eth0.vlan)
 
         eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -977,7 +977,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(interface.mac_address, eth0.mac_address)
         self.assertEqual(vlan, eth0.vlan)
         eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -999,7 +999,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
 
         vlan_addresses = list(vlan_interface.ip_addresses.all())
         vlan_addresses = list(vlan_interface.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, vlan_ip, vlan_subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -1051,7 +1051,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(interface.mac_address, eth0.mac_address)
         self.assertEqual(vlan, eth0.vlan)
         eth0_addresses = list(eth0.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -1161,7 +1161,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertTrue(vlan_interface.enabled)
 
         vlan_addresses = list(vlan_interface.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, ip, subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -1307,7 +1307,7 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertTrue(vlan_interface.enabled)
 
         vlan_addresses = list(vlan_interface.ip_addresses.all())
-        self.assertEqual(
+        self.assertCountEqual(
             [(IPADDRESS_TYPE.STICKY, vlan_ip, vlan_subnet)],
             [
                 (address.alloc_type, address.ip, address.subnet)
@@ -1347,8 +1347,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual("bond0", bond_interface.name)
         self.assertTrue(bond_interface.enabled)
         self.assertEqual(vlan, bond_interface.vlan)
-        self.assertEqual(
-            sorted(parent.name for parent in bond_interface.parents.all()),
+        self.assertCountEqual(
+            [parent.name for parent in bond_interface.parents.all()],
             ["eth0", "eth1"],
         )
 
@@ -1364,8 +1364,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
             node_config=controller.current_config,
             name="br0",
         )
-        self.assertEqual(
-            sorted(parent.name for parent in bridge_interface.parents.all()),
+        self.assertCountEqual(
+            [parent.name for parent in bridge_interface.parents.all()],
             [],
         )
 
@@ -1401,8 +1401,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         self.assertEqual("br0", bridge_interface.name)
         self.assertEqual(vlan, bridge_interface.vlan)
-        self.assertEqual(
-            sorted(parent.name for parent in bridge_interface.parents.all()),
+        self.assertCountEqual(
+            [parent.name for parent in bridge_interface.parents.all()],
             ["eth0", "eth1"],
         )
 
@@ -1442,8 +1442,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         self.assertEqual("bond0", bond_interface.name)
         self.assertEqual(vlan, bond_interface.vlan)
-        self.assertEqual(
-            sorted(parent.name for parent in bond_interface.parents.all()),
+        self.assertCountEqual(
+            [parent.name for parent in bond_interface.parents.all()],
             ["eth0"],
         )
 
@@ -1484,8 +1484,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         )
         self.assertEqual("br0", bridge_interface.name)
         self.assertEqual(vlan, bridge_interface.vlan)
-        self.assertEqual(
-            sorted(parent.name for parent in bridge_interface.parents.all()),
+        self.assertCountEqual(
+            [parent.name for parent in bridge_interface.parents.all()],
             ["eth0"],
         )
 
@@ -1541,8 +1541,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(INTERFACE_TYPE.BOND, bond0.type)
         self.assertEqual(bond_network.hwaddr, str(bond0.mac_address))
         self.assertEqual(bond0_vlan, bond0.vlan)
-        self.assertEqual(
-            sorted(parent.name for parent in bond0.parents.all()),
+        self.assertCountEqual(
+            [parent.name for parent in bond0.parents.all()],
             ["eth0", "eth1"],
         )
 
@@ -1600,8 +1600,8 @@ class TestUpdateInterfaces(MAASServerTestCase, UpdateInterfacesMixin):
         self.assertEqual(INTERFACE_TYPE.BRIDGE, br0.type)
         self.assertEqual(bridge_network.hwaddr, str(br0.mac_address))
         self.assertEqual(br0_vlan, br0.vlan)
-        self.assertEqual(
-            sorted(parent.name for parent in br0.parents.all()),
+        self.assertCountEqual(
+            [parent.name for parent in br0.parents.all()],
             ["eth0", "eth1"],
         )
 

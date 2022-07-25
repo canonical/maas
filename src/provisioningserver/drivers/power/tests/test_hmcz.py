@@ -657,7 +657,7 @@ class TestProbeHMCZAndEnlist(MAASTestCase):
                 if node.power_parameters["power_partition_name"]
                 == partition_name
             ]
-            self.assertEqual(sorted(macs), sorted(node.mac_addresses))
+            self.assertCountEqual(macs, node.mac_addresses)
             self.assertEqual(node.status, status)
 
     @inlineCallbacks

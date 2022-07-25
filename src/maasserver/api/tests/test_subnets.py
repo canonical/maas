@@ -156,9 +156,9 @@ class TestSubnetsAPI(APITestCase.ForUser):
         self.assertEqual(allow_dns, created_subnet["allow_dns"])
         self.assertEqual(managed, created_subnet["managed"])
         self.assertEqual(description, created_subnet["description"])
-        self.assertEqual(
-            sorted(disabled_arches),
-            sorted(created_subnet["disabled_boot_architectures"]),
+        self.assertCountEqual(
+            disabled_arches,
+            created_subnet["disabled_boot_architectures"],
         )
 
     def test_create_defaults_to_allow_dns(self):
@@ -486,8 +486,8 @@ class TestSubnetAPI(APITestCase.ForUser):
         self.assertEqual(new_allow_proxy, subnet.allow_proxy)
         self.assertEqual(new_allow_dns, subnet.allow_dns)
         self.assertEqual(new_managed, subnet.managed)
-        self.assertEqual(
-            sorted(disabled_arches), sorted(subnet.disabled_boot_architectures)
+        self.assertCountEqual(
+            disabled_arches, subnet.disabled_boot_architectures
         )
 
     def test_update_admin_only(self):

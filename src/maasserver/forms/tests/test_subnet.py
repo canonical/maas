@@ -385,8 +385,8 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertEqual(
-            sorted(disabled_arches), sorted(subnet.disabled_boot_architectures)
+        self.assertCountEqual(
+            disabled_arches, subnet.disabled_boot_architectures
         )
 
     def test_clean_disabled_boot_arches_name_space_seperated_list(self):
@@ -407,8 +407,8 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertEqual(
-            sorted(disabled_arches), sorted(subnet.disabled_boot_architectures)
+        self.assertCountEqual(
+            disabled_arches, subnet.disabled_boot_architectures
         )
 
     def test_clean_disabled_boot_arches_octet(self):
@@ -432,9 +432,9 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertEqual(
-            sorted(bm.name for bm in disabled_arches),
-            sorted(subnet.disabled_boot_architectures),
+        self.assertCountEqual(
+            [bm.name for bm in disabled_arches],
+            subnet.disabled_boot_architectures,
         )
 
     def test_clean_disabled_boot_arches_hex(self):
@@ -461,9 +461,9 @@ class TestSubnetForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         subnet = reload_object(subnet)
-        self.assertEqual(
-            sorted(bm.name for bm in disabled_arches),
-            sorted(subnet.disabled_boot_architectures),
+        self.assertCountEqual(
+            [bm.name for bm in disabled_arches],
+            subnet.disabled_boot_architectures,
         )
 
     def test_clean_disabled_boot_arches_cannot_disable_fake_boot_arch(self):

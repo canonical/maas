@@ -760,7 +760,7 @@ class TestComposeMachineForm(MAASTransactionServerTestCase):
         request_machine = form.get_requested_machine(
             get_known_host_interfaces(pod)
         )
-        self.assertEqual(request_machine.pinned_cores, sorted(pinned_cores))
+        self.assertCountEqual(request_machine.pinned_cores, pinned_cores)
 
     def test_get_machine_pinned_cores_invalid(self):
         request = MagicMock()

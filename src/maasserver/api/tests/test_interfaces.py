@@ -1094,11 +1094,11 @@ class TestNodeInterfaceAPI(APITransactionTestCase.ForUser):
         }
         for key, value in expected_parts.items():
             self.assertEqual(parsed_interface[key], value)
-        self.assertEqual(
-            sorted(nic.name for nic in parents), parsed_interface["parents"]
+        self.assertCountEqual(
+            [nic.name for nic in parents], parsed_interface["parents"]
         )
-        self.assertEqual(
-            sorted(nic.name for nic in children), parsed_interface["children"]
+        self.assertCountEqual(
+            [nic.name for nic in children], parsed_interface["children"]
         )
 
         self.assertEqual(

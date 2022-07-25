@@ -104,7 +104,7 @@ class TestGeneralHandler(MAASServerTestCase):
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertEqual(sorted(arches), handler.architectures({}))
+        self.assertCountEqual(arches, handler.architectures({}))
 
     def test_known_architectures(self):
         handler = GeneralHandler(factory.make_User(), {}, None)
@@ -130,17 +130,17 @@ class TestGeneralHandler(MAASServerTestCase):
     def test_hwe_kernels(self):
         expected_output = self.make_boot_sources()
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertEqual(
-            sorted(expected_output, key=lambda choice: choice[0]),
-            sorted(handler.hwe_kernels({}), key=lambda choice: choice[0]),
+        self.assertCountEqual(
+            expected_output,
+            handler.hwe_kernels({}),
         )
 
     def test_hwe_min_kernels(self):
         expected_output = self.make_boot_sources()
         handler = GeneralHandler(factory.make_User(), {}, None)
-        self.assertEqual(
-            sorted(expected_output, key=lambda choice: choice[0]),
-            sorted(handler.min_hwe_kernels({}), key=lambda choice: choice[0]),
+        self.assertCountEqual(
+            expected_output,
+            handler.min_hwe_kernels({}),
         )
 
     def test_osinfo(self):

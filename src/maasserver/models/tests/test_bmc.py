@@ -1459,7 +1459,7 @@ class TestPod(MAASServerTestCase, PodTestMixin):
                 partition__partition_table__block_device__node_config=machine.current_config
             ).all()
         ]
-        self.assertEqual(["/", "/boot/efi"], sorted(mount_points))
+        self.assertCountEqual(["/", "/boot/efi"], mount_points)
 
     def test_create_machine_sets_zone(self):
         discovered_machine = self.make_discovered_machine()

@@ -143,13 +143,13 @@ class TestMachinesAPI(APITestCase.ForUser):
         vm1 = factory.make_VirtualMachine(machine=machine1, bmc=vmhost)
         machine2 = factory.make_Node()
         parsed_result = self.get_json()
-        result = sorted(
+        result = list(
             (entry["system_id"], entry["virtualmachine_id"])
             for entry in parsed_result
         )
-        self.assertEqual(
+        self.assertCountEqual(
             result,
-            sorted([(machine1.system_id, vm1.id), (machine2.system_id, None)]),
+            [(machine1.system_id, vm1.id), (machine2.system_id, None)],
         )
 
     def test_POST_creates_machine(self):
