@@ -1605,7 +1605,9 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         node2 = factory.make_Node()
         form = FreeTextFilterNodeForm(data={})
         result = form._substring_filter(
-            Machine.objects, "hostname", name[len("hostname-") + 1 :]
+            Machine.objects,
+            "hostname",
+            name[len("hostname-") + 1 :].swapcase(),
         )
         self.assertIn(node1, list(result))
         self.assertNotIn(node2, list(result))
@@ -1628,9 +1630,15 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         node1 = factory.make_Node(hostname=name)
         node2 = factory.make_Node()
         form = FreeTextFilterNodeForm(data={})
-        result = form._substring_filter(Machine.objects, "hostname", name)
+        result = form._substring_filter(
+            Machine.objects, "hostname", f"={name}"
+        )
         self.assertIn(node1, list(result))
         self.assertNotIn(node2, list(result))
+        result = form._substring_filter(
+            Machine.objects, "hostname", f"={name.upper()}"
+        )
+        self.assertNotIn(node1, list(result))
 
     def test_substring_arch_filter(self):
         architecture = factory.make_name("arch")

@@ -1444,19 +1444,17 @@ class FreeTextFilterNodeForm(ReadNodesForm):
     )
 
     def _substring_filter(self, queryset, field, substring, exclude=False):
-        if type(substring) != str:  # assume substring is a list of substrings
-            query = Q()
-            for substr in substring:
-                substring_filter = {f"{field}__contains": substr}
-                query = query | Q(**substring_filter)
-            if exclude:
-                return queryset.exclude(query)
-            return queryset.filter(query)
-
-        substring_filter = {f"{field}__contains": substring}
+        # assume substring is either a list of strings or a string
+        values = [substring] if type(substring) == str else substring
+        query = Q()
+        for substr in values:
+            if substr.startswith("="):
+                query = query | Q(**{f"{field}__exact": substr[1:]})
+            else:
+                query = query | Q(**{f"{field}__icontains": substr})
         if exclude:
-            return queryset.exclude(**substring_filter)
-        return queryset.filter(**substring_filter)
+            return queryset.exclude(query)
+        return queryset.filter(query)
 
     def clean_tags(self):
         value = self.cleaned_data[self.get_field_name("tags")]
