@@ -11,13 +11,13 @@ __all__ = [
 ]
 
 import asyncio
-from functools import wraps
+from functools import reduce, wraps
 from operator import attrgetter
 
 from django.contrib.postgres.fields import ArrayField
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db.models import Count, Model
+from django.db.models import Count, F, Model
 from django.utils.encoding import is_protected_type
 from twisted.internet.defer import ensureDeferred
 
@@ -116,6 +116,8 @@ class HandlerOptions:
     view_permission = None
     edit_permission = None
     delete_permission = None
+    use_new_schema = False
+    dft_page_size = 100
 
     def __new__(cls, meta=None):
         overrides = {}
@@ -471,14 +473,11 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return qs
 
-    def _sort(self, qs, action, params):
+    def _sort(self, qs, action, params, keys=None):
         """Return a sorted queryset"""
-        keys = []
+        keys = keys or []
 
-        if "group_key" in params:
-            keys.append(params["group_key"])
-
-        if "sort_key" in params:
+        if params.get("sort_key"):
             desc = (
                 "-"
                 if (params.get("sort_direction", None) == "descending")
@@ -490,18 +489,26 @@ class Handler(metaclass=HandlerMetaclass):
 
         return qs.order_by(*keys)
 
-    def _collapse_groups(self, qs, params):
+    def _collapse_groups(self, qs, grp_key, collapsed):
         """Exclude collapsed groups from results"""
-        return qs.exclude(
-            **{f"{params['group_key']}__in": params["group_collapsed"]}
-        )
+        if not grp_key or len(collapsed) == 0:
+            return qs
+        return qs.exclude(**{f"{grp_key}__in": collapsed})
+
+    def _get_group_expr(self, key):
+        """Get grouping expression for key"""
+        return key
+
+    def _get_group_label(self, key, value):
+        """Get group label for value"""
+        return value
+
+    def _xlate_group_id(self, key, value):
+        """Translate group id to DB"""
+        return value
 
     def list(self, params):
         """List objects.
-
-        Pagination is activated by using both `page_number` and `page_size`
-        parameters. Mixing `start`/`limit` with pagination can produce
-        unexpected results, so don't do this.
 
         :param start: A value of the `batch_key` column and NOT `pk`. They are
             often the same but that is not a certainty. Make sure the client
@@ -512,105 +519,136 @@ class Handler(metaclass=HandlerMetaclass):
         :param page_number: Request a specific page.
         :param filter: a filter for the list. The `_filter()` method MUST be
             overridden to implement the desired DSL.
+        :param sort_key: desired sorting key
         """
-
-        def new_grp(key):
-            return {
-                "name": key,
-                "count": 0,
-                "collapsed": False,
-                "items": list(),
-            }
-
         qs_filter = self.get_queryset(for_list=True)
         if "filter" in params:
             qs_filter = self._filter(qs_filter, "list", params["filter"])
-        qs_filter = self._sort(qs_filter, "list", params)
 
-        if "start" in params:
-            qs_filter = qs_filter.filter(
-                **{"%s__gt" % self._meta.batch_key: params["start"]}
-            )
-
-        if "limit" in params:
-            qs_filter = qs_filter[: params["limit"]]
-
-        qs_list = qs_filter
-        if "group_key" in params and "group_collapsed" in params:
-            qs_list = self._collapse_groups(qs_list, params)
-
-        pager = None
-        current_page = None
-        if "page_size" in params and "page_number" in params:
-            pager = Paginator(qs_list, params["page_size"])
-            current_page = pager.get_page(params["page_number"])
-            objs = list(current_page)
+        if self._meta.use_new_schema:
+            return self._build_list_grouping(qs_filter, params)
         else:
-            objs = list(qs_list)
+            return self._build_list_simple(qs_filter, params)
 
+    def _build_list_simple(self, qs, params):
+        """List objects using simple schema.
+
+        :param start: A value of the `batch_key` column and NOT `pk`. They are
+            often the same but that is not a certainty. Make sure the client
+            also understands this distinction.
+        :param start: Offset into the queryset to return.
+        :param limit: Maximum number of objects to return.
+        """
+        qs = self._sort(qs, "list", params)
+        if "start" in params:
+            qs = qs.filter(**{f"{self._meta.batch_key}__gt": params["start"]})
+        if "limit" in params:
+            qs = qs[: params["limit"]]
+        objs = list(qs)
+        self._cache_pks(objs)
+        return [self.full_dehydrate(obj, for_list=True) for obj in objs]
+
+    def _build_list_grouping(self, qs, params):
+        """List objects with grouping and pagination.
+
+        :param page_size: Number of items per page.
+        :param page_number: Request a specific page.
+        :param filter: a filter for the list. The `_filter()` method MUST be
+            overridden to implement the desired DSL.
+        :param sort_key: desired sorting key
+        :param group_key: grouping key
+        :param group_collapsed: list of groups to suppress from output
+        """
+
+        def new_grp(key, count, collapsed):
+            return {
+                "name": key,
+                "count": count,
+                "collapsed": collapsed,
+                "items": list(),
+            }
+
+        grp_key = self._get_group_expr(params.get("group_key"))
+        collapsed = [
+            self._xlate_group_id(grp_key, id)
+            for id in params.get("group_collapsed", [])
+        ]
+
+        qs = self._sort(qs, "list", params, [grp_key] if grp_key else [])
+        qs_list = self._collapse_groups(qs, grp_key, collapsed)
+
+        pager = Paginator(
+            qs_list, params.get("page_size", self._meta.dft_page_size)
+        )
+        current_page = pager.get_page(params.get("page_number", 1))
+
+        objs = list(current_page)
         self._cache_pks(objs)
 
-        if "group_key" in params:
-            grp_key = params["group_key"]
-            qs_grouping = qs_filter
+        result = {
+            "count": qs.count(),
+            "cur_page": current_page.number,
+            "num_pages": pager.num_pages,
+        }
 
-            if current_page:
-                if current_page.has_previous():
-                    top_this_page = getattr(objs[0], grp_key, "")
-                    # start_index() is 1-based index
-                    bottom_prev_page = getattr(
-                        qs_list[(current_page.start_index() - 1) - 1],
-                        grp_key,
-                        "",
-                    )
-                    if top_this_page == bottom_prev_page:
-                        qs_grouping = qs_grouping.filter(
-                            **{f"{grp_key}__gte": bottom_prev_page}
-                        )
-                    else:
-                        qs_grouping = qs_grouping.filter(
-                            **{f"{grp_key}__gt": bottom_prev_page}
-                        )
-                if current_page.has_next():
-                    bottom_this_page = getattr(objs[-1], grp_key, "")
-                    qs_grouping = qs_grouping.filter(
-                        **{f"{grp_key}__lte": bottom_this_page}
+        if grp_key:
+
+            def get_group_key(attr):
+                def _get_id(obj):
+                    return reduce(
+                        lambda o, a: getattr(o, a, None),
+                        [obj] + attr.split("__"),
                     )
 
-            count = (
-                qs_grouping.values(grp_key)
-                .annotate(total=Count(grp_key))
+                return _get_id
+
+            gid_getter = get_group_key(grp_key)
+            qs_grouping = qs
+
+            if current_page.has_previous():
+                top_this_page = gid_getter(objs[0])
+                # start_index() is 1-based index
+                bottom_prev_page = gid_getter(
+                    qs_list[(current_page.start_index() - 1) - 1]
+                )
+                cmp = "gte" if top_this_page == bottom_prev_page else "gt"
+                qs_grouping = qs_grouping.filter(
+                    **{f"{grp_key}__{cmp}": bottom_prev_page}
+                )
+            if current_page.has_next():
+                bottom_this_page = gid_getter(objs[-1])
+                qs_grouping = qs_grouping.filter(
+                    **{f"{grp_key}__lte": bottom_this_page}
+                )
+
+            groups_visible = (
+                qs_grouping.values(**{"label": F(grp_key)})
+                .annotate(total=Count(self._meta.batch_key))
                 .order_by(grp_key)
             )
 
-            grps = dict()
-            for g in count:
-                grp_id = g[grp_key]
-                grps.setdefault(grp_id, new_grp(grp_id))["count"] = g["total"]
-
-            for k in params.get("group_collapsed", []):
-                if k in grps.keys():
-                    grps[k]["collapsed"] = True
-
-            for obj in objs:
-                grps[getattr(obj, grp_key, "")]["items"].append(
-                    self.full_dehydrate(obj, for_list=True)
+            groups = dict()
+            for g in groups_visible:
+                grp_id = g["label"]
+                groups[grp_id] = new_grp(
+                    self._get_group_label(grp_key, g["label"]),
+                    g["total"],
+                    grp_id in collapsed,
                 )
 
-            items = list(grps.values())
+            for obj in objs:
+                groups[gid_getter(obj)]["items"].append(
+                    self.full_dehydrate(obj, for_list=True)
+                )
+            result["groups"] = list(groups.values())
         else:
-            items = [self.full_dehydrate(obj, for_list=True) for obj in objs]
+            grp = new_grp(None, result["count"], False)
+            grp["items"] = [
+                self.full_dehydrate(obj, for_list=True) for obj in objs
+            ]
+            result["groups"] = [grp]
 
-        if pager:
-            data = {
-                "count": len(qs_filter),
-                "cur_page": current_page.number,
-                "num_pages": pager.num_pages,
-                "items": items,
-            }
-            return data
-        else:
-            return items
+        return result
 
     def get(self, params):
         """Get object.

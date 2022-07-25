@@ -493,12 +493,20 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
+            use_new_schema=True,
         )
         output = {
             "count": 5,
             "cur_page": 1,
             "num_pages": 2,
-            "items": [{"system_id": n.system_id} for n in nodes[:3]],
+            "groups": [
+                {
+                    "collapsed": False,
+                    "count": 5,
+                    "name": None,
+                    "items": [{"system_id": n.system_id} for n in nodes[:3]],
+                }
+            ],
         }
         self.assertEqual(
             output,
@@ -514,12 +522,20 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
+            use_new_schema=True,
         )
         output = {
             "count": 5,
             "cur_page": 2,
             "num_pages": 2,
-            "items": [{"system_id": n.system_id} for n in nodes[3:]],
+            "groups": [
+                {
+                    "collapsed": False,
+                    "count": 5,
+                    "name": None,
+                    "items": [{"system_id": n.system_id} for n in nodes[3:]],
+                }
+            ],
         }
         self.assertEqual(
             output,
@@ -535,12 +551,20 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
+            use_new_schema=True,
         )
         output = {
             "count": 5,
             "cur_page": 1,
             "num_pages": 2,
-            "items": [{"system_id": n.system_id} for n in nodes[:3]],
+            "groups": [
+                {
+                    "collapsed": False,
+                    "count": 5,
+                    "name": None,
+                    "items": [{"system_id": n.system_id} for n in nodes[:3]],
+                }
+            ],
         }
         self.assertEqual(
             output,
@@ -556,12 +580,20 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
+            use_new_schema=True,
         )
         output = {
             "count": 5,
             "cur_page": 2,
             "num_pages": 2,
-            "items": [{"system_id": n.system_id} for n in nodes[3:]],
+            "groups": [
+                {
+                    "collapsed": False,
+                    "count": 5,
+                    "name": None,
+                    "items": [{"system_id": n.system_id} for n in nodes[3:]],
+                }
+            ],
         }
         self.assertEqual(
             output,
@@ -988,6 +1020,9 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
 
 
 class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
+    def make_nodes_handler(self, **kwargs):
+        return super().make_nodes_handler(use_new_schema=True, **kwargs)
+
     def test_group_simple(self):
         nodes_ready = [
             factory.make_Node(status=NODE_STATUS.READY) for _ in range(3)
@@ -999,26 +1034,58 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
         handler = self.make_nodes_handler(fields=["hostname", "status"])
         result = handler.list({"group_key": "status"})
 
-        output = [
-            {
-                "name": NODE_STATUS.NEW,
-                "count": 2,
-                "collapsed": False,
-                "items": [
-                    {"hostname": n.hostname, "status": n.status}
-                    for n in nodes_new
-                ],
-            },
-            {
-                "name": NODE_STATUS.READY,
-                "count": 3,
-                "collapsed": False,
-                "items": [
-                    {"hostname": n.hostname, "status": n.status}
-                    for n in nodes_ready
-                ],
-            },
+        output = {
+            "count": 5,
+            "cur_page": 1,
+            "num_pages": 1,
+            "groups": [
+                {
+                    "name": NODE_STATUS.NEW,
+                    "count": 2,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_new
+                    ],
+                },
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 3,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_items_with_none(self):
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY, power_type=None)
+            for _ in range(3)
         ]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        result = handler.list({"group_key": "bmc__power_type"})
+
+        output = {
+            "count": 3,
+            "cur_page": 1,
+            "num_pages": 1,
+            "groups": [
+                {
+                    "name": None,
+                    "count": 3,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready
+                    ],
+                },
+            ],
+        }
         self.assertEqual(output, result)
 
     def test_group_suppresion(self):
@@ -1032,23 +1099,28 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             {"group_key": "status", "group_collapsed": [NODE_STATUS.NEW]}
         )
 
-        output = [
-            {
-                "name": NODE_STATUS.NEW,
-                "count": 2,
-                "collapsed": True,
-                "items": [],
-            },
-            {
-                "name": NODE_STATUS.READY,
-                "count": 3,
-                "collapsed": False,
-                "items": [
-                    {"hostname": n.hostname, "status": n.status}
-                    for n in nodes_ready
-                ],
-            },
-        ]
+        output = {
+            "count": 5,
+            "cur_page": 1,
+            "num_pages": 1,
+            "groups": [
+                {
+                    "name": NODE_STATUS.NEW,
+                    "count": 2,
+                    "collapsed": True,
+                    "items": [],
+                },
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 3,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready
+                    ],
+                },
+            ],
+        }
         self.assertEqual(output, result)
 
     def test_group_suppresion_out_of_scope(self):
@@ -1061,17 +1133,22 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             {"group_key": "status", "group_collapsed": [NODE_STATUS.NEW]}
         )
 
-        output = [
-            {
-                "name": NODE_STATUS.READY,
-                "count": 3,
-                "collapsed": False,
-                "items": [
-                    {"hostname": n.hostname, "status": n.status}
-                    for n in nodes_ready
-                ],
-            }
-        ]
+        output = {
+            "count": 3,
+            "cur_page": 1,
+            "num_pages": 1,
+            "groups": [
+                {
+                    "name": NODE_STATUS.READY,
+                    "count": 3,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready
+                    ],
+                }
+            ],
+        }
         self.assertEqual(output, result)
 
     def test_group_page_first(self):
@@ -1093,7 +1170,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "count": 10,
             "cur_page": 1,
             "num_pages": 4,
-            "items": [
+            "groups": [
                 {
                     "name": NODE_STATUS.NEW,
                     "count": 5,
@@ -1128,7 +1205,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "count": 10,
             "cur_page": 2,
             "num_pages": 4,
-            "items": [
+            "groups": [
                 {
                     "name": NODE_STATUS.NEW,
                     "count": 5,
@@ -1170,7 +1247,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "count": 10,
             "cur_page": 4,
             "num_pages": 4,
-            "items": [
+            "groups": [
                 {
                     "name": NODE_STATUS.READY,
                     "count": 5,
@@ -1205,7 +1282,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "count": 15,
             "cur_page": 1,
             "num_pages": 3,
-            "items": [
+            "groups": [
                 {
                     "name": NODE_STATUS.NEW,
                     "count": 5,
@@ -1246,7 +1323,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "count": 15,
             "cur_page": 2,
             "num_pages": 2,
-            "items": [
+            "groups": [
                 {
                     "name": NODE_STATUS.READY,
                     "count": 5,
@@ -1289,7 +1366,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "count": 15,
             "cur_page": 2,
             "num_pages": 3,
-            "items": [
+            "groups": [
                 {
                     "name": NODE_STATUS.NEW,
                     "count": 5,
@@ -1339,7 +1416,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "count": 15,
             "cur_page": 3,
             "num_pages": 3,
-            "items": [
+            "groups": [
                 {
                     "name": NODE_STATUS.READY,
                     "count": 5,

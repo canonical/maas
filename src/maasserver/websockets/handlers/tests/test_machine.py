@@ -708,14 +708,14 @@ class TestMachineHandler(MAASServerTestCase):
                 )
 
         handler = MachineHandler(owner, {}, None)
-        queries_one, _ = count_queries(handler.list, {"limit": 1})
+        queries_one, _ = count_queries(handler.list, {"page_size": 1})
         queries_total, _ = count_queries(handler.list, {})
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node listing.
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 25
+        expected_query_count = 27
         self.assertEqual(
             queries_one,
             expected_query_count,
@@ -764,14 +764,14 @@ class TestMachineHandler(MAASServerTestCase):
                 )
 
         handler = MachineHandler(owner, {}, None)
-        queries_one, _ = count_queries(handler.list, {"limit": 1})
+        queries_one, _ = count_queries(handler.list, {"page_size": 1})
         queries_total, _ = count_queries(handler.list, {})
         # This check is to notify the developer that a change was made that
         # affects the number of queries performed when doing a node listing.
         # It is important to keep this number as low as possible. A larger
         # number means regiond has to do more work slowing down its process
         # and slowing down the client waiting for the response.
-        expected_query_count = 25
+        expected_query_count = 27
         self.assertEqual(
             queries_one,
             expected_query_count,
@@ -794,7 +794,8 @@ class TestMachineHandler(MAASServerTestCase):
             },
         )
         handler = MachineHandler(factory.make_User(), {}, None)
-        [node_info] = handler.list({})
+        list_results = handler.list({})
+        [node_info] = list_results["groups"][0]["items"]
         self.assertNotIn("certificate", node_info)
 
     def test_get_power_params_certificate(self):
@@ -2369,15 +2370,16 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_PhysicalBlockDevice(node=node)
         self.assertNotIn(node.id, handler._script_results.keys())
         list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
         self.assertDictEqual(
             {node.id: {script_result.script.hardware_type: [script_result]}},
             handler._script_results,
         )
-        self.assertNotIn("commissioning_status", list_results[0])
-        self.assertNotIn("commissioning_start_time", list_results[0])
-        self.assertNotIn("cpu_speed", list_results[0])
+        self.assertNotIn("commissioning_status", list_items[0])
+        self.assertNotIn("commissioning_start_time", list_items[0])
+        self.assertNotIn("cpu_speed", list_items[0])
         self.assertCountEqual(
-            [self.dehydrate_node(node, handler, for_list=True)], list_results
+            [self.dehydrate_node(node, handler, for_list=True)], list_items
         )
 
     def test_list_includes_numa_node_info(self):
@@ -2387,10 +2389,11 @@ class TestMachineHandler(MAASServerTestCase):
         for memory, cores in memory_cores:
             factory.make_NUMANode(node=machine, memory=memory, cores=cores)
         handler = MachineHandler(user, {}, None)
-        [result] = handler.list({})
-        self.assertEqual(result["numa_nodes_count"], 4)
+        list_results = handler.list({})
+        [list_item] = list_results["groups"][0]["items"]
+        self.assertEqual(list_item["numa_nodes_count"], 4)
         # the listing is not included in the result
-        self.assertNotIn("numa_nodes", result)
+        self.assertNotIn("numa_nodes", list_item)
 
     def test_list_includes_sriov_support_flag(self):
         user = factory.make_User()
@@ -2398,8 +2401,9 @@ class TestMachineHandler(MAASServerTestCase):
         factory.make_Interface(node=machine)
         factory.make_Interface(node=machine, sriov_max_vf=16)
         handler = MachineHandler(user, {}, None)
-        [result] = handler.list({})
-        self.assertTrue(result["sriov_support"])
+        list_results = handler.list({})
+        [list_item] = list_results["groups"][0]["items"]
+        self.assertTrue(list_item["sriov_support"])
 
     def test_list_ignores_devices(self):
         owner = factory.make_User()
@@ -2407,9 +2411,10 @@ class TestMachineHandler(MAASServerTestCase):
         # Create a device.
         factory.make_Node(owner=owner, node_type=NODE_TYPE.DEVICE)
         node = factory.make_Node(owner=owner)
+        list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_node(node, handler, for_list=True)],
-            handler.list({}),
+            list_results["groups"][0]["items"],
         )
 
     def test_list_returns_nodes_only_viewable_by_user(self):
@@ -2421,12 +2426,13 @@ class TestMachineHandler(MAASServerTestCase):
         )
         factory.make_Node(owner=other_user, status=NODE_STATUS.ALLOCATED)
         handler = MachineHandler(user, {}, None)
+        list_results = handler.list({})
         self.assertCountEqual(
             [
                 self.dehydrate_node(node, handler, for_list=True),
                 self.dehydrate_node(ownered_node, handler, for_list=True),
             ],
-            handler.list({}),
+            list_results["groups"][0]["items"],
         )
 
     def test_list_includes_pod_details_when_available(self):
@@ -2434,9 +2440,10 @@ class TestMachineHandler(MAASServerTestCase):
         pod = factory.make_Pod()
         node = factory.make_Node(owner=user, bmc=pod)
         handler = MachineHandler(user, {}, None)
+        list_results = handler.list({})
         self.assertEqual(
             [self.dehydrate_node(node, handler, for_list=True)],
-            handler.list({}),
+            list_results["groups"][0]["items"],
         )
 
     def test_list_includes_static_ip_addresses(self):
@@ -5790,7 +5797,7 @@ class TestMachineHandlerWorkloadAnnotations(MAASServerTestCase):
         )
 
 
-class TestMachineHandlerFilter(MAASServerTestCase):
+class TestMachineHandlerNewSchema(MAASServerTestCase):
     def test_filter_simple(self):
         user = factory.make_User()
         nodes = [
@@ -5805,10 +5812,11 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 }
             }
         )
-        self.assertEqual(1, len(result))
+        items = result["groups"][0]["items"]
+        self.assertEqual(1, len(items))
         self.assertEqual(
             nodes[1].hostname,
-            result[0]["hostname"],
+            items[0]["hostname"],
         )
 
     def test_filter_composed(self):
@@ -5826,10 +5834,11 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 }
             }
         )
-        self.assertEqual(1, len(result))
+        items = result["groups"][0]["items"]
+        self.assertEqual(1, len(items))
         self.assertEqual(
             nodes[1].hostname,
-            result[0]["hostname"],
+            items[0]["hostname"],
         )
 
     def test_filter_no_response(self):
@@ -5844,7 +5853,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                 }
             }
         )
-        self.assertEqual(0, len(result))
+        self.assertEqual(0, result["groups"][0]["count"])
 
     def test_filter_invalid(self):
         user = factory.make_User()
@@ -6149,8 +6158,8 @@ class TestMachineHandlerFilter(MAASServerTestCase):
         machines = [
             factory.make_Machine_with_Interface_on_Subnet(
                 architecture=architectures[i % len(architectures)],
-                bmc=factory.make_Pod(),
                 owner=user,
+                bmc=factory.make_Pod(pod_type=random.choice(["lxd", "virsh"])),
             )
             for i in range(5)
         ]
@@ -6164,6 +6173,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                         {"group_key": field_name}
                     )
                 ],
+                field_name,
             )
 
         def _assert_subset(subset, field_name):
@@ -6174,7 +6184,8 @@ class TestMachineHandlerFilter(MAASServerTestCase):
                     for option in handler.filter_options(
                         {"group_key": field_name}
                     )
-                }
+                },
+                field_name,
             )
 
         for machine in machines:
@@ -6275,8 +6286,150 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             if machine.bmc.power_type == "lxd":
                 _assert_value_in(machine.bmc.power_type, "pod_type")
                 _assert_value_in(machine.bmc.power_type, "not_pod_type")
-                _assert_value_in(machine.bmc.id, "pod")
-                _assert_value_in(machine.bmc.id, "not_pod")
+                _assert_value_in(machine.bmc.name, "pod")
+                _assert_value_in(machine.bmc.name, "not_pod")
+
+    def test_group_label_dynamic(self):
+        user = factory.make_User()
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.ALLOCATED,
+            bmc=factory.make_Pod(pod_type="lxd"),
+        )
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.ALLOCATED,
+            bmc=factory.make_Pod(pod_type="virsh"),
+        )
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "group_key": "pod_type",
+            }
+        )
+        self.assertEqual(
+            "lxd",
+            result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            "virsh",
+            result["groups"][1]["name"],
+        )
+
+    def test_group_collapse_dynamic(self):
+        user = factory.make_User()
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.ALLOCATED,
+            bmc=factory.make_Pod(pod_type="lxd"),
+        )
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.ALLOCATED,
+            bmc=factory.make_Pod(pod_type="virsh"),
+        )
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "group_key": "pod_type",
+                "group_collapsed": ["lxd"],
+            }
+        )
+        self.assertEqual(
+            "lxd",
+            result["groups"][0]["name"],
+        )
+        self.assertTrue(
+            result["groups"][0]["collapsed"],
+        )
+        self.assertEqual(
+            "virsh",
+            result["groups"][1]["name"],
+        )
+        self.assertFalse(
+            result["groups"][1]["collapsed"],
+        )
+
+    def test_group_label_static(self):
+        user = factory.make_User()
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.ALLOCATED,
+        )
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.NEW,
+        )
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "group_key": "status",
+            }
+        )
+        self.assertEqual(
+            "New",
+            result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            "Allocated",
+            result["groups"][1]["name"],
+        )
+
+    def test_group_collapse_static(self):
+        user = factory.make_User()
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.ALLOCATED,
+        )
+        factory.make_Node(
+            owner=user,
+            status=NODE_STATUS.NEW,
+        )
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "group_key": "status",
+                "group_collapsed": ["new"],
+            }
+        )
+        self.assertEqual(
+            "New",
+            result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            "Allocated",
+            result["groups"][1]["name"],
+        )
+        self.assertTrue(
+            result["groups"][0]["collapsed"],
+        )
+        self.assertFalse(
+            result["groups"][1]["collapsed"],
+        )
+
+    def test_filter_dynamic_options(self):
+        user = factory.make_User()
+        tag = factory.make_Tag()
+        fabric = factory.make_Fabric(class_type="test-fabric-class")
+        factory.make_usable_boot_resource(architecture="amd64/generic")
+        node = factory.make_Machine_with_Interface_on_Subnet(
+            architecture="amd64/generic",
+            bmc=factory.make_Pod(),
+            owner=user,
+            fabric=fabric,
+            interface_speed=1000,
+        )
+        node.tags.add(tag)
+        handler = MachineHandler(user, {}, None)
+        for filter_grp in handler.filter_groups({}):
+            key = filter_grp["key"]
+            if filter_grp["dynamic"] and not key.startswith("not_"):
+                opts = handler.filter_options({"group_key": key})
+                if filter_grp["type"] == "list[string]":
+                    filter = {key: [k["key"] for k in opts]}
+                else:
+                    filter = {key: opts[0]["key"]}
+                handler.list({"filter": filter})
 
     def test_unsubscribe_prevents_further_updates_for_pk(self):
         admin = factory.make_admin()
@@ -6290,7 +6443,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             handler.on_listen("machine", "update", node.system_id)
         )
         list_result = handler.list({})
-        self.assertEqual(len(list_result), 1)
+        self.assertEqual(len(list_result["groups"][0]["items"]), 1)
 
     def test_unsubscribe_raises_validation_error_with_no_pk(self):
         admin = factory.make_admin()
@@ -6351,7 +6504,7 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             handler.on_listen("machine", "update", node1.system_id)
         )
         list_result = handler.list({})
-        self.assertEqual(len(list_result), 2)
+        self.assertEqual(len(list_result["groups"][0]["items"]), 2)
         self.assertIsNotNone(
             handler.on_listen("machine", "update", node1.system_id)
         )
@@ -6379,27 +6532,3 @@ class TestMachineHandlerFilter(MAASServerTestCase):
             len(nodes_in_zone),
             handler.count({"filter": {"zone": zone.name}})["count"],
         )
-
-    def test_filter_dynamic_options(self):
-        user = factory.make_User()
-        tag = factory.make_Tag()
-        fabric = factory.make_Fabric(class_type="test-fabric-class")
-        factory.make_usable_boot_resource(architecture="amd64/generic")
-        node = factory.make_Machine_with_Interface_on_Subnet(
-            architecture="amd64/generic",
-            bmc=factory.make_Pod(),
-            owner=user,
-            fabric=fabric,
-            interface_speed=1000,
-        )
-        node.tags.add(tag)
-        handler = MachineHandler(user, {}, None)
-        for filter_grp in handler.filter_groups({}):
-            key = filter_grp["key"]
-            if filter_grp["dynamic"] and not key.startswith("not_"):
-                opts = handler.filter_options({"group_key": key})
-                if filter_grp["type"] == "list[string]":
-                    filter = {key: [k["key"] for k in opts]}
-                else:
-                    filter = {key: opts[0]["key"]}
-                handler.list({"filter": filter})

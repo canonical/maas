@@ -19,6 +19,7 @@ from maasserver.enum import (
     INTERFACE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
     NODE_STATUS_SHORT_LABEL_CHOICES,
     NODE_TYPE,
     POWER_STATE,
@@ -151,6 +152,7 @@ class NodeHandler(TimestampedModelHandler):
         pk = "system_id"
         bulk_pk = "system_ids"
         pk_type = str
+        use_new_schema = True
 
     def __init__(self, user, cache, request):
         super().__init__(user, cache, request)
@@ -1213,6 +1215,41 @@ class NodeHandler(TimestampedModelHandler):
         qs, _, _ = form.filter_nodes(qs)
         return qs
 
+    def _get_group_expr(self, key):
+        """Get grouping expression for key"""
+        if key == "pod":
+            expr = "bmc__name"
+        elif key == "pod_type":
+            expr = "bmc__power_type"
+        elif key == "pool":
+            expr = "pool__name"
+        elif key == "domain":
+            expr = "domain__name"
+        elif key == "zone":
+            expr = "zone__name"
+        elif key == "owner":
+            expr = "owner__name"
+        else:
+            expr = key
+        return expr
+
+    def _get_group_label(self, key, value):
+        """Get grouping expression for key"""
+        if key == "power_state":
+            return POWER_STATE_CHOICES[value]
+        elif key == "status":
+            return NODE_STATUS_CHOICES_DICT[value]
+        else:
+            return value
+
+    def _xlate_group_id(self, key, value):
+        if key == "power_state":
+            return getattr(POWER_STATE, value.upper())
+        elif key == "status":
+            return getattr(NODE_STATUS, value.upper())
+        else:
+            return value
+
     def filter_groups(self, params):
         """List available fields to filter on"""
         return [
@@ -1308,7 +1345,7 @@ class NodeHandler(TimestampedModelHandler):
             ]
         elif key == "pod_type":
             results += [
-                {"key": value, "label": str.capitalize(value)}
+                {"key": value, "label": value}
                 for value in BMC.objects.order_by()
                 .values_list("power_type", flat=True)
                 .distinct()
@@ -1378,7 +1415,7 @@ class NodeHandler(TimestampedModelHandler):
                     ]
                 if key == "status":
                     return [
-                        {"key": choice[1], "label": choice[1]}
+                        {"key": choice[0], "label": choice[1]}
                         for choice in NODE_STATUS_SHORT_LABEL_CHOICES
                     ]
                 if key == "power_state":

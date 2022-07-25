@@ -656,7 +656,6 @@ STATIC_FILTER_FIELDS = (
     "arch",
     "power_state",
     "status",
-    "power_state",
 )
 
 

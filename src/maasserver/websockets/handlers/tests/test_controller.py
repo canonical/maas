@@ -37,7 +37,9 @@ class TestControllerHandler(MAASServerTestCase):
         vlan2.save()
 
         handler = ControllerHandler(owner, {}, None)
-        result = {entry["id"]: entry["vlans_ha"] for entry in handler.list({})}
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
+        result = {entry["id"]: entry["vlans_ha"] for entry in list_items}
         self.assertEqual(
             result,
             {
@@ -50,11 +52,14 @@ class TestControllerHandler(MAASServerTestCase):
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {}, None)
         node = factory.make_RackController(owner=owner)
-        result = handler.list({})
-        self.assertEqual(1, len(result))
-        self.assertEqual(NODE_TYPE.RACK_CONTROLLER, result[0].get("node_type"))
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
+        self.assertEqual(1, len(list_items))
         self.assertEqual(
-            result[0].get("last_image_sync"),
+            NODE_TYPE.RACK_CONTROLLER, list_items[0].get("node_type")
+        )
+        self.assertEqual(
+            list_items[0].get("last_image_sync"),
             dehydrate_datetime(node.last_image_sync),
         )
         data = handler.get({"system_id": node.system_id})
@@ -67,10 +72,13 @@ class TestControllerHandler(MAASServerTestCase):
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {}, None)
         node = factory.make_RackController(owner=owner, last_image_sync=None)
-        result = handler.list({})
-        self.assertEqual(1, len(result))
-        self.assertEqual(NODE_TYPE.RACK_CONTROLLER, result[0].get("node_type"))
-        self.assertIsNone(result[0].get("last_image_sync"))
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
+        self.assertEqual(1, len(list_items))
+        self.assertEqual(
+            NODE_TYPE.RACK_CONTROLLER, list_items[0].get("node_type")
+        )
+        self.assertIsNone(list_items[0].get("last_image_sync"))
         data = handler.get({"system_id": node.system_id})
         self.assertIsNone(data.get("last_image_sync"))
 
@@ -85,9 +93,12 @@ class TestControllerHandler(MAASServerTestCase):
         device_with_parent.parent = node
         device_with_parent.save()
         node = factory.make_RackController(owner=owner)
-        result = handler.list({})
-        self.assertEqual(1, len(result))
-        self.assertEqual(NODE_TYPE.RACK_CONTROLLER, result[0].get("node_type"))
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
+        self.assertEqual(1, len(list_items))
+        self.assertEqual(
+            NODE_TYPE.RACK_CONTROLLER, list_items[0].get("node_type")
+        )
 
     def test_list_num_queries_is_the_expected_number(self):
         self.useFixture(RBACForceOffFixture())
@@ -238,8 +249,9 @@ class TestControllerHandler(MAASServerTestCase):
         owner = factory.make_admin()
         handler = ControllerHandler(owner, {}, None)
         factory.make_RackController()
-        result = handler.list({})
-        self.assertEqual(result[0]["versions"], {})
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
+        self.assertEqual(list_items[0]["versions"], {})
 
     def test_dehydrate_with_versions_snap(self):
         owner = factory.make_admin()
@@ -258,9 +270,10 @@ class TestControllerHandler(MAASServerTestCase):
             cohort="abc123",
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
-        result = handler.list({})
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            result[0]["versions"],
+            list_items[0]["versions"],
             {
                 "install_type": "snap",
                 "current": {
@@ -293,9 +306,10 @@ class TestControllerHandler(MAASServerTestCase):
             },
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
-        result = handler.list({})
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            result[0]["versions"],
+            list_items[0]["versions"],
             {
                 "install_type": "deb",
                 "current": {
@@ -322,9 +336,10 @@ class TestControllerHandler(MAASServerTestCase):
             channel={"track": "3.0", "risk": "stable"},
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
-        result = handler.list({})
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            result[0]["versions"],
+            list_items[0]["versions"],
             {
                 "install_type": "snap",
                 "current": {
@@ -360,9 +375,10 @@ class TestControllerHandler(MAASServerTestCase):
                 channel={"track": "3.0", "risk": "stable"},
             ),
         )
-        result = handler.list({})
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            result[0]["versions"],
+            list_items[0]["versions"],
             {
                 "install_type": "snap",
                 "current": {
@@ -399,7 +415,9 @@ class TestControllerHandler(MAASServerTestCase):
                 channel={"track": "3.0", "risk": "stable"},
             ),
         )
-        versions = handler.list({})[0]["versions"]
+        list_results = handler.list({})
+        list_items = list_results["groups"][0]["items"]
+        versions = list_items[0]["versions"]
         self.assertEqual(versions["issues"], ["different-cohort"])
 
     def test_dehydrate_with_versions_empty_origin(self):
@@ -413,8 +431,9 @@ class TestControllerHandler(MAASServerTestCase):
             },
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
-        result = handler.list({})
-        self.assertEqual(result[0]["versions"]["origin"], "")
+        list_results = handler.list({})
+        [list_item] = list_results["groups"][0]["items"]
+        self.assertEqual(list_item["versions"]["origin"], "")
 
     def test_dehydrate_includes_tags(self):
         owner = factory.make_admin()
@@ -422,8 +441,9 @@ class TestControllerHandler(MAASServerTestCase):
         region = factory.make_RegionRackController()
         tags = [factory.make_Tag(definition="") for _ in range(3)]
         region.tags.set(tags)
-        [result] = handler.list({})
-        self.assertCountEqual(result["tags"], [tag.id for tag in tags])
+        list_results = handler.list({})
+        [list_item] = list_results["groups"][0]["items"]
+        self.assertCountEqual(list_item["tags"], [tag.id for tag in tags])
 
     def test_register_info_non_admin(self):
         user = factory.make_User()

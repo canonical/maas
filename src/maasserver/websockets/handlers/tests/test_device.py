@@ -299,9 +299,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         owner = factory.make_User()
         handler = DeviceHandler(owner, {}, None)
         device = self.make_device_with_ip_address(owner=owner)
+        list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            handler.list({}),
+            list_results["groups"][0]["items"],
         )
 
     @transactional
@@ -314,9 +315,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device_with_parent = self.make_device_with_ip_address(owner=owner)
         device_with_parent.parent = node
         device_with_parent.save()
+        list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            handler.list({}),
+            list_results["groups"][0]["items"],
         )
 
     @transactional
@@ -326,9 +328,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         device = self.make_device_with_ip_address(owner=owner)
         # Create a node.
         factory.make_Node(owner=owner)
+        list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            handler.list({}),
+            list_results["groups"][0]["items"],
         )
 
     @transactional
@@ -351,7 +354,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             query_10_count,
-            11,
+            13,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -388,9 +391,10 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # Create another device not ownered by user.
         self.make_device_with_ip_address()
         handler = DeviceHandler(user, {}, None)
+        list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, user, for_list=True)],
-            handler.list({}),
+            list_results["groups"][0]["items"],
         )
 
     @transactional
