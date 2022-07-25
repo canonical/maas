@@ -23,3 +23,8 @@ debian/tmp/usr/share/maas/machine-resources/s390x usr/share/maas/machine-resourc
 
 usr/bin/maas-common /usr/lib/maas
 etc/maas/certificates
+
+# Install MAAS observability sample configs
+debian/tmp/usr/share/maas/grafana_agent/agent.yaml.example usr/share/maas/grafana_agent
+debian/tmp/usr/share/maas/grafana_agent/env usr/share/maas/grafana_agent
+debian/tmp/usr/share/maas/promtail/promtail.yaml.example usr/share/maas/promtail
