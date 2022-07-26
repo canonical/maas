@@ -45,8 +45,6 @@ from maasserver.forms.interface import (
     AcquiredBridgeInterfaceForm,
     BondInterfaceForm,
     BridgeInterfaceForm,
-    DeployedInterfaceForm,
-    InterfaceForm,
     PhysicalInterfaceForm,
     VLANInterfaceForm,
 )
@@ -655,11 +653,6 @@ class MachineHandler(NodeHandler):
                 else:
                     form.save()
 
-    def _update_obj_tags(self, obj, params):
-        if "tags" in params:
-            obj.tags = params["tags"]
-            obj.save(update_fields=["tags"])
-
     def update_disk(self, params):
         """Update disk information."""
         node = self._get_node_or_permission_error(
@@ -1079,28 +1072,6 @@ class MachineHandler(NodeHandler):
         else:
             raise ValidationError(form.errors)
 
-    def update_interface(self, params):
-        """Update the interface."""
-        node = self._get_node_or_permission_error(
-            params, permission=self._meta.edit_permission
-        )
-        interface = Interface.objects.get(
-            node_config__node=node, id=params["interface_id"]
-        )
-        if node.status == NODE_STATUS.DEPLOYED:
-            interface_form = DeployedInterfaceForm
-        else:
-            interface_form = InterfaceForm.get_interface_form(interface.type)
-        form = interface_form(instance=interface, data=params)
-        if form.is_valid():
-            interface = form.save()
-            self._update_obj_tags(interface, params)
-        else:
-            raise ValidationError(form.errors)
-        if "mode" in params:
-            self.link_subnet(params)
-        return self.full_dehydrate(node)
-
     def delete_interface(self, params):
         """Delete the interface."""
         node = self._get_node_or_permission_error(
@@ -1110,45 +1081,6 @@ class MachineHandler(NodeHandler):
             node_config__node=node, id=params["interface_id"]
         )
         interface.delete()
-
-    def link_subnet(self, params):
-        """Create or update the link."""
-        node = self._get_node_or_permission_error(
-            params, permission=self._meta.edit_permission
-        )
-        interface = Interface.objects.get(
-            node_config__node=node, id=params["interface_id"]
-        )
-        subnet = None
-        if "subnet" in params:
-            subnet = Subnet.objects.get(id=params["subnet"])
-        if "link_id" in params:
-            if interface.ip_addresses.filter(id=params["link_id"]).exists():
-                # We are updating an already existing link.  Which may have
-                # been deleted.
-                interface.update_link_by_id(
-                    params["link_id"],
-                    params["mode"],
-                    subnet,
-                    ip_address=params.get("ip_address", None),
-                )
-        else:
-            # We are creating a new link.
-            interface.link_subnet(
-                params["mode"],
-                subnet,
-                ip_address=params.get("ip_address", None),
-            )
-
-    def unlink_subnet(self, params):
-        """Delete the link."""
-        node = self._get_node_or_permission_error(
-            params, permission=self._meta.edit_permission
-        )
-        interface = Interface.objects.get(
-            node_config__node=node, id=params["interface_id"]
-        )
-        interface.unlink_subnet_by_id(params["link_id"])
 
     @asynchronous(timeout=45)
     def check_power(self, params):
@@ -1177,12 +1109,6 @@ class MachineHandler(NodeHandler):
         d.addErrback(eb_error)
         d.addCallback(partial(deferToDatabase, update_state))
         return d
-
-    def _get_node_or_permission_error(self, params, permission=None):
-        node = self.get_object(params, permission=permission)
-        if node.locked:
-            raise HandlerPermissionError()
-        return node
 
     def get_workload_annotations(self, params):
         """Get the owner data for a machine, known as workload annotations."""

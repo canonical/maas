@@ -490,3 +490,30 @@ class TestControllerHandler(MAASServerTestCase):
         controller.refresh_from_db()
         # deleting a region+rack controller changes it to just a region controller
         self.assertEqual(controller.node_type, NODE_TYPE.REGION_CONTROLLER)
+
+    def test_update_interface(self):
+        admin = factory.make_admin()
+        vlan = factory.make_VLAN()
+        handler = ControllerHandler(admin, {}, None)
+        controller = factory.make_RegionRackController()
+        request = {
+            "name": controller.boot_interface.name,
+            "mac_address": controller.boot_interface.mac_address,
+            "tags": [],
+            "fabric": vlan.fabric.id,
+            "vlan": vlan.id,
+            "mode": "link_up",
+            "link_connected": True,
+            "link_speed": 0,
+            "interface_speed": 0,
+            "formatted_link_speed": 0,
+            "formatted_interface_speed": 0,
+            "type": controller.boot_interface.type,
+            "parents": controller.boot_interface.parents,
+            "primary": None,
+            "system_id": controller.system_id,
+            "interface_id": controller.boot_interface.id,
+        }
+        handler.update_interface(request)
+        controller.refresh_from_db()
+        self.assertEqual(controller.boot_interface.vlan, vlan)
