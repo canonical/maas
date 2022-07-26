@@ -2,7 +2,6 @@
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from inspect import getdoc
-import json
 import random
 import types
 from unittest.mock import sentinel
@@ -26,7 +25,6 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
 )
-import yaml
 
 from maasserver.api import doc as doc_module
 from maasserver.api.doc import (
@@ -43,16 +41,13 @@ from maasserver.api.doc import (
     get_api_description,
 )
 from maasserver.api.doc_handler import render_api_docs
-from maasserver.api.doc_oapi import endpoint, landing_page
 from maasserver.api.support import (
     operation,
     OperationsHandler,
     OperationsResource,
 )
-from maasserver.models.config import Config
 from maasserver.testing.config import RegionConfigurationFixture
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import IsCallable
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.pod.registry import PodDriverRegistry
@@ -82,44 +77,6 @@ class TestGetAPIDescription(MAASTestCase):
         self.assertEqual(get_api_description(), description)
         mock_describe_api.assert_called_once()
         mock_get_api_description_hash.assert_called_once()
-
-
-class TestLandingPage(MAASTestCase):
-    def test_links(self):
-        request = factory.make_fake_request()
-        page = landing_page(request)
-        content = json.loads(page.content)
-        resources = content["resources"]
-        host = request.get_host()
-        for link in resources:
-            href = f"http://{host}{link['path']}"
-            self.assertEqual(link["href"], href)
-        self.assertEqual(resources[0]["type"], page["content-type"])
-
-
-class TestApiEndpoint(MAASServerTestCase):
-    def test_required_fields(self):
-        request = factory.make_fake_request()
-        page = endpoint(request)
-        content = yaml.safe_load(page.content)
-        self.assertIn("openapi", content)
-        self.assertIn("info", content)
-        self.assertIn("paths", content)
-        info = content["info"]
-        self.assertIsInstance(info, dict)
-        self.assertIn("title", info)
-        self.assertIn("version", info)
-
-    def test_discovered_servers(self):
-        request = factory.make_fake_request()
-        page = endpoint(request)
-        content = yaml.safe_load(page.content)
-        self.assertIn("servers", content)
-        servers = content["servers"]
-        maas_name = Config.objects.get_config("maas_name")
-        maas_url = Config.objects.get_config("maas_url")
-        self.assertEqual(servers["url"], f"{maas_url}/api/2.0")
-        self.assertEqual(servers["description"], f"{maas_name} API")
 
 
 class TestFindingResources(MAASTestCase):

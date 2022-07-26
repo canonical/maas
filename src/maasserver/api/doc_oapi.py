@@ -1,4 +1,4 @@
-# Copyright 2014-2022 Canonical Ltd.  This software is licensed under the
+# Copyright 2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 import json
@@ -6,6 +6,7 @@ import json
 from django.http import HttpResponse
 import yaml
 
+from maasserver.djangosettings import settings
 from maasserver.models.config import Config
 from maasserver.utils import build_absolute_uri
 
@@ -53,7 +54,7 @@ def get_api_landing_page():
                 "title": "this document",
             },
             {
-                "path": "/MAAS/api/2.0/openapi.yaml",
+                "path": f"{settings.API_URL_PREFIX}/openapi.yaml",
                 "rel": "service-desc",
                 "type": "application/openapi+yaml",
                 "title": "the API definition",
@@ -73,8 +74,8 @@ def get_api_endpoint():
     """Return the API endpoint"""
     description = {
         "openapi": "3.0.0",
-        "info": {"title": "MAAS OpenApi Endpoint", "version": "1.0.0"},
         "paths": [],
+        "info": {"title": "MAAS HTTP API", "version": "2.0.0"},
         "externalDocs": {
             "description": "MAAS API documentation",
             "url": "/MAAS/docs/api.html",
@@ -89,9 +90,11 @@ def _get_maas_servers():
 
     :return: An object describing the MAAS public-facing server.
     """
-    maas_url = Config.objects.get_config("maas_url")
+    maas_url = (
+        Config.objects.get_config("maas_url").rstrip("/").removesuffix("/MAAS")
+    )
     maas_name = Config.objects.get_config("maas_name")
     return {
-        "url": f"{maas_url}/api/2.0",
+        "url": f"{maas_url}{settings.API_URL_PREFIX}",
         "description": f"{maas_name} API",
     }
