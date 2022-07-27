@@ -5,7 +5,7 @@ import json
 
 import yaml
 
-from maasserver.api.doc_oapi import endpoint, landing_page
+from maasserver.api.doc_oapi import _render_oapi_paths, endpoint, landing_page
 from maasserver.models.config import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -51,3 +51,9 @@ class TestApiEndpoint(MAASServerTestCase):
             maasserver["url"], "http://localhost:5240/MAAS/api/2.0/"
         )
         self.assertEqual(maasserver["description"], f"{maas_name} API")
+
+
+class TestOAPISpec(MAASServerTestCase):
+    def test_paths(self):
+        # TODO add actual tests
+        _render_oapi_paths()

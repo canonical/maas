@@ -1,11 +1,20 @@
 # Copyright 2022 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
+"""MAAS OpenAPI definition.
+
+This definition follows the rules and limitations of the ReST documentation.
+(see doc.py and doc_handler.py).
+"""
+
 import json
+from textwrap import dedent
 
 from django.http import HttpResponse
 import yaml
 
+from maasserver.api import support
+from maasserver.api.doc import find_api_resources, generate_doc
 from maasserver.djangosettings import settings
 from maasserver.models.config import Config
 from maasserver.utils import build_absolute_uri
@@ -74,8 +83,8 @@ def get_api_endpoint():
     """Return the API endpoint"""
     description = {
         "openapi": "3.0.0",
-        "paths": [],
         "info": {"title": "MAAS HTTP API", "version": "2.0.0"},
+        "paths": _render_oapi_paths(),
         "externalDocs": {
             "description": "MAAS API documentation",
             "url": "/MAAS/docs/api.html",
@@ -100,3 +109,80 @@ def _get_maas_servers():
             "description": f"{maas_name} API",
         },
     ]
+
+
+def _new_path_item(doc):
+    path_item = {}
+    (_, params) = doc.handler.resource_uri()
+    for p in params:
+        path_item.setdefault("parameters", []).append(
+            {
+                "name": p,
+                "in": "path",
+                "required": True,
+                "schema": {"type": "string"},
+            }
+        )
+    return path_item
+
+
+def _render_oapi_oper_item(http_method, op, doc, function):
+    oper_id = op or support.OperationsResource.crudmap.get(http_method)
+    oper_obj = {
+        "operationId": f"{doc.name}_{oper_id}",
+        "tags": [doc.handler.api_doc_section_name],
+        "summary": f"{doc.name} {oper_id}",
+        "description": dedent(doc.doc).strip(),
+        "responses": {},
+    }
+    # TODO add requestBody
+
+    # TODO add actual responses, this 'default' is just to make the linter happy for now
+    oper_obj["responses"].update(
+        {
+            "default": {
+                "description": "default response",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": True,
+                        }
+                    },
+                },
+            }
+        }
+    )
+
+    return oper_obj
+
+
+def _render_oapi_paths():
+    from maasserver import urls_api as urlconf
+
+    def _resource_key(resource):
+        return resource.handler.__class__.__name__
+
+    def _export_key(export):
+        (http_method, op), function = export
+        return http_method, op or "", function
+
+    resources = find_api_resources(urlconf)
+    paths = {}
+
+    for res in sorted(resources, key=_resource_key):
+        handler = type(res.handler)
+        doc = generate_doc(handler)
+        uri = doc.resource_uri_template
+        exports = handler.exports.items()
+
+        for (http_method, op), function in sorted(exports, key=_export_key):
+            oper_uri = f"{uri}?op={op}" if op else uri
+            path_item = paths.setdefault(
+                f"/{oper_uri.removeprefix(settings.API_URL_PREFIX)}",
+                _new_path_item(doc),
+            )
+            path_item[http_method.lower()] = _render_oapi_oper_item(
+                http_method, op, doc, function
+            )
+    return paths
