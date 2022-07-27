@@ -158,7 +158,7 @@ class NodeHandler(TimestampedModelHandler):
         pk = "system_id"
         bulk_pk = "system_ids"
         pk_type = str
-        use_new_schema = True
+        use_paginated_list = False
 
     def __init__(self, user, cache, request):
         super().__init__(user, cache, request)

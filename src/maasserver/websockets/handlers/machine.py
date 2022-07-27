@@ -257,6 +257,7 @@ class MachineHandler(NodeHandler):
         view_permission = NodePermission.view
         edit_permission = NodePermission.admin
         delete_permission = NodePermission.admin
+        use_paginated_list = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

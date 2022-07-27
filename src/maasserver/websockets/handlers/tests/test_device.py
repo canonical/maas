@@ -302,7 +302,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            list_results["groups"][0]["items"],
+            list_results,
         )
 
     @transactional
@@ -318,7 +318,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            list_results["groups"][0]["items"],
+            list_results,
         )
 
     @transactional
@@ -331,7 +331,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, owner, for_list=True)],
-            list_results["groups"][0]["items"],
+            list_results,
         )
 
     @transactional
@@ -354,7 +354,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         # and slowing down the client waiting for the response.
         self.assertEqual(
             query_10_count,
-            13,
+            11,
             "Number of queries has changed; make sure this is expected.",
         )
 
@@ -394,7 +394,7 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         list_results = handler.list({})
         self.assertCountEqual(
             [self.dehydrate_device(device, user, for_list=True)],
-            list_results["groups"][0]["items"],
+            list_results,
         )
 
     @transactional

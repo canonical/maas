@@ -493,7 +493,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
-            use_new_schema=True,
+            use_paginated_list=True,
         )
         output = {
             "count": 5,
@@ -522,7 +522,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
-            use_new_schema=True,
+            use_paginated_list=True,
         )
         output = {
             "count": 5,
@@ -551,7 +551,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
-            use_new_schema=True,
+            use_paginated_list=True,
         )
         output = {
             "count": 5,
@@ -580,7 +580,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
         nodes = [factory.make_Node() for _ in range(5)]
         handler = self.make_nodes_handler(
             list_fields=["system_id"],
-            use_new_schema=True,
+            use_paginated_list=True,
         )
         output = {
             "count": 5,
@@ -1021,7 +1021,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
 
 class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
     def make_nodes_handler(self, **kwargs):
-        return super().make_nodes_handler(use_new_schema=True, **kwargs)
+        return super().make_nodes_handler(use_paginated_list=True, **kwargs)
 
     def test_group_simple(self):
         nodes_ready = [

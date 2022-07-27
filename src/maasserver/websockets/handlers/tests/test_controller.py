@@ -38,8 +38,7 @@ class TestControllerHandler(MAASServerTestCase):
 
         handler = ControllerHandler(owner, {}, None)
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
-        result = {entry["id"]: entry["vlans_ha"] for entry in list_items}
+        result = {entry["id"]: entry["vlans_ha"] for entry in list_results}
         self.assertEqual(
             result,
             {
@@ -53,13 +52,12 @@ class TestControllerHandler(MAASServerTestCase):
         handler = ControllerHandler(owner, {}, None)
         node = factory.make_RackController(owner=owner)
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
-        self.assertEqual(1, len(list_items))
+        self.assertEqual(1, len(list_results))
         self.assertEqual(
-            NODE_TYPE.RACK_CONTROLLER, list_items[0].get("node_type")
+            NODE_TYPE.RACK_CONTROLLER, list_results[0].get("node_type")
         )
         self.assertEqual(
-            list_items[0].get("last_image_sync"),
+            list_results[0].get("last_image_sync"),
             dehydrate_datetime(node.last_image_sync),
         )
         data = handler.get({"system_id": node.system_id})
@@ -73,12 +71,11 @@ class TestControllerHandler(MAASServerTestCase):
         handler = ControllerHandler(owner, {}, None)
         node = factory.make_RackController(owner=owner, last_image_sync=None)
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
-        self.assertEqual(1, len(list_items))
+        self.assertEqual(1, len(list_results))
         self.assertEqual(
-            NODE_TYPE.RACK_CONTROLLER, list_items[0].get("node_type")
+            NODE_TYPE.RACK_CONTROLLER, list_results[0].get("node_type")
         )
-        self.assertIsNone(list_items[0].get("last_image_sync"))
+        self.assertIsNone(list_results[0].get("last_image_sync"))
         data = handler.get({"system_id": node.system_id})
         self.assertIsNone(data.get("last_image_sync"))
 
@@ -94,10 +91,9 @@ class TestControllerHandler(MAASServerTestCase):
         device_with_parent.save()
         node = factory.make_RackController(owner=owner)
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
-        self.assertEqual(1, len(list_items))
+        self.assertEqual(1, len(list_results))
         self.assertEqual(
-            NODE_TYPE.RACK_CONTROLLER, list_items[0].get("node_type")
+            NODE_TYPE.RACK_CONTROLLER, list_results[0].get("node_type")
         )
 
     def test_list_num_queries_is_the_expected_number(self):
@@ -250,8 +246,7 @@ class TestControllerHandler(MAASServerTestCase):
         handler = ControllerHandler(owner, {}, None)
         factory.make_RackController()
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
-        self.assertEqual(list_items[0]["versions"], {})
+        self.assertEqual(list_results[0]["versions"], {})
 
     def test_dehydrate_with_versions_snap(self):
         owner = factory.make_admin()
@@ -271,9 +266,8 @@ class TestControllerHandler(MAASServerTestCase):
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            list_items[0]["versions"],
+            list_results[0]["versions"],
             {
                 "install_type": "snap",
                 "current": {
@@ -307,9 +301,8 @@ class TestControllerHandler(MAASServerTestCase):
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            list_items[0]["versions"],
+            list_results[0]["versions"],
             {
                 "install_type": "deb",
                 "current": {
@@ -337,9 +330,8 @@ class TestControllerHandler(MAASServerTestCase):
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            list_items[0]["versions"],
+            list_results[0]["versions"],
             {
                 "install_type": "snap",
                 "current": {
@@ -376,9 +368,8 @@ class TestControllerHandler(MAASServerTestCase):
             ),
         )
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
         self.assertEqual(
-            list_items[0]["versions"],
+            list_results[0]["versions"],
             {
                 "install_type": "snap",
                 "current": {
@@ -416,8 +407,7 @@ class TestControllerHandler(MAASServerTestCase):
             ),
         )
         list_results = handler.list({})
-        list_items = list_results["groups"][0]["items"]
-        versions = list_items[0]["versions"]
+        versions = list_results[0]["versions"]
         self.assertEqual(versions["issues"], ["different-cohort"])
 
     def test_dehydrate_with_versions_empty_origin(self):
@@ -432,8 +422,7 @@ class TestControllerHandler(MAASServerTestCase):
         )
         ControllerInfo.objects.set_versions_info(rack, versions)
         list_results = handler.list({})
-        [list_item] = list_results["groups"][0]["items"]
-        self.assertEqual(list_item["versions"]["origin"], "")
+        self.assertEqual(list_results[0]["versions"]["origin"], "")
 
     def test_dehydrate_includes_tags(self):
         owner = factory.make_admin()
@@ -442,8 +431,9 @@ class TestControllerHandler(MAASServerTestCase):
         tags = [factory.make_Tag(definition="") for _ in range(3)]
         region.tags.set(tags)
         list_results = handler.list({})
-        [list_item] = list_results["groups"][0]["items"]
-        self.assertCountEqual(list_item["tags"], [tag.id for tag in tags])
+        self.assertCountEqual(
+            list_results[0]["tags"], [tag.id for tag in tags]
+        )
 
     def test_register_info_non_admin(self):
         user = factory.make_User()

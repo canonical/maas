@@ -116,7 +116,7 @@ class HandlerOptions:
     view_permission = None
     edit_permission = None
     delete_permission = None
-    use_new_schema = False
+    use_paginated_list = False
     dft_page_size = 100
 
     def __new__(cls, meta=None):
@@ -525,7 +525,7 @@ class Handler(metaclass=HandlerMetaclass):
         if "filter" in params:
             qs_filter = self._filter(qs_filter, "list", params["filter"])
 
-        if self._meta.use_new_schema:
+        if self._meta.use_paginated_list:
             return self._build_list_grouping(qs_filter, params)
         else:
             return self._build_list_simple(qs_filter, params)
