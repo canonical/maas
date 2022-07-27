@@ -94,7 +94,9 @@ def _get_maas_servers():
         Config.objects.get_config("maas_url").rstrip("/").removesuffix("/MAAS")
     )
     maas_name = Config.objects.get_config("maas_name")
-    return {
-        "url": f"{maas_url}{settings.API_URL_PREFIX}",
-        "description": f"{maas_name} API",
-    }
+    return [
+        {
+            "url": f"{maas_url}{settings.API_URL_PREFIX}",
+            "description": f"{maas_name} API",
+        },
+    ]

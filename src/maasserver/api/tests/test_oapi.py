@@ -44,6 +44,10 @@ class TestApiEndpoint(MAASServerTestCase):
         content = yaml.safe_load(page.content)
         self.assertIn("servers", content)
         servers = content["servers"]
+        self.assertIsInstance(servers, list)
+        maasserver = servers[0]
         maas_name = Config.objects.get_config("maas_name")
-        self.assertEqual(servers["url"], "http://localhost:5240/MAAS/api/2.0/")
-        self.assertEqual(servers["description"], f"{maas_name} API")
+        self.assertEqual(
+            maasserver["url"], "http://localhost:5240/MAAS/api/2.0/"
+        )
+        self.assertEqual(maasserver["description"], f"{maas_name} API")
