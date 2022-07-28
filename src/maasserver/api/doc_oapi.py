@@ -83,7 +83,15 @@ def get_api_endpoint():
     """Return the API endpoint"""
     description = {
         "openapi": "3.0.0",
-        "info": {"title": "MAAS HTTP API", "version": "2.0.0"},
+        "info": {
+            "title": "MAAS HTTP API",
+            "description": "This is the documentation for the API that lets you control and query MAAS. You can find out more about MAAS at [https://maas.io/](https://maas.io/).",
+            "version": "2.0.0",
+            "license": {
+                "name": "GNU Affero General Public License version 3",
+                "url": "https://www.gnu.org/licenses/agpl-3.0.en.html",
+            },
+        },
         "paths": _render_oapi_paths(),
         "externalDocs": {
             "description": "MAAS API documentation",
