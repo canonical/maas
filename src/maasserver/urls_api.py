@@ -4,7 +4,9 @@
 """URL API routing configuration."""
 
 
-from django.urls import re_path
+import itertools
+
+from django.urls import re_path as django_re_path
 
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
@@ -331,8 +333,25 @@ license_keys_handler = AdminRestrictedResource(
     LicenseKeysHandler, authentication=api_auth
 )
 
+
+def re_path(route, view, name=None, **kwargs):
+    paths = [django_re_path(route, view, name=name, **kwargs)]
+    if isinstance(view, OperationsResource):
+        for (_, op) in view.handler.exports.keys():
+            if op:
+                paths.append(
+                    django_re_path(
+                        route.replace("/$", f"/op-{op}$"),
+                        view,
+                        name=f"{name}-op-{op}",
+                        **kwargs,
+                    )
+                )
+    return paths
+
+
 # API URLs accessible to anonymous users.
-urlpatterns = [
+patterns = [
     re_path(r"describe/$", describe, name="describe"),
     re_path(r"version/$", version_handler, name="version_handler"),
     re_path(r"openapi.yaml$", endpoint, name="openapi_endpoint"),
@@ -340,7 +359,7 @@ urlpatterns = [
 
 
 # API URLs for logged-in users.
-urlpatterns += [
+patterns += [
     re_path(r"^maas/$", maas_handler, name="maas_handler"),
     re_path(
         r"^nodes/(?P<system_id>[^/]+)/blockdevices/$",
@@ -688,7 +707,7 @@ urlpatterns += [
 
 
 # API URLs for admin users.
-urlpatterns += [
+patterns += [
     re_path(
         r"^commissioning-scripts/$",
         commissioning_scripts_handler,
@@ -729,4 +748,6 @@ urlpatterns += [
 
 
 # Last resort: return an API 404 response.
-urlpatterns += [re_path(r"^.*", not_found_handler, name="handler_404")]
+patterns += [re_path(r"^.*", not_found_handler, name="handler_404")]
+
+urlpatterns = list(itertools.chain(*patterns))

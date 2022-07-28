@@ -14,6 +14,7 @@ __all__ = [
 
 from abc import ABCMeta, abstractproperty
 from functools import wraps
+import re
 
 from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponse
@@ -273,6 +274,9 @@ class OperationsHandlerMisconfigured(Exception):
     """Handler has been misconfigured; see the error message for details."""
 
 
+RE_OPER = re.compile(r"^.+/op-(?P<op>[^/]+)$")
+
+
 class OperationsHandlerMixin:
     """Handler mixin for operations dispatch.
 
@@ -298,6 +302,9 @@ class OperationsHandlerMixin:
 
     def dispatch(self, request, *args, **kwargs):
         op = request.GET.get("op") or request.POST.get("op")
+        if op is None:
+            match = RE_OPER.match(request.path)
+            op = match.group("op") if match else None
         signature = request.method.upper(), op
         function = self.exports.get(signature)
         if function is None:

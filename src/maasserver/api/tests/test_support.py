@@ -79,6 +79,14 @@ class TestOperationsResource(APITestCase.ForUser):
             response["X-MAAS-API-Hash"], get_api_description()["hash"]
         )
 
+    def test_call_op_in_path(self):
+        Config.objects.set_config("maas_name", factory.make_name("name"))
+        self.become_admin()
+        response = self.client.get(
+            reverse("maas_handler-op-get_config"), {"name": "maas_name"}
+        )
+        self.assertEqual(http.client.OK, response.status_code)
+
     def test_authenticated_is_False_when_no_authentication_provided(self):
         resource = OperationsResource(StubHandler)
         self.assertThat(resource.is_authentication_attempted, Is(False))
