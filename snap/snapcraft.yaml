@@ -170,38 +170,30 @@ parts:
       lib/python3.*/site-packages/usr/share/*: usr/share/
       usr/lib/curtin/helpers: usr/lib/python3/dist-packages/helpers/
     stage:
+      - bin
+      - etc/bind
+      - etc/chrony
+      - etc/freeipmi
+      - etc/libvirt
+      - etc/maas
+      - etc/nginx
+      - etc/openwsman
+      - sbin
+      - lib
       - -lib/python3.*/site-packages/etc
       - -lib/python3.*/site-packages/usr
       - -lib/python3/dist-packages/maastesting
-      - -share
+      - pyvenv.cfg
+      - usr/bin
       - -usr/bin/xdg-*
-      - -usr/share/applications
-      - -usr/share/bug
-      - -usr/share/debhelper
-      - -usr/share/dh-python
-      - -usr/share/doc
-      - -usr/share/doc-base
-      - -usr/share/lintian
-      - -usr/share/man
-      - -var/lib/ieee-data/mam.txt
-      - -var/lib/ieee-data/oui36.txt
-    # same list as above, should use "filesets" once they're available again
-    prime:
-      - -lib/python3.*/site-packages/etc
-      - -lib/python3.*/site-packages/usr
-      - -lib/python3/dist-packages/maastesting
-      - -share
-      - -usr/bin/xdg-*
-      - -usr/share/applications
-      - -usr/share/bug
-      - -usr/share/debhelper
-      - -usr/share/dh-python
-      - -usr/share/doc
-      - -usr/share/doc-base
-      - -usr/share/lintian
-      - -usr/share/man
-      - -var/lib/ieee-data/mam.txt
-      - -var/lib/ieee-data/oui36.txt
+      - usr/lib
+      - usr/sbin
+      - usr/share/dns
+      - usr/share/ieee-data
+      - usr/share/keyrings
+      - usr/share/nginx
+      - usr/share/squid*
+      - var/lib/ieee-data
     override-build: |
       craftctl default
       # If python3-netaddr contains absolute symlinks.
