@@ -10,8 +10,6 @@ from provisioningserver.utils.version import DISTRIBUTION
 
 __version__ = DISTRIBUTION.version
 
-default_app_config = "maasserver.apps.MAASConfig"
-
 logger = logging.getLogger("maasserver")
 
 
