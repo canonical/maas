@@ -63,7 +63,7 @@ def get_api_landing_page():
                 "title": "this document",
             },
             {
-                "path": f"{settings.API_URL_PREFIX}/openapi.yaml",
+                "path": f"{settings.API_URL_PREFIX}openapi.yaml",
                 "rel": "service-desc",
                 "type": "application/openapi+yaml",
                 "title": "the API definition",
