@@ -185,7 +185,7 @@ def _render_oapi_paths():
         exports = handler.exports.items()
 
         for (http_method, op), function in sorted(exports, key=_export_key):
-            oper_uri = f"{uri}?op={op}" if op else uri
+            oper_uri = f"{uri}op-{op}" if op else uri
             path_item = paths.setdefault(
                 f"/{oper_uri.removeprefix(settings.API_URL_PREFIX)}",
                 _new_path_item(doc),
