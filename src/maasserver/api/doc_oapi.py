@@ -7,6 +7,7 @@ This definition follows the rules and limitations of the ReST documentation.
 (see doc.py and doc_handler.py).
 """
 
+from inspect import getdoc
 import json
 from textwrap import dedent
 
@@ -14,6 +15,7 @@ from django.http import HttpResponse
 import yaml
 
 from maasserver.api import support
+from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.doc import find_api_resources, generate_doc
 from maasserver.djangosettings import settings
 from maasserver.models.config import Config
@@ -97,8 +99,8 @@ def get_api_endpoint():
             "description": "MAAS API documentation",
             "url": "/MAAS/docs/api.html",
         },
+        "servers": _get_maas_servers(),
     }
-    description["servers"] = _get_maas_servers()
     return description
 
 
@@ -143,9 +145,6 @@ def _render_oapi_oper_item(http_method, op, doc, function):
         "description": dedent(doc.doc).strip(),
         "responses": {},
     }
-    # TODO add requestBody
-
-    # TODO add actual responses, this 'default' is just to make the linter happy for now
     oper_obj["responses"].update(
         {
             "default": {
@@ -161,7 +160,92 @@ def _render_oapi_oper_item(http_method, op, doc, function):
             }
         }
     )
+    oper_docstring = _oapi_item_from_docstring(function)
+    # Only overwrite the values that are non-blank
+    oper_obj.update({k: v for k, v in oper_docstring.items() if v})
+    return oper_obj
 
+
+def _oapi_item_from_docstring(function):
+    def _type_to_string(schema):
+        match schema:
+            case "Boolean":
+                return "boolean"
+            case "Float":
+                return "number"
+            case "Int":
+                return "integer"
+            case "String":
+                return "string"
+            case other:
+                return "object"
+
+    def _response_pair(ap_dict):
+        status_code = "HTTP Status Code"
+        status = content = {}
+        paired = []
+        for response in reversed(ap_dict["errors"] + ap_dict["successes"]):
+            if response["type"] == status_code:
+                status = response
+                if content in paired:
+                    content = {}
+                paired.extend([status, content])
+            else:
+                content = response
+        paired = iter(paired)
+        return zip(paired, paired)
+
+    oper_obj = {}
+    ap = APIDocstringParser()
+    docstring = getdoc(function)
+    if docstring and ap.is_annotated_docstring(docstring):
+        ap.parse(docstring)
+        ap_dict = ap.get_dict()
+        oper_obj["summary"] = ap_dict["description_title"].strip()
+        oper_obj["description"] = ap_dict["description"].strip()
+        for param in ap_dict["params"]:
+            if param["type"] != "URL String":
+                continue
+            name = param["name"].strip("}{")
+
+            # TODO Handle functions that have two parameters with the same name
+
+            description = param["description_stripped"]
+            param_dict = {
+                "name": name,
+                "in": "path",
+                "description": description,
+                "schema": {
+                    "type": _type_to_string(param["type"]),
+                },
+                "required": True,
+            }
+            if "deprecated" in description.lower():
+                param_dict["deprecated"] = True
+            oper_obj.setdefault("parameters", []).append(param_dict)
+        for (status, content) in _response_pair(ap_dict):
+            response = {
+                "description": content.get(
+                    "description_stripped", status["description_stripped"]
+                ),
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": True,
+                        },
+                    },
+                },
+            }
+
+            # TODO Determine the output type of a response (ie: application/json, or text/plain)
+
+            status_code = status["name"]
+            if not status_code.isdigit():
+                status_code = status["description_stripped"]
+            oper_obj.setdefault("responses", {}).update(
+                {status_code: response},
+            )
     return oper_obj
 
 
