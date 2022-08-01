@@ -9,6 +9,7 @@ from itertools import chain
 import logging
 from operator import attrgetter, itemgetter
 
+from django.core.exceptions import ValidationError
 from django.db.models import Prefetch
 from lxml import etree
 
@@ -21,6 +22,11 @@ from maasserver.enum import (
     NODE_TYPE,
     POWER_STATE,
 )
+from maasserver.forms.interface import (
+    ControllerInterfaceForm,
+    DeployedInterfaceForm,
+    InterfaceForm,
+)
 from maasserver.models import (
     CacheSet,
     Config,
@@ -28,6 +34,7 @@ from maasserver.models import (
     Interface,
     NUMANode,
     PhysicalBlockDevice,
+    Subnet,
     Tag,
     VirtualBlockDevice,
     VolumeGroup,
@@ -1180,3 +1187,78 @@ class NodeHandler(TimestampedModelHandler):
                     f"Cannot add tag {tag.name} to node because it has a definition"
                 )
         node.tags.set(tags)
+
+    def update_interface(self, params):
+        """Update the interface."""
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission
+        )
+        interface = Interface.objects.get(
+            node_config__node=node, id=params["interface_id"]
+        )
+        if node.is_controller:
+            interface_form = ControllerInterfaceForm
+        elif node.status == NODE_STATUS.DEPLOYED:
+            interface_form = DeployedInterfaceForm
+        else:
+            interface_form = InterfaceForm.get_interface_form(interface.type)
+        form = interface_form(instance=interface, data=params)
+        if form.is_valid():
+            interface = form.save()
+            self._update_obj_tags(interface, params)
+        else:
+            raise ValidationError(form.errors)
+        if "mode" in params:
+            self.link_subnet(params)
+        node.refresh_from_db()
+        return self.full_dehydrate(node)
+
+    def _get_node_or_permission_error(self, params, permission=None):
+        node = self.get_object(params, permission=permission)
+        if node.locked:
+            raise HandlerPermissionError()
+        return node
+
+    def _update_obj_tags(self, obj, params):
+        if "tags" in params:
+            obj.tags = params["tags"]
+            obj.save(update_fields=["tags"])
+
+    def link_subnet(self, params):
+        """Create or update the link."""
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission
+        )
+        interface = Interface.objects.get(
+            node_config__node=node, id=params["interface_id"]
+        )
+        subnet = None
+        if "subnet" in params:
+            subnet = Subnet.objects.get(id=params["subnet"])
+        if "link_id" in params:
+            if interface.ip_addresses.filter(id=params["link_id"]).exists():
+                # We are updating an already existing link.  Which may have
+                # been deleted.
+                interface.update_link_by_id(
+                    params["link_id"],
+                    params["mode"],
+                    subnet,
+                    ip_address=params.get("ip_address", None),
+                )
+        else:
+            # We are creating a new link.
+            interface.link_subnet(
+                params["mode"],
+                subnet,
+                ip_address=params.get("ip_address", None),
+            )
+
+    def unlink_subnet(self, params):
+        """Delete the link."""
+        node = self._get_node_or_permission_error(
+            params, permission=self._meta.edit_permission
+        )
+        interface = Interface.objects.get(
+            node_config__node=node, id=params["interface_id"]
+        )
+        interface.unlink_subnet_by_id(params["link_id"])

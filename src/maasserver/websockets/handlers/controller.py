@@ -93,6 +93,7 @@ class ControllerHandler(NodeHandler):
             "set_script_result_suppressed",
             "set_script_result_unsuppressed",
             "get_latest_failed_testing_script_results",
+            "update_interface",
         ]
         form = ControllerForm
         exclude = [
@@ -171,7 +172,11 @@ class ControllerHandler(NodeHandler):
         data = super().dehydrate(obj, data, for_list=for_list)
 
         vlan_counts = Counter()
-        for vlan_id in obj.vlan_ids:
+        vlan_ids = [
+            interface.vlan_id
+            for interface in obj.current_config.interface_set.all()
+        ]
+        for vlan_id in vlan_ids:
             vlan_counts[self._vlans_ha[vlan_id]] += 1
 
         data.update(
@@ -187,10 +192,8 @@ class ControllerHandler(NodeHandler):
             }
         )
         if not for_list:
-            data["vlan_ids"] = [
-                interface.vlan_id
-                for interface in obj.current_config.interface_set.all()
-            ]
+            data["vlan_ids"] = vlan_ids
+
         return data
 
     def dehydrate_versions(self, info):
