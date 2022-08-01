@@ -19,7 +19,6 @@ from maasserver.enum import (
     FILESYSTEM_TYPE,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models import PartitionTable
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.models.filesystem import Filesystem
 from maasserver.models.filesystemgroup import (
@@ -2295,34 +2294,6 @@ class TestRAID(MAASServerTestCase):
         self.assertEqual(
             (10 * partition.size) - RAID_SUPERBLOCK_OVERHEAD, raid.get_size()
         )
-
-    def test_create_raid_with_partition_table(self):
-        node = factory.make_Node()
-        block_devices = [
-            factory.make_PhysicalBlockDevice(
-                node=node, size=21470003200, block_size=512
-            ),
-            factory.make_PhysicalBlockDevice(
-                node=node, size=11270004736, block_size=512
-            ),
-        ]
-        partitions = []
-        for bd in block_devices:
-            ptable = factory.make_PartitionTable(block_device=bd)
-            partitions.append(ptable.add_partition())
-
-        uuid = str(uuid4())
-        md0 = RAID.objects.create_raid(
-            name="md0",
-            level=FILESYSTEM_GROUP_TYPE.RAID_0,
-            uuid=uuid,
-            partitions=partitions,
-        )
-        bdev = md0.virtual_device
-        part_size = bdev.get_available_size()
-
-        pt_md0, _ = PartitionTable.objects.get_or_create(block_device=bdev)
-        pt_md0.add_partition(size=part_size)
 
     def test_add_spare_partition_to_array(self):
         node = factory.make_Node()

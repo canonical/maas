@@ -23,14 +23,7 @@ from maasserver.enum import (
     NODE_STATUS,
     PARTITION_TABLE_TYPE,
 )
-from maasserver.models import (
-    Bcache,
-    Filesystem,
-    PartitionTable,
-    RAID,
-    VMFS,
-    VolumeGroup,
-)
+from maasserver.models import Bcache, Filesystem, RAID, VMFS, VolumeGroup
 from maasserver.models.partitiontable import (
     BIOS_GRUB_PARTITION_SIZE,
     PARTITION_TABLE_EXTRA_SPACE,
@@ -1264,8 +1257,9 @@ class TestComplexDiskLayout(MAASServerTestCase, AssertStorageConfigMixin):
             block_devices=[raid_5_disk_1, raid_5_disk_2, raid_5_disk_3],
             spare_devices=[raid_5_disk_4, raid_5_disk_5],
         )
-        raid_5_partition_table = PartitionTable.objects.get(
-            block_device=raid_5.virtual_device
+        raid_5_partition_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT,
+            block_device=raid_5.virtual_device,
         )
         raid_5_partition = factory.make_Partition(
             partition_table=raid_5_partition_table,
@@ -1687,7 +1681,6 @@ class TestBootableRaidLayoutMBR(MAASServerTestCase, AssertStorageConfigMixin):
             - sdc-part2
             id: md0
             name: md0
-            ptable: gpt
             raidlevel: 1
             spare_devices: []
             type: raid
@@ -1819,7 +1812,6 @@ class TestBootableRaidLayoutUEFI(MAASServerTestCase, AssertStorageConfigMixin):
             - sdc-part1
             id: md0
             name: md0
-            ptable: gpt
             raidlevel: 1
             spare_devices: []
             type: raid
@@ -1969,7 +1961,6 @@ class TestBootableRaidLayoutGPT(MAASServerTestCase, AssertStorageConfigMixin):
             - sdc-part2
             id: md0
             name: md0
-            ptable: gpt
             raidlevel: 1
             spare_devices: []
             type: raid
@@ -2180,8 +2171,9 @@ class TestBootableRaidLayoutGPTWithPartition(
             uuid="uuid-raid",
             partitions=partitions,
         )
-        raid_part_table = PartitionTable.objects.get(
-            block_device=raid.virtual_device
+        raid_part_table = factory.make_PartitionTable(
+            table_type=PARTITION_TABLE_TYPE.GPT,
+            block_device=raid.virtual_device,
         )
         raid_partition = factory.make_Partition(
             partition_table=raid_part_table,
