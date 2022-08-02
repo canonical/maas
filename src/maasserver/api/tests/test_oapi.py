@@ -54,6 +54,55 @@ class TestApiEndpoint(MAASServerTestCase):
 
 
 class TestOAPISpec(MAASServerTestCase):
+    def setUp(self):
+        self.oapi_types = ["boolean", "integer", "number", "object", "string"]
+        self.oapi_ops = [
+            "get",
+            "put",
+            "post",
+            "delete",
+            "options",
+            "head",
+            "patch",
+            "trace",
+            "servers",
+        ]
+        return super().setUp()
+
     def test_paths(self):
         # TODO add actual tests
         _render_oapi_paths()
+
+    def test_path_parameters(self):
+        for path in _render_oapi_paths().values():
+            if "parameters" not in path:
+                continue
+            for param in path["parameters"]:
+                self.assertIn("name", param)
+                self.assertIn("in", param)
+                self.assertIn(
+                    param["in"], ["cookie", "header", "path", "query"]
+                )
+                self.assertTrue(param["required"])
+                if "schema" in param:
+                    self.assertIn(param["schema"]["type"], self.oapi_types)
+
+    def test_path_operations(self):
+        for path in _render_oapi_paths().values():
+            isct_ops = list(set(self.oapi_ops) & set(path.keys()))
+            for op in isct_ops:
+                for response in path[op]["responses"].values():
+                    self.assertIn("description", response)
+
+    def test_path_object_types(self):
+        def _get_all_key_values(d):
+            for k, v in d.items():
+                if isinstance(v, dict):
+                    yield from _get_all_key_values(v)
+                else:
+                    yield (k, v)
+
+        for k, v in _get_all_key_values(_render_oapi_paths()):
+            print(k, v)
+            if k == "type":
+                self.assertIn(v, self.oapi_types)
