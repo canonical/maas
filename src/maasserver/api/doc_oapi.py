@@ -121,9 +121,8 @@ def _get_maas_servers():
     ]
 
 
-def _new_path_item(doc):
+def _new_path_item(params):
     path_item = {}
-    (_, params) = doc.handler.resource_uri()
     for p in params:
         path_item.setdefault("parameters", []).append(
             {
@@ -136,7 +135,7 @@ def _new_path_item(doc):
     return path_item
 
 
-def _render_oapi_oper_item(http_method, op, doc, function):
+def _render_oapi_oper_item(http_method, op, doc, uri_params, function):
     oper_id = op or support.OperationsResource.crudmap.get(http_method)
     oper_obj = {
         "operationId": f"{doc.name}_{oper_id}",
@@ -145,28 +144,15 @@ def _render_oapi_oper_item(http_method, op, doc, function):
         "description": dedent(doc.doc).strip(),
         "responses": {},
     }
-    oper_obj["responses"].update(
-        {
-            "default": {
-                "description": "default response",
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": True,
-                        }
-                    },
-                },
-            }
-        }
+    oper_docstring = _oapi_item_from_docstring(
+        function, http_method, uri_params
     )
-    oper_docstring = _oapi_item_from_docstring(function)
     # Only overwrite the values that are non-blank
     oper_obj.update({k: v for k, v in oper_docstring.items() if v})
     return oper_obj
 
 
-def _oapi_item_from_docstring(function):
+def _oapi_item_from_docstring(function, http_method, uri_params):
     def _type_to_string(schema):
         match schema:
             case "Boolean":
@@ -196,6 +182,10 @@ def _oapi_item_from_docstring(function):
         return zip(paired, paired)
 
     oper_obj = {}
+    body = {
+        "type": "object",
+        "additionalProperties": {"type": "string"},
+    }
     ap = APIDocstringParser()
     docstring = getdoc(function)
     if docstring and ap.is_annotated_docstring(docstring):
@@ -204,41 +194,54 @@ def _oapi_item_from_docstring(function):
         oper_obj["summary"] = ap_dict["description_title"].strip()
         oper_obj["description"] = ap_dict["description"].strip()
         for param in ap_dict["params"]:
-            if param["type"] != "URL String":
-                continue
-            name = param["name"].strip("}{")
-
-            # TODO Handle functions that have two parameters with the same name
-
             description = param["description_stripped"]
-            param_dict = {
-                "name": name,
-                "in": "path",
-                "description": description,
-                "schema": {
-                    "type": _type_to_string(param["type"]),
-                },
-                "required": True,
-            }
-            if "deprecated" in description.lower():
-                param_dict["deprecated"] = True
-            oper_obj.setdefault("parameters", []).append(param_dict)
+            name = param["name"].strip("}{")
+            required = param["options"]["required"].lower() == "true"
+            if param["name"][0] == "{":
+                param_dict = {
+                    "name": name,
+                    "in": "path" if name in uri_params else "query",
+                    "description": description,
+                    "schema": {
+                        "type": _type_to_string(param["type"]),
+                    },
+                    "required": required,
+                }
+                oper_obj.setdefault("parameters", []).append(param_dict)
+            elif http_method.lower() in ("put", "post"):
+                body.setdefault("properties", {}).update(
+                    {
+                        name: {
+                            "description": description,
+                            "type": _type_to_string(param["type"]),
+                        }
+                    }
+                )
+                if required:
+                    body.setdefault("required", []).append(name)
+
         for (status, content) in _response_pair(ap_dict):
             response = {
                 "description": content.get(
                     "description_stripped", status["description_stripped"]
                 ),
-                "content": {
-                    "application/json": {
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": True,
-                        },
-                    },
-                },
             }
-
-            # TODO Determine the output type of a response (ie: application/json, or text/plain)
+            match content.get("type", "").lower():
+                case "content":
+                    response["content"] = {
+                        "text/plain": {
+                            "schema": {"type": "string"},
+                        },
+                    }
+                case "json":
+                    response["content"] = {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": True,
+                            },
+                        },
+                    }
 
             status_code = status["name"]
             if not status_code.isdigit():
@@ -246,6 +249,21 @@ def _oapi_item_from_docstring(function):
             oper_obj.setdefault("responses", {}).update(
                 {status_code: response},
             )
+
+    if body.get("properties"):
+        oper_obj.update(
+            {
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "schema": {**body},
+                        },
+                    },
+                }
+            }
+        )
+
     return oper_obj
 
 
@@ -267,14 +285,15 @@ def _render_oapi_paths():
         doc = generate_doc(handler)
         uri = doc.resource_uri_template
         exports = handler.exports.items()
+        (_, params) = doc.handler.resource_uri()
 
         for (http_method, op), function in sorted(exports, key=_export_key):
             oper_uri = f"{uri}op-{op}" if op else uri
             path_item = paths.setdefault(
                 f"/{oper_uri.removeprefix(settings.API_URL_PREFIX)}",
-                _new_path_item(doc),
+                _new_path_item(params),
             )
             path_item[http_method.lower()] = _render_oapi_oper_item(
-                http_method, op, doc, function
+                http_method, op, doc, params, function
             )
     return paths
