@@ -1803,7 +1803,8 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
     def test_substring_hostnames_filter(self):
         hostname = factory.make_name()
         node1 = factory.make_Node(hostname=hostname)
-        node2 = factory.make_Node()
+        name2 = factory.make_name_avoiding_collision(hostname)
+        node2 = factory.make_Node(hostname=name2)
         constraints = {
             "hostname": [hostname[:2]],
         }

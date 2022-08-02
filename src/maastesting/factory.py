@@ -9,7 +9,7 @@ from enum import Enum
 from functools import partial
 import http.client
 import io
-from itertools import count, islice, repeat
+from itertools import combinations, count, islice, repeat
 import os
 import os.path
 import random
@@ -581,6 +581,37 @@ class Factory:
             return self.make_string(size=size)
         else:
             return prefix + sep + self.make_string(size=size)
+
+    def make_name_avoiding_collision(
+        self, other, prefix=None, sep="-", size=6, min_substr_len=2
+    ):
+        """Generate a random name that does not contain any of the substrings
+        of `other` of a defined minimum length.
+
+        :param other: The other name to check against.
+        :param prefix: Optional prefix.  Pass one to help make test failures
+            and tracebacks easier to read!  If you don't, you might as well
+            use `make_string`.
+        :param sep: Separator that will go between the prefix and the random
+            portion of the name.  Defaults to a dash.
+        :param size: Length of the random portion of the name.  Don't get
+            hung up on this; you may need more if uniqueness is really
+            important or less if it doesn't but legibility does, but
+            generally, use the default.
+        :param min_substr_len: Length of the substrings of `other` to match
+            against. Defaults to 2.
+        :return: A randomized unicode string.
+        """
+
+        def _collision(name):
+            substrs = ["".join(x) for x in combinations(other, min_substr_len)]
+            if any(substr in name for substr in substrs):
+                return True
+
+        name = self.make_name(prefix=prefix, sep=sep, size=size)
+        while _collision(name):
+            name = self.make_name(prefix=prefix, sep=sep, size=size)
+        return name
 
     def make_hostname(self, prefix="host", *args, **kwargs):
         """Generate a random hostname.
