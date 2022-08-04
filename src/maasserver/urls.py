@@ -9,7 +9,7 @@ from django.urls import include, re_path
 from django.views.generic import TemplateView
 
 from maasserver import urls_api
-from maasserver.api.doc_oapi import landing_page
+from maasserver.api.doc_oapi import landing_page, openapi_docs_context
 from maasserver.bootresources import (
     simplestreams_file_handler,
     simplestreams_stream_handler,
@@ -78,6 +78,13 @@ urlpatterns += [re_path(r"^accounts/logout/$", logout, name="logout")]
 # API URLs. If old API requested, provide error message directing to new API.
 urlpatterns += [
     re_path(r"^api/$", landing_page),
+    re_path(
+        r"^api/docs/",
+        lambda request: TemplateView.as_view(
+            template_name="openapi.html",
+            extra_context=openapi_docs_context(request),
+        ),
+    ),
     re_path(r"^api/2\.0/", include(urls_api)),
     re_path(
         r"^api/version/",

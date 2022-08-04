@@ -1,0 +1,67 @@
+{# HTML for static distribution bundle build #}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>MAAS API</title>
+    <link href="/MAAS/r/static/css/main.05850fff.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4.5.0/swagger-ui.css" />
+    <style>
+      html * {
+        font-family: ubuntu !important;
+        font-weight: 300 !important;
+        line-height: 1.5rem;
+      }
+      h3 {
+        min-width: 100%;
+      }
+      p {
+        margin: 0 !important;
+        max-width: 100% !important;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header class="p-navigation is-dark" style="background-color: {{ maas_colour }};">
+      <div class="p-navigation__row">
+        <div class="p-navigation__banner">
+          <div class="p-navigation__tagged-logo">
+            <a aria-label="Homepage" class="p-navigation__link" href="/MAAS/r/dashboard">
+              <div class="p-navigation__logo-tag">
+                <svg class="p-navigation__logo-icon" fill="#fff" viewBox="0 0 165.5 174.3" xmlns="http://www.w3.org/2000/svg">
+                  <ellipse cx="15.57" cy="111.46" rx="13.44" ry="13.3"></ellipse>
+                  <path d="M156.94 101.45H31.88a18.91 18.91 0 0 1 .27 19.55c-.09.16-.2.31-.29.46h125.08a6 6 0 0 0 6.06-5.96v-8.06a6 6 0 0 0-6-6Z"></path>
+                  <ellipse cx="15.62" cy="63.98" rx="13.44" ry="13.3"></ellipse>
+                  <path d="M156.94 53.77H31.79a18.94 18.94 0 0 1 .42 19.75l-.16.24h124.89a6 6 0 0 0 6.06-5.94v-8.06a6 6 0 0 0-6-6Z"></path>
+                  <ellipse cx="16.79" cy="16.5" rx="13.44" ry="13.3"></ellipse>
+                  <path d="M156.94 6.5H33.1a19.15 19.15 0 0 1 2.21 5.11A18.82 18.82 0 0 1 33.42 26l-.29.46h123.81a6 6 0 0 0 6.06-5.9V12.5a6 6 0 0 0-6-6Z"></path><ellipse cx="15.57" cy="158.94" rx="13.44" ry="13.3"></ellipse>
+                  <path d="M156.94 149H31.88a18.88 18.88 0 0 1 .27 19.5c-.09.16-.19.31-.29.46h125.08A6 6 0 0 0 163 163v-8.06a6 6 0 0 0-6-6Z"></path>
+                </svg>
+              </div>
+              <span class="p-navigation__logo-title">Canonical MAAS</span>
+            </a>
+          </div>
+        </div>
+        <div style="margin: auto; margin-right:0;">
+          <a aria-label="Homepage" class="p-navigation__link" href="/MAAS/api/">
+            <div class="p-navigation__logo-title">{{ maas_name }} MAAS: {{ maas_version }}</div>
+          </a>
+        </div>
+      </header>
+    <div id="swagger-ui" style="max-width: 90rem; margin: auto;"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@4.5.0/swagger-ui-bundle.js" crossorigin></script>
+    <script>
+      window.onload = function() {
+        window.ui = SwaggerUIBundle({
+          url: "{{ openapi_url }}",
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          presets: [
+            SwaggerUIBundle.presets.apis,
+          ],
+        });
+      };
+    </script>
+  </body>
+</html>

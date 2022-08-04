@@ -5,7 +5,12 @@ import json
 
 import yaml
 
-from maasserver.api.doc_oapi import _render_oapi_paths, endpoint, landing_page
+from maasserver.api.doc_oapi import (
+    _render_oapi_paths,
+    endpoint,
+    landing_page,
+    openapi_docs_context,
+)
 from maasserver.models.config import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -51,6 +56,18 @@ class TestApiEndpoint(MAASServerTestCase):
             maasserver["url"], "http://localhost:5240/MAAS/api/2.0/"
         )
         self.assertEqual(maasserver["description"], f"{maas_name} API")
+
+
+class TestOAPIDocs(MAASServerTestCase):
+    def test_docs_point_to_api(self):
+        request = factory.make_fake_request()
+        page = landing_page(request)
+        content = json.loads(page.content)
+        oapi_res = content["resources"][1]
+        context = openapi_docs_context(request)
+        self.assertEqual(
+            context["openapi_url"], f"http://localhost:5240{oapi_res['path']}"
+        )
 
 
 class TestOAPISpec(MAASServerTestCase):
@@ -103,6 +120,5 @@ class TestOAPISpec(MAASServerTestCase):
                     yield (k, v)
 
         for k, v in _get_all_key_values(_render_oapi_paths()):
-            print(k, v)
             if k == "type":
                 self.assertIn(v, self.oapi_types)
