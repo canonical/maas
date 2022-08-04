@@ -38,6 +38,7 @@ VIEWS_DIRS = (
 
 
 global verbose 
+global dry_run
 
 
 def verbose_print(msg):
@@ -78,13 +79,16 @@ def split_up_models_init_file(file_name):
 
 
 def _write_red_baron_file(dir_name, file_name, code):
+    global dry_run
+
     dir_path = get_target_root().joinpath(dir_name).resolve()
     file_path = dir_path.joinpath(file_name).resolve()
     if not os.path.exists(str(dir_path)):
         os.makedirs(dir_path)
 
-    with open(str(file_path), "w+") as f:
-        f.write(code.dumps())
+    if not dry_run:
+        with open(str(file_path), "w+") as f:
+            f.write(code.dumps())
     return str(file_path)
 
 
@@ -179,7 +183,7 @@ def split_node_model(file_name):
         ("+", _write_red_baron_file("node", "node.py", node_src)),
         ("+", _write_red_baron_file("machine", "machine.py", machine_src)),
         ("+", _write_red_baron_file("device", "device.py", device_src)),
-        ("+", _write_red_baron_file("controller", "controller", controller_src))
+        ("+", _write_red_baron_file("controller", "controller.py", controller_src))
     ]
 
 
@@ -335,7 +339,14 @@ def _format_import_from_path(path):
 
 
 def _generate_imports(changes):
-    return [ (_format_import_from_path(change[0]), _format_import_from_path(change[1])) if change[1] not in SPECIAL_CASE_IMPORTS else SPECIAL_CASE_IMPORTS[change[1]] for change in changes ]
+    return [
+        (
+            _format_import_from_path(change[0]),
+            _format_import_from_path(change[1]),
+        )
+        if change[1] not in SPECIAL_CASE_IMPORTS else SPECIAL_CASE_IMPORTS[change[1]]
+        for change in changes
+    ]
 
 
 def _find_and_swap_imports(imports, f):
@@ -382,6 +393,7 @@ if __name__ == "__main__":
    
     args = parser.parse_args()
     verbose = args.v
+    dry_run = args.dry_run
 
     changes = load_layout_changes()
     [ print(f"{change[0]} -> {change[1]}") for change in changes if change[1] ]
