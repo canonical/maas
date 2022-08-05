@@ -507,3 +507,19 @@ class TestControllerHandler(MAASServerTestCase):
         handler.update_interface(request)
         controller.refresh_from_db()
         self.assertEqual(controller.boot_interface.vlan, vlan)
+
+    def test_count_HA_vlans_with_unlinked_interfaces(self):
+        admin = factory.make_admin()
+        handler = ControllerHandler(admin, {}, None)
+        primary = factory.make_RegionRackController()
+        primary.current_config.interface_set.add(
+            factory.make_Interface(link_connected=False)
+        )
+        secondary = factory.make_RackController()
+        factory.make_VLAN(primary_rack=primary, secondary_rack=secondary)
+        factory.make_VLAN(primary_rack=primary)
+        output = handler.get({"system_id": primary.system_id})
+        self.assertEqual(output["vlans_ha"]["true"], 1)
+        self.assertEqual(
+            output["vlans_ha"]["false"], 2
+        )  # default interface and the one linked to vlan2
