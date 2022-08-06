@@ -242,37 +242,6 @@ JUJU_ACQUIRE_FORM_FIELDS_MAPPING = {
 }
 
 
-# XXX JeroenVermeulen 2014-02-06: Can we document this please?
-class RenamableFieldsForm(forms.Form):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.field_mapping = {name: name for name in self.fields}
-
-    def get_field_name(self, name):
-        """Get the new name of the field named 'name'."""
-        return self.field_mapping[name]
-
-    def rename_fields(self, mapping):
-        """Rename all the field as described in the given mapping."""
-        for old_name, new_name in mapping.items():
-            self.rename_field(old_name, new_name)
-
-    def rename_field(self, old_name, new_name):
-        """Rename a field."""
-        if old_name in self.fields:
-            # Rename field mapping.
-            self.field_mapping[old_name] = new_name
-
-            # Rename field.
-            self.fields[new_name] = self.fields.pop(old_name)
-
-            # Rename clean_field() method if it exists.
-            clean_name = "clean_%s" % old_name
-            method = getattr(self, clean_name, None)
-            if method is not None:
-                setattr(self, "clean_%s" % new_name, method)
-
-
 def detect_nonexistent_names(model_class, names, name_field="name"):
     """Check for, and return, names of nonexistent objects.
 
@@ -691,7 +660,7 @@ def get_field_argument_type(field):
     return "unknown"
 
 
-class FilterNodeForm(RenamableFieldsForm):
+class FilterNodeForm(forms.Form):
     """A form for filtering nodes."""
 
     # This becomes a multiple-choice field during cleaning, to accommodate
@@ -873,7 +842,7 @@ class FilterNodeForm(RenamableFieldsForm):
         architecture_wildcards = get_architecture_wildcards(
             usable_architectures
         )
-        value = self.cleaned_data[self.get_field_name("arch")]
+        value = self.cleaned_data["arch"]
         if value:
             if value in usable_architectures:
                 # Full 'arch/subarch' specified directly.
@@ -884,7 +853,7 @@ class FilterNodeForm(RenamableFieldsForm):
                 return architecture_wildcards[value]
             set_form_error(
                 self,
-                self.get_field_name("arch"),
+                "arch",
                 "Architecture not recognised.",
             )
         return None
@@ -894,10 +863,10 @@ class FilterNodeForm(RenamableFieldsForm):
         error_msg = "No such tag(s): %s." % ", ".join(
             "'%s'" % tag for tag in unknown_tags
         )
-        set_form_error(self, self.get_field_name("tags"), error_msg)
+        set_form_error(self, "tags", error_msg)
 
     def clean_tags(self):
-        value = self.cleaned_data[self.get_field_name("tags")]
+        value = self.cleaned_data["tags"]
         if value:
             tag_names = parse_legacy_tags(value)
             # Validate tags.
@@ -918,10 +887,10 @@ class FilterNodeForm(RenamableFieldsForm):
             error_msg = "No such zone(s): %s." % ", ".join(value)
         else:
             error_msg = "No such zone: '%s'." % value
-        set_form_error(self, self.get_field_name(field), error_msg)
+        set_form_error(self, field, error_msg)
 
     def clean_zone(self):
-        value = self.cleaned_data[self.get_field_name("zone")]
+        value = self.cleaned_data["zone"]
         if value:
             nonexistent_names = detect_nonexistent_names(Zone, [value])
             if nonexistent_names:
@@ -931,7 +900,7 @@ class FilterNodeForm(RenamableFieldsForm):
         return None
 
     def clean_not_in_zone(self):
-        value = self.cleaned_data[self.get_field_name("not_in_zone")]
+        value = self.cleaned_data["not_in_zone"]
         if not value:
             return None
         nonexistent_names = detect_nonexistent_names(Zone, value)
@@ -945,10 +914,10 @@ class FilterNodeForm(RenamableFieldsForm):
             error_msg = "No such pool(s): %s." % ", ".join(value)
         else:
             error_msg = "No such pool: '%s'." % value
-        set_form_error(self, self.get_field_name(field), error_msg)
+        set_form_error(self, field, error_msg)
 
     def clean_pool(self):
-        value = self.cleaned_data[self.get_field_name("pool")]
+        value = self.cleaned_data["pool"]
         if value:
             nonexistent_names = detect_nonexistent_names(ResourcePool, [value])
             if nonexistent_names:
@@ -958,7 +927,7 @@ class FilterNodeForm(RenamableFieldsForm):
         return None
 
     def clean_not_in_pool(self):
-        value = self.cleaned_data[self.get_field_name("not_in_pool")]
+        value = self.cleaned_data["not_in_pool"]
         if not value:
             return None
         nonexistent_names = detect_nonexistent_names(ResourcePool, value)
@@ -969,7 +938,7 @@ class FilterNodeForm(RenamableFieldsForm):
 
     def _clean_specifiers(self, model, specifiers):
         if not specifiers:
-            return None
+            return []
         objects = set(model.objects.filter_by_specifiers(specifiers))
         if len(objects) == 0:
             raise ValidationError(
@@ -978,39 +947,37 @@ class FilterNodeForm(RenamableFieldsForm):
         return objects
 
     def clean_subnets(self):
-        value = self.cleaned_data[self.get_field_name("subnets")]
+        value = self.cleaned_data["subnets"]
         return self._clean_specifiers(Subnet, value)
 
     def clean_not_subnets(self):
-        value = self.cleaned_data[self.get_field_name("not_subnets")]
+        value = self.cleaned_data["not_subnets"]
         return self._clean_specifiers(Subnet, value)
 
     def clean_vlans(self):
-        value = self.cleaned_data[self.get_field_name("vlans")]
+        value = self.cleaned_data["vlans"]
         return self._clean_specifiers(VLAN, value)
 
     def clean_not_vlans(self):
-        value = self.cleaned_data[self.get_field_name("not_vlans")]
+        value = self.cleaned_data["not_vlans"]
         return self._clean_specifiers(VLAN, value)
 
     def clean_owner(self):
-        value = self.cleaned_data[self.get_field_name("owner")]
+        value = self.cleaned_data["owner"]
         if value:
             nonexistent_names = detect_nonexistent_names(
                 User, [value], "username"
             )
             if nonexistent_names:
                 error_msg = "No such owner: '%s'." % value
-                set_form_error(self, self.get_field_name("owner"), error_msg)
+                set_form_error(self, "owner", error_msg)
                 return None
             return value
         return None
 
     def clean(self):
         if not self.ignore_unknown_constraints:
-            unknown_constraints = set(self.data).difference(
-                set(self.field_mapping.values())
-            )
+            unknown_constraints = set(self.data).difference(set(self.fields))
             for constraint in unknown_constraints:
                 if constraint not in IGNORED_FIELDS:
                     msg = "No such constraint."
@@ -1095,9 +1062,7 @@ class FilterNodeForm(RenamableFieldsForm):
 
     def filter_by_interfaces(self, filtered_nodes):
         compatible_interfaces = {}
-        interfaces_label_map = self.cleaned_data.get(
-            self.get_field_name("interfaces")
-        )
+        interfaces_label_map = self.cleaned_data.get("interfaces")
         if interfaces_label_map is not None:
             result = nodes_by_interface(interfaces_label_map)
             if result.node_ids is not None:
@@ -1107,7 +1072,7 @@ class FilterNodeForm(RenamableFieldsForm):
 
     def filter_by_storage(self, filtered_nodes):
         compatible_nodes = {}  # Maps node/storage to named storage constraints
-        storage = self.cleaned_data.get(self.get_field_name("storage"))
+        storage = self.cleaned_data.get("storage")
         if storage:
             compatible_nodes = nodes_by_storage(storage)
             node_ids = list(compatible_nodes)
@@ -1116,16 +1081,12 @@ class FilterNodeForm(RenamableFieldsForm):
         return compatible_nodes, filtered_nodes
 
     def filter_by_fabric_classes(self, filtered_nodes):
-        fabric_classes = self.cleaned_data.get(
-            self.get_field_name("fabric_classes")
-        )
+        fabric_classes = self.cleaned_data.get("fabric_classes")
         if fabric_classes is not None and len(fabric_classes) > 0:
             filtered_nodes = filtered_nodes.filter(
                 current_config__interface__vlan__fabric__class_type__in=fabric_classes
             )
-        not_fabric_classes = self.cleaned_data.get(
-            self.get_field_name("not_fabric_classes")
-        )
+        not_fabric_classes = self.cleaned_data.get("not_fabric_classes")
         if not_fabric_classes is not None and len(not_fabric_classes) > 0:
             filtered_nodes = filtered_nodes.exclude(
                 current_config__interface__vlan__fabric__class_type__in=not_fabric_classes
@@ -1133,14 +1094,14 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_fabrics(self, filtered_nodes):
-        fabrics = self.cleaned_data.get(self.get_field_name("fabrics"))
+        fabrics = self.cleaned_data.get("fabrics")
         if fabrics is not None and len(fabrics) > 0:
             # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
             # is null (fabric-<id>).
             filtered_nodes = filtered_nodes.filter(
                 current_config__interface__vlan__fabric__name__in=fabrics
             )
-        not_fabrics = self.cleaned_data.get(self.get_field_name("not_fabrics"))
+        not_fabrics = self.cleaned_data.get("not_fabrics")
         if not_fabrics is not None and len(not_fabrics) > 0:
             # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
             # is null (fabric-<id>).
@@ -1150,13 +1111,13 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_vlans(self, filtered_nodes):
-        vlans = self.cleaned_data.get(self.get_field_name("vlans"))
+        vlans = self.cleaned_data.get("vlans")
         if vlans is not None and len(vlans) > 0:
             for vlan in set(vlans):
                 filtered_nodes = filtered_nodes.filter(
                     current_config__interface__vlan=vlan
                 )
-        not_vlans = self.cleaned_data.get(self.get_field_name("not_vlans"))
+        not_vlans = self.cleaned_data.get("not_vlans")
         if not_vlans is not None and len(not_vlans) > 0:
             for not_vlan in set(not_vlans):
                 filtered_nodes = filtered_nodes.exclude(
@@ -1165,13 +1126,13 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_subnets(self, filtered_nodes):
-        subnets = self.cleaned_data.get(self.get_field_name("subnets"))
+        subnets = self.cleaned_data.get("subnets")
         if subnets is not None and len(subnets) > 0:
             for subnet in set(subnets):
                 filtered_nodes = filtered_nodes.filter(
                     current_config__interface__ip_addresses__subnet=subnet
                 )
-        not_subnets = self.cleaned_data.get(self.get_field_name("not_subnets"))
+        not_subnets = self.cleaned_data.get("not_subnets")
         if not_subnets is not None and len(not_subnets) > 0:
             for not_subnet in set(not_subnets):
                 filtered_nodes = filtered_nodes.exclude(
@@ -1180,7 +1141,7 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_link_speed(self, filtered_nodes):
-        link_speed = self.cleaned_data.get(self.get_field_name("link_speed"))
+        link_speed = self.cleaned_data.get("link_speed")
         if link_speed:
             filtered_nodes = filtered_nodes.filter(
                 current_config__interface__link_speed__gte=link_speed
@@ -1188,22 +1149,22 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_zone(self, filtered_nodes):
-        zone = self.cleaned_data.get(self.get_field_name("zone"))
+        zone = self.cleaned_data.get("zone")
         if zone:
             zone_obj = Zone.objects.get(name=zone)
             filtered_nodes = filtered_nodes.filter(zone=zone_obj)
-        not_in_zone = self.cleaned_data.get(self.get_field_name("not_in_zone"))
+        not_in_zone = self.cleaned_data.get("not_in_zone")
         if not_in_zone:
             not_in_zones = Zone.objects.filter(name__in=not_in_zone)
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
         return filtered_nodes
 
     def filter_by_pool(self, filtered_nodes):
-        pool_name = self.cleaned_data.get(self.get_field_name("pool"))
+        pool_name = self.cleaned_data.get("pool")
         if pool_name:
             pool = ResourcePool.objects.get(name=pool_name)
             filtered_nodes = filtered_nodes.filter(pool=pool)
-        not_in_pool = self.cleaned_data.get(self.get_field_name("not_in_pool"))
+        not_in_pool = self.cleaned_data.get("not_in_pool")
         if not_in_pool:
             pools_to_exclude = ResourcePool.objects.filter(
                 name__in=not_in_pool
@@ -1212,37 +1173,37 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_tags(self, filtered_nodes):
-        tags = self.cleaned_data.get(self.get_field_name("tags"))
+        tags = self.cleaned_data.get("tags")
         if tags:
             for tag in tags:
                 filtered_nodes = filtered_nodes.filter(tags__name=tag)
-        not_tags = self.cleaned_data.get(self.get_field_name("not_tags"))
+        not_tags = self.cleaned_data.get("not_tags")
         if len(not_tags) > 0:
             for not_tag in not_tags:
                 filtered_nodes = filtered_nodes.exclude(tags__name=not_tag)
         return filtered_nodes
 
     def filter_by_mem(self, filtered_nodes):
-        mem = self.cleaned_data.get(self.get_field_name("mem"))
+        mem = self.cleaned_data.get("mem")
         if mem:
             filtered_nodes = filtered_nodes.filter(memory__gte=mem)
         return filtered_nodes
 
     def filter_by_cpu_count(self, filtered_nodes):
-        cpu_count = self.cleaned_data.get(self.get_field_name("cpu_count"))
+        cpu_count = self.cleaned_data.get("cpu_count")
         if cpu_count:
             filtered_nodes = filtered_nodes.filter(cpu_count__gte=cpu_count)
         return filtered_nodes
 
     def filter_by_arch(self, filtered_nodes):
-        arch = self.cleaned_data.get(self.get_field_name("arch"))
+        arch = self.cleaned_data.get("arch")
         if arch:
             filtered_nodes = filtered_nodes.filter(architecture__in=arch)
         return filtered_nodes
 
     def filter_by_system_id(self, filtered_nodes):
         # Filter by system_id.
-        system_id = self.cleaned_data.get(self.get_field_name("system_id"))
+        system_id = self.cleaned_data.get("system_id")
         if system_id:
             filtered_nodes = filtered_nodes.filter(system_id=system_id)
         return filtered_nodes
@@ -1250,12 +1211,10 @@ class FilterNodeForm(RenamableFieldsForm):
     def filter_by_pod_or_pod_type(self, filtered_nodes):
         # Filter by pod, pod type, not_pod or not_pod_type.
         # We are filtering for all of these to keep the query count down.
-        pod = self.cleaned_data.get(self.get_field_name("pod"))
-        not_pod = self.cleaned_data.get(self.get_field_name("not_pod"))
-        pod_type = self.cleaned_data.get(self.get_field_name("pod_type"))
-        not_pod_type = self.cleaned_data.get(
-            self.get_field_name("not_pod_type")
-        )
+        pod = self.cleaned_data.get("pod")
+        not_pod = self.cleaned_data.get("not_pod")
+        pod_type = self.cleaned_data.get("pod_type")
+        not_pod_type = self.cleaned_data.get("not_pod_type")
         if pod or pod_type or not_pod or not_pod_type:
             pods = Pod.objects.all()
             if pod:
@@ -1272,7 +1231,7 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes.distinct()
 
     def filter_by_devices(self, filtered_nodes):
-        devices = self.cleaned_data.get(self.get_field_name("devices"))
+        devices = self.cleaned_data.get("devices")
         if devices:
             filters = {}
             for f in devices.split(","):
@@ -1282,14 +1241,14 @@ class FilterNodeForm(RenamableFieldsForm):
         return filtered_nodes
 
     def filter_by_owner(self, filtered_nodes):
-        owner = self.cleaned_data.get(self.get_field_name("owner"))
+        owner = self.cleaned_data.get("owner")
         if owner:
             user = User.objects.get(username=owner)
             filtered_nodes = filtered_nodes.filter(owner=user)
         return filtered_nodes
 
     def filter_by_power_state(self, filtered_nodes):
-        power_state = self.cleaned_data.get(self.get_field_name("power_state"))
+        power_state = self.cleaned_data.get("power_state")
         if power_state:
             power_state_id = getattr(POWER_STATE, power_state.upper())
             filtered_nodes = filtered_nodes.filter(power_state=power_state_id)
@@ -1315,7 +1274,7 @@ class AcquireNodeForm(FilterNodeForm):
 
     def filter_by_hostname(self, filtered_nodes):
         # Filter by hostname.
-        hostname = self.cleaned_data.get(self.get_field_name("name"))
+        hostname = self.cleaned_data.get("name")
         if hostname:
             # If the given hostname has a domain part, try matching
             # against the nodes' FQDN.
@@ -1393,21 +1352,19 @@ class ReadNodesForm(FilterNodeForm):
         return nodes
 
     def filter_by_ids(self, filtered_nodes):
-        ids = self.cleaned_data.get(self.get_field_name("id"))
+        ids = self.cleaned_data.get("id")
         if ids:
             filtered_nodes = filtered_nodes.filter(system_id__in=ids)
         return filtered_nodes
 
     def filter_by_hostnames(self, filtered_nodes):
-        hostnames = self.cleaned_data.get(self.get_field_name("hostname"))
+        hostnames = self.cleaned_data.get("hostname")
         if hostnames:
             filtered_nodes = filtered_nodes.filter(hostname__in=hostnames)
         return filtered_nodes
 
     def filter_by_mac_addresses(self, filtered_nodes):
-        mac_addresses = self.cleaned_data.get(
-            self.get_field_name("mac_address")
-        )
+        mac_addresses = self.cleaned_data.get("mac_address")
         if mac_addresses:
             filtered_nodes = filtered_nodes.filter(
                 current_config__interface__mac_address__in=mac_addresses
@@ -1415,20 +1372,20 @@ class ReadNodesForm(FilterNodeForm):
         return filtered_nodes
 
     def filter_by_domain(self, filtered_nodes):
-        domains = self.cleaned_data.get(self.get_field_name("domain"))
+        domains = self.cleaned_data.get("domain")
         if domains:
             filtered_nodes = filtered_nodes.filter(domain__name__in=domains)
         return filtered_nodes
 
     def filter_by_agent_name(self, filtered_nodes):
-        field_name = self.get_field_name("agent_name")
+        field_name = "agent_name"
         if field_name in self.data:
             agent_name = self.cleaned_data.get(field_name)
             filtered_nodes = filtered_nodes.filter(agent_name=agent_name)
         return filtered_nodes
 
     def filter_by_status(self, filtered_nodes):
-        status = self.cleaned_data.get(self.get_field_name("status"))
+        status = self.cleaned_data.get("status")
         if status:
             status_id = getattr(NODE_STATUS, status.upper())
             filtered_nodes = filtered_nodes.filter(status=status_id)
@@ -1456,7 +1413,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return queryset.filter(query)
 
     def clean_tags(self):
-        value = self.cleaned_data[self.get_field_name("tags")]
+        value = self.cleaned_data["tags"]
         if value:
             tag_names = parse_legacy_tags(value)
             # Validate tags.
@@ -1472,7 +1429,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
             return db_tag_names
 
     def clean_arch(self):
-        value = self.cleaned_data[self.get_field_name("arch")]
+        value = self.cleaned_data["arch"]
         if value:
             archs = self._substring_filter(
                 BootResource.objects, "architecture", value
@@ -1480,7 +1437,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
             if not archs:
                 set_form_error(
                     self,
-                    self.get_field_name("arch"),
+                    "arch",
                     "Architecture not recognised.",
                 )
                 return None
@@ -1494,22 +1451,20 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return zones
 
     def clean_zone(self):
-        value = self.cleaned_data[self.get_field_name("zone")]
+        value = self.cleaned_data["zone"]
         if value:
             return self._clean_zones(value, "zone")
 
     def clean_not_in_zone(self):
-        value = self.cleaned_data[self.get_field_name("not_in_zone")]
+        value = self.cleaned_data["not_in_zone"]
         if value:
             return self._clean_zones(value, "not_in_zone")
 
     def filter_by_zone(self, filtered_nodes):
-        zones = self.cleaned_data.get(self.get_field_name("zone"))
+        zones = self.cleaned_data.get("zone")
         if zones:
             filtered_nodes = filtered_nodes.filter(zone__in=zones)
-        not_in_zones = self.cleaned_data.get(
-            self.get_field_name("not_in_zone")
-        )
+        not_in_zones = self.cleaned_data.get("not_in_zone")
         if not_in_zones:
             filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
         return filtered_nodes
@@ -1522,31 +1477,29 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return pool
 
     def clean_pool(self):
-        value = self.cleaned_data[self.get_field_name("pool")]
+        value = self.cleaned_data["pool"]
         if value:
             return self._clean_pools(value, "pool")
 
     def clean_not_in_pool(self):
-        value = self.cleaned_data[self.get_field_name("not_in_pool")]
+        value = self.cleaned_data["not_in_pool"]
         if value:
             return self._clean_pools(value, "not_in_pool")
 
     def filter_by_pool(self, filtered_nodes):
-        pools = self.cleaned_data.get(self.get_field_name("pool"))
+        pools = self.cleaned_data.get("pool")
         if pools:
             filtered_nodes = filtered_nodes.filter(pool__in=pools)
-        not_in_pools = self.cleaned_data.get(
-            self.get_field_name("not_in_pool")
-        )
+        not_in_pools = self.cleaned_data.get("not_in_pool")
         if not_in_pools:
             filtered_nodes = filtered_nodes.exclude(pool__in=not_in_pools)
         return filtered_nodes
 
     def filter_by_pod_or_pod_type(self, filtered_nodes):
-        pod_name = self.cleaned_data[self.get_field_name("pod")]
-        not_pod_name = self.cleaned_data[self.get_field_name("not_pod")]
-        pod_type = self.cleaned_data[self.get_field_name("pod_type")]
-        not_pod_type = self.cleaned_data[self.get_field_name("not_pod_type")]
+        pod_name = self.cleaned_data["pod"]
+        not_pod_name = self.cleaned_data["not_pod"]
+        pod_type = self.cleaned_data["pod_type"]
+        not_pod_type = self.cleaned_data["not_pod_type"]
         if pod_name:
             filtered_nodes = self._substring_filter(
                 filtered_nodes, "bmc__name", pod_name
@@ -1566,18 +1519,14 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return filtered_nodes
 
     def filter_by_fabric_classes(self, filtered_nodes):
-        fabric_classes = self.cleaned_data.get(
-            self.get_field_name("fabric_classes")
-        )
+        fabric_classes = self.cleaned_data.get("fabric_classes")
         if fabric_classes:
             filtered_nodes = self._substring_filter(
                 filtered_nodes,
                 "current_config__interface__vlan__fabric__class_type",
                 fabric_classes,
             )
-        not_fabric_classes = self.cleaned_data.get(
-            self.get_field_name("not_fabric_classes")
-        )
+        not_fabric_classes = self.cleaned_data.get("not_fabric_classes")
         if not_fabric_classes:
             filtered_nodes = self._substring_filter(
                 filtered_nodes,
@@ -1588,14 +1537,14 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return filtered_nodes
 
     def filter_by_fabrics(self, filtered_nodes):
-        fabrics = self.cleaned_data.get(self.get_field_name("fabrics"))
+        fabrics = self.cleaned_data.get("fabrics")
         if fabrics:
             filtered_nodes = self._substring_filter(
                 filtered_nodes,
                 "current_config__interface__vlan__fabric__name",
                 fabrics,
             )
-        not_fabrics = self.cleaned_data.get(self.get_field_name("not_fabrics"))
+        not_fabrics = self.cleaned_data.get("not_fabrics")
         if not_fabrics:
             filtered_nodes = self._substring_filter(
                 filtered_nodes,
@@ -1606,25 +1555,25 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return filtered_nodes
 
     def clean_vlans(self):
-        value = self.cleaned_data.get(self.get_field_name("vlans"))
+        value = self.cleaned_data.get("vlans")
         if value:
             vlans = self._substring_filter(VLAN.objects, "name", value)
             if not vlans:
                 set_form_error(
                     self,
-                    self.get_field_name("vlans"),
+                    "vlans",
                     "no vlan found for %s" % value,
                 )
                 return None
             return value
 
     def filter_by_vlans(self, filtered_nodes):
-        vlans = self.cleaned_data.get(self.get_field_name("vlans"))
+        vlans = self.cleaned_data.get("vlans")
         if vlans:
             filtered_nodes = self._substring_filter(
                 filtered_nodes, "current_config__interface__vlan__name", vlans
             )
-        not_vlans = self.cleaned_data.get(self.get_field_name("not_vlans"))
+        not_vlans = self.cleaned_data.get("not_vlans")
         if not_vlans:
             filtered_nodes = self._substring_filter(
                 filtered_nodes,
@@ -1635,27 +1584,27 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return filtered_nodes
 
     def clean_subnets(self):
-        value = self.cleaned_data.get(self.get_field_name("subnets"))
+        value = self.cleaned_data.get("subnets")
         if value:
             subnets = self._substring_filter(Subnet.objects, "cidr", value)
             if not subnets:
                 set_form_error(
                     self,
-                    self.get_field_name("subnets"),
+                    "subnets",
                     "no subnet found for %s" % value,
                 )
                 return None
             return value
 
     def filter_by_subnets(self, filtered_nodes):
-        subnets = self.cleaned_data.get(self.get_field_name("subnets"))
+        subnets = self.cleaned_data.get("subnets")
         if subnets:
             filtered_nodes = self._substring_filter(
                 filtered_nodes,
                 "current_config__interface__ip_addresses__subnet__cidr",
                 subnets,
             )
-        not_subnets = self.cleaned_data.get(self.get_field_name("not_subnets"))
+        not_subnets = self.cleaned_data.get("not_subnets")
         if not_subnets:
             filtered_nodes = self._substring_filter(
                 filtered_nodes,
@@ -1666,7 +1615,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return filtered_nodes
 
     def filter_by_hostnames(self, filtered_nodes):
-        hostnames = self.cleaned_data.get(self.get_field_name("hostname"))
+        hostnames = self.cleaned_data.get("hostname")
         if hostnames:
             filtered_nodes = self._substring_filter(
                 filtered_nodes, "hostname", hostnames
@@ -1674,7 +1623,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return filtered_nodes
 
     def clean_mac_address(self):
-        value = self.cleaned_data.get(self.get_field_name("mac_address"))
+        value = self.cleaned_data.get("mac_address")
         if value:
             interfaces = self._substring_filter(
                 Interface.objects, "mac_address", value
@@ -1682,14 +1631,14 @@ class FreeTextFilterNodeForm(ReadNodesForm):
             if not interfaces:
                 set_form_error(
                     self,
-                    self.get_field_name("mac_address"),
+                    "mac_address",
                     "no mac address found for %s" % value,
                 )
                 return None
             return value
 
     def filter_by_mac_addresses(self, filtered_nodes):
-        value = self.cleaned_data.get(self.get_field_name("mac_address"))
+        value = self.cleaned_data.get("mac_address")
         if value:
             interfaces = self._substring_filter(
                 Interface.objects, "mac_address", value
@@ -1700,7 +1649,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         return filtered_nodes
 
     def filter_by_agent_name(self, filtered_nodes):
-        agent_name = self.cleaned_data[self.get_field_name("agent_name")]
+        agent_name = self.cleaned_data["agent_name"]
         if agent_name:
             filtered_nodes = self._substring_filter(
                 filtered_nodes, "agent_name", agent_name

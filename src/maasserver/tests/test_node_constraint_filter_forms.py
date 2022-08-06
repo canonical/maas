@@ -5,7 +5,6 @@ from functools import partial
 import random
 
 from django import forms
-from django.core.exceptions import ValidationError
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -43,7 +42,6 @@ from maasserver.node_constraint_filter_forms import (
     nodes_by_storage,
     parse_legacy_tags,
     ReadNodesForm,
-    RenamableFieldsForm,
 )
 from maasserver.testing.architecture import patch_usable_architectures
 from maasserver.testing.factory import factory, RANDOM
@@ -181,38 +179,6 @@ class TestUtils(MAASServerTestCase):
 
     def test_nodes_by_storage_returns_None_when_storage_string_is_empty(self):
         self.assertEqual(None, nodes_by_storage(""))
-
-
-class TestRenamableForm(RenamableFieldsForm):
-    field1 = forms.CharField(label="A field which is forced to contain 'foo'.")
-    field2 = forms.CharField(label="Field 2", required=False)
-
-    def clean_field1(self):
-        name = self.get_field_name("field1")
-        value = self.cleaned_data[name]
-        if value != "foo":
-            raise ValidationError("The value should be 'foo'")
-        return value
-
-
-class TestRenamableFieldsForm(MAASServerTestCase):
-    def test_rename_field_renames_field(self):
-        form = TestRenamableForm()
-        form.rename_field("field1", "new_field")
-        self.assertEqual(form.fields.keys(), {"new_field", "field2"})
-
-    def test_rename_field_updates_mapping(self):
-        form = TestRenamableForm()
-        form.rename_field("field1", "new_field")
-        self.assertEqual("new_field", form.get_field_name("field1"))
-
-    def test_rename_field_renames_validation_method(self):
-        form = TestRenamableForm(data={"new_field": "not foo", "field2": "a"})
-        form.rename_field("field1", "new_field")
-        self.assertEqual(
-            (False, {"new_field": ["The value should be 'foo'"]}),
-            (form.is_valid(), form.errors),
-        )
 
 
 class FilterConstraintsMixin:
