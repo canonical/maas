@@ -426,7 +426,7 @@ def make_subnet_config(
     default_domain,
     search_list=None,
     failover_peer=None,
-    subnets_dhcp_snippets: list = None,
+    subnets_dhcp_snippets: Optional[list] = None,
     peer_rack=None,
 ):
     """Return DHCP subnet configuration dict for a rack interface.
