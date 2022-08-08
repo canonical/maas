@@ -175,6 +175,7 @@ class ControllerHandler(NodeHandler):
         vlan_ids = [
             interface.vlan_id
             for interface in obj.current_config.interface_set.all()
+            if interface.vlan_id is not None
         ]
         for vlan_id in vlan_ids:
             vlan_counts[self._vlans_ha[vlan_id]] += 1
