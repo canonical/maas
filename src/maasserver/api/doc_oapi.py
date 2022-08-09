@@ -189,7 +189,7 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
                 return "integer"
             case "String":
                 return "string"
-            case other:
+            case _:
                 return "object"
 
     def _response_pair(ap_dict):
