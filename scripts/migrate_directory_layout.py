@@ -19,40 +19,30 @@ IGNORED_DIRS = (
     "__pycache__",
 )
 
-
-def get_target_root():
-    return Path(__file__).parent.parent.joinpath("src/")
+TARGET_ROOT = Path(__file__).parent.parent.joinpath("src")
 
 
-API_HANDLER_DIRS = (
-    str(get_target_root().joinpath("maasserver/api").resolve()),
-)
-FORMS_DIRS = (str(get_target_root().joinpath("maasserver/forms").resolve()),)
+API_HANDLER_DIRS = (str(TARGET_ROOT.joinpath("maasserver/api").resolve()),)
+FORMS_DIRS = (str(TARGET_ROOT.joinpath("maasserver/forms").resolve()),)
 MODEL_DIRS = (
-    str(get_target_root().joinpath("maasserver/models").resolve()),
-    str(get_target_root().joinpath("metadataserver/models").resolve()),
+    str(TARGET_ROOT.joinpath("maasserver/models").resolve()),
+    str(TARGET_ROOT.joinpath("metadataserver/models").resolve()),
 )
 WEBSOCKET_HANDLER_DIRS = (
-    str(
-        get_target_root().joinpath("maasserver/websockets/handlers").resolve()
-    ),
+    str(TARGET_ROOT.joinpath("maasserver/websockets/handlers").resolve()),
 )
 POWER_DRIVER_DIRS = (
-    str(
-        get_target_root()
-        .joinpath("provisioningserver/drivers/power")
-        .resolve()
-    ),
+    str(TARGET_ROOT.joinpath("provisioningserver/drivers/power").resolve()),
 )
 SIGNALS_DIRS = (
-    str(get_target_root().joinpath("maasserver/models/signals").resolve()),
+    str(TARGET_ROOT.joinpath("maasserver/models/signals").resolve()),
 )
 RPC_DIRS = (
-    str(get_target_root().joinpath("maasserver/rpc").resolve()),
-    str(get_target_root().joinpath("maasserver/clusterrpc").resolve()),
-    str(get_target_root().joinpath("provisioningserver/rpc").resolve()),
+    str(TARGET_ROOT.joinpath("maasserver/rpc").resolve()),
+    str(TARGET_ROOT.joinpath("maasserver/clusterrpc").resolve()),
+    str(TARGET_ROOT.joinpath("provisioningserver/rpc").resolve()),
 )
-VIEWS_DIRS = (str(get_target_root().joinpath("maasserver/views").resolve()),)
+VIEWS_DIRS = (str(TARGET_ROOT.joinpath("maasserver/views").resolve()),)
 
 
 global verbose
@@ -82,36 +72,28 @@ def move_websocket_base(file_name):
     return [
         (
             str(Path(file_name).joinpath("base.py").resolve()),
-            str(get_target_root().joinpath("websockets/base.py").resolve()),
+            str(TARGET_ROOT.joinpath("websockets/base.py").resolve()),
         ),
         (
             str(Path(file_name).joinpath("protocol.py").resolve()),
-            str(
-                get_target_root().joinpath("websockets/protocol.py").resolve()
-            ),
+            str(TARGET_ROOT.joinpath("websockets/protocol.py").resolve()),
         ),
         (
             str(Path(file_name).joinpath("websockets.py").resolve()),
-            str(
-                get_target_root()
-                .joinpath("websockets/websockets.py")
-                .resolve()
-            ),
+            str(TARGET_ROOT.joinpath("websockets/websockets.py").resolve()),
         ),
         (
             str(Path(file_name).joinpath("tests/test_base.py").resolve()),
             str(
-                get_target_root()
-                .joinpath("websockets/tests/test_base.py")
-                .resolve()
+                TARGET_ROOT.joinpath("websockets/tests/test_base.py").resolve()
             ),
         ),
         (
             str(Path(file_name).joinpath("tests/test_protocol.py").resolve()),
             str(
-                get_target_root()
-                .joinpath("websockets/tests/test_protocol.py")
-                .resolve()
+                TARGET_ROOT.joinpath(
+                    "websockets/tests/test_protocol.py"
+                ).resolve()
             ),
         ),
         (
@@ -119,9 +101,9 @@ def move_websocket_base(file_name):
                 Path(file_name).joinpath("tests/test_websockets.py").resolve()
             ),
             str(
-                get_target_root()
-                .joinpath("websockets/tests/test_websockets.py")
-                .resolve()
+                TARGET_ROOT.joinpath(
+                    "websockets/tests/test_websockets.py"
+                ).resolve()
             ),
         ),
     ]
@@ -138,7 +120,7 @@ def split_up_models_init_file(file_name):
 def _write_red_baron_file(dir_name, file_name, code):
     global dry_run
 
-    dir_path = get_target_root().joinpath(dir_name).resolve()
+    dir_path = TARGET_ROOT.joinpath(dir_name).resolve()
     file_path = dir_path.joinpath(file_name).resolve()
     if not os.path.exists(str(dir_path)):
         os.makedirs(dir_path)
@@ -193,7 +175,7 @@ def move_triggers_init_file(file_name):
     return [
         (
             file_name,
-            str(get_target_root().joinpath("triggers/__init__.py")),
+            str(TARGET_ROOT.joinpath("triggers/__init__.py")),
         )
     ]
 
@@ -268,11 +250,7 @@ def move_power_registry_file(file_name):
     return [
         (
             file_name,
-            str(
-                get_target_root()
-                .joinpath("power_drivers/registry.py")
-                .resolve()
-            ),
+            str(TARGET_ROOT.joinpath("power_drivers/registry.py").resolve()),
         )
     ]
 
@@ -282,68 +260,68 @@ def move_power_test_registry_file(file_name):
         (
             file_name,
             str(
-                get_target_root()
-                .joinpath("power_drivers/tests/test_registr.py")
-                .resolve()
+                TARGET_ROOT.joinpath(
+                    "power_drivers/tests/test_registr.py"
+                ).resolve()
             ),
         )
     ]
 
 
 SPECIAL_CASE_DIRS = {
-    get_target_root().joinpath("maasperf").resolve(): move_maasperf,
-    get_target_root()
-    .joinpath("maasserver/migrations")
-    .resolve(): move_maasserver_migrations,
-    get_target_root()
-    .joinpath("metadataserver/migrations")
-    .resolve(): move_metadataserver_migrations,
-    get_target_root()
-    .joinpath("maasserver/websockets")
-    .resolve(): move_websocket_base,
-    get_target_root()
-    .joinpath("maasserver/tests")
-    .resolve(): move_maasserver_root_tests,
-    get_target_root()
-    .joinpath("maasserver/testing")
-    .resolve(): move_maasserver_testing,
+    TARGET_ROOT.joinpath("maasperf").resolve(): move_maasperf,
+    TARGET_ROOT.joinpath(
+        "maasserver/migrations"
+    ).resolve(): move_maasserver_migrations,
+    TARGET_ROOT.joinpath(
+        "metadataserver/migrations"
+    ).resolve(): move_metadataserver_migrations,
+    TARGET_ROOT.joinpath(
+        "maasserver/websockets"
+    ).resolve(): move_websocket_base,
+    TARGET_ROOT.joinpath(
+        "maasserver/tests"
+    ).resolve(): move_maasserver_root_tests,
+    TARGET_ROOT.joinpath(
+        "maasserver/testing"
+    ).resolve(): move_maasserver_testing,
 }
 
 
 SPECIAL_CASE_FILES = {
-    get_target_root()
-    .joinpath("maasserver/__init__.py")
-    .resolve(): move_maasserver_init_file,
-    get_target_root()
-    .joinpath("maasserver/forms/__init__.py")
-    .resolve(): split_up_forms_init_file,
-    get_target_root()
-    .joinpath("maasserver/models/__init__.py")
-    .resolve(): split_up_models_init_file,
-    get_target_root()
-    .joinpath("maasserver/utils/__init__.py")
-    .resolve(): move_utils_init_file,
-    get_target_root()
-    .joinpath("maasserver/triggers/__init__.py")
-    .resolve(): move_triggers_init_file,
-    get_target_root()
-    .joinpath("maasserver/models/bmc.py")
-    .resolve(): split_up_bmc_models,
-    get_target_root()
-    .joinpath("metadataserver/models/__init__.py")
-    .resolve(): move_metadataserver_models_init_file,
-    get_target_root()
-    .joinpath("maasserver/api/interfaces.py")
-    .resolve(): drop_pluralization("maasserver/api"),
-    get_target_root()
-    .joinpath("maasserver/models/node.py")
-    .resolve(): split_node_model,
-    get_target_root()
-    .joinpath("provisioningserver/drivers/power/registry.py")
-    .resolve(): move_power_registry_file,
-    get_target_root()
-    .joinpath("provisioningserver/drivers/power/tests/test_registry.py")
-    .resolve(): move_power_test_registry_file,
+    TARGET_ROOT.joinpath(
+        "maasserver/__init__.py"
+    ).resolve(): move_maasserver_init_file,
+    TARGET_ROOT.joinpath(
+        "maasserver/forms/__init__.py"
+    ).resolve(): split_up_forms_init_file,
+    TARGET_ROOT.joinpath(
+        "maasserver/models/__init__.py"
+    ).resolve(): split_up_models_init_file,
+    TARGET_ROOT.joinpath(
+        "maasserver/utils/__init__.py"
+    ).resolve(): move_utils_init_file,
+    TARGET_ROOT.joinpath(
+        "maasserver/triggers/__init__.py"
+    ).resolve(): move_triggers_init_file,
+    TARGET_ROOT.joinpath(
+        "maasserver/models/bmc.py"
+    ).resolve(): split_up_bmc_models,
+    TARGET_ROOT.joinpath(
+        "metadataserver/models/__init__.py"
+    ).resolve(): move_metadataserver_models_init_file,
+    TARGET_ROOT.joinpath(
+        "maasserver/api/interfaces.py"
+    ).resolve(): drop_pluralization("maasserver/api"),
+    TARGET_ROOT.joinpath(
+        "maasserver/models/node.py"
+    ).resolve(): split_node_model,
+    TARGET_ROOT.joinpath(
+        "provisioningserver/drivers/power/registry.py"
+    ).resolve(): move_power_registry_file,
+    TARGET_ROOT.joinpath(
+        "provisioningserver/drivers/power/tests/test_registry.py"
+    ).resolve(): move_power_test_registry_file,
 }
 
 
@@ -369,75 +347,51 @@ def create_destination(file_name, parent=""):
         grandparent = parent.replace("/tests", "")
         base_name = generate_base_dir_name(parent, file_name)
         if grandparent in MODEL_DIRS:
-            return get_target_root().joinpath(f"{base_name}/tests/{file_name}")
+            return TARGET_ROOT.joinpath(f"{base_name}/tests/{file_name}")
         if grandparent in API_HANDLER_DIRS:
-            return get_target_root().joinpath(
+            return TARGET_ROOT.joinpath(
                 f"{base_name}/tests/test_api_handler.py"
             )
         if grandparent in WEBSOCKET_HANDLER_DIRS:
-            return get_target_root().joinpath(
+            return TARGET_ROOT.joinpath(
                 f"{base_name}/tests/test_ws_handler.py"
             )
         if grandparent in FORMS_DIRS:
-            return get_target_root().joinpath(
-                f"{base_name}/tests/test_forms.py"
-            )
+            return TARGET_ROOT.joinpath(f"{base_name}/tests/test_forms.py")
         if grandparent in POWER_DRIVER_DIRS:
-            return get_target_root().joinpath(
-                f"{base_name}/tests/test_driver.py"
-            )
+            return TARGET_ROOT.joinpath(f"{base_name}/tests/test_driver.py")
         if grandparent in RPC_DIRS:
-            return get_target_root().joinpath(
+            return TARGET_ROOT.joinpath(
                 f"{base_name}/tests/test_rpc_handler.py"
             )
     if parent in MODEL_DIRS:
-        return (
-            get_target_root()
-            .joinpath(
-                f"{generate_base_dir_name(parent, file_name)}/{str(file_name).replace(str(parent), '')}"
-            )
-            .resolve()
-        )
+        return TARGET_ROOT.joinpath(
+            f"{generate_base_dir_name(parent, file_name)}/{str(file_name).replace(str(parent), '')}"
+        ).resolve()
     if parent in API_HANDLER_DIRS:
-        return (
-            get_target_root()
-            .joinpath(
-                f"{generate_base_dir_name(parent, file_name)}/api_handler.py"
-            )
-            .resolve()
-        )
+        return TARGET_ROOT.joinpath(
+            f"{generate_base_dir_name(parent, file_name)}/api_handler.py"
+        ).resolve()
     if parent in WEBSOCKET_HANDLER_DIRS:
-        return (
-            get_target_root()
-            .joinpath(
-                f"{generate_base_dir_name(parent, file_name)}/ws_handler.py"
-            )
-            .resolve()
-        )
+        return TARGET_ROOT.joinpath(
+            f"{generate_base_dir_name(parent, file_name)}/ws_handler.py"
+        ).resolve()
     if parent in FORMS_DIRS:
-        return (
-            get_target_root()
-            .joinpath(f"{generate_base_dir_name(parent, file_name)}/forms.py")
-            .resolve()
-        )
+        return TARGET_ROOT.joinpath(
+            f"{generate_base_dir_name(parent, file_name)}/forms.py"
+        ).resolve()
     if parent in POWER_DRIVER_DIRS:
-        return (
-            get_target_root()
-            .joinpath(f"{generate_base_dir_name(parent, file_name)}/driver.py")
-            .resolve()
-        )
+        return TARGET_ROOT.joinpath(
+            f"{generate_base_dir_name(parent, file_name)}/driver.py"
+        ).resolve()
     if parent in RPC_DIRS:
         if "maasserver" in parent:
-            return get_target_root().joinpath(
+            return TARGET_ROOT.joinpath(
                 f"{generate_base_dir_name(parent, file_name)}/region_rpc_handler.py"
             )
-        return (
-            get_target_root()
-            .joinpath(
-                f"{generate_base_dir_name(parent, file_name)}/rack_rpc_handler.py"
-            )
-            .resolve()
-        )
+        return TARGET_ROOT.joinpath(
+            f"{generate_base_dir_name(parent, file_name)}/rack_rpc_handler.py"
+        ).resolve()
     return file_name
 
 
@@ -468,7 +422,7 @@ def load_layout_changes():
                     )
         return child_dirs
 
-    dirs = [get_target_root().resolve()]
+    dirs = [TARGET_ROOT.resolve()]
     changes = []
     while len(dirs) > 0:
         dirs = [child for d in dirs for child in _walk(d, changes)]
@@ -499,11 +453,11 @@ def move_files(changes, dry_run=False):
 
 
 SPECIAL_CASE_IMPORTS = {
-    str(get_target_root().joinpath("bmc/bmc.py").resolve()): (
+    str(TARGET_ROOT.joinpath("bmc/bmc.py").resolve()): (
         "maasserver.models.bmc.BMC*",
         "bmc.BMC*",
     ),
-    str(get_target_root().joinpath("vmhost/pod.py").resolve()): (
+    str(TARGET_ROOT.joinpath("vmhost/pod.py").resolve()): (
         "maasserver.models.bmc.Pod*",
         "vmhost.Pod*",
     ),
@@ -511,7 +465,7 @@ SPECIAL_CASE_IMPORTS = {
 
 
 def _format_import_from_path(path):
-    path = str(path).replace(str(get_target_root().resolve()) + "/", "")
+    path = str(path).replace(str(TARGET_ROOT.resolve()) + "/", "")
     if path.endswith(".py"):
         path = path[:-3]
     path_list = path.split("/")
