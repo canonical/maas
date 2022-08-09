@@ -44,7 +44,6 @@ RPC_DIRS = (
 )
 VIEWS_DIRS = (str(TARGET_ROOT.joinpath("maasserver/views").resolve()),)
 
-
 global verbose
 global dry_run
 
@@ -535,7 +534,11 @@ if __name__ == "__main__":
     dry_run = args.dry_run
 
     changes = load_layout_changes()
-    [print(f"{change[0]} -> {change[1]}") for change in changes if change[1]]
+    [
+        print(f"{change[0]} -> {change[1]}")
+        for change in changes
+        if change[1] and str(change[0]) != str(change[1])
+    ]
 
     if not args.dry_run:
         confirmation = input("Ok to proceed?\n")
