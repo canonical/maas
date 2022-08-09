@@ -512,7 +512,7 @@ def diff_imports(changes):
         with open(file_name) as f:
             src = RedBaron(f.read())
 
-    return _diff
+    return "TODO: Diff imports"
 
 
 if __name__ == "__main__":
@@ -537,12 +537,12 @@ if __name__ == "__main__":
     changes = load_layout_changes()
     [print(f"{change[0]} -> {change[1]}") for change in changes if change[1]]
 
-    confirmation = input("Ok to proceed?\n")
-    if not confirmation.lower().startswith("y"):
-        sys.exit(0)
-
     if not args.dry_run:
+        confirmation = input("Ok to proceed?\n")
+        if not confirmation.lower().startswith("y"):
+            sys.exit("Aborted at user request")
+
         move_files(changes)
         modify_imports(changes)
     else:
-        diff_imports(changes)
+        print(diff_imports(changes))
