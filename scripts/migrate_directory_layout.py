@@ -307,7 +307,7 @@ def generate_base_dir_name(root, file_name):
 def create_destination(file_path, parent):
     file_name = str(file_path)
     if file_path.name == "__init__.py" and file_path.stat().st_size == 0:
-        return ""
+        return Path()
     if parent.name == "tests":
         grandparent = parent.parent
         base_name = generate_base_dir_name(parent, file_name)
@@ -430,24 +430,24 @@ SPECIAL_CASE_IMPORTS = {
 }
 
 
-def _format_import_from_path(path):
-    path = str(path).replace(str(TARGET_ROOT.resolve()) + "/", "")
-    if path.endswith(".py"):
-        path = path[:-3]
-    path_list = path.split("/")
-    return ".".join(path_list)
+def _format_import_from_path(path: Path):
+    if path.is_relative_to(TARGET_ROOT):
+        components = path.relative_to(TARGET_ROOT).with_name(path.stem).parts
+        return ".".join(components)
 
 
 def _generate_imports(changes):
-    return [
-        (
-            _format_import_from_path(change[0]),
-            _format_import_from_path(change[1]),
-        )
-        if change[1] not in SPECIAL_CASE_IMPORTS
-        else SPECIAL_CASE_IMPORTS[change[1]]
-        for change in changes
-    ]
+    for old, new in changes:
+        if old in {"-", "+"}:
+            continue
+        if new in SPECIAL_CASE_IMPORTS:
+            yield SPECIAL_CASE_IMPORTS[new]
+        else:
+            old_import = _format_import_from_path(old)
+            new_import = _format_import_from_path(new)
+            if not new_import:
+                continue
+            yield (old_import, new_import)
 
 
 def _find_and_swap_imports(imports, f):
