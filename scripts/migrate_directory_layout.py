@@ -494,12 +494,13 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-v",
+        "--verbose",
         action="store_true",
         help="enable verbose messaging",
     )
 
     args = parser.parse_args()
-    verbose = args.v
+    verbose = args.verbose
     dry_run = args.dry_run
 
     changes = load_layout_changes()
@@ -510,11 +511,11 @@ if __name__ == "__main__":
     ]
 
     if not args.dry_run:
-        confirmation = input("Ok to proceed?\n")
+        confirmation = input("OK to proceed?\n")
         if not confirmation.lower().startswith("y"):
             sys.exit("Aborted at user request")
 
-        move_files(changes)
+        move_files(changes, dry_run)
         modify_imports(changes)
     else:
         print(diff_imports(changes))
