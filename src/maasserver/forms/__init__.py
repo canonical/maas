@@ -76,7 +76,12 @@ from django.contrib.auth.forms import UserChangeForm, UserCreationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.forms import CheckboxInput, Form, MultipleChoiceField
+from django.forms import (
+    CheckboxInput,
+    Form,
+    MultipleChoiceField,
+    TypedMultipleChoiceField,
+)
 from django.forms.models import ModelFormMetaclass
 from django.http import QueryDict
 from django.utils.safestring import mark_safe
@@ -1975,11 +1980,36 @@ class TagForm(MAASModelForm):
         return definition
 
 
-class UnconstrainedMultipleChoiceField(MultipleChoiceField):
+class ConstrainedMultipleChoiceField(MultipleChoiceField):
+    """A MultipleChoiceField which also accepts a single value as input."""
+
+    def to_python(self, value):
+        if not value:
+            return []
+        elif not isinstance(value, (list, tuple)):
+            return [str(value)]
+        return [str(val) for val in value]
+
+
+class UnconstrainedTypedMultipleChoiceField(TypedMultipleChoiceField):
     """A MultipleChoiceField which does not constrain the given choices."""
 
     def validate(self, value):
         return value
+
+    def to_python(self, value):
+        if not value:
+            return []
+        elif not isinstance(value, (list, tuple)):
+            return self._coerce([value])
+        return self._coerce(value)
+
+
+class UnconstrainedMultipleChoiceField(UnconstrainedTypedMultipleChoiceField):
+    """A special case of UnconstrainedTypedMultipleChoiceField for strings"""
+
+    def __init__(self, **kwargs):
+        super().__init__(coerce=str, **kwargs)
 
 
 class ValidatorMultipleChoiceField(MultipleChoiceField):

@@ -3,6 +3,8 @@
 
 
 from collections import defaultdict
+from copy import deepcopy
+from functools import reduce
 import itertools
 from itertools import chain
 import re
@@ -23,18 +25,19 @@ from maasserver.enum import (
 from maasserver.fields import mac_validator, MODEL_NAME_VALIDATOR
 import maasserver.forms as maasserver_forms
 from maasserver.forms import (
+    ConstrainedMultipleChoiceField,
     MultipleChoiceField,
+    TypedMultipleChoiceField,
     UnconstrainedMultipleChoiceField,
+    UnconstrainedTypedMultipleChoiceField,
     ValidatorMultipleChoiceField,
 )
 from maasserver.models import (
     BlockDevice,
-    BootResource,
     Filesystem,
     Interface,
     Node,
     Partition,
-    Pod,
     ResourcePool,
     Subnet,
     Tag,
@@ -251,6 +254,7 @@ def detect_nonexistent_names(model_class, names, name_field="name"):
     :param names: List, tuple, or set of purpoprted zone names.
     :return: A sorted list of those names that did not name existing zones.
     """
+    names = names or []
     assert isinstance(names, (list, tuple, set))
     if len(names) == 0:
         return []
@@ -625,6 +629,9 @@ STATIC_FILTER_FIELDS = (
     "arch",
     "power_state",
     "status",
+    "free_text",
+    "description",
+    "error_description",
 )
 
 
@@ -641,23 +648,69 @@ GROUPABLE_FIELDS = (
 )
 
 
-ARGUMENT_TYPES_BY_FIELD_TYPE = {
-    "int": (forms.IntegerField, forms.ChoiceField),
-    "float": (forms.FloatField,),
-    "string": (forms.CharField,),
-    "list": (ValidatorMultipleChoiceField, UnconstrainedMultipleChoiceField),
-    "dict[string,string]": (LabeledConstraintMapField,),
-}
-
-
 def get_field_argument_type(field):
-    for arg_type, field_types in ARGUMENT_TYPES_BY_FIELD_TYPE.items():
-        if type(field) in field_types:
-            if arg_type == "list":
-                # currently all multichoice fields take strings, this will need to be expanded if that changes
-                return "list[string]"
-            return arg_type
-    return "unknown"
+    if isinstance(field, (forms.FloatField,)):
+        return "float"
+    elif isinstance(field, (forms.IntegerField,)):
+        return "int"
+    elif isinstance(field, (forms.CharField,)):
+        return "str"
+    elif isinstance(field, (TypedMultipleChoiceField)):
+        return f"list[{field.coerce.__name__}]"
+    elif isinstance(field, (MultipleChoiceField)):
+        return "list[str]"
+    elif isinstance(field, (LabeledConstraintMapField)):
+        return "dict[str,str]"
+    elif isinstance(field, (forms.ChoiceField,)):
+        return "str"
+    else:
+        return "str"
+
+
+def _match_gte(field, values):
+    return [Q(**{f"{field}__gte": min(values)})]
+
+
+def _match_any(field, values):
+    return [Q(**{f"{field}__in": set(values)})]
+
+
+def _match_all(field, values):
+    return [Q(**{f"{field}": v}) for v in set(values)]
+
+
+def _match_compose_value(field, values):
+    subfields = field.split(".", 1)
+    return [
+        reduce(
+            lambda x, y: x.__and__(Q(**{f"{y[0]}": y[1]})),
+            zip(subfields, v.split(".", 1)),
+            Q(),
+        )
+        for v in values
+    ]
+
+
+def _match_substring(field, values):
+    query = Q()
+    for substr in values:
+        if substr.startswith("="):
+            query |= Q(**{f"{field}__exact": substr[1:]})
+        else:
+            query |= Q(**{f"{field}__icontains": substr})
+    return [query]
+
+
+def _match_substring_kv(field, values):
+    query = Q()
+    for kv in values:
+        (key, val) = kv if isinstance(kv, tuple) else ("", kv)
+        qkey = Q(**{f"{field}__key": key}) if key else Q()
+        if val.startswith("="):
+            query |= qkey & Q(**{f"{field}__value__exact": val[1:]})
+        else:
+            query |= qkey & Q(**{f"{field}__value__icontains": val})
+    return [query]
 
 
 class FilterNodeForm(forms.Form):
@@ -665,7 +718,13 @@ class FilterNodeForm(forms.Form):
 
     # This becomes a multiple-choice field during cleaning, to accommodate
     # architecture wildcards.
-    arch = forms.CharField(label="Architecture", required=False)
+    arch = UnconstrainedMultipleChoiceField(
+        label="Architecture", required=False
+    )
+
+    not_arch = UnconstrainedMultipleChoiceField(
+        label="Architecture", required=False
+    )
 
     tags = UnconstrainedMultipleChoiceField(label="Tags", required=False)
 
@@ -728,10 +787,13 @@ class FilterNodeForm(forms.Form):
         },
     )
 
-    link_speed = forms.FloatField(
+    link_speed = UnconstrainedTypedMultipleChoiceField(
         label="Link speed",
+        coerce=float,
         required=False,
-        error_messages={"invalid": "Invalid link speed: number required."},
+        error_messages={
+            "invalid_choice": "Invalid link speed: number required."
+        },
     )
 
     vlans = ValidatorMultipleChoiceField(
@@ -752,7 +814,9 @@ class FilterNodeForm(forms.Form):
         },
     )
 
-    zone = forms.CharField(label="Physical zone", required=False)
+    zone = UnconstrainedMultipleChoiceField(
+        label="Physical zone", required=False
+    )
 
     not_in_zone = ValidatorMultipleChoiceField(
         validator=MODEL_NAME_VALIDATOR,
@@ -763,7 +827,9 @@ class FilterNodeForm(forms.Form):
         },
     )
 
-    pool = forms.CharField(label="Resource pool", required=False)
+    pool = UnconstrainedMultipleChoiceField(
+        label="Resource pool", required=False
+    )
 
     not_in_pool = ValidatorMultipleChoiceField(
         validator=MODEL_NAME_VALIDATOR,
@@ -786,41 +852,124 @@ class FilterNodeForm(forms.Form):
         validators=[devices_validator], label="Devices", required=False
     )
 
-    cpu_count = forms.FloatField(
+    cpu_count = UnconstrainedTypedMultipleChoiceField(
         label="CPU count",
+        coerce=float,
         required=False,
-        error_messages={"invalid": "Invalid CPU count: number required."},
+        error_messages={
+            "invalid_choice": "Invalid CPU count: number required."
+        },
     )
 
-    mem = forms.FloatField(
+    cpu_speed = UnconstrainedTypedMultipleChoiceField(
+        label="CPU speed",
+        coerce=float,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid CPU speed: number required."
+        },
+    )
+
+    mem = UnconstrainedTypedMultipleChoiceField(
         label="Memory",
+        coerce=float,
         required=False,
-        error_messages={"invalid": "Invalid memory: number of MiB required."},
+        error_messages={
+            "invalid_choice": "Invalid memory: number of MiB required."
+        },
     )
 
-    pod = forms.CharField(label="The name of the desired pod", required=False)
+    pod = UnconstrainedMultipleChoiceField(
+        label="The name of the desired pod", required=False
+    )
 
-    not_pod = forms.CharField(
+    not_pod = UnconstrainedMultipleChoiceField(
         label="The name of the undesired pod", required=False
     )
 
-    pod_type = forms.CharField(
+    pod_type = UnconstrainedMultipleChoiceField(
         label="The power_type of the desired pod", required=False
     )
 
-    not_pod_type = forms.CharField(
+    not_pod_type = UnconstrainedMultipleChoiceField(
         label="The power_type of the undesired pod", required=False
     )
 
-    owner = forms.CharField(label="Owner", required=False)
+    owner = UnconstrainedMultipleChoiceField(label="Owner", required=False)
 
-    power_state = forms.ChoiceField(
+    not_owner = UnconstrainedMultipleChoiceField(label="Owner", required=False)
+
+    power_state = ConstrainedMultipleChoiceField(
+        label="Power State",
+        choices=POWER_STATE_CHOICES,
+        required=False,
+    )
+
+    not_power_state = ConstrainedMultipleChoiceField(
         label="Power State",
         choices=POWER_STATE_CHOICES,
         required=False,
     )
 
     ignore_unknown_constraints = False
+
+    NODE_FILTERS = {
+        "fabric_classes": (
+            "current_config__interface__vlan__fabric__class_type",
+            _match_any,
+        ),
+        "fabrics": (
+            "current_config__interface__vlan__fabric__name",
+            _match_any,
+        ),
+        "vlans": ("current_config__interface__vlan", _match_any),
+        "zone": ("zone__name", _match_any),
+        "pool": ("pool__name", _match_any),
+        "mem": ("memory", _match_gte),
+        "cpu_count": ("cpu_count", _match_gte),
+        "cpu_speed": ("cpu_speed", _match_gte),
+        "arch": ("architecture", _match_any),
+        "link_speed": ("current_config__interface__link_speed", _match_gte),
+        "tags": ("tags__name", _match_all),
+        "subnets": (
+            "current_config__interface__ip_addresses__subnet",
+            _match_all,
+        ),
+        "pod": ("bmc__name", _match_any),
+        "pod_type": ("bmc__power_type", _match_any),
+        "owner": ("owner__username", _match_any),
+        "power_state": ("power_state", _match_any),
+    }
+
+    NODE_EXCLUDES = {
+        "not_fabric_classes": (
+            "current_config__interface__vlan__fabric__class_type",
+            _match_any,
+        ),
+        "not_fabrics": (
+            "current_config__interface__vlan__fabric__name",
+            _match_any,
+        ),
+        "not_vlans": ("current_config__interface__vlan", _match_any),
+        "not_in_zone": ("zone__name", _match_any),
+        "not_in_pool": ("pool__name", _match_any),
+        "not_arch": ("architecture", _match_any),
+        "not_tags": ("tags__name", _match_any),
+        "not_subnets": (
+            "current_config__interface__ip_addresses__subnet",
+            _match_any,
+        ),
+        "not_system_id": ("system_id", _match_any),
+        "not_pod": ("bmc__name", _match_any),
+        "not_pod_type": ("bmc__power_type", _match_any),
+        "not_owner": ("owner__username", _match_any),
+        "not_power_state": ("power_state", _match_any),
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.node_filters = deepcopy(self.NODE_FILTERS)
+        self.node_excludes = deepcopy(self.NODE_EXCLUDES)
 
     @classmethod
     def Strict(cls, *args, **kwargs):
@@ -842,21 +991,24 @@ class FilterNodeForm(forms.Form):
         architecture_wildcards = get_architecture_wildcards(
             usable_architectures
         )
-        value = self.cleaned_data["arch"]
-        if value:
+        values = self.cleaned_data["arch"]
+        arches = []
+        for value in values:
             if value in usable_architectures:
                 # Full 'arch/subarch' specified directly.
-                return [value]
+                arches.append(value)
             elif value in architecture_wildcards:
                 # Try to expand 'arch' to all available 'arch/subarch'
                 # matches.
-                return architecture_wildcards[value]
-            set_form_error(
-                self,
-                "arch",
-                "Architecture not recognised.",
-            )
-        return None
+                arches.append(*architecture_wildcards[value])
+            else:
+                set_form_error(
+                    self,
+                    "arch",
+                    "Architecture not recognised.",
+                )
+                return None
+        return arches
 
     def _set_clean_tags_error(self, tag_names, db_tag_names):
         unknown_tags = tag_names.difference(db_tag_names)
@@ -890,24 +1042,20 @@ class FilterNodeForm(forms.Form):
         set_form_error(self, field, error_msg)
 
     def clean_zone(self):
-        value = self.cleaned_data["zone"]
-        if value:
-            nonexistent_names = detect_nonexistent_names(Zone, [value])
-            if nonexistent_names:
-                self._set_zone_error(value, "zone")
-                return None
-            return value
-        return None
+        values = self.cleaned_data["zone"]
+        nonexistent_names = detect_nonexistent_names(Zone, values)
+        if nonexistent_names:
+            self._set_zone_error(nonexistent_names, "zone")
+            return None
+        return values
 
     def clean_not_in_zone(self):
-        value = self.cleaned_data["not_in_zone"]
-        if not value:
-            return None
-        nonexistent_names = detect_nonexistent_names(Zone, value)
+        values = self.cleaned_data["not_in_zone"]
+        nonexistent_names = detect_nonexistent_names(Zone, values)
         if nonexistent_names:
             self._set_zone_error(nonexistent_names, "not_in_zone")
             return None
-        return value
+        return values
 
     def _set_pool_error(self, value, field):
         if type(value) == list:
@@ -917,24 +1065,20 @@ class FilterNodeForm(forms.Form):
         set_form_error(self, field, error_msg)
 
     def clean_pool(self):
-        value = self.cleaned_data["pool"]
-        if value:
-            nonexistent_names = detect_nonexistent_names(ResourcePool, [value])
-            if nonexistent_names:
-                self._set_pool_error(value, "pool")
-                return None
-            return value
-        return None
+        values = self.cleaned_data["pool"]
+        nonexistent_names = detect_nonexistent_names(ResourcePool, values)
+        if nonexistent_names:
+            self._set_pool_error(nonexistent_names, "pool")
+            return None
+        return values
 
     def clean_not_in_pool(self):
-        value = self.cleaned_data["not_in_pool"]
-        if not value:
-            return None
-        nonexistent_names = detect_nonexistent_names(ResourcePool, value)
+        values = self.cleaned_data["not_in_pool"]
+        nonexistent_names = detect_nonexistent_names(ResourcePool, values)
         if nonexistent_names:
             self._set_pool_error(nonexistent_names, "not_in_pool")
             return None
-        return value
+        return values
 
     def _clean_specifiers(self, model, specifiers):
         if not specifiers:
@@ -963,17 +1107,22 @@ class FilterNodeForm(forms.Form):
         return self._clean_specifiers(VLAN, value)
 
     def clean_owner(self):
-        value = self.cleaned_data["owner"]
-        if value:
-            nonexistent_names = detect_nonexistent_names(
-                User, [value], "username"
+        values = self.cleaned_data["owner"]
+        nonexistent_names = detect_nonexistent_names(User, values, "username")
+        if nonexistent_names:
+            set_form_error(
+                self, "owner", "No such owner: '%s'." % nonexistent_names[0]
             )
-            if nonexistent_names:
-                error_msg = "No such owner: '%s'." % value
-                set_form_error(self, "owner", error_msg)
-                return None
-            return value
-        return None
+            return None
+        return values
+
+    def clean_power_state(self):
+        values = self.cleaned_data["power_state"]
+        return [getattr(POWER_STATE, a.upper()) for a in values]
+
+    def clean_not_power_state(self):
+        values = self.cleaned_data["not_power_state"]
+        return [getattr(POWER_STATE, a.upper()) for a in values]
 
     def clean(self):
         if not self.ignore_unknown_constraints:
@@ -1043,22 +1192,32 @@ class FilterNodeForm(forms.Form):
         return filtered_nodes, compatible_nodes, compatible_interfaces
 
     def _apply_filters(self, nodes):
-        nodes = self.filter_by_arch(nodes)
-        nodes = self.filter_by_tags(nodes)
-        nodes = self.filter_by_zone(nodes)
-        nodes = self.filter_by_pool(nodes)
-        nodes = self.filter_by_subnets(nodes)
-        nodes = self.filter_by_link_speed(nodes)
-        nodes = self.filter_by_vlans(nodes)
-        nodes = self.filter_by_fabrics(nodes)
-        nodes = self.filter_by_fabric_classes(nodes)
-        nodes = self.filter_by_cpu_count(nodes)
-        nodes = self.filter_by_mem(nodes)
-        nodes = self.filter_by_pod_or_pod_type(nodes)
+        nodes = self._apply_conditions(nodes, self.node_filters)
+        nodes = self._apply_exclusions(nodes, self.node_excludes)
         nodes = self.filter_by_devices(nodes)
-        nodes = self.filter_by_owner(nodes)
-        nodes = self.filter_by_power_state(nodes)
         return nodes.distinct()
+
+    def _apply_conditions(self, qs, filters):
+        for form_field, (db_field, cond) in filters.items():
+            values = self.cleaned_data.get(form_field, None)
+            if values:
+                qs = reduce(
+                    lambda q, c: q.filter(c),
+                    cond(db_field, values),
+                    qs,
+                )
+        return qs
+
+    def _apply_exclusions(self, qs, filters):
+        for not_form_field, (db_field, cond) in filters.items():
+            values = self.cleaned_data.get(not_form_field, None)
+            if values:
+                qs = reduce(
+                    lambda q, c: q.exclude(c),
+                    cond(db_field, values),
+                    qs,
+                )
+        return qs
 
     def filter_by_interfaces(self, filtered_nodes):
         compatible_interfaces = {}
@@ -1080,156 +1239,6 @@ class FilterNodeForm(forms.Form):
                 filtered_nodes = filtered_nodes.filter(id__in=node_ids)
         return compatible_nodes, filtered_nodes
 
-    def filter_by_fabric_classes(self, filtered_nodes):
-        fabric_classes = self.cleaned_data.get("fabric_classes")
-        if fabric_classes is not None and len(fabric_classes) > 0:
-            filtered_nodes = filtered_nodes.filter(
-                current_config__interface__vlan__fabric__class_type__in=fabric_classes
-            )
-        not_fabric_classes = self.cleaned_data.get("not_fabric_classes")
-        if not_fabric_classes is not None and len(not_fabric_classes) > 0:
-            filtered_nodes = filtered_nodes.exclude(
-                current_config__interface__vlan__fabric__class_type__in=not_fabric_classes
-            )
-        return filtered_nodes
-
-    def filter_by_fabrics(self, filtered_nodes):
-        fabrics = self.cleaned_data.get("fabrics")
-        if fabrics is not None and len(fabrics) > 0:
-            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
-            # is null (fabric-<id>).
-            filtered_nodes = filtered_nodes.filter(
-                current_config__interface__vlan__fabric__name__in=fabrics
-            )
-        not_fabrics = self.cleaned_data.get("not_fabrics")
-        if not_fabrics is not None and len(not_fabrics) > 0:
-            # XXX mpontillo 2015-10-30 need to also handle fabrics whose name
-            # is null (fabric-<id>).
-            filtered_nodes = filtered_nodes.exclude(
-                current_config__interface__vlan__fabric__name__in=not_fabrics
-            )
-        return filtered_nodes
-
-    def filter_by_vlans(self, filtered_nodes):
-        vlans = self.cleaned_data.get("vlans")
-        if vlans is not None and len(vlans) > 0:
-            for vlan in set(vlans):
-                filtered_nodes = filtered_nodes.filter(
-                    current_config__interface__vlan=vlan
-                )
-        not_vlans = self.cleaned_data.get("not_vlans")
-        if not_vlans is not None and len(not_vlans) > 0:
-            for not_vlan in set(not_vlans):
-                filtered_nodes = filtered_nodes.exclude(
-                    current_config__interface__vlan=not_vlan
-                )
-        return filtered_nodes
-
-    def filter_by_subnets(self, filtered_nodes):
-        subnets = self.cleaned_data.get("subnets")
-        if subnets is not None and len(subnets) > 0:
-            for subnet in set(subnets):
-                filtered_nodes = filtered_nodes.filter(
-                    current_config__interface__ip_addresses__subnet=subnet
-                )
-        not_subnets = self.cleaned_data.get("not_subnets")
-        if not_subnets is not None and len(not_subnets) > 0:
-            for not_subnet in set(not_subnets):
-                filtered_nodes = filtered_nodes.exclude(
-                    current_config__interface__ip_addresses__subnet=not_subnet
-                )
-        return filtered_nodes
-
-    def filter_by_link_speed(self, filtered_nodes):
-        link_speed = self.cleaned_data.get("link_speed")
-        if link_speed:
-            filtered_nodes = filtered_nodes.filter(
-                current_config__interface__link_speed__gte=link_speed
-            )
-        return filtered_nodes
-
-    def filter_by_zone(self, filtered_nodes):
-        zone = self.cleaned_data.get("zone")
-        if zone:
-            zone_obj = Zone.objects.get(name=zone)
-            filtered_nodes = filtered_nodes.filter(zone=zone_obj)
-        not_in_zone = self.cleaned_data.get("not_in_zone")
-        if not_in_zone:
-            not_in_zones = Zone.objects.filter(name__in=not_in_zone)
-            filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
-        return filtered_nodes
-
-    def filter_by_pool(self, filtered_nodes):
-        pool_name = self.cleaned_data.get("pool")
-        if pool_name:
-            pool = ResourcePool.objects.get(name=pool_name)
-            filtered_nodes = filtered_nodes.filter(pool=pool)
-        not_in_pool = self.cleaned_data.get("not_in_pool")
-        if not_in_pool:
-            pools_to_exclude = ResourcePool.objects.filter(
-                name__in=not_in_pool
-            )
-            filtered_nodes = filtered_nodes.exclude(pool__in=pools_to_exclude)
-        return filtered_nodes
-
-    def filter_by_tags(self, filtered_nodes):
-        tags = self.cleaned_data.get("tags")
-        if tags:
-            for tag in tags:
-                filtered_nodes = filtered_nodes.filter(tags__name=tag)
-        not_tags = self.cleaned_data.get("not_tags")
-        if len(not_tags) > 0:
-            for not_tag in not_tags:
-                filtered_nodes = filtered_nodes.exclude(tags__name=not_tag)
-        return filtered_nodes
-
-    def filter_by_mem(self, filtered_nodes):
-        mem = self.cleaned_data.get("mem")
-        if mem:
-            filtered_nodes = filtered_nodes.filter(memory__gte=mem)
-        return filtered_nodes
-
-    def filter_by_cpu_count(self, filtered_nodes):
-        cpu_count = self.cleaned_data.get("cpu_count")
-        if cpu_count:
-            filtered_nodes = filtered_nodes.filter(cpu_count__gte=cpu_count)
-        return filtered_nodes
-
-    def filter_by_arch(self, filtered_nodes):
-        arch = self.cleaned_data.get("arch")
-        if arch:
-            filtered_nodes = filtered_nodes.filter(architecture__in=arch)
-        return filtered_nodes
-
-    def filter_by_system_id(self, filtered_nodes):
-        # Filter by system_id.
-        system_id = self.cleaned_data.get("system_id")
-        if system_id:
-            filtered_nodes = filtered_nodes.filter(system_id=system_id)
-        return filtered_nodes
-
-    def filter_by_pod_or_pod_type(self, filtered_nodes):
-        # Filter by pod, pod type, not_pod or not_pod_type.
-        # We are filtering for all of these to keep the query count down.
-        pod = self.cleaned_data.get("pod")
-        not_pod = self.cleaned_data.get("not_pod")
-        pod_type = self.cleaned_data.get("pod_type")
-        not_pod_type = self.cleaned_data.get("not_pod_type")
-        if pod or pod_type or not_pod or not_pod_type:
-            pods = Pod.objects.all()
-            if pod:
-                pods = pods.filter(name=pod)
-            if not pod:
-                pods = pods.exclude(name=not_pod)
-            if pod_type:
-                pods = pods.filter(power_type=pod_type)
-            if not_pod_type:
-                pods = pods.exclude(power_type=not_pod_type)
-            filtered_nodes = filtered_nodes.filter(
-                bmc_id__in=pods.values_list("id", flat=True)
-            )
-        return filtered_nodes.distinct()
-
     def filter_by_devices(self, filtered_nodes):
         devices = self.cleaned_data.get("devices")
         if devices:
@@ -1240,53 +1249,26 @@ class FilterNodeForm(forms.Form):
             filtered_nodes = filtered_nodes.filter(**filters)
         return filtered_nodes
 
-    def filter_by_owner(self, filtered_nodes):
-        owner = self.cleaned_data.get("owner")
-        if owner:
-            user = User.objects.get(username=owner)
-            filtered_nodes = filtered_nodes.filter(owner=user)
-        return filtered_nodes
-
-    def filter_by_power_state(self, filtered_nodes):
-        power_state = self.cleaned_data.get("power_state")
-        if power_state:
-            power_state_id = getattr(POWER_STATE, power_state.upper())
-            filtered_nodes = filtered_nodes.filter(power_state=power_state_id)
-        return filtered_nodes
-
 
 class AcquireNodeForm(FilterNodeForm):
     """A form handling the constraints used to acquire a node."""
 
-    name = forms.CharField(
+    name = UnconstrainedMultipleChoiceField(
         label="The hostname of the desired node", required=False
     )
 
-    system_id = forms.CharField(
+    system_id = UnconstrainedMultipleChoiceField(
         label="The system_id of the desired node", required=False
     )
 
-    def _apply_filters(self, nodes):
-        nodes = super()._apply_filters(nodes)
-        nodes = self.filter_by_hostname(nodes)
-        nodes = self.filter_by_system_id(nodes)
-        return nodes
+    ACQUIRE_CONDs = {
+        "system_id": ("system_id", _match_any),
+        "name": ("hostname.domain__name", _match_compose_value),
+    }
 
-    def filter_by_hostname(self, filtered_nodes):
-        # Filter by hostname.
-        hostname = self.cleaned_data.get("name")
-        if hostname:
-            # If the given hostname has a domain part, try matching
-            # against the nodes' FQDN.
-            if "." in hostname:
-                host, domain = hostname.split(".", 1)
-                hostname_clause = Q(hostname=host)
-                domain_clause = Q(domain__name=domain)
-                clause = hostname_clause & domain_clause
-            else:
-                clause = Q(hostname=hostname)
-            filtered_nodes = filtered_nodes.filter(clause)
-        return filtered_nodes
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.node_filters.update(self.ACQUIRE_CONDs)
 
     def filter_nodes(self, nodes):
         result = super().filter_nodes(nodes)
@@ -1302,7 +1284,9 @@ class AcquireNodeForm(FilterNodeForm):
         # on the machine's cost when multiple machines match the
         # constraints.
         filtered_nodes = filtered_nodes.extra(
-            select={"cost": "cpu_count + memory / 1024."}
+            select={
+                "cost": "maasserver_node.cpu_count + maasserver_node.memory / 1024."
+            }
         )
         return filtered_nodes.order_by("cost")
 
@@ -1313,8 +1297,16 @@ class ReadNodesForm(FilterNodeForm):
         label="System IDs to filter on", required=False
     )
 
+    not_id = UnconstrainedMultipleChoiceField(
+        label="System IDs to ignore", required=False
+    )
+
     hostname = UnconstrainedMultipleChoiceField(
         label="Hostnames to filter on", required=False
+    )
+
+    not_hostname = UnconstrainedMultipleChoiceField(
+        label="Hostnames to ignore", required=False
     )
 
     mac_address = ValidatorMultipleChoiceField(
@@ -1330,328 +1322,256 @@ class ReadNodesForm(FilterNodeForm):
         label="Domain names to filter on", required=False
     )
 
-    agent_name = forms.CharField(
+    not_domain = UnconstrainedMultipleChoiceField(
+        label="Domain names to ignore", required=False
+    )
+
+    agent_name = UnconstrainedMultipleChoiceField(
         label="Only include nodes with events matching the agent name",
         required=False,
     )
 
-    status = forms.ChoiceField(
+    not_agent_name = UnconstrainedMultipleChoiceField(
+        label="Excludes nodes with events matching the agent name",
+        required=False,
+    )
+
+    status = ConstrainedMultipleChoiceField(
         label="Only includes nodes with the specified status",
         choices=NODE_STATUS_SHORT_LABEL_CHOICES,
         required=False,
     )
 
-    def _apply_filters(self, nodes):
-        nodes = super()._apply_filters(nodes)
-        nodes = self.filter_by_ids(nodes)
-        nodes = self.filter_by_hostnames(nodes)
-        nodes = self.filter_by_mac_addresses(nodes)
-        nodes = self.filter_by_domain(nodes)
-        nodes = self.filter_by_agent_name(nodes)
-        nodes = self.filter_by_status(nodes)
-        return nodes
+    not_status = ConstrainedMultipleChoiceField(
+        label="Exclude nodes with the specified status",
+        choices=NODE_STATUS_SHORT_LABEL_CHOICES,
+        required=False,
+    )
 
-    def filter_by_ids(self, filtered_nodes):
-        ids = self.cleaned_data.get("id")
-        if ids:
-            filtered_nodes = filtered_nodes.filter(system_id__in=ids)
-        return filtered_nodes
+    READ_CONDs = {
+        "id": ("system_id", _match_any),
+        "hostname": ("hostname", _match_any),
+        "mac_address": ("current_config__interface__mac_address", _match_any),
+        "domain": ("domain__name", _match_any),
+        "agent_name": ("agent_name", _match_any),
+        "status": ("status", _match_any),
+    }
 
-    def filter_by_hostnames(self, filtered_nodes):
-        hostnames = self.cleaned_data.get("hostname")
-        if hostnames:
-            filtered_nodes = filtered_nodes.filter(hostname__in=hostnames)
-        return filtered_nodes
+    READ_NOT_CONDs = {
+        "not_id": ("system_id", _match_any),
+        "not_hostname": ("hostname", _match_any),
+        "not_domain": ("domain__name", _match_any),
+        "not_agent_name": ("agent_name", _match_any),
+        "not_status": ("status", _match_any),
+    }
 
-    def filter_by_mac_addresses(self, filtered_nodes):
-        mac_addresses = self.cleaned_data.get("mac_address")
-        if mac_addresses:
-            filtered_nodes = filtered_nodes.filter(
-                current_config__interface__mac_address__in=mac_addresses
-            )
-        return filtered_nodes
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.node_filters.update(self.READ_CONDs)
+        self.node_excludes.update(self.READ_NOT_CONDs)
 
-    def filter_by_domain(self, filtered_nodes):
-        domains = self.cleaned_data.get("domain")
-        if domains:
-            filtered_nodes = filtered_nodes.filter(domain__name__in=domains)
-        return filtered_nodes
+    def clean_status(self):
+        values = self.cleaned_data["status"]
+        return [getattr(NODE_STATUS, a.upper()) for a in values]
 
-    def filter_by_agent_name(self, filtered_nodes):
-        field_name = "agent_name"
-        if field_name in self.data:
-            agent_name = self.cleaned_data.get(field_name)
-            filtered_nodes = filtered_nodes.filter(agent_name=agent_name)
-        return filtered_nodes
-
-    def filter_by_status(self, filtered_nodes):
-        status = self.cleaned_data.get("status")
-        if status:
-            status_id = getattr(NODE_STATUS, status.upper())
-            filtered_nodes = filtered_nodes.filter(status=status_id)
-        return filtered_nodes
+    def clean_not_status(self):
+        values = self.cleaned_data["not_status"]
+        return [getattr(NODE_STATUS, a.upper()) for a in values]
 
 
 class FreeTextFilterNodeForm(ReadNodesForm):
+
+    free_text = UnconstrainedMultipleChoiceField(
+        label="Free-text search on all string fields",
+        required=False,
+    )
 
     mac_address = UnconstrainedMultipleChoiceField(
         label="MAC addresses to filter on",
         required=False,
     )
 
-    def _substring_filter(self, queryset, field, substring, exclude=False):
-        # assume substring is either a list of strings or a string
-        values = [substring] if type(substring) == str else substring
-        query = Q()
-        for substr in values:
-            if substr.startswith("="):
-                query = query | Q(**{f"{field}__exact": substr[1:]})
+    description = UnconstrainedMultipleChoiceField(
+        label="The description of the desired node", required=False
+    )
+
+    osystem = UnconstrainedMultipleChoiceField(
+        label="The OS of the desired node", required=False
+    )
+
+    not_osystem = UnconstrainedMultipleChoiceField(
+        label="OS to ignore", required=False
+    )
+
+    distro_series = UnconstrainedMultipleChoiceField(
+        label="The OS distribution of the desired node", required=False
+    )
+
+    not_distro_series = UnconstrainedMultipleChoiceField(
+        label="OS distribution to ignore", required=False
+    )
+
+    error_description = UnconstrainedMultipleChoiceField(
+        label="node error description", required=False
+    )
+
+    ip_addresses = UnconstrainedMultipleChoiceField(
+        label="Node's IP address", required=False
+    )
+
+    not_ip_addresses = UnconstrainedMultipleChoiceField(
+        label="IP address to ignore", required=False
+    )
+
+    spaces = UnconstrainedMultipleChoiceField(
+        label="Node's spaces", required=False
+    )
+
+    workloads = UnconstrainedMultipleChoiceField(
+        label="Node's workload annotations", required=False
+    )
+
+    FREETEXT_FILTERS = {
+        "hostname": ("hostname", _match_substring),
+        "description": ("description", _match_substring),
+        "distro_series": ("distro_series", _match_substring),
+        "osystem": ("osystem", _match_substring),
+        "error_description": ("error_description", _match_substring),
+        "mac_address": (
+            "current_config__interface__mac_address",
+            _match_substring,
+        ),
+        "domain": ("domain__name", _match_substring),
+        "agent_name": ("agent_name", _match_substring),
+        "fabric_classes": (
+            "current_config__interface__vlan__fabric__class_type",
+            _match_substring,
+        ),
+        "fabrics": (
+            "current_config__interface__vlan__fabric__name",
+            _match_substring,
+        ),
+        "zone": ("zone__name", _match_substring),
+        "pool": ("pool__name", _match_substring),
+        "arch": ("architecture", _match_substring),
+        "tags": ("tags__name", _match_substring),
+        "vlans": ("current_config__interface__vlan__name", _match_substring),
+        "pod": ("bmc__name", _match_substring),
+        "pod_type": ("bmc__power_type", _match_substring),
+        "owner": ("owner__username", _match_substring),
+        "subnets": (
+            "current_config__interface__ip_addresses__subnet__cidr",
+            _match_substring,
+        ),
+        "ip_addresses": (
+            "current_config__interface__ip_addresses__ip",
+            _match_substring,
+        ),
+        "spaces": (
+            "current_config__interface__vlan__space__name",
+            _match_substring,
+        ),
+        "workloads": (
+            "ownerdata",
+            _match_substring_kv,
+        ),
+    }
+
+    FREETEXT_EXCLUDES = {
+        "not_fabric_classes": (
+            "current_config__interface__vlan__fabric__class_type",
+            _match_substring,
+        ),
+        "not_fabrics": (
+            "current_config__interface__vlan__fabric__name",
+            _match_substring,
+        ),
+        "not_in_zone": ("zone__name", _match_substring),
+        "not_in_pool": ("pool__name", _match_substring),
+        "not_arch": ("architecture", _match_substring),
+        "not_tags": ("tags__name", _match_substring),
+        "not_system_id": ("system_id", _match_substring),
+        "not_pod": ("bmc__name", _match_substring),
+        "not_pod_type": ("bmc__power_type", _match_substring),
+        "not_owner": ("owner__username", _match_substring),
+        "not_subnets": (
+            "current_config__interface__ip_addresses__subnet__cidr",
+            _match_substring,
+        ),
+        "not_vlans": (
+            "current_config__interface__vlan__name",
+            _match_substring,
+        ),
+        "not_ip_addresses": (
+            "current_config__interface__ip_addresses__ip",
+            _match_substring,
+        ),
+        "not_distro_series": ("distro_series", _match_substring),
+        "not_osystem": ("osystem", _match_substring),
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.node_filters.update(self.FREETEXT_FILTERS)
+        self.node_excludes.update(self.FREETEXT_EXCLUDES)
+
+    def clean_workloads(self):
+        data = self.cleaned_data["workloads"]
+        specs = []
+        for opt in data:
+            parts = opt.split(":", 1)
+            if len(parts) == 2:
+                specs.append((parts[0], parts[1]))
             else:
-                query = query | Q(**{f"{field}__icontains": substr})
-        if exclude:
-            return queryset.exclude(query)
-        return queryset.filter(query)
+                specs.append(("", parts[0]))
+        return specs
 
     def clean_tags(self):
-        value = self.cleaned_data["tags"]
-        if value:
-            tag_names = parse_legacy_tags(value)
-            # Validate tags.
-            tag_names = set(tag_names)
-            db_tag_names = set(
-                self._substring_filter(
-                    Tag.objects, "name", tag_names
-                ).values_list("name", flat=True)
-            )
-            if len(tag_names) < len(db_tag_names):
-                self._set_clean_tags_error(tag_names, db_tag_names)
-                return None
-            return db_tag_names
+        # override base class validation
+        return self.cleaned_data["tags"]
 
     def clean_arch(self):
-        value = self.cleaned_data["arch"]
-        if value:
-            archs = self._substring_filter(
-                BootResource.objects, "architecture", value
-            ).values_list("architecture", flat=True)
-            if not archs:
-                set_form_error(
-                    self,
-                    "arch",
-                    "Architecture not recognised.",
-                )
-                return None
-            return archs
-
-    def _clean_zones(self, value, field):
-        zones = self._substring_filter(Zone.objects, "name", value)
-        if not zones:
-            self._set_zone_error(value + "*", field)
-            return None
-        return zones
+        # override base class validation
+        return self.cleaned_data["arch"]
 
     def clean_zone(self):
-        value = self.cleaned_data["zone"]
-        if value:
-            return self._clean_zones(value, "zone")
+        # override base class validation
+        return self.cleaned_data["zone"]
 
     def clean_not_in_zone(self):
-        value = self.cleaned_data["not_in_zone"]
-        if value:
-            return self._clean_zones(value, "not_in_zone")
-
-    def filter_by_zone(self, filtered_nodes):
-        zones = self.cleaned_data.get("zone")
-        if zones:
-            filtered_nodes = filtered_nodes.filter(zone__in=zones)
-        not_in_zones = self.cleaned_data.get("not_in_zone")
-        if not_in_zones:
-            filtered_nodes = filtered_nodes.exclude(zone__in=not_in_zones)
-        return filtered_nodes
-
-    def _clean_pools(self, value, field):
-        pool = self._substring_filter(ResourcePool.objects, "name", value)
-        if not pool:
-            self._set_pool_error(value + "*", field)
-            return None
-        return pool
+        # override base class validation
+        return self.cleaned_data["not_in_zone"]
 
     def clean_pool(self):
-        value = self.cleaned_data["pool"]
-        if value:
-            return self._clean_pools(value, "pool")
+        # override base class validation
+        return self.cleaned_data["pool"]
 
     def clean_not_in_pool(self):
-        value = self.cleaned_data["not_in_pool"]
-        if value:
-            return self._clean_pools(value, "not_in_pool")
-
-    def filter_by_pool(self, filtered_nodes):
-        pools = self.cleaned_data.get("pool")
-        if pools:
-            filtered_nodes = filtered_nodes.filter(pool__in=pools)
-        not_in_pools = self.cleaned_data.get("not_in_pool")
-        if not_in_pools:
-            filtered_nodes = filtered_nodes.exclude(pool__in=not_in_pools)
-        return filtered_nodes
-
-    def filter_by_pod_or_pod_type(self, filtered_nodes):
-        pod_name = self.cleaned_data["pod"]
-        not_pod_name = self.cleaned_data["not_pod"]
-        pod_type = self.cleaned_data["pod_type"]
-        not_pod_type = self.cleaned_data["not_pod_type"]
-        if pod_name:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes, "bmc__name", pod_name
-            )
-        if not_pod_name:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes, "bmc__name", not_pod_name, exclude=True
-            )
-        if pod_type:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes, "bmc__power_type", pod_type
-            )
-        if not_pod_type:
-            filtered_nodes = self._substring_filter(
-                Pod.objects, "bmc__power_type", not_pod_type, exclude=True
-            )
-        return filtered_nodes
-
-    def filter_by_fabric_classes(self, filtered_nodes):
-        fabric_classes = self.cleaned_data.get("fabric_classes")
-        if fabric_classes:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes,
-                "current_config__interface__vlan__fabric__class_type",
-                fabric_classes,
-            )
-        not_fabric_classes = self.cleaned_data.get("not_fabric_classes")
-        if not_fabric_classes:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes,
-                "current_config__interface__vlan__fabric__class_type",
-                not_fabric_classes,
-                exclude=True,
-            )
-        return filtered_nodes
-
-    def filter_by_fabrics(self, filtered_nodes):
-        fabrics = self.cleaned_data.get("fabrics")
-        if fabrics:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes,
-                "current_config__interface__vlan__fabric__name",
-                fabrics,
-            )
-        not_fabrics = self.cleaned_data.get("not_fabrics")
-        if not_fabrics:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes,
-                "current_config__interface__vlan__fabric__name",
-                not_fabrics,
-                exclude=True,
-            )
-        return filtered_nodes
+        # override base class validation
+        return self.cleaned_data["not_in_pool"]
 
     def clean_vlans(self):
-        value = self.cleaned_data.get("vlans")
-        if value:
-            vlans = self._substring_filter(VLAN.objects, "name", value)
-            if not vlans:
-                set_form_error(
-                    self,
-                    "vlans",
-                    "no vlan found for %s" % value,
-                )
-                return None
-            return value
-
-    def filter_by_vlans(self, filtered_nodes):
-        vlans = self.cleaned_data.get("vlans")
-        if vlans:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes, "current_config__interface__vlan__name", vlans
-            )
-        not_vlans = self.cleaned_data.get("not_vlans")
-        if not_vlans:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes,
-                "current_config__interface__vlan__name",
-                vlans,
-                exclude=True,
-            )
-        return filtered_nodes
+        # override base class validation
+        return self.cleaned_data.get("vlans")
 
     def clean_subnets(self):
-        value = self.cleaned_data.get("subnets")
-        if value:
-            subnets = self._substring_filter(Subnet.objects, "cidr", value)
-            if not subnets:
-                set_form_error(
-                    self,
-                    "subnets",
-                    "no subnet found for %s" % value,
+        # override base class validation
+        return self.cleaned_data.get("subnets")
+
+    def _free_text_search(self, nodes):
+        data = self.cleaned_data.get("free_text")
+        for txt in data:
+            subq = Q()
+            for _, (db_field, cond) in self.FREETEXT_FILTERS.items():
+                subq = reduce(
+                    lambda q, c: q.__or__(c),
+                    cond(db_field, [txt]),
+                    subq,
                 )
-                return None
-            return value
+            nodes = nodes.filter(subq)
+        return nodes
 
-    def filter_by_subnets(self, filtered_nodes):
-        subnets = self.cleaned_data.get("subnets")
-        if subnets:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes,
-                "current_config__interface__ip_addresses__subnet__cidr",
-                subnets,
-            )
-        not_subnets = self.cleaned_data.get("not_subnets")
-        if not_subnets:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes,
-                "current_config__interface__ip_addresses__subnet__cidr",
-                not_subnets,
-                exclude=True,
-            )
-        return filtered_nodes
-
-    def filter_by_hostnames(self, filtered_nodes):
-        hostnames = self.cleaned_data.get("hostname")
-        if hostnames:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes, "hostname", hostnames
-            )
-        return filtered_nodes
-
-    def clean_mac_address(self):
-        value = self.cleaned_data.get("mac_address")
-        if value:
-            interfaces = self._substring_filter(
-                Interface.objects, "mac_address", value
-            )
-            if not interfaces:
-                set_form_error(
-                    self,
-                    "mac_address",
-                    "no mac address found for %s" % value,
-                )
-                return None
-            return value
-
-    def filter_by_mac_addresses(self, filtered_nodes):
-        value = self.cleaned_data.get("mac_address")
-        if value:
-            interfaces = self._substring_filter(
-                Interface.objects, "mac_address", value
-            )
-            filtered_nodes = filtered_nodes.filter(
-                current_config__interface__in=interfaces
-            )
-        return filtered_nodes
-
-    def filter_by_agent_name(self, filtered_nodes):
-        agent_name = self.cleaned_data["agent_name"]
-        if agent_name:
-            filtered_nodes = self._substring_filter(
-                filtered_nodes, "agent_name", agent_name
-            )
-        return filtered_nodes
+    def _apply_filters(self, nodes):
+        nodes = super()._apply_filters(nodes)
+        nodes = self._free_text_search(nodes)
+        return nodes

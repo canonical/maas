@@ -337,13 +337,15 @@ def get_allocated_composed_machine(
     if not_tags:
         pods = pods.exclude(tags__contains=not_tags)
     if form.cleaned_data.get("pod"):
-        pods = pods.filter(name=form.cleaned_data.get("pod"))
+        pods = pods.filter(name__in=form.cleaned_data.get("pod"))
     if form.cleaned_data.get("pod_type"):
-        pods = pods.filter(power_type=form.cleaned_data.get("pod_type"))
+        pods = pods.filter(power_type__in=form.cleaned_data.get("pod_type"))
     if form.cleaned_data.get("not_pod"):
-        pods = pods.exclude(name=form.cleaned_data.get("not_pod"))
+        pods = pods.exclude(name__in=form.cleaned_data.get("not_pod"))
     if form.cleaned_data.get("not_pod_type"):
-        pods = pods.exclude(power_type=form.cleaned_data.get("not_pod_type"))
+        pods = pods.exclude(
+            power_type__in=form.cleaned_data.get("not_pod_type")
+        )
     compose_form = ComposeMachineForPodsForm(
         request=request, data=data, pods=pods
     )
@@ -2520,11 +2522,11 @@ class MachinesHandler(NodesHandler, PowersMixin):
             machine = get_first(machines)
             if machine is None:
                 cores = form.cleaned_data.get("cpu_count")
-                if cores is not None:
-                    cores = int(cores)
+                if cores:
+                    cores = int(min(cores))
                 memory = form.cleaned_data.get("mem")
-                if memory is not None:
-                    memory = int(memory)
+                if memory:
+                    memory = int(min(memory))
                 architecture = None
                 architectures = form.cleaned_data.get("arch")
                 if architectures is not None:

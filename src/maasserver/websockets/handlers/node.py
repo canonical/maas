@@ -44,9 +44,12 @@ from maasserver.models import (
     Node,
     NodeDevice,
     NUMANode,
+    OwnerData,
     Partition,
     PhysicalBlockDevice,
     ResourcePool,
+    Space,
+    StaticIPAddress,
     Subnet,
     Tag,
     User,
@@ -1385,6 +1388,23 @@ class NodeHandler(TimestampedModelHandler):
             results += [
                 {"key": value.system_id, "label": value.hostname}
                 for value in Node.objects.all()
+            ]
+        elif key == "ip_addresses":
+            results += [
+                {"key": value.ip, "label": value.ip}
+                for value in StaticIPAddress.objects.all()
+            ]
+        elif key == "spaces":
+            results += [
+                {"key": value.name, "label": value.name}
+                for value in Space.objects.all()
+            ]
+        elif key == "workloads":
+            results += [
+                {"key": f"{k}:{v}", "label": f"{k}: {v}"}
+                for k, v in OwnerData.objects.order_by()
+                .values_list("key", "value")
+                .distinct()
             ]
         else:
             for value in Node.objects.order_by().values_list(key).distinct():

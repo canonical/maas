@@ -25,9 +25,10 @@ from maasserver.enum import (
 )
 from maasserver.forms import (
     UnconstrainedMultipleChoiceField,
+    UnconstrainedTypedMultipleChoiceField,
     ValidatorMultipleChoiceField,
 )
-from maasserver.models import Domain, Machine, NodeDevice, Tag, Zone
+from maasserver.models import Domain, Machine, NodeDevice, Zone
 from maasserver.node_constraint_filter_forms import (
     AcquireNodeForm,
     detect_nonexistent_names,
@@ -45,6 +46,7 @@ from maasserver.node_constraint_filter_forms import (
 )
 from maasserver.testing.architecture import patch_usable_architectures
 from maasserver.testing.factory import factory, RANDOM
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from provisioningserver.utils.constraints import LabeledConstraintMap
@@ -635,7 +637,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
     def test_invalid_zone(self):
         form = FilterNodeForm(data={"zone": "unknown"})
         self.assertEqual(
-            (False, {"zone": ["No such zone: 'unknown'."]}),
+            (False, {"zone": ["No such zone(s): unknown."]}),
             (form.is_valid(), form.errors),
         )
 
@@ -694,7 +696,7 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
     def test_invalid_pool(self):
         form = FilterNodeForm(data={"pool": "unknown"})
         self.assertEqual(
-            (False, {"pool": ["No such pool: 'unknown'."]}),
+            (False, {"pool": ["No such pool(s): unknown."]}),
             (form.is_valid(), form.errors),
         )
 
@@ -1517,9 +1519,12 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         )
 
     def test_describe_constraints_shows_all_constraints(self):
+        arch = self.set_usable_arch()
         constraints = {
-            "arch": self.set_usable_arch(),
+            "arch": arch,
+            "not_arch": arch,
             "cpu_count": random.randint(1, 32),
+            "cpu_speed": random.randint(1, 32),
             "devices": "vendor_id=8086",
             "mem": random.randint(1024, 256 * 1024),
             "tags": [factory.make_Tag().name],
@@ -1548,7 +1553,9 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
                 factory.make_Fabric(class_type="1g").class_type
             ],
             "owner": factory.make_User().username,
+            "not_owner": factory.make_User().username,
             "power_state": POWER_STATE.ON,
+            "not_power_state": POWER_STATE.OFF,
         }
         form = FilterNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)
@@ -1565,46 +1572,25 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 
 
 class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
+    form_class = FreeTextFilterNodeForm
+
     def test_substring_filter_one_substring(self):
         name = factory.make_name("hostname")
         node1 = factory.make_Node(hostname=name)
-        node2 = factory.make_Node()
-        form = FreeTextFilterNodeForm(data={})
-        result = form._substring_filter(
-            Machine.objects,
-            "hostname",
-            name[len("hostname-") + 1 :].swapcase(),
+        factory.make_Node()
+        self.assertConstrainedNodes(
+            [node1],
+            {
+                "hostname": name[len("hostname-") + 1 :].swapcase(),
+            },
         )
-        self.assertIn(node1, list(result))
-        self.assertNotIn(node2, list(result))
-
-    def test_substring_filter_list_of_substrings(self):
-        tags = [
-            factory.make_Tag(name=factory.make_name("tag")) for _ in range(3)
-        ]
-        form = FreeTextFilterNodeForm(data={})
-        # +1 to include first letter in random suffix
-        result = form._substring_filter(
-            Tag.objects,
-            "name",
-            [tag.name[len("tag-") + 1 :] for tag in tags],
-        )
-        self.assertCountEqual(tags, list(result))
 
     def test_substring_filter_exact_match(self):
         name = factory.make_name("hostname")
         node1 = factory.make_Node(hostname=name)
-        node2 = factory.make_Node()
-        form = FreeTextFilterNodeForm(data={})
-        result = form._substring_filter(
-            Machine.objects, "hostname", f"={name}"
-        )
-        self.assertIn(node1, list(result))
-        self.assertNotIn(node2, list(result))
-        result = form._substring_filter(
-            Machine.objects, "hostname", f"={name.upper()}"
-        )
-        self.assertNotIn(node1, list(result))
+        factory.make_Node()
+        self.assertConstrainedNodes([node1], {"hostname": f"={name}"})
+        self.assertConstrainedNodes([], {"hostname": f"={name.upper()}"})
 
     def test_substring_arch_filter(self):
         architecture = factory.make_name("arch")
@@ -1612,94 +1598,66 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         arch = "/".join([architecture, subarch])
         factory.make_usable_boot_resource(architecture=arch)
         node1 = factory.make_Node(architecture=arch)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "arch": arch[:2],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_tag_filter(self):
         tags = [
             factory.make_Tag(name=factory.make_name("tag")) for _ in range(3)
         ]
         node1 = factory.make_Node()
-        node2 = factory.make_Node()
+        factory.make_Node()
         [node1.tags.add(tag) for tag in tags]
         constraints = {
             "tags": [tag.name[len("tag-") + 1 :] for tag in tags],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_zone_filter(self):
         zone = factory.make_Zone()
         node1 = factory.make_Node(zone=zone)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "zone": zone.name[:2],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_not_in_zone_filter(self):
         zone = factory.make_Zone()
-        node1 = factory.make_Node(zone=zone)
-        node2 = factory.make_Node()
+        factory.make_Node(zone=zone)
+        other = factory.make_Node()
         constraints = {
             "not_in_zone": [zone.name[:2]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertNotIn(node1, filtered_nodes)
-        self.assertIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([other], constraints)
 
     def test_substring_pool_filter(self):
         pool = factory.make_ResourcePool()
         node1 = factory.make_Node(pool=pool)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "pool": pool.name[len("resourcepool-") + 1 :],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_not_in_pool_filter(self):
         pool = factory.make_ResourcePool()
-        node1 = factory.make_Node(pool=pool)
-        node2 = factory.make_Node()
+        factory.make_Node(pool=pool)
+        other = factory.make_Node()
         constraints = {
             "not_in_pool": [pool.name[len("resourcepool-") + 1 :]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertNotIn(node1, filtered_nodes)
-        self.assertIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([other], constraints)
 
     def test_substring_pod_filter(self):
         pod = factory.make_Pod()
         node1 = factory.make_Node(bmc=pod.as_bmc())
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {"pod": pod.name[len("pod-") + 1 :]}
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_fabrics_filter(self):
         fabric = factory.make_Fabric()
@@ -1707,15 +1665,11 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         interface = factory.make_Interface(vlan=vlan)
         node1 = factory.make_Node()
         node1.current_config.interface_set.add(interface)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "fabrics": [fabric.name[:2]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_fabric_classes_filter(self):
         fabric_class = factory.make_name()
@@ -1724,89 +1678,207 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         interface = factory.make_Interface(vlan=vlan)
         node1 = factory.make_Node()
         node1.current_config.interface_set.add(interface)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "fabric_classes": [fabric_class[:2]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        form.is_valid()
-        print(form.errors)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_vlans_filter(self):
         vlan = factory.make_VLAN(name=factory.make_name())
         interface = factory.make_Interface(vlan=vlan)
         node1 = factory.make_Node()
         node1.current_config.interface_set.add(interface)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "vlans": [vlan.name[:2]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_spaces_filter(self):
+        space = factory.make_Space()
+        vlan = factory.make_VLAN(name=factory.make_name(), space=space)
+        interface = factory.make_Interface(vlan=vlan)
+        node1 = factory.make_Node()
+        node1.current_config.interface_set.add(interface)
+        factory.make_Node()
+        constraints = {
+            "spaces": [space.name[:2]],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_workload_filter(self):
+        key = factory.make_string(prefix="key")
+        val = factory.make_string(prefix="value")
+        node1 = factory.make_Node(owner_data={key: val})
+        factory.make_Node()
+        constraints = {
+            "workloads": [f"{key}:={val}"],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+        constraints = {
+            "workloads": [f"{key}:{val[2:]}"],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+        constraints = {
+            "workloads": [f"{val[2:]}"],
+        }
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_subnet_filter(self):
         subnet = factory.make_Subnet()
         interface = factory.make_Interface(subnet=subnet)
         node1 = factory.make_Node()
         node1.current_config.interface_set.add(interface)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "subnets": [str(subnet.cidr)[:3]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_ip_addresses_filter(self):
+        subnet = factory.make_Subnet()
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        interface = factory.make_Interface(subnet=subnet, ip=ip)
+        node1 = factory.make_Node()
+        node1.current_config.interface_set.add(interface)
+        factory.make_Node()
+        constraints = {
+            "ip_addresses": [str(subnet.cidr)[:3]],
+        }
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_hostnames_filter(self):
         hostname = factory.make_name()
         node1 = factory.make_Node(hostname=hostname)
         name2 = factory.make_name_avoiding_collision(hostname)
-        node2 = factory.make_Node(hostname=name2)
+        factory.make_Node(hostname=name2)
         constraints = {
             "hostname": [hostname[:2]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_mac_addresses_filter(self):
         mac_address = factory.make_mac_address()
         interface = factory.make_Interface(mac_address=mac_address)
         node1 = factory.make_Node()
         node1.current_config.interface_set.add(interface)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "mac_address": [str(mac_address)[:4]],
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
 
     def test_substring_agent_name_filter(self):
         name = factory.make_name()
         node1 = factory.make_Node(agent_name=name)
-        node2 = factory.make_Node()
+        factory.make_Node()
         constraints = {
             "agent_name": name,
         }
-        form = FreeTextFilterNodeForm(data=constraints)
-        self.assertTrue(form.is_valid())
-        filtered_nodes = form.filter_nodes(Machine.objects.all())[0]
-        self.assertIn(node1, filtered_nodes)
-        self.assertNotIn(node2, filtered_nodes)
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_description_filter(self):
+        desc = factory.make_unicode_string(size=30, spaces=True)
+        node1 = factory.make_Node(description=desc)
+        factory.make_Node()
+        constraints = {
+            "description": desc.split()[0],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_error_description_filter(self):
+        desc = factory.make_unicode_string(size=30, spaces=True)
+        node1 = factory.make_Node(error_description=desc)
+        factory.make_Node()
+        constraints = {
+            "error_description": desc.split()[0],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_distro_filter(self):
+        osystem = make_usable_osystem(self)
+        series = osystem["default_release"]
+        node1 = factory.make_Node(
+            osystem=osystem["name"],
+            distro_series=series,
+        )
+        factory.make_Node()
+        constraints = {
+            "distro_series": series[1:],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_substring_osystem_filter(self):
+        osystem = make_usable_osystem(self)
+        node1 = factory.make_Node(
+            osystem=osystem["name"],
+            distro_series=osystem["default_release"],
+        )
+        factory.make_Node()
+        constraints = {
+            "osystem": osystem["name"][1:],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+
+    def test_free_text_filter(self):
+        hostname = factory.make_name("hostname")
+        mac_address = factory.make_mac_address()
+        pool = factory.make_ResourcePool()
+        agent_name = factory.make_name()
+        desc = factory.make_unicode_string(size=30, spaces=True)
+        err_desc = factory.make_unicode_string(size=30, spaces=True)
+        osystem = make_usable_osystem(self)
+        space = factory.make_Space()
+        subnet = factory.make_Subnet(space=space)
+        zone = factory.make_Zone()
+        pod = factory.make_Pod()
+        fabric_class = factory.make_name()
+        fabric = factory.make_Fabric(class_type=fabric_class)
+        vlan1 = factory.make_VLAN(fabric=fabric)
+        vlan2 = factory.make_VLAN(name=factory.make_name(), space=space)
+        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
+        key = factory.make_string(prefix="key")
+        val = factory.make_string(prefix="value")
+        node1 = factory.make_Node(
+            bmc=pod.as_bmc(),
+            hostname=hostname,
+            agent_name=agent_name,
+            osystem=osystem["name"],
+            distro_series=osystem["default_release"],
+            description=desc,
+            error_description=err_desc,
+            owner_data={key: val},
+            pool=pool,
+            zone=zone,
+        )
+        tags = [
+            factory.make_Tag(name=factory.make_name("tag")) for _ in range(3)
+        ]
+        [node1.tags.add(tag) for tag in tags]
+        factory.make_Interface(node=node1, subnet=subnet, ip=ip)
+        factory.make_Interface(node=node1, mac_address=mac_address, vlan=vlan2)
+        factory.make_Interface(node=node1, vlan=vlan1)
+        factory.make_Node()
+        self.assertConstrainedNodes([node1], {"free_text": hostname})
+        self.assertConstrainedNodes([node1], {"free_text": mac_address})
+        self.assertConstrainedNodes([node1], {"free_text": pool.name})
+        self.assertConstrainedNodes([node1], {"free_text": agent_name})
+        self.assertConstrainedNodes([node1], {"free_text": desc})
+        self.assertConstrainedNodes([node1], {"free_text": err_desc})
+        self.assertConstrainedNodes([node1], {"free_text": osystem["name"]})
+        self.assertConstrainedNodes(
+            [node1], {"free_text": osystem["default_release"]}
+        )
+        self.assertConstrainedNodes([node1], {"free_text": val})
+        self.assertConstrainedNodes([node1], {"free_text": vlan2.name})
+        self.assertConstrainedNodes([node1], {"free_text": fabric.name})
+        self.assertConstrainedNodes([node1], {"free_text": fabric_class})
+        self.assertConstrainedNodes([node1], {"free_text": str(subnet.cidr)})
+        self.assertConstrainedNodes([node1], {"free_text": space.name})
+        self.assertConstrainedNodes([node1], {"free_text": zone.name})
+        self.assertConstrainedNodes([node1], {"free_text": pod.name})
+        self.assertConstrainedNodes([node1], {"free_text": tags[1].name})
 
 
 class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
@@ -1887,11 +1959,14 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertEqual("cpu_count=10.0", form.describe_constraints())
 
     def test_describe_constraints_shows_all_constraints(self):
+        arch = self.set_usable_arch()
         constraints = {
             "name": factory.make_name("host"),
             "system_id": factory.make_name("system_id"),
-            "arch": self.set_usable_arch(),
+            "arch": arch,
+            "not_arch": arch,
             "cpu_count": random.randint(1, 32),
+            "cpu_speed": random.randint(1, 32),
             "devices": "vendor_id=8086",
             "mem": random.randint(1024, 256 * 1024),
             "tags": [factory.make_Tag().name],
@@ -1920,19 +1995,21 @@ class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):
                 factory.make_Fabric(class_type="1g").class_type
             ],
             "owner": factory.make_User().username,
+            "not_owner": factory.make_User().username,
             "power_state": POWER_STATE.ON,
+            "not_power_state": POWER_STATE.OFF,
         }
         form = AcquireNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)
         # Check first: we didn't forget to test any attributes.  When we add
         # a constraint to the form, we'll have to add it here as well.
-        self.assertEqual(form.fields.keys(), constraints.keys())
+        self.assertCountEqual(form.fields.keys(), constraints.keys())
 
         described_constraints = {
             constraint.split("=", 1)[0]
             for constraint in form.describe_constraints().split()
         }
-        self.assertEqual(constraints.keys(), described_constraints)
+        self.assertCountEqual(constraints.keys(), described_constraints)
 
     def test_pod_not_pod_pod_type_or_not_pod_type_for_pod(self):
         node1 = factory.make_Node(
@@ -2198,7 +2275,7 @@ class TestGetFieldArgumentType(MAASServerTestCase):
 
     def test_get_ChoiceField_type(self):
         field = forms.ChoiceField()
-        self.assertEqual(get_field_argument_type(field), "int")
+        self.assertEqual(get_field_argument_type(field), "str")
 
     def test_get_FloatField_type(self):
         field = forms.FloatField()
@@ -2206,16 +2283,20 @@ class TestGetFieldArgumentType(MAASServerTestCase):
 
     def test_get_CharField_type(self):
         field = forms.CharField()
-        self.assertEqual(get_field_argument_type(field), "string")
+        self.assertEqual(get_field_argument_type(field), "str")
 
     def test_get_ValidatorMultipleChoiceField_type(self):
         field = ValidatorMultipleChoiceField(validator=lambda x: True)
-        self.assertEqual(get_field_argument_type(field), "list[string]")
+        self.assertEqual(get_field_argument_type(field), "list[str]")
+
+    def test_get_UnconstrainedTypedMultipleChoiceField_type(self):
+        field = UnconstrainedTypedMultipleChoiceField(coerce=float)
+        self.assertEqual(get_field_argument_type(field), "list[float]")
 
     def test_get_UnconstrainedMultipleChoiceField_type(self):
         field = UnconstrainedMultipleChoiceField()
-        self.assertEqual(get_field_argument_type(field), "list[string]")
+        self.assertEqual(get_field_argument_type(field), "list[str]")
 
     def test_get_unknown_type(self):
         field = forms.Field()
-        self.assertEqual(get_field_argument_type(field), "unknown")
+        self.assertEqual(get_field_argument_type(field), "str")
