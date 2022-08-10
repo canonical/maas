@@ -19,30 +19,25 @@ IGNORED_DIRS = (
     "__pycache__",
 )
 
-TARGET_ROOT = Path(__file__).parent.parent.joinpath("src")
+TARGET_ROOT = Path(__file__).parent.parent / "src"
 
-
-API_HANDLER_DIRS = (str(TARGET_ROOT.joinpath("maasserver/api").resolve()),)
-FORMS_DIRS = (str(TARGET_ROOT.joinpath("maasserver/forms").resolve()),)
-MODEL_DIRS = (
-    str(TARGET_ROOT.joinpath("maasserver/models").resolve()),
-    str(TARGET_ROOT.joinpath("metadataserver/models").resolve()),
-)
-WEBSOCKET_HANDLER_DIRS = (
-    str(TARGET_ROOT.joinpath("maasserver/websockets/handlers").resolve()),
-)
-POWER_DRIVER_DIRS = (
-    str(TARGET_ROOT.joinpath("provisioningserver/drivers/power").resolve()),
-)
-SIGNALS_DIRS = (
-    str(TARGET_ROOT.joinpath("maasserver/models/signals").resolve()),
-)
-RPC_DIRS = (
-    str(TARGET_ROOT.joinpath("maasserver/rpc").resolve()),
-    str(TARGET_ROOT.joinpath("maasserver/clusterrpc").resolve()),
-    str(TARGET_ROOT.joinpath("provisioningserver/rpc").resolve()),
-)
-VIEWS_DIRS = (str(TARGET_ROOT.joinpath("maasserver/views").resolve()),)
+API_HANDLER_DIRS = {TARGET_ROOT / "maasserver" / "api"}
+FORMS_DIRS = {TARGET_ROOT / "maasserver" / "forms"}
+MODEL_DIRS = {
+    TARGET_ROOT / "maasserver" / "models",
+    TARGET_ROOT / "metadataserver" / "models",
+}
+WEBSOCKET_HANDLER_DIRS = {
+    TARGET_ROOT / "maasserver" / "websockets" / "handlers"
+}
+POWER_DRIVER_DIRS = {TARGET_ROOT / "provisioningserver" / "drivers" / "power"}
+SIGNALS_DIRS = {TARGET_ROOT / "maasserver" / "models" / "signals"}
+RPC_DIRS = {
+    TARGET_ROOT / "maasserver" / "rpc",
+    TARGET_ROOT / "maasserver" / "clusterrpc",
+    TARGET_ROOT / "provisioningserver" / "rpc",
+}
+VIEWS_DIRS = {TARGET_ROOT / "maasserver" / "views"}
 
 global verbose
 global dry_run
@@ -67,43 +62,31 @@ def move_maasperf(file_name):
     return []
 
 
-def move_websocket_base(file_name):
+def move_websocket_base(websockets_dir):
     return [
         (
-            str(Path(file_name).joinpath("base.py").resolve()),
-            str(TARGET_ROOT.joinpath("websockets/base.py").resolve()),
+            websockets_dir / "base.py",
+            TARGET_ROOT / "websockets" / "base.py",
         ),
         (
-            str(Path(file_name).joinpath("protocol.py").resolve()),
-            str(TARGET_ROOT.joinpath("websockets/protocol.py").resolve()),
+            websockets_dir / "protocol.py",
+            TARGET_ROOT / "websockets" / "protocol.py",
         ),
         (
-            str(Path(file_name).joinpath("websockets.py").resolve()),
-            str(TARGET_ROOT.joinpath("websockets/websockets.py").resolve()),
+            websockets_dir / "websockets.py",
+            TARGET_ROOT / "websockets" / "websockets.py",
         ),
         (
-            str(Path(file_name).joinpath("tests/test_base.py").resolve()),
-            str(
-                TARGET_ROOT.joinpath("websockets/tests/test_base.py").resolve()
-            ),
+            websockets_dir / "tests/test_base.py",
+            TARGET_ROOT / "websockets" / "tests" / "test_base.py",
         ),
         (
-            str(Path(file_name).joinpath("tests/test_protocol.py").resolve()),
-            str(
-                TARGET_ROOT.joinpath(
-                    "websockets/tests/test_protocol.py"
-                ).resolve()
-            ),
+            websockets_dir / "tests/test_protocol.py",
+            TARGET_ROOT / "websockets" / "tests" / "test_protocol.py",
         ),
         (
-            str(
-                Path(file_name).joinpath("tests/test_websockets.py").resolve()
-            ),
-            str(
-                TARGET_ROOT.joinpath(
-                    "websockets/tests/test_websockets.py"
-                ).resolve()
-            ),
+            websockets_dir / "tests/test_websockets.py",
+            TARGET_ROOT / "websockets" / "tests" / "test_websockets.py",
         ),
     ]
 
@@ -119,15 +102,14 @@ def split_up_models_init_file(file_name):
 def _write_red_baron_file(dir_name, file_name, code):
     global dry_run
 
-    dir_path = TARGET_ROOT.joinpath(dir_name).resolve()
-    file_path = dir_path.joinpath(file_name).resolve()
-    if not os.path.exists(str(dir_path)):
-        os.makedirs(dir_path)
+    dir_path = TARGET_ROOT / dir_name
+    file_path = dir_path / file_name
+    dir_path.mkdir(parents=True, exist_ok=True)
 
     if not dry_run:
-        with open(str(file_path), "w+") as f:
+        with file_path.open("w+") as f:
             f.write(code.dumps())
-    return str(file_path)
+    return file_path
 
 
 def _remove_unrelated_code(preserve_blocks, code):
@@ -137,13 +119,13 @@ def _remove_unrelated_code(preserve_blocks, code):
 
 
 def split_up_bmc_models(file_name):
-    bmc_code_blocks = (
+    bmc_code_blocks = {
         "BaseBMCManager",
         "BMCManager",
         "BMC",
         "BMCRoutableRackControllerRelationship",
-    )
-    pod_code_blocks = ("PodManager", "Pod")
+    }
+    pod_code_blocks = {"PodManager", "Pod"}
     with open(file_name) as f:
         bmc_src = RedBaron(f.read())
         # make a copy for the pod classes
@@ -174,7 +156,7 @@ def move_triggers_init_file(file_name):
     return [
         (
             file_name,
-            str(TARGET_ROOT.joinpath("triggers/__init__.py")),
+            TARGET_ROOT / "triggers" / "__init__.py",
         )
     ]
 
@@ -189,13 +171,10 @@ def move_maasserver_testing(file_name):
 
 def drop_pluralization(parent):
     def _inner(file_name):
-        f = str(file_name).lower().split(".")
-        base = f[0]
-        if base.endswith("s"):
-            base = base[0:-2]
-            return [
-                (file_name, create_destination(".".join([base, f[1]]), parent))
-            ]
+        stem = file_name.stem
+        if stem.endswith("s"):
+            singular = file_name.with_stem(stem[:-1])
+            return [(file_name, create_destination(singular, parent))]
 
     return _inner
 
@@ -249,7 +228,7 @@ def move_power_registry_file(file_name):
     return [
         (
             file_name,
-            str(TARGET_ROOT.joinpath("power_drivers/registry.py").resolve()),
+            TARGET_ROOT / "power_drivers" / "registry.py",
         )
     ]
 
@@ -258,69 +237,59 @@ def move_power_test_registry_file(file_name):
     return [
         (
             file_name,
-            str(
-                TARGET_ROOT.joinpath(
-                    "power_drivers/tests/test_registr.py"
-                ).resolve()
-            ),
+            TARGET_ROOT / "power_drivers" / "tests" / "test_registry.py",
         )
     ]
 
 
 SPECIAL_CASE_DIRS = {
-    TARGET_ROOT.joinpath("maasperf").resolve(): move_maasperf,
-    TARGET_ROOT.joinpath(
-        "maasserver/migrations"
-    ).resolve(): move_maasserver_migrations,
-    TARGET_ROOT.joinpath(
-        "metadataserver/migrations"
-    ).resolve(): move_metadataserver_migrations,
-    TARGET_ROOT.joinpath(
-        "maasserver/websockets"
-    ).resolve(): move_websocket_base,
-    TARGET_ROOT.joinpath(
-        "maasserver/tests"
-    ).resolve(): move_maasserver_root_tests,
-    TARGET_ROOT.joinpath(
-        "maasserver/testing"
-    ).resolve(): move_maasserver_testing,
+    TARGET_ROOT / "maasperf": move_maasperf,
+    TARGET_ROOT / "maasserver" / "migrations": move_maasserver_migrations,
+    TARGET_ROOT
+    / "metadataserver"
+    / "migrations": move_metadataserver_migrations,
+    TARGET_ROOT / "maasserver" / "websockets": move_websocket_base,
+    TARGET_ROOT / "maasserver" / "tests": move_maasserver_root_tests,
+    TARGET_ROOT / "maasserver" / "testing": move_maasserver_testing,
 }
 
 
 SPECIAL_CASE_FILES = {
-    TARGET_ROOT.joinpath(
-        "maasserver/__init__.py"
-    ).resolve(): move_maasserver_init_file,
-    TARGET_ROOT.joinpath(
-        "maasserver/forms/__init__.py"
-    ).resolve(): split_up_forms_init_file,
-    TARGET_ROOT.joinpath(
-        "maasserver/models/__init__.py"
-    ).resolve(): split_up_models_init_file,
-    TARGET_ROOT.joinpath(
-        "maasserver/utils/__init__.py"
-    ).resolve(): move_utils_init_file,
-    TARGET_ROOT.joinpath(
-        "maasserver/triggers/__init__.py"
-    ).resolve(): move_triggers_init_file,
-    TARGET_ROOT.joinpath(
-        "maasserver/models/bmc.py"
-    ).resolve(): split_up_bmc_models,
-    TARGET_ROOT.joinpath(
-        "metadataserver/models/__init__.py"
-    ).resolve(): move_metadataserver_models_init_file,
-    TARGET_ROOT.joinpath(
-        "maasserver/api/interfaces.py"
-    ).resolve(): drop_pluralization("maasserver/api"),
-    TARGET_ROOT.joinpath(
-        "maasserver/models/node.py"
-    ).resolve(): split_node_model,
-    TARGET_ROOT.joinpath(
-        "provisioningserver/drivers/power/registry.py"
-    ).resolve(): move_power_registry_file,
-    TARGET_ROOT.joinpath(
-        "provisioningserver/drivers/power/tests/test_registry.py"
-    ).resolve(): move_power_test_registry_file,
+    TARGET_ROOT / "maasserver" / "__init__.py": move_maasserver_init_file,
+    TARGET_ROOT
+    / "maasserver"
+    / "forms"
+    / "__init__.py": split_up_forms_init_file,
+    TARGET_ROOT
+    / "maasserver"
+    / "models"
+    / "__init__.py": split_up_models_init_file,
+    TARGET_ROOT / "maasserver" / "utils" / "__init__.py": move_utils_init_file,
+    TARGET_ROOT
+    / "maasserver"
+    / "triggers"
+    / "__init__.py": move_triggers_init_file,
+    TARGET_ROOT / "maasserver" / "models" / "bmc.py": split_up_bmc_models,
+    TARGET_ROOT
+    / "metadataserver"
+    / "models"
+    / "__init__.py": move_metadataserver_models_init_file,
+    TARGET_ROOT
+    / "maasserver"
+    / "api"
+    / "interfaces.py": drop_pluralization(Path("maasserver/api")),
+    TARGET_ROOT / "maasserver" / "models" / "node.py": split_node_model,
+    TARGET_ROOT
+    / "provisioningserver"
+    / "drivers"
+    / "power"
+    / "registry.py": move_power_registry_file,
+    TARGET_ROOT
+    / "provisioningserver"
+    / "drivers"
+    / "power"
+    / "tests"
+    / "test_registry.py": move_power_test_registry_file,
 }
 
 
@@ -335,63 +304,68 @@ def generate_base_dir_name(root, file_name):
     return base_name
 
 
-def create_destination(file_name, parent=""):
-    file_name = str(file_name)
-    parent = str(parent)
-    if file_name.endswith("__init__.py") and os.stat(file_name).st_size == 0:
+def create_destination(file_path, parent):
+    file_name = str(file_path)
+    if file_path.name == "__init__.py" and file_path.stat().st_size == 0:
         return ""
-    if parent.endswith("tests/") or parent.endswith("tests"):
-        if parent[-1] == "/":
-            parent = parent[:-2]
-        grandparent = parent.replace("/tests", "")
+    if parent.name == "tests":
+        grandparent = parent.parent
         base_name = generate_base_dir_name(parent, file_name)
         if grandparent in MODEL_DIRS:
-            return TARGET_ROOT.joinpath(f"{base_name}/tests/{file_name}")
+            return TARGET_ROOT / base_name / "tests" / file_path.name
         if grandparent in API_HANDLER_DIRS:
-            return TARGET_ROOT.joinpath(
-                f"{base_name}/tests/test_api_handler.py"
-            )
+            return TARGET_ROOT / base_name / "tests" / "test_api_handler.py"
         if grandparent in WEBSOCKET_HANDLER_DIRS:
-            return TARGET_ROOT.joinpath(
-                f"{base_name}/tests/test_ws_handler.py"
-            )
+            return TARGET_ROOT / base_name / "tests" / "test_ws_handler.py"
         if grandparent in FORMS_DIRS:
-            return TARGET_ROOT.joinpath(f"{base_name}/tests/test_forms.py")
+            return TARGET_ROOT / base_name / "tests" / "test_forms.py"
         if grandparent in POWER_DRIVER_DIRS:
-            return TARGET_ROOT.joinpath(f"{base_name}/tests/test_driver.py")
+            return TARGET_ROOT / base_name / "tests" / "test_driver.py"
         if grandparent in RPC_DIRS:
-            return TARGET_ROOT.joinpath(
-                f"{base_name}/tests/test_rpc_handler.py"
-            )
+            return TARGET_ROOT / base_name / "tests" / "test_rpc_handler.py"
     if parent in MODEL_DIRS:
-        return TARGET_ROOT.joinpath(
-            f"{generate_base_dir_name(parent, file_name)}/{str(file_name).replace(str(parent), '')}"
-        ).resolve()
+        return (
+            TARGET_ROOT
+            / generate_base_dir_name(parent, file_name)
+            / file_path.name
+        )
     if parent in API_HANDLER_DIRS:
-        return TARGET_ROOT.joinpath(
-            f"{generate_base_dir_name(parent, file_name)}/api_handler.py"
-        ).resolve()
+        return (
+            TARGET_ROOT
+            / generate_base_dir_name(parent, file_name)
+            / "api_handler.py"
+        )
     if parent in WEBSOCKET_HANDLER_DIRS:
-        return TARGET_ROOT.joinpath(
-            f"{generate_base_dir_name(parent, file_name)}/ws_handler.py"
-        ).resolve()
+        return (
+            TARGET_ROOT
+            / generate_base_dir_name(parent, file_name)
+            / "ws_handler.py"
+        )
     if parent in FORMS_DIRS:
-        return TARGET_ROOT.joinpath(
-            f"{generate_base_dir_name(parent, file_name)}/forms.py"
-        ).resolve()
+        return (
+            TARGET_ROOT
+            / generate_base_dir_name(parent, file_name)
+            / "forms.py"
+        )
     if parent in POWER_DRIVER_DIRS:
-        return TARGET_ROOT.joinpath(
-            f"{generate_base_dir_name(parent, file_name)}/driver.py"
-        ).resolve()
+        return (
+            TARGET_ROOT
+            / generate_base_dir_name(parent, file_name)
+            / "driver.py"
+        )
     if parent in RPC_DIRS:
-        if "maasserver" in parent:
-            return TARGET_ROOT.joinpath(
-                f"{generate_base_dir_name(parent, file_name)}/region_rpc_handler.py"
+        if "maasserver" in parent.parts:
+            return (
+                TARGET_ROOT
+                / generate_base_dir_name(parent, file_name)
+                / "region_rpc_handler.py"
             )
-        return TARGET_ROOT.joinpath(
-            f"{generate_base_dir_name(parent, file_name)}/rack_rpc_handler.py"
-        ).resolve()
-    return file_name
+        return (
+            TARGET_ROOT
+            / generate_base_dir_name(parent, file_name)
+            / "rack_rpc_handler.py"
+        )
+    return file_path
 
 
 def load_layout_changes():
@@ -402,13 +376,12 @@ def load_layout_changes():
 
         if root in SPECIAL_CASE_DIRS:
             changes += SPECIAL_CASE_DIRS[root](root)
-            return []
 
         with os.scandir(root) as scanner:
             for entry in scanner:
                 if not entry.name.startswith(".") and entry.is_file():
-                    name = Path(root).joinpath(entry.name).resolve()
-                    verbose_print(f"generating new path for: {name}")
+                    name = root / entry.name
+                    verbose_print(f"generating new path for {name}")
                     if name in SPECIAL_CASE_FILES:
                         changes += SPECIAL_CASE_FILES[name](name)
                     else:
@@ -416,12 +389,10 @@ def load_layout_changes():
                             (name, create_destination(name, parent=root))
                         )
                 if entry.is_dir() and entry.name not in IGNORED_DIRS:
-                    child_dirs.append(
-                        Path(root).joinpath(entry.name).resolve()
-                    )
+                    child_dirs.append(root / entry.name)
         return child_dirs
 
-    dirs = [TARGET_ROOT.resolve()]
+    dirs = [TARGET_ROOT]
     changes = []
     while len(dirs) > 0:
         dirs = [child for d in dirs for child in _walk(d, changes)]
@@ -452,14 +423,10 @@ def move_files(changes, dry_run=False):
 
 
 SPECIAL_CASE_IMPORTS = {
-    str(TARGET_ROOT.joinpath("bmc/bmc.py").resolve()): (
-        "maasserver.models.bmc.BMC*",
-        "bmc.BMC*",
-    ),
-    str(TARGET_ROOT.joinpath("vmhost/pod.py").resolve()): (
-        "maasserver.models.bmc.Pod*",
-        "vmhost.Pod*",
-    ),
+    TARGET_ROOT / "bmc" / "bmc.py": ("maasserver.models.bmc.BMC*", "bmc.BMC*"),
+    TARGET_ROOT
+    / "vmhost"
+    / "pod.py": ("maasserver.models.bmc.Pod*", "vmhost.Pod*"),
 }
 
 
@@ -501,7 +468,8 @@ def modify_imports(changes):
             new_src = _find_and_swap_imports(imports, f)
             f.write(new_src.dumps())
 
-    return _modify
+    for original, new in changes:
+        _modify(new)
 
 
 def diff_imports(changes):
@@ -509,7 +477,8 @@ def diff_imports(changes):
 
     def _diff(file_name):
         with open(file_name) as f:
-            src = RedBaron(f.read())
+            new_src = _find_and_swap_imports(imports, f)
+            # src = RedBaron(f.read())
 
     return "TODO: Diff imports"
 
@@ -537,7 +506,7 @@ if __name__ == "__main__":
     [
         print(f"{change[0]} -> {change[1]}")
         for change in changes
-        if change[1] and str(change[0]) != str(change[1])
+        if change[1] and change[0] != change[1]
     ]
 
     if not args.dry_run:
