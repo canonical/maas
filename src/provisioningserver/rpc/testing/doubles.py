@@ -30,6 +30,7 @@ class FakeConnection:
     ident = attr.ib(default=sentinel.ident)
     hostCertificate = attr.ib(default=sentinel.hostCertificate)
     peerCertificate = attr.ib(default=sentinel.peerCertificate)
+    in_use = attr.ib(default=False)
 
     def callRemote(self, cmd, **arguments):
         return succeed(sentinel.response)
@@ -48,12 +49,29 @@ class FakeConnectionToRegion:
     address = attr.ib(default=(sentinel.host, sentinel.port))
     hostCertificate = attr.ib(default=sentinel.hostCertificate)
     peerCertificate = attr.ib(default=sentinel.peerCertificate)
+    in_use = attr.ib(default=False)
 
     def callRemote(self, cmd, **arguments):
         return succeed(sentinel.response)
 
 
 verifyObject(IConnectionToRegion, FakeConnectionToRegion())
+
+
+@attr.s(eq=False, order=False)
+@implementer(IConnectionToRegion)
+class FakeBusyConnectionToRegion:
+    "A fake `IConnectionToRegion` that appears busy." ""
+
+    ident = attr.ib(default=sentinel.ident)
+    localIdent = attr.ib(default=sentinel.localIdent)
+    address = attr.ib(default=(sentinel.host, sentinel.port))
+    hostCertificate = attr.ib(default=sentinel.hostCertificate)
+    peerCertificate = attr.ib(default=sentinel.peerCertificate)
+    in_use = attr.ib(default=True)
+
+    def callRemote(self, cmd, **arguments):
+        return succeed(sentinel.response)
 
 
 class StubOS(OperatingSystem):

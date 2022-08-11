@@ -14,7 +14,11 @@ from twisted.python.failure import Failure
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc.interfaces import IConnection, IConnectionToRegion
-from provisioningserver.utils.twisted import asynchronous, deferWithTimeout
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    callOut,
+    deferWithTimeout,
+)
 
 log = LegacyLogger()
 
@@ -156,6 +160,11 @@ class Client:
         :return: A deferred result.  Call its `wait` method (with a timeout
             in seconds) to block on the call's completion.
         """
+        self._conn.in_use = True
+
+        def _free_conn():
+            self._conn.in_use = False
+
         if len(args) != 0:
             receiver_name = "{}.{}".format(
                 self.__module__,
@@ -171,11 +180,19 @@ class Client:
         if timeout is undefined:
             timeout = 120  # 2 minutes
         if timeout is None or timeout <= 0:
-            return self._conn.callRemote(cmd, **kwargs)
+            d = self._conn.callRemote(cmd, **kwargs)
+            if isinstance(d, Deferred):
+                d.addBoth(lambda x: callOut(x, _free_conn))
+            else:
+                _free_conn()
+            return d
         else:
-            return deferWithTimeout(
-                timeout, self._conn.callRemote, cmd, **kwargs
-            )
+            d = deferWithTimeout(timeout, self._conn.callRemote, cmd, **kwargs)
+            if isinstance(d, Deferred):
+                d.addBoth(lambda x: callOut(x, _free_conn))
+            else:
+                _free_conn()
+            return d
 
     @asynchronous
     def getHostCertificate(self):

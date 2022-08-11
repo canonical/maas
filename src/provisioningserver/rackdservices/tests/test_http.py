@@ -92,7 +92,8 @@ class TestRackHTTPService(MAASTestCase):
         return frozenset(
             {
                 client.address[0]
-                for _, client in rpc_service.connections.items()
+                for _, clients in rpc_service.connections.items()
+                for client in clients
             }
         )
 
@@ -208,7 +209,7 @@ class TestRackHTTPService(MAASTestCase):
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
-                mock_rpc.connections[eventloop] = mock_conn
+                mock_rpc.connections[eventloop] = {mock_conn}
 
         service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
         region_ips = list(service._genRegionIps())
@@ -225,7 +226,7 @@ class TestRackHTTPService(MAASTestCase):
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
-                mock_rpc.connections[eventloop] = mock_conn
+                mock_rpc.connections[eventloop] = {mock_conn}
 
         service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
         region_ips = frozenset(service._genRegionIps())
@@ -244,7 +245,7 @@ class TestRackHTTPService(MAASTestCase):
             ip_addresses.add("[%s]" % ip)
             mock_conn = Mock()
             mock_conn.address = (ip, random.randint(5240, 5250))
-            mock_rpc.connections[eventloop] = mock_conn
+            mock_rpc.connections[eventloop] = {mock_conn}
 
         service = http.RackHTTPService(self.make_dir(), mock_rpc, reactor)
         region_ips = set(service._genRegionIps())

@@ -117,7 +117,11 @@ from provisioningserver.rpc.testing import (
     call_responder,
     MockLiveClusterToRegionRPCFixture,
 )
-from provisioningserver.rpc.testing.doubles import DummyConnection, StubOS
+from provisioningserver.rpc.testing.doubles import (
+    FakeBusyConnectionToRegion,
+    FakeConnection,
+    StubOS,
+)
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
@@ -444,8 +448,10 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         )
 
 
-def make_inert_client_service():
-    service = ClusterClientService(Clock())
+def make_inert_client_service(max_idle_conns=1, max_conns=1, keepalive=1):
+    service = ClusterClientService(
+        Clock(), max_idle_conns, max_conns, keepalive
+    )
     # ClusterClientService's superclass, TimerService, creates a
     # LoopingCall with now=True. We neuter it here to allow
     # observation of the behaviour of _update_interval() for
@@ -499,10 +505,10 @@ class TestClusterClientService(MAASTestCase):
 
         # Fake some connections.
         service.connections = {
-            ipv4client.eventloop: ipv4client,
-            ipv6client.eventloop: ipv6client,
-            ipv6mapped.eventloop: ipv6mapped,
-            hostclient.eventloop: hostclient,
+            ipv4client.eventloop: {ipv4client},
+            ipv6client.eventloop: {ipv6client},
+            ipv6mapped.eventloop: {ipv6mapped},
+            hostclient.eventloop: {hostclient},
         }
 
         # Update the RPC state to the filesystem and info cache.
@@ -515,7 +521,8 @@ class TestClusterClientService(MAASTestCase):
             Equals(
                 {
                     client.address[0]
-                    for _, client in service.connections.items()
+                    for _, clients in service.connections.items()
+                    for client in clients
                 }
             ),
         )
@@ -1234,7 +1241,7 @@ class TestClusterClientService(MAASTestCase):
         connection = Mock()
         connection.address = (":::ffff", 2222)
         service.add_connection(endpoint, connection)
-        self.assertThat(service.connections, Equals({endpoint: connection}))
+        self.assertEqual(service.connections, {endpoint: {connection}})
 
     def test_add_connection_calls__update_saved_rpc_info_state(self):
         service = make_inert_client_service()
@@ -1246,6 +1253,30 @@ class TestClusterClientService(MAASTestCase):
         service.add_connection(endpoint, connection)
         self.assertThat(
             service._update_saved_rpc_info_state, MockCalledOnceWith()
+        )
+
+    def test_add_connection_creates_max_idle_connections(self):
+        service = make_inert_client_service(max_idle_conns=2)
+        service.startService()
+        endpoint = Mock()
+        connection = Mock()
+        connection.address = (":::ffff", 2222)
+        connection2 = Mock()
+        connection.address = (":::ffff", 2222)
+        self.patch(service, "_make_connection").return_value = succeed(
+            connection2
+        )
+        self.patch_autospec(service, "_update_saved_rpc_info_state")
+        service.add_connection(endpoint, connection)
+        self.assertEqual(
+            len(
+                [
+                    conn
+                    for conns in service.connections.values()
+                    for conn in conns
+                ]
+            ),
+            service._max_idle_connections,
         )
 
     def test_remove_connection_removes_from_try_connections(self):
@@ -1262,7 +1293,7 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        service.connections[endpoint] = connection
+        service.connections[endpoint] = {connection}
         service.remove_connection(endpoint, connection)
         self.assertThat(service.connections, Equals({}))
 
@@ -1271,7 +1302,7 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        service.connections[endpoint] = connection
+        service.connections[endpoint] = {connection}
         service.remove_connection(endpoint, connection)
         self.assertEqual(service.step, service.INTERVAL_LOW)
 
@@ -1280,7 +1311,7 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
         endpoint = Mock()
         connection = Mock()
-        service.connections[endpoint] = connection
+        service.connections[endpoint] = {connection}
 
         # Enable both dhcpd and dhcpd6.
         service_monitor.getServiceByName("dhcpd").on()
@@ -1295,13 +1326,17 @@ class TestClusterClientService(MAASTestCase):
     def test_getClient(self):
         service = ClusterClientService(Clock())
         service.connections = {
-            sentinel.eventloop01: DummyConnection(),
-            sentinel.eventloop02: DummyConnection(),
-            sentinel.eventloop03: DummyConnection(),
+            sentinel.eventloop01: {FakeConnection()},
+            sentinel.eventloop02: {FakeConnection()},
+            sentinel.eventloop03: {FakeConnection()},
         }
         self.assertIn(
             service.getClient(),
-            {common.Client(conn) for conn in service.connections.values()},
+            {
+                common.Client(conn)
+                for conns in service.connections.values()
+                for conn in conns
+            },
         )
 
     def test_getClient_when_there_are_no_connections(self):
@@ -1310,17 +1345,65 @@ class TestClusterClientService(MAASTestCase):
         self.assertRaises(exceptions.NoConnectionsAvailable, service.getClient)
 
     @inlineCallbacks
+    def test_getClientNow_scales_connections_when_busy(self):
+        service = ClusterClientService(Clock(), max_conns=2)
+        service.connections = {
+            sentinel.eventloop01: {FakeBusyConnectionToRegion()},
+            sentinel.eventloop02: {FakeBusyConnectionToRegion()},
+            sentinel.eventloop03: {FakeBusyConnectionToRegion()},
+        }
+        self.patch(service, "_make_connection").return_value = succeed(
+            FakeConnection()
+        )
+        original_conns = [
+            conn for conns in service.connections.values() for conn in conns
+        ]
+        new_client = yield service.getClientNow()
+        new_conn = new_client._conn
+        self.assertIsNotNone(new_conn)
+        self.assertNotIn(new_conn, original_conns)
+        self.assertIn(
+            new_conn,
+            [conn for conns in service.connections.values() for conn in conns],
+        )
+
+    @inlineCallbacks
+    def test_getClientNow_returns_an_existing_connection_when_max_are_open(
+        self,
+    ):
+        service = ClusterClientService(Clock(), max_conns=1)
+        service.connections = {
+            sentinel.eventloop01: {FakeBusyConnectionToRegion()},
+            sentinel.eventloop02: {FakeBusyConnectionToRegion()},
+            sentinel.eventloop03: {FakeBusyConnectionToRegion()},
+        }
+        self.patch(service, "_make_connection").return_value = succeed(
+            FakeConnection()
+        )
+        original_conns = [
+            conn for conns in service.connections.values() for conn in conns
+        ]
+        new_client = yield service.getClientNow()
+        new_conn = new_client._conn
+        self.assertIsNotNone(new_conn)
+        self.assertIn(new_conn, original_conns)
+
+    @inlineCallbacks
     def test_getClientNow_returns_current_connection(self):
         service = ClusterClientService(Clock())
         service.connections = {
-            sentinel.eventloop01: DummyConnection(),
-            sentinel.eventloop02: DummyConnection(),
-            sentinel.eventloop03: DummyConnection(),
+            sentinel.eventloop01: {FakeConnection()},
+            sentinel.eventloop02: {FakeConnection()},
+            sentinel.eventloop03: {FakeConnection()},
         }
         client = yield service.getClientNow()
         self.assertIn(
             client,
-            {common.Client(conn) for conn in service.connections.values()},
+            {
+                common.Client(conn)
+                for conns in service.connections.values()
+                for conn in conns
+            },
         )
 
     @inlineCallbacks
@@ -1330,9 +1413,9 @@ class TestClusterClientService(MAASTestCase):
 
         def addConnections():
             service.connections = {
-                sentinel.eventloop01: DummyConnection(),
-                sentinel.eventloop02: DummyConnection(),
-                sentinel.eventloop03: DummyConnection(),
+                sentinel.eventloop01: {FakeConnection()},
+                sentinel.eventloop02: {FakeConnection()},
+                sentinel.eventloop03: {FakeConnection()},
             }
             return succeed(None)
 
@@ -1340,7 +1423,11 @@ class TestClusterClientService(MAASTestCase):
         client = yield service.getClientNow()
         self.assertIn(
             client,
-            {common.Client(conn) for conn in service.connections.values()},
+            {
+                common.Client(conn)
+                for conns in service.connections.values()
+                for conn in conns
+            },
         )
 
     def test_getClientNow_raises_exception_when_no_clients(self):
@@ -1383,11 +1470,11 @@ class TestClusterClientService(MAASTestCase):
     def test_getAllClients(self):
         service = ClusterClientService(Clock())
         uuid1 = factory.make_UUID()
-        c1 = DummyConnection()
-        service.connections[uuid1] = c1
+        c1 = FakeConnection()
+        service.connections[uuid1] = {c1}
         uuid2 = factory.make_UUID()
-        c2 = DummyConnection()
-        service.connections[uuid2] = c2
+        c2 = FakeConnection()
+        service.connections[uuid2] = {c2}
         clients = service.getAllClients()
         self.assertEqual(clients, [common.Client(c1), common.Client(c2)])
 
@@ -1395,6 +1482,26 @@ class TestClusterClientService(MAASTestCase):
         service = ClusterClientService(Clock())
         service.connections = {}
         self.assertThat(service.getAllClients(), Equals([]))
+
+    @inlineCallbacks
+    def test__reap_extra_connection_reaps_a_scaled_up_connection(self):
+        clock = Clock()
+        service = ClusterClientService(clock, max_conns=2, keepalive=0)
+        service.connections = {
+            sentinel.eventloop01: {FakeBusyConnectionToRegion()},
+            sentinel.eventloop02: {FakeBusyConnectionToRegion()},
+            sentinel.eventloop03: {FakeBusyConnectionToRegion()},
+        }
+        self.patch(service, "_make_connection").return_value = succeed(
+            FakeConnection()
+        )
+        reap_call = self.patch(service, "_reap_extra_connection")
+        new_client = yield service.getClientNow()
+        delayed_calls = clock.getDelayedCalls()
+        self.assertEqual(len(delayed_calls), 1)
+        delayed_call = delayed_calls[0]
+        self.assertIn(new_client._conn, delayed_call.args)
+        self.assertEqual(reap_call.__name__, delayed_call.func.__name__)
 
 
 class TestClusterClientServiceIntervals(MAASTestCase):
@@ -1562,14 +1669,14 @@ class TestClusterClient(MAASTestCase):
         self.assertEqual(client.eventloop, extract_result(wait_for_ready))
         self.assertEqual(client.service.try_connections, {})
         self.assertEqual(
-            client.service.connections, {client.eventloop: client}
+            client.service.connections, {client.eventloop: {client}}
         )
 
     def test_disconnects_when_there_is_an_existing_connection(self):
         client = self.make_running_client()
 
         # Pretend that a connection already exists for this address.
-        client.service.connections[client.eventloop] = sentinel.connection
+        client.service.connections[client.eventloop] = {sentinel.connection}
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
@@ -1586,7 +1693,8 @@ class TestClusterClient(MAASTestCase):
         # The connections list is unchanged because the new connection
         # immediately disconnects.
         self.assertEqual(
-            client.service.connections, {client.eventloop: sentinel.connection}
+            client.service.connections,
+            {client.eventloop: {sentinel.connection}},
         )
         self.assertFalse(client.connected)
         self.assertIsNone(client.transport)
