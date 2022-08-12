@@ -139,13 +139,7 @@ class ProvisioningServiceMaker:
     def _makeRPCService(self):
         from provisioningserver.rpc.clusterservice import ClusterClientService
 
-        with ClusterConfiguration.open() as config:
-            rpc_service = ClusterClientService(
-                reactor,
-                config.max_idle_rpc_connections,
-                config.max_rpc_connections,
-                config.rpc_keepalive,
-            )
+        rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
         return rpc_service
 

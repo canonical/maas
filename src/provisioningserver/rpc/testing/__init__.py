@@ -262,8 +262,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture, metaclass=ABCMeta):
             {
                 "eventloops": {
                     eventloop: [client.address]
-                    for eventloop, clients in connections
-                    for client in clients
+                    for eventloop, client in connections
                 }
             },
             orig_url,

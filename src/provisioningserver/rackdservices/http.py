@@ -101,9 +101,8 @@ class RackHTTPService(TimerService):
         controller is connected to."""
         # Filter the connects by region.
         conn_per_region = defaultdict(set)
-        for eventloop, connection_set in self._rpc_service.connections.items():
-            for connection in connection_set:
-                conn_per_region[eventloop.split(":")[0]].add(connection)
+        for eventloop, connection in self._rpc_service.connections.items():
+            conn_per_region[eventloop.split(":")[0]].add(connection)
         for _, connections in conn_per_region.items():
             # Sort the connections so the same IP is always picked per
             # region controller. This ensures that the HTTP configuration

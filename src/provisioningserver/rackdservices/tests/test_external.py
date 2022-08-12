@@ -430,8 +430,7 @@ class TestRackDNS(MAASTestCase):
         return frozenset(
             {
                 client.address[0]
-                for _, clients in rpc_service.connections.items()
-                for client in clients
+                for _, client in rpc_service.connections.items()
             }
         )
 
@@ -610,7 +609,7 @@ class TestRackDNS(MAASTestCase):
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
-                mock_rpc.connections[eventloop] = {mock_conn}
+                mock_rpc.connections[eventloop] = mock_conn
 
         dns = external.RackDNS()
         region_ips = list(dns._genRegionIps(mock_rpc.connections))
@@ -627,7 +626,7 @@ class TestRackDNS(MAASTestCase):
                 ip = factory.make_ip_address()
                 mock_conn = Mock()
                 mock_conn.address = (ip, random.randint(5240, 5250))
-                mock_rpc.connections[eventloop] = {mock_conn}
+                mock_rpc.connections[eventloop] = mock_conn
 
         dns = external.RackDNS()
         region_ips = frozenset(dns._genRegionIps(mock_rpc.connections))
@@ -660,8 +659,7 @@ class TestRackProxy(MAASTestCase):
         return frozenset(
             {
                 client.address[0]
-                for _, clients in rpc_service.connections.items()
-                for client in clients
+                for _, client in rpc_service.connections.items()
             }
         )
 
@@ -826,8 +824,7 @@ class TestRackSyslog(MAASTestCase):
         return frozenset(
             {
                 (eventloop, client.address[0])
-                for eventloop, clients in rpc_service.connections.items()
-                for client in clients
+                for eventloop, client in rpc_service.connections.items()
             }
         )
 

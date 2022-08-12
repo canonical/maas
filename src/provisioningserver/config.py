@@ -762,23 +762,6 @@ class ClusterConfiguration(Configuration, metaclass=ClusterConfigurationMeta):
         ),
     )
 
-    # RPC Connection Pool options
-    max_idle_rpc_connections = ConfigurationOption(
-        "max_idle_rpc_connections",
-        "The nominal number of connections to have per endpoint",
-        Number(min=1, max=1024, if_missing=1),
-    )
-    max_rpc_connections = ConfigurationOption(
-        "max_rpc_connections",
-        "The maximum number of connections to scale to when under load",
-        Number(min=1, max=1024, if_missing=4),
-    )
-    rpc_keepalive = ConfigurationOption(
-        "rpc_keepalive",
-        "The duration in miliseconds to keep added connections alive",
-        Number(min=1, max=5000, if_missing=1000),
-    )
-
     # TFTP options.
     tftp_port = ConfigurationOption(
         "tftp_port",

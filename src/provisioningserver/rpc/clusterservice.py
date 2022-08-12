@@ -999,7 +999,6 @@ class ClusterClient(Cluster):
         # Events for this protocol's life-cycle.
         self.authenticated = DeferredValue()
         self.ready = DeferredValue()
-        self.in_use = False
         self.localIdent = None
 
     @property
@@ -1202,7 +1201,7 @@ class ClusterClientService(TimerService):
 
     time_started = None
 
-    def __init__(self, reactor, max_idle_conns=1, max_conns=1, keepalive=1000):
+    def __init__(self, reactor):
         super().__init__(self._calculate_interval(None, None), self._tryUpdate)
         self.connections = {}
         self.try_connections = {}
@@ -1225,39 +1224,9 @@ class ClusterClientService(TimerService):
         self._updateInProgress = DeferredValue()
         self._updateInProgress.set(None)
 
-        # The maximum number of connections to allways allocate per eventloop
-        self._max_idle_connections = max_idle_conns
-        # The maximum number of connections to allocate while under load per eventloop
-        self._max_connections = max_conns
-        # The duration in milliseconds to keep scaled up connections alive
-        self._keepalive = keepalive
-
     def startService(self):
         self.time_started = self.clock.seconds()
         super().startService()
-
-    def _reap_extra_connection(self, eventloop, conn):
-        if not conn.in_use:
-            self._drop_connection(conn)
-            return self._remove_connection(eventloop, conn)
-        return self.clock.callLater(
-            self._keepalive, self._reap_extra_connection, conn
-        )
-
-    @inlineCallbacks
-    def _scale_up_connections(self):
-        for ev, ev_conns in self.connections.items():
-            # pick first group with room for additional conns
-            if len(ev_conns) < self._max_connections:
-                # spawn an extra connection
-                conn_to_clone = random.choice(list(ev_conns))
-                conn = yield self._make_connection(ev, conn_to_clone.address)
-                self.connections[ev].add(conn)
-                self.clock.callLater(
-                    self._keepalive, self._reap_extra_connection, ev, conn
-                )
-                return
-        raise exceptions.MaxConnectionsOpen
 
     def getClient(self):
         """Returns a :class:`common.Client` connected to a region.
@@ -1267,22 +1236,11 @@ class ClusterClientService(TimerService):
         :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when
             there are no open connections to a region controller.
         """
-        conns = [
-            conn for conn_set in self.connections.values() for conn in conn_set
-        ]
+        conns = list(self.connections.values())
         if len(conns) == 0:
             raise exceptions.NoConnectionsAvailable()
         else:
-            free_conns = [conn for conn in conns if not conn.in_use]
-            if len(free_conns) > 0:
-                return common.Client(random.choice(free_conns))
-            else:
-                for endpoint_conns in self.connections.values():
-                    if len(endpoint_conns) < self._max_connections:
-                        # caller should create a new connection
-                        raise exceptions.AllConnectionsBusy
-                # return a busy connection, assume it will free up or timeout
-                return common.Client(random.choice(conns))
+            return common.Client(random.choice(conns))
 
     @deferred
     def getClientNow(self):
@@ -1301,18 +1259,10 @@ class ClusterClientService(TimerService):
             return self.getClient()
         except exceptions.NoConnectionsAvailable:
             return self._tryUpdate().addCallback(call, self.getClient)
-        except exceptions.AllConnectionsBusy:
-            return self._scale_up_connections().addCallback(
-                call, self.getClient
-            )
 
     def getAllClients(self):
         """Return a list of all connected :class:`common.Client`s."""
-        return [
-            common.Client(conn)
-            for conns in self.connections.values()
-            for conn in conns
-        ]
+        return [common.Client(conn) for conn in self.connections.values()]
 
     def _tryUpdate(self):
         """Attempt to refresh outgoing connections.
@@ -1441,9 +1391,7 @@ class ClusterClientService(TimerService):
         """Update the saved RPC info state."""
         # Build a list of addresses based on the current connections.
         connected_addr = {
-            conn.address[0]
-            for _, conns in self.connections.items()
-            for conn in conns
+            conn.address[0] for _, conn in self.connections.items()
         }
         if (
             self._rpc_info_state is None
@@ -1813,7 +1761,6 @@ class ClusterClientService(TimerService):
         """Drop the given `connection`."""
         return connection.transport.loseConnection()
 
-    @inlineCallbacks
     def add_connection(self, eventloop, connection):
         """Add the connection to the tracked connections.
 
@@ -1822,16 +1769,7 @@ class ClusterClientService(TimerService):
         """
         if eventloop in self.try_connections:
             del self.try_connections[eventloop]
-        if not self.connections.get(eventloop):
-            self.connections[eventloop] = set()
-        self.connections[eventloop].add(connection)
-        # clone connection to equal num idle connections
-        if self._max_idle_connections - 1 > 0:
-            for _ in range(self._max_idle_connections - 1):
-                extra_conn = yield self._make_connection(
-                    connection.eventloop, connection.address
-                )
-                self.connections[eventloop].add(extra_conn)
+        self.connections[eventloop] = connection
         self._update_saved_rpc_info_state()
 
     def remove_connection(self, eventloop, connection):
@@ -1844,10 +1782,8 @@ class ClusterClientService(TimerService):
             if self.try_connections[eventloop] is connection:
                 del self.try_connections[eventloop]
         if eventloop in self.connections:
-            if connection in self.connections.get(eventloop, set()):
-                self.connections[eventloop].discard(connection)
-                if len(self.connections[eventloop]) == 0:
-                    del self.connections[eventloop]
+            if self.connections[eventloop] is connection:
+                del self.connections[eventloop]
         # Disable DHCP when no connections to a region controller.
         if len(self.connections) == 0:
             stopping_services = []
