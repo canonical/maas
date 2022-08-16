@@ -12,6 +12,14 @@ class NoConnectionsAvailable(Exception):
         self.uuid = uuid
 
 
+class AllConnectionsBusy(Exception):
+    """The current connection pool is busy"""
+
+
+class MaxConnectionsOpen(Exception):
+    """The maxmimum number of connections are currently open"""
+
+
 class NoSuchEventType(Exception):
     """The specified event type was not found."""
 

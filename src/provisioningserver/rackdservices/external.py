@@ -68,8 +68,9 @@ class RackOnlyExternalService(metaclass=ABCMeta):
 
         # Filter the connects by region.
         conn_per_region = defaultdict(set)
-        for eventloop, connection in connections.items():
-            conn_per_region[eventloop.split(":")[0]].add(connection)
+        for eventloop, connection_set in connections.items():
+            for connection in connection_set:
+                conn_per_region[eventloop.split(":")[0]].add(connection)
         for eventloop, connections in conn_per_region.items():
             # Sort the connections so the same IP is always picked per
             # region controller. This ensures that the HTTP configuration

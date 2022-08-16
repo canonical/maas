@@ -176,7 +176,7 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
                 ),
             ),
         )
-        cmd = (
+        cmd = [
             "dhcpd",
             ("-6" if ipv6 else "-4"),
             "-t",
@@ -184,7 +184,7 @@ def validate_dhcpd_configuration(test, configuration, ipv6):
             conffile.name,
             "-lf",
             leasesfile.name,
-        )
+        ]
         if not running_in_docker():
             # Call `dhcpd` without AppArmor confinement, so that it can read
             # configurations file from /tmp.  This is not needed when running
