@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from functools import partial
 import json
 import logging
-from operator import itemgetter
+from operator import attrgetter, itemgetter
 import random
 import re
 from types import FunctionType
@@ -6512,6 +6512,84 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         )
         self.assertEqual(
             "Allocated",
+            result["groups"][1]["name"],
+        )
+
+    def test_group_power_state(self):
+        user = factory.make_User()
+        factory.make_Node(
+            owner=user,
+            power_state=POWER_STATE.ON,
+        )
+        factory.make_Node(
+            owner=user,
+            power_state=POWER_STATE.OFF,
+        )
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "group_key": "power_state",
+            }
+        )
+        self.assertEqual(
+            "Off",
+            result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            "On",
+            result["groups"][1]["name"],
+        )
+
+    def test_group_owner(self):
+        admin = factory.make_admin()
+        user1 = factory.make_User(username="User01")
+        user2 = factory.make_User(username="User02")
+        factory.make_Node(
+            owner=user2,
+        )
+        factory.make_Node(
+            owner=user1,
+        )
+        handler = MachineHandler(admin, {}, None)
+        result = handler.list(
+            {
+                "group_key": "owner",
+            }
+        )
+        self.assertEqual(
+            "User01",
+            result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            "User02",
+            result["groups"][1]["name"],
+        )
+
+    def test_group_zone(self):
+        user = factory.make_User()
+        zones = sorted(
+            [factory.make_Zone() for _ in range(2)], key=attrgetter("name")
+        )
+        factory.make_Node(
+            owner=user,
+            zone=zones[1],
+        )
+        factory.make_Node(
+            owner=user,
+            zone=zones[0],
+        )
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "group_key": "zone",
+            }
+        )
+        self.assertEqual(
+            zones[0].name,
+            result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            zones[1].name,
             result["groups"][1]["name"],
         )
 

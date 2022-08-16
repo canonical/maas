@@ -1237,7 +1237,7 @@ class NodeHandler(TimestampedModelHandler):
         elif key == "zone":
             expr = "zone__name"
         elif key == "owner":
-            expr = "owner__name"
+            expr = "owner__username"
         else:
             expr = key
         return expr
@@ -1245,7 +1245,7 @@ class NodeHandler(TimestampedModelHandler):
     def _get_group_label(self, key, value):
         """Get grouping expression for key"""
         if key == "power_state":
-            return POWER_STATE_CHOICES[value]
+            return getattr(POWER_STATE, value.upper()).capitalize()
         elif key == "status":
             return NODE_STATUS_CHOICES_DICT[value]
         else:
