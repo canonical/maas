@@ -629,9 +629,6 @@ STATIC_FILTER_FIELDS = (
     "arch",
     "power_state",
     "status",
-    "free_text",
-    "description",
-    "error_description",
 )
 
 
@@ -660,7 +657,7 @@ def get_field_argument_type(field):
     elif isinstance(field, (MultipleChoiceField)):
         return "list[str]"
     elif isinstance(field, (LabeledConstraintMapField)):
-        return "dict[str,str]"
+        return "str"
     elif isinstance(field, (forms.ChoiceField,)):
         return "str"
     else:

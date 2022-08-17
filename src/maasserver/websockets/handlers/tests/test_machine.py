@@ -5908,13 +5908,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         self.assertCountEqual(
             [
                 {
-                    "key": "id",
-                    "label": "System IDs to filter on",
-                    "dynamic": True,
-                    "type": "list[str]",
-                    "for_grouping": False,
-                },
-                {
                     "key": "arch",
                     "label": "Architecture",
                     "dynamic": False,
@@ -6037,7 +6030,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "key": "interfaces",
                     "label": "Interfaces",
                     "dynamic": True,
-                    "type": "dict[str,str]",
+                    "type": "str",
                     "for_grouping": False,
                 },
                 {
@@ -6085,13 +6078,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                 {
                     "key": "not_pod_type",
                     "label": "The power_type of the undesired pod",
-                    "dynamic": True,
-                    "type": "list[str]",
-                    "for_grouping": False,
-                },
-                {
-                    "key": "hostname",
-                    "label": "Hostnames to filter on",
                     "dynamic": True,
                     "type": "list[str]",
                     "for_grouping": False,
@@ -6167,20 +6153,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "for_grouping": False,
                 },
                 {
-                    "key": "not_id",
-                    "label": "System IDs to ignore",
-                    "type": "list[str]",
-                    "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
-                    "key": "not_hostname",
-                    "label": "Hostnames to ignore",
-                    "type": "list[str]",
-                    "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
                     "key": "not_domain",
                     "label": "Domain names to ignore",
                     "type": "list[str]",
@@ -6199,20 +6171,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "label": "Exclude nodes with the specified status",
                     "type": "list[str]",
                     "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
-                    "key": "free_text",
-                    "label": "Free-text search on all string fields",
-                    "type": "list[str]",
-                    "dynamic": False,
-                    "for_grouping": False,
-                },
-                {
-                    "key": "description",
-                    "label": "The description of the desired node",
-                    "type": "list[str]",
-                    "dynamic": False,
                     "for_grouping": False,
                 },
                 {
@@ -6241,13 +6199,6 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "label": "OS distribution to ignore",
                     "type": "list[str]",
                     "dynamic": True,
-                    "for_grouping": False,
-                },
-                {
-                    "key": "error_description",
-                    "label": "node error description",
-                    "type": "list[str]",
-                    "dynamic": False,
                     "for_grouping": False,
                 },
                 {
@@ -6306,9 +6257,9 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
 
         def _assert_value_in(value, field_name):
             self.assertIn(
-                str(value),
+                value,
                 [
-                    option["label"]
+                    option["key"]
                     for option in handler.filter_options(
                         {"group_key": field_name}
                     )
@@ -6320,7 +6271,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             self.assertTrue(
                 subset
                 <= {
-                    option["label"]
+                    option["key"]
                     for option in handler.filter_options(
                         {"group_key": field_name}
                     )
@@ -6332,9 +6283,8 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             machine.tags.add(factory.make_Tag())
             _assert_value_in(machine.architecture, "arch")
             _assert_value_in(machine.owner.username, "owner")
-            _assert_value_in(
-                str.capitalize(machine.power_state), "power_state"
-            )
+            _assert_value_in(machine.power_state, "power_state")
+            _assert_value_in(machine.power_state, "not_power_state")
             _assert_subset(set(machine.tag_names()), "tags")
             _assert_subset(set(machine.tag_names()), "not_tags")
             _assert_subset(
@@ -6385,7 +6335,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             )
             _assert_subset(
                 set(
-                    human_readable_bytes(iface.link_speed)
+                    iface.link_speed
                     for iface in machine.current_config.interface_set.all()
                 ),
                 "link_speed",
@@ -6413,6 +6363,10 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             _assert_value_in(machine.hostname, "hostname")
             _assert_value_in(
                 NODE_STATUS_SHORT_LABEL_CHOICES[machine.status][0], "status"
+            )
+            _assert_value_in(
+                NODE_STATUS_SHORT_LABEL_CHOICES[machine.status][0],
+                "not_status",
             )
             _assert_subset(
                 set(
