@@ -1197,7 +1197,7 @@ class PowersMixin:
         power parameters for a specific machine or more than one machine:
         ``op=power_parameters&id=abc123&id=def456``.
 
-        @param (url-string) "id" [required=false] A system ID. To request more
+        @param (url-string) "id" [required=true] A system ID. To request more
         than one machine, provide multiple ``id`` arguments in the request.
         Only machines with matching system ids will be returned.
         @param-example "id"

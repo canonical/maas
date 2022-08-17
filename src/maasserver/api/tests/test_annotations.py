@@ -50,7 +50,7 @@ class TestAPIAnnotations(APITestCase.ForUser):
     @param (int) "param_name2" [required=false] param2 description
     @param-example "param_name2" param2-ex
 
-    @param (url-string) "param_name3" [required=false] param3 description
+    @param (url-string) "param_name3" [required=true] param3 description
     @param-example "param_name3" param3-ex
 
     @param (json) "param_name4" [required=false] param4 description
