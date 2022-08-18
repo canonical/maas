@@ -26,6 +26,7 @@
 /develop-eggs
 /dist
 /api-docs.rst
+/openapi.yaml
 /eggs
 /etc/maas/rackd.conf
 /etc/maas/regiond.conf

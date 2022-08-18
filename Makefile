@@ -218,7 +218,10 @@ check: clean test
 api-docs.rst: bin/maas-region src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region generate_api_doc > $@
 
-doc: api-docs.rst
+openapi.yaml: bin/maas-region src/maasserver/api/doc_handler.py syncdb
+	bin/maas-region generate_oapi_spec > $@
+
+doc: api-docs.rst openapi.yaml
 .PHONY: doc
 
 .run: run-skel

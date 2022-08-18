@@ -19,33 +19,7 @@ from maasserver.api.annotations import APIDocstringParser
 from maasserver.api.doc import find_api_resources, generate_doc
 from maasserver.djangosettings import settings
 from maasserver.models.config import Config
-from maasserver.models.controllerinfo import get_maas_version
 from maasserver.utils import build_absolute_uri
-
-
-def openapi_docs_context(request):
-    """Return the aadditional context needed for the oapi doc template to function"""
-    colourmap = {
-        "bark": "#585841",
-        "blue": "#0060bf",
-        "magenta": "#974097",
-        "olive": "#3d5f11",
-        "prussian green": "#225d5c",
-        "purple": "#7764d8",
-        "red": "#a71b33",
-        "sage": "#4e5f51",
-        "viridian": "#025a3d",
-    }
-    local_server = _get_maas_servers()[0]
-    context = {
-        "openapi_url": local_server["url"] + "openapi.yaml",
-        "maas_colour": colourmap.get(
-            Config.objects.get_config("theme").lower(), "#262626"
-        ),
-        "maas_name": local_server["description"].removesuffix(" API"),
-        "maas_version": get_maas_version(),
-    }
-    return context
 
 
 def landing_page(request):
@@ -71,6 +45,7 @@ def endpoint(request):
         with the OpenApi spec 3.0.
     """
     description = get_api_endpoint()
+    description["servers"] = _get_maas_servers()
     # Return as a YAML document
     return HttpResponse(
         yaml.dump(description),
@@ -125,7 +100,6 @@ def get_api_endpoint():
             "description": "MAAS API documentation",
             "url": "/MAAS/docs/api.html",
         },
-        "servers": _get_maas_servers(),
     }
     return description
 

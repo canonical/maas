@@ -4,8 +4,8 @@
   <head>
     <meta charset="UTF-8">
     <title>MAAS API</title>
-    <link href="/MAAS/r/static/css/main.05850fff.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@4.5.0/swagger-ui.css" />
+    <link href="https://maas.io/static/css/main.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@latest/swagger-ui.css" />
     <style>
       html * {
         font-family: ubuntu !important;
@@ -23,7 +23,7 @@
   </head>
 
   <body>
-    <header class="p-navigation is-dark" style="background-color: {{ maas_colour }};">
+    <header class="p-navigation is-dark" style="background-color: #262626;">
       <div class="p-navigation__row">
         <div class="p-navigation__banner">
           <div class="p-navigation__tagged-logo">
@@ -45,16 +45,16 @@
         </div>
         <div style="margin: auto; margin-right:0;">
           <a aria-label="Homepage" class="p-navigation__link" href="/MAAS/api/">
-            <div class="p-navigation__logo-title">{{ maas_name }} MAAS: {{ maas_version }}</div>
+            <div class="p-navigation__logo-title">MAAS</div>
           </a>
         </div>
       </header>
-    <div id="swagger-ui" style="max-width: 90rem; margin: auto;"></div>
-    <script src="https://unpkg.com/swagger-ui-dist@4.5.0/swagger-ui-bundle.js" crossorigin></script>
+    <div id="swagger-ui" style="max-width: 72rem; margin: auto;"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@latest/swagger-ui-bundle.js" crossorigin></script>
     <script>
       window.onload = function() {
         window.ui = SwaggerUIBundle({
-          url: "{{ openapi_url }}",
+          url: "/MAAS/api/2.0/openapi.yaml",
           dom_id: '#swagger-ui',
           deepLinking: true,
           presets: [
