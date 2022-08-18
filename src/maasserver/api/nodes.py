@@ -535,7 +535,7 @@ class NodeHandler(OperationsHandler):
 
         @success (http-status-code) "200" 200
 
-        @success (content) "success-content" A BSON object represented here in
+        @success (json) "success-content" A BSON object represented here in
         ASCII using ``bsondump example.bson``.
         @success-example "success-content" [exkey=details] placeholder text
 

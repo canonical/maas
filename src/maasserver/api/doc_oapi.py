@@ -268,6 +268,15 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
                             },
                         },
                     }
+                case "bson":
+                    response["content"] = {
+                        "application/bson": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": True,
+                            },
+                        },
+                    }
 
             status_code = status["name"]
             if not status_code.isdigit():

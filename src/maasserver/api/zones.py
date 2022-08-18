@@ -50,7 +50,7 @@ class ZoneHandler(ModelOperationsHandler):
         @param-example "{name}" myzone
 
         @success (http-status-code) "server_success" 200
-        @success (content) "content_success" A JSON object containing zone
+        @success (json) "content_success" A JSON object containing zone
             information
         @success-example "content_success"
             {
@@ -82,7 +82,7 @@ class ZoneHandler(ModelOperationsHandler):
         @param-example "description" An updated zone description.
 
         @success (http-status-code) "serversuccess" 200
-        @success (content) "contentsuccess" A JSON object containing details
+        @success (json) "contentsuccess" A JSON object containing details
             about your new zone.
         @success-example "contentsuccess"
             {
@@ -138,7 +138,7 @@ class ZonesHandler(ModelCollectionOperationsHandler):
             new zone.
 
         @success (http-status-code) "serversuccess" 204
-        @success (content) "contentsuccess" A JSON object containing details
+        @success (json) "contentsuccess" A JSON object containing details
             about your new zone.
         @success-example "contentsuccess"
             {
@@ -160,7 +160,7 @@ class ZonesHandler(ModelCollectionOperationsHandler):
         at least one zone: default.
 
         @success (http-status-code) "serversuccess" 200
-        @success (content) "contentsuccess" A JSON object containing a list
+        @success (json) "contentsuccess" A JSON object containing a list
         of zones.
         @success-example "contentsuccess"
             [

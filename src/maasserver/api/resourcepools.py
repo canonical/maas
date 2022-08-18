@@ -45,7 +45,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
         @param-example "{id}" mypool
 
         @success (http-status-code) "server_success" 200
-        @success (content) "content_success" A JSON object containing
+        @success (json) "content_success" A JSON object containing
             resource pool information
         @success-example "content_success"
             {
@@ -80,7 +80,7 @@ class ResourcePoolHandler(ModelOperationsHandler):
             description.
 
         @success (http-status-code) "serversuccess" 200
-        @success (content) "contentsuccess" A JSON object containing details
+        @success (json) "contentsuccess" A JSON object containing details
             about your new resource pool.
         @success-example "contentsuccess"
             {
@@ -147,7 +147,7 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
             of my new resource pool.
 
         @success (http-status-code) "serversuccess" 200
-        @success (content) "contentsuccess" A JSON object containing details
+        @success (json) "contentsuccess" A JSON object containing details
             about your new resource pool.
         @success-example "contentsuccess"
             {
@@ -170,7 +170,7 @@ class ResourcePoolsHandler(ModelCollectionOperationsHandler):
         Note that there is always at least one resource pool: default.
 
         @success (http-status-code) "serversuccess" 200
-        @success (content) "contentsuccess" A JSON object containing a
+        @success (json) "contentsuccess" A JSON object containing a
             list of resource pools.
         @success-example "contentsuccess"
             [

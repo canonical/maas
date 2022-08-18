@@ -157,7 +157,7 @@ class RackControllerHandler(NodeHandler, PowerMixin):
         controller. If not given the default domain is used.
 
         @success (http-status-code) "200" 200
-        @success (content) "success-json" A JSON object containing the updated
+        @success (json) "success-json" A JSON object containing the updated
         rack-controller object.
         @success-example "success-json" [exkey=update] placeholder
 
@@ -280,7 +280,7 @@ class RackControllersHandler(NodesHandler, PowersMixin):
         @description Queries all rack controllers for power information.
 
         @success (http-status-code) "200" 200
-        @success (content) "success-json" A JSON object containing a dictionary
+        @success (json) "success-json" A JSON object containing a dictionary
         with system_ids as keys and power parameters as values.
         @success-example "success-json" [exkey=power-params-multi] placeholder
         """
