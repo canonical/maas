@@ -1388,6 +1388,11 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         required=False,
     )
 
+    not_mac_address = UnconstrainedMultipleChoiceField(
+        label="MAC addresses to filter on",
+        required=False,
+    )
+
     description = UnconstrainedMultipleChoiceField(
         label="The description of the desired node", required=False
     )
@@ -1424,8 +1429,52 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         label="Node's spaces", required=False
     )
 
+    not_spaces = UnconstrainedMultipleChoiceField(
+        label="Node's spaces", required=False
+    )
+
     workloads = UnconstrainedMultipleChoiceField(
         label="Node's workload annotations", required=False
+    )
+
+    not_workloads = UnconstrainedMultipleChoiceField(
+        label="Node's workload annotations", required=False
+    )
+
+    not_link_speed = UnconstrainedTypedMultipleChoiceField(
+        label="Link speed",
+        coerce=float,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid link speed: number required."
+        },
+    )
+
+    not_cpu_count = UnconstrainedTypedMultipleChoiceField(
+        label="CPU count",
+        coerce=float,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid CPU count: number required."
+        },
+    )
+
+    not_cpu_speed = UnconstrainedTypedMultipleChoiceField(
+        label="CPU speed",
+        coerce=float,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid CPU speed: number required."
+        },
+    )
+
+    not_mem = UnconstrainedTypedMultipleChoiceField(
+        label="Memory",
+        coerce=float,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid memory: number of MiB required."
+        },
     )
 
     FREETEXT_FILTERS = {
@@ -1474,6 +1523,13 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         ),
     }
 
+    UPDATE_FILTERS = {
+        "link_speed": ("current_config__interface__link_speed", _match_any),
+        "cpu_count": ("cpu_count", _match_any),
+        "cpu_speed": ("cpu_speed", _match_any),
+        "mem": ("memory", _match_any),
+    }
+
     FREETEXT_EXCLUDES = {
         "not_fabric_classes": (
             "current_config__interface__vlan__fabric__class_type",
@@ -1505,12 +1561,36 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         ),
         "not_distro_series": ("distro_series", _match_substring),
         "not_osystem": ("osystem", _match_substring),
+        "not_mac_address": (
+            "current_config__interface__mac_address",
+            _match_substring,
+        ),
+        "not_spaces": (
+            "current_config__interface__vlan__space__name",
+            _match_substring,
+        ),
+        "not_workloads": (
+            "ownerdata",
+            _match_substring_kv,
+        ),
+    }
+
+    UPDATE_EXCLUDES = {
+        "not_link_speed": (
+            "current_config__interface__link_speed",
+            _match_any,
+        ),
+        "not_cpu_count": ("cpu_count", _match_any),
+        "not_cpu_speed": ("cpu_speed", _match_any),
+        "not_mem": ("memory", _match_any),
     }
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.node_filters.update(self.FREETEXT_FILTERS)
+        self.node_filters.update(self.UPDATE_FILTERS)
         self.node_excludes.update(self.FREETEXT_EXCLUDES)
+        self.node_excludes.update(self.UPDATE_EXCLUDES)
 
     def clean_workloads(self):
         data = self.cleaned_data["workloads"]
@@ -1551,9 +1631,21 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         # override base class validation
         return self.cleaned_data.get("vlans")
 
+    def clean_not_vlans(self):
+        # override base class validation
+        return self.cleaned_data["not_vlans"]
+
     def clean_subnets(self):
         # override base class validation
         return self.cleaned_data.get("subnets")
+
+    def clean_not_subnets(self):
+        # override base class validation
+        return self.cleaned_data["not_subnets"]
+
+    def clean_owner(self):
+        # override base class validation
+        return self.cleaned_data["owner"]
 
     def _free_text_search(self, nodes):
         data = self.cleaned_data.get("free_text")
