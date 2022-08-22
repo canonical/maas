@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+from collections import Counter
 import io
 import os
 from pathlib import Path
@@ -330,7 +331,10 @@ def create_destination(file_path: Path, parent: Path) -> Path:
         if grandparent == POWER_DRIVER_DIR:
             return base_dir / "tests" / "test_driver.py"
         if grandparent in RPC_DIRS:
-            return base_dir / "tests" / "test_rpc_handler.py"
+            if "maasserver" in parent.parts:
+                return base_dir / "tests" / "test_region_rpc_handler.py"
+            else:
+                return base_dir / "tests" / "test_rack_rpc_handler.py"
     if parent in MODEL_DIRS:
         return base_dir / file_path.name
     elif parent == API_HANDLER_DIR:
@@ -381,6 +385,20 @@ def load_layout_changes() -> MigrationOps:
         dirs = [child for d in dirs for child in _walk(d, changes)]
         verbose_print(f"Got {dirs} dirs to walk")
     return changes
+
+
+def validate_unique_targets(changes: MigrationOps) -> None:
+    old_files, new_files = zip(*changes)
+    file_count = Counter(new_files)
+    broken_files = []
+    del file_count[Path(".")]
+    for file_path, count in file_count.most_common():
+        if count == 1:
+            break
+        broken_files.append(
+            f"{file_path} is target for more than one ({count}) source file"
+        )
+    assert not broken_files, "\n".join(broken_files)
 
 
 def move_files(changes: MigrationOps, dry_run: bool = False) -> None:
@@ -499,6 +517,7 @@ if __name__ == "__main__":
         for change in changes
         if change[1] and change[0] != change[1]
     ]
+    validate_unique_targets(changes)
 
     if not args.dry_run:
         confirmation = input("OK to proceed?\n")
