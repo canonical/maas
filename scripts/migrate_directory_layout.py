@@ -21,21 +21,19 @@ IGNORED_DIRS = (
 
 TARGET_ROOT = Path(__file__).parent.parent / "src"
 
-API_HANDLER_DIRS = {TARGET_ROOT / "maasserver" / "api"}
-FORMS_DIRS = {TARGET_ROOT / "maasserver" / "forms"}
+API_HANDLER_DIR = TARGET_ROOT / "maasserver" / "api"
+FORMS_DIR = TARGET_ROOT / "maasserver" / "forms"
 MODEL_DIRS = {
     TARGET_ROOT / "maasserver" / "models",
     TARGET_ROOT / "metadataserver" / "models",
 }
-WEBSOCKET_HANDLER_DIRS = {
-    TARGET_ROOT / "maasserver" / "websockets" / "handlers"
-}
-POWER_DRIVER_DIRS = {TARGET_ROOT / "provisioningserver" / "drivers" / "power"}
-SIGNALS_DIRS = {TARGET_ROOT / "maasserver" / "models" / "signals"}
+WEBSOCKET_HANDLER_DIR = TARGET_ROOT / "maasserver" / "websockets" / "handlers"
+POWER_DRIVER_DIR = TARGET_ROOT / "provisioningserver" / "drivers" / "power"
+SIGNALS_DIR = TARGET_ROOT / "maasserver" / "models" / "signals"
 RPC_DIRS = {
-    TARGET_ROOT / "maasserver" / "rpc",
-    TARGET_ROOT / "maasserver" / "clusterrpc",
-    TARGET_ROOT / "provisioningserver" / "rpc",
+    TARGET_ROOT / "maasserver" / "rpc": "region",
+    TARGET_ROOT / "maasserver" / "clusterrpc": "region",
+    TARGET_ROOT / "provisioningserver" / "rpc": "rack",
 }
 VIEWS_DIRS = {TARGET_ROOT / "maasserver" / "views"}
 
@@ -313,13 +311,13 @@ def create_destination(file_path, parent):
         base_name = generate_base_dir_name(parent, file_name)
         if grandparent in MODEL_DIRS:
             return TARGET_ROOT / base_name / "tests" / file_path.name
-        if grandparent in API_HANDLER_DIRS:
+        if grandparent == API_HANDLER_DIR:
             return TARGET_ROOT / base_name / "tests" / "test_api_handler.py"
-        if grandparent in WEBSOCKET_HANDLER_DIRS:
+        if grandparent == WEBSOCKET_HANDLER_DIR:
             return TARGET_ROOT / base_name / "tests" / "test_ws_handler.py"
-        if grandparent in FORMS_DIRS:
+        if grandparent == FORMS_DIR:
             return TARGET_ROOT / base_name / "tests" / "test_forms.py"
-        if grandparent in POWER_DRIVER_DIRS:
+        if grandparent == POWER_DRIVER_DIR:
             return TARGET_ROOT / base_name / "tests" / "test_driver.py"
         if grandparent in RPC_DIRS:
             return TARGET_ROOT / base_name / "tests" / "test_rpc_handler.py"
@@ -329,25 +327,25 @@ def create_destination(file_path, parent):
             / generate_base_dir_name(parent, file_name)
             / file_path.name
         )
-    if parent in API_HANDLER_DIRS:
+    if parent == API_HANDLER_DIR:
         return (
             TARGET_ROOT
             / generate_base_dir_name(parent, file_name)
             / "api_handler.py"
         )
-    if parent in WEBSOCKET_HANDLER_DIRS:
+    if parent == WEBSOCKET_HANDLER_DIR:
         return (
             TARGET_ROOT
             / generate_base_dir_name(parent, file_name)
             / "ws_handler.py"
         )
-    if parent in FORMS_DIRS:
+    if parent == FORMS_DIR:
         return (
             TARGET_ROOT
             / generate_base_dir_name(parent, file_name)
             / "forms.py"
         )
-    if parent in POWER_DRIVER_DIRS:
+    if parent == POWER_DRIVER_DIR and file_path.stem == ".py":
         return (
             TARGET_ROOT
             / generate_base_dir_name(parent, file_name)
