@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 
 import argparse
+import io
 import os
 from pathlib import Path
 import re
 from shutil import which
 from subprocess import Popen
 import sys
+from typing import Any, Callable, Iterator, Literal, Optional, TypeAlias, Union
 
-from redbaron import RedBaron
-from redbaron.nodes import ClassNode, CommentNode, FromImportNode
+from redbaron import RedBaron  # type: ignore
+from redbaron.nodes import ClassNode, CommentNode, FromImportNode  # type: ignore
+
+SourceFile: TypeAlias = Union[Literal["+"], Literal["-"], Path]
+MigrationOps: TypeAlias = list[tuple[SourceFile, Path]]
 
 IGNORED_DIRS = (
     "maas-offline-docs",
@@ -41,26 +46,26 @@ global verbose
 global dry_run
 
 
-def verbose_print(msg):
+def verbose_print(msg: str) -> None:
     global verbose
     if verbose:
         print(msg)
 
 
-def move_maasserver_migrations(file_name):
+def move_maasserver_migrations(file_name: Path) -> MigrationOps:
     return []
 
 
-def move_metadataserver_migrations(file_name):
+def move_metadataserver_migrations(file_name: Path) -> MigrationOps:
     return []
 
 
-def move_maasperf(file_name):
+def move_maasperf(file_name: Path) -> MigrationOps:
     # NO-OP
     return []
 
 
-def move_websocket_base(websockets_dir):
+def move_websocket_base(websockets_dir: Path) -> MigrationOps:
     return [
         (
             websockets_dir / "base.py",
@@ -89,15 +94,15 @@ def move_websocket_base(websockets_dir):
     ]
 
 
-def split_up_forms_init_file(file_name):
+def split_up_forms_init_file(file_name: Path) -> MigrationOps:
     return []
 
 
-def split_up_models_init_file(file_name):
+def split_up_models_init_file(file_name: Path) -> MigrationOps:
     return []
 
 
-def _write_red_baron_file(dir_name, file_name, code):
+def _write_red_baron_file(dir_name: str, file_name: str, code: Any) -> Path:
     global dry_run
 
     dir_path = TARGET_ROOT / dir_name
@@ -110,13 +115,13 @@ def _write_red_baron_file(dir_name, file_name, code):
     return file_path
 
 
-def _remove_unrelated_code(preserve_blocks, code):
+def _remove_unrelated_code(preserve_blocks: set[str], code: Any) -> Any:
     return code.filter(
         lambda x: type(x) != ClassNode or x.name in preserve_blocks
     )
 
 
-def split_up_bmc_models(file_name):
+def split_up_bmc_models(file_name: Path) -> MigrationOps:
     bmc_code_blocks = {
         "BaseBMCManager",
         "BMCManager",
@@ -137,20 +142,22 @@ def split_up_bmc_models(file_name):
     ]
 
 
-def move_metadataserver_models_init_file(file_name):
+def move_metadataserver_models_init_file(
+    file_name: Path,
+) -> MigrationOps:
     # TODO handle old package level loggers
     return [("-", file_name)]
 
 
-def move_maasserver_init_file(file_name):
+def move_maasserver_init_file(file_name: Path) -> MigrationOps:
     return []
 
 
-def move_utils_init_file(file_name):
+def move_utils_init_file(file_name: Path) -> MigrationOps:
     return []
 
 
-def move_triggers_init_file(file_name):
+def move_triggers_init_file(file_name: Path) -> MigrationOps:
     return [
         (
             file_name,
@@ -159,26 +166,29 @@ def move_triggers_init_file(file_name):
     ]
 
 
-def move_maasserver_root_tests(file_name):
+def move_maasserver_root_tests(file_name: Path) -> MigrationOps:
     return []
 
 
-def move_maasserver_testing(file_name):
+def move_maasserver_testing(file_name: Path) -> MigrationOps:
     return []
 
 
-def drop_pluralization(parent):
-    def _inner(file_name):
+def drop_pluralization(
+    parent: Path,
+) -> Callable[[Path], MigrationOps]:
+    def _inner(file_name: Path) -> MigrationOps:
         stem = file_name.stem
         if stem.endswith("s"):
             singular = file_name.with_stem(stem[:-1])
             return [(file_name, create_destination(singular, parent))]
+        return [(file_name, create_destination(file_name, parent))]
 
     return _inner
 
 
-def split_node_model(file_name):
-    node_code_blocks = (
+def split_node_model(file_name: Path) -> MigrationOps:
+    node_code_blocks = {
         "NodeManager",
         "Node",
         "NodeQueriesMixin",
@@ -187,15 +197,15 @@ def split_node_model(file_name):
         "GeneralManager",
         "_clone_object",
         "get_bios_boot_from_bmc",
-    )
-    machine_code_blocks = ("Machine", "MachineManager")
-    device_code_blocks = ("Device", "DeviceManager")
-    controller_code_blocks = (
+    }
+    machine_code_blocks = {"Machine", "MachineManager"}
+    device_code_blocks = {"Device", "DeviceManager"}
+    controller_code_blocks = {
         "RegionControllerManager",
         "Controller",
         "RackController",
         "RegionController",
-    )
+    }
     with open(file_name) as f:
         node_src = RedBaron(f.read())
         # make a copy for the other components
@@ -222,7 +232,7 @@ def split_node_model(file_name):
     ]
 
 
-def move_power_registry_file(file_name):
+def move_power_registry_file(file_name: Path) -> MigrationOps:
     return [
         (
             file_name,
@@ -231,7 +241,7 @@ def move_power_registry_file(file_name):
     ]
 
 
-def move_power_test_registry_file(file_name):
+def move_power_test_registry_file(file_name: Path) -> MigrationOps:
     return [
         (
             file_name,
@@ -240,7 +250,7 @@ def move_power_test_registry_file(file_name):
     ]
 
 
-SPECIAL_CASE_DIRS = {
+SPECIAL_CASE_DIRS: dict[Path, Callable[[Path], MigrationOps]] = {
     TARGET_ROOT / "maasperf": move_maasperf,
     TARGET_ROOT / "maasserver" / "migrations": move_maasserver_migrations,
     TARGET_ROOT
@@ -291,9 +301,9 @@ SPECIAL_CASE_FILES = {
 }
 
 
-def generate_base_dir_name(root, file_name):
+def generate_base_dir_name(root_path: Path, file_name: str) -> str:
     file_name = str(file_name)
-    root = str(root)
+    root = str(root_path)
     if root[-1] != "/":
         root += "/"
     base_name = file_name.replace(root, "").split(".")[0]
@@ -302,7 +312,7 @@ def generate_base_dir_name(root, file_name):
     return base_name
 
 
-def create_destination(file_path, parent):
+def create_destination(file_path: Path, parent: Path) -> Path:
     file_name = str(file_path)
     if file_path.name == "__init__.py" and file_path.stat().st_size == 0:
         return Path()
@@ -366,8 +376,8 @@ def create_destination(file_path, parent):
     return file_path
 
 
-def load_layout_changes():
-    def _walk(root, changes):
+def load_layout_changes() -> MigrationOps:
+    def _walk(root: Path, changes: MigrationOps) -> list[Path]:
         child_dirs = []
 
         verbose_print(f"scanning {root}")
@@ -386,28 +396,32 @@ def load_layout_changes():
                         changes.append(
                             (name, create_destination(name, parent=root))
                         )
-                if entry.is_dir() and entry.name not in IGNORED_DIRS:
+                elif entry.is_dir() and entry.name not in IGNORED_DIRS:
+                    verbose_print(f"descending into {entry.name}")
                     child_dirs.append(root / entry.name)
+                else:
+                    verbose_print(f"skipping {entry.name}")
         return child_dirs
 
     dirs = [TARGET_ROOT]
-    changes = []
-    while len(dirs) > 0:
+    changes: MigrationOps = []
+    while dirs:
         dirs = [child for d in dirs for child in _walk(d, changes)]
+        verbose_print(f"Got {dirs} dirs to walk")
     return changes
 
 
-def move_files(changes, dry_run=False):
+def move_files(changes: MigrationOps, dry_run: bool = False) -> None:
     git_cmd = which("git")
+    assert git_cmd is not None, "Missing git on $PATH"
     for change in changes:
         # check if destination already exists
         try:
             os.stat(change[1])
         except FileNotFoundError:
-            proc = None
             if change[0] == "+":  # new file from split out
                 proc = Popen([git_cmd, "add", change[1]])
-            elif change[1] == "-":  # old file from split out
+            elif change[0] == "-":  # old file from split out
                 proc = Popen([git_cmd, "rm", change[0]])
             else:
                 proc = Popen([git_cmd, "mv", change[0], change[1]])
@@ -428,19 +442,21 @@ SPECIAL_CASE_IMPORTS = {
 }
 
 
-def _format_import_from_path(path: Path):
-    if path.is_relative_to(TARGET_ROOT):
-        components = path.relative_to(TARGET_ROOT).with_name(path.stem).parts
-        return ".".join(components)
+def _format_import_from_path(path: Path) -> str:
+    assert path.is_relative_to(TARGET_ROOT)
+    components = path.relative_to(TARGET_ROOT).with_name(path.stem).parts
+    return ".".join(components)
 
 
-def _generate_imports(changes):
+def _generate_imports(changes: MigrationOps) -> Iterator[tuple[str, str]]:
     for old, new in changes:
         if old in {"-", "+"}:
             continue
         if new in SPECIAL_CASE_IMPORTS:
             yield SPECIAL_CASE_IMPORTS[new]
         else:
+            assert isinstance(old, Path)
+            assert isinstance(new, Path)
             old_import = _format_import_from_path(old)
             new_import = _format_import_from_path(new)
             if not new_import:
@@ -448,7 +464,9 @@ def _generate_imports(changes):
             yield (old_import, new_import)
 
 
-def _find_and_swap_imports(imports, f):
+def _find_and_swap_imports(
+    imports: Iterator[tuple[str, str]], f: io.TextIOWrapper
+) -> Any:
     src = RedBaron(f.read())
     for import_pair in imports:
         lines = src.find_all(
@@ -458,22 +476,24 @@ def _find_and_swap_imports(imports, f):
             pass
 
 
-def modify_imports(changes):
+def modify_imports(changes: MigrationOps) -> None:
     imports = _generate_imports(changes)
 
-    def _modify(file_name):
+    def _modify(file_name: Path) -> None:
         with open(file_name) as f:
             new_src = _find_and_swap_imports(imports, f)
             f.write(new_src.dumps())
 
     for original, new in changes:
+        if original in {"-", "+"}:
+            continue
         _modify(new)
 
 
-def diff_imports(changes):
+def diff_imports(changes: MigrationOps) -> Any:
     imports = _generate_imports(changes)
 
-    def _diff(file_name):
+    def _diff(file_name: str) -> Any:
         with open(file_name) as f:
             new_src = _find_and_swap_imports(imports, f)
             # src = RedBaron(f.read())
