@@ -316,63 +316,35 @@ def create_destination(file_path: Path, parent: Path) -> Path:
     file_name = str(file_path)
     if file_path.name == "__init__.py" and file_path.stat().st_size == 0:
         return Path()
+    base_dir = TARGET_ROOT / generate_base_dir_name(parent, file_name)
     if parent.name == "tests":
         grandparent = parent.parent
-        base_name = generate_base_dir_name(parent, file_name)
         if grandparent in MODEL_DIRS:
-            return TARGET_ROOT / base_name / "tests" / file_path.name
+            return base_dir / "tests" / file_path.name
         if grandparent == API_HANDLER_DIR:
-            return TARGET_ROOT / base_name / "tests" / "test_api_handler.py"
+            return base_dir / "tests" / "test_api_handler.py"
         if grandparent == WEBSOCKET_HANDLER_DIR:
-            return TARGET_ROOT / base_name / "tests" / "test_ws_handler.py"
+            return base_dir / "tests" / "test_ws_handler.py"
         if grandparent == FORMS_DIR:
-            return TARGET_ROOT / base_name / "tests" / "test_forms.py"
+            return base_dir / "tests" / "test_forms.py"
         if grandparent == POWER_DRIVER_DIR:
-            return TARGET_ROOT / base_name / "tests" / "test_driver.py"
+            return base_dir / "tests" / "test_driver.py"
         if grandparent in RPC_DIRS:
-            return TARGET_ROOT / base_name / "tests" / "test_rpc_handler.py"
+            return base_dir / "tests" / "test_rpc_handler.py"
     if parent in MODEL_DIRS:
-        return (
-            TARGET_ROOT
-            / generate_base_dir_name(parent, file_name)
-            / file_path.name
-        )
-    if parent == API_HANDLER_DIR:
-        return (
-            TARGET_ROOT
-            / generate_base_dir_name(parent, file_name)
-            / "api_handler.py"
-        )
-    if parent == WEBSOCKET_HANDLER_DIR:
-        return (
-            TARGET_ROOT
-            / generate_base_dir_name(parent, file_name)
-            / "ws_handler.py"
-        )
-    if parent == FORMS_DIR:
-        return (
-            TARGET_ROOT
-            / generate_base_dir_name(parent, file_name)
-            / "forms.py"
-        )
-    if parent == POWER_DRIVER_DIR and file_path.stem == ".py":
-        return (
-            TARGET_ROOT
-            / generate_base_dir_name(parent, file_name)
-            / "driver.py"
-        )
-    if parent in RPC_DIRS:
+        return base_dir / file_path.name
+    elif parent == API_HANDLER_DIR:
+        return base_dir / "api_handler.py"
+    elif parent == WEBSOCKET_HANDLER_DIR:
+        return base_dir / "ws_handler.py"
+    elif parent == FORMS_DIR:
+        return base_dir / "forms.py"
+    elif parent == POWER_DRIVER_DIR and file_path.stem == ".py":
+        return base_dir / "driver.py"
+    elif parent in RPC_DIRS:
         if "maasserver" in parent.parts:
-            return (
-                TARGET_ROOT
-                / generate_base_dir_name(parent, file_name)
-                / "region_rpc_handler.py"
-            )
-        return (
-            TARGET_ROOT
-            / generate_base_dir_name(parent, file_name)
-            / "rack_rpc_handler.py"
-        )
+            return base_dir / "region_rpc_handler.py"
+        return base_dir / "rack_rpc_handler.py"
     return file_path
 
 
