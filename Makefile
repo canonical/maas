@@ -117,12 +117,8 @@ $(UI_BUILD):
 $(OFFLINE_DOCS):
 	$(MAKE) -C src/maas-offline-docs
 
-go-bin-vendor:
-	$(MAKE) -C src/host-info vendor
-.PHONY: go-bin-vendor
-
-go-bins: go-bin-vendor
-	$(MAKE) -C src/host-info build
+go-bins:
+	$(MAKE) -j -C src/host-info build
 .PHONY: go-bins
 
 test: test-missing-migrations test-py
@@ -324,7 +320,7 @@ go_bins_vendor := src/host-info/vendor
 	    -o $(packaging-build-area)/$(packaging-orig-tar) HEAD
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) go-bin-vendor
+	$(MAKE) -C src/host-info vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go_bins_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)
@@ -335,7 +331,7 @@ go_bins_vendor := src/host-info/vendor
 	    xargs tar --transform 's,^,$(packaging-dir)/,' -cf $(packaging-build-area)/$(packaging-orig-tar)
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(UI_BUILD) $(OFFLINE_DOCS) \
 		--transform 's,^,$(packaging-dir)/,'
-	$(MAKE) go-bin-vendor
+	$(MAKE) -C src/host-info vendor
 	tar -rf $(packaging-build-area)/$(packaging-orig-tar) $(go_bins_vendor) \
 		--transform 's,^,$(packaging-dir)/,'
 	gzip -f $(packaging-build-area)/$(packaging-orig-tar)

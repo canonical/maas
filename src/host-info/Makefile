@@ -32,11 +32,18 @@ GO_BUILD := CGO_ENABLED=0 go build -mod=vendor -ldflags '-s -w -extldflags "-sta
 
 $(MACHINE_RESOURCES_BINARIES): TARGET_DIR=$(PACKAGE_DIR)
 $(HARDWARE_SYNC_BINARIES): TARGET_DIR=$(HARDWARE_SYNC_DIR)
-$(HARDWARE_SYNC_BINARIES) $(MACHINE_RESOURCES_BINARIES): vendor
+$(HARDWARE_SYNC_BINARIES) $(MACHINE_RESOURCES_BINARIES):
 	GOARCH=$(DEB_GO_ARCH_$(notdir $@)) $(GO_BUILD) -o $@ $(TARGET_DIR)
 
-build: $(MACHINE_RESOURCES_BINARIES)
+build:
+# call targets separately to work with parallel builds
+	$(MAKE) vendor/modules.txt
+	$(MAKE) $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
 .PHONY: build
+
+# don't vendor dependencies before building binaries
+build-no-vendor: $(MACHINE_RESOURCES_BINARIES) $(HARDWARE_SYNC_BINARIES)
+.PHONY: build-no-vendor
 
 clean:
 	rm -rf $(BINDIR) $(VENDOR_DIR)
@@ -51,6 +58,7 @@ install: $(MACHINE_RESOURCES_BINARIES)
 .PHONY: install
 
 vendor: vendor/modules.txt
+.PHONY: vendor
 
 vendor/modules.txt: go.mod
 	go mod vendor
