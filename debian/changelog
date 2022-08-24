@@ -1,3 +1,9 @@
+maas (1:3.2.4-0ubuntu1) focal; urgency=medium
+
+  * New upstream release, MAAS 3.2.4.
+
+ -- Christian Grabowski <christian.grabowski@canonical.com>  Wed, 24 Aug 2022 16:43:06 +0000
+
 maas (1:3.2.3-0ubuntu1) focal; urgency=medium
 
   * New upstream release, MAAS 3.2.3.
