@@ -9,6 +9,7 @@ This definition follows the rules and limitations of the ReST documentation.
 
 from inspect import getdoc
 import json
+import re
 from textwrap import dedent
 
 from django.http import HttpResponse
@@ -135,13 +136,21 @@ def _new_path_item(params):
     return path_item
 
 
+def _prettify(doc):
+    """Cleans up text by replacing newlines with spaces, so that sentences are
+    not broken apart prematurely.
+    Respects paragraphing by not replacing newlines that occur after periods.
+    """
+    return re.sub("(?<![.\n])[\n]+", " ", dedent(doc)).strip()
+
+
 def _render_oapi_oper_item(http_method, op, doc, uri_params, function):
     oper_id = op or support.OperationsResource.crudmap.get(http_method)
     oper_obj = {
         "operationId": f"{doc.name}_{oper_id}",
         "tags": [doc.handler.api_doc_section_name],
         "summary": f"{doc.name} {oper_id}",
-        "description": dedent(doc.doc).strip(),
+        "description": _prettify(doc.doc),
         "responses": {},
     }
     oper_docstring = _oapi_item_from_docstring(
@@ -192,9 +201,9 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
         ap.parse(docstring)
         ap_dict = ap.get_dict()
         oper_obj["summary"] = ap_dict["description_title"].strip()
-        oper_obj["description"] = ap_dict["description"].strip()
+        oper_obj["description"] = _prettify(ap_dict["description"])
         for param in ap_dict["params"]:
-            description = param["description_stripped"]
+            description = _prettify(param["description_stripped"])
             name = param["name"].strip("}{")
             required = param["options"]["required"].lower() == "true"
             if param["name"][0] == "{":
@@ -222,8 +231,10 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
 
         for (status, content) in _response_pair(ap_dict):
             response = {
-                "description": content.get(
-                    "description_stripped", status["description_stripped"]
+                "description": _prettify(
+                    content.get(
+                        "description_stripped", status["description_stripped"]
+                    )
                 ),
             }
             match content.get("type", "").lower():
@@ -254,7 +265,7 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
 
             status_code = status["name"]
             if not status_code.isdigit():
-                status_code = status["description_stripped"]
+                status_code = _prettify(status["description_stripped"])
             oper_obj.setdefault("responses", {}).update(
                 {status_code: response},
             )

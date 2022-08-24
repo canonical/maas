@@ -5,7 +5,12 @@ import json
 
 import yaml
 
-from maasserver.api.doc_oapi import _render_oapi_paths, endpoint, landing_page
+from maasserver.api.doc_oapi import (
+    _prettify,
+    _render_oapi_paths,
+    endpoint,
+    landing_page,
+)
 from maasserver.models.config import Config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -105,3 +110,40 @@ class TestOAPISpec(MAASServerTestCase):
         for k, v in _get_all_key_values(_render_oapi_paths()):
             if k == "type":
                 self.assertIn(v, self.oapi_types)
+
+
+class TestPrettify(MAASTestCase):
+    maxDiff = None
+
+    def test_cleans_newlines(self):
+        before = """\
+Returns system details -- for example, LLDP and
+
+``lshw`` XML dumps.
+
+
+Returns a ``{detail_type: xml, ...}`` map, where
+
+``detail_type`` is something like "lldp" or "lshw".
+
+
+Note that this is returned as BSON and not JSON. This is for
+
+efficiency, but mainly because JSON can''t do binary content without
+
+applying additional encoding like base-64. The example output below is
+
+represented in ASCII using ``bsondump example.bson`` and is for
+
+demonstrative purposes."""
+
+        after = """\
+Returns system details -- for example, LLDP and ``lshw`` XML dumps.
+
+
+Returns a ``{detail_type: xml, ...}`` map, where ``detail_type`` is something like "lldp" or "lshw".
+
+
+Note that this is returned as BSON and not JSON. This is for efficiency, but mainly because JSON can''t do binary content without applying additional encoding like base-64. The example output below is represented in ASCII using ``bsondump example.bson`` and is for demonstrative purposes."""
+
+        self.assertEqual(_prettify(before), after)
