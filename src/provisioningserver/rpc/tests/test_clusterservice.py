@@ -1300,6 +1300,24 @@ class TestClusterClientService(MAASTestCase):
         service.connections.connections = {}
         self.assertRaises(exceptions.NoConnectionsAvailable, service.getClient)
 
+    def test_getClient_returns_a_busy_connection_when_busy_ok_is_True(self):
+        service = ClusterClientService(Clock(), max_conns=1)
+        service.connections.connections = {
+            sentinel.eventloop01: [FakeBusyConnectionToRegion()],
+            sentinel.eventloop02: [FakeBusyConnectionToRegion()],
+            sentinel.eventloop03: [FakeBusyConnectionToRegion()],
+        }
+        client = service.getClient(busy_ok=True)
+        self.assertTrue(client._conn.in_use)
+        self.assertIn(
+            client,
+            {
+                common.Client(conn)
+                for conns in service.connections.values()
+                for conn in conns
+            },
+        )
+
     @inlineCallbacks
     def test_getClientNow_scales_connections_when_busy(self):
         service = ClusterClientService(Clock(), max_conns=2)

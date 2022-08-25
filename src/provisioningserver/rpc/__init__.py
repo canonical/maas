@@ -25,4 +25,5 @@ def getRegionClient():
             "Cluster services are unavailable."
         )
     else:
-        return rpc_service.getClient()
+        # won't scale connections if existing connections are busy, but will always return connection if one exists
+        return rpc_service.getClient(busy_ok=True)

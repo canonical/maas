@@ -1230,7 +1230,7 @@ class ClusterClientService(TimerService):
         self.time_started = self.clock.seconds()
         super().startService()
 
-    def getClient(self):
+    def getClient(self, busy_ok=False):
         """Returns a :class:`common.Client` connected to a region.
 
         The client is chosen at random.
@@ -1246,9 +1246,13 @@ class ClusterClientService(TimerService):
                     self.connections.get_random_free_connection()
                 )
             except exceptions.AllConnectionsBusy as e:
-                for endpoint_conns in self.connections.values():
-                    if len(endpoint_conns) < self.connections._max_connections:
-                        raise e
+                if not busy_ok:
+                    for endpoint_conns in self.connections.values():
+                        if (
+                            len(endpoint_conns)
+                            < self.connections._max_connections
+                        ):
+                            raise e
                 # return a busy connection, assume it will free up or timeout
                 return common.Client(self.connections.get_random_connection())
 
