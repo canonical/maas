@@ -1273,9 +1273,12 @@ class TestBuildMetadataURL(MAASServerTestCase):
         node.boot_cluster_ip = factory.make_ip_address()
         node.save()
         request = make_HttpRequest()
-        subnet = factory.make_Subnet()
-        original_ip = subnet.get_next_ip_for_allocation()
-        request.META["HTTP_X_FORWARDED_FOR"] = str(original_ip)
+        subnet = factory.make_Subnet(dhcp_on=True, dns_servers=[])
+        rack_proxy_ip = subnet.get_next_ip_for_allocation()
+        region_proxy_ip = subnet.get_next_ip_for_allocation()
+        request.META[
+            "HTTP_X_FORWARDED_FOR"
+        ] = f"{rack_proxy_ip}, {region_proxy_ip}"
         route = "/MAAS"
         Config.objects.set_config("maas_internal_domain", factory.make_name())
         # not passing node to simulate anonymous request, i.e enlistment
@@ -1285,4 +1288,75 @@ class TestBuildMetadataURL(MAASServerTestCase):
                 request, route, node.get_boot_rack_controller()
             ),
         )
-        route = "/MAAS"
+
+    def test_uses_rack_ipv4_if_external_dns(self):
+        # regression test for LP:1982315
+        node = factory.make_Node()
+        request = make_HttpRequest()
+        subnet = factory.make_Subnet(
+            cidr=factory.make_ipv4_network(),
+            dhcp_on=True,
+            dns_servers=[factory.make_ip_address()],
+        )
+        rack_proxy_ip = subnet.get_next_ip_for_allocation()
+        region_proxy_ip = subnet.get_next_ip_for_allocation()
+        request.META[
+            "HTTP_X_FORWARDED_FOR"
+        ] = f"{rack_proxy_ip}, {region_proxy_ip}"
+        self.assertEqual(
+            f"{request.scheme}://{rack_proxy_ip}:5248/MAAS",
+            build_metadata_url(
+                request,
+                "/MAAS",
+                node.get_boot_rack_controller(),
+                node=node,
+            ),
+        )
+
+    def test_uses_rack_ipv6_if_external_dns(self):
+        # regression test for LP:1982315
+        node = factory.make_Node()
+        request = make_HttpRequest()
+        subnet = factory.make_Subnet(
+            cidr=factory.make_ipv6_network(),
+            dhcp_on=True,
+            dns_servers=[factory.make_ip_address()],
+        )
+        rack_proxy_ip = subnet.get_next_ip_for_allocation()
+        region_proxy_ip = subnet.get_next_ip_for_allocation()
+        request.META[
+            "HTTP_X_FORWARDED_FOR"
+        ] = f"{rack_proxy_ip}, {region_proxy_ip}"
+        self.assertEqual(
+            f"{request.scheme}://[{rack_proxy_ip}]:5248/MAAS",
+            build_metadata_url(
+                request,
+                "/MAAS",
+                node.get_boot_rack_controller(),
+                node=node,
+            ),
+        )
+
+    def test_uses_rack_ip_with_multiple_forwarded_for(self):
+        node = factory.make_Node()
+        request = make_HttpRequest()
+        subnet = factory.make_Subnet(
+            cidr=factory.make_ipv4_network(),
+            dhcp_on=True,
+            dns_servers=[factory.make_ip_address()],
+        )
+        rack_proxy_ip = subnet.get_next_ip_for_allocation()
+        region_proxy_ip = subnet.get_next_ip_for_allocation()
+        other_ip = subnet.get_next_ip_for_allocation()
+        request.META[
+            "HTTP_X_FORWARDED_FOR"
+        ] = f"{other_ip}, {rack_proxy_ip}, {region_proxy_ip}"
+        self.assertEqual(
+            f"{request.scheme}://{rack_proxy_ip}:5248/MAAS",
+            build_metadata_url(
+                request,
+                "/MAAS",
+                node.get_boot_rack_controller(),
+                node=node,
+            ),
+        )

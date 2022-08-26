@@ -33,25 +33,36 @@ RSYSLOG_PORT = 5247
 RACK_CONTROLLER_PORT = 5248
 
 
+def _subnet_uses_dns(subnet):
+    return (
+        subnet is not None and not subnet.dns_servers and subnet.vlan.dhcp_on
+    )
+
+
+def _wrap_ipv6_address(ip):
+    return str(ip) if ip_address(ip).version == 4 else f"[{ip}]"
+
+
 def _get_anon_rack_host(request, rack_controller):
-    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if forwarded_for:
-        client_ip = forwarded_for.split(",")[0]
-        subnet = Subnet.objects.get_best_subnet_for_ip(client_ip)
-        if subnet:
+    forwarded_ips = request.META.get("HTTP_X_FORWARDED_FOR", "").split(", ")
+    if len(forwarded_ips) >= 2:
+        # the reguest goes through the nginx proxy on the rack to the nginx
+        # proxy on the region
+        forwarded_ip = forwarded_ips[-2]
+        subnet = Subnet.objects.get_best_subnet_for_ip(forwarded_ip)
+        if _subnet_uses_dns(subnet):
             internal_domain = Config.objects.get_config("maas_internal_domain")
             return f"{get_resource_name_for_subnet(subnet)}.{internal_domain}"
+        else:
+            return _wrap_ipv6_address(forwarded_ip)
     return rack_controller.fqdn if rack_controller else ""
 
 
 def build_metadata_url(request, route, rack_controller, node=None, extra=""):
-    host = _get_anon_rack_host(request, rack_controller)
     if node and node.boot_cluster_ip:
-        host = (
-            str(node.boot_cluster_ip)
-            if ip_address(node.boot_cluster_ip).version == 4
-            else f"[{node.boot_cluster_ip}]"
-        )
+        host = _wrap_ipv6_address(node.boot_cluster_ip)
+    else:
+        host = _get_anon_rack_host(request, rack_controller)
     return (
         request.build_absolute_uri(route) + extra
         if not host
@@ -89,12 +100,7 @@ def get_apt_proxy(request, rack_controller=None, node=None):
             remote_ip = get_remote_ip(request)
             if remote_ip is not None:
                 subnet = Subnet.objects.get_best_subnet_for_ip(remote_ip)
-            use_dns = (
-                subnet is not None
-                and not subnet.dns_servers
-                and subnet.vlan.dhcp_on
-            )
-            if config["use_rack_proxy"] and use_dns:
+            if config["use_rack_proxy"] and _subnet_uses_dns(subnet):
                 # Client can use the MAAS proxy on the rack controller with
                 # DNS resolution providing better HA.
                 return "http://%s.%s:%d/" % (
