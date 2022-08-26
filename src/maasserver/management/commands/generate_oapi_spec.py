@@ -3,7 +3,6 @@
 
 """Django command: generate the Open API specification."""
 
-
 from django.core.management.base import BaseCommand
 import yaml
 

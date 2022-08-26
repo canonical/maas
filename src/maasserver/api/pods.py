@@ -200,7 +200,7 @@ class VmHostHandler(OperationsHandler):
         @description Performs VM host discovery and updates all discovered
         information and discovered machines.
 
-        @param (int) "{id}" [required=false] The VM host's ID.
+        @param (int) "{id}" [required=true] The VM host's ID.
 
         @success (json) "success-json" A VM host JSON object.
         @success-example "success-json" [exkey=refresh-vmhost] placeholder text

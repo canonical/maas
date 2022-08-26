@@ -205,7 +205,10 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
         for param in ap_dict["params"]:
             description = _prettify(param["description_stripped"])
             name = param["name"].strip("}{")
-            required = param["options"]["required"].lower() == "true"
+            required = (
+                param["options"]["required"].lower() == "true"
+                or name != param["name"]
+            )
             if param["name"][0] == "{":
                 param_dict = {
                     "name": name,

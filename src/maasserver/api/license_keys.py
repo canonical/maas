@@ -165,10 +165,10 @@ class LicenseKeyHandler(OperationsHandler):
         @description Delete license key for the given operation system and
         distro series.
 
-        @param (string) "{osystem}" [required=false] Operating system that the
+        @param (string) "{osystem}" [required=true] Operating system that the
         key belongs to.
 
-        @param (string) "{distro_series}" [required=false] OS release that the
+        @param (string) "{distro_series}" [required=true] OS release that the
         key belongs to.
 
         @success (http-status-code) "server-success" 204
