@@ -8,6 +8,7 @@ from twisted.internet.endpoints import TCP6ClientEndpoint
 from twisted.internet.task import Clock
 
 from maastesting import get_testing_timeout
+from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase, MAASTwistedRunTest
 from maastesting.twisted import extract_result
 from provisioningserver.rpc import connectionpool as connectionpoolModule
@@ -139,6 +140,37 @@ class TestConnectionPool(MAASTestCase):
             extract_result,
             cp.scale_up_connections(),
         )
+
+    def test_scale_up_connections_registers_the_new_connection_with_the_region(
+        self,
+    ):
+        cp = ConnectionPool(Clock(), Mock(), max_conns=2)
+        eventloop = Mock()
+        address = (factory.make_ip_address(), 5240)
+        service = Mock()
+        connection1 = ClusterClient(address, eventloop, service)
+        connection2 = ClusterClient(address, eventloop, service)
+        connect = self.patch(cp, "connect")
+
+        def call_connectionMade(*args, **kwargs):
+            connection2.connectionMade()
+            return succeed(connection2)
+
+        connect.side_effect = call_connectionMade
+
+        authRegion = self.patch(connection2, "authenticateRegion")
+        authRegion.return_value = succeed(True)
+        register = self.patch(connection2, "registerRackWithRegion")
+
+        def set_ident(*args, **kwargs):
+            connection2.localIdent = factory.make_name()
+            return succeed(True)
+
+        register.side_effect = set_ident
+
+        cp[eventloop] = [connection1]
+        cp.scale_up_connections()
+        self.assertIsNotNone(connection2.localIdent)
 
     def test_get_connection(self):
         cp = ConnectionPool(Clock(), Mock(), max_idle_conns=2, max_conns=2)

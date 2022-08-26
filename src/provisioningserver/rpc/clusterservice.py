@@ -1139,16 +1139,6 @@ class ClusterClient(Cluster):
             self.transport.loseConnection()
             self.authenticated.set(None)
             self.ready.fail(RuntimeError("Service not running."))
-        elif self.eventloop in self.service.connections:
-            log.msg(
-                "Event-loop '%s' is already connected; "
-                "dropping connection." % self.ident
-            )
-            self.transport.loseConnection()
-            self.authenticated.set(None)
-            self.ready.fail(
-                KeyError("Event-loop '%s' already connected." % self.eventloop)
-            )
         else:
             return self.performHandshake().addCallbacks(
                 self.handshakeSucceeded, self.handshakeFailed
@@ -1275,7 +1265,7 @@ class ClusterClientService(TimerService):
             return self._tryUpdate().addCallback(call, self.getClient)
         except exceptions.AllConnectionsBusy:
             return self.connections.scale_up_connections().addCallback(
-                call, self.getClient
+                call, self.getClient, busy_ok=True
             )
 
     def getAllClients(self):

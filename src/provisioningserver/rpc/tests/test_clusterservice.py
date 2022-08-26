@@ -1624,35 +1624,6 @@ class TestClusterClient(MAASTestCase):
             {client.eventloop: [client]},
         )
 
-    def test_disconnects_when_there_is_an_existing_connection(self):
-        client = self.make_running_client()
-
-        # Pretend that a connection already exists for this address.
-        client.service.connections.connections[client.eventloop] = [
-            sentinel.connection
-        ]
-
-        # Connect via an in-memory transport.
-        transport = StringTransportWithDisconnection()
-        transport.protocol = client
-        client.makeConnection(transport)
-
-        # authenticated was set to None to signify that authentication was not
-        # attempted.
-        self.assertIsNone(extract_result(client.authenticated.get()))
-        # ready was set with KeyError to signify that a connection to the
-        # same event-loop already existed.
-        self.assertRaises(KeyError, extract_result, client.ready.get())
-
-        # The connections list is unchanged because the new connection
-        # immediately disconnects.
-        self.assertEqual(
-            client.service.connections,
-            {client.eventloop: [sentinel.connection]},
-        )
-        self.assertFalse(client.connected)
-        self.assertIsNone(client.transport)
-
     def test_disconnects_when_service_is_not_running(self):
         client = self.make_running_client()
         client.service.running = False
