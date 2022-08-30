@@ -45,7 +45,6 @@ from maasserver.models import (
     Pod,
     PodStoragePool,
     ResourcePool,
-    Tag,
     Zone,
 )
 from maasserver.node_constraint_filter_forms import (
@@ -65,7 +64,10 @@ from maasserver.utils.dns import validate_hostname
 from maasserver.utils.forms import set_form_error
 from maasserver.utils.orm import post_commit_do, transactional
 from maasserver.utils.threads import deferToDatabase
-from maasserver.vmhost import request_commissioning_results
+from maasserver.vmhost import (
+    ensure_pod_console_logging_tag,
+    request_commissioning_results,
+)
 from provisioningserver.certificates import Certificate
 from provisioningserver.drivers import SETTING_SCOPE
 from provisioningserver.drivers.pod import (
@@ -303,13 +305,8 @@ class PodForm(MAASModelForm):
             )
 
         # Add tag for pod console logging with appropriate kernel parameters.
-        tag, _ = Tag.objects.get_or_create(
-            name="pod-console-logging",
-            kernel_opts="console=tty1 console=ttyS0",
-        )
-        # Add this tag to the pod.  This only adds the tag
-        # if it is not present on the pod.
-        self.instance.add_tag(tag.name)
+        self.instance.add_tag(ensure_pod_console_logging_tag().name)
+
         if self.is_new and power_type == "lxd":
             self.instance.created_with_trust_password = bool(
                 self.cleaned_data["password"]

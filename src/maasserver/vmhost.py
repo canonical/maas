@@ -27,6 +27,14 @@ from provisioningserver.drivers.pod import DiscoveredCluster, DiscoveredPod
 from provisioningserver.events import EVENT_TYPES
 
 
+def ensure_pod_console_logging_tag() -> Tag:
+    tag, _ = Tag.objects.get_or_create(
+        name="pod-console-logging",
+        defaults={"kernel_opts": "console=tty1 console=ttyS0"},
+    )
+    return tag
+
+
 @inlineCallbacks
 def request_commissioning_results(pod):
     """Request commissioning results from machines associated with the Pod."""
@@ -291,11 +299,7 @@ async def sync_vmcluster_async(discovered_cluster, discovered, vmhost, user):
 
 
 def _update_db(discovered_pod, discovered, vmhost, user, cluster=None):
-    tag, _ = Tag.objects.get_or_create(
-        name="pod-console-logging",
-        kernel_opts="console=tty1 console=ttyS0",
-    )
-    vmhost.add_tag(tag.name)
+    vmhost.add_tag(ensure_pod_console_logging_tag().name)
 
     # If this is a new instance it will be stored in the database at the end of
     # sync.

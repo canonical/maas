@@ -15,6 +15,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
+from maasserver.utils.orm import reload_object
 from maasserver.utils.threads import deferToDatabase
 from maastesting.crochet import wait_for
 from provisioningserver.drivers.pod import (
@@ -420,6 +421,42 @@ class TestSyncVMCluster(MAASServerTestCase):
         hosts = vmhost.hints.cluster.hosts()
         for host in hosts:
             self.assertIn("pod-console-logging", host.tags)
+
+    def test_discovered_vmhosts_doesnt_update_console_logging_tag_if_exists(
+        self,
+    ):
+        tag = factory.make_Tag(
+            name="pod-console-logging", kernel_opts="foo bar"
+        )
+        (
+            discovered_cluster,
+            discovered_racks,
+            failed_racks,
+        ) = fake_cluster_discovery(self)
+        zone = factory.make_Zone()
+        pod_info = make_lxd_pod_info(url=discovered_cluster.pod_addresses[0])
+        power_parameters = {"power_address": pod_info["power_address"]}
+        orig_vmhost = factory.make_Pod(
+            zone=zone, pod_type=pod_info["type"], parameters=power_parameters
+        )
+        successes = {
+            rack_id: discovered_cluster for rack_id in discovered_racks
+        }
+        failures = {
+            rack_id: factory.make_exception() for rack_id in failed_racks
+        }
+        self.patch(vmhost_module, "discover_pod").return_value = (
+            successes,
+            failures,
+        )
+        vmhost = vmhost_module.discover_and_sync_vmhost(
+            orig_vmhost, factory.make_User()
+        )
+        hosts = vmhost.hints.cluster.hosts()
+        for host in hosts:
+            self.assertIn("pod-console-logging", host.tags)
+        tag = reload_object(tag)
+        self.assertEqual(tag.kernel_opts, "foo bar")
 
     def test_sync_vmcluster_adds_vmhost_zone_and_pool(self):
         (

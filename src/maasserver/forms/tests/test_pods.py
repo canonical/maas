@@ -227,6 +227,18 @@ class TestPodForm(MAASTransactionServerTestCase):
         pod = form.save()
         self.assertCountEqual(tags, pod.tags)
 
+    def test_creates_pod_with_existing_pod_console_logging_tag(self):
+        tag = factory.make_Tag(
+            name="pod-console-logging", kernel_opts="foo bar"
+        )
+        pod_info = self.make_pod_info()
+        form = PodForm(data=pod_info, request=self.request)
+        self.assertTrue(form.is_valid(), form._errors)
+        pod = form.save()
+        self.assertIn("pod-console-logging", pod.tags)
+        tag = reload_object(tag)
+        self.assertEqual(tag.kernel_opts, "foo bar")
+
     def test_creates_pod_with_zone(self):
         pod_info = self.make_pod_info()
         zone = factory.make_Zone()
