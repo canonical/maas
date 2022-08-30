@@ -1013,9 +1013,14 @@ def _process_lxd_environment(node, data):
     """Process the environment results from the `COMMISSIONING_OUTPUT_NAME` script."""
     # Verify the architecture is set correctly. This is how the architecture
     # gets set on controllers.
-    node.architecture = kernel_to_debian_architecture(
+    cur_arch, cur_subarch = node.split_arch()
+    arch, subarch = kernel_to_debian_architecture(
         data["kernel_architecture"]
-    )
+    ).split("/")
+    if cur_arch == arch and subarch == "generic" and cur_subarch != "generic":
+        # keep the previous subarch since it's more specific
+        subarch = cur_subarch
+    node.architecture = f"{arch}/{subarch}"
 
     # When a machine is commissioning the OS will always be the ephemeral
     # environment. Controllers run the machine-resources binary directly

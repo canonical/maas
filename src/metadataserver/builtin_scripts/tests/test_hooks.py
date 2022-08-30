@@ -1772,6 +1772,24 @@ class TestProcessLXDResults(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(deb_arch, node.architecture)
 
+    def test_keeps_subarchitecture(self):
+        arch = "amd64/somesubarch"
+        node = factory.make_Node(architecture=arch)
+        process_lxd_results(
+            node, make_lxd_output_json(kernel_architecture="x86_64"), 0
+        )
+        node = reload_object(node)
+        self.assertEqual(node.architecture, arch)
+
+    def test_updates_arch_subarch_if_different_arch(self):
+        arch = "ppc64/somesubarch"
+        node = factory.make_Node(architecture=arch)
+        process_lxd_results(
+            node, make_lxd_output_json(kernel_architecture="x86_64"), 0
+        )
+        node = reload_object(node)
+        self.assertEqual(node.architecture, "amd64/generic")
+
     def test_sets_uuid(self):
         node = factory.make_Node()
         uuid = factory.make_UUID()
