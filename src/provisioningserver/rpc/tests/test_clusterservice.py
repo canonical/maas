@@ -1211,19 +1211,26 @@ class TestClusterClientService(MAASTestCase):
             service._update_saved_rpc_info_state, MockCalledOnceWith()
         )
 
+    @inlineCallbacks
     def test_add_connection_creates_max_idle_connections(self):
         service = make_inert_client_service(max_idle_conns=2)
         service.startService()
         endpoint = Mock()
         connection = Mock()
+        connection.eventloop = endpoint
         connection.address = (":::ffff", 2222)
-        connection2 = Mock()
-        connection.address = (":::ffff", 2222)
-        self.patch(service.connections, "connect").return_value = succeed(
-            connection2
-        )
+
+        @inlineCallbacks
+        def mock_connect(ev, addr):
+            new_conn = Mock()
+            new_conn.eventloop = ev
+            new_conn.address = addr
+            yield service.add_connection(ev, new_conn)
+            return new_conn
+
+        self.patch(service.connections, "connect").side_effect = mock_connect
         self.patch_autospec(service, "_update_saved_rpc_info_state")
-        service.add_connection(endpoint, connection)
+        yield service.add_connection(endpoint, connection)
         self.assertEqual(
             len(
                 [
@@ -1329,11 +1336,25 @@ class TestClusterClientService(MAASTestCase):
         self.patch(service.connections, "connect").return_value = succeed(
             FakeConnection()
         )
+
+        # skip the connectionMade logic for this test
+        @inlineCallbacks
+        def mock_scale_up_connections():
+            for ev, conns in service.connections.items():
+                if len(conns) < service.connections._max_connections:
+                    conn = yield service.connections.connect()
+                    service.connections[ev].append(conn)
+                    break
+
+        scale_up = self.patch(service.connections, "scale_up_connections")
+        scale_up.side_effect = mock_scale_up_connections
+
         original_conns = [
             conn for conns in service.connections.values() for conn in conns
         ]
         new_client = yield service.getClientNow()
         new_conn = new_client._conn
+        scale_up.assert_called_once()
         self.assertIsNotNone(new_conn)
         self.assertNotIn(new_conn, original_conns)
         self.assertIn(

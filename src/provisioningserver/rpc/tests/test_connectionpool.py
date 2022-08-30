@@ -117,10 +117,35 @@ class TestConnectionPool(MAASTestCase):
     def test_scale_up_connections_adds_a_connection(self):
         cp = ConnectionPool(Clock(), Mock(), max_conns=2)
         eventloop = Mock()
-        connection1 = Mock()
-        connection2 = Mock()
+        address = (factory.make_ip_address(), 5240)
+        service = Mock()
+
+        @inlineCallbacks
+        def mock_service_add_connection(ev, conn):
+            yield cp.add_connection(ev, conn)
+
+        service.add_connection = mock_service_add_connection
+
+        connection1 = ClusterClient(address, eventloop, service)
+        connection2 = ClusterClient(address, eventloop, service)
         connect = self.patch(cp, "connect")
-        connect.return_value = succeed(connection2)
+
+        @inlineCallbacks
+        def call_connectionMade(*args, **kwargs):
+            yield connection2.connectionMade()
+            return connection2
+
+        connect.side_effect = call_connectionMade
+
+        authRegion = self.patch(connection2, "authenticateRegion")
+        authRegion.return_value = succeed(True)
+        register = self.patch(connection2, "registerRackWithRegion")
+
+        def set_ident(*args, **kwargs):
+            connection2.localIdent = factory.make_name()
+            return succeed(True)
+
+        register.side_effect = set_ident
         cp[eventloop] = [connection1]
         cp.scale_up_connections()
         self.assertCountEqual(cp[eventloop], [connection1, connection2])

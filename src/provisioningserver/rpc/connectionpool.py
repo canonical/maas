@@ -88,7 +88,6 @@ class ConnectionPool:
                 # spawn an extra connection
                 conn_to_clone = random.choice(list(ev_conns))
                 conn = yield self.connect(ev, conn_to_clone.address)
-                self.connections[ev].append(conn)
                 self.clock.callLater(
                     self._keepalive, self._reap_extra_connection, ev, conn
                 )
@@ -144,14 +143,15 @@ class ConnectionPool:
             self.connections[eventloop] = []
 
         self.connections[eventloop].append(connection)
-
         # clone connection to equal num idle connections
-        if self._max_idle_connections - 1 > 0:
-            for _ in range(self._max_idle_connections - 1):
-                extra_conn = yield self.connect(
-                    connection.eventloop, connection.address
-                )
-                self.connections[eventloop].append(extra_conn)
+        idle_limit = self._max_idle_connections - len(
+            self.connections[eventloop]
+        )
+        # if there's room for more and first conn, create more idle conns
+        if idle_limit > 0 and len(self.connections[eventloop]) == 1:
+            for _ in range(idle_limit):
+                # calls to service to add self when handshake is finished
+                yield self.connect(connection.eventloop, connection.address)
 
     def remove_connection(self, eventloop, connection):
         if self.is_staged(eventloop):

@@ -1084,7 +1084,7 @@ class ClusterClient(Cluster):
             log.msg("Event-loop '%s' authenticated." % self.ident)
             registered = yield self.registerRackWithRegion()
             if registered:
-                self.service.add_connection(self.eventloop, self)
+                yield self.service.add_connection(self.eventloop, self)
                 self.ready.set(self.eventloop)
             else:
                 self.transport.loseConnection()
