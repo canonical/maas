@@ -14,6 +14,7 @@ __all__ = [
 
 from abc import ABCMeta, abstractproperty
 from functools import wraps
+import inspect
 import re
 
 from django.core.exceptions import PermissionDenied
@@ -26,7 +27,11 @@ from piston3.resource import Resource
 from piston3.utils import HttpStatusCode, rc
 
 from maasserver.api.doc import get_api_description
-from maasserver.exceptions import MAASAPIBadRequest, MAASAPIValidationError
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPIValidationError,
+    MAASBadDeprecation,
+)
 from maasserver.utils.orm import get_one
 from provisioningserver.logger import LegacyLogger
 
@@ -138,6 +143,56 @@ def operation(idempotent, exported_as=None):
         else:
             func.export = method, exported_as
         return func
+
+    return _decorator
+
+
+def deprecated(use):
+    """Decorator to note a method or class is deprecated on the API.
+
+    :param use: Name of the method or class that should be used in place of this method"""
+
+    # TODO: Determine any other behaviours we might want from this decorator in future
+
+    def update_method_docstring(func):
+        doc = func.__doc__ if func.__doc__ else ""
+        depr = f"This operation has been deprecated in favour of '{func_name(use)} {func_name(func.deprecated)}'"
+        if "@description" in doc:
+            description = doc.split("@description ")[1].split(".")[0]
+            func.__doc = doc.replace(description, f"{description}. {depr}")
+        else:
+            func.__doc__ = f"{doc}\n{depr}."
+
+    def update_class_docstring(cls):
+        cls.__doc__ = f"{cls.__doc__}\nThe '{func_name(cls)}' endpoint has been deprecated in favour of '{func_name(use)}'."
+        if "(deprecated)" not in cls.api_doc_section_name:
+            cls.api_doc_section_name += " (deprecated)"
+
+    def func_name(func):
+        return re.sub(
+            "[_ ]", "-", getattr(func, "api_doc_section_name", func.__name__)
+        )
+
+    def _decorator(func):
+        if type(func) is not type(use):
+            raise MAASBadDeprecation(
+                f"{func_name(func)} is deprecated in favour of {func_name(use)}, but {type(use)} is not a valid replacement for {type(func)}"
+            )
+        func.deprecated = use
+        # if an endpoint (class) was passed to the decorator, apply the decorator to all of it's methods too
+        if isinstance(func, type):
+            apply_to_methods(func)
+            update_class_docstring(func)
+        else:
+            update_method_docstring(func)
+        return func
+
+    def apply_to_methods(cls):
+        for name, method in inspect.getmembers(cls, inspect.isfunction):
+            new_method = getattr(use, name, None)
+            if new_method:
+                method.deprecated = new_method
+                update_method_docstring(method)
 
     return _decorator
 

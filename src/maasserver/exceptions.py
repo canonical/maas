@@ -245,3 +245,7 @@ class StorageClearProblem(MAASAPIException):
 
 class NetworkingResetProblem(MAASException):
     """Raised when an issue occurs that prevents resetting networking configuration."""
+
+
+class MAASBadDeprecation(MAASException):
+    """Raised when an API endpoint or operation has it's deprecation incorrectly assigned."""

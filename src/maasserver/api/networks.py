@@ -7,7 +7,13 @@
 from django.urls import reverse
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.subnets import SubnetHandler, SubnetsHandler
+from maasserver.api.support import (
+    admin_method,
+    deprecated,
+    operation,
+    OperationsHandler,
+)
 from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import NetworksListingForm
 from maasserver.models import Interface, Node, Subnet
@@ -39,14 +45,13 @@ def render_networks_json(subnets):
     return [render_network_json(subnet) for subnet in subnets]
 
 
+@deprecated(use=SubnetHandler)
 class NetworkHandler(OperationsHandler):
     """
     Manage a network.
-
-    This endpoint is deprecated. Use the new 'subnet' endpoint instead.
     """
 
-    api_doc_section_name = "Network (deprecated)"
+    api_doc_section_name = "Network"
     create = None
 
     def read(self, request, name):
@@ -150,11 +155,10 @@ class NetworkHandler(OperationsHandler):
         return ("network_handler", (name,))
 
 
+@deprecated(use=SubnetsHandler)
 class NetworksHandler(OperationsHandler):
     """
     Manage the networks.
-
-    This endpoint is deprecated. Use the new 'subnets' endpoint instead.
     """
 
     api_doc_section_name = "Networks"

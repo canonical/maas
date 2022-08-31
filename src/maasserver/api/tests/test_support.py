@@ -15,6 +15,7 @@ from maasserver.api.doc import get_api_description
 from maasserver.api.support import (
     admin_method,
     AdminRestrictedResource,
+    deprecated,
     Emitter,
     OperationsHandlerMixin,
     OperationsResource,
@@ -178,6 +179,28 @@ class TestAdminMethodDecorator(MAASServerTestCase):
 
         response = api_method("self", request)
         self.assertEqual((return_value, [call()]), (response, mock.mock_calls))
+
+
+class TestDeprecatedMethodDecorator(MAASServerTestCase):
+    def test_function_marked_as_deprecated(self):
+        def api_replacement_method(self, request):
+            pass
+
+        @deprecated(use=api_replacement_method)
+        def api_method(self, request):
+            pass
+
+        self.assertEqual(api_method.deprecated, api_replacement_method)
+
+    def test_class_marked_as_deprecated(self):
+        class api_replacement_endpoint:
+            api_doc_section_name = "Replacement"
+
+        @deprecated(use=api_replacement_endpoint)
+        class api_endpoint:
+            api_doc_section_name = "Deprecated"
+
+        self.assertEqual(api_endpoint.deprecated, api_replacement_endpoint)
 
 
 class TestOperationsHandlerMixin(MAASTestCase):

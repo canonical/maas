@@ -11,7 +11,8 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from piston3.utils import rc
 
-from maasserver.api.support import OperationsHandler
+from maasserver.api.scripts import NodeScriptHandler, NodeScriptsHandler
+from maasserver.api.support import deprecated, OperationsHandler
 from maasserver.api.utils import get_mandatory_param
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
@@ -29,16 +30,15 @@ def get_content_parameter(request):
     return content_file.read()
 
 
+@deprecated(use=NodeScriptsHandler)
 class CommissioningScriptsHandler(OperationsHandler):
     """
     Manage custom commissioning scripts.
 
     This functionality is only available to administrators.
-
-    This endpoint has been deprecated in favor of the node-scripts endpoint.
     """
 
-    api_doc_section_name = "Commissioning scripts (deprecated)"
+    api_doc_section_name = "Commissioning scripts"
 
     update = delete = None
 
@@ -109,16 +109,15 @@ class CommissioningScriptsHandler(OperationsHandler):
         return ("commissioning_scripts_handler", [])
 
 
+@deprecated(use=NodeScriptHandler)
 class CommissioningScriptHandler(OperationsHandler):
     """
     Manage a custom commissioning script.
 
     This functionality is only available to administrators.
-
-    This endpoint has been deprecated in favor of the node-script endpoint.
     """
 
-    api_doc_section_name = "Commissioning script (deprecated)"
+    api_doc_section_name = "Commissioning script"
 
     # Relies on Piston's built-in DELETE implementation.  There is no POST.
     create = None

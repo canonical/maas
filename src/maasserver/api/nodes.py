@@ -20,6 +20,7 @@ from piston3.utils import rc
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
+    deprecated,
     operation,
     OperationsHandler,
 )
@@ -914,6 +915,7 @@ class WorkloadAnnotationsMixin:
         return node
 
     @operation(idempotent=False)
+    @deprecated(use=set_workload_annotations)
     def set_owner_data(self, request, system_id):
         """@description-title Deprecated, use set-workload-annotations.
         @description Deprecated, use set-workload-annotations instead."""

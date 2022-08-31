@@ -9,7 +9,12 @@ from django.urls import reverse
 from formencode.validators import String
 from piston3.utils import rc
 
-from maasserver.api.support import admin_method, operation, OperationsHandler
+from maasserver.api.support import (
+    admin_method,
+    deprecated,
+    operation,
+    OperationsHandler,
+)
 from maasserver.api.utils import get_mandatory_param
 from maasserver.exceptions import MAASAPIValidationError, PodProblem
 from maasserver.forms.pods import ComposeMachineForm, DeletePodForm, PodForm
@@ -423,12 +428,10 @@ class VmHostHandler(OperationsHandler):
 
 # Pods are being renamed to VM hosts. Keep the old name on the API as well for
 # backwards-compatibility.
+@deprecated(use=VmHostHandler)
 class PodHandler(VmHostHandler):
     """
     Manage an individual Pod.
-
-    The /pod/ API endpoint is deprecated. Please use the /vm-host/ one instead.
-
     """
 
     api_doc_section_name = "Pod"
@@ -531,13 +534,10 @@ class VmHostsHandler(OperationsHandler):
 
 # Pods are being renamed to VM hosts. Keep the old name on the API as well for
 # backwards-compatibility.
+@deprecated(use=VmHostsHandler)
 class PodsHandler(VmHostsHandler):
     """
     Manage the collection of all the pods in the MAAS.
-
-    The /pods/ API endpoint is deprecated. Please use the /vm-hosts/ one
-    instead.
-
     """
 
     api_doc_section_name = "Pods"
