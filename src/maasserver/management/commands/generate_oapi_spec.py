@@ -13,4 +13,4 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         oapi = get_api_endpoint()
         oapi["externalDocs"]["url"] = "https://maas.io/docs"
-        yaml.dump(oapi, self.stdout)
+        self.stdout.write(yaml.dump(oapi))
