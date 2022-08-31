@@ -1366,7 +1366,7 @@ class NodeHandler(TimestampedModelHandler):
                 ]
         elif key == "mac_address":
             results += [
-                {"key": val, "label": val}
+                {"key": str(val), "label": str(val).upper()}
                 for val in Interface.objects.order_by("mac_address")
                 .values_list("mac_address", flat=True)
                 .distinct()
