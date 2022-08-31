@@ -6432,6 +6432,15 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                 _assert_value_in(machine.bmc.name, "pod")
                 _assert_value_in(machine.bmc.name, "not_pod")
 
+    def test_filter_options_labels(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        result = handler.filter_options({"group_key": "status"})
+        self.assertCountEqual(
+            [v["label"] for v in result],
+            [choice[1] for choice in NODE_STATUS_CHOICES],
+        )
+
     def test_group_label_dynamic(self):
         user = factory.make_User()
         factory.make_Node(

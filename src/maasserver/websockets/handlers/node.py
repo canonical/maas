@@ -1480,7 +1480,12 @@ class NodeHandler(TimestampedModelHandler):
                     ]
                 if key == "status":
                     return [
-                        {"key": choice[0], "label": choice[1]}
+                        {
+                            "key": choice[0],
+                            "label": NODE_STATUS_CHOICES_DICT[
+                                getattr(NODE_STATUS, choice[0].upper())
+                            ],
+                        }
                         for choice in sorted(NODE_STATUS_SHORT_LABEL_CHOICES)
                     ]
                 if key == "power_state":
