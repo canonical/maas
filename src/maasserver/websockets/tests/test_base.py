@@ -13,7 +13,7 @@ from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import succeed
 
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
 from maasserver.models.node import Device, Node
 from maasserver.models.vlan import VLAN
@@ -504,6 +504,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                     "collapsed": False,
                     "count": 5,
                     "name": None,
+                    "value": None,
                     "items": [{"system_id": n.system_id} for n in nodes[:3]],
                 }
             ],
@@ -533,6 +534,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                     "collapsed": False,
                     "count": 5,
                     "name": None,
+                    "value": None,
                     "items": [{"system_id": n.system_id} for n in nodes[3:]],
                 }
             ],
@@ -562,6 +564,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                     "collapsed": False,
                     "count": 5,
                     "name": None,
+                    "value": None,
                     "items": [{"system_id": n.system_id} for n in nodes[:3]],
                 }
             ],
@@ -591,6 +594,7 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
                     "collapsed": False,
                     "count": 5,
                     "name": None,
+                    "value": None,
                     "items": [{"system_id": n.system_id} for n in nodes[3:]],
                 }
             ],
@@ -1041,6 +1045,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.NEW,
+                    "value": NODE_STATUS.NEW,
                     "count": 2,
                     "collapsed": False,
                     "items": [
@@ -1050,6 +1055,52 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
                 },
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
+                    "count": 3,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_ready
+                    ],
+                },
+            ],
+        }
+        self.assertEqual(output, result)
+
+    def test_group_label(self):
+        def get_group_label(key, value):
+            if key == "status":
+                return NODE_STATUS_CHOICES_DICT[value]
+
+        nodes_ready = [
+            factory.make_Node(status=NODE_STATUS.READY) for _ in range(3)
+        ]
+        nodes_new = [
+            factory.make_Node(status=NODE_STATUS.NEW) for _ in range(2)
+        ]
+
+        handler = self.make_nodes_handler(fields=["hostname", "status"])
+        handler._get_group_label = get_group_label
+        result = handler.list({"group_key": "status"})
+
+        output = {
+            "count": 5,
+            "cur_page": 1,
+            "num_pages": 1,
+            "groups": [
+                {
+                    "name": NODE_STATUS_CHOICES_DICT[NODE_STATUS.NEW],
+                    "value": NODE_STATUS.NEW,
+                    "count": 2,
+                    "collapsed": False,
+                    "items": [
+                        {"hostname": n.hostname, "status": n.status}
+                        for n in nodes_new
+                    ],
+                },
+                {
+                    "name": NODE_STATUS_CHOICES_DICT[NODE_STATUS.READY],
+                    "value": NODE_STATUS.READY,
                     "count": 3,
                     "collapsed": False,
                     "items": [
@@ -1077,6 +1128,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": None,
+                    "value": None,
                     "count": 3,
                     "collapsed": False,
                     "items": [
@@ -1106,12 +1158,14 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.NEW,
+                    "value": NODE_STATUS.NEW,
                     "count": 2,
                     "collapsed": True,
                     "items": [],
                 },
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 3,
                     "collapsed": False,
                     "items": [
@@ -1140,6 +1194,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 3,
                     "collapsed": False,
                     "items": [
@@ -1173,6 +1228,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.NEW,
+                    "value": NODE_STATUS.NEW,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1208,6 +1264,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.NEW,
+                    "value": NODE_STATUS.NEW,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1217,6 +1274,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
                 },
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1250,6 +1308,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1285,12 +1344,14 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.NEW,
+                    "value": NODE_STATUS.NEW,
                     "count": 5,
                     "collapsed": True,
                     "items": [],
                 },
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1326,12 +1387,14 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 5,
                     "collapsed": True,
                     "items": [],
                 },
                 {
                     "name": NODE_STATUS.DEPLOYED,
+                    "value": NODE_STATUS.DEPLOYED,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1369,6 +1432,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.NEW,
+                    "value": NODE_STATUS.NEW,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1378,12 +1442,14 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
                 },
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 5,
                     "collapsed": True,
                     "items": [],
                 },
                 {
                     "name": NODE_STATUS.DEPLOYED,
+                    "value": NODE_STATUS.DEPLOYED,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1419,6 +1485,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
             "groups": [
                 {
                     "name": NODE_STATUS.READY,
+                    "value": NODE_STATUS.READY,
                     "count": 5,
                     "collapsed": False,
                     "items": [
@@ -1428,6 +1495,7 @@ class TestHandlerGrouping(MAASServerTestCase, FakeNodesHandlerMixin):
                 },
                 {
                     "name": NODE_STATUS.DEPLOYED,
+                    "value": NODE_STATUS.DEPLOYED,
                     "count": 5,
                     "collapsed": True,
                     "items": [],

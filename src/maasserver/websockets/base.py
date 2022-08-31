@@ -560,9 +560,10 @@ class Handler(metaclass=HandlerMetaclass):
         :param group_collapsed: list of groups to suppress from output
         """
 
-        def new_grp(key, count, collapsed):
+        def new_grp(label, key, count, collapsed):
             return {
-                "name": key,
+                "name": label,
+                "value": key,
                 "count": count,
                 "collapsed": collapsed,
                 "items": list(),
@@ -632,6 +633,7 @@ class Handler(metaclass=HandlerMetaclass):
                 grp_id = g["label"]
                 groups[grp_id] = new_grp(
                     self._get_group_label(grp_key, g["label"]),
+                    g["label"],
                     g["total"],
                     grp_id in collapsed,
                 )
@@ -642,7 +644,7 @@ class Handler(metaclass=HandlerMetaclass):
                 )
             result["groups"] = list(groups.values())
         else:
-            grp = new_grp(None, result["count"], False)
+            grp = new_grp(None, None, result["count"], False)
             grp["items"] = [
                 self.full_dehydrate(obj, for_list=True) for obj in objs
             ]
