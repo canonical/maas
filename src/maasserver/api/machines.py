@@ -669,6 +669,21 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
 
     @operation(idempotent=True)
     def get_token(self, request, system_id):
+        """@description-title Get a machine token
+
+        @param (string) "{system_id}" [required=true] The machines' system_id.
+
+        @success (http-status-code) "200" 200
+        @success (json) "success-json" A JSON object containing information
+        about the machine token.
+        @success-example "success-json" [exkey=machines-placeholder]
+        placeholder text
+
+        @error (http-status-code) "404" 404
+        @error (content) "not-found" The requested machine is not found.
+        @error-example "not-found"
+            No Machine matches the given query.
+        """
         node = self.model.objects.get_node_or_404(
             system_id=system_id,
             user=request.user,

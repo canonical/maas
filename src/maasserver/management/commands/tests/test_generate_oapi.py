@@ -10,10 +10,10 @@ from django.core.management import call_command
 import yaml
 
 from maasserver.api.doc_oapi import get_api_endpoint
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestOAPIDoc(MAASTestCase):
+class TestOAPIDoc(MAASServerTestCase):
     def test_generate_spec(self):
         spec = get_api_endpoint()
         spec["externalDocs"]["url"] = "https://maas.io/docs"

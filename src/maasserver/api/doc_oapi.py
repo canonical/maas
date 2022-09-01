@@ -7,7 +7,7 @@ This definition follows the rules and limitations of the ReST documentation.
 (see doc.py and doc_handler.py).
 """
 
-from inspect import getdoc
+from inspect import getdoc, signature
 import json
 import re
 from textwrap import dedent
@@ -144,7 +144,9 @@ def _prettify(doc):
     return re.sub("(?<![.\n])[\n]+", " ", dedent(doc)).strip()
 
 
-def _render_oapi_oper_item(http_method, op, doc, uri_params, function):
+def _render_oapi_oper_item(
+    http_method, op, doc, uri_params, function, resources
+):
     oper_id = op or support.OperationsResource.crudmap.get(http_method)
     oper_obj = {
         "operationId": f"{doc.name}_{oper_id}",
@@ -154,14 +156,16 @@ def _render_oapi_oper_item(http_method, op, doc, uri_params, function):
         "responses": {},
     }
     oper_docstring = _oapi_item_from_docstring(
-        function, http_method, uri_params
+        function, http_method, uri_params, doc, resources
     )
     # Only overwrite the values that are non-blank
     oper_obj.update({k: v for k, v in oper_docstring.items() if v})
     return oper_obj
 
 
-def _oapi_item_from_docstring(function, http_method, uri_params):
+def _oapi_item_from_docstring(
+    function, http_method, uri_params, doc, resources
+):
     def _type_to_string(schema):
         match schema:
             case "Boolean":
@@ -187,6 +191,9 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
                 paired.extend([status, content])
             else:
                 content = response
+        # edge case where a response is not given in the docstring
+        if paired == [] and content:
+            paired.extend([content, content])
         paired = iter(paired)
         return zip(paired, paired)
 
@@ -202,6 +209,8 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
         ap_dict = ap.get_dict()
         oper_obj["summary"] = ap_dict["description_title"].strip()
         oper_obj["description"] = _prettify(ap_dict["description"])
+        if "deprecated" in oper_obj["description"].lower():
+            oper_obj["deprecated"] = True
         for param in ap_dict["params"]:
             description = _prettify(param["description_stripped"])
             name = param["name"].strip("}{")
@@ -268,10 +277,37 @@ def _oapi_item_from_docstring(function, http_method, uri_params):
 
             status_code = status["name"]
             if not status_code.isdigit():
-                status_code = _prettify(status["description_stripped"])
+                status_code = (
+                    "200" if "success" in status_code.lower() else "404"
+                )
             oper_obj.setdefault("responses", {}).update(
                 {status_code: response},
             )
+
+    # populate deprecated functions properties using their replacement
+    if (
+        replacement_method := getattr(function, "deprecated", function)
+    ) is not function:
+        oper_obj["deprecated"] = True
+        oper_obj["responses"] = _oapi_item_from_docstring(
+            replacement_method, http_method, uri_params, doc, resources
+        )["responses"]
+
+    # if a response is still empty, query the function
+    if not oper_obj.get("responses"):
+        # fetch a response by calling the function
+        status, msg = "200", ""
+        try:
+            msg = function(*[""] * len(signature(function).parameters))
+        except Exception as e:
+            status = "404"
+            msg = str(e)
+        oper_obj["responses"] = {
+            status: {
+                "content": {"text/plain": {"schema": {"type": "string"}}},
+                "description": msg,
+            }
+        }
 
     if body.get("properties"):
         oper_obj.update(
@@ -317,6 +353,6 @@ def _render_oapi_paths():
                 _new_path_item(params),
             )
             path_item[http_method.lower()] = _render_oapi_oper_item(
-                http_method, op, doc, params, function
+                http_method, op, doc, params, function, resources
             )
     return paths
