@@ -5,7 +5,7 @@
 
 
 from django.core.exceptions import ValidationError
-from django.db.models import CASCADE, CharField, F, ForeignKey
+from django.db.models import CASCADE, CharField, ForeignKey
 
 from maasserver.enum import PARTITION_TABLE_TYPE, PARTITION_TABLE_TYPE_CHOICES
 from maasserver.models.blockdevice import BlockDevice
@@ -141,7 +141,11 @@ class PartitionTable(CleanSave, TimestampedModel):
         index = partition.index
         partition.delete()
         # renumber partitions
-        self.partitions.filter(index__gt=index).update(index=F("index") - 1)
+        for partition in self.partitions.filter(index__gt=index).order_by(
+            "index"
+        ):
+            partition.index -= 1
+            partition.save()
 
     def __str__(self):
         return f"Partition table for {self.block_device}"
