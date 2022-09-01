@@ -56,7 +56,7 @@ from maasserver.fields import (
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.orm import get_one, MAASQueriesMixin
+from maasserver.utils.orm import MAASQueriesMixin
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import parse_integer
 
@@ -900,53 +900,36 @@ class Interface(CleanSave, TimestampedModel):
                         f"{self} of node {self.get_node()}."
                     )
 
-            # First check if this IP address exists in the database (at all).
-            prev_address = get_one(StaticIPAddress.objects.filter(ip=address))
-            if prev_address is not None:
+            # Clear existing StaticIPAddresses like this one
+            for prev_address in StaticIPAddress.objects.filter(ip=address):
                 if prev_address.alloc_type == IPADDRESS_TYPE.DISCOVERED:
-                    # Previous address was a discovered address so we can
-                    # delete it without and messages.
                     if prev_address.is_linked_to_one_unknown_interface():
                         prev_address.interface_set.all().delete()
-                    prev_address.delete()
-                elif not prev_address.interface_set.exists():
-                    # Previous address is just hanging around, this should not
-                    # happen. But just in-case we delete the IP address.
-                    prev_address.delete()
                 else:
+                    alloc_name = prev_address.get_log_name_for_alloc_type()
+                    node = prev_address.get_node()
+                    node_msg = " on " + node.fqdn if node is not None else ""
                     if subnet.vlan.dhcp_on:
-                        # Subnet is managed by MAAS and the IP address is
-                        # not DISCOVERED then we have a big problem as MAAS
-                        # should not allow IP address to be allocated in a
-                        # managed dynamic range.
-                        alloc_name = prev_address.get_log_name_for_alloc_type()
-                        node = prev_address.get_node()
-                        maaslog.warning(
-                            "%s IP address (%s)%s was deleted because "
+                        # Subnet is managed by MAAS and the IP address is not
+                        # DISCOVERED then we have a big problem as MAAS should
+                        # not allow IP address to be allocated in a managed
+                        # dynamic range.
+                        reason = (
                             "it was handed out by the MAAS DHCP server "
-                            "from the dynamic range.",
-                            alloc_name,
-                            prev_address.ip,
-                            " on " + node.fqdn if node is not None else "",
+                            "from the dynamic range"
                         )
-                        prev_address.delete()
                     else:
                         # This is an external DHCP server where the subnet is
                         # not managed by MAAS. It is possible that the user
                         # did something wrong and set a static IP address on
                         # another node to an IP address inside the same range
                         # that the DHCP server provides.
-                        alloc_name = prev_address.get_log_name_for_alloc_type()
-                        node = prev_address.get_node()
-                        maaslog.warning(
-                            "%s IP address (%s)%s was deleted because "
-                            "it was handed out by an external DHCP "
-                            "server.",
-                            alloc_name,
-                            prev_address.ip,
-                            " on " + node.fqdn if node is not None else "",
-                        )
-                        prev_address.delete()
+                        reason = "it was handed out by an external DHCP server"
+                    maaslog.warning(
+                        f"{alloc_name} IP address ({prev_address.ip}){node_msg} "
+                        f"was deleted because {reason}."
+                    )
+                prev_address.delete()
 
             # At the moment, IPv6 autoconf (SLAAC) is required so that we get
             # the correct subnet block created above.  However, if we add SLAAC
@@ -1247,10 +1230,7 @@ class Interface(CleanSave, TimestampedModel):
         """Swap the subnet for the `static_ip`."""
         # Check that requested `ip_address` is available.
         if ip_address is not None:
-            already_used = get_one(
-                StaticIPAddress.objects.filter(ip=ip_address)
-            )
-            if already_used is not None:
+            if StaticIPAddress.objects.filter(ip=ip_address).exists():
                 raise StaticIPAddressUnavailable(
                     "IP address is already in use."
                 )

@@ -2798,18 +2798,35 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         # error message and delete the IP address.
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.update_ip_addresses([cidr])
-
-        self.assertThat(
-            maaslog.warning,
-            MockCalledOnceWith(
-                "%s IP address (%s)%s was deleted because "
-                "it was handed out by the MAAS DHCP server "
-                "from the dynamic range.",
-                ip.get_log_name_for_alloc_type(),
-                address,
-                " on " + other_interface.node_config.node.fqdn,
-            ),
+        maaslog.warning.assert_called_with(
+            f"{ip.get_log_name_for_alloc_type()} IP address "
+            f"({address}) on {other_interface.node_config.node.fqdn} "
+            "was deleted because it was handed out by the MAAS DHCP server "
+            "from the dynamic range.",
         )
+
+    def test_deletes_multiple_staticipaddress_with_same_ip(self):
+        network = factory.make_ip4_or_6_network()
+        cidr = str(network)
+        address = str(network.ip)
+        vlan = VLAN.objects.get_default_vlan()
+        vlan.dhcp_on = True
+        vlan.save()
+        subnet = factory.make_Subnet(cidr=cidr, vlan=vlan)
+        ip1 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            ip=address,
+            subnet=subnet,
+        )
+        ip2 = factory.make_StaticIPAddress(
+            alloc_type=IPADDRESS_TYPE.DISCOVERED,
+            ip=address,
+            subnet=subnet,
+        )
+        interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
+        interface.update_ip_addresses([cidr])
+        self.assertIsNone(reload_object(ip1))
+        self.assertIsNone(reload_object(ip2))
 
     def test_deletes_old_ip_address_on_unmanaged_subnet_with_log(self):
         network = factory.make_ip4_or_6_network()
@@ -2830,17 +2847,11 @@ class TestUpdateIpAddresses(MAASServerTestCase):
         # error message and delete the IP address.
         interface = factory.make_Interface(INTERFACE_TYPE.PHYSICAL)
         interface.update_ip_addresses([cidr])
-
-        self.assertThat(
-            maaslog.warning,
-            MockCalledOnceWith(
-                "%s IP address (%s)%s was deleted because "
-                "it was handed out by an external DHCP "
-                "server.",
-                ip.get_log_name_for_alloc_type(),
-                address,
-                " on " + other_interface.node_config.node.fqdn,
-            ),
+        maaslog.warning.assert_called_with(
+            f"{ip.get_log_name_for_alloc_type()} IP address "
+            f"({address}) on {other_interface.node_config.node.fqdn} "
+            "was deleted because it was handed out by an external DHCP "
+            "server.",
         )
 
 
