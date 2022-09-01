@@ -26,7 +26,7 @@
 # script_type: test
 # hardware_type: memory
 # packages: {apt: stress-ng}
-# timeout: 12:00:00
+# timeout: 14:00:00
 # --- End MAAS 1.0 script metadata ---
 
 # Reserve 64M so the test doesn't fail due to the OOM killer.
