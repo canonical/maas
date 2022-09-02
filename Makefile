@@ -121,7 +121,7 @@ go-bins:
 	$(MAKE) -j -C src/host-info build
 .PHONY: go-bins
 
-test: test-missing-migrations test-py
+test: test-missing-migrations test-py lint-oapi
 .PHONY: test
 
 test-missing-migrations: bin/database bin/maas-region
@@ -165,6 +165,11 @@ lint-py-linefeeds:
 		awk '/CRLF/ { print $0; count++ } END {exit count}' || \
 		(echo "Lint check failed; run make format to fix DOS linefeeds."; false)
 .PHONY: lint-py-linefeeds
+
+# Open API Spec
+lint-oapi: openapi.yaml
+	@tox -e oapi
+.PHONY: lint-oapi
 
 # Go fmt
 lint-go:

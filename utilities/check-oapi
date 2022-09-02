@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+
+"""Script to ensure that an OpenAPI spec matches OAS3"""
+
+import argparse
+import sys
+
+from openapi_spec_validator import openapi_v3_spec_validator as validator
+import yaml
+
+failure = "\033[0;31m"
+success = "\033[0;32m"
+end = "\033[0m"
+
+
+def fetch_errors(errors):
+    """Return all the errors in the oapi spec with
+    some nice formatting for the terminal
+    """
+    num = len(errors)
+    pad = len(str(num))
+    err_ = [f"{num} problems with the spec:"]
+    for i, err in enumerate(errors):
+        msg, reason, loc = str(err).split("\n\n")
+        i = str(i).rjust(pad)
+        err_ += [
+            end
+            + f"{i}: {msg}\n{failure}{reason}\n{loc}".replace(
+                "\n", "\n" + " " * (2 + pad)
+            )
+        ]
+    return failure + "\n\n".join(err for err in err_) + end
+
+
+def validate(spec):
+    """a wrapper around the spec validator for our purposes"""
+    errors = list(validator.iter_errors(spec))
+    if errors:
+        error = fetch_errors(errors)
+        raise Exception(error)
+    else:
+        print(success + "No errors found in spec!" + end)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Check an OpenAPI yaml schema against OAS3"
+    )
+    parser.add_argument(
+        "api_spec",
+        help="path for the file to validate against.",
+        type=argparse.FileType("r"),
+    )
+    args = parser.parse_args()
+    with args.api_spec as f:
+        spec = yaml.load(f, Loader=yaml.FullLoader)
+    info = spec["info"]
+    print(f"Checking {info['title']} version {info['version']}")
+    validate(spec)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
