@@ -683,9 +683,10 @@ class LXDPodDriver(PodDriver):
             # can't determine how much of the storage pool has been used.
             serial = f"lxd_{name}"
             source = device.get("source")
-            if source:
-                pool = client.storage_pools.get(device["pool"])
-                volume = pool.volumes.get("custom", source)
+            pool = device.get("pool")  # not set for e.g. file-backed devices
+            if source and pool:
+                storage_pool = client.storage_pools.get(pool)
+                volume = storage_pool.volumes.get("custom", source)
                 size = volume.config.get("size")
             else:
                 size = device.get("size")

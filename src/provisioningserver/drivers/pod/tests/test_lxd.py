@@ -1035,6 +1035,26 @@ class TestLXDPodDriver(MAASTestCase):
         self.assertTrue(discovered_machine.hugepages_backed)
         self.assertEqual(discovered_machine.pinned_cores, [0, 1, 2])
 
+    def test_get_discovered_machine_with_non_pool_backed_disk(self):
+        mock_machine = Mock()
+        mock_machine.name = factory.make_name("machine")
+        mock_machine.architecture = "x86_64"
+        mock_machine.location = "FakeLXD"
+        mock_machine.expanded_config = {}
+        mock_machine.expanded_devices = {
+            "iso": {
+                "source": "/ubuntu.iso",
+                "type": "disk",
+            }
+        }
+        client = self.fake_lxd.make_client()
+        discovered_machine = self.driver._get_discovered_machine(
+            client, mock_machine, []
+        )
+        [discovered_device] = discovered_machine.block_devices
+        self.assertEqual(discovered_device.serial, "lxd_iso")
+        self.assertIsNone(discovered_device.storage_pool)
+
     def test_get_discovered_machine_with_request(self):
         request = make_requested_machine(num_disks=2)
         driver = lxd_module.LXDPodDriver()
