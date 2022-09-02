@@ -6,9 +6,11 @@
 
 from collections import defaultdict
 import fnmatch
+import functools
 from functools import partial
 import json
 import logging
+import operator
 from operator import itemgetter
 import re
 
@@ -22,6 +24,7 @@ from maasserver.models import (
     Interface,
     Node,
     NodeDevice,
+    NodeDeviceVPD,
     NodeMetadata,
     NUMANode,
     NUMANodeHugepages,
@@ -368,6 +371,7 @@ def _add_or_update_node_device(
     key,
     commissioning_driver,
 ):
+    device_vpd = device.get("vpd", {}).get("entries", {})
     network_device = network_devices.get(address)
     storage_device = storage_devices.get(address)
 
@@ -398,6 +402,7 @@ def _add_or_update_node_device(
         node_device.product_name = device.get("product")
         node_device.commissioning_driver = commissioning_driver
         node_device.save()
+        _add_node_device_vpd(node_device, device_vpd)
         _hardware_sync_node_device_notify(
             node, node_device, HARDWARE_SYNC_ACTIONS.UPDATED
         )
@@ -453,9 +458,24 @@ def _add_or_update_node_device(
             qs.delete()
             node_device = NodeDevice.objects.create(**create_args)
         finally:
+            _add_node_device_vpd(node_device, device_vpd)
             _hardware_sync_node_device_notify(
                 node, node_device, HARDWARE_SYNC_ACTIONS.ADDED
             )
+
+
+def _add_node_device_vpd(node_device, device_vpd):
+    with transaction.atomic():
+        NodeDeviceVPD.objects.filter(node_device=node_device).delete()
+
+        NodeDeviceVPD.objects.bulk_create(
+            NodeDeviceVPD(
+                node_device=node_device,
+                key=key,
+                value=value,
+            )
+            for key, value in device_vpd.items()
+        )
 
 
 def _process_pcie_devices(add_func, data):
@@ -632,6 +652,7 @@ def _process_lxd_resources(node, data):
             )
 
     _process_system_information(node, resources.get("system", {}))
+    _link_dpu(node)
 
 
 def _parse_memory(memory, numa_nodes):
@@ -1417,6 +1438,70 @@ def retag_node_for_hardware_by_modalias(
                 % (node.hostname, tag_name)
             )
     return tags_added, tags_removed
+
+
+def _link_dpu(node):
+    """Create a parent-child relation between nodes.
+
+    E.g. Data Processing Unit (DPU) itself is identified as a Node in MAAS,
+    but it is a dependant resource. Linking is achieved through setting
+    parent_id for the dependant node.
+    """
+
+    system_families = ("BlueField",)
+    vendor_ids = ("15b3",)  # Mellanox Technologies
+
+    # find DPU related NodeDevice VPD data for the Node, this data will be used
+    # to find other Nodes that have the same NodeDevices discovered.
+    matching_node_devices = NodeDeviceVPD.objects.filter(
+        node_device__in=NodeDevice.objects.filter(
+            node_config=node.current_config, vendor_id__in=vendor_ids
+        ),
+        key="SN",
+    ).values_list("node_device__product_id", "value")
+
+    if not matching_node_devices:
+        return
+
+    query = Q(
+        current_config__nodedevice__nodedevicevpd__key="SN",
+        current_config__nodedevice__vendor_id__in=vendor_ids,
+    ) & functools.reduce(
+        # (product_id = % AND value = %) OR (product_id = % AND value = %)
+        operator.or_,
+        (
+            Q(
+                current_config__nodedevice__product_id=product_id,
+                current_config__nodedevice__nodedevicevpd__value=sn,
+            )
+            for product_id, sn in matching_node_devices
+        ),
+    )
+
+    if node.get_metadata().get("system_family") not in system_families:
+        # this node can only be a parent node
+        query &= Q(
+            nodemetadata__key="system_family",
+            nodemetadata__value__in=system_families,
+        )
+        Node.objects.exclude(id=node.id).update(parent=node)
+    else:
+        # this is a child node, thus we look for a node that can be a parent one
+        query &= ~Q(
+            nodemetadata__key="system_family",
+            nodemetadata__value__in=system_families,
+        )
+        try:
+            parent = Node.objects.get(query)
+        except Node.MultipleObjectsReturned:
+            logger.warning(
+                f"Multiple possible parent nodes for the node {node}"
+            )
+        except Node.DoesNotExist:
+            pass
+        else:
+            node.parent = parent
+            node.save()
 
 
 # Register the post processing hooks.

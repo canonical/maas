@@ -34,6 +34,11 @@ from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.storage_custom import ConfigError
 from maasserver.storage_layouts import get_applied_storage_layout_for_node
+from maasserver.testing.commissioning import (
+    FakeCommissioningData,
+    LXDNetworkCard,
+    LXDPCIDeviceVPD,
+)
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import reload_object
@@ -1008,6 +1013,12 @@ def make_lxd_pcie_device(numa_node=0, pci_address=None):
         "vendor": factory.make_name("vendor"),
         "vendor_id": factory.make_hex_string(size=4),
         "iommu_group": 0,
+        "vpd": {
+            "entries": {
+                "PN": factory.make_hex_string(size=4),
+                "SN": factory.make_hex_string(size=4),
+            }
+        },
     }
 
 
@@ -2216,6 +2227,49 @@ class TestProcessLXDResults(MAASServerTestCase):
             pcie_node_device.pci_address, pcie_device["pci_address"]
         )
 
+    def test_creates_node_pci_device_vpd(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        pcie_device = make_lxd_pcie_device()
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        pcie_node_device = node.current_config.nodedevice_set.get(
+            bus=NODE_DEVICE_BUS.PCIE
+        )
+
+        pcie_node_device_vpd = pcie_node_device.nodedevicevpd_set.all()
+
+        self.assertCountEqual(
+            list(pcie_device["vpd"]["entries"].items()),
+            list(pcie_node_device_vpd.values_list("key", "value")),
+        )
+
+    def test_recreates_node_pci_device_vpd_during_recommission(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        pcie_device = make_lxd_pcie_device()
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        pcie_node_device = node.current_config.nodedevice_set.get(
+            bus=NODE_DEVICE_BUS.PCIE
+        )
+
+        pcie_node_device_vpd = pcie_node_device.nodedevicevpd_set.all()
+
+        self.assertCountEqual(
+            list(pcie_device["vpd"]["entries"].items()),
+            list(pcie_node_device_vpd.values_list("key", "value")),
+        )
+
     def test_usb_device_null_interfaces(self):
         node = factory.make_Node()
         lxd_output = make_lxd_output()
@@ -2715,6 +2769,244 @@ class TestProcessLXDResults(MAASServerTestCase):
         self.assertEqual(8, pod.hints.cores)
         self.assertEqual(2400, pod.hints.cpu_speed)
         self.assertEqual(15918, pod.hints.memory)
+
+    def test_link_nodes_with_dpu(self):
+        pci_device_vpd = LXDPCIDeviceVPD(entries={"SN": factory.make_string()})
+
+        host = factory.make_Node()
+        host_data = FakeCommissioningData()
+        host_pci_addr = host_data.allocate_pci_address()
+        host_card = LXDNetworkCard(pci_address=host_pci_addr)
+        host_data.create_pci_device(
+            host_pci_addr,
+            "15b3",
+            host_card.vendor,
+            host_card.product_id,
+            host_card.product,
+            host_card.driver,
+            host_card.driver_version,
+            pci_device_vpd,
+        )
+        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        dpu = factory.make_Node()
+        dpu_data = FakeCommissioningData()
+        dpu_data.create_system_resource("BlueField")
+        dpu_pci_addr = dpu_data.allocate_pci_address()
+        dpu_card = LXDNetworkCard(pci_address=dpu_pci_addr)
+        dpu_data.create_pci_device(
+            dpu_pci_addr,
+            "15b3",
+            dpu_card.vendor,
+            dpu_card.product_id,
+            dpu_card.product,
+            dpu_card.driver,
+            dpu_card.driver_version,
+            pci_device_vpd,
+        )
+        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        self.assertEqual(dpu.parent_id, host.id)
+
+    def test_link_nodes_with_multiple_dpu(self):
+        pci_device_vpd = LXDPCIDeviceVPD(entries={"SN": factory.make_string()})
+
+        host = factory.make_Node()
+        host_data = FakeCommissioningData()
+        host_pci_addr = host_data.allocate_pci_address()
+        host_card = LXDNetworkCard(pci_address=host_pci_addr)
+        host_data.create_pci_device(
+            host_pci_addr,
+            "15b3",
+            host_card.vendor,
+            host_card.product_id,
+            host_card.product,
+            host_card.driver,
+            host_card.driver_version,
+            pci_device_vpd,
+        )
+        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        dpu1 = factory.make_Node()
+        dpu1_data = FakeCommissioningData()
+        dpu1_data.create_system_resource("BlueField")
+        dpu1_pci_addr = dpu1_data.allocate_pci_address()
+        dpu1_card = LXDNetworkCard(pci_address=dpu1_pci_addr)
+        dpu1_data.create_pci_device(
+            dpu1_pci_addr,
+            "15b3",
+            dpu1_card.vendor,
+            dpu1_card.product_id,
+            dpu1_card.product,
+            dpu1_card.driver,
+            dpu1_card.driver_version,
+            pci_device_vpd,
+        )
+        process_lxd_results(dpu1, json.dumps(dpu1_data.render()).encode(), 0)
+
+        dpu2 = factory.make_Node()
+        dpu2_data = FakeCommissioningData()
+        dpu2_data.create_system_resource("BlueField")
+        dpu2_pci_addr = dpu2_data.allocate_pci_address()
+        dpu2_card = LXDNetworkCard(pci_address=dpu2_pci_addr)
+        dpu2_data.create_pci_device(
+            dpu2_pci_addr,
+            "15b3",
+            dpu2_card.vendor,
+            dpu2_card.product_id,
+            dpu2_card.product,
+            dpu2_card.driver,
+            dpu2_card.driver_version,
+            pci_device_vpd,
+        )
+        process_lxd_results(dpu2, json.dumps(dpu2_data.render()).encode(), 0)
+
+        self.assertEqual(dpu1.parent_id, host.id)
+        self.assertEqual(dpu2.parent_id, host.id)
+
+    def test_do_not_link_dpu_if_vendor_missmatch(self):
+        pci_device_vpd = LXDPCIDeviceVPD(entries={"SN": factory.make_string()})
+
+        host = factory.make_Node()
+        host_data = FakeCommissioningData()
+        host_pci_addr = host_data.allocate_pci_address()
+        host_card = LXDNetworkCard(pci_address=host_pci_addr)
+        host_data.create_pci_device(
+            host_pci_addr,
+            "",
+            host_card.vendor,
+            host_card.product_id,
+            host_card.product,
+            host_card.driver,
+            host_card.driver_version,
+            pci_device_vpd,
+        )
+        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        dpu = factory.make_Node()
+        dpu_data = FakeCommissioningData()
+        dpu_data.create_system_resource("BlueField")
+        dpu_pci_addr = dpu_data.allocate_pci_address()
+        dpu_card = LXDNetworkCard(pci_address=dpu_pci_addr)
+        dpu_data.create_pci_device(
+            dpu_pci_addr,
+            "15b3",
+            dpu_card.vendor,
+            dpu_card.product_id,
+            dpu_card.product,
+            dpu_card.driver,
+            dpu_card.driver_version,
+            pci_device_vpd,
+        )
+        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        self.assertIsNone(dpu.parent_id)
+
+    def test_do_not_link_dpu_if_sn_missmatch(self):
+        host_pci_device_vpd = LXDPCIDeviceVPD(
+            entries={"SN": factory.make_string()}
+        )
+        host = factory.make_Node()
+        host_data = FakeCommissioningData()
+        host_pci_addr = host_data.allocate_pci_address()
+        host_card = LXDNetworkCard(pci_address=host_pci_addr)
+        host_data.create_pci_device(
+            host_pci_addr,
+            "15b3",
+            host_card.vendor,
+            host_card.product_id,
+            host_card.product,
+            host_card.driver,
+            host_card.driver_version,
+            host_pci_device_vpd,
+        )
+        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        dpu_pci_device_vpd = LXDPCIDeviceVPD(
+            entries={"SN": factory.make_string()}
+        )
+        dpu = factory.make_Node()
+        dpu_data = FakeCommissioningData()
+        dpu_data.create_system_resource("BlueField")
+        dpu_pci_addr = dpu_data.allocate_pci_address()
+        dpu_card = LXDNetworkCard(pci_address=dpu_pci_addr)
+        dpu_data.create_pci_device(
+            dpu_pci_addr,
+            "15b3",
+            dpu_card.vendor,
+            dpu_card.product_id,
+            dpu_card.product,
+            dpu_card.driver,
+            dpu_card.driver_version,
+            dpu_pci_device_vpd,
+        )
+        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        self.assertIsNone(dpu.parent_id)
+
+    def test_do_not_link_dpu_if_no_product_and_sn_match(self):
+        host1_pci_device_vpd = LXDPCIDeviceVPD(
+            entries={"SN": factory.make_string()}
+        )
+        host1 = factory.make_Node()
+        host1_data = FakeCommissioningData()
+        host1_pci_addr = host1_data.allocate_pci_address()
+        host1_card = LXDNetworkCard(
+            pci_address=host1_pci_addr, product_id="1234"
+        )
+        host1_data.create_pci_device(
+            host1_pci_addr,
+            "15b3",
+            host1_card.vendor,
+            host1_card.product_id,
+            host1_card.product,
+            host1_card.driver,
+            host1_card.driver_version,
+            host1_pci_device_vpd,
+        )
+        process_lxd_results(host1, json.dumps(host1_data.render()).encode(), 0)
+
+        host2_pci_device_vpd = LXDPCIDeviceVPD(
+            entries={"SN": factory.make_string()}
+        )
+        host2 = factory.make_Node()
+        host2_data = FakeCommissioningData()
+        host2_pci_addr = host2_data.allocate_pci_address()
+        host2_card = LXDNetworkCard(
+            pci_address=host2_pci_addr, product_id="5678"
+        )
+        host2_data.create_pci_device(
+            host2_pci_addr,
+            "15b3",
+            host2_card.vendor,
+            host2_card.product_id,
+            host2_card.product,
+            host2_card.driver,
+            host2_card.driver_version,
+            host2_pci_device_vpd,
+        )
+        process_lxd_results(host2, json.dumps(host2_data.render()).encode(), 0)
+
+        dpu = factory.make_Node()
+        dpu_data = FakeCommissioningData()
+        dpu_data.create_system_resource("BlueField")
+        dpu_pci_addr = dpu_data.allocate_pci_address()
+        dpu_card = LXDNetworkCard(
+            pci_address=dpu_pci_addr, product_id=host1_card.product_id
+        )
+        dpu_data.create_pci_device(
+            dpu_pci_addr,
+            "15b3",
+            dpu_card.vendor,
+            dpu_card.product_id,
+            dpu_card.product,
+            dpu_card.driver,
+            dpu_card.driver_version,
+            host2_pci_device_vpd,
+        )
+        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        self.assertIsNone(dpu.parent_id)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):

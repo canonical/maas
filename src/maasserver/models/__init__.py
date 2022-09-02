@@ -47,6 +47,7 @@ __all__ = [
     "Node",
     "NodeConfig",
     "NodeDevice",
+    "NodeDeviceVPD",
     "NodeMetadata",
     "NodeGroupToRackController",
     "Notification",
@@ -164,6 +165,7 @@ from maasserver.models.node import (
 )
 from maasserver.models.nodeconfig import NodeConfig
 from maasserver.models.nodedevice import NodeDevice
+from maasserver.models.nodedevicevpd import NodeDeviceVPD
 from maasserver.models.nodemetadata import NodeMetadata
 from maasserver.models.notification import Notification
 from maasserver.models.numa import NUMANode, NUMANodeHugepages

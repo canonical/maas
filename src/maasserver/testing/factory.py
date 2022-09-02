@@ -73,6 +73,7 @@ from maasserver.models import (
     Neighbour,
     Node,
     NodeDevice,
+    NodeDeviceVPD,
     NodeMetadata,
     Notification,
     OwnerData,
@@ -3464,6 +3465,31 @@ class Factory(maastesting.factory.Factory):
             pci_address=pci_address,
             **kwargs,
         )
+
+    def make_NodeDeviceVPD(
+        self, node_device=None, key=None, value=None, **kwargs
+    ):
+        if node_device is None:
+            owner = get_worker_user()
+            node = self.make_Node(
+                owner=owner, node_type=NODE_TYPE.MACHINE, **kwargs
+            )
+            node.save()
+            node_device = self.make_NodeDevice(
+                bus=NODE_DEVICE_BUS.PCIE,
+                hardware_type=HARDWARE_TYPE.NETWORK,
+                node=node,
+            )
+            node_device.save()
+
+        if key is None:
+            key = self.make_name(size=2)
+        if value is None:
+            value = self.make_string(prefix="value", spaces=True)
+        metadata = NodeDeviceVPD.objects.create(
+            node_device=node_device, key=key, value=value
+        )
+        return metadata
 
 
 # Create factory singleton.

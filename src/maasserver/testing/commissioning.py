@@ -2,7 +2,7 @@ from copy import deepcopy
 import dataclasses
 from enum import Enum
 import random
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from maasserver.testing.factory import factory
 from provisioningserver.utils import kernel_to_debian_architecture
@@ -111,6 +111,12 @@ class LXDNetworkCard:
 
 
 @dataclasses.dataclass
+class LXDPCIDeviceVPD:
+    entries: Dict[str, str]
+    product_name: str = "My PCI Device"
+
+
+@dataclasses.dataclass
 class LXDPCIDevice:
     pci_address: str
     vendor_id: str
@@ -119,6 +125,7 @@ class LXDPCIDevice:
     product: str
     driver: str
     driver_version: str
+    vpd: Optional[LXDPCIDeviceVPD] = None
 
 
 @dataclasses.dataclass
@@ -131,6 +138,11 @@ class LXDUSBDevice:
     product: str
     driver: str
     driver_version: str
+
+
+@dataclasses.dataclass
+class LXDSystem:
+    family: str = ""
 
 
 class FakeCommissioningData:
@@ -190,6 +202,7 @@ class FakeCommissioningData:
         self._disks = list(disks)
         self.hints = None
         self.storage_extra = None
+        self._system_resource = LXDSystem()
 
     @property
     def debian_architecture(self):
@@ -272,6 +285,7 @@ class FakeCommissioningData:
         product,
         driver,
         driver_version,
+        vpd={},
     ):
         device = LXDPCIDevice(
             addr,
@@ -281,6 +295,7 @@ class FakeCommissioningData:
             product,
             driver,
             driver_version,
+            vpd,
         )
         self._pci_devices.append(device)
 
@@ -402,6 +417,11 @@ class FakeCommissioningData:
         self.networks[name] = network
         return network
 
+    def create_system_resource(self, family):
+        system = LXDSystem(family)
+        self._system_resource = system
+        return system
+
     def render(self, include_extra=False):
         storage_resources = {
             "disks": [dataclasses.asdict(disk) for disk in self._disks],
@@ -474,6 +494,7 @@ class FakeCommissioningData:
                 "storage": storage_resources,
                 "usb": usb_resources,
                 "pci": pci_resources,
+                "system": dataclasses.asdict(self._system_resource),
             },
             "networks": networks,
         }
