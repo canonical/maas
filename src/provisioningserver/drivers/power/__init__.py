@@ -4,7 +4,6 @@
 """Base power driver."""
 
 from abc import ABCMeta, abstractmethod, abstractproperty
-from datetime import timedelta
 import sys
 
 from jsonschema import validate
@@ -61,13 +60,6 @@ JSON_POWER_DRIVERS_SCHEMA = {
     "type": "array",
     "items": JSON_POWER_DRIVER_SCHEMA,
 }
-
-
-# Timeout for the power query action. We might be holding up a thread for that
-# long but some BMCs (notably seamicro) can take a long time to respond to
-# a power query request.
-# This should be configurable per-BMC.
-POWER_QUERY_TIMEOUT = timedelta(seconds=45).total_seconds()
 
 
 def is_power_parameter_set(param):
