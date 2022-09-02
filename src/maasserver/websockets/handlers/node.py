@@ -272,17 +272,29 @@ class NodeHandler(TimestampedModelHandler):
             # Disk count and storage amount is shown on the machine listing
             # page and the machine and controllers details page.
             blockdevices = self.get_blockdevices_for(obj)
-            physical_blockdevices = [
-                blockdevice
-                for blockdevice in blockdevices
-                if isinstance(blockdevice, PhysicalBlockDevice)
-            ]
-            data["physical_disk_count"] = len(physical_blockdevices)
-            data["storage"] = round(
-                sum(blockdevice.size for blockdevice in physical_blockdevices)
-                / (1000**3),
-                1,
-            )
+            if hasattr(obj, "physical_disk_count") and hasattr(
+                obj, "total_storage"
+            ):
+                data["physical_disk_count"] = obj.physical_disk_count
+                data["storage"] = round(
+                    obj.total_storage / (1000**3),
+                    1,
+                )
+            else:
+                physical_blockdevices = [
+                    blockdevice
+                    for blockdevice in blockdevices
+                    if isinstance(blockdevice, PhysicalBlockDevice)
+                ]
+                data["physical_disk_count"] = len(physical_blockdevices)
+                data["storage"] = round(
+                    sum(
+                        blockdevice.size
+                        for blockdevice in physical_blockdevices
+                    )
+                    / (1000**3),
+                    1,
+                )
             data["storage_tags"] = self.get_all_storage_tags(blockdevices)
             commissioning_script_results = []
             testing_script_results = []
@@ -1238,6 +1250,10 @@ class NodeHandler(TimestampedModelHandler):
             expr = "zone__name"
         elif key == "owner":
             expr = "owner__username"
+        elif key == "fqdn":
+            expr = "node_fqdn"
+        elif key == "storage":
+            expr = "total_storage"
         else:
             expr = key
         return expr

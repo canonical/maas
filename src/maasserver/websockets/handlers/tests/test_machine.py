@@ -5870,6 +5870,56 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             },
         )
 
+    def test_sort_alias(self):
+        user = factory.make_User()
+        fabrics = [factory.make_Fabric() for _ in range(2)]
+        subnets = [factory.make_Subnet(fabric=fabrics[i]) for i in range(2)]
+        nodes = [
+            factory.make_Machine_with_Interface_on_Subnet(
+                owner=user,
+                status=NODE_STATUS.ALLOCATED,
+                hostname=f"node{idx}-{factory.make_string(10)}",
+                subnet=subnets[idx],
+            )
+            for idx in range(2)
+        ]
+        for i, node in enumerate(nodes):
+            for _ in range(i):
+                factory.make_PhysicalBlockDevice(
+                    node=node, size=MIN_BOOT_PARTITION_SIZE
+                )
+        handler = MachineHandler(user, {}, None)
+        for key in (
+            "storage",
+            "physical_disk_count",
+            "fqdn",
+            "pxe_mac",
+        ):
+            result = handler.list(
+                {
+                    "sort_key": key,
+                    "sort_direction": "descending",
+                }
+            )
+            items = result["groups"][0]["items"]
+            self.assertEqual(2, result["groups"][0]["count"])
+            self.assertLess(items[1][key], items[0][key], key)
+
+        # fabric_name is not the name of the field
+        result = handler.list(
+            {
+                "sort_key": "fabric_name",
+                "sort_direction": "descending",
+            }
+        )
+        items = result["groups"][0]["items"]
+        self.assertEqual(2, result["groups"][0]["count"])
+        self.assertLess(
+            items[1]["vlan"]["fabric_name"],
+            items[0]["vlan"]["fabric_name"],
+            "fabric",
+        )
+
     def test_filter_bulk_action(self):
         user = factory.make_admin()
         zone1 = factory.make_Zone()

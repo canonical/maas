@@ -483,7 +483,7 @@ class Handler(metaclass=HandlerMetaclass):
                 if (params.get("sort_direction", None) == "descending")
                 else ""
             )
-            keys.append(f"{desc}{params['sort_key']}")
+            keys.append(f"{desc}{self._get_group_expr(params['sort_key'])}")
 
         keys.append(self._meta.batch_key)
 

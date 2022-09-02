@@ -9,7 +9,17 @@ import logging
 from operator import itemgetter
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db.models import Count, Exists, OuterRef, Subquery
+from django.db.models import (
+    CharField,
+    Count,
+    Exists,
+    F,
+    OuterRef,
+    Subquery,
+    Sum,
+)
+from django.db.models import Value as V
+from django.db.models.functions import Concat
 
 from maasserver.enum import (
     BMC_TYPE,
@@ -69,6 +79,7 @@ from maasserver.storage_layouts import (
     StorageLayoutForm,
     StorageLayoutMissingBootDiskError,
 )
+from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from maasserver.websockets.base import (
@@ -131,6 +142,22 @@ class MachineHandler(NodeHandler):
             .prefetch_related("tags")
             .prefetch_related("pool")
             .prefetch_related("ownerdata_set")
+            .alias(
+                physical_disk_count=Count(
+                    "current_config__blockdevice__physicalblockdevice"
+                ),
+                storage=Sum(
+                    "current_config__blockdevice__physicalblockdevice__size"
+                ),
+                pxe_mac=F("boot_interface__mac_address"),
+                fabric_name=F("boot_interface__vlan__fabric__name"),
+                fqdn=Concat(
+                    "hostname",
+                    V("."),
+                    "domain__name",
+                    output_field=CharField(),
+                ),
+            )
             .annotate(
                 status_event_type_description=Subquery(
                     Event.objects.filter(
@@ -146,12 +173,17 @@ class MachineHandler(NodeHandler):
                     .order_by("-created", "-id")
                     .values("description")[:1]
                 ),
-                numa_nodes_count=Count("numanode"),
+                numa_nodes_count=Count("numanode", distinct=True),
                 sriov_support=Exists(
                     Interface.objects.filter(
                         node_config__node=OuterRef("pk"), sriov_max_vf__gt=0
                     )
                 ),
+                physical_disk_count=F("physical_disk_count"),
+                total_storage=F("storage"),
+                pxe_mac=F("pxe_mac"),
+                fabric_name=F("fabric_name"),
+                node_fqdn=F("fqdn"),
             )
         )
         allowed_methods = [
@@ -292,15 +324,20 @@ class MachineHandler(NodeHandler):
             data["status_message"] = obj.status_message()
 
         if obj.is_machine or not for_list:
-            boot_interface = obj.get_boot_interface()
-            if boot_interface is not None:
-                data["pxe_mac"] = "%s" % boot_interface.mac_address
-                data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
-                data["power_type"] = obj.power_type
-                data["vlan"] = self.dehydrate_vlan(obj, boot_interface)
-                data["ip_addresses"] = self.dehydrate_all_ip_addresses(obj)
+            data["pxe_mac"] = data["pxe_mac_vendor"] = ""
+            if getattr(obj, "pxe_mac", None):
+                data["pxe_mac"] = str(obj.pxe_mac)
+                data["pxe_mac_vendor"] = get_vendor_for_mac(data["pxe_mac"])
+                data["vlan"] = self.dehydrate_vlan(obj, obj.boot_interface)
             else:
-                data["pxe_mac"] = data["pxe_mac_vendor"] = ""
+                boot_interface = obj.get_boot_interface()
+                if boot_interface is not None:
+                    data["pxe_mac"] = "%s" % boot_interface.mac_address
+                    data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
+                    data["vlan"] = self.dehydrate_vlan(obj, boot_interface)
+            if data["pxe_mac"] != "":
+                data["power_type"] = obj.power_type
+                data["ip_addresses"] = self.dehydrate_all_ip_addresses(obj)
 
         # Needed for machines to show up in the Pod details page.
         if obj.bmc is not None and obj.bmc.bmc_type == BMC_TYPE.POD:
