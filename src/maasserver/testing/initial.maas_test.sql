@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 14.3 (Ubuntu 14.3-0ubuntu0.22.04.1)
--- Dumped by pg_dump version 14.3 (Ubuntu 14.3-0ubuntu0.22.04.1)
+-- Dumped from database version 14.5 (Ubuntu 14.5-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.5 (Ubuntu 14.5-0ubuntu0.22.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7875,6 +7875,38 @@ ALTER SEQUENCE public.maasserver_nodedevice_id_seq OWNED BY public.maasserver_no
 
 
 --
+-- Name: maasserver_nodedevicevpd; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_nodedevicevpd (
+    id integer NOT NULL,
+    key text NOT NULL,
+    value text NOT NULL,
+    node_device_id integer NOT NULL
+);
+
+
+--
+-- Name: maasserver_nodedevicevpd_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.maasserver_nodedevicevpd_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_nodedevicevpd_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.maasserver_nodedevicevpd_id_seq OWNED BY public.maasserver_nodedevicevpd.id;
+
+
+--
 -- Name: maasserver_nodegrouptorackcontroller; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -9883,6 +9915,13 @@ ALTER TABLE ONLY public.maasserver_nodedevice ALTER COLUMN id SET DEFAULT nextva
 
 
 --
+-- Name: maasserver_nodedevicevpd id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevicevpd ALTER COLUMN id SET DEFAULT nextval('public.maasserver_nodedevicevpd_id_seq'::regclass);
+
+
+--
 -- Name: maasserver_nodegrouptorackcontroller id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -10664,6 +10703,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 430	Can change perf test build	108	change_perftestbuild
 431	Can delete perf test build	108	delete_perftestbuild
 432	Can view perf test build	108	view_perftestbuild
+433	Can add NodeDeviceVPD	109	add_nodedevicevpd
+434	Can change NodeDeviceVPD	109	change_nodedevicevpd
+435	Can delete NodeDeviceVPD	109	delete_nodedevicevpd
+436	Can view NodeDeviceVPD	109	view_nodedevicevpd
 \.
 
 
@@ -10804,6 +10847,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 106	piston3	token
 107	maasserver	nodeconfig
 108	maastesting	perftestbuild
+109	maasserver	nodedevicevpd
 \.
 
 
@@ -11141,6 +11185,7 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 327	maasserver	0278_generic_jsonfield	2022-07-07 11:09:02.563813+00
 328	metadataserver	0031_id_field_bigint	2022-07-07 11:09:03.047446+00
 329	metadataserver	0032_default_auto_field	2022-07-07 11:09:03.68517+00
+330	maasserver	0279_store_vpd_metadata_for_nodedevice	2022-09-05 00:16:36.329151+00
 \.
 
 
@@ -11481,6 +11526,14 @@ COPY public.maasserver_nodeconfig (id, created, updated, name, node_id) FROM std
 --
 
 COPY public.maasserver_nodedevice (id, created, updated, bus, hardware_type, vendor_id, product_id, vendor_name, product_name, commissioning_driver, bus_number, device_number, pci_address, numa_node_id, physical_blockdevice_id, physical_interface_id, node_config_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: maasserver_nodedevicevpd; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_nodedevicevpd (id, key, value, node_device_id) FROM stdin;
 \.
 
 
@@ -11898,7 +11951,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 432, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 436, true);
 
 
 --
@@ -11926,14 +11979,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 108, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 109, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 329, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 330, true);
 
 
 --
@@ -12214,6 +12267,13 @@ SELECT pg_catalog.setval('public.maasserver_nodeconfig_id_seq', 1, false);
 --
 
 SELECT pg_catalog.setval('public.maasserver_nodedevice_id_seq', 1, false);
+
+
+--
+-- Name: maasserver_nodedevicevpd_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.maasserver_nodedevicevpd_id_seq', 1, false);
 
 
 --
@@ -13273,6 +13333,22 @@ ALTER TABLE ONLY public.maasserver_nodedevice
 
 
 --
+-- Name: maasserver_nodedevicevpd maasserver_nodedevicevpd_node_device_id_key_beaa4c0c_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevicevpd
+    ADD CONSTRAINT maasserver_nodedevicevpd_node_device_id_key_beaa4c0c_uniq UNIQUE (node_device_id, key);
+
+
+--
+-- Name: maasserver_nodedevicevpd maasserver_nodedevicevpd_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevicevpd
+    ADD CONSTRAINT maasserver_nodedevicevpd_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: maasserver_nodegrouptorackcontroller maasserver_nodegrouptorackcontroller_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14060,6 +14136,13 @@ CREATE INDEX django_site_domain_a2e37b91_like ON public.django_site USING btree 
 
 
 --
+-- Name: maasserver__key_ecce38_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver__key_ecce38_idx ON public.maasserver_nodedevicevpd USING btree (key, value);
+
+
+--
 -- Name: maasserver__node_id_e4a8dd_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -14638,6 +14721,13 @@ CREATE INDEX maasserver_nodedevice_node_config_id_3f91f0a0 ON public.maasserver_
 --
 
 CREATE INDEX maasserver_nodedevice_numa_node_id_fadf5b46 ON public.maasserver_nodedevice USING btree (numa_node_id);
+
+
+--
+-- Name: maasserver_nodedevicevpd_node_device_id_9c998e15; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_nodedevicevpd_node_device_id_9c998e15 ON public.maasserver_nodedevicevpd USING btree (node_device_id);
 
 
 --
@@ -15735,6 +15825,14 @@ ALTER TABLE ONLY public.maasserver_nodeconfig
 
 ALTER TABLE ONLY public.maasserver_nodedevice
     ADD CONSTRAINT maasserver_nodedevic_node_config_id_3f91f0a0_fk_maasserve FOREIGN KEY (node_config_id) REFERENCES public.maasserver_nodeconfig(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: maasserver_nodedevicevpd maasserver_nodedevic_node_device_id_9c998e15_fk_maasserve; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_nodedevicevpd
+    ADD CONSTRAINT maasserver_nodedevic_node_device_id_9c998e15_fk_maasserve FOREIGN KEY (node_device_id) REFERENCES public.maasserver_nodedevice(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
