@@ -5870,6 +5870,21 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             },
         )
 
+    def test_filter_diskless_machine(self):
+        user = factory.make_User()
+        factory.make_Node(
+            owner=user, status=NODE_STATUS.NEW, with_boot_disk=False
+        )
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "filter": {
+                    "status": "new",
+                }
+            }
+        )
+        self.assertEqual(1, result["groups"][0]["count"])
+
     def test_sort_alias(self):
         user = factory.make_User()
         fabrics = [factory.make_Fabric() for _ in range(2)]

@@ -275,9 +275,9 @@ class NodeHandler(TimestampedModelHandler):
             if hasattr(obj, "physical_disk_count") and hasattr(
                 obj, "total_storage"
             ):
-                data["physical_disk_count"] = obj.physical_disk_count
+                data["physical_disk_count"] = obj.physical_disk_count or 0
                 data["storage"] = round(
-                    obj.total_storage / (1000**3),
+                    (obj.total_storage or 0) / (1000**3),
                     1,
                 )
             else:
