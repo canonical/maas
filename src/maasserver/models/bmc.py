@@ -901,6 +901,7 @@ class Pod(BMC):
             power_state=discovered_machine.power_state,
             dynamic=dynamic,
             pool=pool,
+            parent=self.host,
             zone=zone,
             bios_boot_method=discovered_machine.bios_boot_method,
             **kwargs,

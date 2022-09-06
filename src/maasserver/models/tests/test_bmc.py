@@ -2099,6 +2099,19 @@ class TestPod(MAASServerTestCase, PodTestMixin):
             skip_commissioning=True,
         )
 
+    def test_create_machine_creates_machine_with_parent_child_relation(self):
+        self.patch(Machine, "set_default_storage_layout")
+        self.patch(Machine, "set_initial_networking_configuration")
+        self.patch(Machine, "start_commissioning")
+        project = factory.make_string()
+        host = factory.make_Machine_with_Interface_on_Subnet()
+        pod = factory.make_Pod(
+            host=host, pod_type="lxd", parameters={"project": project}
+        )
+        discovered_machine = self.make_discovered_machine()
+        machine = pod.create_machine(discovered_machine, factory.make_User())
+        self.assertEqual(machine.parent, host)
+
     def test_sync_pod_deletes_missing_machines(self):
         pod = factory.make_Pod()
         machine = factory.make_Node()
