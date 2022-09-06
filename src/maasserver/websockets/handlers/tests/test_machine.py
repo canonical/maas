@@ -337,6 +337,7 @@ class TestMachineHandler(MAASServerTestCase):
             "min_hwe_kernel": node.min_hwe_kernel,
             "osystem": node.osystem,
             "owner": handler.dehydrate_owner(node.owner),
+            "parent": node.parent,
             "power_parameters": handler.dehydrate_power_parameters(
                 node.power_parameters
             ),
@@ -964,6 +965,23 @@ class TestMachineHandler(MAASServerTestCase):
         data = {}
         handler.dehydrate(node, data)
         self.assertEqual(data["pod"], {"id": pod.id, "name": pod.name})
+
+    def test_dehydrate_node_with_parent(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {}, None)
+        parent = factory.make_Node()
+        node = factory.make_Node(parent=parent)
+        data = {}
+        handler.dehydrate(node, data)
+        self.assertEqual(parent.system_id, data["parent"])
+
+    def test_dehydrate_node_without_parent(self):
+        owner = factory.make_User()
+        handler = MachineHandler(owner, {}, None)
+        node = factory.make_Node(parent=None)
+        data = {}
+        handler.dehydrate(node, data)
+        self.assertIsNone(data["parent"])
 
     def test_dehydrate_with_vmfs6_layout_sets_reserved(self):
         owner = factory.make_User()

@@ -240,7 +240,6 @@ class MachineHandler(NodeHandler):
             "dynamic",
             "status_expires",
             "previous_status",
-            "parent",
             "boot_interface",
             "boot_cluster_ip",
             "token",
@@ -269,6 +268,7 @@ class MachineHandler(NodeHandler):
             "id",
             "system_id",
             "hostname",
+            "parent",
             "locked",
             "owner",
             "cpu_count",
@@ -410,7 +410,7 @@ class MachineHandler(NodeHandler):
         )
 
         data["workload_annotations"] = OwnerData.objects.get_owner_data(obj)
-
+        data["parent"] = getattr(obj.parent, "system_id", None)
         if not for_list:
             # Add info specific to a machine.
             data["show_os_info"] = self.dehydrate_show_os_info(obj)

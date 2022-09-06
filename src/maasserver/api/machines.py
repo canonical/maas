@@ -165,6 +165,7 @@ DISPLAYED_MACHINE_FIELDS = (
     "node_type",
     "node_type_name",
     "special_filesystems",
+    "parent",
     "pod",
     "default_gateways",
     "current_commissioning_result_id",
@@ -421,6 +422,19 @@ class MachineHandler(NodeHandler, WorkloadAnnotationsMixin, PowerMixin):
     def boot_interface(handler, machine):
         """The network interface which is used to boot over the network."""
         return machine.get_boot_interface()
+
+    @classmethod
+    def parent(handler, machine):
+        """The parent machine this machine is child to."""
+        parent = machine.parent
+        if parent is not None:
+            return {
+                "system_id": parent.system_id,
+                "resource_uri": reverse(
+                    "machine_handler", args=[parent.system_id]
+                ),
+                "__incomplete__": True,
+            }
 
     @classmethod
     def pod(handler, machine):

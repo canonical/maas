@@ -400,6 +400,21 @@ class TestMachineAPI(APITestCase.ForUser):
                 NODE_STATUS_CHOICES_DICT[status], parsed_result["status_name"]
             )
 
+    def test_GET_returns_parent(self):
+        parent = factory.make_Node()
+        machine = factory.make_Node(parent=parent)
+        response = self.client.get(self.get_machine_uri(machine))
+
+        self.assertEqual(http.client.OK, response.status_code)
+        parsed_result = json_load_bytes(response.content)
+        self.assertEqual(
+            parent.system_id, parsed_result["parent"]["system_id"]
+        )
+        self.assertEqual(
+            reverse("machine_handler", args=[parent.system_id]),
+            parsed_result["parent"]["resource_uri"],
+        )
+
     def test_POST_deploy_sets_osystem_and_distro_series(self):
         self.patch(node_module.Node, "_start")
         self.patch(machines_module, "get_curtin_merged_config")
