@@ -349,10 +349,10 @@ def generate_vcenter_configuration(node):
         # VMware vCenter credentials are only given to machines deployed by
         # administrators.
         return
-    vcenter_registration = NodeMetadata.objects.get(
+    register_vcenter = NodeMetadata.objects.filter(
         node=node, key="vcenter_registration"
-    )
-    if not vcenter_registration:
+    ).exists()
+    if not register_vcenter:
         # Only send credentials if told to at deployment time.
         return
     # Only send values that aren't blank.

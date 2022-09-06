@@ -515,8 +515,7 @@ class TestAnonymousEnlistmentAPI(APITestCase.ForAnonymous):
             },
         )
         self.assertEqual(http.client.OK, response.status_code)
-        node_metadata = NodeMetadata.objects.get(key="enlisting")
-        self.assertIsNone(node_metadata)
+        self.assertFalse(NodeMetadata.objects.filter(key="enlisting").exists())
         [machine] = Machine.objects.filter(hostname=hostname)
         self.assertEqual(architecture, machine.architecture)
         self.assertEqual(

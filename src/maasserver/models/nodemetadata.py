@@ -15,13 +15,6 @@ maaslog = get_maas_logger("nodemetadata")
 
 
 class NodeMetadataManager(Manager):
-    def get(self, *args, default=None, **kwargs):
-        """A modified version of Django's get which works like dict's get."""
-        try:
-            return super().get(*args, **kwargs)
-        except NodeMetadata.DoesNotExist:
-            return default
-
     def release_volatile(cls, node):
         """Remove volatile information.
 

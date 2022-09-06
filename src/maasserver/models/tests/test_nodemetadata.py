@@ -43,15 +43,6 @@ class TestNodeMetadata(MAASServerTestCase):
         )
         self.assertNotEqual(entry1, entry2)
 
-    def test_get(self):
-        node = factory.make_Node()
-        key = factory.make_name("key")
-        default = factory.make_name("default")
-        self.assertEqual(
-            default,
-            NodeMetadata.objects.get(node=node, key=key, default=default),
-        )
-
     def test_release_volatile(self):
         from metadataserver.vendor_data import (
             LXD_CERTIFICATE_METADATA_KEY,
