@@ -472,7 +472,8 @@ def _add_node_device_vpd(node_device, device_vpd):
             NodeDeviceVPD(
                 node_device=node_device,
                 key=key,
-                value=value,
+                # the value might contain \x00 which isn't allowed by the database.
+                value=value.encode("unicode-escape").decode("utf-8"),
             )
             for key, value in device_vpd.items()
         )

@@ -2248,6 +2248,30 @@ class TestProcessLXDResults(MAASServerTestCase):
             list(pcie_node_device_vpd.values_list("key", "value")),
         )
 
+    def test_creates_node_pci_device_vpd_with_null_character(self):
+        node = factory.make_Node()
+        lxd_output = make_lxd_output()
+        pcie_device = make_lxd_pcie_device()
+        pcie_device["vpd"]["entries"] = {"YB": "abc\x00xyz"}
+        lxd_output["resources"]["pci"] = {
+            "devices": [pcie_device],
+            "total": 1,
+        }
+
+        process_lxd_results(node, json.dumps(lxd_output).encode(), 0)
+        pcie_node_device = node.current_config.nodedevice_set.get(
+            bus=NODE_DEVICE_BUS.PCIE
+        )
+
+        pcie_node_device_vpd = pcie_node_device.nodedevicevpd_set.get(
+            node_device_id=pcie_node_device.id, key="YB"
+        )
+
+        self.assertEqual(
+            "abc\\x00xyz",
+            pcie_node_device_vpd.value,
+        )
+
     def test_recreates_node_pci_device_vpd_during_recommission(self):
         node = factory.make_Node()
         lxd_output = make_lxd_output()
