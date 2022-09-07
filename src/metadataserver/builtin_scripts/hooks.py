@@ -1485,7 +1485,7 @@ def _link_dpu(node):
             nodemetadata__key="system_family",
             nodemetadata__value__in=system_families,
         )
-        Node.objects.exclude(id=node.id).update(parent=node)
+        Node.objects.filter(query).exclude(id=node.id).update(parent=node)
     else:
         # this is a child node, thus we look for a node that can be a parent one
         query &= ~Q(

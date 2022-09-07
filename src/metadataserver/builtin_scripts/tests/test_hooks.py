@@ -29,7 +29,7 @@ from maasserver.models import (
     Tag,
     VLAN,
 )
-from maasserver.models import Config, Event, EventType, Interface
+from maasserver.models import Config, Event, EventType, Interface, Node
 from maasserver.models import node as node_module
 from maasserver.models.blockdevice import MIN_BLOCK_DEVICE_SIZE
 from maasserver.storage_custom import ConfigError
@@ -3031,6 +3031,73 @@ class TestProcessLXDResults(MAASServerTestCase):
         process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
 
         self.assertIsNone(dpu.parent_id)
+
+    def test_link_parent_only_to_matching_node(self):
+        machine_pci_device_vpd = LXDPCIDeviceVPD(
+            entries={"SN": factory.make_string()}
+        )
+        machine = factory.make_Node()
+        machine_data = FakeCommissioningData()
+        machine_pci_addr = machine_data.allocate_pci_address()
+        machine_card = LXDNetworkCard(pci_address=machine_pci_addr)
+        machine_data.create_pci_device(
+            machine_pci_addr,
+            "",
+            machine_card.vendor,
+            machine_card.product_id,
+            machine_card.product,
+            machine_card.driver,
+            machine_card.driver_version,
+            machine_pci_device_vpd,
+        )
+        process_lxd_results(
+            machine, json.dumps(machine_data.render()).encode(), 0
+        )
+
+        host_pci_device_vpd = LXDPCIDeviceVPD(
+            entries={"SN": factory.make_string()}
+        )
+        host = factory.make_Node()
+        host_data = FakeCommissioningData()
+        host_pci_addr = host_data.allocate_pci_address()
+        host_card = LXDNetworkCard(pci_address=host_pci_addr)
+
+        dpu = factory.make_Node()
+        dpu_data = FakeCommissioningData()
+        dpu_data.create_system_resource("BlueField")
+        dpu_pci_addr = dpu_data.allocate_pci_address()
+        dpu_card = LXDNetworkCard(
+            pci_address=dpu_pci_addr, product_id=host_card.product_id
+        )
+        dpu_data.create_pci_device(
+            dpu_pci_addr,
+            "15b3",
+            dpu_card.vendor,
+            dpu_card.product_id,
+            dpu_card.product,
+            dpu_card.driver,
+            dpu_card.driver_version,
+            host_pci_device_vpd,
+        )
+        process_lxd_results(dpu, json.dumps(dpu_data.render()).encode(), 0)
+
+        host_data.create_pci_device(
+            host_pci_addr,
+            "15b3",
+            host_card.vendor,
+            host_card.product_id,
+            host_card.product,
+            host_card.driver,
+            host_card.driver_version,
+            host_pci_device_vpd,
+        )
+        process_lxd_results(host, json.dumps(host_data.render()).encode(), 0)
+
+        machine = Node.objects.get(id=machine.id)
+        self.assertIsNone(machine.parent)
+
+        dpu = Node.objects.get(id=dpu.id)
+        self.assertEqual(host.id, dpu.parent_id)
 
 
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
