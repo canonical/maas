@@ -1574,6 +1574,11 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
 class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
     form_class = FreeTextFilterNodeForm
 
+    def test_match_none(self):
+        node1 = factory.make_Node()
+        factory.make_Node(owner=factory.make_User())
+        self.assertConstrainedNodes([node1], {"owner": [None]})
+
     def test_substring_filter_one_substring(self):
         name = factory.make_name("hostname")
         node1 = factory.make_Node(hostname=name)

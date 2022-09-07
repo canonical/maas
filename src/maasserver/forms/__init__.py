@@ -2009,7 +2009,8 @@ class UnconstrainedMultipleChoiceField(UnconstrainedTypedMultipleChoiceField):
     """A special case of UnconstrainedTypedMultipleChoiceField for strings"""
 
     def __init__(self, **kwargs):
-        super().__init__(coerce=str, **kwargs)
+        _coerce = kwargs.pop("coerce", str)
+        super().__init__(coerce=_coerce, **kwargs)
 
 
 class ValidatorMultipleChoiceField(MultipleChoiceField):

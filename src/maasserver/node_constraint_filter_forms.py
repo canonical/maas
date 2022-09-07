@@ -645,6 +645,10 @@ GROUPABLE_FIELDS = (
 )
 
 
+def str_or_none(x):
+    return str(x) if x is not None else x
+
+
 def get_field_argument_type(field):
     if isinstance(field, (forms.FloatField,)):
         return "float"
@@ -653,7 +657,8 @@ def get_field_argument_type(field):
     elif isinstance(field, (forms.CharField,)):
         return "str"
     elif isinstance(field, (TypedMultipleChoiceField)):
-        return f"list[{field.coerce.__name__}]"
+        ftype = "str" if field.coerce is str_or_none else field.coerce.__name__
+        return f"list[{ftype}]"
     elif isinstance(field, (MultipleChoiceField)):
         return "list[str]"
     elif isinstance(field, (LabeledConstraintMapField)):
@@ -691,7 +696,9 @@ def _match_compose_value(field, values):
 def _match_substring(field, values):
     query = Q()
     for substr in values:
-        if substr.startswith("="):
+        if substr is None:
+            query |= Q(**{f"{field}__isnull": True})
+        elif substr.startswith("="):
             query |= Q(**{f"{field}__exact": substr[1:]})
         else:
             query |= Q(**{f"{field}__icontains": substr})
@@ -812,7 +819,7 @@ class FilterNodeForm(forms.Form):
     )
 
     zone = UnconstrainedMultipleChoiceField(
-        label="Physical zone", required=False
+        label="Physical zone", required=False, coerce=str_or_none
     )
 
     not_in_zone = ValidatorMultipleChoiceField(
@@ -825,7 +832,7 @@ class FilterNodeForm(forms.Form):
     )
 
     pool = UnconstrainedMultipleChoiceField(
-        label="Resource pool", required=False
+        label="Resource pool", required=False, coerce=str_or_none
     )
 
     not_in_pool = ValidatorMultipleChoiceField(
@@ -877,24 +884,34 @@ class FilterNodeForm(forms.Form):
     )
 
     pod = UnconstrainedMultipleChoiceField(
-        label="The name of the desired pod", required=False
+        label="The name of the desired pod", required=False, coerce=str_or_none
     )
 
     not_pod = UnconstrainedMultipleChoiceField(
-        label="The name of the undesired pod", required=False
+        label="The name of the undesired pod",
+        required=False,
+        coerce=str_or_none,
     )
 
     pod_type = UnconstrainedMultipleChoiceField(
-        label="The power_type of the desired pod", required=False
+        label="The power_type of the desired pod",
+        required=False,
+        coerce=str_or_none,
     )
 
     not_pod_type = UnconstrainedMultipleChoiceField(
-        label="The power_type of the undesired pod", required=False
+        label="The power_type of the undesired pod",
+        required=False,
+        coerce=str_or_none,
     )
 
-    owner = UnconstrainedMultipleChoiceField(label="Owner", required=False)
+    owner = UnconstrainedMultipleChoiceField(
+        label="Owner", required=False, coerce=str_or_none
+    )
 
-    not_owner = UnconstrainedMultipleChoiceField(label="Owner", required=False)
+    not_owner = UnconstrainedMultipleChoiceField(
+        label="Owner", required=False, coerce=str_or_none
+    )
 
     power_state = ConstrainedMultipleChoiceField(
         label="Power State",
@@ -1316,21 +1333,23 @@ class ReadNodesForm(FilterNodeForm):
     )
 
     domain = UnconstrainedMultipleChoiceField(
-        label="Domain names to filter on", required=False
+        label="Domain names to filter on", required=False, coerce=str_or_none
     )
 
     not_domain = UnconstrainedMultipleChoiceField(
-        label="Domain names to ignore", required=False
+        label="Domain names to ignore", required=False, coerce=str_or_none
     )
 
     agent_name = UnconstrainedMultipleChoiceField(
         label="Only include nodes with events matching the agent name",
         required=False,
+        coerce=str_or_none,
     )
 
     not_agent_name = UnconstrainedMultipleChoiceField(
         label="Excludes nodes with events matching the agent name",
         required=False,
+        coerce=str_or_none,
     )
 
     status = ConstrainedMultipleChoiceField(
@@ -1394,51 +1413,55 @@ class FreeTextFilterNodeForm(ReadNodesForm):
     )
 
     description = UnconstrainedMultipleChoiceField(
-        label="The description of the desired node", required=False
+        label="The description of the desired node",
+        required=False,
+        coerce=str_or_none,
     )
 
     osystem = UnconstrainedMultipleChoiceField(
-        label="The OS of the desired node", required=False
+        label="The OS of the desired node", required=False, coerce=str_or_none
     )
 
     not_osystem = UnconstrainedMultipleChoiceField(
-        label="OS to ignore", required=False
+        label="OS to ignore", required=False, coerce=str_or_none
     )
 
     distro_series = UnconstrainedMultipleChoiceField(
-        label="The OS distribution of the desired node", required=False
+        label="The OS distribution of the desired node",
+        required=False,
+        coerce=str_or_none,
     )
 
     not_distro_series = UnconstrainedMultipleChoiceField(
-        label="OS distribution to ignore", required=False
+        label="OS distribution to ignore", required=False, coerce=str_or_none
     )
 
     error_description = UnconstrainedMultipleChoiceField(
-        label="node error description", required=False
+        label="node error description", required=False, coerce=str_or_none
     )
 
     ip_addresses = UnconstrainedMultipleChoiceField(
-        label="Node's IP address", required=False
+        label="Node's IP address", required=False, coerce=str_or_none
     )
 
     not_ip_addresses = UnconstrainedMultipleChoiceField(
-        label="IP address to ignore", required=False
+        label="IP address to ignore", required=False, coerce=str_or_none
     )
 
     spaces = UnconstrainedMultipleChoiceField(
-        label="Node's spaces", required=False
+        label="Node's spaces", required=False, coerce=str_or_none
     )
 
     not_spaces = UnconstrainedMultipleChoiceField(
-        label="Node's spaces", required=False
+        label="Node's spaces", required=False, coerce=str_or_none
     )
 
     workloads = UnconstrainedMultipleChoiceField(
-        label="Node's workload annotations", required=False
+        label="Node's workload annotations", required=False, coerce=str_or_none
     )
 
     not_workloads = UnconstrainedMultipleChoiceField(
-        label="Node's workload annotations", required=False
+        label="Node's workload annotations", required=False, coerce=str_or_none
     )
 
     not_link_speed = UnconstrainedTypedMultipleChoiceField(
