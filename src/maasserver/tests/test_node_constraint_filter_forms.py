@@ -1571,8 +1571,27 @@ class TestFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         self.assertEqual(constraints.keys(), described_constraints)
 
 
-class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
+class TestFreeTextFilterNodeForm(MAASServerTestCase):
     form_class = FreeTextFilterNodeForm
+
+    def setUp(self):
+        from maasserver.websockets.handlers.machine import MachineHandler
+
+        super().setUp()
+        self._owner = factory.make_User()
+        self._handler = MachineHandler(self._owner, {}, None)
+
+    def get_queryset(self):
+        return self._handler.get_queryset(for_list=True)
+
+    def assertConstrainedNodes(self, nodes, data):
+        form = self.form_class(data=data)
+        self.assertTrue(form.is_valid(), dict(form.errors))
+        filtered_nodes, storage, interfaces = form.filter_nodes(
+            self.get_queryset()
+        )
+        self.assertCountEqual(nodes, filtered_nodes)
+        return (filtered_nodes, storage, interfaces)
 
     def test_match_none(self):
         node1 = factory.make_Node()
@@ -1763,6 +1782,16 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         }
         self.assertConstrainedNodes([node1], constraints)
 
+    def test_substring_fqdn_filter(self):
+        hostname = factory.make_name()
+        node1 = factory.make_Node(hostname=hostname)
+        name2 = factory.make_name_avoiding_collision(hostname)
+        factory.make_Node(hostname=name2)
+        constraints = {
+            "fqdn": [f"{hostname[3:]}.{node1.domain.name[:3]}"],
+        }
+        self.assertConstrainedNodes([node1], constraints)
+
     def test_substring_mac_addresses_filter(self):
         mac_address = factory.make_mac_address()
         interface = factory.make_Interface(mac_address=mac_address)
@@ -1842,10 +1871,9 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
         fabric = factory.make_Fabric(class_type=fabric_class)
         vlan1 = factory.make_VLAN(fabric=fabric)
         vlan2 = factory.make_VLAN(name=factory.make_name(), space=space)
-        ip = factory.pick_ip_in_network(subnet.get_ipnetwork())
         key = factory.make_string(prefix="key")
         val = factory.make_string(prefix="value")
-        node1 = factory.make_Node(
+        node1 = factory.make_Node_with_Interface_on_Subnet(
             bmc=pod.as_bmc(),
             hostname=hostname,
             agent_name=agent_name,
@@ -1856,34 +1884,30 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase, FilterConstraintsMixin):
             owner_data={key: val},
             pool=pool,
             zone=zone,
+            owner=self._owner,
+            subnet=subnet,
         )
         tags = [
             factory.make_Tag(name=factory.make_name("tag")) for _ in range(3)
         ]
         [node1.tags.add(tag) for tag in tags]
-        factory.make_Interface(node=node1, subnet=subnet, ip=ip)
         factory.make_Interface(node=node1, mac_address=mac_address, vlan=vlan2)
         factory.make_Interface(node=node1, vlan=vlan1)
         factory.make_Node()
-        self.assertConstrainedNodes([node1], {"free_text": hostname})
-        self.assertConstrainedNodes([node1], {"free_text": mac_address})
-        self.assertConstrainedNodes([node1], {"free_text": pool.name})
-        self.assertConstrainedNodes([node1], {"free_text": agent_name})
-        self.assertConstrainedNodes([node1], {"free_text": desc})
-        self.assertConstrainedNodes([node1], {"free_text": err_desc})
-        self.assertConstrainedNodes([node1], {"free_text": osystem["name"]})
-        self.assertConstrainedNodes(
-            [node1], {"free_text": osystem["default_release"]}
-        )
-        self.assertConstrainedNodes([node1], {"free_text": val})
-        self.assertConstrainedNodes([node1], {"free_text": vlan2.name})
-        self.assertConstrainedNodes([node1], {"free_text": fabric.name})
-        self.assertConstrainedNodes([node1], {"free_text": fabric_class})
-        self.assertConstrainedNodes([node1], {"free_text": str(subnet.cidr)})
-        self.assertConstrainedNodes([node1], {"free_text": space.name})
-        self.assertConstrainedNodes([node1], {"free_text": zone.name})
-        self.assertConstrainedNodes([node1], {"free_text": pod.name})
-        self.assertConstrainedNodes([node1], {"free_text": tags[1].name})
+        for expr in [
+            hostname,
+            node1.fqdn,
+            pool.name,
+            osystem["name"],
+            osystem["default_release"],
+            val,
+            space.name,
+            zone.name,
+            pod.name,
+            tags[1].name,
+            node1.get_boot_interface().vlan.fabric.name,
+        ]:
+            self.assertConstrainedNodes([node1], {"free_text": expr})
 
 
 class TestAcquireNodeForm(MAASServerTestCase, FilterConstraintsMixin):

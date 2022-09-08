@@ -1456,9 +1456,8 @@ class NodeHandler(TimestampedModelHandler):
                 .distinct()
             ]
         else:
-            for value in (
-                Node.objects.order_by(key).values_list(key).distinct()
-            ):
+            qs = self.get_queryset(for_list=True)
+            for value in qs.order_by(key).values_list(key).distinct():
                 if isinstance(value, Node):
                     results.append(
                         {"key": value.system_id, "label": value.hostname}
@@ -1487,6 +1486,8 @@ class NodeHandler(TimestampedModelHandler):
             key = key.removeprefix("not_in_").removeprefix("not_")
             if key == "mem":
                 key = "memory"
+            if key == "fqdn":
+                key = "node_fqdn"
 
             if key in STATIC_FILTER_FIELDS:
                 if key == "arch":

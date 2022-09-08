@@ -1500,6 +1500,64 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         },
     )
 
+    physical_disk_count = UnconstrainedTypedMultipleChoiceField(
+        label="Physical disk Count",
+        coerce=int,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid memory: number of disks required."
+        },
+    )
+
+    not_physical_disk_count = UnconstrainedTypedMultipleChoiceField(
+        label="Physical disk Count",
+        coerce=int,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid memory: number of disks required."
+        },
+    )
+
+    total_storage = UnconstrainedTypedMultipleChoiceField(
+        label="Total storage",
+        coerce=float,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid memory: number of MiB required."
+        },
+    )
+
+    not_total_storage = UnconstrainedTypedMultipleChoiceField(
+        label="Total storage",
+        coerce=float,
+        required=False,
+        error_messages={
+            "invalid_choice": "Invalid memory: number of MiB required."
+        },
+    )
+
+    pxe_mac = UnconstrainedMultipleChoiceField(
+        label="Boot interface MAC address", required=False
+    )
+
+    not_pxe_mac = UnconstrainedMultipleChoiceField(
+        label="Boot interface MAC address", required=False
+    )
+
+    fabric_name = UnconstrainedMultipleChoiceField(
+        label="Boot interface Fabric", required=False
+    )
+
+    not_fabric_name = UnconstrainedMultipleChoiceField(
+        label="Boot interface Fabric", required=False
+    )
+
+    fqdn = UnconstrainedMultipleChoiceField(label="Node FQDN", required=False)
+
+    not_fqdn = UnconstrainedMultipleChoiceField(
+        label="Node FQDN", required=False
+    )
+
     FREETEXT_FILTERS = {
         "hostname": ("hostname", _match_substring),
         "description": ("description", _match_substring),
@@ -1544,6 +1602,9 @@ class FreeTextFilterNodeForm(ReadNodesForm):
             "ownerdata",
             _match_substring_kv,
         ),
+        "pxe_mac": ("pxe_mac", _match_substring),
+        "fabric_name": ("fabric_name", _match_substring),
+        "fqdn": ("node_fqdn", _match_substring),
     }
 
     UPDATE_FILTERS = {
@@ -1551,6 +1612,8 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "cpu_count": ("cpu_count", _match_any),
         "cpu_speed": ("cpu_speed", _match_any),
         "mem": ("memory", _match_any),
+        "physical_disk_count": ("physical_disk_count", _match_any),
+        "total_storage": ("total_storage", _match_any),
     }
 
     FREETEXT_EXCLUDES = {
@@ -1596,6 +1659,9 @@ class FreeTextFilterNodeForm(ReadNodesForm):
             "ownerdata",
             _match_substring_kv,
         ),
+        "not_pxe_mac": ("pxe_mac", _match_substring),
+        "not_fabric_name": ("fabric_name", _match_substring),
+        "not_fqdn": ("node_fqdn", _match_substring),
     }
 
     UPDATE_EXCLUDES = {
@@ -1606,6 +1672,8 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "not_cpu_count": ("cpu_count", _match_any),
         "not_cpu_speed": ("cpu_speed", _match_any),
         "not_mem": ("memory", _match_any),
+        "not_physical_disk_count": ("physical_disk_count", _match_any),
+        "not_total_storage": ("total_storage", _match_any),
     }
 
     def __init__(self, **kwargs):
@@ -1674,7 +1742,22 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         data = self.cleaned_data.get("free_text")
         for txt in data:
             subq = Q()
-            for _, (db_field, cond) in self.FREETEXT_FILTERS.items():
+            for field in (
+                "distro_series",
+                "fabric_name",
+                "fqdn",
+                "osystem",
+                "owner",
+                "pod_type",
+                "pod",
+                "spaces",
+                "pool",
+                "pxe_mac",
+                "tags",
+                "workloads",
+                "zone",
+            ):
+                (db_field, cond) = self.FREETEXT_FILTERS[field]
                 subq = reduce(
                     lambda q, c: q.__or__(c),
                     cond(db_field, [txt]),
@@ -1686,4 +1769,4 @@ class FreeTextFilterNodeForm(ReadNodesForm):
     def _apply_filters(self, nodes):
         nodes = super()._apply_filters(nodes)
         nodes = self._free_text_search(nodes)
-        return nodes
+        return nodes.distinct()
