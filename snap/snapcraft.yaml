@@ -119,6 +119,7 @@ parts:
       - python3-django-piston3
       - python3-formencode
       - python3-httplib2
+      - python3-hvac
       - python3-idna # for macaroonbakery
       - python3-jsonschema
       - python3-lxml
