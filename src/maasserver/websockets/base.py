@@ -624,7 +624,7 @@ class Handler(metaclass=HandlerMetaclass):
 
             groups_visible = (
                 qs_grouping.values(**{"label": F(grp_key)})
-                .annotate(total=Count(self._meta.batch_key))
+                .annotate(total=Count(self._meta.batch_key, distinct=True))
                 .order_by(grp_key)
             )
 
