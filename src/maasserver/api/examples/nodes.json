@@ -441,6 +441,11 @@
       }
     },
     "storage_test_status": 2,
+    "parent": {
+      "system_id": "c7ebw8",
+      "resource_uri": "/MAAS/api/2.0/machines/c7ebw8/",
+      "__incomplete__": true
+    },
     "pod": {
       "id": 5,
       "name": "sacred-hen",
