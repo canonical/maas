@@ -94,6 +94,7 @@ from provisioningserver.refresh.node_info_scripts import (
     LIST_MODALIASES_OUTPUT_NAME,
 )
 from provisioningserver.tags import merge_details_cleanly
+from provisioningserver.utils.enum import map_enum_reverse
 
 NODE_TYPE_TO_LINK_TYPE = {
     NODE_TYPE.DEVICE: "device",
@@ -1264,6 +1265,14 @@ class NodeHandler(TimestampedModelHandler):
             return getattr(POWER_STATE, value.upper()).capitalize()
         elif key == "status":
             return NODE_STATUS_CHOICES_DICT[value]
+        else:
+            return value
+
+    def _get_group_value(self, key, value):
+        """Get grouping expression for key"""
+        if key == "status":
+            stat = map_enum_reverse(NODE_STATUS, ignore=["DEFAULT"])
+            return stat[value].lower()
         else:
             return value
 

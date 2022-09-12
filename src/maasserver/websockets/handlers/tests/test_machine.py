@@ -6686,8 +6686,16 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             result["groups"][0]["name"],
         )
         self.assertEqual(
+            "new",
+            result["groups"][0]["value"],
+        )
+        self.assertEqual(
             "Allocated",
             result["groups"][1]["name"],
+        )
+        self.assertEqual(
+            "allocated",
+            result["groups"][1]["value"],
         )
 
     def test_group_power_state(self):

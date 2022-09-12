@@ -503,6 +503,10 @@ class Handler(metaclass=HandlerMetaclass):
         """Get group label for value"""
         return value
 
+    def _get_group_value(self, key, value):
+        """Get form value for DB value"""
+        return value
+
     def _xlate_group_id(self, key, value):
         """Translate group id to DB"""
         return value
@@ -623,23 +627,24 @@ class Handler(metaclass=HandlerMetaclass):
                 )
 
             groups_visible = (
-                qs_grouping.values(**{"label": F(grp_key)})
+                qs_grouping.values(**{"grp_id": F(grp_key)})
                 .annotate(total=Count(self._meta.batch_key, distinct=True))
                 .order_by(grp_key)
             )
 
             groups = dict()
             for g in groups_visible:
-                grp_id = g["label"]
+                grp_id = self._get_group_value(grp_key, g["grp_id"])
                 groups[grp_id] = new_grp(
-                    self._get_group_label(grp_key, g["label"]),
-                    g["label"],
+                    self._get_group_label(grp_key, g["grp_id"]),
+                    grp_id,
                     g["total"],
-                    grp_id in collapsed,
+                    g["grp_id"] in collapsed,
                 )
 
             for obj in objs:
-                groups[gid_getter(obj)]["items"].append(
+                grp_id = self._get_group_value(grp_key, gid_getter(obj))
+                groups[grp_id]["items"].append(
                     self.full_dehydrate(obj, for_list=True)
                 )
             result["groups"] = list(groups.values())
