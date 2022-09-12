@@ -13,7 +13,7 @@ import uuid
 from fixtures import EnvironmentVariableFixture
 from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks, succeed
+from twisted.internet.defer import DeferredList, inlineCallbacks, succeed
 
 from maasserver import ipc, workers
 from maasserver.enum import SERVICE_STATUS
@@ -506,5 +506,59 @@ class TestIPCCommunication(MAASTransactionServerTestCase):
             reload_connections, rpc_connections
         )
         self.assertEqual(rpc_connections, [])
+
+        yield master.stopService()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_update_allows_new_connections_while_updating_connections_in_db(
+        self,
+    ):
+        yield deferToDatabase(load_builtin_scripts)
+        master = self.make_IPCMasterService()
+        yield master.startService()
+
+        pid = random.randint(1, 512)
+        port = random.randint(1, 512)
+        ip = factory.make_ip_address()
+        yield master.registerWorker(pid, MagicMock())
+        yield master.registerWorkerRPC(pid, port)
+
+        rack_controller = yield deferToDatabase(factory.make_RackController)
+
+        for _ in range(2):
+            master.registerWorkerRPCConnection(
+                pid,
+                random.randint(1, 512),
+                rack_controller.system_id,
+                ip,
+                random.randint(1, 512),
+            )
+
+        defers = DeferredList(
+            [
+                master.update(),
+                master.registerWorkerRPCConnection(
+                    pid,
+                    random.randint(1, 512),
+                    rack_controller.system_id,
+                    ip,
+                    random.randint(1, 512),
+                ),
+            ]
+        )
+
+        yield defers
+
+        def _get_conn_count():
+            return RegionRackRPCConnection.objects.filter(
+                rack_controller=rack_controller
+            ).count()
+
+        count = yield deferToDatabase(_get_conn_count)
+
+        self.assertEqual(
+            count, len(master.connections[pid]["rpc"]["connections"].values())
+        )
 
         yield master.stopService()

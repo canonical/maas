@@ -563,7 +563,7 @@ class IPCMasterService(service.Service):
             else:
                 # RPC is not running, no endpoints.
                 self._updateEndpoints(process, [])
-            self._updateConnections(process, conn["rpc"]["connections"])
+            self._updateConnections(process, conn["rpc"]["connections"].copy())
             previous_process_ids.discard(process.id)
 
         # Delete all the old processes that are dead.
