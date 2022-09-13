@@ -48,6 +48,7 @@ testpaths = [
   #    cog.outl(f'"{path}",')
   # ]]]
   "src/maasserver/models/pytest_tests",
+  "src/maasserver/pytest_tests",
   # [[[end]]]
 ]
 markers = [

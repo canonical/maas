@@ -114,6 +114,7 @@ parts:
       - python3-crochet
       - python3-cryptography
       - python3-curtin
+      - python3-dateutil
       - python3-distro-info
       - python3-django
       - python3-django-piston3
