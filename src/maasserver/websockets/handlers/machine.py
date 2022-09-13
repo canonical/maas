@@ -10,6 +10,7 @@ from operator import itemgetter
 
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db.models import (
+    Case,
     CharField,
     Count,
     Exists,
@@ -19,6 +20,7 @@ from django.db.models import (
     Sum,
 )
 from django.db.models import Value as V
+from django.db.models import When
 from django.db.models.functions import Concat
 
 from maasserver.enum import (
@@ -28,6 +30,8 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     POWER_STATE,
+    SIMPLIFIED_NODE_STATUS,
+    SIMPLIFIED_NODE_STATUSES_MAP,
 )
 from maasserver.exceptions import NodeActionError, NodeStateViolation
 from maasserver.forms import (
@@ -99,6 +103,16 @@ from provisioningserver.utils.twisted import asynchronous
 log = LegacyLogger()
 
 
+def _build_simple_status_q():
+    return Case(
+        *[
+            When(status__in=values, then=V(status))
+            for status, values in SIMPLIFIED_NODE_STATUSES_MAP.items()
+        ],
+        default=V(SIMPLIFIED_NODE_STATUS.OTHER),
+    )
+
+
 class MachineHandler(NodeHandler):
     class Meta(NodeHandler.Meta):
         abstract = False
@@ -157,6 +171,7 @@ class MachineHandler(NodeHandler):
                     "domain__name",
                     output_field=CharField(),
                 ),
+                simple_status=_build_simple_status_q(),
             )
             .annotate(
                 status_event_type_description=Subquery(
@@ -184,6 +199,7 @@ class MachineHandler(NodeHandler):
                 pxe_mac=F("pxe_mac"),
                 fabric_name=F("fabric_name"),
                 node_fqdn=F("fqdn"),
+                simple_status=F("simple_status"),
             )
         )
         allowed_methods = [

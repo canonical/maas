@@ -21,6 +21,8 @@ from maasserver.enum import (
     NODE_STATUS_SHORT_LABEL_CHOICES,
     POWER_STATE,
     POWER_STATE_CHOICES,
+    SIMPLIFIED_NODE_STATUS,
+    SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
 )
 from maasserver.fields import mac_validator, MODEL_NAME_VALIDATOR
 import maasserver.forms as maasserver_forms
@@ -628,6 +630,7 @@ class LabeledConstraintMapField(Field):
 STATIC_FILTER_FIELDS = (
     "arch",
     "power_state",
+    "simple_status",
     "status",
 )
 
@@ -1364,6 +1367,18 @@ class ReadNodesForm(FilterNodeForm):
         required=False,
     )
 
+    simple_status = ConstrainedMultipleChoiceField(
+        label="Only includes nodes with the specified simplified status",
+        choices=SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
+        required=False,
+    )
+
+    not_simple_status = ConstrainedMultipleChoiceField(
+        label="Exclude nodes with the specified simplified status",
+        choices=SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
+        required=False,
+    )
+
     READ_CONDs = {
         "id": ("system_id", _match_any),
         "hostname": ("hostname", _match_any),
@@ -1371,6 +1386,7 @@ class ReadNodesForm(FilterNodeForm):
         "domain": ("domain__name", _match_any),
         "agent_name": ("agent_name", _match_any),
         "status": ("status", _match_any),
+        "simple_status": ("simple_status", _match_any),
     }
 
     READ_NOT_CONDs = {
@@ -1379,6 +1395,7 @@ class ReadNodesForm(FilterNodeForm):
         "not_domain": ("domain__name", _match_any),
         "not_agent_name": ("agent_name", _match_any),
         "not_status": ("status", _match_any),
+        "not_simple_status": ("simple_status", _match_any),
     }
 
     def __init__(self, *args, **kwargs):
@@ -1393,6 +1410,14 @@ class ReadNodesForm(FilterNodeForm):
     def clean_not_status(self):
         values = self.cleaned_data["not_status"]
         return [getattr(NODE_STATUS, a.upper()) for a in values]
+
+    def clean_simple_status(self):
+        values = self.cleaned_data["simple_status"]
+        return [getattr(SIMPLIFIED_NODE_STATUS, a.upper()) for a in values]
+
+    def clean_not_simple_status(self):
+        values = self.cleaned_data["not_simple_status"]
+        return [getattr(SIMPLIFIED_NODE_STATUS, a.upper()) for a in values]
 
 
 class FreeTextFilterNodeForm(ReadNodesForm):

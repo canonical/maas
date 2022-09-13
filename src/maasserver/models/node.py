@@ -101,6 +101,8 @@ from maasserver.enum import (
     POWER_STATE,
     POWER_STATE_CHOICES,
     SERVICE_STATUS,
+    SIMPLIFIED_NODE_STATUS,
+    SIMPLIFIED_NODE_STATUSES_MAP_REVERSED,
 )
 from maasserver.exceptions import (
     IPAddressCheckFailed,
@@ -1285,6 +1287,13 @@ class Node(CleanSave, TimestampedModel):
     def default_numanode(self):
         """Return NUMA node 0 for the node."""
         return self.numanode_set.get(index=0)
+
+    @property
+    def simplified_status(self):
+        """Return simplified status"""
+        return SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
+            self.status, SIMPLIFIED_NODE_STATUS.OTHER
+        )
 
     def lock(self, user, comment=None):
         self._register_request_event(

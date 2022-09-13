@@ -573,14 +573,16 @@ class Handler(metaclass=HandlerMetaclass):
                 "items": list(),
             }
 
-        grp_key = self._get_group_expr(params.get("group_key"))
+        grp_key = params.get("group_key")
+        grp_expr = self._get_group_expr(grp_key)
+
         collapsed = [
             self._xlate_group_id(grp_key, id)
             for id in params.get("group_collapsed", [])
         ]
 
-        qs = self._sort(qs, "list", params, [grp_key] if grp_key else [])
-        qs_list = self._collapse_groups(qs, grp_key, collapsed)
+        qs = self._sort(qs, "list", params, [grp_expr] if grp_expr else [])
+        qs_list = self._collapse_groups(qs, grp_expr, collapsed)
 
         pager = Paginator(
             qs_list, params.get("page_size", self._meta.dft_page_size)
@@ -607,7 +609,7 @@ class Handler(metaclass=HandlerMetaclass):
 
                 return _get_id
 
-            gid_getter = get_group_key(grp_key)
+            gid_getter = get_group_key(grp_expr)
             qs_grouping = qs
 
             if current_page.has_previous():
@@ -618,32 +620,32 @@ class Handler(metaclass=HandlerMetaclass):
                 )
                 cmp = "gte" if top_this_page == bottom_prev_page else "gt"
                 qs_grouping = qs_grouping.filter(
-                    **{f"{grp_key}__{cmp}": bottom_prev_page}
+                    **{f"{grp_expr}__{cmp}": bottom_prev_page}
                 )
             if current_page.has_next():
                 bottom_this_page = gid_getter(objs[-1])
                 qs_grouping = qs_grouping.filter(
-                    **{f"{grp_key}__lte": bottom_this_page}
+                    **{f"{grp_expr}__lte": bottom_this_page}
                 )
 
             groups_visible = (
-                qs_grouping.values(**{"grp_id": F(grp_key)})
+                qs_grouping.values(**{"grp_id": F(grp_expr)})
                 .annotate(total=Count(self._meta.batch_key, distinct=True))
-                .order_by(grp_key)
+                .order_by(grp_expr)
             )
 
             groups = dict()
             for g in groups_visible:
-                grp_id = self._get_group_value(grp_key, g["grp_id"])
+                grp_id = g["grp_id"]
                 groups[grp_id] = new_grp(
-                    self._get_group_label(grp_key, g["grp_id"]),
-                    grp_id,
+                    self._get_group_label(grp_key, grp_id),
+                    self._get_group_value(grp_key, grp_id),
                     g["total"],
-                    g["grp_id"] in collapsed,
+                    grp_id in collapsed,
                 )
 
             for obj in objs:
-                grp_id = self._get_group_value(grp_key, gid_getter(obj))
+                grp_id = gid_getter(obj)
                 groups[grp_id]["items"].append(
                     self.full_dehydrate(obj, for_list=True)
                 )

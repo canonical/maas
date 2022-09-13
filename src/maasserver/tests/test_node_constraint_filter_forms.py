@@ -1593,6 +1593,16 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         self.assertCountEqual(nodes, filtered_nodes)
         return (filtered_nodes, storage, interfaces)
 
+    def test_simple_status(self):
+        node1 = factory.make_Node(status=NODE_STATUS.NEW)
+        node2 = factory.make_Node(status=NODE_STATUS.FAILED_DEPLOYMENT)
+        node3 = factory.make_Node(status=NODE_STATUS.NEW)
+        node4 = factory.make_Node(status=NODE_STATUS.FAILED_RELEASING)
+        self.assertConstrainedNodes([node1, node3], {"simple_status": "new"})
+        self.assertConstrainedNodes(
+            [node2, node4], {"simple_status": "failed"}
+        )
+
     def test_match_none(self):
         node1 = factory.make_Node()
         factory.make_Node(owner=factory.make_User())
@@ -1624,7 +1634,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         node1 = factory.make_Node(architecture=arch)
         factory.make_Node()
         constraints = {
-            "arch": arch[:2],
+            "arch": arch[:3],
         }
         self.assertConstrainedNodes([node1], constraints)
 
@@ -1645,7 +1655,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         node1 = factory.make_Node(zone=zone)
         factory.make_Node()
         constraints = {
-            "zone": zone.name[:2],
+            "zone": zone.name[:3],
         }
         self.assertConstrainedNodes([node1], constraints)
 
@@ -1654,7 +1664,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         factory.make_Node(zone=zone)
         other = factory.make_Node()
         constraints = {
-            "not_in_zone": [zone.name[:2]],
+            "not_in_zone": [zone.name[:3]],
         }
         self.assertConstrainedNodes([other], constraints)
 
@@ -1691,7 +1701,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         node1.current_config.interface_set.add(interface)
         factory.make_Node()
         constraints = {
-            "fabrics": [fabric.name[:2]],
+            "fabrics": [fabric.name[:3]],
         }
         self.assertConstrainedNodes([node1], constraints)
 
@@ -1704,7 +1714,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         node1.current_config.interface_set.add(interface)
         factory.make_Node()
         constraints = {
-            "fabric_classes": [fabric_class[:2]],
+            "fabric_classes": [fabric_class[:3]],
         }
         self.assertConstrainedNodes([node1], constraints)
 
@@ -1715,7 +1725,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         node1.current_config.interface_set.add(interface)
         factory.make_Node()
         constraints = {
-            "vlans": [vlan.name[:2]],
+            "vlans": [vlan.name[:3]],
         }
         self.assertConstrainedNodes([node1], constraints)
 
@@ -1727,7 +1737,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         node1.current_config.interface_set.add(interface)
         factory.make_Node()
         constraints = {
-            "spaces": [space.name[:2]],
+            "spaces": [space.name[:3]],
         }
         self.assertConstrainedNodes([node1], constraints)
 
@@ -1778,7 +1788,7 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         name2 = factory.make_name_avoiding_collision(hostname)
         factory.make_Node(hostname=name2)
         constraints = {
-            "hostname": [hostname[:2]],
+            "hostname": [hostname[:4]],
         }
         self.assertConstrainedNodes([node1], constraints)
 

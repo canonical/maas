@@ -49,6 +49,8 @@ from maasserver.enum import (
     NODE_TYPE,
     PARTITION_TABLE_TYPE,
     POWER_STATE,
+    SIMPLIFIED_NODE_STATUS,
+    SIMPLIFIED_NODE_STATUS_CHOICES,
 )
 from maasserver.exceptions import NodeActionError, NodeStateViolation
 from maasserver.forms import AdminMachineWithMACAddressesForm
@@ -138,6 +140,7 @@ from provisioningserver.refresh.node_info_scripts import (
 from provisioningserver.rpc.exceptions import UnknownPowerType
 from provisioningserver.tags import merge_details_cleanly
 from provisioningserver.testing.certificates import get_sample_cert
+from provisioningserver.utils.enum import map_enum_reverse
 
 wait_for_reactor = wait_for()
 
@@ -356,6 +359,7 @@ class TestMachineHandler(MAASServerTestCase):
             "status": node.display_status(),
             "status_code": node.status,
             "status_message": node.status_message(),
+            "simple_status": node.simplified_status,
             "storage": round(
                 sum(
                     blockdevice.size
@@ -426,6 +430,7 @@ class TestMachineHandler(MAASServerTestCase):
                     "pxe_mac_vendor",
                     "spaces",
                     "sriov_support",
+                    "simple_status",
                     "status",
                     "status_code",
                     "status_message",
@@ -5917,10 +5922,11 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         user = factory.make_User()
         fabrics = [factory.make_Fabric() for _ in range(2)]
         subnets = [factory.make_Subnet(fabric=fabrics[i]) for i in range(2)]
+        statuses = [NODE_STATUS.ALLOCATED, NODE_STATUS.FAILED_COMMISSIONING]
         nodes = [
             factory.make_Machine_with_Interface_on_Subnet(
                 owner=user,
-                status=NODE_STATUS.ALLOCATED,
+                status=statuses[idx],
                 hostname=f"node{idx}-{factory.make_string(10)}",
                 subnet=subnets[idx],
             )
@@ -5937,6 +5943,7 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             "physical_disk_count",
             "fqdn",
             "pxe_mac",
+            "simple_status",
         ):
             result = handler.list(
                 {
@@ -6441,6 +6448,20 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "dynamic": True,
                     "for_grouping": False,
                 },
+                {
+                    "key": "simple_status",
+                    "label": "Only includes nodes with the specified simplified status",
+                    "type": "list[str]",
+                    "dynamic": False,
+                    "for_grouping": False,
+                },
+                {
+                    "key": "not_simple_status",
+                    "label": "Exclude nodes with the specified simplified status",
+                    "type": "list[str]",
+                    "dynamic": True,
+                    "for_grouping": False,
+                },
             ],
             handler.filter_groups({}),
         )
@@ -6580,6 +6601,15 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                 NODE_STATUS_SHORT_LABEL_CHOICES[machine.status][0],
                 "not_status",
             )
+            simple_status_rev_map = map_enum_reverse(SIMPLIFIED_NODE_STATUS)
+            _assert_value_in(
+                simple_status_rev_map[machine.simplified_status].lower(),
+                "simple_status",
+            )
+            _assert_value_in(
+                simple_status_rev_map[machine.simplified_status].lower(),
+                "not_simple_status",
+            )
             _assert_subset(
                 set(
                     iface.mac_address
@@ -6602,6 +6632,15 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         self.assertCountEqual(
             [v["label"] for v in result],
             [choice[1] for choice in NODE_STATUS_CHOICES],
+        )
+
+    def test_filter_options_simple_status(self):
+        user = factory.make_User()
+        handler = MachineHandler(user, {}, None)
+        result = handler.filter_options({"group_key": "simple_status"})
+        self.assertCountEqual(
+            [v["label"] for v in result],
+            [choice[1] for choice in SIMPLIFIED_NODE_STATUS_CHOICES],
         )
 
     def test_group_label_dynamic(self):
@@ -6697,6 +6736,30 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             "allocated",
             result["groups"][1]["value"],
         )
+
+    def test_group_simple_status(self):
+        user = factory.make_User()
+        statuses = [
+            NODE_STATUS.ALLOCATED,
+            NODE_STATUS.FAILED_COMMISSIONING,
+            NODE_STATUS.FAILED_DEPLOYMENT,
+        ]
+        for i in range(3):
+            factory.make_Node(owner=user, status=statuses[i])
+        handler = MachineHandler(user, {}, None)
+        result = handler.list(
+            {
+                "group_key": "simple_status",
+            }
+        )
+        grp_alloc = result["groups"][0]
+        self.assertEqual(SIMPLIFIED_NODE_STATUS.ALLOCATED, grp_alloc["name"])
+        self.assertEqual("allocated", grp_alloc["value"])
+        self.assertEqual(1, grp_alloc["count"])
+        grp_fail = result["groups"][1]
+        self.assertEqual(SIMPLIFIED_NODE_STATUS.FAILED, grp_fail["name"])
+        self.assertEqual("failed", grp_fail["value"])
+        self.assertEqual(2, grp_fail["count"])
 
     def test_group_power_state(self):
         user = factory.make_User()

@@ -25,6 +25,10 @@ from maasserver.enum import (
     NODE_TYPE,
     POWER_STATE,
     POWER_STATE_CHOICES,
+    SIMPLIFIED_NODE_STATUS,
+    SIMPLIFIED_NODE_STATUS_CHOICES_DICT,
+    SIMPLIFIED_NODE_STATUS_LABEL_CHOICES,
+    SIMPLIFIED_NODE_STATUSES_MAP_REVERSED,
 )
 from maasserver.forms import list_all_usable_architectures
 from maasserver.forms.interface import (
@@ -384,6 +388,14 @@ class NodeHandler(TimestampedModelHandler):
             data["status"] = obj.display_status()
             data["description"] = obj.description
             data["status_code"] = obj.status
+            if hasattr(obj, "simple_status"):
+                data["simple_status"] = obj.simple_status
+            else:
+                data[
+                    "simple_status"
+                ] = SIMPLIFIED_NODE_STATUSES_MAP_REVERSED.get(
+                    obj.status, SIMPLIFIED_NODE_STATUS.OTHER
+                )
 
         if for_list:
             for attr in ("numa_nodes_count", "sriov_support"):
@@ -1265,6 +1277,8 @@ class NodeHandler(TimestampedModelHandler):
             return getattr(POWER_STATE, value.upper()).capitalize()
         elif key == "status":
             return NODE_STATUS_CHOICES_DICT[value]
+        elif key == "simple_status":
+            return SIMPLIFIED_NODE_STATUS_CHOICES_DICT[value]
         else:
             return value
 
@@ -1272,6 +1286,9 @@ class NodeHandler(TimestampedModelHandler):
         """Get grouping expression for key"""
         if key == "status":
             stat = map_enum_reverse(NODE_STATUS, ignore=["DEFAULT"])
+            return stat[value].lower()
+        elif key == "simple_status":
+            stat = map_enum_reverse(SIMPLIFIED_NODE_STATUS, ignore=["DEFAULT"])
             return stat[value].lower()
         else:
             return value
@@ -1281,6 +1298,8 @@ class NodeHandler(TimestampedModelHandler):
             return getattr(POWER_STATE, value.upper())
         elif key == "status":
             return getattr(NODE_STATUS, value.upper())
+        elif key == "simple_status":
+            return getattr(SIMPLIFIED_NODE_STATUS, value.upper())
         else:
             return value
 
@@ -1504,7 +1523,7 @@ class NodeHandler(TimestampedModelHandler):
                         {"key": arch, "label": arch}
                         for arch in sorted(list_all_usable_architectures())
                     ]
-                if key == "status":
+                elif key == "status":
                     return [
                         {
                             "key": choice[0],
@@ -1514,7 +1533,21 @@ class NodeHandler(TimestampedModelHandler):
                         }
                         for choice in sorted(NODE_STATUS_SHORT_LABEL_CHOICES)
                     ]
-                if key == "power_state":
+                elif key == "simple_status":
+                    return [
+                        {
+                            "key": choice[0],
+                            "label": SIMPLIFIED_NODE_STATUS_CHOICES_DICT[
+                                getattr(
+                                    SIMPLIFIED_NODE_STATUS, choice[0].upper()
+                                )
+                            ],
+                        }
+                        for choice in sorted(
+                            SIMPLIFIED_NODE_STATUS_LABEL_CHOICES
+                        )
+                    ]
+                elif key == "power_state":
                     return [
                         {"key": choice[0], "label": choice[1]}
                         for choice in sorted(POWER_STATE_CHOICES)
