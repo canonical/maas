@@ -54,6 +54,7 @@ __all__ = [
     "NUMANode",
     "NUMANodeHugepages",
     "OwnerData",
+    "Secret",
     "PackageRepository",
     "Partition",
     "PartitionTable",
@@ -185,6 +186,7 @@ from maasserver.models.regioncontrollerprocessendpoint import (
 from maasserver.models.regionrackrpcconnection import RegionRackRPCConnection
 from maasserver.models.resourcepool import ResourcePool
 from maasserver.models.rootkey import RootKey
+from maasserver.models.secret import Secret
 from maasserver.models.service import Service
 from maasserver.models.space import Space
 from maasserver.models.sshkey import SSHKey
