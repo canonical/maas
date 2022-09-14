@@ -709,31 +709,6 @@ class TestRegionControllerManager(MAASServerTestCase):
             RegionController.objects.get_running_controller,
         )
 
-    def test_get_or_create_uuid(self):
-        region = factory.make_RegionController()
-        self.useFixture(MAASIDFixture(region.system_id))
-        region_running = RegionController.objects.get_running_controller()
-        created_uuid = RegionController.objects.get_or_create_uuid()
-        config_uuid = Config.objects.get_config("uuid")
-        self.assertThat(region_running, IsInstance(RegionController))
-        self.assertThat(region_running, Equals(region))
-        self.assertEqual(created_uuid, config_uuid)
-
-    def test_get_or_create_uuid_returns_stored_uuid(self):
-        region = factory.make_RegionController()
-        self.useFixture(MAASIDFixture(region.system_id))
-        region_running = RegionController.objects.get_running_controller()
-        # Create and set the config if not already available.
-        created_uuid = RegionController.objects.get_or_create_uuid()
-        # Obtain the config UUID
-        config_uuid = Config.objects.get_config("uuid")
-        # Get the already set config.
-        stored_uuid = RegionController.objects.get_or_create_uuid()
-        self.assertThat(region_running, IsInstance(RegionController))
-        self.assertThat(region_running, Equals(region))
-        self.assertEqual(stored_uuid, config_uuid)
-        self.assertEqual(created_uuid, stored_uuid)
-
 
 class TestRegionControllerManagerGetOrCreateRunningController(
     MAASServerTestCase

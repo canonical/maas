@@ -8,6 +8,7 @@ from collections import defaultdict, namedtuple
 import copy
 from datetime import timedelta
 from socket import gethostname
+import uuid
 
 from django.db.models import CharField, Manager, Model
 from django.db.models.signals import post_save
@@ -310,6 +311,15 @@ class Config(Model):
 
     def __str__(self):
         return f"{self.name}: {self.value}"
+
+
+def get_or_create_uuid() -> str:
+    """Return the UUID for this MAAS cluster (creating it if necessary)."""
+    maas_uuid = Config.objects.get_config("uuid")
+    if maas_uuid is None:
+        maas_uuid = str(uuid.uuid4())
+        Config.objects.set_config("uuid", maas_uuid)
+    return maas_uuid
 
 
 # Connect config manager's _config_changed to Config's post-save signal.

@@ -246,11 +246,9 @@ class MAASServices(MultiService):
 
     @inlineCallbacks
     def _set_globals(self):
-        from maasserver.models.node import RegionControllerManager
+        from maasserver.models.config import get_or_create_uuid
 
-        maas_uuid = yield deferToDatabase(
-            RegionControllerManager().get_or_create_uuid
-        )
+        maas_uuid = yield deferToDatabase(get_or_create_uuid)
         set_global_labels(maas_uuid=maas_uuid, service_type="region")
 
 

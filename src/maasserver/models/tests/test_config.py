@@ -14,10 +14,11 @@ from testtools.matchers import Is
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Config, Event, signals
 import maasserver.models.config
-from maasserver.models.config import get_default_config
+from maasserver.models.config import get_default_config, get_or_create_uuid
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import AUDIT
+from provisioningserver.utils.testing import MAASIDFixture
 
 
 class TestConfigDefault(MAASServerTestCase, TestWithFixtures):
@@ -251,3 +252,22 @@ class TestSettingConfig(MAASServerTestCase):
         something = [factory.make_name("value")]
         Config.objects.set_config(self.name, something)
         self.assertEqual(something, Config.objects.get_config(self.name))
+
+
+class TestGetOrCreateUUID(MAASServerTestCase):
+    def test_get_or_create_uuid(self):
+        region = factory.make_RegionController()
+        self.useFixture(MAASIDFixture(region.system_id))
+        self.assertIsNone(Config.objects.get_config("uuid"))
+        created_uuid = get_or_create_uuid()
+        config_uuid = Config.objects.get_config("uuid")
+        self.assertEqual(created_uuid, config_uuid)
+
+    def test_get_or_create_uuid_returns_stored_uuid(self):
+        region = factory.make_RegionController()
+        self.useFixture(MAASIDFixture(region.system_id))
+        created_uuid = get_or_create_uuid()
+        config_uuid = Config.objects.get_config("uuid")
+        stored_uuid = get_or_create_uuid()
+        self.assertEqual(stored_uuid, config_uuid)
+        self.assertEqual(created_uuid, stored_uuid)

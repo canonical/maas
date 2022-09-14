@@ -23,6 +23,7 @@ from maasserver.models import (
     Notification,
     RegionController,
 )
+from maasserver.models.config import get_or_create_uuid
 from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
@@ -122,7 +123,7 @@ def inner_start_up(master=False):
     # Update region version
     ControllerInfo.objects.set_versions_info(node, get_versions_info())
     # Ensure that uuid is created after creating
-    RegionController.objects.get_or_create_uuid()
+    get_or_create_uuid()
 
     # Only perform the following if the master process for the
     # region controller.
