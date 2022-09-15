@@ -26,7 +26,7 @@ from provisioningserver.security import (
     set_shared_secret_on_filesystem,
     to_bin,
 )
-from provisioningserver.utils.env import set_maas_id
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.shell import call_and_check, ExternalProcessError
 
 all_arguments = ("--url", "--secret")
@@ -115,7 +115,7 @@ def run(args):
         print("Failed with error: %s." % e.output_as_unicode, file=stderr)
         raise SystemExit(1)
     # maas_id could be stale so remove it
-    set_maas_id(None)
+    MAAS_ID.set(None)
     if args.url is not None:
         with ClusterConfiguration.open_for_update() as config:
             config.maas_url = args.url

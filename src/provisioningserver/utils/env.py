@@ -4,9 +4,11 @@
 """Environment-related utilities."""
 
 
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 import os
+from pathlib import Path
 import threading
+from typing import Optional
 
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils.fs import atomic_delete, atomic_write
@@ -30,53 +32,51 @@ def environment_variables(variables):
         os.environ.update(prior_environ)
 
 
-# Cache the MAAS ID so we don't have to keep reading it from the filesystem.
-# This avoids errors when running maas-rack register while regiond is running.
-_maas_id = None
-_maas_id_lock = threading.Lock()
+class FileBackedID:
+    """An ID read and written to file.
 
+    The content is written to the specified file under the MAAS data path, and
+    access is done through a LockFile.
 
-def get_maas_id():
-    """Return the system_id for this rack/region controller that is created
-    when either the rack or region first starts.
     """
-    global _maas_id
-    with _maas_id_lock:
-        if _maas_id is None:
-            maas_id_path = get_maas_data_path("maas_id")
-            try:
-                with open(maas_id_path, encoding="ascii") as fp:
-                    contents = fp.read().strip()
-            except FileNotFoundError:
-                return None
+
+    def __init__(self, name):
+        self.name = name
+        self.path = Path(get_maas_data_path(self.name))
+        self._value = None
+        self._lock = threading.Lock()
+
+    def get(self) -> Optional[str]:
+        """Return the value of the ID, if set, else None"""
+        with self._lock:
+            if not self._value:
+                if not self.path.exists():
+                    return None
+
+                value = self._normalise_value(
+                    self.path.read_text(encoding="ascii")
+                )
+                self._value = value
+            return self._value
+
+    def set(self, value: Optional[str]):
+        """Set the value for the ID."""
+        value = self._normalise_value(value)
+        with self._lock:
+            if value is None:
+                with suppress(FileNotFoundError):
+                    atomic_delete(self.path)
+                self._value = None
             else:
-                _maas_id = _normalise_maas_id(contents)
-                return _maas_id
-        else:
-            return _maas_id
+                # ensure the parent dirs exist
+                self.path.parent.mkdir(exist_ok=True)
+                atomic_write(value.encode("ascii"), self.path)
+                self._value = value
+
+    def _normalise_value(self, value: Optional[str]) -> Optional[str]:
+        if value:
+            value = value.strip()
+        return value if value else None
 
 
-def set_maas_id(system_id):
-    """Set the system_id for this rack/region permanently for MAAS."""
-    global _maas_id
-    system_id = _normalise_maas_id(system_id)
-    with _maas_id_lock:
-        maas_id_path = get_maas_data_path("maas_id")
-        if system_id is None:
-            try:
-                atomic_delete(maas_id_path)
-            except FileNotFoundError:
-                _maas_id = None  # Job done already.
-            else:
-                _maas_id = None
-        else:
-            atomic_write(system_id.encode("ascii"), maas_id_path)
-            _maas_id = system_id
-
-
-def _normalise_maas_id(system_id):
-    if system_id is None:
-        return None
-    else:
-        system_id = system_id.strip()
-        return None if system_id == "" else system_id
+MAAS_ID = FileBackedID("maas_id")

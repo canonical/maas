@@ -86,7 +86,7 @@ from provisioningserver.security import (
 )
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
-from provisioningserver.utils.env import get_maas_id, set_maas_id
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
@@ -271,9 +271,7 @@ class Cluster(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.Identify`.
         """
-        ident = get_maas_id()
-        if ident is None:
-            ident = ""
+        ident = MAAS_ID.get() or ""
         return {"ident": ident}
 
     @cluster.Authenticate.responder
@@ -1023,10 +1021,7 @@ class ClusterClient(Cluster):
             cluster_uuid = config.cluster_uuid
 
         # Grab the set system_id if already set for this controller.
-        system_id = get_maas_id()
-        if system_id is None:
-            # Cannot send None over RPC when the system_id is not set.
-            system_id = ""
+        system_id = MAAS_ID.get() or ""
 
         # Gather the required information for registration.
         interfaces = get_all_interfaces_definition()
@@ -1050,7 +1045,7 @@ class ClusterClient(Cluster):
             )
             self.localIdent = data["system_id"]
             set_global_labels(maas_uuid=data.get("uuid"), service_type="rack")
-            set_maas_id(self.localIdent)
+            MAAS_ID.set(self.localIdent)
             version = data.get("version", None)
             if version is None:
                 version_log = "MAAS version 2.2 or below"

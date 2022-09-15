@@ -1066,8 +1066,9 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)
-        mock_get_maas_id = self.patch(server_address_module, "get_maas_id")
-        mock_get_maas_id.return_value = r1.system_id
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
         r2 = factory.make_RegionRackController(interface=False)
         subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
         interface = factory.make_Interface(
@@ -1088,8 +1089,9 @@ class TestGetDefaultDNSServers(MAASServerTestCase):
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)
-        mock_get_maas_id = self.patch(server_address_module, "get_maas_id")
-        mock_get_maas_id.return_value = r1.system_id
+        self.patch(
+            server_address_module.MAAS_ID, "get"
+        ).return_value = r1.system_id
         subnet = factory.make_Subnet(vlan=vlan, cidr="10.0.0.0/24")
         r1_interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r1

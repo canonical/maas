@@ -17,7 +17,7 @@ from provisioningserver.rpc.region import (
     SendEventIPAddress,
     SendEventMACAddress,
 )
-from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -693,7 +693,7 @@ def send_rack_event(event_type, description=""):
     :param description: An optional description of the event.
     :type description: unicode
     """
-    return nodeEventHub.logByID(event_type, get_maas_id(), description)
+    return nodeEventHub.logByID(event_type, MAAS_ID.get(), description)
 
 
 @asynchronous(timeout=FOREVER)

@@ -18,7 +18,6 @@ from testtools.matchers import (
 from twisted.internet.defer import inlineCallbacks
 
 from maasserver import eventloop, ipc
-from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASTransactionServerTestCase
@@ -34,19 +33,6 @@ is_valid_port = MatchesAll(IsInstance(int), GreaterThan(0), LessThan(2**16))
 class TestRPCView(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
-        self.maas_id = None
-
-        def set_maas_id(maas_id):
-            self.maas_id = maas_id
-
-        self.set_maas_id = self.patch(regionservice, "set_maas_id")
-        self.set_maas_id.side_effect = set_maas_id
-
-        def get_maas_id():
-            return self.maas_id
-
-        self.get_maas_id = self.patch(regionservice, "get_maas_id")
-        self.get_maas_id.side_effect = get_maas_id
         self.patch(
             ipc, "get_all_interface_source_addresses"
         ).return_value = set()

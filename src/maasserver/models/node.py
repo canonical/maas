@@ -203,7 +203,7 @@ from provisioningserver.rpc.exceptions import (
 )
 from provisioningserver.utils import znums
 from provisioningserver.utils.enum import map_enum_reverse
-from provisioningserver.utils.env import get_maas_id, set_maas_id
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.ipaddr import get_mac_addresses
 from provisioningserver.utils.network import get_default_monitored_interfaces
 from provisioningserver.utils.twisted import asynchronous, callOut, undefined
@@ -656,7 +656,7 @@ class RackControllerManager(ControllerManager):
 
         :raises: `DoesNotExist` if no matching controller is found.
         """
-        return self.get(system_id=get_maas_id())
+        return self.get(system_id=MAAS_ID.get())
 
     def filter_by_url_accessible(self, url, with_connection=True):
         """Return a list of rack controllers which have access to the given URL
@@ -726,7 +726,7 @@ class RegionControllerManager(ControllerManager):
 
         :raises: `DoesNotExist` if no matching controller is found.
         """
-        return self.get(system_id=get_maas_id())
+        return self.get(system_id=MAAS_ID.get())
 
     def get_or_create_running_controller(self):
         """Return the region controller for the current host.
@@ -744,7 +744,7 @@ class RegionControllerManager(ControllerManager):
         the MAAS ID will be set on the filesystem once the transaction has
         been committed.
         """
-        maas_id = get_maas_id()
+        maas_id = MAAS_ID.get()
         if maas_id is None:
             node = self._find_or_create_running_controller()
         else:
@@ -788,7 +788,7 @@ class RegionControllerManager(ControllerManager):
             region = self._create_running_controller()
         else:
             region = self._upgrade_running_node(node)
-        post_commit_do(set_maas_id, region.system_id)
+        post_commit_do(MAAS_ID.set, region.system_id)
         return region
 
     def _find_running_node(self):

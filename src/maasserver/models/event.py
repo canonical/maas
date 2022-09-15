@@ -26,7 +26,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.dns import validate_hostname
 from provisioningserver.events import EVENT_DETAILS
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.env import MAAS_ID
 
 maaslog = get_maas_logger("models.event")
 
@@ -109,7 +109,7 @@ class EventManager(Manager):
     def create_region_event(self, event_type, event_description="", user=None):
         """Helper to register event and event type for the running region."""
         self.create_node_event(
-            system_id=get_maas_id(),
+            system_id=MAAS_ID.get(),
             event_type=event_type,
             event_description=event_description,
             user=user,

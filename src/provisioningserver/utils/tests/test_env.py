@@ -1,20 +1,15 @@
 # Copyright 2014-2016 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for environment-related helpers."""
-
-
 import os
-import string
 
 from testtools import ExpectedException
-from testtools.matchers import Equals, FileContains, FileExists, Is, Not
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.path import get_maas_data_path
 from provisioningserver.utils import env
-from provisioningserver.utils.fs import atomic_delete
+from provisioningserver.utils.env import FileBackedID
 
 
 class TestEnvironmentVariables(MAASTestCase):
@@ -72,142 +67,115 @@ class TestEnvironmentVariables(MAASTestCase):
             with env.environment_variables({var: value}):
                 raise DeliberateException()
 
-        self.assertNotIn(var, os.environ)
 
+class TestFileBackedID(MAASTestCase):
+    def test_get_returns_None_if_file_does_not_exist(self):
+        file_id = FileBackedID("test_id")
+        self.assertEqual(str(file_id.path), get_maas_data_path("test_id"))
+        self.assertFalse(file_id.path.exists())
+        self.assertIsNone(file_id.get())
 
-def unlink_if_exists(path):
-    """Unlink `path`, suppressing `FileNotFoundError`."""
-    try:
-        os.unlink(path)
-    except FileNotFoundError:
-        pass
+    def test_get_returns_None_if_file_is_empty(self):
+        file_id = FileBackedID("test_id")
+        file_id.path.write_text("")
+        self.assertIsNone(file_id.get())
 
+    def test_get_returns_None_if_file_is_whitespace(self):
+        file_id = FileBackedID("test_id")
+        file_id.path.write_text("    ")
+        self.assertIsNone(file_id.get())
 
-class TestMAASID(MAASTestCase):
-    """Tests for `env.get_maas_id` and `env.set_maas_id`."""
+    def test_get_returns_contents_if__file_contains_something(self):
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.path.write_text(content)
+        self.assertEqual(file_id.get(), content)
 
-    def setUp(self):
-        super().setUp()
-        self.maas_id_path = get_maas_data_path("maas_id")
-        self.addCleanup(env.set_maas_id, None)
-        env.set_maas_id(None)
-
-    def test_get_returns_None_if_maas_id_file_does_not_exist(self):
-        self.assertThat(self.maas_id_path, Not(FileExists()))
-        self.assertThat(env.get_maas_id(), Is(None))
-
-    def test_get_returns_None_if_maas_id_file_is_empty(self):
-        with open(self.maas_id_path, "w"):
-            pass  # Write nothing.
-        self.assertThat(env.get_maas_id(), Is(None))
-
-    def test_get_returns_None_if_maas_id_file_is_whitespace(self):
-        with open(self.maas_id_path, "w") as fd:
-            fd.write(string.whitespace)
-        self.assertThat(env.get_maas_id(), Is(None))
-
-    def test_get_returns_contents_if_maas_id_file_contains_something(self):
-        contents = factory.make_name("contents")
-        with open(self.maas_id_path, "w") as fd:
-            fd.write(contents)
-        self.assertThat(env.get_maas_id(), Equals(contents))
-
-    def test_get_strips_contents_if_maas_id_file_contains_something(self):
-        contents = factory.make_name("contents")
-        with open(self.maas_id_path, "w") as fd:
-            fd.write(string.whitespace)
-            fd.write(contents)
-            fd.write(string.whitespace)
-        self.assertThat(env.get_maas_id(), Equals(contents))
+    def test_get_strips_contents_if_file_contains_something(self):
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.path.write_text(f"   {content}    ")
+        self.assertEqual(file_id.get(), content)
 
     def test_get_rejects_non_ASCII_content(self):
-        contents = factory.make_unicode_non_ascii_string()
-        with open(self.maas_id_path, "w") as fd:
-            fd.write(contents)
-        self.assertRaises(UnicodeDecodeError, env.get_maas_id)
+        content = factory.make_unicode_non_ascii_string()
+        file_id = FileBackedID("test_id")
+        file_id.path.write_text(f"   {content}    ")
+        self.assertRaises(UnicodeDecodeError, file_id.get)
 
     def test_get_caches_result(self):
-        contents = factory.make_name("contents")
-        with open(self.maas_id_path, "w") as fd:
-            fd.write(contents)
-        self.assertEqual(contents, env.get_maas_id())
-        os.unlink(self.maas_id_path)
-        self.assertEqual(contents, env.get_maas_id())
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.path.write_text(content)
+        self.assertEqual(file_id.get(), content)
+        file_id.path.unlink()
+        self.assertEqual(file_id.get(), content)
 
-    def test_set_writes_argument_to_maas_id_file(self):
-        contents = factory.make_name("contents")
-        env.set_maas_id(contents)
-        self.assertThat(self.maas_id_path, FileContains(contents))
+    def test_set_writes_argument_to_file(self):
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.set(content)
+        self.assertEqual(file_id.path.read_text(), content)
 
-    def test_set_deletes_maas_id_file_if_argument_is_None(self):
-        with open(self.maas_id_path, "w") as fd:
-            fd.write("This file will be deleted.")
-        env.set_maas_id(None)
-        self.assertThat(self.maas_id_path, Not(FileExists()))
-        self.assertIsNone(env.get_maas_id())
+    def test_set_deletes_file_if_argument_is_None(self):
+        file_id = FileBackedID("test_id")
+        file_id.path.touch()
+        file_id.set(None)
+        self.assertFalse(file_id.path.exists())
+        self.assertIsNone(file_id.get())
 
-    def test_set_deletes_maas_id_file_if_argument_is_whitespace(self):
-        with open(self.maas_id_path, "w") as fd:
-            fd.write("This file will be deleted.")
-        env.set_maas_id(string.whitespace)
-        self.assertThat(self.maas_id_path, Not(FileExists()))
-        self.assertIsNone(env.get_maas_id())
+    def test_set_deletes_file_if_argument_is_whitespace(self):
+        file_id = FileBackedID("test_id")
+        file_id.path.touch()
+        file_id.set("            ")
+        self.assertFalse(file_id.path.exists())
+        self.assertIsNone(file_id.get())
 
     def test_set_None_does_nothing_if_maas_id_file_does_not_exist(self):
-        self.assertThat(self.maas_id_path, Not(FileExists()))
-        env.set_maas_id(None)
+        file_id = FileBackedID("test_id")
+        file_id.set(None)
+        self.assertFalse(file_id.path.exists())
 
     def test_set_rejects_non_ASCII_content(self):
-        contents = factory.make_unicode_non_ascii_string()
-        self.assertRaises(UnicodeEncodeError, env.set_maas_id, contents)
+        content = factory.make_unicode_non_ascii_string()
+        file_id = FileBackedID("test_id")
+        self.assertRaises(UnicodeEncodeError, file_id.set, content)
 
     def test_set_caches(self):
-        contents = factory.make_name("contents")
-        env.set_maas_id(contents)
-        os.unlink(self.maas_id_path)
-        self.assertEqual(contents, env.get_maas_id())
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.set(content)
+        file_id.path.unlink()
+        self.assertEqual(file_id.get(), content)
 
     def test_set_None_clears_cache(self):
-        contents = factory.make_name("contents")
-        env.set_maas_id(contents)
-        self.assertThat(env.get_maas_id(), Equals(contents))
-        env.set_maas_id(None)
-        self.assertThat(env.get_maas_id(), Is(None))
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.set(content)
+        self.assertEqual(file_id.get(), content)
+        file_id.set(None)
+        self.assertIsNone(file_id.get())
 
-    def test_set_None_clears_cache_if_maas_id_file_does_not_exist(self):
-        contents = factory.make_name("contents")
-        env.set_maas_id(contents)
-        self.assertThat(env.get_maas_id(), Equals(contents))
-        os.unlink(self.maas_id_path)
-        env.set_maas_id(None)
-        self.assertThat(env.get_maas_id(), Is(None))
+    def test_set_None_clears_cache_if_file_does_not_exist(self):
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.set(content)
+        self.assertEqual(file_id.get(), content)
+        file_id.path.unlink()
+        file_id.set(None)
+        self.assertIsNone(file_id.get())
 
     def test_set_does_not_cache_when_write_fails(self):
         mock_atomic_write = self.patch_autospec(env, "atomic_write")
         exception = factory.make_exception()
         mock_atomic_write.side_effect = exception
-        contents = factory.make_name("contents")
-        with ExpectedException(type(exception)):
-            env.set_maas_id(contents)
-        self.assertIsNone(env.get_maas_id())
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        self.assertRaises(type(exception), file_id.set, content)
+        self.assertIsNone(file_id.get())
 
     def test_set_caches_to_normalized_value(self):
-        contents = "  %s  " % factory.make_name("contents")
-        env.set_maas_id(contents)
-        self.assertEqual(env._normalise_maas_id(contents), env.get_maas_id())
-
-    def test_set_none_clears_cache(self):
-        contents = factory.make_name("contents")
-        env.set_maas_id(contents)
-        self.assertEqual(contents, env.get_maas_id())
-        env.set_maas_id(None)
-        self.assertIsNone(env.get_maas_id())
-        self.assertFalse(os.path.exists(self.maas_id_path))
-
-    def test_set_none_works_with_missing_file(self):
-        contents = factory.make_name("contents")
-        env.set_maas_id(contents)
-        atomic_delete(self.maas_id_path)
-        env.set_maas_id(None)
-        self.assertIsNone(env.get_maas_id())
-        self.assertFalse(os.path.exists(self.maas_id_path))
+        content = factory.make_name("contents")
+        file_id = FileBackedID("test_id")
+        file_id.set(f"   {content}     ")
+        self.assertEqual(file_id.get(), content)

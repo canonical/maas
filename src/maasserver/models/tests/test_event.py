@@ -124,7 +124,7 @@ class TestEvent(MAASServerTestCase):
 
     def test_create_region_event_creates_region_event(self):
         region = factory.make_RegionRackController()
-        self.patch(event_module, "get_maas_id").return_value = region.system_id
+        self.patch(event_module.MAAS_ID, "get").return_value = region.system_id
         Event.objects.create_region_event(
             event_type=EVENT_TYPES.REGION_IMPORT_ERROR, user=region.owner
         )

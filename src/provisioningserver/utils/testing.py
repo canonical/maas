@@ -7,7 +7,7 @@
 from fixtures import Fixture
 from twisted.internet import defer
 
-from provisioningserver.utils import env
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.registry import _registry
 from provisioningserver.utils.twisted import call, callOut
 
@@ -31,8 +31,8 @@ class MAASIDFixture(Fixture):
 
     def _setUp(self):
         super()._setUp()
-        self.addCleanup(env.set_maas_id, env.get_maas_id())
-        env.set_maas_id(self.system_id)
+        self.addCleanup(MAAS_ID.set, MAAS_ID.get())
+        MAAS_ID.set(self.system_id)
 
 
 def callWithServiceRunning(service, f, *args, **kwargs):

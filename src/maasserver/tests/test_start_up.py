@@ -4,7 +4,7 @@
 import random
 from unittest.mock import call
 
-from testtools.matchers import HasLength, Is, Not
+from testtools.matchers import HasLength
 
 from maasserver import deprecations, eventloop, locks, start_up
 from maasserver.models.config import Config
@@ -28,7 +28,7 @@ from maastesting.matchers import (
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils import ipaddr
 from provisioningserver.utils.deb import DebVersionsInfo
-from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.testing import MAASIDFixture
 
 
@@ -187,17 +187,16 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertThat(RegionController.objects.all(), HasLength(1))
 
     def test_creates_maas_id_file(self):
-        self.assertThat(get_maas_id(), Is(None))
+        self.assertIsNone(MAAS_ID.get())
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        self.assertThat(get_maas_id(), Not(Is(None)))
+        self.assertIsNotNone(MAAS_ID.get())
 
     def test_creates_maas_uuid(self):
-        self.assertThat(get_maas_id(), Is(None))
+        self.assertIsNone(MAAS_ID.get())
         with post_commit_hooks:
             start_up.inner_start_up(master=False)
-        uuid = Config.objects.get_config("uuid")
-        self.assertThat(uuid, Not(Is(None)))
+        self.assertIsNotNone(Config.objects.get_config("uuid"))
 
     def test_syncs_deprecation_notifications(self):
         Notification(ident="deprecation_test", message="some text").save()

@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.exceptions import UnresolvableHost
-from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.network import resolve_hostname
 
 
@@ -86,7 +86,7 @@ def get_maas_facing_server_addresses(
     # coming first.
     addresses = sorted(addresses)
     if include_alternates:
-        maas_id = get_maas_id()
+        maas_id = MAAS_ID.get()
         if maas_id is not None:
             from maasserver.models import StaticIPAddress, Subnet
 

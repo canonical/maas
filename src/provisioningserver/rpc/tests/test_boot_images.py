@@ -327,28 +327,26 @@ class TestImportBootImages(MAASTestCase):
 
     @inlineCallbacks
     def test_update_last_image_sync(self):
-        get_maas_id = self.patch(boot_images, "get_maas_id")
+        get_maas_id = self.patch(boot_images.MAAS_ID, "get")
         get_maas_id.return_value = factory.make_string()
         getRegionClient = self.patch(boot_images, "getRegionClient")
         _run_import = self.patch_autospec(boot_images, "_run_import")
         _run_import.return_value = True
         maas_url = factory.make_simple_http_url()
         yield boot_images._import_boot_images(sentinel.sources, maas_url)
-        self.assertThat(
-            _run_import,
-            MockCalledOnceWith(sentinel.sources, maas_url, None, None),
+        _run_import.assert_called_once_with(
+            sentinel.sources, maas_url, None, None
         )
-        self.assertThat(getRegionClient, MockCalledOnceWith())
-        self.assertThat(get_maas_id, MockCalledOnceWith())
+        getRegionClient.assert_called_once()
+        get_maas_id.assert_called_once()
         client = getRegionClient.return_value
-        self.assertThat(
-            client,
-            MockCalledOnceWith(UpdateLastImageSync, system_id=get_maas_id()),
+        client.assert_called_once_with(
+            UpdateLastImageSync, system_id=get_maas_id()
         )
 
     @inlineCallbacks
     def test_update_last_image_sync_always_updated(self):
-        get_maas_id = self.patch(boot_images, "get_maas_id")
+        get_maas_id = self.patch(boot_images.MAAS_ID, "get")
         get_maas_id.return_value = factory.make_string()
         getRegionClient = self.patch(boot_images, "getRegionClient")
         _run_import = self.patch_autospec(boot_images, "_run_import")
@@ -369,7 +367,7 @@ class TestImportBootImages(MAASTestCase):
 
     @inlineCallbacks
     def test_update_last_image_sync_end_to_end(self):
-        get_maas_id = self.patch(boot_images, "get_maas_id")
+        get_maas_id = self.patch(boot_images.MAAS_ID, "get")
         get_maas_id.return_value = factory.make_string()
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
         protocol, connecting = fixture.makeEventLoop(

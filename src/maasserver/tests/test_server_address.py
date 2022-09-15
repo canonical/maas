@@ -204,7 +204,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         r3 = factory.make_RegionController()
         factory.make_Interface(node=r3, ip="192.168.0.4")
         # Make the "current" region controller r1.
-        self.patch(server_address, "get_maas_id").return_value = r1.system_id
+        self.patch(server_address.MAAS_ID, "get").return_value = r1.system_id
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
@@ -232,7 +232,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         r2 = factory.make_RegionController()
         factory.make_Interface(node=r2, ip="192.168.0.2")
         # Make the "current" region controller r1.
-        self.patch(server_address, "get_maas_id").return_value = r1.system_id
+        self.patch(server_address.MAAS_ID, "get").return_value = r1.system_id
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
@@ -255,7 +255,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         factory.make_Interface(node=r3, ip="192.168.0.4")
         factory.make_Interface(node=r3, ip="192.168.0.5")
         # Make the "current" region controller r1.
-        self.patch(server_address, "get_maas_id").return_value = r1.system_id
+        self.patch(server_address.MAAS_ID, "get").return_value = r1.system_id
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
@@ -286,7 +286,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         factory.make_Interface(node=r3, ip="192.168.0.4")
         factory.make_Interface(node=r3, ip="192.168.1.5")
         # Make the "current" region controller r1.
-        self.patch(server_address, "get_maas_id").return_value = r1.system_id
+        self.patch(server_address.MAAS_ID, "get").return_value = r1.system_id
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )
@@ -319,7 +319,7 @@ class TestGetMAASFacingServerAddresses(MAASServerTestCase):
         factory.make_Interface(node=r3, ip="192.168.0.4")
         factory.make_Interface(node=r3, ip="2001:db8::4")
         # Make the "current" region controller r1.
-        self.patch(server_address, "get_maas_id").return_value = r1.system_id
+        self.patch(server_address.MAAS_ID, "get").return_value = r1.system_id
         region_ips = get_maas_facing_server_addresses(
             rack, include_alternates=True
         )

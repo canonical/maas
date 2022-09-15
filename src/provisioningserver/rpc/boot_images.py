@@ -16,7 +16,7 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.logger import LegacyLogger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.region import UpdateLastImageSync
-from provisioningserver.utils.env import environment_variables, get_maas_id
+from provisioningserver.utils.env import environment_variables, MAAS_ID
 from provisioningserver.utils.twisted import synchronous
 
 log = LegacyLogger()
@@ -172,4 +172,4 @@ def touch_last_image_sync_timestamp():
     except Exception:
         return fail()
     else:
-        return client(UpdateLastImageSync, system_id=get_maas_id())
+        return client(UpdateLastImageSync, system_id=MAAS_ID.get())

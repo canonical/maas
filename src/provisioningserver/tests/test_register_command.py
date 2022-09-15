@@ -24,7 +24,7 @@ from provisioningserver.security import (
     to_hex,
 )
 from provisioningserver.testing.config import ClusterConfigurationFixture
-from provisioningserver.utils.env import get_maas_id
+from provisioningserver.utils.env import MAAS_ID
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
 
@@ -194,7 +194,7 @@ class TestRegisterMAASRack(MAASTestCase):
         url = factory.make_simple_http_url()
         secret = factory.make_bytes()
         register_command.run(self.make_args(url=url, secret=to_hex(secret)))
-        self.assertIsNone(get_maas_id())
+        self.assertIsNone(MAAS_ID.get())
 
     def test_show_service_stop_error(self):
         url = factory.make_simple_http_url()

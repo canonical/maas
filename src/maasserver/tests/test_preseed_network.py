@@ -1835,8 +1835,7 @@ class TestNetplan(MAASServerTestCase):
         mock_get_source_address.return_value = "10.0.0.1"
         vlan = factory.make_VLAN()
         r1 = factory.make_RegionRackController(interface=False)
-        mock_get_maas_id = self.patch(server_address, "get_maas_id")
-        mock_get_maas_id.return_value = r1.system_id
+        self.patch(server_address.MAAS_ID, "get").return_value = r1.system_id
         r2 = factory.make_RegionRackController(interface=False)
         interface = factory.make_Interface(
             INTERFACE_TYPE.PHYSICAL, vlan=vlan, node=r2
