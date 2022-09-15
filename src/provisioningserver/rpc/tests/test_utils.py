@@ -21,7 +21,6 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 import provisioningserver.rpc.utils
 from provisioningserver.rpc.utils import commission_node, create_node
-import provisioningserver.utils
 
 TIMEOUT = get_testing_timeout()
 
@@ -93,10 +92,6 @@ class TestCreateNode(MAASTestCase):
         protocol.CreateNode.return_value = defer.succeed(
             {"system_id": system_id}
         )
-        get_cluster_uuid = self.patch(
-            provisioningserver.utils, "get_cluster_uuid"
-        )
-        get_cluster_uuid.return_value = "cluster-" + factory.make_UUID()
 
         uuid = "node-" + factory.make_UUID()
         macs = sorted(factory.make_mac_address() for _ in range(3))

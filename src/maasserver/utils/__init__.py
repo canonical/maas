@@ -7,7 +7,6 @@ __all__ = [
     "absolute_reverse",
     "build_absolute_uri",
     "find_rack_controller",
-    "get_local_cluster_UUID",
     "get_maas_user_agent",
     "ignore_unused",
     "strip_domain",
@@ -25,7 +24,6 @@ from netaddr import valid_ipv4, valid_ipv6
 import tempita
 
 from maasserver.config import RegionConfiguration
-from provisioningserver.config import ClusterConfiguration, UUID_NOT_SET
 from provisioningserver.utils.network import get_source_address
 from provisioningserver.utils.url import compose_URL
 from provisioningserver.utils.version import get_running_version
@@ -111,15 +109,6 @@ def build_absolute_uri(request, path):
 def strip_domain(hostname):
     """Return `hostname` with the domain part removed."""
     return hostname.split(".", 1)[0]
-
-
-def get_local_cluster_UUID():
-    """Return the UUID of the local cluster (or None if it cannot be found)."""
-    with ClusterConfiguration.open() as config:
-        if config.cluster_uuid == UUID_NOT_SET:
-            return None
-        else:
-            return config.cluster_uuid
 
 
 def get_maas_user_agent():

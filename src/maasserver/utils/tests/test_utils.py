@@ -20,7 +20,6 @@ from maasserver.utils import (
     find_rack_controller,
     get_default_region_ip,
     get_host_without_port,
-    get_local_cluster_UUID,
     get_maas_user_agent,
     get_remote_ip,
     strip_domain,
@@ -28,7 +27,6 @@ from maasserver.utils import (
 )
 from maastesting.matchers import IsNonEmptyString
 from maastesting.testcase import MAASTestCase
-from provisioningserver.testing.config import ClusterConfigurationFixture
 
 
 class TestAbsoluteReverse(MAASServerTestCase):
@@ -191,17 +189,6 @@ class TestStripDomain(MAASTestCase):
         inputs = [input for input, _ in input_and_results]
         results = [result for _, result in input_and_results]
         self.assertEqual(results, list(map(strip_domain, inputs)))
-
-
-class TestGetLocalClusterUUID(MAASTestCase):
-    def test_get_local_cluster_UUID_returns_None_if_not_set(self):
-        self.useFixture(ClusterConfigurationFixture())
-        self.assertIsNone(get_local_cluster_UUID())
-
-    def test_get_local_cluster_UUID_returns_cluster_UUID(self):
-        uuid = factory.make_UUID()
-        self.useFixture(ClusterConfigurationFixture(cluster_uuid=uuid))
-        self.assertEqual(uuid, get_local_cluster_UUID())
 
 
 def make_request(origin_ip, http_host=None):
