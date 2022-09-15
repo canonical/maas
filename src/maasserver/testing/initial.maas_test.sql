@@ -8687,6 +8687,18 @@ CREATE VIEW public.maasserver_routable_pairs AS
 
 
 --
+-- Name: maasserver_secret; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.maasserver_secret (
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    path text NOT NULL,
+    value jsonb NOT NULL
+);
+
+
+--
 -- Name: maasserver_service; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -10707,6 +10719,10 @@ COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
 434	Can change NodeDeviceVPD	109	change_nodedevicevpd
 435	Can delete NodeDeviceVPD	109	delete_nodedevicevpd
 436	Can view NodeDeviceVPD	109	view_nodedevicevpd
+437	Can add secret	110	add_secret
+438	Can change secret	110	change_secret
+439	Can delete secret	110	delete_secret
+440	Can view secret	110	view_secret
 \.
 
 
@@ -10848,6 +10864,7 @@ COPY public.django_content_type (id, app_label, model) FROM stdin;
 107	maasserver	nodeconfig
 108	maastesting	perftestbuild
 109	maasserver	nodedevicevpd
+110	maasserver	secret
 \.
 
 
@@ -11186,6 +11203,8 @@ COPY public.django_migrations (id, app, name, applied) FROM stdin;
 328	metadataserver	0031_id_field_bigint	2022-07-07 11:09:03.047446+00
 329	metadataserver	0032_default_auto_field	2022-07-07 11:09:03.68517+00
 330	maasserver	0279_store_vpd_metadata_for_nodedevice	2022-09-05 00:16:36.329151+00
+331	maasserver	0280_set_parent_for_existing_vms	2022-09-15 11:24:45.945397+00
+332	maasserver	0281_secret_model	2022-09-15 11:24:45.959926+00
 \.
 
 
@@ -11717,6 +11736,14 @@ COPY public.maasserver_rootkey (created, updated, id, material, expiration) FROM
 
 
 --
+-- Data for Name: maasserver_secret; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.maasserver_secret (created, updated, path, value) FROM stdin;
+\.
+
+
+--
 -- Data for Name: maasserver_service; Type: TABLE DATA; Schema: public; Owner: -
 --
 
@@ -11951,7 +11978,7 @@ SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.auth_permission_id_seq', 436, true);
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 440, true);
 
 
 --
@@ -11979,14 +12006,14 @@ SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_content_type_id_seq', 109, true);
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 110, true);
 
 
 --
 -- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.django_migrations_id_seq', 330, true);
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 332, true);
 
 
 --
@@ -13645,6 +13672,14 @@ ALTER TABLE ONLY public.maasserver_rootkey
 
 
 --
+-- Name: maasserver_secret maasserver_secret_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.maasserver_secret
+    ADD CONSTRAINT maasserver_secret_pkey PRIMARY KEY (path);
+
+
+--
 -- Name: maasserver_service maasserver_service_node_id_name_f13bbbf4_uniq; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -14896,6 +14931,13 @@ CREATE INDEX maasserver_regionrackrpcconnection_rack_controller_id_7f5b60af ON p
 --
 
 CREATE INDEX maasserver_resourcepool_name_dc5d41eb_like ON public.maasserver_resourcepool USING btree (name varchar_pattern_ops);
+
+
+--
+-- Name: maasserver_secret_path_1e974fd1_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX maasserver_secret_path_1e974fd1_like ON public.maasserver_secret USING btree (path text_pattern_ops);
 
 
 --
