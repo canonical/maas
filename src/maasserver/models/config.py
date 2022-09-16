@@ -313,7 +313,7 @@ class Config(Model):
         return f"{self.name}: {self.value}"
 
 
-def get_or_create_uuid() -> str:
+def ensure_uuid_in_config() -> str:
     """Return the UUID for this MAAS cluster (creating it if necessary)."""
     maas_uuid = Config.objects.get_config("uuid")
     if maas_uuid is None:

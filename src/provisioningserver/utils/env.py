@@ -80,3 +80,4 @@ class FileBackedID:
 
 
 MAAS_ID = FileBackedID("maas_id")
+MAAS_UUID = FileBackedID("maas_uuid")

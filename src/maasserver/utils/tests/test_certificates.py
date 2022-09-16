@@ -12,6 +12,7 @@ from maasserver.utils.certificates import (
     get_maas_client_cn,
 )
 from provisioningserver.certificates import Certificate
+from provisioningserver.utils.env import MAAS_UUID
 
 
 class TestGetMAASClientCN(MAASServerTestCase):
@@ -36,7 +37,7 @@ class TestGetMAASClientCN(MAASServerTestCase):
 class TestGenerateCertificate(MAASServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config("uuid", str(uuid1()))
+        MAAS_UUID.set(str(uuid1()))
 
     def test_generate_certificate(self):
         cert = generate_certificate("maas")
@@ -55,12 +56,10 @@ class TestGenerateCertificate(MAASServerTestCase):
         )
 
     def test_generate_certificate_issuer(self):
-        myuuid = str(uuid1())
-        Config.objects.set_config("uuid", myuuid)
         cert = generate_certificate("maas")
         issuer = cert.cert.get_issuer()
         self.assertEqual("MAAS", issuer.O)
-        self.assertEqual(myuuid, issuer.OU)
+        self.assertEqual(MAAS_UUID.get(), issuer.OU)
 
 
 class TestCertificateGeneratedByThisMAAS(MAASServerTestCase):

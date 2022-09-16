@@ -23,7 +23,7 @@ from maasserver.models import (
     Notification,
     RegionController,
 )
-from maasserver.models.config import get_or_create_uuid
+from maasserver.models.config import ensure_uuid_in_config
 from maasserver.models.domain import dns_kms_setting_changed
 from maasserver.utils import synchronised
 from maasserver.utils.orm import (
@@ -35,6 +35,7 @@ from maasserver.utils.threads import deferToDatabase
 from metadataserver.builtin_scripts import load_builtin_scripts
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.logger import get_maas_logger, LegacyLogger
+from provisioningserver.utils.env import MAAS_UUID
 from provisioningserver.utils.twisted import asynchronous, FOREVER, pause
 from provisioningserver.utils.version import get_versions_info
 
@@ -122,8 +123,8 @@ def inner_start_up(master=False):
     node = RegionController.objects.get_or_create_running_controller()
     # Update region version
     ControllerInfo.objects.set_versions_info(node, get_versions_info())
-    # Ensure that uuid is created after creating
-    get_or_create_uuid()
+    # Ensure the UUID is available, and set it to the local file
+    MAAS_UUID.set(ensure_uuid_in_config())
 
     # Only perform the following if the master process for the
     # region controller.

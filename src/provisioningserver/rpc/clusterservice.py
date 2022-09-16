@@ -86,7 +86,7 @@ from provisioningserver.security import (
 )
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
-from provisioningserver.utils.env import MAAS_ID
+from provisioningserver.utils.env import MAAS_ID, MAAS_UUID
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.network import (
     convert_host_to_uri_str,
@@ -1044,8 +1044,10 @@ class ClusterClient(Cluster):
                 version=version,
             )
             self.localIdent = data["system_id"]
-            set_global_labels(maas_uuid=data.get("uuid"), service_type="rack")
             MAAS_ID.set(self.localIdent)
+            maas_uuid = data.get("uuid")
+            MAAS_UUID.set(maas_uuid)
+            set_global_labels(maas_uuid=maas_uuid, service_type="rack")
             version = data.get("version", None)
             if version is None:
                 version_log = "MAAS version 2.2 or below"

@@ -120,6 +120,7 @@ from provisioningserver.rpc.testing.doubles import (
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils.env import MAAS_UUID
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
@@ -2011,6 +2012,21 @@ class TestClusterClient(MAASTestCase):
         mock_set_global_labels.assert_called_once_with(
             maas_uuid="a-b-c", service_type="rack"
         )
+
+    @inlineCallbacks
+    def test_registerRackWithRegion_sets_uuid(self):
+        maas_uuid = factory.make_name("uuid")
+        client = self.make_running_client()
+
+        system_id = factory.make_name("id")
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with(
+            {"system_id": system_id, "uuid": maas_uuid}
+        )
+
+        result = yield client.registerRackWithRegion()
+        self.assertTrue(result)
+        self.assertEqual(MAAS_UUID.get(), maas_uuid)
 
     @inlineCallbacks
     def test_registerRackWithRegion_returns_False_when_rejected(self):

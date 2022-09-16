@@ -198,6 +198,12 @@ class TestInnerStartUp(MAASServerTestCase):
             start_up.inner_start_up(master=False)
         self.assertIsNotNone(Config.objects.get_config("uuid"))
 
+    def test_sets_maas_uuid(self):
+        self.assertIsNone(MAAS_ID.get())
+        with post_commit_hooks:
+            start_up.inner_start_up(master=False)
+        self.assertIsNotNone(MAAS_ID.get())
+
     def test_syncs_deprecation_notifications(self):
         Notification(ident="deprecation_test", message="some text").save()
         with post_commit_hooks:
