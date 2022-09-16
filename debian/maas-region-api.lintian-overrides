@@ -2,5 +2,4 @@ maas-region-api: command-with-path-in-maintainer-script
 maas-region-api: executable-not-elf-or-script
 maas-region-api: binary-without-manpage usr/sbin/regiond
 maas-region-api: binary-without-manpage usr/sbin/maas-region
-maas-region-api: binary-without-manpage usr/bin/maas-generate-winrm-cert
 maas-region-api: maintainer-script-should-not-use-recursive-chown-or-chmod

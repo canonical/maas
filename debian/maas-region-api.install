@@ -10,9 +10,6 @@ debian/tmp/etc/maas/preseeds
 # Install driver configuration file
 debian/tmp/etc/maas/drivers.yaml
 
-# Install winrm certificate generation script
-debian/tmp/usr/bin/maas-generate-winrm-cert
-
 # Install all other stuff
 usr/bin/maas-region usr/sbin
 usr/bin/regiond usr/sbin
