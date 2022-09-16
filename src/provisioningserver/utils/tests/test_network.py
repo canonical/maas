@@ -2471,7 +2471,7 @@ class TestGetSourceAddress(MAASTestCase):
         self.assertThat(get_source_address("::1"), Equals("::1"))
 
     def test_returns_none_if_no_route_found(self):
-        self.assertThat(get_source_address("127.0.0.0"), Is(None))
+        self.assertIsNone(get_source_address("255.255.255.255"))
 
     def test_returns_appropriate_address_for_global_ip(self):
         self.assertThat(get_source_address("8.8.8.8"), Not(Is(None)))
