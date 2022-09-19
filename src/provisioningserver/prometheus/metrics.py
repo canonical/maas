@@ -108,6 +108,15 @@ METRICS_DEFINITIONS = [
         "maas_lxd_fetch_machine_failure",
         "failures for fetching LXD machines",
     ),
+    MetricDefinition(
+        "Counter",
+        "maas_rpc_pool_exhaustion_count",
+        """
+        counts the number of occurances of the RPC
+        connection pool allocate its maxmimum number
+        of connections
+        """,
+    ),
     # Common metrics
     *node_metrics_definitions(),
 ]

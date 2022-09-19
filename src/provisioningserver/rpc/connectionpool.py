@@ -8,6 +8,7 @@ import random
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.endpoints import connectProtocol, TCP6ClientEndpoint
 
+from provisioningserver.prometheus.metrics import PROMETHEUS_METRICS
 from provisioningserver.rpc import exceptions
 
 
@@ -80,6 +81,7 @@ class ConnectionPool:
     def stage_connection(self, eventloop, connection):
         self.try_connections[eventloop] = connection
 
+    @PROMETHEUS_METRICS.failure_counter("maas_rpc_pool_exhaustion_count")
     @inlineCallbacks
     def scale_up_connections(self):
         for ev, ev_conns in self.connections.items():
