@@ -436,6 +436,7 @@ class TestMain(MAASTestCase):
         )
 
     def test_get_machine_token(self):
+        tempdir = self.useFixture(TempDirectory()).path
         token_info = {
             "token_key": "tk",
             "token_secret": "ts",
@@ -449,7 +450,7 @@ class TestMain(MAASTestCase):
                 "http://mymaas.example.com:5240/MAAS",
                 "foo:bar:baz",
                 "abcde",
-                "creds.yaml",
+                f"{tempdir}/creds.yaml",
             ]
         )
         mock_geturl.assert_called_with(
@@ -462,10 +463,11 @@ class TestMain(MAASTestCase):
             **token_info,
         }
         mock_write_token.assert_called_once_with(
-            token, path=Path("creds.yaml")
+            token, path=Path(f"{tempdir}/creds.yaml")
         )
 
     def test_get_machine_token_machine_not_found(self):
+        tempdir = self.useFixture(TempDirectory()).path
         mock_exit = self.patch(maas_run_scripts.sys, "exit")
         self.patch(
             maas_run_scripts, "geturl"
@@ -480,7 +482,7 @@ class TestMain(MAASTestCase):
                 "http://mymaas.example.com:5240/MAAS",
                 "foo:bar:baz",
                 "abcde",
-                "creds.yaml",
+                f"{tempdir}/creds.yaml",
             ]
         )
         mock_exit.assert_called_with(
@@ -488,6 +490,7 @@ class TestMain(MAASTestCase):
         )
 
     def test_get_machine_token_token_not_found(self):
+        tempdir = self.useFixture(TempDirectory()).path
         mock_exit = self.patch(maas_run_scripts.sys, "exit")
         self.mock_geturl([None])
         main(
@@ -496,7 +499,7 @@ class TestMain(MAASTestCase):
                 "http://mymaas.example.com:5240/MAAS",
                 "foo:bar:baz",
                 "abcde",
-                "creds.yaml",
+                f"{tempdir}creds.yaml",
             ]
         )
         mock_exit.assert_called_with(
