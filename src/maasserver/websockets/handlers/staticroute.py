@@ -4,10 +4,9 @@
 """The StaticRoute handler for the WebSocket connection."""
 
 
-from django.core.exceptions import PermissionDenied
-
 from maasserver.forms.staticroute import StaticRouteForm
 from maasserver.models import StaticRoute
+from maasserver.websockets.base import HandlerPermissionError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -25,17 +24,17 @@ class StaticRouteHandler(TimestampedModelHandler):
     def create(self, params):
         """Create a static route."""
         if not self.user.is_superuser:
-            raise PermissionDenied()
+            raise HandlerPermissionError()
         return super().create(params)
 
     def update(self, params):
         """Update this static route."""
         if not self.user.is_superuser:
-            raise PermissionDenied()
+            raise HandlerPermissionError()
         return super().update(params)
 
     def delete(self, params):
         """Delete this static route."""
         if not self.user.is_superuser:
-            raise PermissionDenied()
+            raise HandlerPermissionError()
         return super().delete(params)

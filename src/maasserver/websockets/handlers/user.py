@@ -91,7 +91,10 @@ class UserHandler(Handler):
             # Standard user can only get self.
             return obj
         else:
-            raise HandlerDoesNotExistError(params[self._meta.pk])
+            # For security reasons, message must be identical to the one in Handler.get_object
+            raise HandlerDoesNotExistError(
+                f"Object with id ({params[self._meta.pk]}) does not exist"
+            )
 
     def get_form_class(self, action):
         """Pick the right form for the given action."""

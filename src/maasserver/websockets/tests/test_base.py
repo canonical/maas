@@ -16,6 +16,7 @@ from twisted.internet.defer import succeed
 from maasserver.enum import NODE_STATUS, NODE_STATUS_CHOICES_DICT
 from maasserver.forms import AdminMachineForm, AdminMachineWithMACAddressesForm
 from maasserver.models.node import Device, Node
+from maasserver.models.sslkey import SSLKey
 from maasserver.models.vlan import VLAN
 from maasserver.models.zone import Zone
 from maasserver.permissions import NodePermission
@@ -406,6 +407,27 @@ class TestHandler(MAASServerTestCase, FakeNodesHandlerMixin):
             HandlerDoesNotExistError,
             handler.get_object,
             {"system_id": machine.system_id},
+        )
+
+    def test_get_own_object_returns_object(self):
+        handler = self.make_nodes_handler(
+            queryset=SSLKey.objects.all(), pk="pk"
+        )
+        owned_sslkey = factory.make_SSLKey(handler.user)
+        self.assertEqual(
+            owned_sslkey.pk,
+            handler.get_own_object({"pk": owned_sslkey.pk}).pk,
+        )
+
+    def test_get_own_object_doesnt_return_not_owned_objects(self):
+        handler = self.make_nodes_handler(
+            queryset=SSLKey.objects.all(), pk="id"
+        )
+        not_owned_sslkey = factory.make_SSLKey(factory.make_User())
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.get_own_object,
+            {"id": not_owned_sslkey.id},
         )
 
     def test_get_queryset(self):

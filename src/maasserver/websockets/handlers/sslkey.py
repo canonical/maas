@@ -10,10 +10,7 @@ from django.http import HttpRequest
 from maasserver.enum import ENDPOINT
 from maasserver.forms import SSLKeyForm
 from maasserver.models.sslkey import SSLKey
-from maasserver.websockets.base import (
-    HandlerDoesNotExistError,
-    HandlerValidationError,
-)
+from maasserver.websockets.base import HandlerValidationError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -31,11 +28,7 @@ class SSLKeyHandler(TimestampedModelHandler):
 
     def get_object(self, params, permission=None):
         """Only allow getting keys owned by the user."""
-        obj = super().get_object(params, permission=permission)
-        if obj.user != self.user:
-            raise HandlerDoesNotExistError(params[self._meta.pk])
-        else:
-            return obj
+        return super().get_own_object(params, permission=permission)
 
     def dehydrate(self, obj, data, for_list=False):
         """Add display to the SSL key."""

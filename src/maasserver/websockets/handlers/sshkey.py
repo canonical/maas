@@ -13,11 +13,7 @@ from maasserver.forms import SSHKeyForm
 from maasserver.models.keysource import KeySource
 from maasserver.models.sshkey import SSHKey
 from maasserver.utils.keys import ImportSSHKeysError
-from maasserver.websockets.base import (
-    HandlerDoesNotExistError,
-    HandlerError,
-    HandlerValidationError,
-)
+from maasserver.websockets.base import HandlerError, HandlerValidationError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
 )
@@ -36,11 +32,7 @@ class SSHKeyHandler(TimestampedModelHandler):
 
     def get_object(self, params, permission=None):
         """Only allow getting keys owned by the user."""
-        obj = super().get_object(params, permission=permission)
-        if obj.user != self.user:
-            raise HandlerDoesNotExistError(params[self._meta.pk])
-        else:
-            return obj
+        return super().get_own_object(params, permission=permission)
 
     def dehydrate_keysource(self, keysource):
         """Dehydrate the keysource to include protocol and auth_id."""

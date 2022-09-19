@@ -10,7 +10,7 @@ from piston3.models import Token
 from maasserver.audit import create_audit_event
 from maasserver.enum import ENDPOINT
 from maasserver.models.user import create_auth_token, get_auth_tokens
-from maasserver.websockets.base import Handler, HandlerDoesNotExistError
+from maasserver.websockets.base import Handler
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -25,12 +25,7 @@ class TokenHandler(Handler):
         return get_auth_tokens(self.user)
 
     def get_object(self, params, permission=None):
-        """Only allow getting keys owned by the user."""
-        obj = super().get_object(params, permission=permission)
-        if obj.user != self.user:
-            raise HandlerDoesNotExistError(params[self._meta.pk])
-        else:
-            return obj
+        return super().get_own_object(params, permission=permission)
 
     def full_dehydrate(self, obj, for_list=False):
         """Return the representation for the object."""

@@ -6,14 +6,16 @@
 
 import random
 
-from django.core.exceptions import PermissionDenied
 from testtools.matchers import MatchesStructure
 
 from maasserver.models.staticroute import StaticRoute
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
-from maasserver.websockets.base import dehydrate_datetime
+from maasserver.websockets.base import (
+    dehydrate_datetime,
+    HandlerPermissionError,
+)
 from maasserver.websockets.handlers.staticroute import StaticRouteHandler
 
 
@@ -87,7 +89,7 @@ class TestStaticRouteHandler(MAASServerTestCase):
         metric = random.randint(0, 500)
         handler = StaticRouteHandler(user, {}, None)
         self.assertRaises(
-            PermissionDenied,
+            HandlerPermissionError,
             handler.create,
             {
                 "source": source.id,
@@ -120,7 +122,7 @@ class TestStaticRouteHandler(MAASServerTestCase):
         handler = StaticRouteHandler(user, {}, None)
         data = self.dehydrate_staticroute(staticroute)
         data["metric"] = random.randint(0, 500)
-        self.assertRaises(PermissionDenied, handler.update, data)
+        self.assertRaises(HandlerPermissionError, handler.update, data)
 
     def test_delete(self):
         user = factory.make_admin()
@@ -136,5 +138,5 @@ class TestStaticRouteHandler(MAASServerTestCase):
         staticroute = factory.make_StaticRoute()
         handler = StaticRouteHandler(user, {}, None)
         self.assertRaises(
-            PermissionDenied, handler.delete, {"id": staticroute.id}
+            HandlerPermissionError, handler.delete, {"id": staticroute.id}
         )

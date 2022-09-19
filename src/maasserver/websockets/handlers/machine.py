@@ -812,9 +812,13 @@ class MachineHandler(NodeHandler):
         try:
             vbd = node.virtualblockdevice_set.get(id=vmfs_datastore_id)
         except ObjectDoesNotExist:
-            raise HandlerDoesNotExistError(vmfs_datastore_id)
+            raise HandlerDoesNotExistError(
+                f"VMFS datastore ({vmfs_datastore_id}) does not exist"
+            )
         if not vbd.filesystem_group:
-            raise HandlerDoesNotExistError(vmfs_datastore_id)
+            raise HandlerDoesNotExistError(
+                f"VMFS datastore ({vmfs_datastore_id}) does not exist"
+            )
         return vbd.filesystem_group
 
     def delete_vmfs_datastore(self, params):

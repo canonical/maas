@@ -596,6 +596,7 @@ class TestMachineHandler(MAASServerTestCase):
             "get_grouped_storages",
             "get_mac_addresses",
             "get_object",
+            "get_own_object",
             "get_providing_dhcp",
             "get_queryset",
             "hydrate",

@@ -325,7 +325,7 @@ class Handler(metaclass=HandlerMetaclass):
         """
         return obj
 
-    def get_object(self, params, permission=None):
+    def _get_object(self, params, permission=None):
         """Get object by using the `pk` in `params`."""
         if self._meta.pk not in params:
             raise HandlerValidationError(
@@ -335,12 +335,28 @@ class Handler(metaclass=HandlerMetaclass):
         try:
             obj = self.get_queryset(for_list=False).get(**{self._meta.pk: pk})
         except self._meta.object_class.DoesNotExist:
-            raise HandlerDoesNotExistError(pk)
+            raise HandlerDoesNotExistError(
+                f"Object with id ({pk}) does not exist"
+            )
         if permission is not None or self._meta.view_permission is not None:
             if permission is None:
                 permission = self._meta.view_permission
             if not self.user.has_perm(permission, obj):
                 raise HandlerPermissionError()
+        return obj
+
+    def get_object(self, params, permission=None):
+        """Get object by using the `pk` in `params`."""
+        return self._get_object(params, permission=permission)
+
+    def get_own_object(self, params, permission=None):
+        """Get user-owned object by using the `pk` in `params`."""
+        obj = self._get_object(params, permission=permission)
+        if obj.user != self.user:
+            # Error message should be the same as one thrown from super() call
+            raise HandlerDoesNotExistError(
+                f"Object with id ({params[self._meta.pk]}) does not exist"
+            )
         return obj
 
     def get_queryset(self, for_list=False):

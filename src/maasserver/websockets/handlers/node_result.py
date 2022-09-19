@@ -152,7 +152,9 @@ class NodeResultHandler(TimestampedModelHandler):
         try:
             node = Node.objects.get(system_id=params["system_id"])
         except Node.DoesNotExist:
-            raise HandlerDoesNotExistError(params["system_id"])
+            raise HandlerDoesNotExistError(
+                f"Node with system id ({params['system_id']}) does not exist"
+            )
 
         self.cache["system_ids"][system_id] = node
         return node

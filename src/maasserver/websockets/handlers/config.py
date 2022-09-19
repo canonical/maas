@@ -71,7 +71,9 @@ class ConfigHandler(Handler):
             raise HandlerPKError("Missing name in params")
         name = params["name"]
         if name not in get_config_keys(self.user):
-            raise HandlerDoesNotExistError(name)
+            raise HandlerDoesNotExistError(
+                f"Configuration parameter ({name}) does not exist"
+            )
         self.cache["loaded_pks"].update({name})
         return self.dehydrate_configs([name])[0]
 
@@ -94,7 +96,9 @@ class ConfigHandler(Handler):
         try:
             form = get_config_form(name, {name: value})
         except ValidationError:
-            raise HandlerDoesNotExistError(name)
+            raise HandlerDoesNotExistError(
+                f"Configuration parameter ({name}) does not exist"
+            )
         if form.is_valid():
             try:
                 request = HttpRequest()
