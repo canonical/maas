@@ -42,9 +42,12 @@ class FileBackedID:
 
     def __init__(self, name):
         self.name = name
-        self.path = Path(get_maas_data_path(self.name))
         self._value = None
         self._lock = threading.Lock()
+
+    @property
+    def path(self) -> Path:
+        return Path(get_maas_data_path(self.name))
 
     def get(self) -> Optional[str]:
         """Return the value of the ID, if set, else None"""

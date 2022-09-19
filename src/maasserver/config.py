@@ -90,6 +90,28 @@ class RegionConfiguration(Configuration, metaclass=RegionConfigurationMeta):
         Int(if_missing=2),
     )
 
+    # Vault options.
+    vault_url = ConfigurationOption(
+        "vault_url",
+        "URL for the Vault server to connect to",
+        UnicodeString(if_missing="", accept_python=False),
+    )
+    vault_secrets_mount = ConfigurationOption(
+        "vault_secrets_mount",
+        "mount path for  the Vault KV engine",
+        UnicodeString(if_missing="secret", accept_python=False),
+    )
+    vault_approle_id = ConfigurationOption(
+        "vault_approle_id",
+        "Approle ID for Vault authentication",
+        UnicodeString(if_missing="", accept_python=False),
+    )
+    vault_secret_id = ConfigurationOption(
+        "vault_secret_id",
+        "Secret ID for Vault authentication",
+        UnicodeString(if_missing="", accept_python=False),
+    )
+
     # Worker options.
     num_workers = ConfigurationOption(
         "num_workers",
