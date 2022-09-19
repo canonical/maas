@@ -6124,21 +6124,21 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "key": "storage",
                     "label": "Storage",
                     "dynamic": True,
-                    "type": "str",
+                    "type": "list[str]",
                     "for_grouping": False,
                 },
                 {
                     "key": "interfaces",
                     "label": "Interfaces",
                     "dynamic": True,
-                    "type": "str",
+                    "type": "list[str]",
                     "for_grouping": False,
                 },
                 {
                     "key": "devices",
                     "label": "Devices",
                     "dynamic": True,
-                    "type": "str",
+                    "type": "list[str]",
                     "for_grouping": False,
                 },
                 {
@@ -6643,6 +6643,17 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             [v["label"] for v in result],
             [choice[1] for choice in SIMPLIFIED_NODE_STATUS_CHOICES],
         )
+
+    def test_filter_options_interfaces_unique_values(self):
+        user = factory.make_User()
+        tags = [factory.make_name("tag") for _ in range(3)]
+        nodes = [factory.make_Machine() for _ in range(3)]
+        ifaces = [factory.make_Interface(tags=tags) for _ in range(3)]
+        for node, iface in zip(nodes, ifaces):
+            node.current_config.interface_set.add(iface)
+        handler = MachineHandler(user, {}, None)
+        result = handler.filter_options({"group_key": "interfaces"})
+        self.assertEqual(len(result), len(ifaces) + len(tags) + 1)
 
     def test_group_label_dynamic(self):
         user = factory.make_User()

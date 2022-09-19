@@ -1782,6 +1782,84 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         }
         self.assertConstrainedNodes([node1], constraints)
 
+    def test_substring_interfaces_filter(self):
+        subnet = factory.make_Subnet()
+        ips = []
+        for _ in range(3):
+            ips.append(
+                factory.pick_ip_in_network(subnet.get_ipnetwork(), but_not=ips)
+            )
+        tags = [factory.make_name("tag") for _ in range(3)]
+        nodes = [factory.make_Machine() for _ in range(3)]
+        ifaces = [
+            factory.make_Interface(tags=[tags[i]], ip=ips[i]) for i in range(3)
+        ]
+        for node, iface in zip(nodes, ifaces):
+            node.current_config.interface_set.add(iface)
+        self.assertConstrainedNodes(
+            [nodes[0]], {"interfaces": f"name={ifaces[0].name}"}
+        )
+        self.assertConstrainedNodes(
+            [nodes[1]], {"interfaces": f"tag={tags[1]}"}
+        )
+        self.assertConstrainedNodes(
+            [nodes[0], nodes[1]],
+            {
+                "interfaces": [f"name={ifaces[0].name}", f"tag={tags[1]}"],
+            },
+        )
+
+    def test_substring_devices_filter(self):
+        nodes = [factory.make_Node() for _ in range(3)]
+        node_devices = [
+            factory.make_NodeDevice(
+                node=node,
+                vendor_id=create_unique_node_device_needle(
+                    "vendor_id", partial(factory.make_hex_string, size=4)
+                ),
+            )
+            for node in nodes
+        ]
+        self.assertConstrainedNodes(
+            [nodes[0]], {"devices": f"vendor_id={node_devices[0].vendor_id}"}
+        )
+
+    def test_substring_storage_filters(self):
+        GIB = 1000**3
+        nodes = [factory.make_Node(with_boot_disk=False) for _ in range(3)]
+        dev_tags = [
+            factory.make_Tag(name=factory.make_name("dev")) for _ in range(3)
+        ]
+        part_tags = [
+            factory.make_Tag(name=factory.make_name("part")) for _ in range(3)
+        ]
+        for i in range(3):
+            disk = factory.make_PhysicalBlockDevice(
+                node=nodes[i], size=(3 - i) * 10 * GIB, tags=[dev_tags[i]]
+            )
+            ptable = factory.make_PartitionTable(block_device=disk)
+            factory.make_Partition(
+                partition_table=ptable, size=(i + 3) * GIB, tags=[part_tags[i]]
+            )
+        self.assertConstrainedNodes(nodes, {"storage": "0"})
+        self.assertConstrainedNodes([nodes[0]], {"storage": "30"})
+        self.assertConstrainedNodes(
+            [nodes[0]], {"storage": f"0({dev_tags[0]})"}
+        )
+        self.assertConstrainedNodes(
+            [nodes[0]], {"storage": f"0(partition,{part_tags[0]})"}
+        )
+        self.assertConstrainedNodes(
+            nodes,
+            {
+                "storage": [
+                    f"0(partition,{part_tags[2]})",
+                    f"0({dev_tags[1]})",
+                    "30",
+                ]
+            },
+        )
+
     def test_substring_hostnames_filter(self):
         hostname = factory.make_name()
         node1 = factory.make_Node(hostname=hostname)

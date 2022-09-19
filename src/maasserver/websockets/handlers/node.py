@@ -1378,7 +1378,7 @@ class NodeHandler(TimestampedModelHandler):
                 for tag in values
             ]
             results += [
-                {"key": f"0(partition,{tag})", "label": tag}
+                {"key": f"0(partition,{tag})", "label": f"{tag} (partition)"}
                 for values in Partition.objects.order_by("tags")
                 .values_list("tags", flat=True)
                 .distinct()
@@ -1387,18 +1387,28 @@ class NodeHandler(TimestampedModelHandler):
         elif key == "interfaces":
             for field in ["name", "type"]:
                 results += [
-                    {"key": f"iface:{field}={val}", "label": f"{field}={val}"}
+                    {
+                        "key": f"{field}={val}",
+                        "label": f"{field}={val}",
+                    }
                     for val in Interface.objects.order_by(field)
                     .values_list(field, flat=True)
                     .distinct()
                 ]
             for field in ["tags"]:
-                results += [
-                    {"key": f"iface:{field}={val}", "label": f"{field}={val}"}
+                tags = [
+                    val
                     for tags in Interface.objects.order_by(field)
                     .values_list(field, flat=True)
                     .distinct()
                     for val in tags
+                ]
+                results += [
+                    {
+                        "key": f"tag={val}",
+                        "label": f"tag={val}",
+                    }
+                    for val in sorted(set(tags))
                 ]
         elif key == "devices":
             for field in ["vendor_name", "product_name"]:
@@ -1459,8 +1469,8 @@ class NodeHandler(TimestampedModelHandler):
             ]
         elif key == "id":
             results += [
-                {"key": value.system_id, "label": value.hostname}
-                for value in Node.objects.order_by("hostname")
+                {"key": value.system_id, "label": value.system_id}
+                for value in Node.objects.order_by("system_id")
             ]
         elif key == "ip_addresses":
             results += [

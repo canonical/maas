@@ -99,6 +99,7 @@ def storage_validator(value):
         rendered_groups.append(group)
     if ",".join(rendered_groups) != value:
         raise ValidationError('Malformed storage constraint, "%s".' % value)
+    return groups
 
 
 NETWORKING_CONSTRAINT_NAMES = {
@@ -1583,6 +1584,14 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         label="Node FQDN", required=False
     )
 
+    interfaces = UnconstrainedMultipleChoiceField(
+        label="Interfaces", required=False
+    )
+
+    devices = UnconstrainedMultipleChoiceField(label="Devices", required=False)
+
+    storage = UnconstrainedMultipleChoiceField(label="Storage", required=False)
+
     FREETEXT_FILTERS = {
         "hostname": ("hostname", _match_substring),
         "description": ("description", _match_substring),
@@ -1762,6 +1771,109 @@ class FreeTextFilterNodeForm(ReadNodesForm):
     def clean_owner(self):
         # override base class validation
         return self.cleaned_data["owner"]
+
+    def clean_interfaces(self):
+        values = self.cleaned_data["interfaces"]
+        specifiers = []
+        for val in values:
+            opts = []
+            for constraint in val.split(","):
+                key, val = constraint.split("=", 1)
+                if key not in NETWORKING_CONSTRAINT_NAMES:
+                    raise ValidationError(
+                        "Unknown interfaces constraint: '%s" % key
+                    )
+                opts.append(f"{key}:{val}")
+            specifiers.append("&&".join(opts))
+        return specifiers
+
+    def filter_by_interfaces(self, filtered_nodes):
+        specifiers = self.cleaned_data.get("interfaces")
+        node_ids = set()
+        for spec in specifiers:
+            new_node_ids, _ = Interface.objects.get_matching_node_map(spec)
+            node_ids.update(new_node_ids)
+        if len(node_ids) > 0:
+            filtered_nodes = filtered_nodes.filter(id__in=node_ids)
+        return {}, filtered_nodes
+
+    def clean_devices(self):
+        values = self.cleaned_data["devices"]
+        specifiers = []
+        for val in values:
+            opts = []
+            for constraint in val.split(","):
+                key, val = constraint.split("=", 1)
+                if key not in DEVICE_CONSTRAINT_NAMES:
+                    raise ValidationError(
+                        "Unknown devices constraint: '%s" % key
+                    )
+                opts.append(tuple((key, val)))
+            specifiers.append(opts)
+        return specifiers
+
+    def filter_by_devices(self, filtered_nodes):
+        FIELD = "current_config__nodedevice"
+        specifiers = self.cleaned_data.get("devices")
+        for spec in specifiers:
+            query = Q()
+            for key, value in spec:
+                if value.startswith("="):
+                    query |= Q(**{f"{FIELD}__{key}__exact": value[1:]})
+                else:
+                    query |= Q(**{f"{FIELD}__{key}__icontains": value})
+            filtered_nodes = filtered_nodes.filter(query)
+        return filtered_nodes
+
+    def clean_storage(self):
+        values = self.cleaned_data["storage"]
+        constraints = []
+        for val in values:
+            storage = storage_validator(val)
+            if storage:
+                constraints.extend(
+                    [
+                        (
+                            int(float(size) * (1000**3)),
+                            tags.split(",") if tags != "" else [],
+                        )
+                        for (_, size, tags) in storage
+                    ]
+                )
+        return constraints
+
+    def filter_by_storage(self, filtered_nodes):
+        storage = self.cleaned_data.get("storage")
+        node_ids = []
+        for (size, tags) in storage:
+            if "partition" in tags:
+                part_tags = list(tags)
+                part_tags.remove("partition")
+                parts = Partition.objects.filter(size__gte=size)
+                if part_tags:
+                    parts = parts.filter(tags__contains=part_tags)
+                node_ids.extend(
+                    list(
+                        parts.order_by().values_list(
+                            "partition_table__block_device__node_config__node_id",
+                            flat=True,
+                        )
+                    )
+                )
+            else:
+                devs = BlockDevice.objects.filter(size__gte=size)
+                if tags is not None:
+                    devs = devs.filter(tags__contains=tags)
+                node_ids.extend(
+                    list(
+                        devs.order_by().values_list(
+                            "node_config__node_id", flat=True
+                        )
+                    )
+                )
+        if node_ids:
+            filtered_nodes = filtered_nodes.filter(id__in=node_ids)
+        return {}, filtered_nodes
 
     def _free_text_search(self, nodes):
         data = self.cleaned_data.get("free_text")
