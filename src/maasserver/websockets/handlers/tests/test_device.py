@@ -492,6 +492,36 @@ class TestDeviceHandler(MAASTransactionServerTestCase):
         self.expectThat(created_device["owner"], Equals(user.username))
 
     @transactional
+    def test_create_creates_device_with_parent(self):
+        user = factory.make_User()
+        request = HttpRequest()
+        request.user = user
+        handler = DeviceHandler(user, {}, request)
+        mac = factory.make_mac_address()
+        hostname = factory.make_name("hostname")
+        subnet = factory.make_Subnet()
+        ip_address = factory.pick_ip_in_Subnet(subnet)
+        node = factory.make_Node(owner=user)
+        created_device = handler.create(
+            {
+                "extra_macs": [],
+                "hostname": hostname,
+                "interfaces": [
+                    {
+                        "ip_address": ip_address,
+                        "ip_assignment": "dynamic",
+                        "mac": mac,
+                        "subnet": subnet.id,
+                    }
+                ],
+                "parent": node.system_id,
+                "primary_mac": mac,
+            }
+        )
+        self.assertEqual(created_device["hostname"], hostname)
+        self.assertEqual(created_device["parent"], node.system_id)
+
+    @transactional
     def test_create_creates_device_with_external_ip_assignment(self):
         user = factory.make_User()
         request = HttpRequest()

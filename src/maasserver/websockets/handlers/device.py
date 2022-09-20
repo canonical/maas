@@ -48,6 +48,26 @@ class DeviceHandler(NodeHandler):
     class Meta(NodeHandler.Meta):
         abstract = False
         queryset = (
+            Device.objects.all()
+            .select_related(
+                "boot_interface",
+                "owner",
+                "zone",
+                "domain",
+                "bmc",
+                "current_config",
+            )
+            .prefetch_related(
+                "current_config__interface_set__ip_addresses__subnet__vlan__space"
+            )
+            .prefetch_related(
+                "current_config__interface_set__ip_addresses__subnet__vlan__fabric"
+            )
+            .prefetch_related("current_config__interface_set__vlan__space")
+            .prefetch_related("current_config__interface_set__vlan__fabric")
+            .prefetch_related("tags")
+        )
+        list_queryset = (
             Device.objects.filter(parent=None)
             .select_related(
                 "boot_interface",
