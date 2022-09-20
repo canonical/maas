@@ -294,8 +294,26 @@ class RackControllerService(Service):
             rack_id=rack_id,
         )
 
+        def unwatch_if_does_not_exist(f):
+            """Un-watches the rack when RackController no longer exists in the DB"""
+            # Only handle DoesNotExist for RackController, re-raise other errors
+            f.trap(RackController.DoesNotExist)
+            if rack_id in self.watching:
+                log.info(
+                    f"[pid:{os.getpid()}] watched rack is not in the DB, un-watching: {rack_id}"
+                )
+                # Note: since proper unwatch message might come later, "recieved unwatched when not watching"
+                # warning might show up.
+                self.watching.discard(rack_id)
+            else:
+                # Might happen when unwatch message was processed after configure_dhcp was called but before it failed
+                log.info(
+                    f"[pid:{os.getpid()}] DHCP configuration push failed as rack is not in the DB: {rack_id}"
+                )
+
         d = deferToDatabase(
             transactional(RackController.objects.get), id=rack_id
         )
         d.addCallback(dhcp.configure_dhcp)
+        d.addErrback(unwatch_if_does_not_exist)
         return d

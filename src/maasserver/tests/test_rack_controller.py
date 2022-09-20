@@ -390,3 +390,51 @@ class TestRackControllerService(
         mock_configure_dhcp.return_value = succeed(None)
         yield service.processDHCP(rack.id)
         self.assertThat(mock_configure_dhcp, MockCalledOnceWith(rack))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_processDHCP_unwatch_errback_unwatches_non_existent_watched_rackd(
+        self,
+    ):
+        rack_id = random.randint(0, 100)
+        service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
+        service.watching = {rack_id}
+        service.needsDHCPUpdate = {rack_id}
+        service.running = True
+        yield service.processDHCP(rack_id)
+        self.assertNotIn(rack_id, service.watching)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_processDHCP_unwatch_errback_ignores_missing_nonwatched_rackd(
+        self,
+    ):
+        rack_id = random.randint(0, 100)
+        other_rack_id = rack_id + 3
+        service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
+        service.watching = {other_rack_id}
+        service.needsDHCPUpdate = {rack_id}
+        service.running = True
+        yield service.processDHCP(rack_id)
+        self.assertNotIn(rack_id, service.watching)
+        self.assertIn(other_rack_id, service.watching)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_processDHCP_unwatch_errback_ignores_other_exceptions(self):
+        rack = yield deferToDatabase(
+            transactional(factory.make_RackController)
+        )
+        service = RackControllerService(sentinel.ipcWorker, sentinel.listener)
+        service.running = True
+        mock_configure_dhcp = self.patch(
+            rack_controller.dhcp, "configure_dhcp"
+        )
+        exc = factory.make_exception()
+        mock_configure_dhcp.return_value = fail(exc)
+        try:
+            yield service.processDHCP(rack.id)
+        except Exception as thrown:
+            self.assertEqual(exc, thrown)
+        else:
+            self.fail()
