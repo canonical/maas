@@ -5,7 +5,13 @@ import pytest
 
 from maasserver import vault
 from maasserver.config import RegionConfiguration
-from maasserver.vault import get_region_vault_client, hvac, VaultClient
+from maasserver.vault import (
+    AppRole,
+    get_region_vault_client,
+    hvac,
+    VaultClient,
+    VaultConfigurator,
+)
 from provisioningserver.utils.env import MAAS_UUID
 
 
@@ -191,3 +197,78 @@ class TestGetRegionVaultClient:
         mock_regionconfig["vault_secrets_mount"] = "other/secrets"
         client = get_region_vault_client()
         assert client._secrets_mount == "other/secrets"
+
+
+class TestVaultConfigurator:
+    def test_configure_policies(self, factory, mock_hvac):
+        maas_uuid = factory.make_name("uuid")
+        secrets_mount = factory.make_name("secret")
+        configurator = VaultConfigurator(
+            "http://vault:8200",
+            "sekret",
+            maas_uuid,
+            secrets_mount=secrets_mount,
+        )
+        configurator.configure_policies()
+        (
+            rolemanager_call,
+            region_call,
+        ) = mock_hvac.sys.create_or_update_policy.mock_calls
+        assert (
+            rolemanager_call.kwargs["name"] == f"maas-{maas_uuid}-rolemanager"
+        )
+        rolemanager_policy = rolemanager_call.kwargs["policy"]
+        assert (
+            f'"auth/approle/role/maas-{maas_uuid}-*" {{' in rolemanager_policy
+        )
+        assert region_call.kwargs["name"] == f"maas-{maas_uuid}-region"
+        region_policy = region_call.kwargs["policy"]
+        assert (
+            f'path "{secrets_mount}/metadata/maas-{maas_uuid}/" {{'
+            in region_policy
+        )
+        assert (
+            f'path "{secrets_mount}/data/maas-{maas_uuid}/*" {{'
+            in region_policy
+        )
+
+    def test_get_approle_with_secret(self, factory, mock_hvac):
+        configurator = VaultConfigurator("http://vault:8200", "sekret", "uuid")
+        policy = factory.make_name("policy")
+        role_id = factory.make_name("role-id")
+        secret_id = factory.make_name("secret-id")
+        mock_hvac.auth.approle.read_role_id.return_value = {
+            "data": {"role_id": role_id}
+        }
+        mock_hvac.auth.approle.generate_secret_id.return_value = {
+            "data": {"secret_id": secret_id}
+        }
+
+        approle = configurator.get_approle_with_secret(policy)
+        assert approle == AppRole(
+            name=policy, role_id=role_id, secret_id=secret_id
+        )
+        mock_hvac.auth.approle.create_or_update_approle.assert_called_once_with(
+            role_name=policy,
+            token_policies=[policy],
+            token_ttl="5m",
+            token_max_ttl="5m",
+        )
+        mock_hvac.auth.approle.read_role_id.assert_called_once_with(
+            role_name=policy
+        )
+        mock_hvac.auth.approle.generate_secret_id.assert_called_once_with(
+            role_name=policy
+        )
+
+    def test_get_approle_with_secret_with_suffix(self, factory, mock_hvac):
+        configurator = VaultConfigurator("http://vault:8200", "sekret", "uuid")
+        policy = factory.make_name("policy")
+        suffix = factory.make_name("suffix")
+        configurator.get_approle_with_secret(policy, name_suffix=suffix)
+        mock_hvac.auth.approle.create_or_update_approle.assert_called_once_with(
+            role_name=f"{policy}-{suffix}",
+            token_policies=[policy],
+            token_ttl="5m",
+            token_max_ttl="5m",
+        )
