@@ -54,3 +54,4 @@ testpaths = [
 markers = [
     "perftest: marks tests for performance testing"
 ]
+addopts = "--reuse-db"

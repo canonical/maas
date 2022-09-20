@@ -112,7 +112,7 @@ def run_perf_tests(env):
         perf_tester = PerfTester(env.get("GIT_BRANCH"), env.get("GIT_HASH"))
 
         pytest_main(
-            args=["--reuse-db", "src/maasperf"] + cmd_args,
+            args=["src/maasperf"] + cmd_args,
         )
     finally:
         perf_test_finish(env.get("OUTPUT_FILE"))
