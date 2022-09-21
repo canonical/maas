@@ -28,7 +28,12 @@ from maasserver.enum import (
 )
 from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models import Config, Notification, Space
-from maasserver.models.subnet import create_cidr, get_allocated_ips, Subnet
+from maasserver.models.subnet import (
+    create_cidr,
+    get_allocated_ips,
+    get_boot_rackcontroller_ips,
+    Subnet,
+)
 from maasserver.models.timestampedmodel import now
 from maasserver.permissions import NodePermission
 from maasserver.testing.factory import factory, RANDOM, RANDOM_OR_NONE
@@ -1848,3 +1853,192 @@ class TestGetAllocatedIps(MAASServerTestCase):
             [(ip1.ip, ip1.alloc_type), (ip2.ip, ip2.alloc_type)], ips
         )
         self.assertEqual(0, queries)
+
+
+class TestGetBootRackcontrollerIPs(MAASServerTestCase):
+    def test_no_dhcpd(self):
+        vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.10.0.0/24")
+        factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        self.assertEqual([], get_boot_rackcontroller_ips(subnet))
+
+    def test_with_primary(self):
+        vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.10.0.0/24")
+        # Create another vlan to make sure it doesn't get selected.
+        factory.make_Subnet(cidr="10.20.0.0/24")
+        rack1 = factory.make_rack_with_interfaces(
+            eth0=["10.10.0.2/24"],
+            eth1=["10.20.0.2/24"],
+        )
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack1
+        vlan.save()
+        self.assertEqual(["10.10.0.2"], get_boot_rackcontroller_ips(subnet))
+
+    def test_with_secondary(self):
+        vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        subnet = factory.make_Subnet(vlan=vlan, cidr="10.10.0.0/24")
+        rack1 = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        rack2 = factory.make_rack_with_interfaces(eth0=["10.10.0.3/24"])
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack1
+        vlan.secondary_rack = rack2
+        vlan.save()
+        self.assertCountEqual(
+            ["10.10.0.2", "10.10.0.3"], get_boot_rackcontroller_ips(subnet)
+        )
+
+    def test_with_multiple_subnets(self):
+        vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        subnet1 = factory.make_Subnet(vlan=vlan, cidr="10.10.1.0/24")
+        factory.make_Subnet(vlan=vlan, cidr="10.10.0.0/24")
+        factory.make_Subnet(vlan=vlan, cidr="10.10.2.0/24")
+        rack1 = factory.make_rack_with_interfaces(
+            eth0=["10.10.0.2/24", "10.10.1.2/24", "10.10.2.2/24"]
+        )
+        rack2 = factory.make_rack_with_interfaces(
+            eth0=["10.10.0.3/24", "10.10.1.3/24", "10.10.2.3/24"]
+        )
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack1
+        vlan.secondary_rack = rack2
+        vlan.save()
+        boot_ips = get_boot_rackcontroller_ips(subnet1)
+        self.assertCountEqual(
+            [
+                "10.10.1.2",
+                "10.10.2.2",
+                "10.10.0.2",
+                "10.10.1.3",
+                "10.10.2.3",
+                "10.10.0.3",
+            ],
+            boot_ips,
+        )
+        # 10.10.1.2 and 10.10.1.3 are always first, since they are
+        # from the passed in subnet.
+        self.assertCountEqual(["10.10.1.2", "10.10.1.3"], boot_ips[:2])
+
+    def test_with_no_matching_subnets(self):
+        # If the rack doesn't have an IP on the requested subnet, pick any IP
+        # from any other subnet on the same VLAN.
+        vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        subnet1 = factory.make_Subnet(vlan=vlan, cidr="10.10.0.0/24")
+        factory.make_Subnet(vlan=vlan, cidr="10.10.1.0/24")
+        factory.make_Subnet(vlan=vlan, cidr="10.10.2.0/24")
+        factory.make_Subnet(cidr="10.20.0.0/24")
+        rack1 = factory.make_rack_with_interfaces(
+            eth0=["10.10.1.2/24", "10.10.2.2/24"], eth1=["10.20.0.2/24"]
+        )
+        vlan.dhcp_on = True
+        vlan.primary_rack = rack1
+        vlan.save()
+        boot_ips = get_boot_rackcontroller_ips(subnet1)
+        self.assertCountEqual(["10.10.1.2", "10.10.2.2"], boot_ips)
+
+    def test_with_relay(self):
+        dhcp_vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        relay_vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        factory.make_Subnet(vlan=dhcp_vlan, cidr="10.10.0.0/24")
+        factory.make_Subnet(vlan=dhcp_vlan, cidr="10.10.1.0/24")
+        factory.make_Subnet(cidr="10.30.0.0/24")
+        relay_subnet = factory.make_Subnet(
+            vlan=relay_vlan, cidr="10.20.0.0/24"
+        )
+        rack1 = factory.make_rack_with_interfaces(
+            eth0=["10.10.0.2/24", "10.10.1.2/24"], eth1=["10.30.0.2/24"]
+        )
+        dhcp_vlan.dhcp_on = True
+        dhcp_vlan.primary_rack = rack1
+        dhcp_vlan.save()
+        relay_vlan.relay_vlan = dhcp_vlan
+        relay_vlan.save()
+        boot_ips = get_boot_rackcontroller_ips(relay_subnet)
+        self.assertCountEqual(["10.10.0.2", "10.10.1.2"], boot_ips)
+
+    def test_with_relay_prefer_ipv4(self):
+        dhcp_vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        relay_vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        factory.make_Subnet(vlan=dhcp_vlan, cidr="10.10.0.0/24")
+        factory.make_Subnet(vlan=dhcp_vlan, cidr="fd12:3456:789a::/64")
+        factory.make_Subnet(cidr="10.30.0.0/24")
+        relay_subnet = factory.make_Subnet(
+            vlan=relay_vlan, cidr="10.20.0.0/24"
+        )
+        rack1 = factory.make_rack_with_interfaces(
+            eth0=["10.10.0.2/24", "fd12:3456:789a::2/64"],
+            eth1=["10.30.0.2/24"],
+        )
+        dhcp_vlan.dhcp_on = True
+        dhcp_vlan.primary_rack = rack1
+        dhcp_vlan.save()
+        relay_vlan.relay_vlan = dhcp_vlan
+        relay_vlan.save()
+        boot_ips = get_boot_rackcontroller_ips(relay_subnet)
+        self.assertEqual(["10.10.0.2", "fd12:3456:789a::2"], boot_ips)
+
+    def test_with_relay_prefer_ipv6(self):
+        dhcp_vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        relay_vlan = factory.make_VLAN(
+            dhcp_on=False,
+            primary_rack=None,
+            secondary_rack=None,
+        )
+        factory.make_Subnet(vlan=dhcp_vlan, cidr="10.10.0.0/24")
+        factory.make_Subnet(vlan=dhcp_vlan, cidr="fd12:3456:789a::/64")
+        factory.make_Subnet(cidr="10.30.0.0/24")
+        relay_subnet = factory.make_Subnet(
+            vlan=relay_vlan, cidr="fda9:8765:4321::/64"
+        )
+        rack1 = factory.make_rack_with_interfaces(
+            eth0=["10.10.0.2/24", "fd12:3456:789a::2/64"],
+            eth1=["10.30.0.2/24"],
+        )
+        dhcp_vlan.dhcp_on = True
+        dhcp_vlan.primary_rack = rack1
+        dhcp_vlan.save()
+        relay_vlan.relay_vlan = dhcp_vlan
+        relay_vlan.save()
+        boot_ips = get_boot_rackcontroller_ips(relay_subnet)
+        self.assertEqual(["fd12:3456:789a::2", "10.10.0.2"], boot_ips)

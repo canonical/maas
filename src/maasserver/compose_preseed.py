@@ -16,7 +16,7 @@ from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import NODE_STATUS, POWER_STATE, PRESEED_TYPE
 from maasserver.models import PackageRepository
 from maasserver.models.config import Config
-from maasserver.models.subnet import Subnet
+from maasserver.models.subnet import get_boot_rackcontroller_ips, Subnet
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils import get_default_region_ip, get_remote_ip
@@ -35,7 +35,9 @@ RACK_CONTROLLER_PORT = 5248
 
 def _subnet_uses_dns(subnet):
     return (
-        subnet is not None and not subnet.dns_servers and subnet.vlan.dhcp_on
+        subnet is not None
+        and not subnet.dns_servers
+        and (subnet.vlan.dhcp_on or subnet.vlan.relay_vlan_id is not None)
     )
 
 
@@ -43,26 +45,35 @@ def _wrap_ipv6_address(ip):
     return str(ip) if ip_address(ip).version == 4 else f"[{ip}]"
 
 
-def _get_anon_rack_host(request, rack_controller):
-    forwarded_ips = request.META.get("HTTP_X_FORWARDED_FOR", "").split(", ")
-    if len(forwarded_ips) >= 2:
-        # the reguest goes through the nginx proxy on the rack to the nginx
-        # proxy on the region
-        forwarded_ip = forwarded_ips[-2]
-        subnet = Subnet.objects.get_best_subnet_for_ip(forwarded_ip)
-        if _subnet_uses_dns(subnet):
-            internal_domain = Config.objects.get_config("maas_internal_domain")
-            return f"{get_resource_name_for_subnet(subnet)}.{internal_domain}"
-        else:
-            return _wrap_ipv6_address(forwarded_ip)
-    return rack_controller.fqdn if rack_controller else ""
+def _get_rack_host(request):
+    machine_ip = get_remote_ip(request)
+    if machine_ip:
+        machine_subnet = Subnet.objects.get_best_subnet_for_ip(machine_ip)
+        rackcontroller_ips = get_boot_rackcontroller_ips(machine_subnet)
+        if rackcontroller_ips:
+            boot_ip = rackcontroller_ips[0]
+            boot_subnet = Subnet.objects.get_best_subnet_for_ip(boot_ip)
+            if _subnet_uses_dns(machine_subnet):
+                internal_domain = Config.objects.get_config(
+                    "maas_internal_domain"
+                )
+                return f"{get_resource_name_for_subnet(boot_subnet)}.{internal_domain}"
+            else:
+                return _wrap_ipv6_address(boot_ip)
+    return None
+
+
+def _get_rackcontroller_host(request, node=None):
+    if node and node.boot_cluster_ip:
+        return _wrap_ipv6_address(node.boot_cluster_ip)
+    else:
+        return _get_rack_host(request)
 
 
 def build_metadata_url(request, route, rack_controller, node=None, extra=""):
-    if node and node.boot_cluster_ip:
-        host = _wrap_ipv6_address(node.boot_cluster_ip)
-    else:
-        host = _get_anon_rack_host(request, rack_controller)
+    host = _get_rackcontroller_host(request, node=node)
+    if host is None and rack_controller is not None:
+        host = rack_controller.fqdn
     return (
         request.build_absolute_uri(route) + extra
         if not host
@@ -96,40 +107,20 @@ def get_apt_proxy(request, rack_controller=None, node=None):
                 maas_proxy_port = 8000
             # Use the client requesting the preseed to determine how they
             # should access the APT proxy.
-            subnet = None
-            remote_ip = get_remote_ip(request)
-            if remote_ip is not None:
-                subnet = Subnet.objects.get_best_subnet_for_ip(remote_ip)
-            if config["use_rack_proxy"] and _subnet_uses_dns(subnet):
-                # Client can use the MAAS proxy on the rack controller with
-                # DNS resolution providing better HA.
-                return "http://%s.%s:%d/" % (
-                    get_resource_name_for_subnet(subnet),
-                    config["maas_internal_domain"],
-                    maas_proxy_port,
-                )
-            elif (
-                config["use_rack_proxy"]
-                and node is not None
-                and node.boot_cluster_ip
-            ):
-                # Client can use the MAAS proxy on the rack controller with
-                # IP address, instead of DNS.
-                return "http://%s:%d/" % (
-                    node.boot_cluster_ip,
-                    maas_proxy_port,
-                )
-            else:
-                # Fallback to sending the APT directly to the
-                # region controller.
-                region_ip = get_default_region_ip(request)
-                url = "http://:%d/" % maas_proxy_port
-                return compose_URL(
-                    url,
-                    get_maas_facing_server_host(
-                        rack_controller, default_region_ip=region_ip
-                    ),
-                )
+            if config["use_rack_proxy"]:
+                host = _get_rackcontroller_host(request, node=node)
+                if host:
+                    return f"http://{host}:{maas_proxy_port}/"
+            # Fallback to sending the APT directly to the
+            # region controller.
+            region_ip = get_default_region_ip(request)
+            url = f"http://:{maas_proxy_port}/"
+            return compose_URL(
+                url,
+                get_maas_facing_server_host(
+                    rack_controller, default_region_ip=region_ip
+                ),
+            )
     else:
         return None
 

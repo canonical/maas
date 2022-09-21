@@ -3940,7 +3940,7 @@ class TestAnonymousAPI(MAASServerTestCase):
         nic = rack.get_boot_interface()
         vlan = nic.vlan
         subnet = factory.make_Subnet(cidr=str(network.cidr), vlan=vlan)
-        factory.make_StaticIPAddress(subnet=subnet, interface=nic)
+        rack_ip = factory.make_StaticIPAddress(subnet=subnet, interface=nic)
         vlan.dhcp_on = True
         vlan.primary_rack = rack
         vlan.save()
@@ -3956,7 +3956,7 @@ class TestAnonymousAPI(MAASServerTestCase):
         # `build_absolute_uri` is used on the test.
         self.assertThat(
             response.content.decode(settings.DEFAULT_CHARSET),
-            Contains(f"http://{rack.fqdn}:5248/MAAS/"),
+            Contains(f"http://{rack_ip.ip}:5248/MAAS/"),
         )
 
     def test_anonymous_get_enlist_preseed_uses_detected_region_ip(self):

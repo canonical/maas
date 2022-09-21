@@ -1050,3 +1050,62 @@ def get_allocated_ips(subnets):
         mapping[subnet_id].append((ip, alloc_type))
     for subnet in subnets:
         yield subnet, mapping[subnet.id]
+
+
+def get_dhcp_vlan(subnet):
+    if subnet is None:
+        return None
+    dhcp_vlan = (
+        subnet.vlan
+        if subnet.vlan.relay_vlan_id is None
+        else subnet.vlan.relay_vlan
+    )
+    if not dhcp_vlan.dhcp_on or dhcp_vlan.primary_rack is None:
+        return None
+    return dhcp_vlan
+
+
+def get_boot_rackcontroller_ips(subnet):
+    """Get the IPs of the rack controller a machine can boot from.
+
+    The subnet is where the machine has an IP from. It returns all the IPs
+    that might be suitable, but it will sort them with the most suitable
+    IPs first.
+
+    It prefers rack controller IPs from the same subnet and the same
+    IP family (ipv4/ipv6).
+
+    If there's a DHCP relay in place, we don't know which rack controller
+    IP is the best one, since it proably won't have an IP on the same subnet
+    as the booting machine. In that case, we put any of the IPs that are
+    on the VLAN that serves DHCP and assumes that it's routable.
+    """
+
+    def rank_ip(ip):
+        ip = IPAddress(ip)
+        network = IPNetwork(subnet.cidr)
+        value = 2
+        if ip in network:
+            value = 1
+        # Prefer addresses of the same IP version.
+        if ip.version != network.version:
+            value *= 10
+        return value
+
+    from maasserver.models.staticipaddress import StaticIPAddress
+
+    dhcp_vlan = get_dhcp_vlan(subnet)
+    if dhcp_vlan is None:
+        return []
+
+    node_configs = [dhcp_vlan.primary_rack.current_config_id]
+    if dhcp_vlan.secondary_rack:
+        node_configs.append(dhcp_vlan.secondary_rack.current_config_id)
+    static_ips = StaticIPAddress.objects.filter(
+        ~Q(alloc_type=IPADDRESS_TYPE.DISCOVERED),
+        ~Q(ip__isnull=True),
+        subnet__vlan=dhcp_vlan,
+        interface__node_config__in=node_configs,
+    )
+    ips = sorted((static_ip.ip for static_ip in static_ips), key=rank_ip)
+    return ips
