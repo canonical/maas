@@ -10,6 +10,7 @@ import logging
 import os
 import random
 import time
+from typing import Dict, List
 
 from distro_info import UbuntuDistroInfo
 from django.conf import settings
@@ -643,6 +644,43 @@ class Factory(maastesting.factory.Factory):
             **kwargs,
         ).as_rack_controller()
 
+    def make_rack_with_interfaces(self, **interfaces: Dict[str, List[str]]):
+        """Create a rack controller that has the given interfaces.
+
+        The interfaces dict has the interface name as the key and a list
+        of IP addresses with network mask as the value. For example:
+           {"eth0": ["10.10.10.10/24"]}
+
+        The subnets for the IPs need to exist when calling this method.
+        """
+        rack = factory.make_Node(
+            node_type=random.choice(
+                [
+                    NODE_TYPE.RACK_CONTROLLER,
+                    NODE_TYPE.REGION_AND_RACK_CONTROLLER,
+                ]
+            ),
+        )
+        for name, ips in interfaces.items():
+            interface = None
+            for ip in ips:
+                cidr = IPNetwork(ip).cidr
+                subnet = Subnet.objects.get(cidr=cidr)
+                if interface is None:
+                    interface = factory.make_Interface(
+                        node=rack,
+                        name=name,
+                        vlan=subnet.vlan,
+                    )
+                assert subnet.vlan == interface.vlan
+                factory.make_StaticIPAddress(
+                    alloc_type=IPADDRESS_TYPE.STICKY,
+                    ip=ip.split("/")[0],
+                    subnet=subnet,
+                    interface=interface,
+                )
+        return rack
+
     def make_BMC(
         self, power_type=None, power_parameters=None, ip_address=None, **kwargs
     ):
@@ -1028,6 +1066,7 @@ class Factory(maastesting.factory.Factory):
         vlan=None,
         subnet=None,
         cidr=None,
+        ip_address=None,
         fabric=None,
         ifname=None,
         extra_ifnames=None,
@@ -1100,8 +1139,12 @@ class Factory(maastesting.factory.Factory):
         ]
         if should_have_default_link_configuration:
             self.make_StaticIPAddress(
-                alloc_type=IPADDRESS_TYPE.AUTO,
-                ip="",
+                alloc_type=(
+                    IPADDRESS_TYPE.STICKY
+                    if ip_address
+                    else IPADDRESS_TYPE.AUTO
+                ),
+                ip=ip_address if ip_address else "",
                 subnet=subnet,
                 interface=boot_interface,
             )

@@ -15,13 +15,13 @@ from testtools.matchers import (
 )
 import yaml
 
+import maasserver.compose_preseed as cp_module
 from maasserver.compose_preseed import (
     build_metadata_url,
     compose_enlistment_preseed,
     compose_preseed,
     get_apt_proxy,
 )
-from maasserver.dns.config import get_resource_name_for_subnet
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -45,7 +45,27 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.testing.os import make_osystem
 
 
-class TestAptProxy(MAASServerTestCase):
+def _make_request(machine_ip):
+    request = make_HttpRequest()
+    # The rack IP in HTTP_X_FORWARDED might not be on the subnet
+    # we're interested in.
+    rack_proxy_ip = factory.make_ip_address()
+    request.META["HTTP_X_FORWARDED_FOR"] = f"{machine_ip}, {rack_proxy_ip}"
+    return request
+
+
+def _enable_dhcp(subnet, primary_rack, secondary_rack=None, relay_vlan=None):
+    dhcp_vlan = relay_vlan if relay_vlan else subnet.vlan
+    dhcp_vlan.dhcp_on = True
+    dhcp_vlan.primary_rack = primary_rack
+    dhcp_vlan.secondary_rack = secondary_rack
+    dhcp_vlan.save()
+    if relay_vlan:
+        subnet.vlan.relay_vlan = relay_vlan
+        subnet.vlan.save()
+
+
+class TestAptProxyScenarios(MAASServerTestCase):
 
     scenarios = (
         (
@@ -234,57 +254,6 @@ class TestAptProxy(MAASServerTestCase):
             ),
         ),
         (
-            "rack-proxy",
-            dict(
-                default_region_ip="",
-                rack="",
-                maas_proxy_port=9000,
-                result="http://192-168-122-0--24.maas-internal:9000/",
-                enable=True,
-                use_peer_proxy=False,
-                http_proxy="",
-                use_rack_proxy=True,
-                cidr="192.168.122.0/24",
-                subnet_dns=None,
-                dhcp_on=True,
-                boot_cluster_ip=None,
-            ),
-        ),
-        (
-            "rack-proxy-no-subnet",
-            dict(
-                default_region_ip="region.example.com",
-                rack="",
-                maas_proxy_port=8000,
-                result="http://region.example.com:8000/",
-                enable=True,
-                use_peer_proxy=False,
-                http_proxy="",
-                use_rack_proxy=True,
-                cidr=None,
-                subnet_dns=None,
-                dhcp_on=True,
-                boot_cluster_ip=None,
-            ),
-        ),
-        (
-            "rack-proxy-subnet-with-dns",
-            dict(
-                default_region_ip="region.example.com",
-                rack="",
-                maas_proxy_port=8000,
-                result="http://region.example.com:8000/",
-                enable=True,
-                use_peer_proxy=False,
-                http_proxy="",
-                use_rack_proxy=True,
-                cidr="192.168.122.0/24",
-                subnet_dns="192.168.122.10",
-                dhcp_on=True,
-                boot_cluster_ip=None,
-            ),
-        ),
-        (
             "rack-proxy-no-dhcp-through-rack",
             dict(
                 default_region_ip="region.example.com",
@@ -344,6 +313,63 @@ class TestAptProxy(MAASServerTestCase):
                 request.META["REMOTE_ADDR"] = factory.make_ipv4_address()
         actual = get_apt_proxy(request, node.get_boot_rack_controller(), node)
         self.assertEqual(self.result, actual)
+
+
+class TestAptProxy(MAASServerTestCase):
+    def test_enlist_rack_proxy_dhcp_relay(self):
+        Config.objects.set_config("enable_http_proxy", True)
+        Config.objects.set_config("use_peer_proxy", False)
+        Config.objects.set_config("use_rack_proxy", True)
+
+        subnet1 = factory.make_Subnet(cidr="10.10.0.0/24", dns_servers=[])
+        subnet2 = factory.make_Subnet(cidr="10.20.0.0/24", dns_servers=[])
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet2, rack, relay_vlan=subnet1.vlan)
+        machine_ip = "10.20.0.100"
+        apt_proxy = get_apt_proxy(_make_request(machine_ip), rack, node=None)
+        self.assertEqual("http://10-10-0-0--24.maas-internal:8000/", apt_proxy)
+
+    def test_enlist_rack_proxy(self):
+        Config.objects.set_config("enable_http_proxy", True)
+        Config.objects.set_config("use_peer_proxy", False)
+        Config.objects.set_config("use_rack_proxy", True)
+
+        subnet1 = factory.make_Subnet(cidr="10.10.0.0/24", dns_servers=[])
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet1, rack)
+        machine_ip = "10.10.0.100"
+        apt_proxy = get_apt_proxy(_make_request(machine_ip), rack, node=None)
+        self.assertEqual("http://10-10-0-0--24.maas-internal:8000/", apt_proxy)
+
+    def test_enlist_rack_proxy_with_dns(self):
+        Config.objects.set_config("enable_http_proxy", True)
+        Config.objects.set_config("use_peer_proxy", False)
+        Config.objects.set_config("use_rack_proxy", True)
+
+        subnet1 = factory.make_Subnet(
+            cidr="10.10.0.0/24", dns_servers=["10.10.0.1"]
+        )
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet1, rack)
+        machine_ip = "10.10.0.100"
+        apt_proxy = get_apt_proxy(_make_request(machine_ip), rack, node=None)
+        self.assertEqual("http://10.10.0.2:8000/", apt_proxy)
+
+    def test_enlist_rack_proxy_no_rack_subnet(self):
+
+        Config.objects.set_config("enable_http_proxy", True)
+        Config.objects.set_config("use_peer_proxy", False)
+        Config.objects.set_config("use_rack_proxy", True)
+        self.patch(
+            cp_module, "get_maas_facing_server_host"
+        ).return_value = "region.example.com"
+
+        subnet1 = factory.make_Subnet(cidr="10.10.0.0/24", dns_servers=[])
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet1, rack)
+        machine_ip = "10.20.0.100"
+        apt_proxy = get_apt_proxy(_make_request(machine_ip), rack, node=None)
+        self.assertEqual("http://region.example.com:8000/", apt_proxy)
 
 
 class TestComposePreseed(MAASServerTestCase):
@@ -1268,95 +1294,100 @@ class TestBuildMetadataURL(MAASServerTestCase):
             ),
         )
 
-    def test_uses_forwarded_ip_if_set(self):
-        node = factory.make_Node_with_Interface_on_Subnet()
-        node.boot_cluster_ip = factory.make_ip_address()
-        node.save()
-        request = make_HttpRequest()
-        subnet = factory.make_Subnet(dhcp_on=True, dns_servers=[])
-        rack_proxy_ip = subnet.get_next_ip_for_allocation()
-        region_proxy_ip = subnet.get_next_ip_for_allocation()
-        request.META[
-            "HTTP_X_FORWARDED_FOR"
-        ] = f"{rack_proxy_ip}, {region_proxy_ip}"
-        route = "/MAAS"
-        Config.objects.set_config("maas_internal_domain", factory.make_name())
-        # not passing node to simulate anonymous request, i.e enlistment
+    def test_uses_rack_ipv4_enlist_without_external_dns(self):
+        subnet = factory.make_Subnet(cidr="10.10.0.0/24", dns_servers=[])
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet, rack)
+        machine_ip = "10.10.0.100"
         self.assertEqual(
-            f"{request.scheme}://{get_resource_name_for_subnet(subnet)}.{Config.objects.get_config('maas_internal_domain')}:5248/MAAS",
+            "http://10-10-0-0--24.maas-internal:5248/MAAS",
             build_metadata_url(
-                request, route, node.get_boot_rack_controller()
+                _make_request(machine_ip),
+                "/MAAS",
+                rack,
             ),
         )
 
-    def test_uses_rack_ipv4_if_external_dns(self):
-        # regression test for LP:1982315
-        node = factory.make_Node()
-        request = make_HttpRequest()
+    def test_uses_rack_ipv6_enlist_without_external_dns(self):
         subnet = factory.make_Subnet(
-            cidr=factory.make_ipv4_network(),
-            dhcp_on=True,
-            dns_servers=[factory.make_ip_address()],
+            cidr="fd12:3456:789a::/64", dns_servers=[]
         )
-        rack_proxy_ip = subnet.get_next_ip_for_allocation()
-        region_proxy_ip = subnet.get_next_ip_for_allocation()
-        request.META[
-            "HTTP_X_FORWARDED_FOR"
-        ] = f"{rack_proxy_ip}, {region_proxy_ip}"
+        rack = factory.make_rack_with_interfaces(eth0=["fd12:3456:789a::2/64"])
+        _enable_dhcp(subnet, rack)
+        machine_ip = "fd12:3456:789a::100"
         self.assertEqual(
-            f"{request.scheme}://{rack_proxy_ip}:5248/MAAS",
+            "http://fd12-3456-789a----64.maas-internal:5248/MAAS",
             build_metadata_url(
-                request,
+                _make_request(machine_ip),
                 "/MAAS",
-                node.get_boot_rack_controller(),
-                node=node,
+                rack,
+            ),
+        )
+
+    def test_uses_rack_ipv4_enlist_if_external_dns(self):
+        subnet = factory.make_Subnet(
+            cidr="10.10.0.0/24", dns_servers=["10.10.0.1"]
+        )
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet, rack)
+        machine_ip = "10.10.0.100"
+        self.assertEqual(
+            "http://10.10.0.2:5248/MAAS",
+            build_metadata_url(
+                _make_request(machine_ip),
+                "/MAAS",
+                rack,
             ),
         )
 
     def test_uses_rack_ipv6_if_external_dns(self):
-        # regression test for LP:1982315
-        node = factory.make_Node()
-        request = make_HttpRequest()
         subnet = factory.make_Subnet(
-            cidr=factory.make_ipv6_network(),
-            dhcp_on=True,
-            dns_servers=[factory.make_ip_address()],
+            cidr="fd12:3456:789a::/64", dns_servers=["fd12:3456:789a::1"]
         )
-        rack_proxy_ip = subnet.get_next_ip_for_allocation()
-        region_proxy_ip = subnet.get_next_ip_for_allocation()
-        request.META[
-            "HTTP_X_FORWARDED_FOR"
-        ] = f"{rack_proxy_ip}, {region_proxy_ip}"
+        rack = factory.make_rack_with_interfaces(eth0=["fd12:3456:789a::2/64"])
+        _enable_dhcp(subnet, rack)
+        machine_ip = "fd12:3456:789a::100"
         self.assertEqual(
-            f"{request.scheme}://[{rack_proxy_ip}]:5248/MAAS",
+            "http://[fd12:3456:789a::2]:5248/MAAS",
             build_metadata_url(
-                request,
+                _make_request(machine_ip),
                 "/MAAS",
-                node.get_boot_rack_controller(),
-                node=node,
+                rack,
             ),
         )
 
-    def test_uses_rack_ip_with_multiple_forwarded_for(self):
-        node = factory.make_Node()
-        request = make_HttpRequest()
-        subnet = factory.make_Subnet(
-            cidr=factory.make_ipv4_network(),
-            dhcp_on=True,
-            dns_servers=[factory.make_ip_address()],
+    def test_uses_rack_enlist_relay_without_external_dns(self):
+        # It's the DNS of the relayed subnet that is important.
+        subnet1 = factory.make_Subnet(
+            cidr="10.10.0.0/24", dns_servers=["10.10.0.1"]
         )
-        rack_proxy_ip = subnet.get_next_ip_for_allocation()
-        region_proxy_ip = subnet.get_next_ip_for_allocation()
-        other_ip = subnet.get_next_ip_for_allocation()
-        request.META[
-            "HTTP_X_FORWARDED_FOR"
-        ] = f"{other_ip}, {rack_proxy_ip}, {region_proxy_ip}"
+        subnet2 = factory.make_Subnet(cidr="10.20.0.0/24", dns_servers=[])
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet2, rack, relay_vlan=subnet1.vlan)
+        machine_ip = "10.20.0.100"
         self.assertEqual(
-            f"{request.scheme}://{rack_proxy_ip}:5248/MAAS",
+            "http://10-10-0-0--24.maas-internal:5248/MAAS",
             build_metadata_url(
-                request,
+                _make_request(machine_ip),
                 "/MAAS",
-                node.get_boot_rack_controller(),
-                node=node,
+                rack,
+            ),
+        )
+
+    def test_uses_rack_enlist_relay_if_external_dns(self):
+        # It's the DNS of the relayed subnet that is important.
+        subnet1 = factory.make_Subnet(cidr="10.10.0.0/24", dns_servers=[])
+        subnet2 = factory.make_Subnet(
+            cidr="10.20.0.0/24", dns_servers=["10.20.0.1"]
+        )
+        rack = factory.make_rack_with_interfaces(eth0=["10.10.0.2/24"])
+        _enable_dhcp(subnet2, rack, relay_vlan=subnet1.vlan)
+        machine_ip = "10.20.0.100"
+        self.assertEqual(
+            "http://10.10.0.2:5248/MAAS",
+            build_metadata_url(
+                _make_request(machine_ip),
+                "/MAAS",
+                rack,
             ),
         )
