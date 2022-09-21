@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from functools import cache
 from textwrap import dedent
 from typing import Any, NamedTuple, Optional
 
@@ -77,7 +78,19 @@ class VaultClient:
         return f"{self._secrets_base_path}/{path}"
 
 
+@cache
 def get_region_vault_client() -> Optional[VaultClient]:
+    """Return a VaultClient configured for the region controller, if configured.
+
+    This is must be called once MAAS_UUID and Vault configuration (if any) are
+    set, since the result is cached.  This is done since Vault configuration is
+    not expected to change within the life of the region controller (a restart
+    is needed).
+    """
+    return _get_region_vault_client()
+
+
+def _get_region_vault_client() -> Optional[VaultClient]:
     """Return a VaultClient configured for the region controller.
 
     If configuration options for Vault are not set, None is returned.
