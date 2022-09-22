@@ -20,10 +20,7 @@ from twisted.internet import ssl
 
 from maasserver import security
 from maasserver.models.config import Config
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    MAASTransactionServerTestCase,
-)
+from maasserver.testing.testcase import MAASTransactionServerTestCase
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.env import MAAS_SHARED_SECRET
@@ -52,47 +49,6 @@ is_valid_region_certificate = MatchesAll(
         lambda cert: cert.privateKey.original.bits(), Equals(2048)
     ),
 )
-
-
-class TestCertificateFunctions(MAASServerTestCase):
-    def patch_serial(self):
-        serial = self.getUniqueInteger()
-        self.patch(security, "get_serial").return_value = serial
-        return serial
-
-    def test_generate_region_certificate(self):
-        serial = self.patch_serial()
-        cert = security.generate_region_certificate()
-        self.assertThat(cert, is_valid_region_certificate)
-        self.assertEqual(serial, cert.serialNumber())
-
-    def test_save_region_certificate(self):
-        cert = security.generate_region_certificate()
-        security.save_region_certificate(cert)
-        self.assertEqual(
-            cert.dumpPEM().decode("ascii"),
-            Config.objects.get_config("rpc_region_certificate"),
-        )
-
-    def test_load_region_certificate(self):
-        cert = security.generate_region_certificate()
-        Config.objects.set_config(
-            "rpc_region_certificate", cert.dumpPEM().decode("ascii")
-        )
-        self.assertEqual(cert, security.load_region_certificate())
-
-    def test_load_region_certificate_when_none_exists(self):
-        self.assertIsNone(security.load_region_certificate())
-
-    def test_get_region_certificate(self):
-        cert = security.generate_region_certificate()
-        security.save_region_certificate(cert)
-        self.assertEqual(cert, security.get_region_certificate())
-
-    def test_get_region_certificate_when_none_exists(self):
-        cert = security.get_region_certificate()
-        self.assertThat(cert, is_valid_region_certificate)
-        self.assertEqual(cert, security.load_region_certificate())
 
 
 class TestGetSharedSecret(MAASTransactionServerTestCase):

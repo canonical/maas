@@ -86,7 +86,6 @@ def get_default_config():
         "active_discovery_interval": _timedelta_to_whole_seconds(hours=3),
         "active_discovery_last_scan": 0,
         # RPC configuration.
-        "rpc_region_certificate": None,
         "rpc_shared_secret": None,
         "uuid": None,
         # Images.
