@@ -1729,6 +1729,24 @@ class TestFreeTextFilterNodeForm(MAASServerTestCase):
         }
         self.assertConstrainedNodes([node1], constraints)
 
+    def test_substring_parent_filter(self):
+        node = factory.make_Machine()
+        child = factory.make_Machine(parent=node)
+        factory.make_Node()
+        constraints = {
+            "parent": [node.system_id],
+        }
+        self.assertConstrainedNodes([child], constraints)
+
+    def test_substring_no_parent_filter(self):
+        node = factory.make_Machine()
+        factory.make_Machine(parent=node)
+        other = factory.make_Machine()
+        constraints = {
+            "parent": [None],
+        }
+        self.assertConstrainedNodes([node, other], constraints)
+
     def test_substring_spaces_filter(self):
         space = factory.make_Space()
         vlan = factory.make_VLAN(name=factory.make_name(), space=space)

@@ -646,6 +646,7 @@ GROUPABLE_FIELDS = (
     "power_state",
     "status",
     "zone",
+    "parent",
 )
 
 
@@ -1592,6 +1593,10 @@ class FreeTextFilterNodeForm(ReadNodesForm):
 
     storage = UnconstrainedMultipleChoiceField(label="Storage", required=False)
 
+    parent = UnconstrainedMultipleChoiceField(
+        label="Parent node", required=False, coerce=str_or_none
+    )
+
     FREETEXT_FILTERS = {
         "hostname": ("hostname", _match_substring),
         "description": ("description", _match_substring),
@@ -1639,6 +1644,7 @@ class FreeTextFilterNodeForm(ReadNodesForm):
         "pxe_mac": ("pxe_mac", _match_substring),
         "fabric_name": ("fabric_name", _match_substring),
         "fqdn": ("node_fqdn", _match_substring),
+        "parent": ("parent__system_id", _match_substring),
     }
 
     UPDATE_FILTERS = {

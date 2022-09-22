@@ -11,7 +11,7 @@ import logging
 from operator import attrgetter, itemgetter
 
 from django.core.exceptions import ValidationError
-from django.db.models import Model, Prefetch
+from django.db.models import Prefetch
 from lxml import etree
 
 from maasserver.enum import (
@@ -1267,6 +1267,8 @@ class NodeHandler(TimestampedModelHandler):
             expr = "node_fqdn"
         elif key == "storage":
             expr = "total_storage"
+        elif key == "parent":
+            expr = "parent__system_id"
         else:
             expr = key
         return expr
@@ -1495,14 +1497,9 @@ class NodeHandler(TimestampedModelHandler):
             ]
         else:
             qs = self.get_queryset(for_list=True)
+            key = self._get_group_expr(key)
             for value in qs.order_by(key).values_list(key).distinct():
-                if isinstance(value, Node):
-                    results.append(
-                        {"key": value.system_id, "label": value.hostname}
-                    )
-                elif isinstance(value, Model):
-                    results.append({"key": value.id, "label": value.name})
-                elif isinstance(value, Iterable):
+                if isinstance(value, Iterable):
                     results += [{"key": v, "label": str(v)} for v in value]
                 else:
                     results.append({"key": value, "label": str(value)})

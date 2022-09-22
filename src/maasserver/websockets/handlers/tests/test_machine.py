@@ -6463,6 +6463,13 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
                     "dynamic": True,
                     "for_grouping": False,
                 },
+                {
+                    "key": "parent",
+                    "label": "Parent node",
+                    "type": "list[str]",
+                    "dynamic": True,
+                    "for_grouping": True,
+                },
             ],
             handler.filter_groups({}),
         )
@@ -6488,6 +6495,12 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
             )
             for i in range(5)
         ]
+        for i in range(5):
+            factory.make_Machine(
+                architecture=architectures[i % len(architectures)],
+                owner=user,
+                parent=machines[i],
+            )
 
         def _assert_value_in(value, field_name):
             self.assertIn(
@@ -6515,6 +6528,8 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
 
         for machine in machines:
             machine.tags.add(factory.make_Tag())
+
+            _assert_value_in(machine.system_id, "parent")
             _assert_value_in(machine.architecture, "arch")
             _assert_value_in(machine.owner.username, "owner")
             _assert_value_in(machine.power_state, "power_state")
@@ -6821,6 +6836,34 @@ class TestMachineHandlerNewSchema(MAASServerTestCase):
         self.assertEqual(
             "User02",
             result["groups"][1]["name"],
+        )
+
+    def test_group_parent(self):
+        admin = factory.make_admin()
+        parent = factory.make_Machine(owner=admin)
+        for _ in range(2):
+            factory.make_Machine(owner=admin, parent=parent)
+        handler = MachineHandler(admin, {}, None)
+        result = handler.list(
+            {
+                "group_key": "parent",
+            }
+        )
+        self.assertEqual(
+            parent.system_id,
+            result["groups"][0]["name"],
+        )
+        self.assertEqual(
+            2,
+            result["groups"][0]["count"],
+        )
+        self.assertEqual(
+            None,
+            result["groups"][1]["name"],
+        )
+        self.assertEqual(
+            1,
+            result["groups"][1]["count"],
         )
 
     def test_group_zone(self):
