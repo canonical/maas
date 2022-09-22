@@ -42,12 +42,13 @@ class FileBackedID:
 
     def __init__(self, name):
         self.name = name
+        self.path = Path(get_maas_data_path(self.name))
         self._value = None
         self._lock = threading.Lock()
 
-    @property
-    def path(self) -> Path:
-        return Path(get_maas_data_path(self.name))
+    def clear_cached(self):
+        """Clear cached value so that next get call reads it again from disk."""
+        self._value = None
 
     def get(self) -> Optional[str]:
         """Return the value of the ID, if set, else None"""
@@ -69,7 +70,7 @@ class FileBackedID:
             if value is None:
                 with suppress(FileNotFoundError):
                     atomic_delete(self.path)
-                self._value = None
+                self.clear_cached()
             else:
                 # ensure the parent dirs exist
                 self.path.parent.mkdir(exist_ok=True)
@@ -84,3 +85,4 @@ class FileBackedID:
 
 MAAS_ID = FileBackedID("maas_id")
 MAAS_UUID = FileBackedID("maas_uuid")
+MAAS_SHARED_SECRET = FileBackedID("secret")

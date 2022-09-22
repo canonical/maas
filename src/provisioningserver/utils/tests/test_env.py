@@ -179,3 +179,13 @@ class TestFileBackedID(MAASTestCase):
         file_id = FileBackedID("test_id")
         file_id.set(f"   {content}     ")
         self.assertEqual(file_id.get(), content)
+
+    def test_clear_cached_reads_again(self):
+        content = factory.make_name("content")
+        file_id = FileBackedID("test_id")
+        file_id.set(content)
+        self.assertEqual(file_id.get(), content)
+        file_id.clear_cached()
+        file_id.path.write_text("new content")
+        # the file is read again
+        self.assertEqual(file_id.get(), "new content")

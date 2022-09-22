@@ -7,15 +7,14 @@
 import binascii
 from binascii import b2a_hex
 from datetime import datetime
+from pathlib import Path
 
 from pytz import UTC
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
-    GreaterThan,
     IsInstance,
     MatchesAll,
-    MatchesAny,
 )
 from twisted.internet import ssl
 
@@ -25,8 +24,9 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
 )
-from maastesting.matchers import FileContains
+from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.utils.env import MAAS_SHARED_SECRET
 
 
 class TestGetSerial(MAASTestCase):
@@ -95,16 +95,18 @@ class TestCertificateFunctions(MAASServerTestCase):
         self.assertEqual(cert, security.load_region_certificate())
 
 
-is_valid_secret = MatchesAll(
-    IsInstance(bytes),
-    AfterPreprocessing(len, MatchesAny(Equals(16), GreaterThan(16))),
-)
-
-
 class TestGetSharedSecret(MAASTransactionServerTestCase):
+    def setUp(self):
+        super().setUp()
+        Config.objects.set_config("rpc_shared_secret", None)
+        tempdir = Path(self.useFixture(TempDirectory()).path)
+        MAAS_SHARED_SECRET.clear_cached()
+        self.patch(MAAS_SHARED_SECRET, "path", tempdir / "secret")
+
     def test_generates_new_secret_when_none_exists(self):
         secret = security.get_shared_secret()
-        self.assertThat(secret, is_valid_secret)
+        self.assertIsInstance(secret, bytes)
+        self.assertGreaterEqual(len(secret), 16)
 
     def test_same_secret_is_returned_on_subsequent_calls(self):
         self.assertEqual(
@@ -113,13 +115,12 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
 
     def test_uses_database_secret_when_none_on_fs(self):
         secret_before = security.get_shared_secret()
-        security.get_shared_secret_filesystem_path().unlink()
+        MAAS_SHARED_SECRET.path.unlink(missing_ok=True)
         secret_after = security.get_shared_secret()
         self.assertEqual(secret_before, secret_after)
         # The secret found in the database is written to the filesystem.
-        self.assertThat(
-            security.get_shared_secret_filesystem_path(),
-            FileContains(b2a_hex(secret_after)),
+        self.assertEqual(
+            MAAS_SHARED_SECRET.get(), b2a_hex(secret_after).decode("ascii")
         )
 
     def test_uses_filesystem_secret_when_none_in_database(self):
@@ -134,14 +135,12 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
         )
 
     def test_errors_when_database_value_cannot_be_decoded(self):
-        security.get_shared_secret()  # Ensure that the directory exists.
         Config.objects.set_config("rpc_shared_secret", "_")
         self.assertRaises(binascii.Error, security.get_shared_secret)
 
     def test_errors_when_database_and_filesystem_values_differ(self):
-        security.get_shared_secret()  # Ensure that the directory exists.
         Config.objects.set_config("rpc_shared_secret", "666f6f")
-        security.get_shared_secret_filesystem_path().write_text("626172")
+        MAAS_SHARED_SECRET.set("626172")
         self.assertRaises(AssertionError, security.get_shared_secret)
 
     def test_deals_fine_with_whitespace_in_database_value(self):

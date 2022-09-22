@@ -16,12 +16,12 @@ from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.security import (
-    get_shared_secret_filesystem_path,
     get_shared_secret_from_filesystem,
     set_shared_secret_on_filesystem,
     to_bin,
     to_hex,
 )
+from provisioningserver.utils.env import MAAS_SHARED_SECRET
 from provisioningserver.utils.twisted import asynchronous, synchronous
 
 
@@ -98,8 +98,7 @@ def get_shared_secret_txn():
     else:
         raise AssertionError(
             "The secret stored in the database does not match the secret "
-            "stored on the filesystem at %s. Please investigate."
-            % get_shared_secret_filesystem_path()
+            f"stored on the filesystem at {MAAS_SHARED_SECRET.path}. Please investigate."
         )
 
     return secret

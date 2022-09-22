@@ -120,6 +120,7 @@ from provisioningserver.rpc.testing.doubles import (
 from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
+from provisioningserver.utils import env as utils_env
 from provisioningserver.utils.env import MAAS_UUID
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.shell import ExternalProcessError
@@ -4395,9 +4396,7 @@ class TestClusterProtocol_DisableAndShutoffRackd(MAASTestCase):
     def test_remove_shared_secret(self):
         root_path = Path(self.useFixture(TempDir()).path)
         shared_secret_path = root_path / "secret"
-        self.patch(
-            clusterservice, "get_shared_secret_filesystem_path"
-        ).return_value = shared_secret_path
+        self.patch(utils_env.MAAS_SHARED_SECRET, "path", shared_secret_path)
         self.patch(clusterservice, "call_and_check")
         shared_secret_path.write_text("secret")
         response = call_responder(

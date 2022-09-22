@@ -1,4 +1,3 @@
-from functools import cached_property
 from typing import Optional
 
 from django.db.models import Model
@@ -67,6 +66,6 @@ class SecretManager:
         except InvalidPath:
             raise SecretNotFound(path)
 
-    @cached_property
+    @property
     def _vault_client(self):
         return get_region_vault_client()

@@ -3,8 +3,7 @@ import pytest
 from maasserver.models import Secret
 from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.testing.factory import factory
-from maasserver.vault import get_region_vault_client
-from provisioningserver.utils.env import MAAS_UUID
+from provisioningserver.utils.env import MAAS_ID, MAAS_UUID
 
 
 @pytest.mark.django_db
@@ -53,12 +52,12 @@ class TestSecretManagerFromDB:
 
 
 @pytest.fixture
-def configured_vault(vault_regionconfig, mock_hvac_client):
+def configured_vault(factory, vault_regionconfig, mock_hvac_client):
+    MAAS_ID.set(factory.make_name("id"))
+    MAAS_UUID.set(factory.make_name("uuid"))
     vault_regionconfig["vault_url"] = "http://vault:8200"
     vault_regionconfig["vault_approle_id"] = factory.make_name("approle_id")
     vault_regionconfig["vault_secret_id"] = factory.make_name("secret_id")
-    # clear the cache so that the values set are used
-    get_region_vault_client.cache_clear()
 
 
 @pytest.mark.django_db

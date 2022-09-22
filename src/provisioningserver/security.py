@@ -1,24 +1,21 @@
 # Copyright 2014-2017 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Cluster security code."""
-
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 import binascii
 from binascii import a2b_hex, b2a_hex
 from hashlib import sha256
 from hmac import HMAC
-from pathlib import Path
 from sys import stderr, stdin
 from threading import Lock
+from typing import Optional
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-from provisioningserver.path import get_maas_data_path
-from provisioningserver.utils.fs import FileLock
+from provisioningserver.utils.env import MAAS_SHARED_SECRET
 
 
 class MissingSharedSecret(RuntimeError):
@@ -38,48 +35,24 @@ def to_bin(u):
     return a2b_hex(u.encode("ascii").strip())
 
 
-def get_shared_secret_filesystem_path():
-    """Return the path to shared-secret on the filesystem."""
-    return Path(get_maas_data_path("secret"))
+def get_shared_secret_from_filesystem() -> Optional[bytes]:
+    """Return the shared the secret from the filesystem.
 
+    If the file doesn't exist or it's empty, None is returned.
 
-def get_shared_secret_from_filesystem():
-    """Load the secret from the filesystem.
-
-    `get_shared_secret_filesystem_path` defines where the file will be
-    written. If the directory does not already exist, this will attempt to
-    create it, including all parent directories.
-
-    :return: A byte string of arbitrary length.
     """
-    secret_path = get_shared_secret_filesystem_path()
-    # ensure the parent dir exists so that the lock can be created
-    secret_path.parent.mkdir(parents=True, exist_ok=True)
-    with FileLock(secret_path).wait(10):
-        if not secret_path.exists():
-            return None
-        return to_bin(secret_path.read_text())
+    value = MAAS_SHARED_SECRET.get()
+    if value is not None:
+        return to_bin(value)
+    return None
 
 
 def set_shared_secret_on_filesystem(secret):
-    """Write the secret to the filesystem.
+    """Write the secret to the filesystem."""
 
-    `get_shared_secret_filesystem_path` defines where the file will be
-    written. If the directory does not already exist, this will attempt to
-    create it, including all parent directories.
-
-    :type secret: A byte string of arbitrary length.
-    """
-    secret_path = get_shared_secret_filesystem_path()
-    if secret:
-        secret_path.parent.mkdir(parents=True, exist_ok=True)
-        secret_hex = to_hex(secret)
-        with FileLock(str(secret_path)).wait(10):
-            secret_path.touch()
-            secret_path.chmod(0o640)
-            secret_path.write_text(secret_hex)
-    elif secret_path.exists():
-        secret_path.unlink()
+    if secret is not None:
+        secret = to_hex(secret)
+    MAAS_SHARED_SECRET.set(secret)
 
 
 def calculate_digest(secret, message, salt):
@@ -246,8 +219,7 @@ class InstallSharedSecretScript:
             raise SystemExit(1)
         else:
             set_shared_secret_on_filesystem(secret)
-            shared_secret_path = get_shared_secret_filesystem_path()
-            print("Secret installed to %s." % shared_secret_path)
+            print(f"Secret installed to {MAAS_SHARED_SECRET.path}.")
             raise SystemExit(0)
 
 

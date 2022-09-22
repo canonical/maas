@@ -16,6 +16,7 @@ from testtools import ExpectedException
 from testtools.matchers import Equals, IsInstance
 
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from provisioningserver import security
@@ -23,17 +24,18 @@ from provisioningserver.security import (
     fernet_decrypt_psk,
     fernet_encrypt_psk,
     MissingSharedSecret,
+    set_shared_secret_on_filesystem,
 )
+from provisioningserver.utils import env as utils_env
 
 
 class SharedSecretTestCase(MAASTestCase):
     def setUp(self):
-        """Ensures each test starts cleanly, with no pre-existing secret."""
-        get_secret = self.patch(security, "get_shared_secret_filesystem_path")
         # Ensure each test uses a different filename for the shared secret,
         # so that tests cannot interfere with each other.
         secret_dir = Path(self.make_dir())
-        get_secret.return_value = secret_dir / "secret"
+        self.patch(utils_env.MAAS_SHARED_SECRET, "path", secret_dir / "secret")
+        utils_env.MAAS_SHARED_SECRET.clear_cached()
         self.patch(security, "_fernet_psk", value=None)
         self.addCleanup(
             setattr,
@@ -47,9 +49,7 @@ class SharedSecretTestCase(MAASTestCase):
 
     def write_secret(self):
         secret = factory.make_bytes()
-        secret_path = security.get_shared_secret_filesystem_path()
-        secret_path.parent.mkdir(parents=True, exist_ok=True)
-        secret_path.write_text(security.to_hex(secret))
+        set_shared_secret_on_filesystem(secret)
         return secret
 
 
@@ -70,29 +70,15 @@ class TestGetSharedSecretFromFilesystem(SharedSecretTestCase):
 
     def test_errors_reading_file_are_raised(self):
         self.write_secret()
-        secret_path = security.get_shared_secret_filesystem_path()
-        secret_path.chmod(0o000)
+        utils_env.MAAS_SHARED_SECRET.clear_cached()
+        utils_env.MAAS_SHARED_SECRET.path.chmod(0o000)
         self.assertRaises(IOError, security.get_shared_secret_from_filesystem)
 
     def test_errors_when_filesystem_value_cannot_be_decoded(self):
-        self.write_secret()
-        security.get_shared_secret_filesystem_path().write_text("_")
+        utils_env.MAAS_SHARED_SECRET.path.write_text("_")
         self.assertRaises(
             binascii.Error, security.get_shared_secret_from_filesystem
         )
-
-    def test_deals_fine_with_whitespace_in_filesystem_value(self):
-        secret = self.write_secret()
-        security.get_shared_secret_filesystem_path().write_text(
-            " %s\n" % security.to_hex(secret),
-        )
-        self.assertEqual(secret, security.get_shared_secret_from_filesystem())
-
-    def test_reads_with_lock(self):
-        mock_file_lock = self.patch_autospec(security, "FileLock")
-        security.set_shared_secret_on_filesystem(b"foo")
-        security.get_shared_secret_from_filesystem()
-        mock_file_lock.assert_called()
 
 
 class TestSetSharedSecretOnFilesystem(MAASTestCase):
@@ -103,26 +89,19 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         self.assertThat(security.DEFAULT_ITERATION_COUNT, Equals(100000))
 
     def read_secret(self):
-        secret_path = security.get_shared_secret_filesystem_path()
-        secret_hex = secret_path.read_text()
-        return security.to_bin(secret_hex)
+        return security.to_bin(utils_env.MAAS_SHARED_SECRET.path.read_text())
 
     def test_writes_secret(self):
         secret = factory.make_bytes()
         security.set_shared_secret_on_filesystem(secret)
         self.assertEqual(secret, self.read_secret())
 
-    def test_writes_with_lock(self):
-        mock_file_lock = self.patch_autospec(security, "FileLock")
-        security.set_shared_secret_on_filesystem(b"foo")
-        mock_file_lock.assert_called()
-
     def test_writes_with_secure_permissions(self):
         secret = factory.make_bytes()
         security.set_shared_secret_on_filesystem(secret)
-        secret_path = security.get_shared_secret_filesystem_path()
+        secret_path = utils_env.MAAS_SHARED_SECRET.path
         perms_observed = secret_path.stat().st_mode & 0o777
-        perms_expected = 0o640
+        perms_expected = 0o600
         self.assertEqual(
             perms_expected,
             perms_observed,
@@ -131,6 +110,14 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
 
 
 class TestInstallSharedSecretScript(MAASTestCase):
+    def setUp(self):
+        # Ensure each test uses a different filename for the shared secret,
+        # so that tests cannot interfere with each other.
+        super().setUp()
+        tempdir = Path(self.useFixture(TempDirectory()).path)
+        utils_env.MAAS_SHARED_SECRET.clear_cached()
+        self.patch(utils_env.MAAS_SHARED_SECRET, "path", tempdir / "secret")
+
     def test_has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
         # ActionScript/MainScript.
@@ -240,17 +227,21 @@ class TestInstallSharedSecretScript(MAASTestCase):
         )
         stdin.isatty.return_value = False
 
-        print = self.patch(security, "print")
+        mock_print = self.patch(security, "print")
 
         self.installAndCheckExitCode(0)
-        shared_secret_path = security.get_shared_secret_filesystem_path()
-        self.assertThat(
-            print,
-            MockCalledOnceWith("Secret installed to %s." % shared_secret_path),
+        mock_print.assert_called_once_with(
+            f"Secret installed to {utils_env.MAAS_SHARED_SECRET.path}."
         )
 
 
 class TestCheckForSharedSecretScript(MAASTestCase):
+    def setUp(self):
+        super().setUp()
+        tempdir = Path(self.useFixture(TempDirectory()).path)
+        utils_env.MAAS_SHARED_SECRET.clear_cached()
+        self.patch(utils_env.MAAS_SHARED_SECRET, "path", tempdir / "secret")
+
     def test_has_add_arguments(self):
         # It doesn't do anything, but it's there to fulfil the contract with
         # ActionScript/MainScript.
@@ -258,14 +249,12 @@ class TestCheckForSharedSecretScript(MAASTestCase):
         self.assertIsNotNone("Obligatory assertion.")
 
     def test_exits_non_zero_if_secret_does_not_exist(self):
-        print = self.patch(security, "print")
+        mock_print = self.patch(security, "print")
         error = self.assertRaises(
             SystemExit, security.CheckForSharedSecretScript.run, sentinel.args
         )
         self.assertEqual(1, error.code)
-        self.assertThat(
-            print, MockCalledOnceWith("Shared-secret is NOT installed.")
-        )
+        mock_print.assert_called_once_with("Shared-secret is NOT installed.")
 
     def test_exits_zero_if_secret_exists(self):
         security.set_shared_secret_on_filesystem(factory.make_bytes())

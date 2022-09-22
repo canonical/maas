@@ -109,7 +109,6 @@ class TestVaultClient:
 @pytest.mark.usefixtures("vault_regionconfig")
 class TestGetRegionVaultClient:
     def test_cached(self, mocker):
-        get_region_vault_client.cache_clear()
         mock_get_client = mocker.patch.object(
             vault, "_get_region_vault_client"
         )

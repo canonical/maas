@@ -81,8 +81,8 @@ from provisioningserver.rpc.power import (
 from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.security import (
     calculate_digest,
-    get_shared_secret_filesystem_path,
     get_shared_secret_from_filesystem,
+    set_shared_secret_on_filesystem,
 )
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.utils import sudo
@@ -911,9 +911,7 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.DisableAndShutoffRackd`.
         """
         maaslog.info("Attempting to disable the rackd service.")
-        secret_path = get_shared_secret_filesystem_path()
-        if secret_path.exists():
-            secret_path.unlink()
+        set_shared_secret_on_filesystem(None)
         try:
             if running_in_snap():
                 call_and_check(["snapctl", "restart", "maas.supervisor"])
