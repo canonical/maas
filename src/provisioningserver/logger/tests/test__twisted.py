@@ -8,7 +8,6 @@ import io
 
 from testtools.matchers import (
     AfterPreprocessing,
-    Contains,
     ContainsDict,
     Equals,
     HasLength,
@@ -81,9 +80,9 @@ class TestLegacyLogger(MAASTestCase):
         )
         self.assertThat(events, HasLength(1))
         self.assertThat(events[0], MatchesDict(expected))
-        self.assertThat(
+        self.assertEqual(
+            f"<when> [{namespace}#info] {message}\n",
             logger.formatEventAsClassicLogText(events[0], formatTimeStatic),
-            Equals(f"<when> [{namespace}#info] {message}\n"),
         )
 
     def test_logs_multiple_messages(self):
@@ -181,7 +180,7 @@ class TestObserveTwistedInternetTCP(MAASTestCase):
         event = make_event(factory.make_name("something"))
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_tcp(event)
-        self.assertThat(logger.events, Contains(event))
+        self.assertIn(event, logger.events)
 
 
 class TestObserveTwistedInternetUDP(MAASTestCase):
@@ -209,7 +208,7 @@ class TestObserveTwistedInternetUDP(MAASTestCase):
         event = make_event(factory.make_name("something"))
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_udp(event)
-        self.assertThat(logger.events, Contains(event))
+        self.assertIn(event, logger.events)
 
 
 class TestObserveTwistedInternetUNIX(MAASTestCase):
@@ -237,7 +236,7 @@ class TestObserveTwistedInternetUNIX(MAASTestCase):
         event = make_event(factory.make_name("something"))
         with TwistedLoggerFixture() as logger:
             observe_twisted_internet_unix(event)
-        self.assertThat(logger.events, Contains(event))
+        self.assertIn(event, logger.events)
 
 
 class TestGetSystemName(MAASTestCase):
@@ -267,9 +266,7 @@ class TestGetSystemName(MAASTestCase):
     )
 
     def test(self):
-        self.assertThat(
-            _getSystemName(self.string_in), Equals(self.string_out)
-        )
+        self.assertEqual(self.string_out, _getSystemName(self.string_in))
 
 
 class TestGetCommandName(MAASTestCase):
@@ -312,7 +309,7 @@ class TestGetCommandName(MAASTestCase):
     )
 
     def test(self):
-        self.assertThat(_getCommandName(self.argv), Equals(self.expected))
+        self.assertEqual(self.expected, _getCommandName(self.argv))
 
 
 class TestFormatModernEvent(MAASTestCase):
@@ -382,9 +379,9 @@ class TestFormatModernEvent(MAASTestCase):
         )
 
     def test_formats_without_format(self):
-        self.assertThat(
+        self.assertEqual(
+            "- -: [%s] \n" % self.log_level.name,
             _formatModernEvent({"log_level": self.log_level}),
-            Equals("- -: [%s] \n" % self.log_level.name),
         )
 
     def test_formats_with_null_format(self):
@@ -396,9 +393,9 @@ class TestFormatModernEvent(MAASTestCase):
         )
 
     def test_formats_without_time(self):
-        self.assertThat(
+        self.assertEqual(
+            "- -: [%s] \n" % self.log_level.name,
             _formatModernEvent({"log_level": self.log_level}),
-            Equals("- -: [%s] \n" % self.log_level.name),
         )
 
     def test_formats_with_null_time(self):

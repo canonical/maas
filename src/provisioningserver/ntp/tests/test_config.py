@@ -10,14 +10,7 @@ from random import randrange
 import re
 
 from netaddr import IPAddress
-from testtools.matchers import (
-    Contains,
-    Equals,
-    Is,
-    IsInstance,
-    MatchesStructure,
-    StartsWith,
-)
+from testtools.matchers import Equals, Is, MatchesStructure, StartsWith
 
 from maastesting.factory import factory
 from maastesting.fixtures import MAASRootFixture
@@ -91,22 +84,20 @@ class TestConfigure(MAASTestCase):
         ntp_conf_path = get_data_path("etc", config._ntp_conf_name)
         ntp_maas_conf_path = get_data_path("etc", config._ntp_maas_conf_name)
         ntp_conf = read_configuration(ntp_conf_path)
-        self.assertThat(extract_servers_and_pools(ntp_conf), Equals([]))
-        self.assertThat(
-            extract_included_files(ntp_conf), Equals([ntp_maas_conf_path])
+        self.assertEqual([], extract_servers_and_pools(ntp_conf))
+        self.assertEqual(
+            [ntp_maas_conf_path], extract_included_files(ntp_conf)
         )
         ntp_maas_conf = read_configuration(ntp_maas_conf_path)
-        self.assertThat(
-            extract_servers_and_pools(ntp_maas_conf), Equals(servers)
-        )
-        self.assertThat(extract_peers(ntp_maas_conf), Equals(peers))
-        self.assertThat(
+        self.assertEqual(servers, extract_servers_and_pools(ntp_maas_conf))
+        self.assertEqual(peers, extract_peers(ntp_maas_conf))
+        self.assertEqual(
+            [str(offset + 8), "orphan"],
             extract_tos_options(ntp_maas_conf),
-            Equals([str(offset + 8), "orphan"]),
         )
 
     def test_configure_region_is_alias(self):
-        self.assertThat(config.configure_region, IsInstance(partial))
+        self.assertIsInstance(config.configure_region, partial)
         self.assertThat(
             config.configure_region,
             MatchesStructure(
@@ -117,7 +108,7 @@ class TestConfigure(MAASTestCase):
         )
 
     def test_configure_rack_is_alias(self):
-        self.assertThat(config.configure_rack, IsInstance(partial))
+        self.assertIsInstance(config.configure_rack, partial)
         self.assertThat(
             config.configure_rack,
             MatchesStructure(
@@ -133,28 +124,28 @@ class TestNormaliseAddress(MAASTestCase):
 
     def test_returns_hostnames_unchanged(self):
         hostname = factory.make_hostname()
-        self.assertThat(config.normalise_address(hostname), Equals(hostname))
+        self.assertEqual(hostname, config.normalise_address(hostname))
 
     def test_returns_ipv4_addresses_as_IPAddress(self):
         address = factory.make_ipv4_address()
         normalised = config.normalise_address(address)
-        self.assertThat(normalised, IsInstance(IPAddress))
-        self.assertThat(normalised.version, Equals(4))
-        self.assertThat(str(normalised), Equals(address))
+        self.assertIsInstance(normalised, IPAddress)
+        self.assertEqual(4, normalised.version)
+        self.assertEqual(address, str(normalised))
 
     def test_returns_ipv6_addresses_as_IPAddress(self):
         address = factory.make_ipv6_address()
         normalised = config.normalise_address(address)
-        self.assertThat(normalised, IsInstance(IPAddress))
-        self.assertThat(normalised.version, Equals(6))
-        self.assertThat(str(normalised), Equals(address))
+        self.assertIsInstance(normalised, IPAddress)
+        self.assertEqual(6, normalised.version)
+        self.assertEqual(address, str(normalised))
 
     def test_renders_ipv6_mapped_ipv4_addresses_as_plain_ipv4(self):
         address_as_ipv4 = factory.make_ipv4_address()
         address_as_ipv6 = str(IPAddress(address_as_ipv4).ipv6())
         normalised = config.normalise_address(address_as_ipv6)
-        self.assertThat(normalised, IsInstance(IPAddress))
-        self.assertThat(str(normalised), Equals(address_as_ipv4))
+        self.assertIsInstance(normalised, IPAddress)
+        self.assertEqual(address_as_ipv4, str(normalised))
 
 
 def extract_tos_options(configuration):
@@ -173,7 +164,7 @@ class TestRenderNTPConfFromSource(MAASTestCase):
             example_ntp_conf.splitlines(keepends=True), ntp_maas_conf_path
         )
         servers_or_pools = extract_servers_and_pools("".join(ntp_conf_lines))
-        self.assertThat(servers_or_pools, Equals([]))
+        self.assertEqual([], servers_or_pools)
 
     def test_includes_maas_configuration(self):
         ntp_maas_conf_path = factory.make_name(config._ntp_maas_conf_name)
@@ -181,7 +172,7 @@ class TestRenderNTPConfFromSource(MAASTestCase):
             example_ntp_conf.splitlines(keepends=True), ntp_maas_conf_path
         )
         included_files = extract_included_files("".join(ntp_conf_lines))
-        self.assertThat(included_files, Equals([ntp_maas_conf_path]))
+        self.assertEqual([ntp_maas_conf_path], included_files)
 
     def test_replaces_maas_configuration(self):
         ntp_maas_conf_path = factory.make_name(config._ntp_maas_conf_name)
@@ -192,7 +183,7 @@ class TestRenderNTPConfFromSource(MAASTestCase):
             ntp_conf_lines, ntp_maas_conf_path
         )
         included_files = extract_included_files("".join(ntp_conf_lines))
-        self.assertThat(included_files, Equals([ntp_maas_conf_path]))
+        self.assertEqual([ntp_maas_conf_path], included_files)
 
     def test_cleans_up_whitespace(self):
         ntp_conf_lines = [
@@ -231,13 +222,13 @@ class TestRenderNTPConf(MAASTestCase):
         ntp_maas_conf_path = factory.make_name(config._ntp_maas_conf_name)
         ntp_conf = config._render_ntp_conf(ntp_maas_conf_path)
         servers_or_pools = extract_servers_and_pools(ntp_conf)
-        self.assertThat(servers_or_pools, Equals([]))
+        self.assertEqual([], servers_or_pools)
 
     def test_includes_maas_configuration(self):
         ntp_maas_conf_path = factory.make_name(config._ntp_maas_conf_name)
         ntp_conf = config._render_ntp_conf(ntp_maas_conf_path)
         included_files = extract_included_files(ntp_conf)
-        self.assertThat(included_files, Equals([ntp_maas_conf_path]))
+        self.assertEqual([ntp_maas_conf_path], included_files)
 
 
 class TestRenderNTPMAASConf(MAASTestCase):
@@ -278,8 +269,8 @@ class TestRenderNTPMAASConf(MAASTestCase):
             ntp_maas_conf, StartsWith("# MAAS NTP configuration.\n")
         )
         observed_peers = extract_peers_full(ntp_maas_conf)
-        self.assertThat(
-            observed_peers, Equals([("peer", peer, "") for peer in peers])
+        self.assertEqual(
+            [("peer", peer, "") for peer in peers], observed_peers
         )
 
     def test_renders_ipv6_mapped_ipv4_addresses_as_plain_ipv4(self):
@@ -291,21 +282,21 @@ class TestRenderNTPMAASConf(MAASTestCase):
             [server_as_ipv6], [peer_as_ipv6], 0
         )
         observed_servers = extract_servers_and_pools(ntp_maas_conf)
-        self.assertThat(observed_servers, Equals([server_as_ipv4]))
+        self.assertEqual([server_as_ipv4], observed_servers)
         observed_peers = extract_peers(ntp_maas_conf)
-        self.assertThat(observed_peers, Equals([peer_as_ipv4]))
+        self.assertEqual([peer_as_ipv4], observed_peers)
 
     def test_configures_orphan_mode(self):
         offset = randrange(0, 5)
         ntp_maas_conf = config._render_ntp_maas_conf([], [], offset)
-        self.assertThat(
+        self.assertEqual(
+            [str(offset + 8), "orphan"],
             extract_tos_options(ntp_maas_conf),
-            Equals([str(offset + 8), "orphan"]),
         )
 
     def test_configures_hwtimestamp_mode(self):
         ntp_maas_conf = config._render_ntp_maas_conf([], [], 0)
-        self.assertThat(ntp_maas_conf, Contains("\nhwtimestamp *\n"))
+        self.assertIn("\nhwtimestamp *\n", ntp_maas_conf)
 
 
 example_ntp_conf = """\

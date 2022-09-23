@@ -74,15 +74,15 @@ class TestUpdateMaasClusterConf(MAASTestCase):
 
     def test_dump_with_networking_arg_dumps_expected(self):
         support_dump.run(self.make_args(networking=True))
-        self.assertThat(self.mock_calls, Equals(self.expected_networking))
+        self.assertEqual(self.expected_networking, self.mock_calls)
 
     def test_dump_with_config_arg_dumps_expected_functions(self):
         support_dump.run(self.make_args(config=True))
-        self.assertThat(self.mock_calls, Equals(self.expected_config))
+        self.assertEqual(self.expected_config, self.mock_calls)
 
     def test_dump_with_images_arg_dumps_expected_functions(self):
         support_dump.run(self.make_args(images=True))
-        self.assertThat(self.mock_calls, Equals(self.expected_images))
+        self.assertEqual(self.expected_images, self.mock_calls)
 
     def test_dump_with_images_preserves_args(self):
         support_dump.run(self.make_args(images=True))
@@ -90,36 +90,36 @@ class TestUpdateMaasClusterConf(MAASTestCase):
 
     def test_dump_with_images_and_config_args_dumps_expected_functions(self):
         support_dump.run(self.make_args(images=True, config=True))
-        self.assertThat(
+        self.assertEqual(
+            self.expected_images + self.expected_config,
             self.mock_calls,
-            Equals(self.expected_images + self.expected_config),
         )
 
     def test_dump_with_images_and_networking_args_dumps_expected_functions(
         self,
     ):
         support_dump.run(self.make_args(images=True, networking=True))
-        self.assertThat(
+        self.assertEqual(
+            self.expected_images + self.expected_networking,
             self.mock_calls,
-            Equals(self.expected_images + self.expected_networking),
         )
 
     def test_dump_with_networking_and_config_args_dumps_expected_functions(
         self,
     ):
         support_dump.run(self.make_args(networking=True, config=True))
-        self.assertThat(
+        self.assertEqual(
+            self.expected_networking + self.expected_config,
             self.mock_calls,
-            Equals(self.expected_networking + self.expected_config),
         )
 
     def test_dump_with_networking_and_images_args_dumps_expected_functions(
         self,
     ):
         support_dump.run(self.make_args(networking=True, images=True))
-        self.assertThat(
+        self.assertEqual(
+            self.expected_networking + self.expected_images,
             self.mock_calls,
-            Equals(self.expected_networking + self.expected_images),
         )
 
     def test_dump_with_all_args_dumps_all_functions(self):

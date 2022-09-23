@@ -73,7 +73,7 @@ class TestBINDServerResources(MAASTestCase):
             self.assertIsInstance(resources.rndc_port, int)
             self.assertIsInstance(resources.homedir, str)
             self.assertIsInstance(resources.log_file, str)
-            self.assertIs(resources.include_in_options, None)
+            self.assertIsNone(resources.include_in_options)
             self.assertIsInstance(resources.named_file, str)
             self.assertIsInstance(resources.conf_file, str)
             self.assertIsInstance(resources.rndcconf_file, str)

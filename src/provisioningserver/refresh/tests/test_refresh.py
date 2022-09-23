@@ -9,7 +9,7 @@ import tempfile
 from textwrap import dedent
 from unittest.mock import ANY, patch, sentinel
 
-from testtools.matchers import Contains, DirExists, Not
+from testtools.matchers import DirExists
 
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
@@ -418,9 +418,9 @@ class TestRefresh(MAASTestCase):
         )
         tmpdirs_after = find_temporary_directories()
 
-        self.assertThat(tmpdirs_before, Not(Contains(tmpdir_during)))
-        self.assertThat(tmpdirs_during, Contains(tmpdir_during))
-        self.assertThat(tmpdirs_after, Not(Contains(tmpdir_during)))
+        self.assertNotIn(tmpdir_during, tmpdirs_before)
+        self.assertIn(tmpdir_during, tmpdirs_during)
+        self.assertNotIn(tmpdir_during, tmpdirs_after)
 
     def test_refresh_logs_error(self):
         signal = self.patch(refresh, "signal")

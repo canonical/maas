@@ -13,7 +13,6 @@ from unittest.mock import sentinel
 
 from cryptography.fernet import InvalidToken
 from testtools import ExpectedException
-from testtools.matchers import Equals, IsInstance
 
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
@@ -86,7 +85,7 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         # Ensure that the iteration count is high by default. This is very
         # important so that the MAAS secret cannot be determined by
         # brute-force.
-        self.assertThat(security.DEFAULT_ITERATION_COUNT, Equals(100000))
+        self.assertEqual(100000, security.DEFAULT_ITERATION_COUNT)
 
     def read_secret(self):
         return security.to_bin(utils_env.MAAS_SHARED_SECRET.path.read_text())
@@ -299,22 +298,22 @@ class TestFernetEncryption(SharedSecretTestCase):
         token = token.decode("ascii")
         decrypted = fernet_decrypt_psk(token)
         decrypted = decrypted.decode("ascii")
-        self.assertThat(decrypted, Equals(testdata))
+        self.assertEqual(testdata, decrypted)
 
     def test_can_encrypt_and_decrypt_with_raw_bytes(self):
         self.write_secret()
         testdata = factory.make_bytes()
         token = fernet_encrypt_psk(testdata, raw=True)
-        self.assertThat(token, IsInstance(bytes))
+        self.assertIsInstance(token, bytes)
         decrypted = fernet_decrypt_psk(token, raw=True)
-        self.assertThat(decrypted, Equals(testdata))
+        self.assertEqual(testdata, decrypted)
 
     def test_can_encrypt_and_decrypt_bytes(self):
         self.write_secret()
         testdata = factory.make_bytes()
         token = fernet_encrypt_psk(testdata)
         decrypted = fernet_decrypt_psk(token)
-        self.assertThat(decrypted, Equals(testdata))
+        self.assertEqual(testdata, decrypted)
 
     def test_raises_when_no_secret_exists(self):
         testdata = factory.make_bytes()

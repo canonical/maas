@@ -8,7 +8,7 @@ import os
 import random
 from unittest.mock import sentinel
 
-from testtools.matchers import Contains, ContainsAll, Not
+from testtools.matchers import ContainsAll
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -122,7 +122,7 @@ class TestKernelOpts(MAASTestCase):
             purpose=random.choice(["commissioning", "xinstall", "enlist"])
         )
         cmdline = compose_kernel_command_line(params)
-        self.assertThat(cmdline, Contains("overlayroot_cfgdisk=disabled"))
+        self.assertIn("overlayroot_cfgdisk=disabled", cmdline)
 
     def test_xinstall_compose_kernel_command_line_inc_purpose_opts4(self):
         # The result of compose_kernel_command_line includes the purpose
@@ -335,7 +335,7 @@ class TestKernelOpts(MAASTestCase):
         cmdline = compose_kernel_command_line(params)
         # There should be KERNEL_CMDLINE_COPY_TO_INSTALL_SEP surrounded by
         # spaces before the options, but otherwise added verbatim.
-        self.assertThat(cmdline, Contains(" %s " % sep + extra_opts))
+        self.assertIn(" %s " % sep + extra_opts, cmdline)
 
     def test_commissioning_compose_kernel_handles_extra_opts_None(self):
         params = self.make_kernel_parameters(extra_opts=None)
@@ -381,15 +381,13 @@ class TestKernelOpts(MAASTestCase):
 
     def test_compose_kernel_command_line_inc_arm_specific_option(self):
         params = self.make_kernel_parameters(arch="armhf", subarch="highbank")
-        self.assertThat(
-            compose_kernel_command_line(params), Contains("console=ttyAMA0")
-        )
+        self.assertIn("console=ttyAMA0", compose_kernel_command_line(params))
 
     def test_compose_kernel_command_line_not_inc_arm_specific_option(self):
         params = self.make_kernel_parameters(arch="i386")
-        self.assertThat(
+        self.assertNotIn(
+            "console=ttyAMA0",
             compose_kernel_command_line(params),
-            Not(Contains("console=ttyAMA0")),
         )
 
     def test_compose_arch_opts_copes_with_unknown_subarch(self):

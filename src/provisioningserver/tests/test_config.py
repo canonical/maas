@@ -15,13 +15,7 @@ from fixtures import EnvironmentVariableFixture
 import formencode
 import formencode.validators
 from testtools import ExpectedException
-from testtools.matchers import (
-    Equals,
-    FileContains,
-    FileExists,
-    Is,
-    MatchesStructure,
-)
+from testtools.matchers import FileContains, FileExists, Is, MatchesStructure
 from twisted.python.filepath import FilePath
 import yaml
 
@@ -354,9 +348,7 @@ class TestConfigurationDatabase(MAASTestCase):
     def test_as_string(self):
         database = sqlite3.connect(":memory:")
         config = ConfigurationDatabase(database)
-        self.assertThat(
-            str(config), Equals("ConfigurationDatabase(main=:memory:)")
-        )
+        self.assertEqual("ConfigurationDatabase(main=:memory:)", str(config))
 
 
 class TestConfigurationDatabaseMutability(MAASTestCase):
@@ -555,9 +547,7 @@ class TestConfigurationFile(MAASTestCase):
     def test_as_string(self):
         config_file = os.path.join(self.make_dir(), "config")
         config = ConfigurationFile(config_file)
-        self.assertThat(
-            str(config), Equals("ConfigurationFile(%r)" % config_file)
-        )
+        self.assertEqual("ConfigurationFile(%r)" % config_file, str(config))
 
 
 class TestConfigurationFileMutability(MAASTestCase):

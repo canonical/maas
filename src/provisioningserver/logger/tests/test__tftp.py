@@ -3,8 +3,6 @@
 
 """Tests for TFTP-specific logging stuff."""
 
-
-from testtools.matchers import Contains, Is
 from twisted.logger import LogLevel
 
 from maastesting.testcase import MAASTestCase
@@ -20,8 +18,8 @@ class TestObserveTwistedInternetTCP_Informational(MAASTestCase):
         event = make_event(log_level=LogLevel.info)
         with TwistedLoggerFixture() as logger:
             observe_tftp(event)
-        self.assertThat(logger.events, Contains(event))
-        self.assertThat(event["log_level"], Is(LogLevel.debug))
+        self.assertIn(event, logger.events)
+        self.assertIs(event["log_level"], LogLevel.debug)
 
 
 class TestObserveTwistedInternetTCP_Other(MAASTestCase):
@@ -37,5 +35,5 @@ class TestObserveTwistedInternetTCP_Other(MAASTestCase):
         event = make_event(log_level=self.log_level)
         with TwistedLoggerFixture() as logger:
             observe_tftp(event)
-        self.assertThat(logger.events, Contains(event))
-        self.assertThat(event["log_level"], Is(self.log_level))
+        self.assertIn(event, logger.events)
+        self.assertIs(event["log_level"], self.log_level)

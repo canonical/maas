@@ -13,13 +13,11 @@ import crochet
 from fixtures import EnvironmentVariable
 from testtools.matchers import (
     AfterPreprocessing,
-    Contains,
     Equals,
     IsInstance,
     KeysEqual,
     MatchesAll,
     MatchesStructure,
-    Not,
 )
 from twisted.application.internet import StreamServerEndpointService
 from twisted.application.service import MultiService
@@ -240,10 +238,10 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options, clock=None)
         self.assertIsInstance(service, MultiService)
-        self.assertThat(service.namedServices, Not(Contains("tftp")))
-        self.assertThat(service.namedServices, Contains("tftp-offload"))
+        self.assertNotIn("tftp", service.namedServices)
+        self.assertIn("tftp-offload", service.namedServices)
         tftp_offload_service = service.getServiceNamed("tftp-offload")
-        self.assertThat(tftp_offload_service, IsInstance(TFTPOffloadService))
+        self.assertIsInstance(tftp_offload_service, TFTPOffloadService)
 
     def test_makeService_patches_tftp_service(self):
         mock_tftp_patch = self.patch(plugin_module, "add_patches_to_txtftp")

@@ -8,7 +8,7 @@ import random
 from unittest.mock import ANY, sentinel
 
 from testtools import ExpectedException
-from testtools.matchers import AllMatch, Equals, HasLength, Is, IsInstance
+from testtools.matchers import AllMatch, HasLength, IsInstance
 from twisted.internet.defer import fail, inlineCallbacks, succeed
 
 from maastesting import get_testing_timeout
@@ -59,7 +59,7 @@ class TestSendEventNode(MAASTestCase):
             sentinel.hostname,
             sentinel.description,
         )
-        self.assertThat(result, Is(sentinel.d))
+        self.assertIs(result, sentinel.d)
         self.assertThat(
             nodeEventHub.logByID,
             MockCalledOnceWith(
@@ -76,7 +76,7 @@ class TestSendEventNodeMACAddress(MAASTestCase):
         result = send_node_event_mac_address(
             sentinel.event_type, sentinel.mac_address, sentinel.description
         )
-        self.assertThat(result, Is(sentinel.d))
+        self.assertIs(result, sentinel.d)
         self.assertThat(
             nodeEventHub.logByMAC,
             MockCalledOnceWith(
@@ -93,7 +93,7 @@ class TestSendEventNodeIPAddress(MAASTestCase):
         result = send_node_event_ip_address(
             sentinel.event_type, sentinel.ip_address, sentinel.description
         )
-        self.assertThat(result, Is(sentinel.d))
+        self.assertIs(result, sentinel.d)
         self.assertThat(
             nodeEventHub.logByIP,
             MockCalledOnceWith(
@@ -110,7 +110,7 @@ class TestSendRackEvent(MAASTestCase):
         rack_system_id = factory.make_name("system_id")
         self.useFixture(MAASIDFixture(rack_system_id))
         result = send_rack_event(sentinel.event_type, sentinel.description)
-        self.assertThat(result, Is(sentinel.d))
+        self.assertIs(result, sentinel.d)
         self.assertThat(
             nodeEventHub.logByID,
             MockCalledOnceWith(
@@ -211,7 +211,7 @@ class TestNodeEventHubLogByID(MAASTestCase):
         # Fine the first time.
         yield event_hub.logByID(event_name, system_id, description)
         # The cache has been populated with the event name.
-        self.assertThat(event_hub._types_registered, Equals({event_name}))
+        self.assertEqual({event_name}, event_hub._types_registered)
         # Second time it crashes.
         with ExpectedException(NoSuchEventType):
             yield event_hub.logByID(event_name, system_id, description)
@@ -332,7 +332,7 @@ class TestSendEventMACAddress(MAASTestCase):
         # Fine the first time.
         yield event_hub.logByMAC(event_name, mac_address, description)
         # The cache has been populated with the event name.
-        self.assertThat(event_hub._types_registered, Equals({event_name}))
+        self.assertEqual({event_name}, event_hub._types_registered)
         # Second time it crashes.
         with ExpectedException(NoSuchEventType):
             yield event_hub.logByMAC(event_name, mac_address, description)
@@ -453,7 +453,7 @@ class TestSendEventIPAddress(MAASTestCase):
         # Fine the first time.
         yield event_hub.logByIP(event_name, ip_address, description)
         # The cache has been populated with the event name.
-        self.assertThat(event_hub._types_registered, Equals({event_name}))
+        self.assertEqual({event_name}, event_hub._types_registered)
         # Second time it crashes.
         with ExpectedException(NoSuchEventType):
             yield event_hub.logByIP(event_name, ip_address, description)
