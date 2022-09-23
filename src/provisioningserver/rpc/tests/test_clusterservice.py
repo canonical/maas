@@ -121,7 +121,7 @@ from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.service_monitor import service_monitor
 from provisioningserver.testing.config import ClusterConfigurationFixture
 from provisioningserver.utils import env as utils_env
-from provisioningserver.utils.env import MAAS_UUID
+from provisioningserver.utils.env import MAAS_ID, MAAS_UUID
 from provisioningserver.utils.fs import get_maas_common_command, NamedLock
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.testing import MAASIDFixture
@@ -2066,6 +2066,8 @@ class TestClusterClient(MAASTestCase):
 
     @inlineCallbacks
     def test_registerRackWithRegion_end_to_end(self):
+        system_id = factory.make_name("id")
+        MAAS_ID.set(system_id)
         maas_url = factory.make_simple_http_url()
         hostname = "rackcontrol.example.com"
         self.patch_autospec(
@@ -2076,18 +2078,15 @@ class TestClusterClient(MAASTestCase):
         protocol, connecting = fixture.makeEventLoop()
         self.addCleanup((yield connecting))
         yield getRegionClient()
-        self.assertThat(
-            protocol.RegisterRackController,
-            MockCalledOnceWith(
-                protocol,
-                system_id="",
-                hostname=hostname,
-                interfaces={},
-                url=urlparse(maas_url),
-                nodegroup_uuid=None,
-                beacon_support=True,
-                version=str(get_running_version()),
-            ),
+        protocol.RegisterRackController.assert_called_once_with(
+            protocol,
+            system_id=system_id,
+            hostname=hostname,
+            interfaces={},
+            url=urlparse(maas_url),
+            nodegroup_uuid=None,
+            beacon_support=True,
+            version=str(get_running_version()),
         )
 
 

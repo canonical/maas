@@ -49,6 +49,7 @@ testpaths = [
   # ]]]
   "src/maasserver/models/pytest_tests",
   "src/maasserver/pytest_tests",
+  "src/provisioningserver/utils/pytest_tests",
   # [[[end]]]
 ]
 markers = [

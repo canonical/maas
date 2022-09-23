@@ -32,8 +32,8 @@ def environment_variables(variables):
         os.environ.update(prior_environ)
 
 
-class FileBackedID:
-    """An ID read and written to file.
+class FileBackedValue:
+    """A shared value read and written to file.
 
     The content is written to the specified file under the MAAS data path, and
     access is done through a LockFile.
@@ -83,6 +83,6 @@ class FileBackedID:
         return value if value else None
 
 
-MAAS_ID = FileBackedID("maas_id")
-MAAS_UUID = FileBackedID("maas_uuid")
-MAAS_SHARED_SECRET = FileBackedID("secret")
+MAAS_ID = FileBackedValue("maas_id")
+MAAS_UUID = FileBackedValue("maas_uuid")
+MAAS_SHARED_SECRET = FileBackedValue("secret")

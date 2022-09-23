@@ -9,6 +9,17 @@ from provisioningserver.utils.env import MAAS_ID, MAAS_UUID, MAAS_SHARED_SECRET
 
 
 @pytest.fixture(autouse=True)
+def setup_testenv(monkeypatch, tmpdir):
+    maas_root = tmpdir.join("maas_root")
+    maas_root.mkdir()
+    maas_data = tmpdir.join("maas_data")
+    maas_data.mkdir()
+    monkeypatch.setenv("MAAS_ROOT", str(maas_root))
+    monkeypatch.setenv("MAAS_DATA", str(maas_data))
+    yield
+
+
+@pytest.fixture(autouse=True)
 def clean_cached_globals(tmpdir):
     base_path = Path(tmpdir)
     for var in (MAAS_ID, MAAS_UUID, MAAS_SHARED_SECRET):

@@ -3,10 +3,9 @@
 
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-import os
 
 import hvac
-from pytest import fixture
+import pytest
 
 from maasserver import vault
 from maasserver.config import RegionConfiguration
@@ -14,26 +13,18 @@ from maasserver.testing.factory import factory as maasserver_factory
 from maasserver.vault import get_region_vault_client
 
 
-@fixture(scope="session")
-def factory():
-    return maasserver_factory
-
-
-@fixture(autouse=True)
-def setup_testenv(monkeypatch):
-    curdir = os.getcwd()
-    monkeypatch.setenv("MAAS_ROOT", os.path.join(curdir, ".run"))
-    monkeypatch.setenv("MAAS_DATA", os.path.join(curdir, ".run/maas"))
-    yield
-
-
-@fixture(autouse=True)
+@pytest.fixture(autouse=True)
 def clean_cached_globals(clean_cached_globals):
     get_region_vault_client.cache_clear()
     yield
 
 
-@fixture
+@pytest.fixture(scope="session")
+def factory():
+    return maasserver_factory
+
+
+@pytest.fixture
 def vault_regionconfig(mocker):
     store = {}
 
@@ -72,12 +63,12 @@ class MockKVStore:
         self.store.pop(path, None)
 
 
-@fixture
+@pytest.fixture
 def mock_vault_kv():
     yield MockKVStore()
 
 
-@fixture
+@pytest.fixture
 def mock_hvac_client(mocker, mock_vault_kv):
     token_expiry = datetime.now(tz=timezone.utc) + timedelta(minutes=30)
     expire_time = token_expiry.isoformat().replace("+00:00", "000Z")

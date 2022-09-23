@@ -46,6 +46,9 @@ FORBIDDEN_NAMES = {
     "macaroon_private_key",
     "rbac_url",
     "maas_url",
+    "tls_key",
+    "tls_cert",
+    "tls_port",
 }
 
 
