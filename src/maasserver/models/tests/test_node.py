@@ -7599,18 +7599,21 @@ class TestNodeParentRelationShip(MAASServerTestCase):
         parent.delete()
         self.assertCountEqual([other_node], Node.objects.all())
 
-    def test_children_get_deleted_when_parent_is_released(self):
+    def test_device_children_get_deleted_when_parent_is_released(self):
         self.patch(Node, "_stop")
         self.patch(Node, "_set_status")
         owner = factory.make_User()
         # Create children.
         parent = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
-        factory.make_Node(parent=parent)
+        factory.make_Device(parent=parent)
+        machine_child = factory.make_Machine(parent=parent)
         other_node = factory.make_Node()
         with post_commit_hooks:
             parent.release()
-        self.assertCountEqual([], parent.children.all())
-        self.assertCountEqual([other_node, parent], Node.objects.all())
+        self.assertCountEqual([machine_child], parent.children.all())
+        self.assertCountEqual(
+            [other_node, parent, machine_child], Node.objects.all()
+        )
 
 
 class TestNodeNetworking(MAASTransactionServerTestCase):

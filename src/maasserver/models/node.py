@@ -3698,7 +3698,7 @@ class Node(CleanSave, TimestampedModel):
         self._clear_acquired_filesystems()
 
         # If this node has non-installable children, remove them.
-        self.children.all().delete()
+        self.children.filter(node_type=NODE_TYPE.DEVICE).delete()
 
         # Release volatile metadata
         from maasserver.models import NodeMetadata
