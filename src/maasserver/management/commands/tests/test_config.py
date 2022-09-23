@@ -58,26 +58,24 @@ class TestConfigurationGet(MAASTestCase):
     def test_dumps_yaml_to_stdout_by_default(self):
         stdio = call_get(**{self.option: True})
         settings = yaml.safe_load(stdio.getOutput())
-        self.assertThat(settings, Contains(self.option))
+        self.assertIn(self.option, settings)
 
     def test_dumps_yaml_to_stdout(self):
         stdio = call_get(**{self.option: True, "dump": config.dump_yaml})
         settings = yaml.safe_load(stdio.getOutput())
-        self.assertThat(settings, Contains(self.option))
+        self.assertIn(self.option, settings)
 
     def test_dumps_json_to_stdout(self):
         stdio = call_get(**{self.option: True, "dump": config.dump_json})
         settings = json.loads(stdio.getOutput())
-        self.assertThat(settings, Contains(self.option))
+        self.assertIn(self.option, settings)
 
     def test_dumps_plain_string_to_stdout(self):
         stdio = call_get(**{self.option: True, "dump": config.dump_plain})
         settings = stdio.getOutput()
-        self.assertThat(settings, Not(Contains(self.option)))
+        self.assertNotIn(self.option, settings)
         with RegionConfiguration.open() as configuration:
-            self.assertThat(
-                settings, Contains(str(getattr(configuration, self.option)))
-            )
+            self.assertIn(str(getattr(configuration, self.option)), settings)
 
 
 class TestConfigurationReset(MAASTestCase):
@@ -98,12 +96,12 @@ class TestConfigurationReset(MAASTestCase):
             setattr(configuration, self.option, value)
         stdio = call_reset(**{self.option: True})
         # Nothing is echoed back to the user.
-        self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(stdio.getError(), Equals(""))
+        self.assertEqual("", stdio.getOutput())
+        self.assertEqual("", stdio.getError())
         # There is no custom value in the configuration file.
         with open(RegionConfiguration.DEFAULT_FILENAME, "rb") as fd:
             settings = yaml.safe_load(fd)
-        self.assertThat(settings, Equals({}))
+        self.assertEqual({}, settings)
 
 
 class TestConfigurationSet(MAASTestCase):
@@ -141,17 +139,15 @@ class TestConfigurationSet(MAASTestCase):
         stdio = call_set(**{self.option: str(value)})
 
         # Nothing is echoed back to the user.
-        self.assertThat(stdio.getOutput(), Equals(""))
-        self.assertThat(stdio.getError(), Equals(""))
+        self.assertEqual("", stdio.getOutput())
+        self.assertEqual("", stdio.getError())
 
         # Some validators alter the given option, like adding an HTTP scheme
         # to a "bare" URL, so we merely check that the value contains the
         # given value, not that it exactly matches. Values are converted to a
         # str so Contains works with int values.
         with RegionConfiguration.open() as configuration:
-            self.assertThat(
-                str(getattr(configuration, self.option)), Contains(str(value))
-            )
+            self.assertIn(str(value), str(getattr(configuration, self.option)))
 
 
 class TestConfigurationSet_DatabasePort(MAASTestCase):
@@ -165,8 +161,8 @@ class TestConfigurationSet_DatabasePort(MAASTestCase):
     def test_exception_when_port_is_not_an_integer(self):
         self.useFixture(RegionConfigurationFixture())
         error = self.assertRaises(CommandError, call_set, database_port="foo")
-        self.assertThat(
-            str(error), Equals("database-port: Please enter an integer value.")
+        self.assertEqual(
+            "database-port: Please enter an integer value.", str(error)
         )
 
     def test_exception_when_port_is_too_low(self):

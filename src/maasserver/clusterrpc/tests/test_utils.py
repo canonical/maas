@@ -9,7 +9,6 @@ from unittest.mock import Mock, sentinel
 
 from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from fixtures import FakeLogger
-from testtools.matchers import Equals
 from twisted.python.failure import Failure
 
 from maasserver.clusterrpc import utils
@@ -79,7 +78,7 @@ class TestCallClusters(MAASServerTestCase):
                 timeout_callback=timeout_callback,
             )
         )
-        self.assertThat(result, Equals([sentinel.result]))
+        self.assertEqual([sentinel.result], result)
         self.assertThat(available_callback, MockCalledOnceWith(rack))
         self.assertThat(unavailable_callback, MockNotCalled())
         self.assertThat(success_callback, MockCalledOnceWith(rack))
@@ -110,7 +109,7 @@ class TestCallClusters(MAASServerTestCase):
                 timeout_callback=timeout_callback,
             )
         )
-        self.assertThat(result, Equals([]))
+        self.assertEqual([], result)
         self.assertThat(available_callback, MockNotCalled())
         self.assertThat(unavailable_callback, MockCalledOnceWith(rack))
         self.assertThat(success_callback, MockNotCalled())
@@ -146,7 +145,7 @@ class TestCallClusters(MAASServerTestCase):
                 timeout_callback=timeout_callback,
             )
         )
-        self.assertThat(result, Equals([]))
+        self.assertEqual([], result)
         self.assertThat(available_callback, MockCalledOnceWith(rack))
         self.assertThat(unavailable_callback, MockNotCalled())
         self.assertThat(success_callback, MockNotCalled())
@@ -183,7 +182,7 @@ class TestCallClusters(MAASServerTestCase):
                 timeout_callback=timeout_callback,
             )
         )
-        self.assertThat(result, Equals([]))
+        self.assertEqual([], result)
         self.assertThat(available_callback, MockCalledOnceWith(rack))
         self.assertThat(unavailable_callback, MockNotCalled())
         self.assertThat(success_callback, MockNotCalled())

@@ -170,7 +170,7 @@ class TestGetPreseedData(MAASServerTestCase):
             token=NodeKey.objects.get_token_for_node(node),
             metadata_url=factory.make_url(),
         )
-        self.assertThat(preseed_data, IsInstance(dict))
+        self.assertIsInstance(preseed_data, dict)
         self.assertNotIn("data", preseed_data)
         self.assertThat(preseed_data, Not(HasLength(0)))
 

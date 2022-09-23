@@ -1035,7 +1035,7 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         self.assertEqual(expected_forward, zones[0]._other_mapping)
         self.assertEqual({}, zones[0]._mapping)
         self.assertEqual({}, zones[1]._mapping)
-        self.assertEqual(None, dnsdata.ttl)
+        self.assertIsNone(dnsdata.ttl)
 
     @transactional
     def test_dnsdata_inherits_domain(self):
@@ -1065,7 +1065,7 @@ class TestZoneGeneratorTTL(MAASTransactionServerTestCase):
         self.assertEqual(expected_forward, zones[0]._other_mapping)
         self.assertEqual({}, zones[0]._mapping)
         self.assertEqual({}, zones[1]._mapping)
-        self.assertEqual(None, dnsdata.ttl)
+        self.assertIsNone(dnsdata.ttl)
 
     @transactional
     def test_dnsdata_overrides_domain(self):

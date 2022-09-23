@@ -189,8 +189,8 @@ class TestAuthenticate(MAASServerTestCase):
             data={"username": username, "password": password},
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
-        self.assertThat(
-            json_load_bytes(response.content), Equals(token_to_dict(token))
+        self.assertEqual(
+            token_to_dict(token), json_load_bytes(response.content)
         )
 
     def test_returns_first_of_existing_credentials(self):
@@ -205,8 +205,8 @@ class TestAuthenticate(MAASServerTestCase):
             data={"username": username, "password": password},
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
-        self.assertThat(
-            json_load_bytes(response.content), Equals(token_to_dict(token))
+        self.assertEqual(
+            token_to_dict(token), json_load_bytes(response.content)
         )
 
     def test_returns_existing_named_credentials(self):
@@ -224,8 +224,8 @@ class TestAuthenticate(MAASServerTestCase):
             },
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
-        self.assertThat(
-            json_load_bytes(response.content), Equals(token_to_dict(token))
+        self.assertEqual(
+            token_to_dict(token), json_load_bytes(response.content)
         )
 
     def test_returns_first_of_existing_named_credentials(self):
@@ -243,8 +243,8 @@ class TestAuthenticate(MAASServerTestCase):
             },
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
-        self.assertThat(
-            json_load_bytes(response.content), Equals(token_to_dict(tokens[0]))
+        self.assertEqual(
+            token_to_dict(tokens[0]), json_load_bytes(response.content)
         )
 
     def test_returns_new_credentials(self):
@@ -258,8 +258,8 @@ class TestAuthenticate(MAASServerTestCase):
         )
         self.assertThat(response, HasStatusCode(HTTPStatus.OK))
         [token] = get_auth_tokens(user)
-        self.assertThat(
-            json_load_bytes(response.content), Equals(token_to_dict(token))
+        self.assertEqual(
+            token_to_dict(token), json_load_bytes(response.content)
         )
 
     def test_returns_new_named_credentials(self):
@@ -316,7 +316,7 @@ class TestAuthenticate(MAASServerTestCase):
     def test_rejects_GET(self):
         response = self.client.get(reverse("authenticate"))
         self.assertThat(response, HasStatusCode(HTTPStatus.METHOD_NOT_ALLOWED))
-        self.assertThat(response["Allow"], Equals("POST"))
+        self.assertEqual("POST", response["Allow"])
 
     def test_authenticate_creates_audit_event_with_tokens(self):
         username = factory.make_name("username")

@@ -465,9 +465,9 @@ class TestCoreRegionRackRPCConnectionInsertListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "rack controller %s connected" % rack_controller.hostname,
             self.getCapturedPublication().source,
-            Equals("rack controller %s connected" % rack_controller.hostname),
         )
 
     @wait_for_reactor
@@ -3692,9 +3692,9 @@ class TestDNSDomainListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "added zone %s" % name,
             self.getCapturedPublication().source,
-            Equals("added zone %s" % name),
         )
 
     @wait_for_reactor
@@ -3736,9 +3736,9 @@ class TestDNSDomainListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "added zone %s" % domain_name,
             self.getCapturedPublication().source,
-            Equals("added zone %s" % domain_name),
         )
 
     @wait_for_reactor
@@ -3764,9 +3764,9 @@ class TestDNSDomainListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "removed zone %s" % domain_name,
             self.getCapturedPublication().source,
-            Equals("removed zone %s" % domain_name),
         )
 
     @wait_for_reactor
@@ -3818,9 +3818,9 @@ class TestDNSDomainListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "removed zone %s" % domain.name,
             self.getCapturedPublication().source,
-            Equals("removed zone %s" % domain.name),
         )
 
 
@@ -3878,9 +3878,9 @@ class TestDNSStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "ip %s alloc_type changed to 1" % new_ip,
             self.getCapturedPublication().source,
-            Equals("ip %s alloc_type changed to 1" % new_ip),
         )
 
     @wait_for_reactor
@@ -3905,9 +3905,9 @@ class TestDNSStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "ip %s allocated" % new_ip,
             self.getCapturedPublication().source,
-            Equals("ip %s allocated" % new_ip),
         )
 
     @wait_for_reactor
@@ -3935,9 +3935,9 @@ class TestDNSStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "ip %s allocated" % new_ip,
             self.getCapturedPublication().source,
-            Equals("ip %s allocated" % new_ip),
         )
 
     @wait_for_reactor
@@ -3967,9 +3967,9 @@ class TestDNSStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "ip %s released" % new_ip,
             self.getCapturedPublication().source,
-            Equals("ip %s released" % new_ip),
         )
 
     @wait_for_reactor
@@ -4034,9 +4034,9 @@ class TestDNSStaticIPAddressListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"ip {old_ip} changed to {new_ip}",
             self.getCapturedPublication().source,
-            Equals(f"ip {old_ip} changed to {new_ip}"),
         )
 
     @wait_for_reactor
@@ -4228,9 +4228,9 @@ class TestDNSDNSResourceListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"zone {domain.name} added resource {resource.name}",
             self.getCapturedPublication().source,
-            Equals(f"zone {domain.name} added resource {resource.name}"),
         )
 
     @wait_for_reactor
@@ -4255,9 +4255,9 @@ class TestDNSDNSResourceListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"zone {domain.name} updated resource {new_name}",
             self.getCapturedPublication().source,
-            Equals(f"zone {domain.name} updated resource {new_name}"),
         )
 
     @wait_for_reactor
@@ -4325,9 +4325,9 @@ class TestDNSDNSResourceListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"zone {domain.name} removed resource {resource.name}",
             self.getCapturedPublication().source,
-            Equals(f"zone {domain.name} removed resource {resource.name}"),
         )
 
 
@@ -4518,9 +4518,9 @@ class TestDNSSubnetListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "added subnet %s" % subnet.cidr,
             self.getCapturedPublication().source,
-            Equals("added subnet %s" % subnet.cidr),
         )
 
     @wait_for_reactor
@@ -4567,9 +4567,9 @@ class TestDNSSubnetListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"subnet {cidr_old} changed to {cidr_new}",
             self.getCapturedPublication().source,
-            Equals(f"subnet {cidr_old} changed to {cidr_new}"),
         )
 
     @wait_for_reactor
@@ -4592,9 +4592,9 @@ class TestDNSSubnetListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"subnet {subnet.cidr} rdns changed to {rdns_new}",
             self.getCapturedPublication().source,
-            Equals(f"subnet {subnet.cidr} rdns changed to {rdns_new}"),
         )
 
     @wait_for_reactor
@@ -4613,9 +4613,9 @@ class TestDNSSubnetListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "removed subnet %s" % subnet.cidr,
             self.getCapturedPublication().source,
-            Equals("removed subnet %s" % subnet.cidr),
         )
 
     @wait_for_reactor
@@ -4663,9 +4663,9 @@ class TestDNSNodeListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"node {hostname_old} changed hostname to {hostname_new}",
             self.getCapturedPublication().source,
-            Equals(f"node {hostname_old} changed hostname to {hostname_new}"),
         )
 
     @wait_for_reactor
@@ -4687,9 +4687,9 @@ class TestDNSNodeListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"node {node.hostname} changed zone to {domain.name}",
             self.getCapturedPublication().source,
-            Equals(f"node {node.hostname} changed zone to {domain.name}"),
         )
 
     @wait_for_reactor
@@ -4708,9 +4708,9 @@ class TestDNSNodeListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            "removed node %s" % node.hostname,
             self.getCapturedPublication().source,
-            Equals("removed node %s" % node.hostname),
         )
 
     @wait_for_reactor
@@ -4805,9 +4805,9 @@ class TestDNSInterfaceListener(
             yield self.assertPublicationUpdated()
         finally:
             yield listener.stopService()
-        self.assertThat(
+        self.assertEqual(
+            f"node {node.hostname} added interface {interface.name}",
             self.getCapturedPublication().source,
-            Equals(f"node {node.hostname} added interface {interface.name}"),
         )
 
     @wait_for_reactor
@@ -5521,11 +5521,11 @@ class TestRBACResourcePoolListener(
         finally:
             yield listener.stopService()
         change = self.getCapturedSynced()
-        self.assertThat(change.source, Equals("added resource pool %s" % name))
-        self.assertThat(change.action, Equals("add"))
-        self.assertThat(change.resource_type, Equals("resource-pool"))
-        self.assertThat(change.resource_id, Equals(pool.id))
-        self.assertThat(change.resource_name, Equals(name))
+        self.assertEqual("added resource pool %s" % name, change.source)
+        self.assertEqual("add", change.action)
+        self.assertEqual("resource-pool", change.resource_type)
+        self.assertEqual(pool.id, change.resource_id)
+        self.assertEqual(name, change.resource_name)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -5547,14 +5547,14 @@ class TestRBACResourcePoolListener(
         finally:
             yield listener.stopService()
         change = self.getCapturedSynced()
-        self.assertThat(
+        self.assertEqual(
+            f"renamed resource pool {pool.name} to {pool_name}",
             change.source,
-            Equals(f"renamed resource pool {pool.name} to {pool_name}"),
         )
-        self.assertThat(change.action, Equals("update"))
-        self.assertThat(change.resource_type, Equals("resource-pool"))
-        self.assertThat(change.resource_id, Equals(pool.id))
-        self.assertThat(change.resource_name, Equals(pool_name))
+        self.assertEqual("update", change.action)
+        self.assertEqual("resource-pool", change.resource_type)
+        self.assertEqual(pool.id, change.resource_id)
+        self.assertEqual(pool_name, change.resource_name)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -5573,13 +5573,11 @@ class TestRBACResourcePoolListener(
         finally:
             yield listener.stopService()
         change = self.getCapturedSynced()
-        self.assertThat(
-            change.source, Equals("removed resource pool %s" % pool.name)
-        )
-        self.assertThat(change.action, Equals("remove"))
-        self.assertThat(change.resource_type, Equals("resource-pool"))
-        self.assertThat(change.resource_id, Equals(pool.id))
-        self.assertThat(change.resource_name, Equals(pool.name))
+        self.assertEqual("removed resource pool %s" % pool.name, change.source)
+        self.assertEqual("remove", change.action)
+        self.assertEqual("resource-pool", change.resource_type)
+        self.assertEqual(pool.id, change.resource_id)
+        self.assertEqual(pool.name, change.resource_name)
 
 
 class TestRBACConfigListener(
@@ -5620,7 +5618,7 @@ class TestRBACConfigListener(
                 % (self.config, json.dumps(new_value))
             ),
         )
-        self.assertThat(change.action, Equals("full"))
+        self.assertEqual("full", change.action)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -5652,4 +5650,4 @@ class TestRBACConfigListener(
                 % (self.config, json.dumps(new_value))
             ),
         )
-        self.assertThat(change.action, Equals("full"))
+        self.assertEqual("full", change.action)

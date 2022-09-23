@@ -6,7 +6,7 @@
 
 import random
 
-from testtools.matchers import Contains, ContainsDict, Equals
+from testtools.matchers import ContainsDict, Equals
 
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -83,20 +83,20 @@ class TestFactory(MAASServerTestCase):
     def test_make_StaticIPAddress_uses_vlan_for_new_subnet(self):
         iface = factory.make_Interface()  # Specifies a VLAN.
         sip = factory.make_StaticIPAddress(interface=iface)
-        self.assertThat(sip.subnet.vlan, Equals(iface.vlan))
-        self.assertThat(
+        self.assertEqual(iface.vlan, sip.subnet.vlan)
+        self.assertIn(
+            iface.vlan,
             {iface.vlan for iface in sip.interface_set.all()},
-            Contains(iface.vlan),
         )
 
     def test_make_StaticIPAddress_uses_vlan_for_subnet_with_cidr(self):
         iface = factory.make_Interface()  # Specifies a VLAN.
         network = factory.make_ip4_or_6_network()
         sip = factory.make_StaticIPAddress(interface=iface, cidr=network)
-        self.assertThat(sip.subnet.vlan, Equals(iface.vlan))
-        self.assertThat(
+        self.assertEqual(iface.vlan, sip.subnet.vlan)
+        self.assertIn(
+            iface.vlan,
             {iface.vlan for iface in sip.interface_set.all()},
-            Contains(iface.vlan),
         )
 
 

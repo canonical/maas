@@ -13,7 +13,6 @@ from testtools.matchers import (
     Equals,
     FileContains,
     HasLength,
-    Is,
     MatchesSetwise,
     MatchesStructure,
 )
@@ -62,7 +61,7 @@ class TestDNSUtilities(MAASServerTestCase):
     def test_current_zone_serial_returns_serial_of_latest_publication(self):
         publication = DNSPublication(source=factory.make_name("source"))
         publication.save()
-        self.assertThat(int(current_zone_serial()), Equals(publication.serial))
+        self.assertEqual(publication.serial, int(current_zone_serial()))
 
     def test_dns_force_reload_saves_new_publication(self):
         # A 'sys_dns' signal is also sent, but that is a side-effect of
@@ -420,8 +419,8 @@ class TestDNSConfigModifications(TestDNSServer):
         serial, reloaded, domains = dns_update_all_zones(
             reload_timeout=RELOAD_TIMEOUT
         )
-        self.assertThat(serial, Equals(fake_serial))
-        self.assertThat(reloaded, Is(True))
+        self.assertEqual(fake_serial, serial)
+        self.assertTrue(reloaded)
         self.assertThat(
             domains,
             MatchesSetwise(

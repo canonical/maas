@@ -7,7 +7,7 @@
 import random
 from unittest.mock import Mock, sentinel
 
-from testtools.matchers import Equals, Is, IsInstance, MatchesAny, MatchesDict
+from testtools.matchers import Is, IsInstance, MatchesAny, MatchesDict
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
@@ -119,7 +119,7 @@ class TestDiscoverPodProjects(MAASTransactionServerTestCase):
         discovered = yield discover_pod_projects(
             factory.make_name("pod"), {}, timeout=0.5
         )
-        self.assertThat(discovered[0], Equals({}))
+        self.assertEqual({}, discovered[0])
         self.assertThat(
             discovered[1], MatchesDict({rack_id: IsInstance(CancelledError)})
         )
@@ -212,7 +212,7 @@ class TestDiscoverPod(MAASTransactionServerTestCase):
         discovered = yield discover_pod(
             factory.make_name("pod"), {}, timeout=0.5
         )
-        self.assertThat(discovered[0], Equals({}))
+        self.assertEqual({}, discovered[0])
         self.assertThat(
             discovered[1], MatchesDict({rack_id: IsInstance(CancelledError)})
         )
