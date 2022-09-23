@@ -24,7 +24,11 @@ from maasserver.models.timestampedmodel import now
 from maasserver.node_status import get_node_timeout, MONITORED_STATUSES
 from maasserver.preseed import compose_enlistment_preseed_url
 from maasserver.rpc import boot as boot_module
-from maasserver.rpc.boot import event_log_pxe_request, get_boot_filenames
+from maasserver.rpc.boot import (
+    event_log_pxe_request,
+    get_boot_config_for_machine,
+    get_boot_filenames,
+)
 from maasserver.rpc.boot import get_config as orig_get_config
 from maasserver.rpc.boot import merge_kparams_with_extra
 from maasserver.testing.architecture import make_usable_architecture
@@ -1519,3 +1523,104 @@ class TestGetBootFilenames(MAASServerTestCase):
             initrd,
         )
         self.assertIsNone(boot_dbt)
+
+
+class TestGetBootConfigForMachine(MAASServerTestCase):
+    def test_get_boot_config_for_machine_builtin_image(self):
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYING,
+            osystem="ubuntu",
+            distro_series="focal",
+        )
+        configs = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "enable_third_party_drivers",
+                "default_min_hwe_kernel",
+                "default_osystem",
+                "default_distro_series",
+                "kernel_opts",
+                "use_rack_proxy",
+                "maas_internal_domain",
+                "remote_syslog",
+                "maas_syslog_port",
+            ]
+        )
+
+        osystem, series, config_arch = get_boot_config_for_machine(
+            machine, configs, "xinstall"
+        )
+
+        self.assertEqual(osystem, "ubuntu")
+        self.assertEqual(series, "focal")
+        self.assertEqual(config_arch, "generic")
+
+    def test_get_boot_config_for_machine_new_custom_image(self):
+        arch = make_usable_architecture(self)
+        boot_resource = factory.make_BootResource(
+            base_image="ubuntu/jammy", architecture=arch
+        )
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=boot_resource.name,
+        )
+        configs = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "enable_third_party_drivers",
+                "default_min_hwe_kernel",
+                "default_osystem",
+                "default_distro_series",
+                "kernel_opts",
+                "use_rack_proxy",
+                "maas_internal_domain",
+                "remote_syslog",
+                "maas_syslog_port",
+            ]
+        )
+
+        osystem, series, config_arch = get_boot_config_for_machine(
+            machine, configs, "xinstall"
+        )
+
+        self.assertEqual(osystem, "ubuntu")
+        self.assertEqual(series, "jammy")
+        self.assertEqual(config_arch, "generic")
+
+    def test_get_boot_config_for_machine_legacy_custom_image(self):
+        arch = make_usable_architecture(self)
+        boot_resource = factory.make_BootResource(
+            base_image="", architecture=arch
+        )
+        machine = factory.make_Machine(
+            status=NODE_STATUS.DEPLOYING,
+            osystem="custom",
+            distro_series=boot_resource.name,
+        )
+        configs = Config.objects.get_configs(
+            [
+                "commissioning_osystem",
+                "commissioning_distro_series",
+                "enable_third_party_drivers",
+                "default_min_hwe_kernel",
+                "default_osystem",
+                "default_distro_series",
+                "kernel_opts",
+                "use_rack_proxy",
+                "maas_internal_domain",
+                "remote_syslog",
+                "maas_syslog_port",
+            ]
+        )
+
+        osystem, series, config_arch = get_boot_config_for_machine(
+            machine, configs, "xinstall"
+        )
+
+        # legacy custom images should use the default commissioning image as a base image
+        self.assertEqual(osystem, configs["commissioning_osystem"])
+        self.assertEqual(series, configs["commissioning_distro_series"])
+        self.assertEqual(config_arch, "generic")
