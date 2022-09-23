@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from maasserver.enum import BOOT_RESOURCE_FILE_TYPE, BOOT_RESOURCE_TYPE
 from maasserver.forms import BootResourceForm
-from maasserver.models import BootResource, BootResourceFile
+from maasserver.models import BootResource, BootResourceFile, Config
 from maasserver.models.signals import bootresourcefiles, bootsources
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -303,7 +303,7 @@ class TestBootResourceForm(MAASServerTestCase):
         image = form.save()
         self.assertEqual(image.base_image, data["base_image"])
 
-    def test_invalidates_nonexistent_custom_image_base_os(self):
+    def test_uses_commissioning_os_for_nonexistent_custom_image_base_os(self):
         name = "custom/%s" % factory.make_name("name")
         upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
@@ -315,10 +315,17 @@ class TestBootResourceForm(MAASServerTestCase):
             "title": factory.make_name("title"),
             "architecture": make_usable_architecture(self),
             "filetype": upload_type,
-            "base_image": factory.make_name("invalid"),
+            "base_image": "",
         }
         form = BootResourceForm(data=data, files={"content": uploaded_file})
-        self.assertFalse(form.is_valid())
+        form.save()
+        cfg = Config.objects.get_configs(
+            ["commissioning_osystem", "commissioning_distro_series"]
+        )
+        self.assertEqual(
+            f"{cfg['commissioning_osystem']}/{cfg['commissioning_distro_series']}",
+            form.instance.base_image,
+        )
 
     def test_invalidates_nonexistent_custom_image_base_os_no_prefix(self):
         name = factory.make_name("name")
@@ -485,7 +492,7 @@ class TestBootResourceForm(MAASServerTestCase):
         form = BootResourceForm(data={})
         self.assertFalse(form.is_valid(), form.errors)
         self.assertEqual(
-            {"name", "architecture", "filetype", "content", "base_image"},
+            {"name", "architecture", "filetype", "content"},
             form.errors.keys(),
         )
 
@@ -521,4 +528,32 @@ class TestBootResourceForm(MAASServerTestCase):
             BootResourceFile.objects.filter(
                 resource_set__resource=resource
             ).count(),
+        )
+
+    def test_clean_base_image_sets_commissioning_osystem_and_distro_series_where_none_is_given(
+        self,
+    ):
+        architecture = make_usable_architecture(self)
+        upload_type, filetype = self.pick_filetype()
+        content = factory.make_string(1024).encode("utf-8")
+        upload_name = factory.make_name("filename")
+        uploaded_file = SimpleUploadedFile(content=content, name=upload_name)
+        data = {
+            "name": f"custom/{factory.make_name()}",
+            "architecture": architecture,
+            "filetype": upload_type,
+        }
+        form = BootResourceForm(data=data, files={"content": uploaded_file})
+        form.save()
+        cfg = Config.objects.get_configs(
+            ["commissioning_osystem", "commissioning_distro_series"]
+        )
+        self.assertEqual(
+            "/".join(
+                [
+                    cfg["commissioning_osystem"],
+                    cfg["commissioning_distro_series"],
+                ]
+            ),
+            form.instance.base_image,
         )

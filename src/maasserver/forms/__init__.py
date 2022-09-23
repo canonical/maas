@@ -2493,7 +2493,7 @@ class BootResourceForm(MAASModelForm):
         return name
 
     def _get_base_image_info(self):
-        base_image = self.cleaned_data["base_image"]
+        base_image = self.cleaned_data.get("base_image")
         if not base_image:
             existing_resource = super().save(commit=False)
             existing_resource.name = self.cleaned_data["name"]
@@ -2522,9 +2522,22 @@ class BootResourceForm(MAASModelForm):
         try:
             base_osystem, base_version = self._get_base_image_info()
         except ValueError:
-            raise ValidationError(
-                "custom images require a valid base image name"
-            )
+            if not self.data.get("base_image"):
+                return "/".join(
+                    [
+                        val
+                        for val in Config.objects.get_configs(
+                            [
+                                "commissioning_osystem",
+                                "commissioning_distro_series",
+                            ]
+                        ).values()
+                    ]
+                )
+            else:
+                raise ValidationError(
+                    "a base image must follow the format: <osystem>/<series>"
+                )
         else:
             if base_osystem not in ("ubuntu", "centos", "rhel"):
                 raise ValidationError(

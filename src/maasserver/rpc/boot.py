@@ -231,10 +231,7 @@ def get_boot_config_for_machine(machine, configs, purpose):
             install_image = None
             if osystem == "custom":
                 install_image = BootResource.objects.get(name=series)
-                if install_image.base_image is not None:
-                    # if the operating system is a custom ubuntu image,
-                    # use the base image to install
-                    osystem, series = install_image.base_image.split("/")
+                osystem, series = install_image.split_base_image()
 
             if install_image is None or osystem != "ubuntu":
                 # Use only the commissioning osystem and series, for operating

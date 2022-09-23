@@ -21,6 +21,7 @@ from maasserver.models.bootresource import (
     BootResource,
     RTYPE_REQUIRING_OS_SERIES_NAME,
 )
+from maasserver.models.config import Config
 from maasserver.models.signals import bootsources
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -1154,4 +1155,15 @@ class TestBootResource(MAASServerTestCase):
         )
         self.assertFalse(
             resource.supports_subarch(factory.make_name("subarch"))
+        )
+
+    def test_split_base_image_handles_no_base_image(self):
+        resource = factory.make_BootResource()
+        resource.base_image = None
+        cfg = Config.objects.get_configs(
+            ["commissioning_osystem", "commissioning_distro_series"]
+        )
+        self.assertCountEqual(
+            (cfg["commissioning_osystem"], cfg["commissioning_distro_series"]),
+            resource.split_base_image(),
         )
