@@ -50,6 +50,47 @@ class TestSecretManagerFromDB:
         manager = SecretManager()
         assert manager.get_simple_secret("foo") == "bar"
 
+    def test_set_composite_secret_with_model(self):
+        bmc = factory.make_BMC()
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_composite_secret("foo", value, obj=bmc)
+        assert Secret.objects.get(path=f"bmc/{bmc.id}/foo").value == value
+
+    def test_set_composite_secret_global(self):
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_composite_secret("foo", value)
+        assert Secret.objects.get(path="global/foo").value == value
+
+    def test_set_simple_secret_with_model(self):
+        bmc = factory.make_BMC()
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_simple_secret("foo", value, obj=bmc)
+        assert Secret.objects.get(path=f"bmc/{bmc.id}/foo").value == {
+            "secret": value
+        }
+
+    def test_set_simple_secret_global(self):
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_simple_secret("foo", value)
+        assert Secret.objects.get(path="global/foo").value == {"secret": value}
+
+    def test_delete_secret_with_model(self):
+        bmc = factory.make_BMC()
+        manager = SecretManager()
+        manager.set_composite_secret("foo", {"bar": "baz"}, obj=bmc)
+        manager.delete_secret("foo", obj=bmc)
+        assert not Secret.objects.exists()
+
+    def test_delete_secret_global(self):
+        manager = SecretManager()
+        manager.set_simple_secret("foo", {"bar": "baz"})
+        manager.delete_secret("foo")
+        assert not Secret.objects.exists()
+
 
 @pytest.fixture
 def configured_vault(factory, vault_regionconfig, mock_hvac_client):
@@ -106,3 +147,50 @@ class TestSecretManagerFromVault:
         }
         manager = SecretManager()
         assert manager.get_simple_secret("foo") == "bar"
+
+    def test_set_composite_secret_with_model(self, mock_vault_kv):
+        bmc = factory.make_BMC()
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_composite_secret("foo", value, obj=bmc)
+        assert mock_vault_kv.store == {
+            f"maas-{MAAS_UUID.get()}/bmc/{bmc.id}/foo": value
+        }
+
+    def test_set_composite_secret_global(self, mock_vault_kv):
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_composite_secret("foo", value)
+        assert mock_vault_kv.store == {
+            f"maas-{MAAS_UUID.get()}/global/foo": value
+        }
+
+    def test_set_simple_secret_with_model(self, mock_vault_kv):
+        bmc = factory.make_BMC()
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_simple_secret("foo", value, obj=bmc)
+        assert mock_vault_kv.store == {
+            f"maas-{MAAS_UUID.get()}/bmc/{bmc.id}/foo": {"secret": value}
+        }
+
+    def test_set_simple_secret_global(self, mock_vault_kv):
+        manager = SecretManager()
+        value = {"bar": "baz"}
+        manager.set_simple_secret("foo", value)
+        assert mock_vault_kv.store == {
+            f"maas-{MAAS_UUID.get()}/global/foo": {"secret": value}
+        }
+
+    def test_delete_secret_with_model(self, mock_vault_kv):
+        bmc = factory.make_BMC()
+        manager = SecretManager()
+        manager.set_composite_secret("foo", {"bar": "baz"}, obj=bmc)
+        manager.delete_secret("foo", obj=bmc)
+        assert mock_vault_kv.store == {}
+
+    def test_delete_secret_global(self, mock_vault_kv):
+        manager = SecretManager()
+        manager.set_simple_secret("foo", {"bar": "baz"})
+        manager.delete_secret("foo")
+        assert mock_vault_kv.store == {}
