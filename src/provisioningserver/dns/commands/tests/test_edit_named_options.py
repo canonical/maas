@@ -10,7 +10,7 @@ import os
 import shutil
 import textwrap
 
-from testtools.matchers import Contains, FileContains, Not
+from testtools.matchers import FileContains
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -130,7 +130,7 @@ class TestGetNamedConfCommand(MAASTestCase):
         # Check that the file was re-written without forwarders (since
         # that's now in the included file).
         options = read_isc_file(options_file)
-        self.assertThat(make_isc_string(options), Not(Contains("forwarders")))
+        self.assertNotIn("forwarders", make_isc_string(options))
 
     def test_removes_existing_dnssec_validation_config(self):
         options_file = self.make_file(contents=OPTIONS_FILE_WITH_DNSSEC)
@@ -139,9 +139,7 @@ class TestGetNamedConfCommand(MAASTestCase):
         # Check that the file was re-written without dnssec-validation (since
         # that's now in the included file).
         options = read_isc_file(options_file)
-        self.assertThat(
-            make_isc_string(options), Not(Contains("dnssec-validation"))
-        )
+        self.assertNotIn("dnssec-validation", make_isc_string(options))
 
     def test_normal_operation(self):
         options_file = self.make_file(contents=OPTIONS_FILE)
@@ -154,8 +152,8 @@ class TestGetNamedConfCommand(MAASTestCase):
 
         # Check that the file was re-written with the include statement.
         options = read_isc_file(options_file)
-        self.assertThat(
-            make_isc_string(options), Contains('include "%s";' % expected_path)
+        self.assertIn(
+            'include "%s";' % expected_path, make_isc_string(options)
         )
 
         # Check that the backup was made.

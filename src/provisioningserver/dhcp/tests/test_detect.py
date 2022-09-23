@@ -11,7 +11,6 @@ from unittest import mock
 from unittest.mock import call
 
 from testtools import ExpectedException
-from testtools.matchers import Contains
 from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
@@ -22,12 +21,7 @@ from twisted.internet.task import Clock, deferLater
 from twisted.python.failure import Failure
 
 from maastesting.factory import factory
-from maastesting.matchers import (
-    DocTestMatches,
-    Equals,
-    HasLength,
-    MockCallsMatch,
-)
+from maastesting.matchers import DocTestMatches, HasLength, MockCallsMatch
 from maastesting.runtest import MAASTwistedRunTest
 from maastesting.testcase import MAASTestCase
 from maastesting.twisted import TwistedLoggerFixture
@@ -322,7 +316,7 @@ class TestDHCPRequestMonitor(MAASTestCase):
         self.assertThat(result, HasLength(1))
         # Ensure we record the fact that the reply packet came from a different
         # IP address than the server claimed to be.
-        self.assertThat(result, Contains(DHCPServer("127.1.1.1", "127.0.0.3")))
+        self.assertIn(DHCPServer("127.1.1.1", "127.0.0.3"), result)
 
     @inlineCallbacks
     def test_cancelAll(self):
@@ -340,7 +334,7 @@ class TestDHCPRequestMonitor(MAASTestCase):
         DHCPRequestMonitor.cancelAll(deferreds)
         deferredList = DeferredList(deferreds)
         yield deferredList
-        self.assertThat(self.errbacks_called, Equals(2))
+        self.assertEqual(2, self.errbacks_called)
 
     @inlineCallbacks
     def test_deferredDHCPRequestErrback_cancels_all_on_FirstError(self):
@@ -457,12 +451,8 @@ class TestDHCPRequestMonitor(MAASTestCase):
                 "127.1.1.1 (via 127.2.2.2)"
             ),
         )
-        self.assertThat(
-            monitor.dhcp_servers, Equals({"127.0.0.1", "127.1.1.1"})
-        )
-        self.assertThat(
-            monitor.dhcp_addresses, Equals({"127.0.0.1", "127.2.2.2"})
-        )
+        self.assertEqual({"127.0.0.1", "127.1.1.1"}, monitor.dhcp_servers)
+        self.assertEqual({"127.0.0.1", "127.2.2.2"}, monitor.dhcp_addresses)
 
     @inlineCallbacks
     def test_run_skips_logging_if_no_servers_found(self):
@@ -487,4 +477,4 @@ class TestDHCPRequestMonitor(MAASTestCase):
         }
         result = yield probe_interface("lo")
         self.assertThat(mock_send_and_await, MockCallsMatch(call()))
-        self.assertThat(result, Equals({"127.0.0.1", "127.1.1.1"}))
+        self.assertEqual({"127.0.0.1", "127.1.1.1"}, result)

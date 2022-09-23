@@ -385,9 +385,9 @@ class TestRNDCUtilities(MAASTestCase):
             % ""
         )
 
-        self.assertThat(
+        self.assertIn(
+            'key "rndc-key" {\n' "\talgorithm hmac-md5;\n",
             uncomment_named_conf(named_comment),
-            Contains('key "rndc-key" {\n' "\talgorithm hmac-md5;\n"),
         )
 
 

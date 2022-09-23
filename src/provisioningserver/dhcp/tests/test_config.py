@@ -267,7 +267,7 @@ class TestGetConfig(MAASTestCase):
         )
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
-        self.assertThat(rendered, Contains(bootloader))
+        self.assertIn(bootloader, rendered)
         # Verify that "/images/" is automatically added to bootloaders
         # loaded over HTTP. This ensures nginx handles the result without
         # bothering rackd.
@@ -382,7 +382,7 @@ class TestGetConfig(MAASTestCase):
         params["shared_networks"][0]["subnets"][0]["router_ip"] = router_ip
         rendered = config.get_config(self.template, **params)
         validate_dhcpd_configuration(self, rendered, self.ipv6)
-        self.assertThat(rendered, Contains(router_ip))
+        self.assertIn(router_ip, rendered)
 
     def test_renders_with_empty_string_router_ip(self):
         params = make_sample_params(self, ipv6=self.ipv6)
@@ -477,7 +477,7 @@ class TestGetConfig(MAASTestCase):
                         subnet["subnet"],
                         subnet["subnet_mask"],
                     )
-                self.assertThat(config_output, Contains(expected))
+                self.assertIn(expected, config_output)
 
 
 class TestGetConfigIPv4(MAASTestCase):
@@ -494,9 +494,7 @@ class TestGetConfigIPv4(MAASTestCase):
         ]
         config_output = config.get_config("dhcpd.conf.template", **params)
         validate_dhcpd_configuration(self, config_output, False)
-        self.assertThat(
-            config_output, Contains("next-server %s;" % next_server_ip)
-        )
+        self.assertIn("next-server %s;" % next_server_ip, config_output)
 
     def test_includes_next_server_in_config_from_interface_addresses(self):
         params = make_sample_params(self, ipv6=False, with_interface=True)
@@ -509,9 +507,7 @@ class TestGetConfigIPv4(MAASTestCase):
         ).return_value = [next_server_ip]
         config_output = config.get_config("dhcpd.conf.template", **params)
         validate_dhcpd_configuration(self, config_output, False)
-        self.assertThat(
-            config_output, Contains("next-server %s;" % next_server_ip)
-        )
+        self.assertIn("next-server %s;" % next_server_ip, config_output)
 
 
 class Test_process_shared_network_v6(MAASTestCase):
@@ -618,44 +614,44 @@ class TestComposeConditionalBootloader(MAASTestCase):
         output = config.compose_conditional_bootloader(False, ip)
         for name, method in BootMethodRegistry:
             if name == "pxe":
-                self.assertThat(output, Contains("else"))
-                self.assertThat(output, Contains(method.bootloader_path))
+                self.assertIn("else", output)
+                self.assertIn(method.bootloader_path, output)
             elif method.arch_octet is not None:
                 if isinstance(method.arch_octet, list):
                     self.assertThat(output, ContainsAll(method.arch_octet))
                 else:
-                    self.assertThat(output, Contains(method.arch_octet))
-                self.assertThat(output, Contains(method.bootloader_path))
+                    self.assertIn(method.arch_octet, output)
+                self.assertIn(method.bootloader_path, output)
             else:
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
                 pass
 
             if method.user_class == "iPXE":
-                self.assertThat(
+                self.assertIn(
+                    f'option user-class = "{method.user_class}" or',
                     output,
-                    Contains(f'option user-class = "{method.user_class}" or'),
                 )
             elif method.user_class is not None:
-                self.assertThat(
+                self.assertIn(
+                    f'option user-class = "{method.user_class}" {{',
                     output,
-                    Contains(f'option user-class = "{method.user_class}" {{'),
                 )
 
             if method.path_prefix_http or method.http_url:
-                self.assertThat(output, Contains("http://%s:5248/" % ip))
+                self.assertIn("http://%s:5248/" % ip, output)
             if method.path_prefix_force:
-                self.assertThat(
+                self.assertIn(
+                    "option dhcp-parameter-request-list = concat(",
                     output,
-                    Contains("option dhcp-parameter-request-list = concat("),
                 )
-                self.assertThat(
-                    output, Contains("option dhcp-parameter-request-list,d2);")
+                self.assertIn(
+                    "option dhcp-parameter-request-list,d2);", output
                 )
             if method.http_url:
-                self.assertThat(
+                self.assertIn(
+                    'option vendor-class-identifier "HTTPClient";',
                     output,
-                    Contains('option vendor-class-identifier "HTTPClient";'),
                 )
 
     def test_composes_bootloader_section_v6(self):
@@ -663,14 +659,14 @@ class TestComposeConditionalBootloader(MAASTestCase):
         output = config.compose_conditional_bootloader(True, ip)
         for name, method in BootMethodRegistry:
             if name == "uefi":
-                self.assertThat(output, Contains("else"))
-                self.assertThat(output, Contains(method.bootloader_path))
+                self.assertIn("else", output)
+                self.assertIn(method.bootloader_path, output)
             elif method.arch_octet is not None:
                 if isinstance(method.arch_octet, list):
                     self.assertThat(output, ContainsAll(method.arch_octet))
                 else:
-                    self.assertThat(output, Contains(method.arch_octet))
-                self.assertThat(output, Contains(method.bootloader_path))
+                    self.assertIn(method.arch_octet, output)
+                self.assertIn(method.bootloader_path, output)
             else:
                 # No DHCP configuration is rendered for boot methods that have
                 # no `arch_octet`, with the solitary exception of PXE.
@@ -691,7 +687,7 @@ class TestComposeConditionalBootloader(MAASTestCase):
                 )
 
             if method.path_prefix_http or method.http_url:
-                self.assertThat(output, Contains("http://[%s]:5248/" % ip))
+                self.assertIn("http://[%s]:5248/" % ip, output)
             if method.path_prefix_force:
                 self.assertThat(
                     output,
@@ -700,9 +696,9 @@ class TestComposeConditionalBootloader(MAASTestCase):
                     ),
                 )
             if method.http_url:
-                self.assertThat(
+                self.assertIn(
+                    'option dhcp6.vendor-class 0 10 "HTTPClient";',
                     output,
-                    Contains('option dhcp6.vendor-class 0 10 "HTTPClient";'),
                 )
 
     def test_disabled_boot_architecture(self):
@@ -736,18 +732,18 @@ class TestGetAddresses(MAASTestCase):
     def test_ip_addresses_are_passed_through(self):
         address4 = factory.make_ipv4_address()
         address6 = factory.make_ipv6_address()
-        self.assertThat(
+        self.assertEqual(
+            ([address4], [address6]),
             config._get_addresses(address4, address6),
-            Equals(([address4], [address6])),
         )
 
     def test_ignores_resolution_failures(self):
         # Some ISPs configure their DNS to resolve to an ads page when a domain
         # doesn't exist. This ensures resolving fails so the test passes.
         self.patch(config, "_gen_addresses_where_possible").return_value = []
-        self.assertThat(
+        self.assertEqual(
+            ([], []),
             config._get_addresses("no-way-this-exists.maas.io"),
-            Equals(([], [])),
         )
 
     def test_logs_resolution_failures(self):
