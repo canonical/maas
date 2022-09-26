@@ -232,15 +232,12 @@ class TestConfigHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
         Config.objects.set_config("tls_cert", "ABCDE")
-        obj = Config.objects.get(name="tls_cert")
-        self.assertIsNone(handler.on_listen("config", "create", obj.id))
+        self.assertIsNone(handler.on_listen("config", "create", "tls_cert"))
 
     def test_on_listen_returns_create_for_not_loaded(self):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
-        Config.objects.set_config("curtin_verbose", True)
-        obj = Config.objects.get(name="curtin_verbose")
-        updated = handler.on_listen("config", "update", obj.id)
+        updated = handler.on_listen("config", "update", "curtin_verbose")
         self.assertEqual(
             ("config", "create", {"name": "curtin_verbose", "value": True}),
             updated,
@@ -250,9 +247,7 @@ class TestConfigHandler(MAASServerTestCase):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
         handler.cache["loaded_pks"] = {"curtin_verbose"}
-        Config.objects.set_config("curtin_verbose", True)
-        obj = Config.objects.get(name="curtin_verbose")
-        updated = handler.on_listen("config", "create", obj.id)
+        updated = handler.on_listen("config", "create", "curtin_verbose")
         self.assertEqual(
             ("config", "update", {"name": "curtin_verbose", "value": True}),
             updated,
@@ -263,8 +258,7 @@ class TestConfigHandler(MAASServerTestCase):
         handler = ConfigHandler(user, {}, None)
         handler.cache["loaded_pks"] = {"curtin_verbose"}
         Config.objects.set_config("curtin_verbose", True)
-        obj = Config.objects.get(name="curtin_verbose")
-        updated = handler.on_listen("config", "delete", obj.id)
+        updated = handler.on_listen("config", "delete", "curtin_verbose")
         self.assertEqual(
             ("config", "update", {"name": "curtin_verbose", "value": True}),
             updated,

@@ -15,6 +15,7 @@ from django.db.models import CharField, Manager, Model
 from django.db.models.signals import post_save
 
 from maasserver.fields import JSONObjectField
+from maasserver.listener import notify_action
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.events import EVENT_TYPES
 
@@ -261,6 +262,7 @@ class ConfigManager(Manager):
             SecretManager().set_simple_secret(secret_name, value)
         else:
             self.update_or_create(name=name, defaults={"value": value})
+        notify_action("config", "update", name)
         if endpoint is not None and request is not None:
             create_audit_event(
                 EVENT_TYPES.SETTINGS,

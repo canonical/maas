@@ -7,8 +7,9 @@
 from collections import defaultdict, deque
 from errno import ENOENT
 import threading
+from typing import Any
 
-from django.db import connections
+from django.db import connection, connections
 from django.db.utils import load_backend
 from twisted.application.service import Service
 from twisted.internet import defer, error, interfaces, reactor, task
@@ -508,3 +509,9 @@ class PostgresListenerService(Service):
         # Delete the contents of the connection's notifies list so
         # that we don't process them a second time.
         del notifies[:]
+
+
+def notify_action(target: str, action: str, identifier: Any):
+    """Send a notification for an action on a target."""
+    with connection.cursor() as cursor:
+        cursor.execute(f"NOTIFY {target}_{action}, %s", [str(identifier)])

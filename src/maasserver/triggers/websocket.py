@@ -1774,24 +1774,6 @@ def register_websocket_triggers():
         fields=["pool_id", "status"],
     )
 
-    # Config table
-    register_procedure(
-        render_notification_procedure(
-            "config_create_notify", "config_create", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "config_update_notify", "config_update", "NEW.id"
-        )
-    )
-    register_procedure(
-        render_notification_procedure(
-            "config_delete_notify", "config_delete", "OLD.id"
-        )
-    )
-    register_triggers("maasserver_config", "config")
-
     # Device Node types
     register_procedure(
         render_device_notification_procedure(

@@ -32,6 +32,7 @@ def get_config_keys(user):
 
 class ConfigHandler(Handler):
     class Meta:
+        pk = "name"
         allowed_methods = ["list", "get", "update"]
         listen_channels = ["config"]
 
@@ -116,15 +117,14 @@ class ConfigHandler(Handler):
 
     def on_listen(self, channel, action, pk):
         """Override on_listen to always send the config values."""
-        config = Config.objects.get(id=pk)
-        if config.name not in get_config_keys(self.user):
+        name = pk
+        if name not in get_config_keys(self.user):
             return None
-        if config.name in self.cache["loaded_pks"]:
-            action = "update"
-        else:
-            action = "create"
+        action = "update" if name in self.cache["loaded_pks"] else "create"
+
+        value = Config.objects.get_config(name=pk)
         return (
             self._meta.handler_name,
             action,
-            self._include_choice({"name": config.name, "value": config.value}),
+            self._include_choice({"name": name, "value": value}),
         )
