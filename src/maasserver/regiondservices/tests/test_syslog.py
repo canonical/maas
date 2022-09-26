@@ -5,13 +5,7 @@
 
 
 from netaddr import IPAddress
-from testtools.matchers import (
-    AllMatch,
-    ContainsAll,
-    Equals,
-    IsInstance,
-    MatchesStructure,
-)
+from testtools.matchers import AllMatch, ContainsAll, Equals, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -57,11 +51,11 @@ class TestRegionSyslogService_Basic(MAASTestCase):
 
     def test_service_uses__tryUpdate_as_periodic_function(self):
         service = syslog.RegionSyslogService(reactor)
-        self.assertThat(service.call, Equals((service._tryUpdate, (), {})))
+        self.assertEqual((service._tryUpdate, (), {}), service.call)
 
     def test_service_iterates_every_30_seconds(self):
         service = syslog.RegionSyslogService(reactor)
-        self.assertThat(service.step, Equals(30.0))
+        self.assertEqual(30.0, service.step)
 
 
 class TestRegionSyslogService(MAASTransactionServerTestCase):
@@ -185,7 +179,7 @@ class TestRegionSyslogService_Database(MAASServerTestCase):
         peer, addr4, addr6 = make_region_rack_with_address(space)
 
         observed = service._getConfiguration()
-        self.assertThat(observed, IsInstance(syslog._Configuration))
+        self.assertIsInstance(observed, syslog._Configuration)
 
         expected_peers = AllMatch(Equals((peer.hostname, IPAddress(addr4.ip))))
 

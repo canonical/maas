@@ -4,7 +4,7 @@
 """Tests for `maasserver.regiondservices.ntp`."""
 
 
-from testtools.matchers import AllMatch, Equals, IsInstance, MatchesStructure
+from testtools.matchers import AllMatch, Equals, MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -51,11 +51,11 @@ class TestRegionNetworkTimeProtocolService_Basic(MAASTestCase):
 
     def test_service_uses__tryUpdate_as_periodic_function(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
-        self.assertThat(service.call, Equals((service._tryUpdate, (), {})))
+        self.assertEqual((service._tryUpdate, (), {}), service.call)
 
     def test_service_iterates_every_30_seconds(self):
         service = ntp.RegionNetworkTimeProtocolService(reactor)
-        self.assertThat(service.step, Equals(30.0))
+        self.assertEqual(30.0, service.step)
 
 
 class TestRegionNetworkTimeProtocolService(MAASTransactionServerTestCase):
@@ -159,7 +159,7 @@ class TestRegionNetworkTimeProtocolService_Database(MAASServerTestCase):
         peer, addr4, addr6 = make_region_with_address(space)
 
         observed = service._getConfiguration()
-        self.assertThat(observed, IsInstance(ntp._Configuration))
+        self.assertIsInstance(observed, ntp._Configuration)
 
         expected_references = Equals(frozenset(ntp_servers))
         expected_peers = AllMatch(ContainedBy({addr4.ip, addr6.ip}))

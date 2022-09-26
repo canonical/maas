@@ -6,7 +6,6 @@
 
 from unittest.mock import Mock
 
-from testtools.matchers import Equals, Is
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks
 
@@ -45,7 +44,7 @@ class TestReverseDNSService(
         self.set_fake_twisted_dns_reply([hostname])
         service = ReverseDNSService()
         yield service.startService()
-        self.assertThat(service.region, Equals(self.region))
+        self.assertEqual(self.region, service.region)
         service.stopService()
 
     @wait_for()
@@ -59,8 +58,8 @@ class TestReverseDNSService(
         yield service.consumeNeighbourEvent("create", "%s/32" % ip)
         service.stopService()
         result = yield deferToDatabase(RDNS.objects.first)
-        self.assertThat(result.ip, Equals(ip))
-        self.assertThat(result.hostname, Equals(hostname))
+        self.assertEqual(ip, result.ip)
+        self.assertEqual(hostname, result.hostname)
 
     @wait_for()
     @inlineCallbacks
@@ -76,8 +75,8 @@ class TestReverseDNSService(
         yield service.consumeNeighbourEvent("update", "%s/32" % ip)
         service.stopService()
         result = yield deferToDatabase(RDNS.objects.first)
-        self.assertThat(result.ip, Equals(ip))
-        self.assertThat(result.hostname, Equals(hostname2))
+        self.assertEqual(ip, result.ip)
+        self.assertEqual(hostname2, result.hostname)
 
     @wait_for()
     @inlineCallbacks
@@ -91,7 +90,7 @@ class TestReverseDNSService(
         yield service.consumeNeighbourEvent("delete", "%s/32" % ip)
         service.stopService()
         result = yield deferToDatabase(RDNS.objects.first)
-        self.assertThat(result, Is(None))
+        self.assertIsNone(result)
 
     @wait_for()
     @inlineCallbacks
@@ -123,4 +122,4 @@ class TestReverseDNSService(
         )
         self.assertThat(reverseResolve, MockCalledOnceWith(ip))
         result = yield deferToDatabase(RDNS.objects.first)
-        self.assertThat(result, Is(None))
+        self.assertIsNone(result)

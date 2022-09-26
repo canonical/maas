@@ -9,7 +9,7 @@ from textwrap import dedent
 from unittest.mock import Mock
 
 from netaddr import IPNetwork
-from testtools.matchers import Equals, MatchesStructure
+from testtools.matchers import MatchesStructure
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.task import Clock
 
@@ -161,11 +161,9 @@ class TestRefreshDiscoveryConfig(MAASTransactionServerTestCase):
         self.assertThat(
             logger.output, DocTestMatches("...Discovery interval set to...")
         )
-        self.assertThat(service.discovery_enabled, Equals(True))
-        self.assertThat(service.discovery_interval, Equals(expected_interval))
-        self.assertThat(
-            service.discovery_last_scan, Equals(expected_last_scan)
-        )
+        self.assertTrue(service.discovery_enabled)
+        self.assertEqual(expected_interval, service.discovery_interval)
+        self.assertEqual(expected_last_scan, service.discovery_last_scan)
         self.assertThat(run, MockCalledOnceWith())
 
     @wait_for_reactor
@@ -184,11 +182,9 @@ class TestRefreshDiscoveryConfig(MAASTransactionServerTestCase):
         self.assertThat(
             logger.output, DocTestMatches("...discovery is disabled...")
         )
-        self.assertThat(service.discovery_enabled, Equals(False))
-        self.assertThat(service.discovery_interval, Equals(0))
-        self.assertThat(
-            service.discovery_last_scan, Equals(expected_last_scan)
-        )
+        self.assertFalse(service.discovery_enabled)
+        self.assertEqual(0, service.discovery_interval)
+        self.assertEqual(expected_last_scan, service.discovery_last_scan)
 
 
 class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
@@ -199,9 +195,9 @@ class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
         )
         service = ActiveDiscoveryService(Clock())
         enabled, interval, last_scan = service.get_active_discovery_config()
-        self.assertThat(interval, Equals(expected_interval))
+        self.assertEqual(expected_interval, interval)
         # Enabled is True if interval is > 0
-        self.assertThat(enabled, Equals(True))
+        self.assertTrue(enabled)
 
     def test_returns_expected_last_scan(self):
         expected_last_scan = random.randint(1, 1000)
@@ -210,7 +206,7 @@ class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
         )
         service = ActiveDiscoveryService(Clock())
         enabled, interval, last_scan = service.get_active_discovery_config()
-        self.assertThat(last_scan, Equals(expected_last_scan))
+        self.assertEqual(expected_last_scan, last_scan)
 
     def test_returns_disabled_if_interval_is_zero(self):
         expected_interval = 0
@@ -223,7 +219,7 @@ class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
         )
         service = ActiveDiscoveryService(Clock())
         enabled, interval, last_scan = service.get_active_discovery_config()
-        self.assertThat(enabled, Equals(False))
+        self.assertFalse(enabled)
 
     def test_returns_disabled_if_interval_is_invalid(self):
         expected_interval = factory.make_name()
@@ -236,9 +232,9 @@ class TestGetActiveDiscoveryConfig(MAASTransactionServerTestCase):
         )
         service = ActiveDiscoveryService(Clock())
         enabled, interval, last_scan = service.get_active_discovery_config()
-        self.assertThat(enabled, Equals(False))
-        self.assertThat(interval, Equals(0))
-        self.assertThat(last_scan, Equals(0))
+        self.assertFalse(enabled)
+        self.assertEqual(0, interval)
+        self.assertEqual(0, last_scan)
 
 
 class TestTryLockAndScan(MAASTransactionServerTestCase):
@@ -321,7 +317,7 @@ class TestTryLockAndScan(MAASTransactionServerTestCase):
         )
         get_result_string.return_value = "sensational"
         result = self.service.try_lock_and_scan()
-        self.assertThat(result, Equals("sensational"))
+        self.assertEqual("sensational", result)
         self.assertThat(
             scan_all_rack_networks, MockCalledOnceWith(cidrs=cidrs)
         )
