@@ -122,7 +122,7 @@ class TestDNSResourceForm(MAASServerTestCase):
         dnsresource = form.save()
         self.assertEqual(name, dnsresource.name)
         self.assertEqual(domain.id, dnsresource.domain.id)
-        self.assertEqual(None, dnsresource.address_ttl)
+        self.assertIsNone(dnsresource.address_ttl)
 
     def test_doesnt_require_name_on_update(self):
         dnsresource = factory.make_DNSResource()

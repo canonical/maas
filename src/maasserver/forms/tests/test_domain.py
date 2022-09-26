@@ -83,7 +83,7 @@ class TestDomainForm(MAASServerTestCase):
         domain = form.save()
         self.assertEqual(name, domain.name)
         self.assertEqual(authoritative, domain.authoritative)
-        self.assertEqual(None, domain.ttl)
+        self.assertIsNone(domain.ttl)
 
     def test_can_create_forward_dns_server(self):
         name = factory.make_name("domain")

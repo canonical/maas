@@ -7,7 +7,6 @@
 from unittest.mock import MagicMock
 
 from django.http import QueryDict
-from testtools.matchers import Contains
 
 from maasserver.enum import INTERFACE_TYPE, NODE_STATUS
 from maasserver.forms import MachineWithMACAddressesForm
@@ -130,7 +129,7 @@ class TestMachineWithMACAddressesForm(MAASServerTestCase):
         )
 
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(dict(form.errors), Contains("mac_addresses"))
+        self.assertIn("mac_addresses", dict(form.errors))
 
     def test_with_mac_in_use_on_uknown_interface_passes(self):
         factory.make_Interface(

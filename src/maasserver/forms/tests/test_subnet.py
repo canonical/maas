@@ -6,7 +6,7 @@
 
 import random
 
-from testtools.matchers import Equals, MatchesStructure
+from testtools.matchers import MatchesStructure
 
 from maasserver.forms.subnet import SubnetForm
 from maasserver.models.fabric import Fabric
@@ -123,7 +123,7 @@ class TestSubnetForm(MAASServerTestCase):
         form = SubnetForm({"cidr": " 10.0.0.1/24 "})
         self.assertTrue(form.is_valid(), dict(form.errors))
         subnet = form.save()
-        self.assertThat(subnet.cidr, Equals("10.0.0.0/24"))
+        self.assertEqual("10.0.0.0/24", subnet.cidr)
 
     def test_creates_subnet_name_equal_to_cidr(self):
         vlan = factory.make_VLAN()

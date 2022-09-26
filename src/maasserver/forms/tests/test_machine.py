@@ -106,12 +106,12 @@ class TestMachineForm(MAASServerTestCase):
             },
             instance=node,
         )
-        self.assertEqual(form.is_valid(), False)
+        self.assertFalse(form.is_valid())
 
     def test_form_validates_min_hwe_kernel_by_passing_invalid_config(self):
         node = factory.make_Node(min_hwe_kernel="hwe-t")
         form = MachineForm(instance=node)
-        self.assertEqual(form.is_valid(), False)
+        self.assertFalse(form.is_valid())
 
     def test_adds_blank_default_when_no_arches_available(self):
         patch_usable_architectures(self, [])

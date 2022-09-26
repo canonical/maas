@@ -7,7 +7,7 @@
 import random
 
 from testtools import ExpectedException
-from testtools.matchers import Equals, Not
+from testtools.matchers import Equals
 
 from maasserver.enum import SERVICE_STATUS
 from maasserver.forms.vlan import VLANForm
@@ -140,7 +140,7 @@ class TestVLANForm(MAASServerTestCase):
         form = VLANForm(instance=vlan, data={"primary_rack": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.assertEqual(None, reload_object(vlan).primary_rack)
+        self.assertIsNone(reload_object(vlan).primary_rack)
 
     def test_update_verfies_secondary_rack_is_on_vlan(self):
         vlan = factory.make_VLAN()
@@ -164,7 +164,7 @@ class TestVLANForm(MAASServerTestCase):
         form = VLANForm(instance=vlan, data={"secondary_rack": ""})
         self.assertTrue(form.is_valid(), form.errors)
         form.save()
-        self.assertEqual(None, reload_object(vlan).secondary_rack)
+        self.assertIsNone(reload_object(vlan).secondary_rack)
 
     def test_update_blank_primary_sets_to_secondary(self):
         vlan = factory.make_VLAN()
@@ -180,7 +180,7 @@ class TestVLANForm(MAASServerTestCase):
         form.save()
         vlan = reload_object(vlan)
         self.assertEqual(secondary_rack, vlan.primary_rack)
-        self.assertEqual(None, vlan.secondary_rack)
+        self.assertIsNone(vlan.secondary_rack)
 
     def test_update_primary_set_to_secondary_removes_secondary(self):
         vlan = factory.make_VLAN()
@@ -197,7 +197,7 @@ class TestVLANForm(MAASServerTestCase):
         form.save()
         vlan = reload_object(vlan)
         self.assertEqual(secondary_rack, vlan.primary_rack)
-        self.assertEqual(None, vlan.secondary_rack)
+        self.assertIsNone(vlan.secondary_rack)
 
     def test_update_secondary_set_to_existing_primary_fails(self):
         vlan = factory.make_VLAN()
@@ -379,7 +379,7 @@ class TestVLANForm(MAASServerTestCase):
         form.save()
         vlan = reload_object(vlan)
         self.assertEqual(secondary_rack, vlan.primary_rack)
-        self.assertEqual(None, vlan.secondary_rack)
+        self.assertIsNone(vlan.secondary_rack)
         self.assertTrue(vlan.dhcp_on)
 
 
@@ -390,7 +390,7 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         fabric1_untagged = fabric1.get_default_vlan()
         form = VLANForm(instance=fabric1_untagged, data={"fabric": fabric0.id})
         is_valid = form.is_valid()
-        self.assertThat(is_valid, Equals(False))
+        self.assertFalse(is_valid)
         self.assertThat(
             dict(form.errors),
             Equals(
@@ -413,7 +413,7 @@ class TestVLANFormFabricModification(MAASServerTestCase):
             instance=fabric1_untagged, data={"fabric": fabric0.id, "vid": 10}
         )
         is_valid = form.is_valid()
-        self.assertThat(is_valid, Equals(True))
+        self.assertTrue(is_valid)
         form.save()
 
     def test_deletes_empty_fabrics(self):
@@ -424,9 +424,9 @@ class TestVLANFormFabricModification(MAASServerTestCase):
             instance=fabric1_untagged, data={"fabric": fabric0.id, "vid": 10}
         )
         is_valid = form.is_valid()
-        self.assertThat(is_valid, Equals(True))
+        self.assertTrue(is_valid)
         form.save()
-        self.assertThat(reload_object(fabric1), Equals(None))
+        self.assertIsNone(reload_object(fabric1))
 
     def test_does_not_delete_non_empty_fabrics(self):
         fabric0 = Fabric.objects.get_default_fabric()
@@ -438,5 +438,5 @@ class TestVLANFormFabricModification(MAASServerTestCase):
         )
         is_valid = form.is_valid()
         form.save()
-        self.assertThat(is_valid, Equals(True))
-        self.assertThat(reload_object(fabric1), Not(Equals(None)))
+        self.assertTrue(is_valid)
+        self.assertIsNotNone(reload_object(fabric1))

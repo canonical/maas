@@ -6,8 +6,6 @@
 
 from unittest.mock import Mock
 
-from testtools.matchers import Contains, Equals
-
 from maasserver.enum import IPRANGE_TYPE
 from maasserver.forms.iprange import IPRangeForm
 from maasserver.testing.factory import factory
@@ -32,9 +30,7 @@ class TestIPRangeForm(MAASServerTestCase):
             }
         )
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(
-            form.errors["start_ip"], Contains("This field is required.")
-        )
+        self.assertIn("This field is required.", form.errors["start_ip"])
 
     def test_requires_end_ip(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -48,9 +44,7 @@ class TestIPRangeForm(MAASServerTestCase):
             }
         )
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(
-            form.errors["end_ip"], Contains("This field is required.")
-        )
+        self.assertIn("This field is required.", form.errors["end_ip"])
 
     def test_requires_type(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -64,9 +58,7 @@ class TestIPRangeForm(MAASServerTestCase):
             }
         )
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(
-            form.errors["type"], Contains("This field is required.")
-        )
+        self.assertIn("This field is required.", form.errors["type"])
 
     def test_requires_subnet(self):
         comment = factory.make_name("comment")
@@ -79,9 +71,7 @@ class TestIPRangeForm(MAASServerTestCase):
             }
         )
         self.assertFalse(form.is_valid(), dict(form.errors))
-        self.assertThat(
-            form.errors["subnet"], Contains("This field is required.")
-        )
+        self.assertIn("This field is required.", form.errors["subnet"])
 
     def test_subnet_optional_if_it_can_be_found(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")
@@ -110,7 +100,7 @@ class TestIPRangeForm(MAASServerTestCase):
         )
         self.assertTrue(form.is_valid(), dict(form.errors))
         iprange = form.save()
-        self.assertThat(iprange.comment, Equals(""))
+        self.assertEqual("", iprange.comment)
 
     def test_creates_iprange(self):
         subnet = factory.make_Subnet(cidr="10.0.0.0/24")

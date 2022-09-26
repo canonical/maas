@@ -231,7 +231,7 @@ class TestScriptForm(MAASServerTestCase):
         self.assertEqual(
             orig_script_content, script.script.previous_version.data
         )
-        self.assertEqual(None, script.script.previous_version.comment)
+        self.assertIsNone(script.script.previous_version.comment)
         self.assertEqual(
             apply_configured_networking, script.apply_configured_networking
         )

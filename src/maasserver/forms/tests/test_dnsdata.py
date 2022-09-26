@@ -74,7 +74,7 @@ class TestDNSDataForm(MAASServerTestCase):
         self.assertEqual(dnsrr.id, dnsdata.dnsresource.id)
         self.assertEqual(rrtype, dnsdata.rrtype)
         self.assertEqual(rrdata, dnsdata.rrdata)
-        self.assertEqual(None, dnsdata.ttl)
+        self.assertIsNone(dnsdata.ttl)
 
     def test_doesnt_require_name_on_update(self):
         dnsdata = factory.make_DNSData()

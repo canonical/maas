@@ -4,7 +4,6 @@
 
 from django.http import HttpRequest
 from django.http.request import QueryDict
-from testtools.matchers import Contains, Equals
 
 from maasserver.forms import DeviceForm, DeviceWithMACsForm
 from maasserver.models import Device, Interface
@@ -84,7 +83,7 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
 
     def test_contains_mac_addresses_field_and_converts_non_querydict(self):
         form = DeviceWithMACsForm(data={})
-        self.assertThat(form.fields, Contains("mac_addresses"))
+        self.assertIn("mac_addresses", form.fields)
         self.assertIsInstance(form.data, QueryDict)
 
     def test_creates_device_with_mac(self):
@@ -97,7 +96,7 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
-        self.assertThat(device.hostname, Equals(hostname))
+        self.assertEqual(hostname, device.hostname)
         iface = get_one(Interface.objects.filter(mac_address=mac))
         self.assertEqual(iface.node_config.node, device)
 
@@ -114,7 +113,7 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
-        self.assertThat(device.hostname, Equals(hostname))
+        self.assertEqual(hostname, device.hostname)
         iface = get_one(Interface.objects.filter(mac_address=mac1))
         self.assertEqual(iface.node_config.node, device)
         iface = get_one(Interface.objects.filter(mac_address=mac2))
@@ -138,8 +137,8 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
-        self.assertThat(device.hostname, Equals(hostname))
-        self.assertThat(device.domain, Equals(parent.domain))
+        self.assertEqual(hostname, device.hostname)
+        self.assertEqual(parent.domain, device.domain)
         iface = get_one(Interface.objects.filter(mac_address=mac1))
         self.assertEqual(iface.node_config.node, device)
         iface = get_one(Interface.objects.filter(mac_address=mac2))
@@ -165,8 +164,8 @@ class TestDeviceWithMACsForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), dict(form.errors))
         form.save()
         device = get_one(Device.objects.filter(hostname=hostname))
-        self.assertThat(device.hostname, Equals(hostname))
-        self.assertThat(device.domain, Equals(domain))
+        self.assertEqual(hostname, device.hostname)
+        self.assertEqual(domain, device.domain)
         iface = get_one(Interface.objects.filter(mac_address=mac1))
         self.assertEqual(iface.node_config.node, device)
         iface = get_one(Interface.objects.filter(mac_address=mac2))

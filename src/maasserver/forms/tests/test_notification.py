@@ -7,7 +7,7 @@
 import json
 import random
 
-from testtools.matchers import Equals, MatchesStructure
+from testtools.matchers import MatchesStructure
 
 from maasserver.forms.notification import NotificationForm
 from maasserver.testing.factory import factory
@@ -110,7 +110,7 @@ class TestNotificationForm(MAASServerTestCase):
         form = NotificationForm(instance=notification, data=data)
         self.assertTrue(form.is_valid(), form.errors)
         notification_saved = form.save()
-        self.assertThat(notification_saved, Equals(notification))
+        self.assertEqual(notification, notification_saved)
         expected = dict(
             data,
             user=user,
