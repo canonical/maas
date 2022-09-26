@@ -8,13 +8,7 @@ import random
 from unittest.mock import ANY, Mock
 
 import attr
-from testtools.matchers import (
-    Contains,
-    Equals,
-    FileContains,
-    IsInstance,
-    MatchesStructure,
-)
+from testtools.matchers import Contains, FileContains, MatchesStructure
 from tftp.errors import AccessViolation, FileNotFound
 from twisted.application.service import Service
 from twisted.internet import reactor
@@ -80,13 +74,13 @@ class TestRackHTTPService(MAASTestCase):
         service = http.RackHTTPService(
             self.make_dir(), StubClusterClientService(), reactor
         )
-        self.assertThat(service.call, Equals((service._tryUpdate, (), {})))
+        self.assertEqual((service._tryUpdate, (), {}), service.call)
 
     def test_service_iterates_on_low_interval(self):
         service = http.RackHTTPService(
             self.make_dir(), StubClusterClientService(), reactor
         )
-        self.assertThat(service.step, Equals(service.INTERVAL_LOW))
+        self.assertEqual(service.INTERVAL_LOW, service.step)
 
     def extract_regions(self, rpc_service):
         return frozenset(
@@ -140,7 +134,7 @@ class TestRackHTTPService(MAASTestCase):
         self.addCleanup((yield service.stopService))
         observed = yield service._getConfiguration()
 
-        self.assertThat(observed, IsInstance(http._Configuration))
+        self.assertIsInstance(observed, http._Configuration)
         self.assertThat(
             observed, MatchesStructure.byEquality(upstream_http=region_ips)
         )
@@ -195,8 +189,8 @@ class TestRackHTTPService(MAASTestCase):
         self.addCleanup((yield service.stopService))
         yield service._getConfiguration()
 
-        self.assertThat(service.step, Equals(service.INTERVAL_HIGH))
-        self.assertThat(service._loop.interval, Equals(service.INTERVAL_HIGH))
+        self.assertEqual(service.INTERVAL_HIGH, service.step)
+        self.assertEqual(service.INTERVAL_HIGH, service._loop.interval)
 
     def test_genRegionIps_groups_by_region(self):
         mock_rpc = Mock()

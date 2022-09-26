@@ -70,7 +70,7 @@ class TestNodePowerMonitorService(MAASTestCase):
         d = service.query_nodes(client)
         io.flush()
 
-        self.assertEqual(None, extract_result(d))
+        self.assertIsNone(extract_result(d))
         self.assertThat(
             proto_region.ListNodePowerParameters,
             MockCalledOnceWith(ANY, uuid=client.localIdent),
@@ -102,7 +102,7 @@ class TestNodePowerMonitorService(MAASTestCase):
         d = service.query_nodes(getRegionClient())
         io.flush()
 
-        self.assertEqual(None, extract_result(d))
+        self.assertIsNone(extract_result(d))
         self.assertThat(
             query_all_nodes,
             MockCalledOnceWith(
@@ -129,7 +129,7 @@ class TestNodePowerMonitorService(MAASTestCase):
         with FakeLogger("maas") as maaslog:
             io.flush()
 
-        self.assertEqual(None, extract_result(d))
+        self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
             "Rack controller '...' is not recognised.", maaslog.output
         )
@@ -145,7 +145,7 @@ class TestNodePowerMonitorService(MAASTestCase):
             d = service.query_nodes(client)
             d.addErrback(service.query_nodes_failed, sentinel.ident)
 
-        self.assertEqual(None, extract_result(d))
+        self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
             "Lost connection to region controller.", maaslog.output
         )
@@ -163,7 +163,7 @@ class TestNodePowerMonitorService(MAASTestCase):
         with FakeLogger("maas") as maaslog, TwistedLoggerFixture():
             d = service.try_query_nodes()
 
-        self.assertEqual(None, extract_result(d))
+        self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
             "Failed to query nodes' power status: "
             "Such a shame I can't divide by zero",

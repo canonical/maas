@@ -1223,9 +1223,7 @@ class TestLogRequest(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             log_request(file_name, clock)
             clock.advance(0.0)  # Don't leave anything in the reactor.
-        self.assertThat(
-            logger.output, Equals(f"{file_name} requested by {ip}")
-        )
+        self.assertEqual(f"{file_name} requested by {ip}", logger.output)
 
     def test_logs_when_sending_event_errors(self):
         send_event = self.patch(tftp_module, "send_node_event_ip_address")

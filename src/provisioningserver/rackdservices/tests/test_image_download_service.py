@@ -182,7 +182,7 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         with FakeLogger("maas") as maaslog, TwistedLoggerFixture() as logger:
             d = service.try_download()
 
-        self.assertEqual(None, extract_result(d))
+        self.assertIsNone(extract_result(d))
         self.assertDocTestMatches(
             "Failed to download images: "
             "Such a shame I can't divide by zero",

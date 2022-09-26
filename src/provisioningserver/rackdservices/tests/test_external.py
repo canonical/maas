@@ -8,7 +8,7 @@ import random
 from unittest.mock import Mock
 
 import attr
-from testtools.matchers import Equals, Is, IsInstance, MatchesStructure
+from testtools.matchers import MatchesStructure
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 
@@ -136,13 +136,13 @@ class TestRackExternalService(MAASTestCase):
         service = external.RackExternalService(
             StubClusterClientService(), reactor
         )
-        self.assertThat(service.call, Equals((service._tryUpdate, (), {})))
+        self.assertEqual((service._tryUpdate, (), {}), service.call)
 
     def test_service_iterates_on_low_interval(self):
         service = external.RackExternalService(
             StubClusterClientService(), reactor
         )
-        self.assertThat(service.step, Equals(service.INTERVAL_LOW))
+        self.assertEqual(service.INTERVAL_LOW, service.step)
 
     @inlineCallbacks
     def test_getConfiguration_updates_interval_to_high(self):
@@ -156,8 +156,8 @@ class TestRackExternalService(MAASTestCase):
 
         yield service._orig_tryUpdate()
 
-        self.assertThat(service.step, Equals(service.INTERVAL_HIGH))
-        self.assertThat(service._loop.interval, Equals(service.INTERVAL_HIGH))
+        self.assertEqual(service.INTERVAL_HIGH, service.step)
+        self.assertEqual(service.INTERVAL_HIGH, service._loop.interval)
 
     @inlineCallbacks
     def test_is_silent_and_does_nothing_when_region_is_not_available(self):
@@ -177,7 +177,7 @@ class TestRackExternalService(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()
 
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
         self.assertThat(ntp._tryUpdate, MockNotCalled())
 
     @inlineCallbacks
@@ -200,7 +200,7 @@ class TestRackExternalService(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             yield service._tryUpdate()
 
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
         self.assertThat(ntp._tryUpdate, MockNotCalled())
 
 
@@ -253,7 +253,7 @@ class TestRackNTP(MAASTestCase):
             config.controller_type, config.time_configuration
         )
 
-        self.assertThat(observed, IsInstance(external._NTPConfiguration))
+        self.assertIsInstance(observed, external._NTPConfiguration)
         self.assertThat(
             observed,
             MatchesStructure.byEquality(
@@ -296,7 +296,7 @@ class TestRackNTP(MAASTestCase):
         self.patch_autospec(external, "configure_rack")  # No-op configuration.
 
         # There is no most recently applied configuration.
-        self.assertThat(ntp._configuration, Is(None))
+        self.assertIsNone(ntp._configuration)
 
         yield service.startService()
         self.addCleanup((yield service.stopService))
@@ -308,13 +308,11 @@ class TestRackNTP(MAASTestCase):
         # actually "applied" because this host was configured as a region+rack
         # controller, and the rack should not attempt to manage the NTP server
         # on a region+rack.
-        self.assertThat(
-            ntp._configuration, IsInstance(external._NTPConfiguration)
-        )
+        self.assertIsInstance(ntp._configuration, external._NTPConfiguration)
         # The configuration was not applied.
         self.assertThat(external.configure_rack, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
 
     @inlineCallbacks
     def test_sets_ntp_rack_service_to_any_when_is_region(self):
@@ -327,7 +325,7 @@ class TestRackNTP(MAASTestCase):
         self.patch_autospec(ntp, "_configure")  # No-op configuration.
 
         # There is no most recently applied configuration.
-        self.assertThat(ntp._configuration, Is(None))
+        self.assertIsNone(ntp._configuration)
 
         with TwistedLoggerFixture() as logger:
             yield service.startService()
@@ -344,13 +342,11 @@ class TestRackNTP(MAASTestCase):
         # actually "applied" because this host was configured as a region+rack
         # controller, and the rack should not attempt to manage the DNS server
         # on a region+rack.
-        self.assertThat(
-            ntp._configuration, IsInstance(external._NTPConfiguration)
-        )
+        self.assertIsInstance(ntp._configuration, external._NTPConfiguration)
         # The configuration was not applied.
         self.assertThat(ntp._configure, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
 
 
 class TestRackNetworkTimeProtocolService_Errors(MAASTestCase):
@@ -464,7 +460,7 @@ class TestRackDNS(MAASTestCase):
             config.connections,
         )
 
-        self.assertThat(observed, IsInstance(external._DNSConfiguration))
+        self.assertIsInstance(observed, external._DNSConfiguration)
         self.assertThat(
             observed,
             MatchesStructure.byEquality(
@@ -544,7 +540,7 @@ class TestRackDNS(MAASTestCase):
         self.patch_autospec(dns, "_configure")  # No-op configuration.
 
         # There is no most recently applied configuration.
-        self.assertThat(dns._configuration, Is(None))
+        self.assertIsNone(dns._configuration)
 
         with TwistedLoggerFixture() as logger:
             yield service.startService()
@@ -555,13 +551,11 @@ class TestRackDNS(MAASTestCase):
         # actually "applied" because this host was configured as a region+rack
         # controller, and the rack should not attempt to manage the DNS server
         # on a region+rack.
-        self.assertThat(
-            dns._configuration, IsInstance(external._DNSConfiguration)
-        )
+        self.assertIsInstance(dns._configuration, external._DNSConfiguration)
         # The configuration was not applied.
         self.assertThat(dns._configure, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
 
     @inlineCallbacks
     def test_sets_dns_rack_service_to_any_when_is_region(self):
@@ -574,7 +568,7 @@ class TestRackDNS(MAASTestCase):
         self.patch_autospec(dns, "_configure")  # No-op configuration.
 
         # There is no most recently applied configuration.
-        self.assertThat(dns._configuration, Is(None))
+        self.assertIsNone(dns._configuration)
 
         with TwistedLoggerFixture() as logger:
             yield service.startService()
@@ -591,13 +585,11 @@ class TestRackDNS(MAASTestCase):
         # actually "applied" because this host was configured as a region+rack
         # controller, and the rack should not attempt to manage the DNS server
         # on a region+rack.
-        self.assertThat(
-            dns._configuration, IsInstance(external._DNSConfiguration)
-        )
+        self.assertIsInstance(dns._configuration, external._DNSConfiguration)
         # The configuration was not applied.
         self.assertThat(dns._configure, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
 
     def test_genRegionIps_groups_by_region(self):
         mock_rpc = Mock()
@@ -702,7 +694,7 @@ class TestRackProxy(MAASTestCase):
             config.connections,
         )
 
-        self.assertThat(observed, IsInstance(external._ProxyConfiguration))
+        self.assertIsInstance(observed, external._ProxyConfiguration)
         self.assertThat(
             observed,
             MatchesStructure.byEquality(
@@ -785,7 +777,7 @@ class TestRackProxy(MAASTestCase):
         self.patch_autospec(proxy, "_configure")  # No-op configuration.
 
         # There is no most recently applied configuration.
-        self.assertThat(proxy._configuration, Is(None))
+        self.assertIsNone(proxy._configuration)
 
         with TwistedLoggerFixture() as logger:
             yield service.startService()
@@ -802,13 +794,13 @@ class TestRackProxy(MAASTestCase):
         # actually "applied" because this host was configured as a region+rack
         # controller, and the rack should not attempt to manage the DNS server
         # on a region+rack.
-        self.assertThat(
-            proxy._configuration, IsInstance(external._ProxyConfiguration)
+        self.assertIsInstance(
+            proxy._configuration, external._ProxyConfiguration
         )
         # The configuration was not applied.
         self.assertThat(proxy._configure, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
 
 
 class TestRackSyslog(MAASTestCase):
@@ -859,7 +851,7 @@ class TestRackSyslog(MAASTestCase):
             config.connections,
         )
 
-        self.assertThat(observed, IsInstance(external._SyslogConfiguration))
+        self.assertIsInstance(observed, external._SyslogConfiguration)
         self.assertThat(
             observed,
             MatchesStructure.byEquality(
@@ -933,7 +925,7 @@ class TestRackSyslog(MAASTestCase):
         self.patch_autospec(syslog, "_configure")  # No-op configuration.
 
         # There is no most recently applied configuration.
-        self.assertThat(syslog._configuration, Is(None))
+        self.assertIsNone(syslog._configuration)
 
         with TwistedLoggerFixture() as logger:
             yield service.startService()
@@ -950,10 +942,10 @@ class TestRackSyslog(MAASTestCase):
         # actually "applied" because this host was configured as a region+rack
         # controller, and the rack should not attempt to manage the DNS server
         # on a region+rack.
-        self.assertThat(
-            syslog._configuration, IsInstance(external._SyslogConfiguration)
+        self.assertIsInstance(
+            syslog._configuration, external._SyslogConfiguration
         )
         # The configuration was not applied.
         self.assertThat(syslog._configure, MockNotCalled())
         # Nothing was logged; there's no need for lots of chatter.
-        self.assertThat(logger.output, Equals(""))
+        self.assertEqual("", logger.output)
