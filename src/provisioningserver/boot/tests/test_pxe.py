@@ -9,9 +9,7 @@ import os
 import re
 
 from testtools.matchers import (
-    Contains,
     ContainsAll,
-    IsInstance,
     MatchesAll,
     MatchesRegex,
     Not,
@@ -295,7 +293,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
-        self.assertThat(output, IsInstance(BytesReader))
+        self.assertIsInstance(output, BytesReader)
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
@@ -340,7 +338,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
-        self.assertThat(output, IsInstance(BytesReader))
+        self.assertIsInstance(output, BytesReader)
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
@@ -392,7 +390,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
-        self.assertThat(output, IsInstance(BytesReader))
+        self.assertIsInstance(output, BytesReader)
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
@@ -441,7 +439,7 @@ class TestPXEBootMethodRender(MAASTestCase):
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
-        self.assertThat(output, IsInstance(BytesReader))
+        self.assertIsInstance(output, BytesReader)
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.
@@ -567,7 +565,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         config = parse_pxe_config(output)
         # The default section is defined.
         default_section_label = config.header["DEFAULT"]
-        self.assertThat(config, Contains(default_section_label))
+        self.assertIn(default_section_label, config)
         default_section = dict(config[default_section_label])
 
         contains_arch_path = StartsWith(
@@ -602,7 +600,7 @@ class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
         config = parse_pxe_config(output)
         # The default section is defined.
         default_section_label = config.header["DEFAULT"]
-        self.assertThat(config, Contains(default_section_label))
+        self.assertIn(default_section_label, config)
         default_section = config[default_section_label]
         # The default section uses the ifcpu64 module, branching to the "i386"
         # or "amd64" labels accordingly.

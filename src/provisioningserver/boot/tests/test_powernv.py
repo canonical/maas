@@ -7,13 +7,7 @@
 import re
 from unittest.mock import Mock
 
-from testtools.matchers import (
-    IsInstance,
-    MatchesAll,
-    MatchesRegex,
-    Not,
-    StartsWith,
-)
+from testtools.matchers import MatchesAll, MatchesRegex, Not, StartsWith
 from twisted.python.filepath import FilePath
 
 from maastesting.factory import factory
@@ -164,7 +158,7 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         )
         output = method.get_reader(backend=None, kernel_params=params)
         # The output is a BytesReader.
-        self.assertThat(output, IsInstance(BytesReader))
+        self.assertIsInstance(output, BytesReader)
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. PXELINUX configurations
         # typically start with a DEFAULT line.

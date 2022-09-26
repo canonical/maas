@@ -10,7 +10,6 @@ import re
 
 from testtools.matchers import (
     ContainsAll,
-    IsInstance,
     MatchesAll,
     MatchesRegex,
     StartsWith,
@@ -85,7 +84,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             backend=None, kernel_params=params, protocol="tftp"
         )
         # The output is a BytesReader.
-        self.assertThat(output, IsInstance(BytesReader))
+        self.assertIsInstance(output, BytesReader)
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. UEFI configurations
         # typically start with a DEFAULT line.
@@ -137,7 +136,7 @@ class TestUEFIAMD64BootMethodRender(MAASTestCase):
             backend=None, kernel_params=params, protocol="http"
         )
         # The output is a BytesReader.
-        self.assertThat(output, IsInstance(BytesReader))
+        self.assertIsInstance(output, BytesReader)
         output = output.read(10000).decode("utf-8")
         # The template has rendered without error. UEFI configurations
         # typically start with a DEFAULT line.

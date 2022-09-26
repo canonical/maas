@@ -12,7 +12,6 @@ import shutil
 from unittest import mock
 from unittest.mock import ANY, sentinel
 
-from testtools.matchers import Is
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import inlineCallbacks
 
@@ -151,20 +150,20 @@ class TestRequestNodeInfoByMACAddress(MAASTestCase):
 
     def test_returns_None_when_MAC_is_None(self):
         d = windows_module.request_node_info_by_mac_address(None)
-        self.assertThat(extract_result(d), Is(None))
+        self.assertIsNone(extract_result(d))
 
     def test_returns_None_when_node_not_found(self):
         client = self.patch(windows_module, "getRegionClient").return_value
         client.side_effect = always_fail_with(NoSuchNode())
         mac = factory.make_mac_address()
         d = windows_module.request_node_info_by_mac_address(mac)
-        self.assertThat(extract_result(d), Is(None))
+        self.assertIsNone(extract_result(d))
 
     def test_returns_output_from_RequestNodeInfoByMACAddress(self):
         client = self.patch(windows_module, "getRegionClient").return_value
         client.side_effect = always_succeed_with(sentinel.node_info)
         d = windows_module.request_node_info_by_mac_address(sentinel.mac)
-        self.assertThat(extract_result(d), Is(sentinel.node_info))
+        self.assertIs(extract_result(d), sentinel.node_info)
         self.assertThat(
             client,
             MockCalledOnceWith(
@@ -234,7 +233,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         }
 
         params = yield method.match_path(None, "pxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_pxelinux_missing_hivex(self):
@@ -250,7 +249,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
         self.patch(windows_module, "HAVE_HIVEX")
         params = yield method.match_path(None, "pxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_pxelinux_only_on_windows(self):
@@ -265,7 +264,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         }
 
         params = yield method.match_path(None, "pxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_pxelinux_get_node_info_None(self):
@@ -275,7 +274,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         mock_get_node_info.return_value = None
 
         params = yield method.match_path(None, "pxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_lpxelinux(self):
@@ -306,7 +305,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         }
 
         params = yield method.match_path(None, "lpxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_lpxelinux_missing_hivex(self):
@@ -322,7 +321,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
         self.patch(windows_module, "HAVE_HIVEX")
         params = yield method.match_path(None, "lpxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_lpxelinux_only_on_windows(self):
@@ -337,7 +336,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         }
 
         params = yield method.match_path(None, "lpxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_lpxelinux_get_node_info_None(self):
@@ -347,7 +346,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         mock_get_node_info.return_value = None
 
         params = yield method.match_path(None, "lpxelinux.0")
-        self.assertEqual(params, None)
+        self.assertIsNone(params)
 
     @inlineCallbacks
     def test_match_path_static_file(self):
