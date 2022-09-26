@@ -10,7 +10,7 @@ import os
 from pytz import UTC
 
 from maasserver import locks
-from maasserver.models.config import Config
+from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
@@ -36,22 +36,22 @@ def get_serial():
 @synchronised(locks.security)  # Region-wide lock.
 @transactional
 def get_shared_secret_txn():
-    # Load secret from database, if it exists.
-    secret_in_db_hex = Config.objects.get_config("rpc_shared_secret")
-    if secret_in_db_hex is None:
+    manager = SecretManager()
+    try:
+        secret_in_db_hex = manager.get_simple_secret("rpc-shared")
+        secret_in_db = to_bin(secret_in_db_hex) if secret_in_db_hex else None
+    except SecretNotFound:
         secret_in_db = None
-    else:
-        secret_in_db = to_bin(secret_in_db_hex)
     # Load secret from the filesystem, if it exists.
     secret_on_fs = get_shared_secret_from_filesystem()
 
     if secret_in_db is None and secret_on_fs is None:
         secret = os.urandom(16)  # 16-bytes of crypto-standard noise.
-        Config.objects.set_config("rpc_shared_secret", to_hex(secret))
+        manager.set_simple_secret("rpc-shared", to_hex(secret))
         set_shared_secret_on_filesystem(secret)
     elif secret_in_db is None:
         secret = secret_on_fs
-        Config.objects.set_config("rpc_shared_secret", to_hex(secret))
+        manager.set_simple_secret("rpc-shared", to_hex(secret))
     elif secret_on_fs is None:
         secret = secret_in_db
         set_shared_secret_on_filesystem(secret)

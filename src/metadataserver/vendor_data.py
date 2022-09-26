@@ -24,6 +24,7 @@ from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.permissions import NodePermission
 from maasserver.preseed import get_network_yaml_settings
 from maasserver.preseed_network import NodeNetworkConfiguration
+from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.utils.certificates import generate_certificate
 from maasserver.utils.converters import systemd_interval_to_calendar
@@ -143,7 +144,7 @@ def generate_rack_controller_configuration(node):
         and node.osystem in ("ubuntu", "ubuntu-core")
     ):
         maas_url = get_node_maas_url(node)
-        secret = Config.objects.get_config("rpc_shared_secret")
+        secret = SecretManager().get_simple_secret("rpc-shared")
         channel = str(get_target_version().snap_channel)
         yield "runcmd", [
             f"snap install maas --channel={channel}",

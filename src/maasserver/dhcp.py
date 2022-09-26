@@ -38,6 +38,7 @@ from maasserver.models import (
     VLAN,
 )
 from maasserver.rpc import getAllClients, getClientFor, getRandomClient
+from maasserver.secrets import SecretManager, SecretNotFound
 from maasserver.utils.orm import transactional
 from maasserver.utils.threads import deferToDatabase
 from provisioningserver.dhcp.omapi import generate_omapi_key
@@ -59,10 +60,12 @@ log = LegacyLogger()
 
 def get_omapi_key():
     """Return the OMAPI key for all DHCP servers that are ran by MAAS."""
-    key = Config.objects.get_config("omapi_key")
-    if key is None or key == "":
+    manager = SecretManager()
+    try:
+        key = manager.get_simple_secret("omapi-key")
+    except SecretNotFound:
         key = generate_omapi_key()
-        Config.objects.set_config("omapi_key", key)
+        manager.set_simple_secret("omapi-key", key)
     return key
 
 

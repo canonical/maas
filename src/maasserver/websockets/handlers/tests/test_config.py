@@ -10,6 +10,7 @@ from testtools import ExpectedException
 
 from maasserver.forms.settings import CONFIG_ITEMS, get_config_field
 from maasserver.models.config import Config, get_default_config
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
@@ -105,7 +106,7 @@ class TestConfigHandler(MAASServerTestCase):
 
     def test_list_admin_includes_all_config(self):
         admin = factory.make_admin()
-        config_keys = list(CONFIG_ITEMS.keys()) + [
+        config_keys = list(CONFIG_ITEMS) + [
             "maas_url",
             "uuid",
             "rpc_shared_secret",
@@ -127,14 +128,14 @@ class TestConfigHandler(MAASServerTestCase):
         )
 
     def test_list_admin_includes_rpc_secret(self):
-        Config.objects.set_config("rpc_shared_secret", "my-secret")
+        SecretManager().set_simple_secret("rpc-shared", "my-secret")
         admin = factory.make_admin()
         handler = ConfigHandler(admin, {}, None)
         config = {item["name"]: item["value"] for item in handler.list({})}
         self.assertEqual("my-secret", config["rpc_shared_secret"])
 
     def test_get_admin_allows_rpc_secret(self):
-        Config.objects.set_config("rpc_shared_secret", "my-secret")
+        SecretManager().set_simple_secret("rpc-shared", "my-secret")
         admin = factory.make_admin()
         handler = ConfigHandler(admin, {}, None)
         self.assertEqual(
@@ -230,8 +231,8 @@ class TestConfigHandler(MAASServerTestCase):
     def test_on_listen_returns_None_if_excluded(self):
         user = factory.make_User()
         handler = ConfigHandler(user, {}, None)
-        Config.objects.set_config("omapi_key", "")
-        obj = Config.objects.get(name="omapi_key")
+        Config.objects.set_config("tls_cert", "ABCDE")
+        obj = Config.objects.get(name="tls_cert")
         self.assertIsNone(handler.on_listen("config", "create", obj.id))
 
     def test_on_listen_returns_create_for_not_loaded(self):

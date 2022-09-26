@@ -19,8 +19,9 @@ from testtools.matchers import (
 from twisted.internet import ssl
 
 from maasserver import security
-from maasserver.models.config import Config
+from maasserver.secrets import SecretManager
 from maasserver.testing.testcase import MAASTransactionServerTestCase
+from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.env import MAAS_SHARED_SECRET
@@ -54,10 +55,12 @@ is_valid_region_certificate = MatchesAll(
 class TestGetSharedSecret(MAASTransactionServerTestCase):
     def setUp(self):
         super().setUp()
-        Config.objects.set_config("rpc_shared_secret", None)
         tempdir = Path(self.useFixture(TempDirectory()).path)
         MAAS_SHARED_SECRET.clear_cached()
         self.patch(MAAS_SHARED_SECRET, "path", tempdir / "secret")
+        secret = factory.make_bytes(16)
+        self.shared_secret = b2a_hex(secret).decode("ascii")
+        SecretManager().set_simple_secret("rpc-shared", self.shared_secret)
 
     def test_generates_new_secret_when_none_exists(self):
         secret = security.get_shared_secret()
@@ -81,26 +84,26 @@ class TestGetSharedSecret(MAASTransactionServerTestCase):
 
     def test_uses_filesystem_secret_when_none_in_database(self):
         secret_before = security.get_shared_secret()
-        Config.objects.set_config("rpc_shared_secret", None)
+        SecretManager().set_simple_secret("rpc-shared", None)
         secret_after = security.get_shared_secret()
         self.assertEqual(secret_before, secret_after)
         # The secret found on the filesystem is saved in the database.
         self.assertEqual(
             b2a_hex(secret_after).decode("ascii"),
-            Config.objects.get_config("rpc_shared_secret"),
+            SecretManager().get_simple_secret("rpc-shared"),
         )
 
     def test_errors_when_database_value_cannot_be_decoded(self):
-        Config.objects.set_config("rpc_shared_secret", "_")
+        SecretManager().set_simple_secret("rpc-shared", "_")
         self.assertRaises(binascii.Error, security.get_shared_secret)
 
     def test_errors_when_database_and_filesystem_values_differ(self):
-        Config.objects.set_config("rpc_shared_secret", "666f6f")
+        SecretManager().set_simple_secret("rpc-shared", "666f6f\n")
         MAAS_SHARED_SECRET.set("626172")
         self.assertRaises(AssertionError, security.get_shared_secret)
 
     def test_deals_fine_with_whitespace_in_database_value(self):
-        Config.objects.set_config("rpc_shared_secret", " 666f6f\n")
+        SecretManager().set_simple_secret("rpc-shared", "666f6f\n")
         # Ordinarily we would need to commit now, because get_shared_secret()
         # runs in a separate thread. However, Django thinks that transaction
         # management means AUTOCOMMIT, which spares us this diabolical chore.

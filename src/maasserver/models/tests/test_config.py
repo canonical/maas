@@ -9,12 +9,12 @@ from socket import gethostname
 from django.db import IntegrityError
 from django.http import HttpRequest
 from fixtures import TestWithFixtures
-from testtools.matchers import Is
 
 from maasserver.enum import ENDPOINT_CHOICES
 from maasserver.models import Config, Event, signals
 import maasserver.models.config
 from maasserver.models.config import ensure_uuid_in_config, get_default_config
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.events import AUDIT
@@ -130,26 +130,18 @@ class TestConfig(MAASServerTestCase):
         )
         self.assertEqual(expected_dict, observed)
 
-    def test_manager_get_configs_returns_passed_defaults(self):
-        expected = get_default_config()
-        # Only get a subset of all the configs.
-        expected_names = list(expected)[:5]
-        expected_dict = {
-            name: factory.make_name("value") for name in expected_names
-        }
-        defaults = [expected_dict[name] for name in expected_names]
-        for name, value in expected_dict.items():
-            Config.objects.set_config(name, value)
-        self.assertEqual(
-            expected_dict, Config.objects.get_configs(expected_names, defaults)
-        )
-
     def test_manager_set_config_creates_config(self):
         Config.objects.set_config("name", "config1")
         Config.objects.set_config("name", "config2")
         self.assertSequenceEqual(
             ["config2"],
             [config.value for config in Config.objects.filter(name="name")],
+        )
+
+    def test_manager_set_config_for_secret_creates_secret(self):
+        Config.objects.set_config("rpc_shared_secret", "abcd")
+        self.assertEqual(
+            SecretManager().get_simple_secret("rpc-shared"), "abcd"
         )
 
     def test_manager_set_config_creates_audit_event(self):
@@ -245,11 +237,11 @@ class TestSettingConfig(MAASServerTestCase):
 
     def test_can_be_initialised_to_None_without_crashing(self):
         Config.objects.set_config(self.name, None)
-        self.assertThat(Config.objects.get_config(self.name), Is(None))
+        self.assertIsNone(Config.objects.get_config(self.name))
 
     def test_can_be_modified_from_None_without_crashing(self):
         Config.objects.set_config(self.name, None)
-        something = [factory.make_name("value")]
+        something = factory.make_name("value")
         Config.objects.set_config(self.name, something)
         self.assertEqual(something, Config.objects.get_config(self.name))
 

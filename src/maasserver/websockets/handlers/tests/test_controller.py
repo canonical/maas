@@ -5,7 +5,8 @@
 from maasserver.config import RegionConfiguration
 from maasserver.enum import NODE_TYPE
 from maasserver.forms import ControllerForm
-from maasserver.models import Config, Controller, ControllerInfo, VLAN
+from maasserver.models import Controller, ControllerInfo, VLAN
+from maasserver.secrets import SecretManager
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACForceOffFixture
 from maasserver.testing.testcase import MAASServerTestCase
@@ -441,15 +442,13 @@ class TestControllerHandler(MAASServerTestCase):
         self.assertRaises(HandlerPermissionError, handler.register_info, {})
 
     def test_register_info(self):
+        SecretManager().set_simple_secret("rpc-shared", "abc")
         admin = factory.make_admin()
         handler = ControllerHandler(admin, {}, None)
         observed = handler.register_info({})
-        rpc_shared_secret = Config.objects.get_config("rpc_shared_secret")
         with RegionConfiguration.open() as config:
             maas_url = config.maas_url
-        self.assertEqual(
-            {"url": maas_url, "secret": rpc_shared_secret}, observed
-        )
+        self.assertEqual({"url": maas_url, "secret": "abc"}, observed)
 
     def test_permissions_view_admin(self):
         admin = factory.make_admin()

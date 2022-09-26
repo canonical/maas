@@ -36,6 +36,7 @@ from maasserver.models import (
     VersionedTextFile,
 )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.secrets import SecretManager
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
@@ -68,7 +69,7 @@ class TestGetOMAPIKey(MAASServerTestCase):
 
     def test_returns_key_in_global_config(self):
         key = factory.make_name("omapi")
-        Config.objects.set_config("omapi_key", key)
+        SecretManager().set_simple_secret("omapi-key", key)
         self.assertEqual(key, dhcp.get_omapi_key())
 
     def test_sets_new_omapi_key_in_global_config(self):
@@ -76,8 +77,8 @@ class TestGetOMAPIKey(MAASServerTestCase):
         mock_generate_omapi_key = self.patch(dhcp, "generate_omapi_key")
         mock_generate_omapi_key.return_value = key
         self.assertEqual(key, dhcp.get_omapi_key())
-        self.assertEqual(key, Config.objects.get_config("omapi_key"))
-        self.assertThat(mock_generate_omapi_key, MockCalledOnceWith())
+        self.assertEqual(key, SecretManager().get_simple_secret("omapi-key"))
+        mock_generate_omapi_key.assert_called_once_with()
 
 
 class TestSplitIPv4IPv6Subnets(MAASServerTestCase):
@@ -2476,6 +2477,12 @@ class TestGetDHCPConfigureFor(MAASServerTestCase):
 class TestGetDHCPConfiguration(MAASServerTestCase):
     """Tests for `get_dhcp_configuration`."""
 
+    def setUp(self):
+        super().setUp()
+        SecretManager().set_simple_secret(
+            "omapi-key", factory.make_name("omapi")
+        )
+
     def make_RackController_ready_for_DHCP(self):
         rack = factory.make_RackController()
         vlan = factory.make_VLAN(dhcp_on=True, primary_rack=rack)
@@ -2560,6 +2567,12 @@ class TestGetDHCPConfiguration(MAASServerTestCase):
 
 class TestConfigureDHCP(MAASTransactionServerTestCase):
     """Tests for `configure_dhcp`."""
+
+    def setUp(self):
+        super().setUp()
+        SecretManager().set_simple_secret(
+            "omapi-key", factory.make_name("omapi")
+        )
 
     @synchronous
     def prepare_rpc(self, rack_controller):
@@ -2877,6 +2890,12 @@ class TestConfigureDHCP(MAASTransactionServerTestCase):
 
 class TestValidateDHCPConfig(MAASTransactionServerTestCase):
     """Tests for `validate_dhcp_config`."""
+
+    def setUp(self):
+        super().setUp()
+        SecretManager().set_simple_secret(
+            "omapi-key", factory.make_name("omapi")
+        )
 
     def prepare_rpc(self, rack_controller, return_value=None):
         """Set up test case for speaking RPC to `rack_controller`."""

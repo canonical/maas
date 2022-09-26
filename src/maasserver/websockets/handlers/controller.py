@@ -20,10 +20,11 @@ from django.db.models import (
 from maasserver.config import RegionConfiguration
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import ControllerForm
-from maasserver.models import Config, Controller, Event, RackController, VLAN
+from maasserver.models import Controller, Event, RackController, VLAN
 from maasserver.models.controllerinfo import get_target_version
 from maasserver.node_action import compile_node_actions
 from maasserver.permissions import NodePermission
+from maasserver.secrets import SecretManager
 from maasserver.websockets.base import (
     dehydrate_certificate,
     HandlerError,
@@ -255,11 +256,11 @@ class ControllerHandler(NodeHandler):
         if not self.user.is_superuser:
             raise HandlerPermissionError()
 
-        rpc_shared_secret = Config.objects.get_config("rpc_shared_secret")
+        secret = SecretManager().get_simple_secret("rpc-shared")
         with RegionConfiguration.open() as config:
             maas_url = config.maas_url
 
-        return {"url": maas_url, "secret": rpc_shared_secret}
+        return {"url": maas_url, "secret": secret}
 
     @cached_property
     def _vlans_ha(self):

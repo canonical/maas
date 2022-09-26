@@ -24,7 +24,7 @@ from maasserver.websockets.base import (
 
 
 def get_config_keys(user):
-    config_keys = list(CONFIG_ITEMS.keys()) + ["uuid", "maas_url"]
+    config_keys = list(CONFIG_ITEMS) + ["uuid", "maas_url"]
     if user.is_superuser:
         config_keys.append("rpc_shared_secret")
     return config_keys

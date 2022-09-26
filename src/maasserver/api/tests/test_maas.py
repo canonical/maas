@@ -33,22 +33,23 @@ from maastesting.testcase import MAASTestCase
 
 # Names forbidden for use via the Web API.
 FORBIDDEN_NAMES = {
-    "omapi_key",
-    "rpc_shared_secret",
-    "commissioning_osystem",
     "active_discovery_last_scan",
-    "uuid",
-    "external_auth_url",
-    "external_auth_domain",
-    "external_auth_user",
-    "external_auth_key",
+    "commissioning_osystem",
     "external_auth_admin_group",
-    "macaroon_private_key",
-    "rbac_url",
+    "external_auth_domain",
+    "external_auth_key",
+    "external_auth_url",
+    "external_auth_user",
     "maas_url",
-    "tls_key",
+    "macaroon_private_key",
+    "omapi_key",
+    "rbac_url",
+    "rpc_shared_secret",
+    "tls_cacert",
     "tls_cert",
+    "tls_key",
     "tls_port",
+    "uuid",
 }
 
 
@@ -56,9 +57,9 @@ class TestForbiddenNames(MAASTestCase):
     def test_forbidden_names(self):
         # The difference between the set of possible configuration keys and
         # those permitted via the Web API is small but important to security.
-        self.assertThat(
+        self.assertCountEqual(
             set(DEFAULT_CONFIG).difference(CONFIG_ITEMS_KEYS),
-            Equals(FORBIDDEN_NAMES),
+            FORBIDDEN_NAMES,
         )
 
 

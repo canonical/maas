@@ -12,6 +12,7 @@ import yaml
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Config, ControllerInfo, NodeMetadata
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
+from maasserver.secrets import SecretManager
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.testing.factory import factory
 from maasserver.testing.fixtures import RBACEnabled
@@ -54,7 +55,7 @@ class TestGetVendorData(MAASServerTestCase):
         controller = factory.make_RackController()
         ControllerInfo.objects.set_version(controller, "3.0.0-123-g.abc")
         secret = factory.make_string()
-        Config.objects.set_config("rpc_shared_secret", secret)
+        SecretManager().set_simple_secret("rpc-shared", secret)
         node = factory.make_Node(
             netboot=False, install_rackd=True, osystem="ubuntu"
         )
@@ -268,7 +269,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         )
         configuration = generate_rack_controller_configuration(node)
         secret = "1234"
-        Config.objects.set_config("rpc_shared_secret", secret)
+        SecretManager().set_simple_secret("rpc-shared", secret)
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
         )
@@ -300,7 +301,7 @@ class TestGenerateRackControllerConfiguration(MAASServerTestCase):
         )
         configuration = generate_rack_controller_configuration(node)
         secret = "1234"
-        Config.objects.set_config("rpc_shared_secret", secret)
+        SecretManager().set_simple_secret("rpc-shared", secret)
         maas_url = "http://%s:5240/MAAS" % get_maas_facing_server_host(
             node.get_boot_rack_controller()
         )

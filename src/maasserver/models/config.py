@@ -5,6 +5,7 @@
 
 
 from collections import defaultdict, namedtuple
+from contextlib import suppress
 import copy
 from datetime import timedelta
 from socket import gethostname
@@ -57,6 +58,8 @@ def get_default_config():
         "default_dns_ttl": 30,
         "default_min_hwe_kernel": "",
         "default_storage_layout": "flat",
+        # kernel options
+        "kernel_opts": None,
         # Network section configuration.
         "maas_url": "http://localhost:5240/MAAS",
         "maas_name": gethostname(),
@@ -135,6 +138,7 @@ def get_default_config():
         "maas_auto_ipmi_user_privilege_level": "ADMIN",
         "maas_auto_ipmi_k_g_bmc_key": "",
         "maas_auto_ipmi_cipher_suite_id": "3",
+        "maas_auto_ipmi_workaround_flags": None,
         # VMware vCenter crednetials
         "vcenter_server": "",
         "vcenter_username": "",
@@ -145,14 +149,25 @@ def get_default_config():
         # TLS certificate options
         "tls_key": None,
         "tls_cert": None,
+        "tls_cacert": None,
         "tls_port": None,
         "tls_cert_expiration_notification_enabled": False,
         "tls_cert_expiration_notification_interval": 30,
+        # Windows settings
+        "windows_kms_host": None,
     }
 
 
 # Default values for config options.
 DEFAULT_CONFIG = get_default_config()
+
+# Map config keys that are secrets to their path in the Secret model (as
+# they're actually stored there)
+CONFIG_SECRETS = {
+    "rpc_shared_secret": "rpc-shared",
+    "omapi_key": "omapi-key",
+    "maas_auto_ipmi_k_g_bmc_key": "ipmi-k_g-key",
+}
 
 # Encapsulates the possible states for network discovery
 NetworkDiscoveryConfig = namedtuple(
@@ -183,34 +198,48 @@ class ConfigManager(Manager):
         :return: A config value.
         :raises: Config.MultipleObjectsReturned
         """
+        from maasserver.secrets import SecretManager, SecretNotFound
+
+        secret_name = CONFIG_SECRETS.get(name)
         try:
+            if secret_name:
+                return SecretManager().get_simple_secret(secret_name)
             return self.get(name=name).value
-        except Config.DoesNotExist:
+        except (Config.DoesNotExist, SecretNotFound):
             return copy.deepcopy(DEFAULT_CONFIG.get(name, default))
 
-    def get_configs(self, names, defaults=None):
+    def get_configs(self, names):
         """Return the config values corresponding to the given config names.
         Return None or the provided default if the config value does not
         exist.
-
-        :param names: The names of the config item.
-        :type names: list
-        :param defaults: The optional default value to return if no such config
-            item exists. The defaults must be in the same order as names.
-        :type default: list
-        :return: A dictionary of config value mappings.
         """
-        if defaults is None:
-            defaults = [None for _ in range(len(names))]
+        from maasserver.secrets import SecretManager, SecretNotFound
+
+        # set defaults
         configs = {
-            config.name: config for config in self.filter(name__in=names)
+            key: copy.deepcopy(value)
+            for key, value in get_default_config().items()
+            if key in names
         }
-        return {
-            name: configs.get(name).value
-            if configs.get(name)
-            else copy.deepcopy(DEFAULT_CONFIG.get(name, default))
-            for name, default in zip(names, defaults)
-        }
+
+        # secrets configs
+        secret_manager = SecretManager()
+        regular_configs = []
+        for name in names:
+            secret_name = CONFIG_SECRETS.get(name)
+            if secret_name:
+                with suppress(SecretNotFound):
+                    configs[name] = secret_manager.get_simple_secret(
+                        secret_name
+                    )
+            else:
+                regular_configs.append(name)
+
+        # other configs
+        configs.update(
+            self.filter(name__in=regular_configs).values_list("name", "value")
+        )
+        return configs
 
     def set_config(self, name, value, endpoint=None, request=None):
         """Set or overwrite a config value.
@@ -224,15 +253,14 @@ class ConfigManager(Manager):
         :param request: The http request of the audit event to be created.
         :type request: HttpRequest object.
         """
-        # Avoid circular imports.
         from maasserver.audit import create_audit_event
+        from maasserver.secrets import SecretManager
 
-        config, freshly_created = self.get_or_create(
-            name=name, defaults=dict(value=value)
-        )
-        if not freshly_created:
-            config.value = value
-            config.save()
+        secret_name = CONFIG_SECRETS.get(name)
+        if secret_name:
+            SecretManager().set_simple_secret(secret_name, value)
+        else:
+            self.update_or_create(name=name, defaults={"value": value})
         if endpoint is not None and request is not None:
             create_audit_event(
                 EVENT_TYPES.SETTINGS,
@@ -240,8 +268,7 @@ class ConfigManager(Manager):
                 request,
                 None,
                 description=(
-                    "Updated configuration setting '%s' to '%s'."
-                    % (name, value)
+                    f"Updated configuration setting '{name}' to '{value}'."
                 ),
             )
 
