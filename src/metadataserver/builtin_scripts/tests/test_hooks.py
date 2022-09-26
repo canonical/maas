@@ -1171,17 +1171,17 @@ class TestDetectSwitchVendorModelDMIScenarios(MAASServerTestCase):
 
     def test_detect_switch_vendor_model(self):
         detected = detect_switch_vendor_model(self.dmi_data)
-        self.assertThat(detected, Equals(self.result))
+        self.assertEqual(self.result, detected)
 
     def test_get_dmi_data(self):
         dmi_data = get_dmi_data(self.modaliases)
-        self.assertThat(dmi_data, Equals(self.dmi_data))
+        self.assertEqual(self.dmi_data, dmi_data)
 
 
 class TestDetectSwitchVendorModel(MAASServerTestCase):
     def test_detect_switch_vendor_model_returns_none_by_default(self):
         detected = detect_switch_vendor_model(set())
-        self.assertThat(detected, Equals((None, None)))
+        self.assertEqual((None, None), detected)
 
 
 TEST_MODALIASES = [
@@ -1347,7 +1347,7 @@ class TestFilterModaliases(MAASTestCase):
         matches = filter_modaliases(
             self.modaliases, self.candidates, pci=self.pci, usb=self.usb
         )
-        self.assertThat(matches, Equals(self.result))
+        self.assertEqual(self.result, matches)
 
 
 class TestDetectHardware(MAASServerTestCase):
@@ -1457,8 +1457,8 @@ class TestDetectHardware(MAASServerTestCase):
             self.hardware_database[index]
             for index in self.expected_ruled_out_indexes
         ]
-        self.assertThat(discovered, Equals(expected_matches))
-        self.assertThat(ruled_out, Equals(expected_ruled_out))
+        self.assertEqual(expected_matches, discovered)
+        self.assertEqual(expected_ruled_out, ruled_out)
 
     def test_retag_node_for_hardware_by_modalias__precreate_parent(self):
         node = factory.make_Node()
@@ -1482,13 +1482,13 @@ class TestDetectHardware(MAASServerTestCase):
             expected_added.add(parent_tag)
         else:
             expected_removed.add(parent_tag)
-        self.assertThat(added, Equals(expected_added))
-        self.assertThat(removed, Equals(expected_removed))
+        self.assertEqual(expected_added, added)
+        self.assertEqual(expected_removed, removed)
         # Run again to confirm that we added the same tags.
         added, removed = retag_node_for_hardware_by_modalias(
             node, self.modaliases, parent_tag_name, self.hardware_database
         )
-        self.assertThat(added, Equals(expected_added))
+        self.assertEqual(expected_added, added)
 
     def test_retag_node_for_hardware_by_modalias__adds_parent_tag(self):
         node = factory.make_Node()
@@ -1506,21 +1506,17 @@ class TestAddSwitchVendorModelTags(MAASServerTestCase):
         node = factory.make_Node()
         add_switch_vendor_model_tags(node, "accton", "wedge40")
         tags = set(node.tags.all().values_list("name", flat=True))
-        self.assertThat(tags, Equals({"accton", "wedge40"}))
+        self.assertEqual({"accton", "wedge40"}, tags)
         tag = Tag.objects.get(name="wedge40")
-        self.assertThat(
-            tag.kernel_opts, Equals("console=tty0 console=ttyS1,57600n8")
-        )
+        self.assertEqual("console=tty0 console=ttyS1,57600n8", tag.kernel_opts)
 
     def test_sets_wedge100_kernel_opts(self):
         node = factory.make_Node()
         add_switch_vendor_model_tags(node, "accton", "wedge100")
         tags = set(node.tags.all().values_list("name", flat=True))
-        self.assertThat(tags, Equals({"accton", "wedge100"}))
+        self.assertEqual({"accton", "wedge100"}, tags)
         tag = Tag.objects.get(name="wedge100")
-        self.assertThat(
-            tag.kernel_opts, Equals("console=tty0 console=ttyS4,57600n8")
-        )
+        self.assertEqual("console=tty0 console=ttyS4,57600n8", tag.kernel_opts)
 
 
 class TestCreateMetadataByModalias(MAASServerTestCase):
@@ -1570,7 +1566,7 @@ class TestCreateMetadataByModalias(MAASServerTestCase):
         node = factory.make_Node()
         create_metadata_by_modalias(node, self.modaliases, 0)
         tags = set(node.tags.all().values_list("name", flat=True))
-        self.assertThat(tags, Equals(self.expected_tags))
+        self.assertEqual(self.expected_tags, tags)
 
 
 class TestUpdateFruidMetadata(MAASServerTestCase):
@@ -3915,7 +3911,7 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
 
         expected_interfaces = expected_interfaces.copy()
 
-        self.assertThat(len(node_interfaces), Equals(len(expected_interfaces)))
+        self.assertEqual(len(expected_interfaces), len(node_interfaces))
 
         for interface in node_interfaces:
             if interface.name.startswith("eth") or interface.name.startswith(
@@ -3926,11 +3922,11 @@ class TestUpdateNodeNetworkInformation(MAASServerTestCase):
                     iftype = INTERFACE_TYPE.VLAN
                 else:
                     iftype = INTERFACE_TYPE.PHYSICAL
-                self.assertThat(interface.type, Equals(iftype))
+                self.assertEqual(iftype, interface.type)
             self.assertIn(interface.name, expected_interfaces)
-            self.assertThat(
+            self.assertEqual(
+                expected_interfaces[interface.name],
                 interface.mac_address,
-                Equals(expected_interfaces[interface.name]),
             )
 
     def test_does_nothing_if_skip_networking(self):

@@ -20,13 +20,7 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.urls import reverse
 from netaddr import IPNetwork
-from testtools.matchers import (
-    Contains,
-    ContainsAll,
-    ContainsDict,
-    Equals,
-    StartsWith,
-)
+from testtools.matchers import ContainsAll, ContainsDict, Equals, StartsWith
 from twisted.internet.defer import succeed
 import yaml
 
@@ -957,9 +951,9 @@ class TestMetadataCommon(MAASServerTestCase):
         self.assertEqual(http.client.OK, response.status_code)
         keys = SSHKey.objects.filter(user=user).values_list("key", flat=True)
         expected_response = "\n".join(keys)
-        self.assertThat(
+        self.assertEqual(
+            expected_response,
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals(expected_response),
         )
         self.assertIn("text/plain", response["Content-Type"])
 
@@ -975,9 +969,9 @@ class TestMetadataCommon(MAASServerTestCase):
         client = make_node_client(node=node)
         response = client.get(url)
         keys = SSHKey.objects.filter(user=user).values_list("key", flat=True)
-        self.assertThat(
+        self.assertEqual(
+            "\n".join(keys),
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals("\n".join(keys)),
         )
 
     def test_vendor_data_publishes_yaml(self):
@@ -986,9 +980,9 @@ class TestMetadataCommon(MAASServerTestCase):
         view_name = self.get_metadata_name("-meta-data")
         url = reverse(view_name, args=["latest", "vendor-data"])
         response = client.get(url)
-        self.assertThat(
+        self.assertEqual(
+            "application/x-yaml; charset=utf-8",
             response.get("Content-Type"),
-            Equals("application/x-yaml; charset=utf-8"),
         )
 
     def test_vendor_data_node_with_owner_def_user_includes_system_info(self):
@@ -1050,9 +1044,9 @@ class TestMetadataCommon(MAASServerTestCase):
         content = yaml.safe_load(response.content)
         self.assertThat(response, HasStatusCode(http.client.OK))
         self.assertThat(content, LooksLikeCloudInit)
-        self.assertThat(
+        self.assertEqual(
+            get_vendor_data.return_value,
             yaml.safe_load(content["cloud-init"]),
-            Equals(get_vendor_data.return_value),
         )
         self.assertThat(get_vendor_data, MockCalledOnceWith(node, ANY))
 
@@ -3117,9 +3111,9 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(client, power_type="foo")
         self.expectThat(response.status_code, Equals(http.client.BAD_REQUEST))
-        self.assertThat(
+        self.assertEqual(
+            "Bad power_type 'foo'",
             response.content.decode(settings.DEFAULT_CHARSET),
-            Equals("Bad power_type 'foo'"),
         )
 
     def test_signal_power_type_stores_params(self):
@@ -3954,9 +3948,9 @@ class TestAnonymousAPI(MAASServerTestCase):
         )
         # Test client uses hostname 'testserver'. Ensures that the
         # `build_absolute_uri` is used on the test.
-        self.assertThat(
+        self.assertIn(
+            f"http://{rack_ip.ip}:5248/MAAS/",
             response.content.decode(settings.DEFAULT_CHARSET),
-            Contains(f"http://{rack_ip.ip}:5248/MAAS/"),
         )
 
     def test_anonymous_get_enlist_preseed_uses_detected_region_ip(self):
@@ -3975,9 +3969,9 @@ class TestAnonymousAPI(MAASServerTestCase):
             {"op": "get_enlist_preseed"},
             REMOTE_ADDR=request_ip,
         )
-        self.assertThat(
+        self.assertIn(
+            expected_source_ip,
             response.content.decode(settings.DEFAULT_CHARSET),
-            Contains(expected_source_ip),
         )
 
     def test_anonymous_get_preseed(self):

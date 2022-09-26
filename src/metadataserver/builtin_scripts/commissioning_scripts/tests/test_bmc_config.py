@@ -919,17 +919,17 @@ EndSection
                 "Maximum_Privilege_Cipher_Suite_Id_4": "Unused",
             },
         }
-        self.assertEqual(True, self.ipmi._check_ciphers_enabled())
+        self.assertTrue(self.ipmi._check_ciphers_enabled())
 
     def test_ciphers_empty(self):
         self.ipmi._bmc_config = {
             "Rmcpplus_Conf_Privilege": {},
         }
-        self.assertEqual(True, self.ipmi._check_ciphers_enabled())
+        self.assertTrue(self.ipmi._check_ciphers_enabled())
 
     def test_ciphers_list_nonexistent(self):
         self.ipmi._bmc_config = {}
-        self.assertEqual(True, self.ipmi._check_ciphers_enabled())
+        self.assertTrue(self.ipmi._check_ciphers_enabled())
 
     def test_ciphers_not_enable(self):
         self.ipmi._bmc_config = {
@@ -940,7 +940,7 @@ EndSection
                 "Maximum_Privilege_Cipher_Suite_Id_5": "Unused",
             },
         }
-        self.assertEqual(False, self.ipmi._check_ciphers_enabled())
+        self.assertFalse(self.ipmi._check_ciphers_enabled())
 
 
 class TestHPMoonshot(MAASTestCase):
@@ -1159,7 +1159,7 @@ class TestRedfish(MAASTestCase):
         ).encode()
 
         self.mock_check_output.return_value = data
-        self.assertEqual(None, self.redfish._get_smbios_data())
+        self.assertIsNone(self.redfish._get_smbios_data())
 
     def test_get_smbios_data_redfish_detected(self):
         data = textwrap.dedent(
@@ -1517,7 +1517,7 @@ class TestRedfish(MAASTestCase):
         ).side_effect = factory.make_exception_type(
             (bmc_config.ConfigurationError,)
         )
-        self.assertEqual(False, self.redfish.detected())
+        self.assertFalse(self.redfish.detected())
 
 
 class TestGetIPMILocateOutput(MAASTestCase):

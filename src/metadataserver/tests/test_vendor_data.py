@@ -6,16 +6,7 @@ from textwrap import dedent
 
 from netaddr import IPAddress
 import tempita
-from testtools.matchers import (
-    Contains,
-    ContainsDict,
-    Equals,
-    Is,
-    IsInstance,
-    KeysEqual,
-    MatchesDict,
-    Not,
-)
+from testtools.matchers import ContainsDict, Equals, KeysEqual, MatchesDict
 import yaml
 
 from maasserver.enum import NODE_STATUS
@@ -57,7 +48,7 @@ class TestGetVendorData(MAASServerTestCase):
 
     def test_returns_dict(self):
         node = factory.make_Node()
-        self.assertThat(get_vendor_data(node, None), IsInstance(dict))
+        self.assertIsInstance(get_vendor_data(node, None), dict)
 
     def test_combines_key_values(self):
         controller = factory.make_RackController()
@@ -80,7 +71,7 @@ class TestGetVendorData(MAASServerTestCase):
     def test_includes_no_system_information_if_no_default_user(self):
         node = factory.make_Node(owner=factory.make_User())
         vendor_data = get_vendor_data(node, None)
-        self.assertThat(vendor_data, Not(Contains("system_info")))
+        self.assertNotIn("system_info", vendor_data)
 
     def test_includes_system_information_if_default_user(self):
         owner = factory.make_User()
@@ -115,16 +106,16 @@ class TestGenerateSystemInfo(MAASServerTestCase):
 
     def test_yields_nothing_when_node_has_no_owner(self):
         node = factory.make_Node()
-        self.assertThat(node.owner, Is(None))
+        self.assertIsNone(node.owner)
         configuration = generate_system_info(node)
-        self.assertThat(dict(configuration), Equals({}))
+        self.assertEqual({}, dict(configuration))
 
     def test_yields_nothing_when_owner_and_no_default_user(self):
         node = factory.make_Node()
-        self.assertThat(node.owner, Is(None))
-        self.assertThat(node.default_user, Is(""))
+        self.assertIsNone(node.owner)
+        self.assertIs(node.default_user, "")
         configuration = generate_system_info(node)
-        self.assertThat(dict(configuration), Equals({}))
+        self.assertEqual({}, dict(configuration))
 
     def test_yields_basic_system_info_when_node_owned_with_default_user(self):
         owner = factory.make_User()
@@ -179,7 +170,7 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
         Config.objects.set_config("ntp_external_only", True)
         Config.objects.set_config("ntp_servers", "")
         configuration = generate_ntp_configuration(node=factory.make_Node())
-        self.assertThat(dict(configuration), Equals({}))
+        self.assertEqual({}, dict(configuration))
 
     def test_external_only_yields_all_ntp_servers_when_defined(self):
         Config.objects.set_config("ntp_external_only", True)
@@ -206,7 +197,7 @@ class TestGenerateNTPConfiguration(MAASServerTestCase):
         machine.boot_cluster_ip = None
         machine.save()
         configuration = generate_ntp_configuration(machine)
-        self.assertThat(dict(configuration), Equals({}))
+        self.assertEqual({}, dict(configuration))
 
     def test_yields_boot_cluster_address_when_machine_has_booted(self):
         Config.objects.set_config("ntp_external_only", False)
