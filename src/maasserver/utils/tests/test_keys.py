@@ -6,7 +6,7 @@
 
 import http
 
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis.strategies import sampled_from
 import requests as requests_module
 from testtools.matchers import Equals
@@ -49,6 +49,7 @@ class TestKeys(MAASServerTestCase):
         proxies = get_proxies()
         self.assertIsNone(proxies)
 
+    @settings(deadline=None)
     @given(sampled_from([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]))
     def test_get_protocol_keys_attempts_retrival(self, protocol):
         auth_id = factory.make_name("auth_id")
@@ -59,6 +60,7 @@ class TestKeys(MAASServerTestCase):
         get_protocol_keys(protocol, auth_id)
         self.assertThat(mock_get_keys, MockCalledOnceWith(auth_id))
 
+    @settings(deadline=None)
     @given(sampled_from([KEYS_PROTOCOL_TYPE.LP, KEYS_PROTOCOL_TYPE.GH]))
     def test_get_protocol_keys_crashes_on_no_keys(self, protocol):
         auth_id = factory.make_name("auth_id")
@@ -85,6 +87,7 @@ class TestKeys(MAASServerTestCase):
             keys, Equals([key for key in key_string.splitlines() if key])
         )
 
+    @settings(deadline=None)
     @given(sampled_from([http.HTTPStatus.NOT_FOUND, http.HTTPStatus.GONE]))
     def test_get_launchpad_crashes_for_user_not_found(self, error):
         auth_id = factory.make_name("auth_id")
@@ -104,6 +107,7 @@ class TestKeys(MAASServerTestCase):
             keys, Equals([data["key"] for data in key_string if "key" in data])
         )
 
+    @settings(deadline=None)
     @given(sampled_from([http.HTTPStatus.NOT_FOUND, http.HTTPStatus.GONE]))
     def test_get_github_crashes_for_user_not_found(self, error):
         auth_id = factory.make_name("auth_id")
