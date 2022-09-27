@@ -10,7 +10,7 @@ from maastesting.testcase import MAASTestCase
 
 class TestFakeMethod(MAASTestCase):
     def test_fakemethod_returns_None_by_default(self):
-        self.assertEqual(None, FakeMethod()())
+        self.assertIsNone(FakeMethod()())
 
     def test_fakemethod_returns_given_value(self):
         self.assertEqual("Input value", FakeMethod("Input value")())

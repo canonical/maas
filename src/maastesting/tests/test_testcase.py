@@ -10,7 +10,7 @@ from tempfile import mkdtemp
 from unittest import mock as mock_module
 from unittest.mock import call, MagicMock, sentinel
 
-from testtools.matchers import Contains, DirExists, FileExists
+from testtools.matchers import DirExists, FileExists
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -118,4 +118,4 @@ class TestTestCase(MAASTestCase):
         error = self.assertRaises(
             AssertionError, self.assertSequenceEqual, [1], [2], message
         )
-        self.assertThat(str(error), Contains(message))
+        self.assertIn(message, str(error))

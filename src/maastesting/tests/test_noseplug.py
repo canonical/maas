@@ -24,7 +24,6 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesSetwise,
     MatchesStructure,
-    Not,
 )
 from twisted.python.filepath import FilePath
 
@@ -120,14 +119,14 @@ class TestResources(MAASTestCase):
 
         loader = unittest.TestLoader()
         suite = loader.loadTestsFromTestCase(SomeTests)
-        self.assertThat(suite, Not(IsInstance(OptimisingTestSuite)))
-        self.assertThat(suite.countTestCases(), Equals(2))
+        self.assertNotIsInstance(suite, OptimisingTestSuite)
+        self.assertEqual(2, suite.countTestCases())
 
         plugin = Resources()
         suite = plugin.prepareTest(suite)
 
-        self.assertThat(suite, IsInstance(OptimisingTestSuite))
-        self.assertThat(suite.countTestCases(), Equals(2))
+        self.assertIsInstance(suite, OptimisingTestSuite)
+        self.assertEqual(2, suite.countTestCases())
 
     def test_prepareTest_flattens_nested_suites(self):
         class SomeTests(MAASTestCase):
@@ -154,14 +153,14 @@ class TestResources(MAASTestCase):
 
         self.assertThat(list(suite), HasLength(2))
         self.assertThat(list(suite), AllMatch(IsInstance(unittest.TestSuite)))
-        self.assertThat(suite.countTestCases(), Equals(4))
+        self.assertEqual(4, suite.countTestCases())
 
         plugin = Resources()
         suite = plugin.prepareTest(suite)
 
         self.assertThat(list(suite), HasLength(4))
         self.assertThat(list(suite), AllMatch(IsInstance(unittest.TestCase)))
-        self.assertThat(suite.countTestCases(), Equals(4))
+        self.assertEqual(4, suite.countTestCases())
 
     def test_prepareTest_hoists_resources(self):
         class SomeTests(MAASTestCase):
@@ -179,10 +178,10 @@ class TestResources(MAASTestCase):
         suite = unittest.TestSuite(map(nose.case.Test, suite))
 
         self.assertThat(list(suite), AllMatch(IsInstance(nose.case.Test)))
-        self.assertThat(suite.countTestCases(), Equals(2))
-        self.assertThat(
+        self.assertEqual(2, suite.countTestCases())
+        self.assertEqual(
+            {sentinel.notset},
             {getattr(test, "resources", sentinel.notset) for test in suite},
-            Equals({sentinel.notset}),
         )
 
         plugin = Resources()
@@ -191,10 +190,10 @@ class TestResources(MAASTestCase):
         # The test wrappers remain, but resources from the wrapped test are
         # now referenced from the wrapper so that testresources can see them.
         self.assertThat(list(suite), AllMatch(IsInstance(nose.case.Test)))
-        self.assertThat(suite.countTestCases(), Equals(2))
-        self.assertThat(
+        self.assertEqual(2, suite.countTestCases())
+        self.assertEqual(
+            {SomeTests.resources},
             {getattr(test, "resources", sentinel.notset) for test in suite},
-            Equals({SomeTests.resources}),
         )
 
     def test_prepareTest_hoists_resources_of_nested_tests(self):
@@ -216,7 +215,7 @@ class TestResources(MAASTestCase):
 
         self.assertThat(list(suite), HasLength(1))
         self.assertThat(list(suite), AllMatch(IsInstance(unittest.TestSuite)))
-        self.assertThat(suite.countTestCases(), Equals(2))
+        self.assertEqual(2, suite.countTestCases())
 
         plugin = Resources()
         suite = plugin.prepareTest(suite)
@@ -226,10 +225,10 @@ class TestResources(MAASTestCase):
         # testresources can see them.
         self.assertThat(list(suite), HasLength(2))
         self.assertThat(list(suite), AllMatch(IsInstance(nose.case.Test)))
-        self.assertThat(suite.countTestCases(), Equals(2))
-        self.assertThat(
+        self.assertEqual(2, suite.countTestCases())
+        self.assertEqual(
+            {SomeTests.resources},
             {getattr(test, "resources", sentinel.notset) for test in suite},
-            Equals({SomeTests.resources}),
         )
 
 
@@ -255,9 +254,9 @@ class TestScenarios(MAASTestCase):
 
         self.assertThat(tests, HasLength(2))
         self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
-        self.assertThat(
+        self.assertEqual(
+            {"test_a", "test_b"},
             {test._testMethodName for test in tests},
-            Equals({"test_a", "test_b"}),
         )
 
     def test_makeTest_makes_tests_from_test_case_class_with_scenarios(self):
@@ -294,8 +293,8 @@ class TestScenarios(MAASTestCase):
 
         self.assertThat(tests, HasLength(1))
         self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
-        self.assertThat(
-            {test._testMethodName for test in tests}, Equals({method.__name__})
+        self.assertEqual(
+            {method.__name__}, {test._testMethodName for test in tests}
         )
 
     def test_makeTest_makes_tests_from_test_function_with_scenarios(self):
@@ -313,9 +312,9 @@ class TestScenarios(MAASTestCase):
 
         self.assertThat(tests, HasLength(2))
         self.assertThat(tests, AllMatch(IsInstance(SomeTests)))
-        self.assertThat(
+        self.assertEqual(
+            {(method.__name__, 1), (method.__name__, 2)},
             {(test._testMethodName, test.attr) for test in tests},
-            Equals({(method.__name__, 1), (method.__name__, 2)}),
         )
 
 
@@ -368,7 +367,7 @@ class TestSelect(MAASTestCase):
         leaf = FilePath(directory).descendant(segments)
         expected_dirs = {leaf}
         expected_dirs.update(leaf.parents())
-        self.assertThat(select.dirs, Equals({fp.path for fp in expected_dirs}))
+        self.assertEqual({fp.path for fp in expected_dirs}, select.dirs)
 
     def test_wantDirectory_checks_dirs_and_thats_it(self):
         directory = self.make_dir()
@@ -448,7 +447,7 @@ class TestSelectBucket(MAASTestCase):
         # is the modulus we started with.
         tests = map(self._make_test_with_id, map(chr, range(65, 78)))
         test = unittest.TestSuite(tests)
-        self.assertThat(test.countTestCases(), Equals(13))
+        self.assertEqual(13, test.countTestCases())
 
         class MockTestRunner:
             def run(self, test):
@@ -456,15 +455,15 @@ class TestSelectBucket(MAASTestCase):
 
         runner = runner_orig = MockTestRunner()
         runner = select.prepareTestRunner(runner)
-        self.assertThat(runner, IsInstance(noseplug.SelectiveTestRunner))
+        self.assertIsInstance(runner, noseplug.SelectiveTestRunner)
 
         runner.run(test)
 
-        self.assertThat(runner_orig.test, IsInstance(type(test)))
-        self.assertThat(runner_orig.test.countTestCases(), Equals(1))
+        self.assertIsInstance(runner_orig.test, type(test))
+        self.assertEqual(1, runner_orig.test.countTestCases())
         # Note how the test with ID of "H" is the only one selected.
-        self.assertThat({t.id() for t in runner_orig.test}, Equals({"H"}))
-        self.assertThat(ord("H") % 13, Equals(7))
+        self.assertEqual({"H"}, {t.id() for t in runner_orig.test})
+        self.assertEqual(7, ord("H") % 13)
 
     def test_prepareTestRunner_does_nothing_when_no_bucket_selected(self):
         select = SelectBucket()
@@ -472,7 +471,7 @@ class TestSelectBucket(MAASTestCase):
         select.add_options(parser=parser, env={})
         options, rest = parser.parse_args(["--with-select-bucket"])
         select.configure(options, sentinel.conf)
-        self.assertThat(select.prepareTestRunner(sentinel.runner), Is(None))
+        self.assertIsNone(select.prepareTestRunner(sentinel.runner))
 
 
 class TestSubunit(MAASTestCase):
@@ -513,15 +512,15 @@ class TestSubunit(MAASTestCase):
                 ["--with-subunit", "--subunit-fd", str(fd.fileno())]
             )
             subunit.configure(options, sentinel.conf)
-            self.assertThat(subunit.stream.fileno(), Equals(fd.fileno()))
-            self.assertThat(subunit.stream.mode, Equals("wb"))
+            self.assertEqual(fd.fileno(), subunit.stream.fileno())
+            self.assertEqual("wb", subunit.stream.mode)
 
     def test_prepareTestResult_returns_subunit_client(self):
         subunit_plugin = Subunit()
         with open(devnull, "wb") as stream:
             subunit_plugin.stream = stream
             result = subunit_plugin.prepareTestResult(sentinel.result)
-            self.assertThat(result, IsInstance(subunit.TestProtocolClient))
+            self.assertIsInstance(result, subunit.TestProtocolClient)
             self.assertThat(result, MatchesStructure(_stream=Is(stream)))
 
 

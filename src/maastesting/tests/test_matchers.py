@@ -79,7 +79,7 @@ class TestMatches(MAASTestCase):
 class TestIsCallable(MAASTestCase):
     def test_returns_none_when_matchee_is_callable(self):
         result = IsCallable().match(lambda: None)
-        self.assertIs(None, result)
+        self.assertIsNone(result)
 
     def test_returns_mismatch_when_matchee_is_callable(self):
         result = IsCallable().match(1234)
@@ -90,7 +90,7 @@ class TestIsCallable(MAASTestCase):
         self.patch(matchers, "callable").return_value = True
         result = IsCallable().match(sentinel.function)
         matchers.callable.assert_called_once_with(sentinel.function)
-        self.assertIs(None, result)
+        self.assertIsNone(result)
 
     def test_mismatch_passes_through_to_callable_builtin(self):
         self.patch(matchers, "callable").return_value = False

@@ -267,7 +267,7 @@ class TestMAASRootFixture(MAASTestCase):
             self.assertThat(fixture.path, Not(SamePath(self.skel)))
             files_expected = set(listdirs(self.skel))
             files_observed = set(listdirs(fixture.path))
-            self.assertThat(files_observed, Equals(files_expected))
+            self.assertEqual(files_expected, files_observed)
         self.assertThat(fixture.path, Not(PathExists()))
 
     def test_updates_MAAS_ROOT_in_the_environment(self):

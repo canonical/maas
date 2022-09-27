@@ -16,7 +16,6 @@ from testtools import (
 )
 from testtools.matchers import (
     AfterPreprocessing,
-    Equals,
     Is,
     IsInstance,
     MatchesAll,
@@ -53,7 +52,7 @@ class TestSelectorArguments(MAASTestCase):
 
     def test_all_scripts_are_selected_when_no_selectors(self):
         sysexit = self.assertRaises(SystemExit, parallel.main, [])
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertScriptsMatch(
             MatchesUnselectableScript("bin/test.region.legacy"),
             MatchesSelectableScript("rack"),
@@ -70,7 +69,7 @@ class TestSelectorArguments(MAASTestCase):
                 "src/metadataserver/004",
             ],
         )
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertScriptsMatch(
             MatchesSelectableScript("rack", "src/provisioningserver/002"),
             MatchesSelectableScript(
@@ -88,7 +87,7 @@ class TestSelectorArguments(MAASTestCase):
                 "metadataserver.004",
             ],
         )
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertScriptsMatch(
             MatchesSelectableScript("rack", "provisioningserver.002"),
             MatchesSelectableScript(
@@ -126,7 +125,7 @@ class TestSubprocessArguments(MAASTestCase):
 
     def test_defaults(self):
         sysexit = self.assertRaises(SystemExit, parallel.main, [])
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertThat(
             parallel.test,
             MockCalledOnceWith(ANY, ANY, max(os.cpu_count() - 2, 2)),
@@ -137,14 +136,14 @@ class TestSubprocessArguments(MAASTestCase):
         sysexit = self.assertRaises(
             SystemExit, parallel.main, ["--subprocesses", str(count)]
         )
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, count))
 
     def test_subprocess_count_of_less_than_1_is_rejected(self):
         sysexit = self.assertRaises(
             SystemExit, parallel.main, ["--subprocesses", "0"]
         )
-        self.assertThat(sysexit.code, Equals(2))
+        self.assertEqual(2, sysexit.code)
         self.assertThat(parallel.test, MockNotCalled())
         self.assertThat(
             self.stdio.getError(),
@@ -157,7 +156,7 @@ class TestSubprocessArguments(MAASTestCase):
         sysexit = self.assertRaises(
             SystemExit, parallel.main, ["--subprocesses", "foo"]
         )
-        self.assertThat(sysexit.code, Equals(2))
+        self.assertEqual(2, sysexit.code)
         self.assertThat(parallel.test, MockNotCalled())
         self.assertThat(
             self.stdio.getError(),
@@ -170,7 +169,7 @@ class TestSubprocessArguments(MAASTestCase):
         sysexit = self.assertRaises(
             SystemExit, parallel.main, ["--subprocess-per-core"]
         )
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertThat(
             parallel.test, MockCalledOnceWith(ANY, ANY, os.cpu_count())
         )
@@ -181,7 +180,7 @@ class TestSubprocessArguments(MAASTestCase):
             parallel.main,
             ["--subprocesses", "3", "--subprocess-per-core"],
         )
-        self.assertThat(sysexit.code, Equals(2))
+        self.assertEqual(2, sysexit.code)
         self.assertThat(parallel.test, MockNotCalled())
         self.assertThat(
             self.stdio.getError(),
@@ -203,7 +202,7 @@ class TestEmissionArguments(MAASTestCase):
 
     def test_results_are_human_readable_by_default(self):
         sysexit = self.assertRaises(SystemExit, parallel.main, [])
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
         _, result, _ = parallel.test.call_args[0]
         self.assertThat(
@@ -218,7 +217,7 @@ class TestEmissionArguments(MAASTestCase):
         sysexit = self.assertRaises(
             SystemExit, parallel.main, ["--emit-human"]
         )
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
         _, result, _ = parallel.test.call_args[0]
         self.assertThat(
@@ -233,10 +232,10 @@ class TestEmissionArguments(MAASTestCase):
         sysexit = self.assertRaises(
             SystemExit, parallel.main, ["--emit-subunit"]
         )
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
         _, result, _ = parallel.test.call_args[0]
-        self.assertThat(result, IsInstance(subunit.TestProtocolClient))
+        self.assertIsInstance(result, subunit.TestProtocolClient)
         self.assertThat(
             result, MatchesStructure(_stream=Is(self.stdio.stdout.buffer))
         )
@@ -245,10 +244,10 @@ class TestEmissionArguments(MAASTestCase):
         sysexit = self.assertRaises(
             SystemExit, parallel.main, ["--emit-junit"]
         )
-        self.assertThat(sysexit.code, Equals(0))
+        self.assertEqual(0, sysexit.code)
         self.assertThat(parallel.test, MockCalledOnceWith(ANY, ANY, ANY))
         _, result, _ = parallel.test.call_args[0]
-        self.assertThat(result, IsInstance(junitxml.JUnitXmlResult))
+        self.assertIsInstance(result, junitxml.JUnitXmlResult)
         self.assertThat(
             result, MatchesStructure(_stream=Is(self.stdio.stdout))
         )
