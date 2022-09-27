@@ -26,8 +26,9 @@ class VaultClient:
         role_id: str,
         secret_id: str,
         secrets_mount: str = "secret",
+        client: Optional[hvac.Client] = None,
     ):
-        self._client = hvac.Client(url=url)
+        self._client = client or hvac.Client(url=url)
         self._secrets_mount = secrets_mount
         self._secrets_base_path = secrets_base_path
         self._role_id = role_id
@@ -166,8 +167,9 @@ class VaultConfigurator:
         token: str,
         maas_uuid: str,
         secrets_mount: str = "secret",
+        client: Optional[hvac.Client] = None,
     ):
-        self._client = hvac.Client(url=url, token=token)
+        self._client = client or hvac.Client(url=url, token=token)
         self.maas_uuid = maas_uuid
         self.secrets_mount = secrets_mount
 

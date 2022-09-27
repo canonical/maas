@@ -64,15 +64,17 @@ class MockKVStore:
 
 
 @pytest.fixture
-def mock_vault_kv():
-    yield MockKVStore()
+def mock_hvac_client(mocker):
+    """Return an hvac.Client with some mocks, and a dict-based K/V store.
 
-
-@pytest.fixture
-def mock_hvac_client(mocker, mock_vault_kv):
+    The mocked store is accessible via the `mock_kv.store` attribute.
+    """
     token_expiry = datetime.now(tz=timezone.utc) + timedelta(minutes=30)
     expire_time = token_expiry.isoformat().replace("+00:00", "000Z")
+
+    mock_kv = MockKVStore()
     cli = mocker.patch.object(hvac, "Client").return_value
     cli.auth.token.lookup_self = lambda: {"data": {"expire_time": expire_time}}
-    cli.secrets.kv.v2 = mock_vault_kv
+    cli.secrets.kv.v2 = mock_kv
+    cli.mock_kv = mock_kv
     yield cli

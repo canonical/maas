@@ -4,7 +4,7 @@ from django.db.models import Model
 from hvac.exceptions import InvalidPath
 
 from maasserver.models import BMC, Config, NodeMetadata, RootKey, Secret
-from maasserver.vault import get_region_vault_client
+from maasserver.vault import get_region_vault_client, VaultClient
 
 SIMPLE_SECRET_KEY = "secret"
 
@@ -27,6 +27,9 @@ class SecretNotFound(Exception):
 
 class SecretManager:
     """Handle operations on secrets."""
+
+    def __init__(self, vault_client: Optional[VaultClient] = None):
+        self._vault_client = vault_client or get_region_vault_client()
 
     def set_composite_secret(
         self, name: str, value: dict[str, Any], obj: Optional[Model] = None
@@ -94,7 +97,3 @@ class SecretManager:
             return self._vault_client.get(path)
         except InvalidPath:
             raise SecretNotFound(path)
-
-    @property
-    def _vault_client(self):
-        return get_region_vault_client()

@@ -14,64 +14,65 @@ from maasserver.vault import (
 from provisioningserver.utils.env import MAAS_UUID
 
 
-@pytest.mark.usefixtures("mock_hvac_client")
+@pytest.fixture
+def vault_client(mock_hvac_client):
+    yield VaultClient(
+        url="http://localhost:8200",
+        secrets_base_path="prefix",
+        role_id="123",
+        secret_id="xyz",
+        client=mock_hvac_client,
+    )
+
+
 class TestVaultClient:
-    def test_set(self, mock_vault_kv):
+    def test_set(self, mock_hvac_client):
         client = VaultClient(
             url="http://localhost:8200",
             secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            client=mock_hvac_client,
         )
         value = {"foo": "bar"}
         client.set("mysecret", value)
-        assert mock_vault_kv.store == {"prefix/mysecret": value}
+        assert mock_hvac_client.mock_kv.store == {"prefix/mysecret": value}
 
-    def test_set_custom_mount(self, mock_vault_kv):
-        mock_vault_kv.expected_mount_point = "other/secret/mount"
+    def test_set_custom_mount(self, mock_hvac_client):
+        mock_hvac_client.mock_kv.expected_mount_point = "other/secret/mount"
         client = VaultClient(
             url="http://localhost:8200",
             secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
             secrets_mount="other/secret/mount",
+            client=mock_hvac_client,
         )
         value = {"foo": "bar"}
         client.set("mysecret", value)
-        assert mock_vault_kv.store == {"prefix/mysecret": value}
+        assert mock_hvac_client.mock_kv.store == {"prefix/mysecret": value}
 
-    def test_get(self):
-        client = VaultClient(
-            url="http://localhost:8200",
-            secrets_base_path="prefix",
-            role_id="123",
-            secret_id="xyz",
-        )
+    def test_get(self, vault_client):
         value = {"foo": "bar"}
-        client.set("mysecret", value)
-        assert client.get("mysecret") == value
+        vault_client.set("mysecret", value)
+        assert vault_client.get("mysecret") == value
 
-    def test_get_not_found(self):
-        client = VaultClient(
-            url="http://localhost:8200",
-            secrets_base_path="prefix",
-            role_id="123",
-            secret_id="xyz",
-        )
+    def test_get_not_found(self, vault_client):
         with pytest.raises(hvac.exceptions.InvalidPath):
-            client.get("mysecret")
+            vault_client.get("mysecret")
 
-    def test_delete(self, mock_vault_kv):
+    def test_delete(self, mock_hvac_client):
         client = VaultClient(
             url="http://localhost:8200",
             secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            client=mock_hvac_client,
         )
         value = {"foo": "bar"}
         client.set("mysecret", value)
         client.delete("mysecret")
-        assert mock_vault_kv.store == {}
+        assert mock_hvac_client.mock_kv.store == {}
 
     def test_auth_on_request(self, mock_hvac_client):
         client = VaultClient(
@@ -79,6 +80,7 @@ class TestVaultClient:
             secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            client=mock_hvac_client,
         )
         client.set("mysecret", {"foo": "bar"})
         mock_hvac_client.auth.approle.login.assert_called_once_with(
@@ -94,6 +96,7 @@ class TestVaultClient:
             secrets_base_path="prefix",
             role_id="123",
             secret_id="xyz",
+            client=mock_hvac_client,
         )
         client.set("mysecret", {"foo": "bar"})
         assert len(mock_hvac_client.auth.approle.login.mock_calls) == 1
@@ -106,7 +109,6 @@ class TestVaultClient:
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("vault_regionconfig")
 class TestGetRegionVaultClient:
     def test_cached(self, mocker):
         mock_get_client = mocker.patch.object(
