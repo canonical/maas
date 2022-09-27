@@ -7,7 +7,6 @@
 from unittest.mock import sentinel
 
 from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import Equals, Is
 
 from maasserver import eventloop, rpc
 from maastesting.crochet import wait_for
@@ -30,17 +29,17 @@ class TestFunctions(MAASTestCase):
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
         getClientFor = getServiceNamed.return_value.getClientFor
         getClientFor.return_value = sentinel.client
-        self.assertThat(getClientFor(sentinel.uuid), Is(sentinel.client))
+        self.assertIs(getClientFor(sentinel.uuid), sentinel.client)
         self.assertThat(getClientFor, MockCalledOnceWith(sentinel.uuid))
 
     @wait_for_reactor
     def test_getAllClients_service_not_running(self):
-        self.assertThat(rpc.getAllClients(), Equals([]))
+        self.assertEqual([], rpc.getAllClients())
 
     @wait_for_reactor
     def test_getAllClients(self):
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
         getAllClients = getServiceNamed.return_value.getAllClients
         getAllClients.return_value = sentinel.clients
-        self.assertThat(getAllClients(), Is(sentinel.clients))
+        self.assertIs(getAllClients(), sentinel.clients)
         self.assertThat(getAllClients, MockCalledOnceWith())

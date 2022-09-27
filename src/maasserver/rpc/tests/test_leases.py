@@ -10,7 +10,7 @@ import time
 
 from django.utils import timezone
 from netaddr import IPAddress
-from testtools.matchers import Contains, Equals, MatchesStructure, Not
+from testtools.matchers import MatchesStructure
 
 from maasserver.enum import INTERFACE_TYPE, IPADDRESS_FAMILY, IPADDRESS_TYPE
 from maasserver.models import DNSResource
@@ -181,7 +181,7 @@ class TestUpdateLease(MAASServerTestCase):
             ),
         )
         # No DNS record should have been crated.
-        self.assertThat(DNSResource.objects.count(), Equals(0))
+        self.assertEqual(0, DNSResource.objects.count())
 
     def test_creates_dns_record_for_hostname(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -200,7 +200,7 @@ class TestUpdateLease(MAASServerTestCase):
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
         dnsrr = get_one(DNSResource.objects.filter(name=hostname))
-        self.assertThat(sip.dnsresource_set.all(), Contains(dnsrr))
+        self.assertIn(dnsrr, sip.dnsresource_set.all())
 
     def test_mutiple_calls_reuse_existing_staticipaddress_records(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -214,7 +214,7 @@ class TestUpdateLease(MAASServerTestCase):
         sip1 = StaticIPAddress.objects.get(ip=ip)
         update_lease(**kwargs)
         sip2 = StaticIPAddress.objects.get(ip=ip)
-        self.assertThat(sip1.id, Equals(sip2.id))
+        self.assertEqual(sip2.id, sip1.id)
 
     def test_skips_dns_record_for_hostname_from_existing_node(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -233,7 +233,7 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
-        self.assertThat(sip.dnsresource_set.all(), Not(Contains(sip)))
+        self.assertNotIn(sip, sip.dnsresource_set.all())
 
     def test_skips_dns_record_for_coerced_hostname_from_existing_node(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(
@@ -252,7 +252,7 @@ class TestUpdateLease(MAASServerTestCase):
         self.assertEqual(subnet.vlan, unknown_interface.vlan)
         sip = unknown_interface.ip_addresses.first()
         self.assertIsNotNone(sip)
-        self.assertThat(sip.dnsresource_set.all(), Not(Contains(sip)))
+        self.assertNotIn(sip, sip.dnsresource_set.all())
 
     def test_creates_lease_for_physical_interface(self):
         subnet = factory.make_ipv4_Subnet_with_IPRanges(

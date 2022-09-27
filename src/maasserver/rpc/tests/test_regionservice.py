@@ -24,7 +24,6 @@ from testtools.matchers import (
     MatchesAny,
     MatchesListwise,
     MatchesSetwise,
-    Not,
 )
 from twisted.application.service import Service
 from twisted.internet import reactor, tcp
@@ -312,10 +311,8 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "interfaces": {},
             },
         )
-        self.assertThat(
-            response["system_id"], Equals(rack_controller.system_id)
-        )
-        self.assertThat(response["uuid"], Equals(uuid))
+        self.assertEqual(rack_controller.system_id, response["system_id"])
+        self.assertEqual(uuid, response["uuid"])
 
     @wait_for_reactor
     @inlineCallbacks
@@ -334,7 +331,7 @@ class TestRegionServer(MAASTransactionServerTestCase):
                 "beacon_support": True,
             },
         )
-        self.assertThat(response["beacon_support"], Is(True))
+        self.assertTrue(response["beacon_support"])
 
     @wait_for_reactor
     @inlineCallbacks
@@ -603,38 +600,38 @@ class TestRackClient(MAASTestCase):
 class TestRegionService(MAASTestCase):
     def test_init_sets_appropriate_instance_attributes(self):
         service = RegionService(sentinel.ipcWorker)
-        self.assertThat(service, IsInstance(Service))
-        self.assertThat(service.connections, IsInstance(defaultdict))
-        self.assertThat(service.connections.default_factory, Is(set))
+        self.assertIsInstance(service, Service)
+        self.assertIsInstance(service.connections, defaultdict)
+        self.assertIs(service.connections.default_factory, set)
         self.assertThat(
             service.endpoints,
             AllMatch(AllMatch(Provides(IStreamServerEndpoint))),
         )
-        self.assertThat(service.factory, IsInstance(Factory))
-        self.assertThat(service.factory.protocol, Equals(RegionServer))
-        self.assertThat(service.events.connected, IsInstance(events.Event))
-        self.assertThat(service.events.disconnected, IsInstance(events.Event))
+        self.assertIsInstance(service.factory, Factory)
+        self.assertEqual(RegionServer, service.factory.protocol)
+        self.assertIsInstance(service.events.connected, events.Event)
+        self.assertIsInstance(service.events.disconnected, events.Event)
 
     @wait_for_reactor
     def test_starting_and_stopping_the_service(self):
         service = RegionService(sentinel.ipcWorker)
-        self.assertThat(service.starting, Is(None))
+        self.assertIsNone(service.starting)
         service.startService()
-        self.assertThat(service.starting, IsInstance(Deferred))
+        self.assertIsInstance(service.starting, Deferred)
 
         def check_started(_):
             # Ports are saved as private instance vars.
             self.assertThat(service.ports, HasLength(1))
             [port] = service.ports
-            self.assertThat(port, IsInstance(tcp.Port))
-            self.assertThat(port.factory, IsInstance(Factory))
-            self.assertThat(port.factory.protocol, Equals(RegionServer))
+            self.assertIsInstance(port, tcp.Port)
+            self.assertIsInstance(port.factory, Factory)
+            self.assertEqual(RegionServer, port.factory.protocol)
             return service.stopService()
 
         service.starting.addCallback(check_started)
 
         def check_stopped(ignore, service=service):
-            self.assertThat(service.ports, Equals([]))
+            self.assertEqual([], service.ports)
 
         service.starting.addCallback(check_stopped)
 
@@ -648,7 +645,7 @@ class TestRegionService(MAASTestCase):
         self.patch(service, "endpoints", [])
 
         d = service.startService()
-        self.assertThat(d, IsInstance(Deferred))
+        self.assertIsInstance(d, Deferred)
         # It's actually the `starting` Deferred.
         self.assertIs(service.starting, d)
 
@@ -666,12 +663,12 @@ class TestRegionService(MAASTestCase):
         endpoints[0][0].listen.return_value = Deferred()
 
         service.startService()
-        self.assertThat(service.starting, IsInstance(Deferred))
+        self.assertIsInstance(service.starting, Deferred)
 
         service.starting.cancel()
 
         def check(port):
-            self.assertThat(port, Is(None))
+            self.assertIsNone(port)
             self.assertThat(service.ports, HasLength(0))
             return service.stopService()
 
@@ -712,7 +709,7 @@ class TestRegionService(MAASTestCase):
 
         yield service.startService()
 
-        self.assertThat(service.ports, Equals([sentinel.port1]))
+        self.assertEqual([sentinel.port1], service.ports)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -741,7 +738,7 @@ class TestRegionService(MAASTestCase):
         # The port is not listening on port 1; i.e. a belt-n-braces check that
         # endpoint_2 was not used.
         [port] = service.ports
-        self.assertThat(port.getHost().port, Not(Equals(1)))
+        self.assertNotEqual(1, port.getHost().port)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -756,7 +753,7 @@ class TestRegionService(MAASTestCase):
 
         yield service.startService()
 
-        self.assertThat(service.ports, Equals([sentinel.port]))
+        self.assertEqual([sentinel.port], service.ports)
 
     @skip("XXX test fails far too often; bug #1582944")
     @wait_for_reactor
@@ -918,7 +915,7 @@ class TestRegionService(MAASTestCase):
         self.patch(random, "choice", check_choice)
 
         def check(client):
-            self.assertThat(client, Equals(RackClient(chosen, {})))
+            self.assertEqual(RackClient(chosen, {}), client)
             self.assertIs(client.cache, service.connectionsCache[client._conn])
 
         return service.getClientFor(uuid).addCallback(check)
@@ -927,7 +924,7 @@ class TestRegionService(MAASTestCase):
     def test_getAllClients_empty(self):
         service = RegionService(sentinel.ipcWorker)
         service.connections.clear()
-        self.assertThat(service.getAllClients(), Equals([]))
+        self.assertEqual([], service.getAllClients())
 
     @wait_for_reactor
     def test_getAllClients_empty_connections(self):
@@ -935,7 +932,7 @@ class TestRegionService(MAASTestCase):
         service.connections.clear()
         uuid1 = factory.make_UUID()
         service.connections[uuid1] = set()
-        self.assertThat(service.getAllClients(), Equals([]))
+        self.assertEqual([], service.getAllClients())
 
     @wait_for_reactor
     def test_getRandomClient_empty_raises_NoConnectionsAvailable(self):

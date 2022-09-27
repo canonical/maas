@@ -597,9 +597,9 @@ class TestGetControllerType_Scenarios(MAASServerTestCase):
 
     def test_returns_node_type(self):
         node = factory.make_Node(node_type=self.node_type)
-        self.assertThat(
+        self.assertEqual(
+            {"is_region": self.is_region, "is_rack": self.is_rack},
             get_controller_type(node.system_id),
-            Equals({"is_region": self.is_region, "is_rack": self.is_rack}),
         )
 
 

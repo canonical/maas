@@ -1306,7 +1306,7 @@ class TestRegionProtocol_GetControllerType(MAASTransactionServerTestCase):
         response = yield call_responder(
             Region(), GetControllerType, {"system_id": system_id}
         )
-        self.assertThat(response, Equals(example_response))
+        self.assertEqual(example_response, response)
         self.assertThat(
             deferToDatabase, MockCalledOnceWith(get_controller_type, system_id)
         )
@@ -1344,7 +1344,7 @@ class TestRegionProtocol_GetTimeConfiguration(MAASTransactionServerTestCase):
         response = yield call_responder(
             Region(), GetTimeConfiguration, {"system_id": system_id}
         )
-        self.assertThat(response, Equals(example_response))
+        self.assertEqual(example_response, response)
         self.assertThat(
             deferToDatabase,
             MockCalledOnceWith(get_time_configuration, system_id),
@@ -1376,9 +1376,7 @@ class TestRegionProtocol_GetDNSConfiguration(MAASTransactionServerTestCase):
         response = yield call_responder(
             Region(), GetDNSConfiguration, {"system_id": system_id}
         )
-        self.assertThat(
-            response, Equals({"trusted_networks": example_networks})
-        )
+        self.assertEqual({"trusted_networks": example_networks}, response)
         self.assertThat(
             deferToDatabase, MockCalledOnceWith(get_trusted_networks)
         )
@@ -1448,9 +1446,7 @@ class TestRegionProtocol_GetSyslogConfiguration(MAASTransactionServerTestCase):
         response = yield call_responder(
             Region(), GetSyslogConfiguration, {"system_id": system_id}
         )
-        self.assertThat(
-            response, Equals({"port": port, "promtail_port": None})
-        )
+        self.assertEqual({"port": port, "promtail_port": None}, response)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1468,6 +1464,4 @@ class TestRegionProtocol_GetSyslogConfiguration(MAASTransactionServerTestCase):
         response = yield call_responder(
             Region(), GetSyslogConfiguration, {"system_id": system_id}
         )
-        self.assertThat(
-            response, Equals({"port": port, "promtail_port": port + 1})
-        )
+        self.assertEqual({"port": port, "promtail_port": port + 1}, response)
