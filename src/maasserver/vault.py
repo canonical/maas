@@ -79,41 +79,6 @@ class VaultClient:
         return f"{self._secrets_base_path}/{path}"
 
 
-@cache
-def get_region_vault_client() -> Optional[VaultClient]:
-    """Return a VaultClient configured for the region controller, if configured.
-
-    This is must be called once MAAS_UUID and Vault configuration (if any) are
-    set, since the result is cached.  This is done since Vault configuration is
-    not expected to change within the life of the region controller (a restart
-    is needed).
-    """
-    return _get_region_vault_client()
-
-
-def _get_region_vault_client() -> Optional[VaultClient]:
-    """Return a VaultClient configured for the region controller.
-
-    If configuration options for Vault are not set, None is returned.
-    """
-    maas_uuid = MAAS_UUID.get()
-    if not maas_uuid:
-        return None
-
-    with RegionConfiguration.open() as config:
-        if not all(
-            (config.vault_url, config.vault_approle_id, config.vault_secret_id)
-        ):
-            return None
-        return VaultClient(
-            url=config.vault_url,
-            secrets_base_path=f"maas-{maas_uuid}",
-            role_id=config.vault_approle_id,
-            secret_id=config.vault_secret_id,
-            secrets_mount=config.vault_secrets_mount,
-        )
-
-
 class AppRole(NamedTuple):
     """An approle with a secret."""
 
@@ -223,3 +188,74 @@ class VaultConfigurator:
             "data"
         ]["secret_id"]
         return AppRole(name=role_name, role_id=role_id, secret_id=secret_id)
+
+
+@cache
+def get_region_vault_client() -> Optional[VaultClient]:
+    """Return a VaultClient configured for the region controller, if configured.
+
+    This is must be called once MAAS_UUID and Vault configuration (if any) are
+    set, since the result is cached.  This is done since Vault configuration is
+    not expected to change within the life of the region controller (a restart
+    is needed).
+    """
+    return _get_region_vault_client()
+
+
+def _get_region_vault_client() -> Optional[VaultClient]:
+    """Return a VaultClient configured for the region controller.
+
+    If configuration options for Vault are not set, None is returned.
+    """
+    maas_uuid = MAAS_UUID.get()
+    if not maas_uuid:
+        return None
+
+    with RegionConfiguration.open() as config:
+        if not all(
+            (config.vault_url, config.vault_approle_id, config.vault_secret_id)
+        ):
+            return None
+        return VaultClient(
+            url=config.vault_url,
+            secrets_base_path=f"maas-{maas_uuid}",
+            role_id=config.vault_approle_id,
+            secret_id=config.vault_secret_id,
+            secrets_mount=config.vault_secrets_mount,
+        )
+
+
+def configure_region_with_vault(
+    url: str,
+    rolemanager_role_id: str,
+    rolemanager_secret_id: str,
+    maas_uuid: str,
+    maas_id: str,
+    secrets_mount: str,
+):
+    """Configure the region to use Vault.
+
+    The provided rolemanager credentials are used to create an approle/secret
+    for the region, and the regeion configuration is updated with the
+    credentials.
+    """
+    client = hvac.Client(url=url)
+    token_data = client.auth.approle.login(
+        role_id=rolemanager_role_id, secret_id=rolemanager_secret_id
+    )
+    # grab the token from the authentication
+    token = token_data["auth"]["client_token"]
+    configurator = VaultConfigurator(
+        url, token, maas_uuid, secrets_mount=secrets_mount
+    )
+    region_approle = configurator.get_approle_with_secret(
+        configurator.region_policy_name,
+        name_suffix=maas_id,
+    )
+    with RegionConfiguration.open_for_update() as config:
+        config.vault_url = url
+        config.vault_approle_id = region_approle.role_id
+        config.vault_secret_id = region_approle.secret_id
+        config.vault_secrets_mount = secrets_mount
+    # ensure future calls to get the client use the updated config
+    get_region_vault_client.cache_clear()
