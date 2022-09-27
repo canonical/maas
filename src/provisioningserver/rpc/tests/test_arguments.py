@@ -10,7 +10,7 @@ import zlib
 import attr
 import netaddr
 from testtools import ExpectedException
-from testtools.matchers import Equals, HasLength, IsInstance, LessThan
+from testtools.matchers import HasLength, LessThan
 from twisted.protocols import amp
 
 from maastesting.factory import factory
@@ -23,9 +23,9 @@ class TestBytes(MAASTestCase):
         argument = arguments.Bytes()
         example = factory.make_bytes()
         encoded = argument.toString(example)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         decoded = argument.fromString(encoded)
-        self.assertThat(decoded, Equals(example))
+        self.assertEqual(example, decoded)
 
     def test_error_when_input_is_not_a_byte_string(self):
         with ExpectedException(TypeError, "^Not a byte string: <.*"):
@@ -40,9 +40,9 @@ class TestChoice(MAASTestCase):
         argument = arguments.Choice(choices)
         choice = random.choice(list(choices))
         encoded = argument.toString(choice)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         decoded = argument.fromString(encoded)
-        self.assertThat(decoded, Equals(choice))
+        self.assertEqual(choice, decoded)
 
     def test_error_when_input_is_not_in_choices(self):
         with ExpectedException(KeyError, "^<object .*"):
@@ -70,9 +70,9 @@ class TestStructureAsJSON(MAASTestCase):
     def test_round_trip(self):
         argument = arguments.StructureAsJSON()
         encoded = argument.toString(self.example)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         decoded = argument.fromString(encoded)
-        self.assertThat(decoded, Equals(self.example))
+        self.assertEqual(self.example, decoded)
 
 
 @attr.s
@@ -99,9 +99,9 @@ class TestParsedURL(MAASTestCase):
         argument = arguments.ParsedURL()
         example = factory.make_parsed_url()
         encoded = argument.toString(example)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         decoded = argument.fromString(encoded)
-        self.assertThat(decoded.geturl(), Equals(example.geturl()))
+        self.assertEqual(example.geturl(), decoded.geturl())
 
     def test_error_when_input_is_not_a_url_object(self):
         with ExpectedException(TypeError, "^Not a URL-like object: <.*"):
@@ -113,11 +113,11 @@ class TestParsedURL(MAASTestCase):
             netloc="\u24b8\u211d\U0001d538\u24b5\U0001d502"
         )
         encoded = argument.toString(example)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         decoded = argument.fromString(encoded)
         # The non-ASCII netloc was encoded using IDNA.
         expected = example._replace(netloc="cra(z)y")
-        self.assertThat(decoded.geturl(), Equals(expected.geturl()))
+        self.assertEqual(expected.geturl(), decoded.geturl())
 
 
 class TestAmpList(MAASTestCase):
@@ -125,7 +125,7 @@ class TestAmpList(MAASTestCase):
         argument = arguments.AmpList([(b"thing", amp.Unicode())])
         example = [{"thing": factory.make_name("thing")}]
         encoded = argument.toStringProto(example, proto=None)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         decoded = argument.fromStringProto(encoded, proto=None)
         self.assertEqual(example, decoded)
 
@@ -135,7 +135,7 @@ class TestCompressedAmpList(MAASTestCase):
         argument = arguments.CompressedAmpList([("thing", amp.Unicode())])
         example = [{"thing": factory.make_name("thing")}]
         encoded = argument.toStringProto(example, proto=None)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         decoded = argument.fromStringProto(encoded, proto=None)
         self.assertEqual(example, decoded)
 
@@ -170,26 +170,26 @@ class TestIPAddress(MAASTestCase):
     def test_round_trips_ipv4_address(self):
         address = netaddr.IPAddress("192.168.34.87")
         encoded = self.argument.toString(address)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         self.assertThat(encoded, HasLength(4))
         decoded = self.argument.fromString(encoded)
-        self.assertThat(decoded, Equals(address))
+        self.assertEqual(address, decoded)
 
     def test_round_trips_ipv6_address(self):
         address = netaddr.IPAddress("fd28:8d1a:6c8e::345")
         encoded = self.argument.toString(address)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         self.assertThat(encoded, HasLength(16))
         decoded = self.argument.fromString(encoded)
-        self.assertThat(decoded, Equals(address))
+        self.assertEqual(address, decoded)
 
     def test_round_trips_ipv6_mapped_ipv4_address(self):
         address = netaddr.IPAddress("::ffff:10.78.45.9")
         encoded = self.argument.toString(address)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         self.assertThat(encoded, HasLength(16))
         decoded = self.argument.fromString(encoded)
-        self.assertThat(decoded, Equals(address))
+        self.assertEqual(address, decoded)
 
 
 class TestIPNetwork(MAASTestCase):
@@ -199,15 +199,15 @@ class TestIPNetwork(MAASTestCase):
     def test_round_trips_ipv4_address(self):
         network = factory.make_ipv4_network()
         encoded = self.argument.toString(network)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         self.assertThat(encoded, HasLength(5))
         decoded = self.argument.fromString(encoded)
-        self.assertThat(decoded, Equals(network))
+        self.assertEqual(network, decoded)
 
     def test_round_trips_ipv6_address(self):
         network = factory.make_ipv6_network()
         encoded = self.argument.toString(network)
-        self.assertThat(encoded, IsInstance(bytes))
+        self.assertIsInstance(encoded, bytes)
         self.assertThat(encoded, HasLength(17))
         decoded = self.argument.fromString(encoded)
-        self.assertThat(decoded, Equals(network))
+        self.assertEqual(network, decoded)

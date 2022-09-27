@@ -11,7 +11,7 @@ from unittest.mock import ANY, call, MagicMock, sentinel
 from fixtures import FakeLogger
 from testtools import ExpectedException
 from testtools.deferredruntest import assert_fails_with
-from testtools.matchers import Equals, IsInstance, Not
+from testtools.matchers import Equals, Not
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
@@ -480,7 +480,7 @@ class TestMaybeChangePowerState(MAASTestCase):
             sentinel.context,
             clock=clock,
         )
-        self.assertThat(d, IsInstance(Deferred))
+        self.assertIsInstance(d, Deferred)
 
     @inlineCallbacks
     def test_adds_action_to_registry(self):
@@ -594,9 +594,9 @@ class TestMaybeChangePowerState(MAASTestCase):
         yield power.maybe_change_power_state(
             system_id, hostname, power_driver.name, power_change, context
         )
-        self.assertThat(
+        self.assertEqual(
+            {system_id: (power_change, sentinel.d)},
             power.power_action_registry,
-            Equals({system_id: (power_change, sentinel.d)}),
         )
 
     @inlineCallbacks

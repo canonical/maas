@@ -9,7 +9,7 @@ import re
 from unittest.mock import ANY, sentinel
 
 from testtools import ExpectedException
-from testtools.matchers import Equals, Is, IsInstance, Not
+from testtools.matchers import Equals, Is
 from twisted.internet.defer import Deferred
 from twisted.internet.protocol import connectionDone
 from twisted.internet.testing import StringTransport
@@ -45,7 +45,7 @@ class TestClient(MAASTestCase):
     def test_init(self):
         conn = DummyConnection()
         client = common.Client(conn)
-        self.assertThat(client._conn, Is(conn))
+        self.assertIs(client._conn, conn)
 
     def make_connection_and_client(self):
         conn = FakeConnectionToRegion()
@@ -55,12 +55,12 @@ class TestClient(MAASTestCase):
     def test_ident(self):
         conn, client = self.make_connection_and_client()
         conn.ident = self.getUniqueString()
-        self.assertThat(client.ident, Equals(conn.ident))
+        self.assertEqual(conn.ident, client.ident)
 
     def test_localIdent(self):
         conn, client = self.make_connection_and_client()
         conn.localIdent = self.getUniqueString()
-        self.assertThat(client.localIdent, Equals(conn.localIdent))
+        self.assertEqual(conn.localIdent, client.localIdent)
 
     def test_localIdent_for_IConnection(self):
         conn = FakeConnection()
@@ -73,7 +73,7 @@ class TestClient(MAASTestCase):
     def test_address(self):
         conn, client = self.make_connection_and_client()
         conn.address = self.getUniqueString()
-        self.assertThat(client.address, Equals(conn.address))
+        self.assertEqual(conn.address, client.address)
 
     def test_address_for_IConnection(self):
         conn = FakeConnection()
@@ -90,7 +90,7 @@ class TestClient(MAASTestCase):
         response = client(
             sentinel.command, _timeout=None, foo=sentinel.foo, bar=sentinel.bar
         )
-        self.assertThat(response, Is(sentinel.response))
+        self.assertIs(response, sentinel.response)
         self.assertThat(
             conn.callRemote,
             MockCalledOnceWith(
@@ -105,7 +105,7 @@ class TestClient(MAASTestCase):
         response = client(
             sentinel.command, _timeout=0, foo=sentinel.foo, bar=sentinel.bar
         )
-        self.assertThat(response, Is(sentinel.response))
+        self.assertIs(response, sentinel.response)
         self.assertThat(
             conn.callRemote,
             MockCalledOnceWith(
@@ -118,7 +118,7 @@ class TestClient(MAASTestCase):
         self.patch_autospec(common, "deferWithTimeout")
         common.deferWithTimeout.return_value = sentinel.response
         response = client(sentinel.command, foo=sentinel.foo, bar=sentinel.bar)
-        self.assertThat(response, Is(sentinel.response))
+        self.assertIs(response, sentinel.response)
         self.assertThat(
             common.deferWithTimeout,
             MockCalledOnceWith(
@@ -141,7 +141,7 @@ class TestClient(MAASTestCase):
             foo=sentinel.foo,
             bar=sentinel.bar,
         )
-        self.assertThat(response, Is(sentinel.response))
+        self.assertIs(response, sentinel.response)
         self.assertThat(
             common.deferWithTimeout,
             MockCalledOnceWith(
@@ -205,16 +205,16 @@ class TestClient(MAASTestCase):
 
     def test_eq__(self):
         conn, client = self.make_connection_and_client()
-        self.assertThat(client, Equals(client))
+        self.assertEqual(client, client)
         client_for_same_connection = common.Client(conn)
-        self.assertThat(client, Equals(client_for_same_connection))
+        self.assertEqual(client_for_same_connection, client)
         _, client_for_another_connection = self.make_connection_and_client()
-        self.assertThat(client, Not(Equals(client_for_another_connection)))
+        self.assertNotEqual(client_for_another_connection, client)
 
     def test_hash__(self):
         conn, client = self.make_connection_and_client()
         # The hash of a common.Client object is that of its connection.
-        self.assertThat(hash(conn), Equals(hash(client)))
+        self.assertEqual(hash(client), hash(conn))
 
 
 class TestRPCProtocol(MAASTestCase):
@@ -222,7 +222,7 @@ class TestRPCProtocol(MAASTestCase):
         protocol = common.RPCProtocol()
         self.assertThat(protocol.onConnectionMade, IsUnfiredDeferred())
         self.assertThat(protocol.onConnectionLost, IsUnfiredDeferred())
-        self.assertThat(protocol, IsInstance(amp.AMP))
+        self.assertIsInstance(protocol, amp.AMP)
 
     def test_onConnectionMade_fires_when_connection_is_made(self):
         protocol = common.RPCProtocol()
@@ -264,9 +264,9 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingResponses(MAASTestCase):
         with TwistedLoggerFixture() as logger:
             protocol.ampBoxReceived(self.box)
         # The Deferred does not have a dangling error.
-        self.assertThat(extract_result(d), Is(None))
+        self.assertIsNone(extract_result(d))
         # The transport is still connected.
-        self.assertThat(protocol.transport.disconnecting, Is(False))
+        self.assertFalse(protocol.transport.disconnecting)
         # The error has been logged.
         self.assertDocTestMatches(
             """\
@@ -324,7 +324,7 @@ class TestRPCProtocol_UnhandledErrorsWhenHandlingCommands(MAASTestCase):
                 ),
             )
         ]
-        self.assertThat(observed_boxes_sent, Equals(expected_boxes_sent))
+        self.assertEqual(expected_boxes_sent, observed_boxes_sent)
 
 
 class TestMakeCommandRef(MAASTestCase):
@@ -354,7 +354,7 @@ class TestMakeCommandRef(MAASTestCase):
         self.patch(common, "gethostname").return_value = "host"
         self.patch(common, "getpid").return_value = 1234
 
-        self.assertThat(
+        self.assertEqual(
+            "host:pid=1234:cmd=command:ask=none",
             common.make_command_ref(box),
-            Equals("host:pid=1234:cmd=command:ask=none"),
         )

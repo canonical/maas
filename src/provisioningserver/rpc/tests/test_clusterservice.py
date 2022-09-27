@@ -19,7 +19,6 @@ from testtools.matchers import (
     Equals,
     HasLength,
     Is,
-    IsInstance,
     KeysEqual,
     MatchesDict,
     MatchesListwise,
@@ -470,15 +469,15 @@ class TestClusterClientService(MAASTestCase):
 
     def test_init_sets_appropriate_instance_attributes(self):
         service = ClusterClientService(sentinel.reactor)
-        self.assertThat(service, IsInstance(TimerService))
-        self.assertThat(service.clock, Is(sentinel.reactor))
+        self.assertIsInstance(service, TimerService)
+        self.assertIs(service.clock, sentinel.reactor)
 
     def test_get_config_rpc_info_urls(self):
         maas_urls = [factory.make_simple_http_url() for _ in range(3)]
         self.useFixture(ClusterConfigurationFixture(maas_url=maas_urls))
         service = ClusterClientService(reactor)
         observed_urls = service._get_config_rpc_info_urls()
-        self.assertThat(observed_urls, Equals(maas_urls))
+        self.assertEqual(maas_urls, observed_urls)
 
     def test_get_saved_rpc_info_urls(self):
         saved_urls = [factory.make_simple_http_url() for _ in range(3)]
@@ -487,7 +486,7 @@ class TestClusterClientService(MAASTestCase):
             for url in saved_urls:
                 stream.write("%s\n" % url)
         observed_urls = service._get_saved_rpc_info_urls()
-        self.assertThat(observed_urls, Equals(saved_urls))
+        self.assertEqual(saved_urls, observed_urls)
 
     def test_update_saved_rpc_info_state(self):
         service = ClusterClientService(reactor)
@@ -509,7 +508,7 @@ class TestClusterClientService(MAASTestCase):
         }
 
         # Update the RPC state to the filesystem and info cache.
-        self.assertThat(service._rpc_info_state, Is(None))
+        self.assertIsNone(service._rpc_info_state)
         service._update_saved_rpc_info_state()
 
         # Ensure that the info state is set.
@@ -548,7 +547,7 @@ class TestClusterClientService(MAASTestCase):
         ]
         service = ClusterClientService(reactor)
         observed_urls = yield service._build_rpc_info_urls(maas_urls)
-        self.assertThat(observed_urls, Equals(expected_urls))
+        self.assertEqual(expected_urls, observed_urls)
 
     def test_doUpdate_connect_502_error_is_logged_tersely(self):
         self.fakeAgentResponse(code=502)
@@ -1172,7 +1171,7 @@ class TestClusterClientService(MAASTestCase):
         yield service.startService()
 
         self.assertThat(service._update_connections, MockNotCalled())
-        self.assertThat(service.step, Equals(service.INTERVAL_LOW))
+        self.assertEqual(service.INTERVAL_LOW, service.step)
         self.assertEqual(
             "Region is not advertising RPC endpoints. (While requesting RPC"
             " info at http://127.0.0.1/MAAS)",
@@ -1187,7 +1186,7 @@ class TestClusterClientService(MAASTestCase):
         connection.address = (":::ffff", 2222)
         service.connections.try_connections[endpoint] = connection
         service.add_connection(endpoint, connection)
-        self.assertThat(service.connections.try_connections, Equals({}))
+        self.assertEqual({}, service.connections.try_connections)
 
     def test_add_connection_adds_to_connections(self):
         service = make_inert_client_service()
@@ -1257,7 +1256,7 @@ class TestClusterClientService(MAASTestCase):
         connection = Mock()
         service.connections[endpoint] = {connection}
         service.remove_connection(endpoint, connection)
-        self.assertThat(service.connections, Equals({}))
+        self.assertEqual({}, service.connections)
 
     def test_remove_connection_lowers_recheck_interval(self):
         service = make_inert_client_service()
@@ -1449,15 +1448,15 @@ class TestClusterClientService(MAASTestCase):
         # _doUpdate completes and returns `done`.
         d_doUpdate_1.callback(sentinel.done1)
         # Both _tryUpdate calls yield the same result.
-        self.assertThat(extract_result(d_tryUpdate_1), Is(sentinel.done1))
-        self.assertThat(extract_result(d_tryUpdate_2), Is(sentinel.done1))
+        self.assertIs(extract_result(d_tryUpdate_1), sentinel.done1)
+        self.assertIs(extract_result(d_tryUpdate_2), sentinel.done1)
         # _doUpdate was called only once.
         self.assertThat(_doUpdate, MockCalledOnceWith())
 
         # The mechanism has reset and is ready to go again.
         d_tryUpdate_3 = service._tryUpdate()
         d_doUpdate_2.callback(sentinel.done2)
-        self.assertThat(extract_result(d_tryUpdate_3), Is(sentinel.done2))
+        self.assertIs(extract_result(d_tryUpdate_3), sentinel.done2)
 
     def test_getAllClients(self):
         service = ClusterClientService(Clock())
@@ -1472,7 +1471,7 @@ class TestClusterClientService(MAASTestCase):
 
     def test_getAllClients_when_there_are_no_connections(self):
         service = ClusterClientService(Clock())
-        self.assertThat(service.getAllClients(), Equals([]))
+        self.assertEqual([], service.getAllClients())
 
 
 class TestClusterClientServiceIntervals(MAASTestCase):
@@ -1607,7 +1606,7 @@ class TestClusterClient(MAASTestCase):
     def test_ident(self):
         client = self.make_running_client()
         client.eventloop = self.getUniqueString()
-        self.assertThat(client.ident, Equals(client.eventloop))
+        self.assertEqual(client.eventloop, client.ident)
 
     def test_connecting(self):
         client = self.make_running_client()
@@ -1663,7 +1662,7 @@ class TestClusterClient(MAASTestCase):
         client.makeConnection(transport)
 
         # authenticated was set to False.
-        self.assertIs(False, extract_result(client.authenticated.get()))
+        self.assertFalse(extract_result(client.authenticated.get()))
         # ready was set with AuthenticationFailed.
         self.assertRaises(
             exceptions.AuthenticationFailed, extract_result, client.ready.get()
@@ -1720,7 +1719,7 @@ class TestClusterClient(MAASTestCase):
         client.makeConnection(transport)
 
         # authenticated was set to True because it succeeded.
-        self.assertIs(True, extract_result(client.authenticated.get()))
+        self.assertTrue(extract_result(client.authenticated.get()))
         # ready was set with AuthenticationFailed.
         self.assertRaises(
             exceptions.RegistrationFailed, extract_result, client.ready.get()
@@ -1745,7 +1744,7 @@ class TestClusterClient(MAASTestCase):
         client.makeConnection(transport)
 
         # authenticated was set to True because it succeeded.
-        self.assertIs(True, extract_result(client.authenticated.get()))
+        self.assertTrue(extract_result(client.authenticated.get()))
         # ready was set with the exception we made.
         self.assertRaises(exception_type, extract_result, client.ready.get())
 
@@ -2976,7 +2975,7 @@ class TestClusterProtocol_ValidateDHCP(MAASTestCase):
                 "interfaces": interfaces,
             },
         )
-        self.assertEqual(None, response["errors"])
+        self.assertIsNone(response["errors"])
 
     @inlineCallbacks
     def test_validates_bad_dhcp_config(self):
