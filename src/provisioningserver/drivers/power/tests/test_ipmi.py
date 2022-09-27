@@ -7,7 +7,7 @@
 import random
 from unittest.mock import ANY, call, sentinel
 
-from testtools.matchers import Contains, Equals
+from testtools.matchers import Equals
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith, MockCallsMatch
@@ -165,9 +165,7 @@ class TestIPMIPowerDriver(MAASTestCase):
         )
         # The IP address is also within the command passed to
         # _issue_ipmipower_command.
-        self.assertThat(
-            driver._issue_ipmipower_command.call_args[0], Contains(ip_address)
-        )
+        self.assertIn(ip_address, driver._issue_ipmipower_command.call_args[0])
 
     def test_chassis_config_written_to_temporary_file(self):
         NamedTemporaryFile = self.patch(ipmi_module, "NamedTemporaryFile")
@@ -621,9 +619,9 @@ class TestIPMIPowerDriver(MAASTestCase):
         )
         # The IP address is also within the command passed to
         # _issue_ipmi_chassis_config_command.
-        self.assertThat(
+        self.assertIn(
+            ip_address,
             driver._issue_ipmi_chassis_config_command.call_args[0],
-            Contains(ip_address),
         )
         # The IP address is passed to _issue_ipmipower_command.
         self.assertThat(

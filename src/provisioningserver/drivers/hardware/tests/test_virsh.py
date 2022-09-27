@@ -210,7 +210,7 @@ class TestVirshSSH(MAASTestCase):
     def test_get_state_error(self):
         conn = self.configure_virshssh("error:")
         expected = conn.get_state("")
-        self.assertEqual(None, expected)
+        self.assertIsNone(expected)
 
     def test_mac_addresses_returns_list(self):
         macs = [factory.make_mac_address() for _ in range(2)]

@@ -133,7 +133,7 @@ class TestRECSPowerDriver(MAASTestCase):
         attribute = "id"
         expected = "RCU_84055620466592_BB_1_0"
         output = api.extract_from_response(response, attribute)
-        self.assertThat(output, Equals(expected))
+        self.assertEqual(expected, output)
 
     def test_get_gets_response(self):
         ip, port, username, password, node_id, context = self.make_context()
@@ -361,7 +361,7 @@ class TestRECSPowerDriver(MAASTestCase):
             ip, port, username, password, node_id
         )
         self.assertThat(mock_get_node_power_state, MockCalledOnceWith(node_id))
-        self.assertThat(state, Equals("on"))
+        self.assertEqual("on", state)
 
     def test_power_state_recs_calls_get_node_power_state_off(self):
         ip, port, username, password, node_id, context = self.make_context()
@@ -373,7 +373,7 @@ class TestRECSPowerDriver(MAASTestCase):
             ip, port, username, password, node_id
         )
         self.assertThat(mock_get_node_power_state, MockCalledOnceWith(node_id))
-        self.assertThat(state, Equals("off"))
+        self.assertEqual("off", state)
 
     def test_power_state_recs_crashes_on_http_error(self):
         ip, port, username, password, node_id, context = self.make_context()

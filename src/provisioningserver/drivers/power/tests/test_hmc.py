@@ -157,7 +157,7 @@ class TestHMCPowerDriver(MAASTestCase):
         run_hmc_command = self.patch(driver, "run_hmc_command")
         run_hmc_command.return_value = power_state
         output = driver.power_query(system_id, context)
-        self.assertThat(output, Equals(get_hmc_state(power_state)))
+        self.assertEqual(get_hmc_state(power_state), output)
 
     def test_power_query_crashes_for_connection_error(self):
         driver = HMCPowerDriver()

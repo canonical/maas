@@ -389,7 +389,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
         self.patch(driver, "power_query").return_value = self.action
         method = getattr(driver, self.action)
         result = yield method(system_id, context)
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
 
     @inlineCallbacks
     def test_success_async(self):
@@ -401,7 +401,7 @@ class TestPowerDriverPowerAction(MAASTestCase):
         )
         method = getattr(driver, self.action)
         result = yield method(system_id, context)
-        self.assertEqual(result, None)
+        self.assertIsNone(result)
         call_count = getattr(driver, "%s_called" % self.action_func)
         self.assertEqual(1, call_count)
         self.assertThat(mock_deferToThread, MockNotCalled())

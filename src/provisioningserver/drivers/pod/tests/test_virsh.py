@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from lxml import etree
 import pexpect
-from testtools.matchers import Contains, Equals
+from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
@@ -736,7 +736,7 @@ class TestVirshSSH(MAASTestCase):
     def test_get_machine_state_error(self):
         conn = self.configure_virshssh(virsh.VirshError("some error"))
         expected = conn.get_machine_state("")
-        self.assertEqual(None, expected)
+        self.assertIsNone(expected)
 
     def test_machine_mac_addresses_returns_list(self):
         macs = [factory.make_mac_address() for _ in range(2)]
@@ -754,7 +754,7 @@ class TestVirshSSH(MAASTestCase):
     def test_get_machine_interface_info_error(self):
         conn = self.configure_virshssh(virsh.VirshError("some error"))
         expected = conn.get_machine_state("")
-        self.assertEqual(None, expected)
+        self.assertIsNone(expected)
 
     def test_get_pod_cpu_count(self):
         conn = self.configure_virshssh(SAMPLE_NODEINFO)
@@ -1296,12 +1296,12 @@ class TestVirshSSH(MAASTestCase):
     def test_set_machine_autostart(self):
         conn = self.configure_virshssh("")
         expected = conn.set_machine_autostart(factory.make_name("machine"))
-        self.assertEqual(True, expected)
+        self.assertTrue(expected)
 
     def test_set_machine_autostart_error(self):
         conn = self.configure_virshssh(virsh.VirshError("some error"))
         expected = conn.poweron(factory.make_name("machine"))
-        self.assertEqual(False, expected)
+        self.assertFalse(expected)
 
     def test_configure_pxe_boot(self):
         conn = self.configure_virshssh("")
@@ -1315,9 +1315,9 @@ class TestVirshSSH(MAASTestCase):
 
         self.assertThat(NamedTemporaryFile, MockCalledOnceWith())
         self.assertThat(tmpfile.__enter__, MockCalledOnceWith())
-        self.assertThat(
+        self.assertIn(
+            b'boot dev="network"',
             tmpfile.write.call_args_list[0][0][0],
-            Contains(b'boot dev="network"'),
         )
         self.assertThat(tmpfile.flush, MockCalledOnceWith())
         self.assertThat(tmpfile.__exit__, MockCalledOnceWith(None, None, None))
@@ -1327,34 +1327,34 @@ class TestVirshSSH(MAASTestCase):
         mock_get_machine_xml = self.patch(virsh.VirshSSH, "get_machine_xml")
         mock_get_machine_xml.return_value = SAMPLE_DUMPXML_2
         expected = conn.configure_pxe_boot(factory.make_name("machine"))
-        self.assertEqual(True, expected)
+        self.assertTrue(expected)
 
     def test_configure_pxe_boot_false_no_xml(self):
         conn = self.configure_virshssh("")
         mock_get_machine_xml = self.patch(virsh.VirshSSH, "get_machine_xml")
         mock_get_machine_xml.return_value = None
         expected = conn.configure_pxe_boot(factory.make_name("machine"))
-        self.assertEqual(False, expected)
+        self.assertFalse(expected)
 
     def test_poweron(self):
         conn = self.configure_virshssh("")
         expected = conn.poweron(factory.make_name("machine"))
-        self.assertEqual(True, expected)
+        self.assertTrue(expected)
 
     def test_poweron_error(self):
         conn = self.configure_virshssh(virsh.VirshError("some error"))
         expected = conn.poweron(factory.make_name("machine"))
-        self.assertEqual(False, expected)
+        self.assertFalse(expected)
 
     def test_poweroff(self):
         conn = self.configure_virshssh("")
         expected = conn.poweroff(factory.make_name("machine"))
-        self.assertEqual(True, expected)
+        self.assertTrue(expected)
 
     def test_poweroff_error(self):
         conn = self.configure_virshssh(virsh.VirshError("some error"))
         expected = conn.poweroff(factory.make_name("machine"))
-        self.assertEqual(False, expected)
+        self.assertFalse(expected)
 
     def test_resets_locale(self):
         """

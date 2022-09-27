@@ -147,7 +147,7 @@ class TestWedgePowerDriver(MAASTestCase):
         run_wedge_command = self.patch(driver, "run_wedge_command")
         run_wedge_command.return_value = power_state
         output = driver.power_query(system_id, context)
-        self.assertThat(output, Equals(get_wedge_state(power_state)))
+        self.assertEqual(get_wedge_state(power_state), output)
 
     def test_power_query_crashes_for_connection_error(self):
         driver = WedgePowerDriver()

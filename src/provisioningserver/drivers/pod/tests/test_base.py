@@ -62,10 +62,10 @@ class TestDiscoveredClasses(MAASTestCase):
         device = DiscoveredMachineBlockDevice(
             model=None, serial=None, size=size
         )
-        self.assertEqual(None, device.model)
-        self.assertEqual(None, device.serial)
+        self.assertIsNone(device.model)
+        self.assertIsNone(device.serial)
         self.assertEqual(size, device.size)
-        self.assertEqual(None, device.id_path)
+        self.assertIsNone(device.id_path)
 
     def test_block_device_size_id_path(self):
         size = random.randint(512, 512 * 1024)
@@ -73,8 +73,8 @@ class TestDiscoveredClasses(MAASTestCase):
         device = DiscoveredMachineBlockDevice(
             model=None, serial=None, size=size, id_path=id_path
         )
-        self.assertEqual(None, device.model)
-        self.assertEqual(None, device.serial)
+        self.assertIsNone(device.model)
+        self.assertIsNone(device.serial)
         self.assertEqual(size, device.size)
         self.assertEqual(id_path, device.id_path)
 

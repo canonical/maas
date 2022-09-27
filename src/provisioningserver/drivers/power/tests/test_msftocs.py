@@ -71,7 +71,7 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         element_tag = "d"
         expected = "Test"
         output = driver.extract_from_response(response, element_tag)
-        self.assertThat(output, Equals(expected))
+        self.assertEqual(expected, output)
 
     def test_get_gets_response(self):
         driver = MicrosoftOCSPowerDriver()
@@ -257,7 +257,7 @@ class TestMicrosoftOCSPowerDriver(MAASTestCase):
         mock_extract_from_response.return_value = power_state
         self.patch(driver, "get")
         output = driver.power_query(system_id, context)
-        self.assertThat(output, Equals(get_msftocs_state(power_state)))
+        self.assertEqual(get_msftocs_state(power_state), output)
 
     def test_power_query_crashes_for_connection_error(self):
         driver = MicrosoftOCSPowerDriver()

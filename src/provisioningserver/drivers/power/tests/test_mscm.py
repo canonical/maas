@@ -203,7 +203,7 @@ class TestMSCMPowerDriver(MAASTestCase):
             "        Power State: On\r\n"
         )
         output = driver.power_query(system_id, context)
-        self.assertThat(output, Equals("on"))
+        self.assertEqual("on", output)
 
     @given(sampled_from(["Off", "Unavailable", "On"]))
     @settings(deadline=None)
@@ -218,7 +218,7 @@ class TestMSCMPowerDriver(MAASTestCase):
             "        Power State: %s\r\n" % power_state
         )
         output = driver.power_query(system_id, context)
-        self.assertThat(output, Equals(states[power_state]))
+        self.assertEqual(states[power_state], output)
 
     def test_power_query_crashes_for_connection_error(self):
         driver = MSCMPowerDriver()

@@ -213,4 +213,4 @@ class TestSeaMicroPowerDriver(MAASTestCase):
             context["system_id"], context
         )
 
-        self.assertThat(power_state, Equals("unknown"))
+        self.assertEqual("unknown", power_state)
