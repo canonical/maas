@@ -11,7 +11,7 @@ import uuid
 
 import formencode
 from testtools import ExpectedException
-from testtools.matchers import Equals, IsInstance
+from testtools.matchers import Equals
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -22,7 +22,7 @@ class TestSchema(MAASTestCase):
     """Tests for `Schema`."""
 
     def test_inherits_from_formencode(self):
-        self.assertThat(config.Schema(), IsInstance(formencode.Schema))
+        self.assertIsInstance(config.Schema(), formencode.Schema)
 
 
 class TestSchemaIterators(MAASTestCase):
@@ -57,7 +57,7 @@ class TestByteString(MAASTestCase):
     def test_converting_from_python_accepts_byte_string(self):
         example = factory.make_bytes()
         validator = config.ByteString()
-        self.assertThat(validator.from_python(example), Equals(example))
+        self.assertEqual(example, validator.from_python(example))
 
     def test_converting_from_python_rejects_non_byte_string(self):
         example = factory.make_string()
@@ -75,7 +75,7 @@ class TestByteString(MAASTestCase):
     def test_converting_to_python_accepts_byte_string(self):
         example = factory.make_bytes()
         validator = config.ByteString()
-        self.assertThat(validator.to_python(example), Equals(example))
+        self.assertEqual(example, validator.to_python(example))
 
     def test_converting_to_python_rejects_non_byte_string(self):
         example = factory.make_string()
@@ -92,7 +92,7 @@ class TestByteString(MAASTestCase):
 
     def test_empty_value(self):
         validator = config.ByteString()
-        self.assertThat(validator.to_python(None), Equals(b""))
+        self.assertEqual(b"", validator.to_python(None))
 
 
 class TestUUIDString(MAASTestCase):
@@ -123,7 +123,7 @@ class TestUnicodeString(MAASTestCase):
     def test_converting_from_python_accepts_Unicode_string(self):
         example = factory.make_string()
         validator = config.UnicodeString()
-        self.assertThat(validator.from_python(example), Equals(example))
+        self.assertEqual(example, validator.from_python(example))
 
     def test_converting_from_python_rejects_non_Uncode_string(self):
         example = factory.make_bytes()
@@ -142,7 +142,7 @@ class TestUnicodeString(MAASTestCase):
     def test_converting_to_python_accepts_Unicode_string(self):
         example = factory.make_string()
         validator = config.UnicodeString()
-        self.assertThat(validator.to_python(example), Equals(example))
+        self.assertEqual(example, validator.to_python(example))
 
     def test_converting_to_python_rejects_non_Unicode_string(self):
         example = factory.make_bytes()
@@ -160,7 +160,7 @@ class TestUnicodeString(MAASTestCase):
 
     def test_empty_value(self):
         validator = config.UnicodeString()
-        self.assertThat(validator.to_python(None), Equals(""))
+        self.assertEqual("", validator.to_python(None))
 
 
 class TestDirectory(MAASTestCase):

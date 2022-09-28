@@ -32,24 +32,24 @@ class TestUnescapeAvahiServiceName(MAASTestCase):
         result = unescape_avahi_service_name(
             "HP\\032Color\\032LaserJet\\032CP2025dn\\032\\040test\\041"
         )
-        self.assertThat(result, Equals("HP Color LaserJet CP2025dn (test)"))
+        self.assertEqual("HP Color LaserJet CP2025dn (test)", result)
 
     def test_converts_escaped_backslash(self):
         result = unescape_avahi_service_name("\\\\\\\\samba\\\\share")
-        self.assertThat(result, Equals("\\\\samba\\share"))
+        self.assertEqual("\\\\samba\\share", result)
 
     def test_converts_escaped_dot(self):
         result = unescape_avahi_service_name("example\\.com")
-        self.assertThat(result, Equals("example.com"))
+        self.assertEqual("example.com", result)
 
     def test_converts_all_types_of_escape_sequences(self):
         result = unescape_avahi_service_name(
             "HP\\032Color\\032LaserJet\\032at"
             "\\032\\\\\\\\printers\\\\color\\032\\040example\\.com\\041"
         )
-        self.assertThat(
+        self.assertEqual(
+            "HP Color LaserJet at \\\\printers\\color (example.com)",
             result,
-            Equals("HP Color LaserJet at \\\\printers\\color (example.com)"),
         )
 
 
@@ -136,7 +136,7 @@ class TestParseAvahiEvent(MAASTestCase):
         )
 
     def test_returns_none_for_malformed_input(self):
-        self.assertThat(parse_avahi_event(b";;;"), Equals(None))
+        self.assertIsNone(parse_avahi_event(b";;;"))
 
 
 def observe_mdns(*, input, output, verbose=False):
@@ -172,7 +172,7 @@ class TestObserveMDNS(MAASTestCase):
         output = io.StringIO(out.getvalue())
         lines = output.readlines()
         self.assertThat(lines, HasLength(1))
-        self.assertThat(json.loads(lines[0]), Equals(expected_result))
+        self.assertEqual(expected_result, json.loads(lines[0]))
 
     def test_skips_unimportant_events_without_verbose_enabled(self):
         out = io.StringIO()

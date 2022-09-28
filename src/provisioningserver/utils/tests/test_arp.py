@@ -128,9 +128,9 @@ class TestARP(MAASTestCase):
         Target protocol address: {pkt_target_ip}
         """
         )
-        self.assertThat(
+        self.assertEqual(
+            expected_output.format(**locals()).strip(),
             out.getvalue().strip(),
-            Equals(expected_output.format(**locals()).strip()),
         )
 
     def test_is_valid__succeeds_for_normal_packet(self):
@@ -195,10 +195,10 @@ class TestARP(MAASTestCase):
             src_mac=hex_str_to_bytes(eth_src),
             dst_mac=hex_str_to_bytes(eth_dst),
         )
-        self.assertThat(arp.source_eui, Equals(EUI(pkt_sender_mac)))
-        self.assertThat(arp.target_eui, Equals(EUI(pkt_target_mac)))
-        self.assertThat(arp.source_ip, Equals(IPAddress(pkt_sender_ip)))
-        self.assertThat(arp.target_ip, Equals(IPAddress(pkt_target_ip)))
+        self.assertEqual(EUI(pkt_sender_mac), arp.source_eui)
+        self.assertEqual(EUI(pkt_target_mac), arp.target_eui)
+        self.assertEqual(IPAddress(pkt_sender_ip), arp.source_ip)
+        self.assertEqual(IPAddress(pkt_target_ip), arp.target_ip)
 
     def test_bindings__returns_sender_for_request(self):
         pkt_sender_mac = "01:02:03:04:05:06"
@@ -352,7 +352,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         mac = EUI("00:01:02:03:04:05")
         vid = None
         event = update_bindings_and_get_event(bindings, vid, ip, mac, 0)
-        self.assertThat(bindings, Equals({(vid, ip): {"mac": mac, "time": 0}}))
+        self.assertEqual({(vid, ip): {"mac": mac, "time": 0}}, bindings)
         self.assertThat(
             event,
             Equals(
@@ -372,7 +372,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         mac = EUI("00:01:02:03:04:05")
         vid = None
         event = update_bindings_and_get_event(bindings, vid, ip, mac, 0)
-        self.assertThat(bindings, Equals({(vid, ip): {"mac": mac, "time": 0}}))
+        self.assertEqual({(vid, ip): {"mac": mac, "time": 0}}, bindings)
         self.assertThat(
             event,
             Equals(
@@ -418,9 +418,9 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         event = update_bindings_and_get_event(
             bindings, vid, ip, mac, SEEN_AGAIN_THRESHOLD
         )
-        self.assertThat(
+        self.assertEqual(
+            {(vid, ip): {"mac": mac, "time": SEEN_AGAIN_THRESHOLD}},
             bindings,
-            Equals({(vid, ip): {"mac": mac, "time": SEEN_AGAIN_THRESHOLD}}),
         )
         self.assertThat(
             event,
@@ -442,7 +442,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         vid = None
         update_bindings_and_get_event(bindings, vid, ip, mac, 0)
         event = update_bindings_and_get_event(bindings, vid, ip, mac, 1)
-        self.assertThat(bindings, Equals({(vid, ip): {"mac": mac, "time": 0}}))
+        self.assertEqual({(vid, ip): {"mac": mac, "time": 0}}, bindings)
         self.assertIsNone(event)
 
     def test_moved_binding(self):
@@ -453,9 +453,7 @@ class TestUpdateBindingsAndGetEvent(MAASTestCase):
         vid = None
         update_bindings_and_get_event(bindings, vid, ip, mac1, 0)
         event = update_bindings_and_get_event(bindings, vid, ip, mac2, 1)
-        self.assertThat(
-            bindings, Equals({(vid, ip): {"mac": mac2, "time": 1}})
-        )
+        self.assertEqual({(vid, ip): {"mac": mac2, "time": 1}}, bindings)
         self.assertThat(
             event,
             Equals(
@@ -499,9 +497,9 @@ class TestUpdateAndPrintBindings(MAASTestCase):
         out = io.StringIO()
         update_and_print_bindings(bindings, arp1, out)
         update_and_print_bindings(bindings, arp2, out)
-        self.assertThat(
+        self.assertEqual(
+            {(None, ip): {"mac": mac2, "time": SEEN_AGAIN_THRESHOLD}},
             bindings,
-            Equals({(None, ip): {"mac": mac2, "time": SEEN_AGAIN_THRESHOLD}}),
         )
         output = io.StringIO(out.getvalue())
         lines = output.readlines()

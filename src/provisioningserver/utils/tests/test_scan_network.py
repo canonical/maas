@@ -13,12 +13,7 @@ from unittest.mock import ANY, Mock
 
 from netaddr import IPNetwork
 from testtools import ExpectedException
-from testtools.matchers import (
-    AfterPreprocessing,
-    Contains,
-    Equals,
-    MatchesStructure,
-)
+from testtools.matchers import AfterPreprocessing, Equals, MatchesStructure
 
 from maastesting.factory import factory
 from maastesting.matchers import DocTestMatches, Matches, MockCalledOnceWith
@@ -396,7 +391,7 @@ class TestRunNmap(MAASTestCase):
                 preexec_fn=os.setsid,
             ),
         )
-        self.assertThat(nmap_args, Contains("--max-rate"))
+        self.assertIn("--max-rate", nmap_args)
 
 
 class TestYieldNmapParameters(MAASTestCase):

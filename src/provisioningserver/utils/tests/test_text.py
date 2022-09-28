@@ -7,7 +7,6 @@
 from itertools import repeat
 import string
 
-import hypothesis
 import hypothesis.strategies
 from testtools.matchers import Equals
 
@@ -53,19 +52,17 @@ class TestNormaliseToCommaList(MAASTestCase):
     def test_normalises_space_or_comma_list_to_comma_list(self, delimiter):
         words = [factory.make_name("word") for _ in range(5)]
         string = delimiter.join(words)
-        self.assertThat(
-            normalise_to_comma_list(string), Equals(", ".join(words))
-        )
+        self.assertEqual(", ".join(words), normalise_to_comma_list(string))
 
     @hypothesis.given(delimiters)
     def test_normalises_nothing_but_delimiter_to_empty(self, delimiter):
-        self.assertThat(normalise_to_comma_list(delimiter), Equals(""))
+        self.assertEqual("", normalise_to_comma_list(delimiter))
 
     @hypothesis.given(delimiters)
     def test_eliminates_empty_words(self, delimiter):
         word = factory.make_name("word")
-        self.assertThat(
-            normalise_to_comma_list(delimiter + word + delimiter), Equals(word)
+        self.assertEqual(
+            word, normalise_to_comma_list(delimiter + word + delimiter)
         )
 
 
@@ -130,18 +127,18 @@ class TestSplitStringList(MAASTestCase):
     def test_splits_at_delimiters(self, delimiter):
         words = [factory.make_name("word") for _ in range(5)]
         string = delimiter.join(words)
-        self.assertThat(list(split_string_list(string)), Equals(words))
+        self.assertEqual(words, list(split_string_list(string)))
 
     @hypothesis.given(delimiters)
     def test_normalises_nothing_but_delimiter_to_empty_list(self, delimiter):
-        self.assertThat(list(split_string_list(delimiter)), Equals([]))
+        self.assertEqual([], list(split_string_list(delimiter)))
 
     @hypothesis.given(delimiters)
     def test_eliminates_empty_words(self, delimiter):
         word = factory.make_name("word")
-        self.assertThat(
+        self.assertEqual(
+            [word],
             list(split_string_list(delimiter + word + delimiter)),
-            Equals([word]),
         )
 
 
@@ -149,40 +146,34 @@ class TestMakeGecosField(MAASTestCase):
     """Tests for `make_gecos_field`."""
 
     def test_returns_basic_gecos_field_without_input(self):
-        self.assertThat(make_gecos_field(), Equals(",,,,"))
+        self.assertEqual(",,,,", make_gecos_field())
 
     def test_includes_full_name(self):
-        self.assertThat(
+        self.assertEqual(
+            "Bernard Bierkeller,,,,",
             make_gecos_field(fullname="Bernard Bierkeller"),
-            Equals("Bernard Bierkeller,,,,"),
         )
 
     def test_includes_room_number(self):
         room = factory.make_name("room")
-        self.assertThat(make_gecos_field(room=room), Equals(",%s,,," % room))
+        self.assertEqual(",%s,,," % room, make_gecos_field(room=room))
 
     def test_includes_work_telephone_number(self):
         worktel = factory.make_name("worktel")
-        self.assertThat(
-            make_gecos_field(worktel=worktel), Equals(",,%s,," % worktel)
-        )
+        self.assertEqual(",,%s,," % worktel, make_gecos_field(worktel=worktel))
 
     def test_includes_home_telephone_number(self):
         hometel = factory.make_name("hometel")
-        self.assertThat(
-            make_gecos_field(hometel=hometel), Equals(",,,%s," % hometel)
-        )
+        self.assertEqual(",,,%s," % hometel, make_gecos_field(hometel=hometel))
 
     def test_includes_other_information(self):
         other = factory.make_name("other")
-        self.assertThat(
-            make_gecos_field(other=other), Equals(",,,,%s" % other)
-        )
+        self.assertEqual(",,,,%s" % other, make_gecos_field(other=other))
 
     def test_cleans_all_fields(self):
         broken = "colon : comma , non-ascii £ white-space \n\t  "
         fixed = "colon _ comma _ non-ascii ? white-space"
-        self.assertThat(
+        self.assertEqual(
+            ",".join(repeat(fixed, 5)),
             make_gecos_field(broken, broken, broken, broken, broken),
-            Equals(",".join(repeat(fixed, 5))),
         )

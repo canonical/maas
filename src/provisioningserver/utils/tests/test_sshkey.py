@@ -94,9 +94,7 @@ class _TestNormaliseOpenSSHPublicKeyCommon:
     """
 
     def test_roundtrip(self):
-        self.assertThat(
-            normalise_openssh_public_key(self.key), Equals(self.key)
-        )
+        self.assertEqual(self.key, normalise_openssh_public_key(self.key))
 
     def test_rejects_keys_of_unrecognised_type(self):
         _, rest = self.key.split(None, 1)
@@ -120,8 +118,8 @@ class _TestNormaliseOpenSSHPublicKeyCommon:
         error = self.assertRaises(
             OpenSSHKeyError, normalise_openssh_public_key, example_key
         )
-        self.assertThat(
-            str(error), Equals("Key could not be converted to RFC4716 form.")
+        self.assertEqual(
+            "Key could not be converted to RFC4716 form.", str(error)
         )
 
 
@@ -138,16 +136,14 @@ class TestNormaliseOpenSSHPublicKeyWithComments(
     def test_normalises_mixed_whitespace(self):
         parts = self.key.split()
         example_key = "  %s \t %s\n  %s\r\n" % tuple(parts)
-        self.assertThat(
-            normalise_openssh_public_key(example_key), Equals(self.key)
-        )
+        self.assertEqual(self.key, normalise_openssh_public_key(example_key))
 
     def test_normalises_mixed_whitespace_in_comments(self):
         extra_comments = factory.make_name("foo"), factory.make_name("bar")
         example_key = self.key + " \t " + " \n\r ".join(extra_comments) + "\n"
         expected_key = self.key + " " + " ".join(extra_comments)
-        self.assertThat(
-            normalise_openssh_public_key(example_key), Equals(expected_key)
+        self.assertEqual(
+            expected_key, normalise_openssh_public_key(example_key)
         )
 
 
@@ -164,6 +160,4 @@ class TestNormaliseOpenSSHPublicKeyWithoutComments(
     def test_normalises_mixed_whitespace(self):
         parts = self.key.split()
         example_key = "  %s \t %s\r\n" % tuple(parts)
-        self.assertThat(
-            normalise_openssh_public_key(example_key), Equals(self.key)
-        )
+        self.assertEqual(self.key, normalise_openssh_public_key(example_key))

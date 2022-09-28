@@ -5,7 +5,7 @@
 
 
 from testtools import ExpectedException
-from testtools.matchers import Equals, HasLength, Is
+from testtools.matchers import Equals, HasLength
 
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.constraints import (
@@ -66,29 +66,27 @@ class TestGetLabeledConstraintsMap(MAASTestCase):
 
     def test_single_value_map(self):
         result = parse_labeled_constraint_map("a:b=c")
-        self.assertThat(result, Equals({"a": {"b": ["c"]}}))
+        self.assertEqual({"a": {"b": ["c"]}}, result)
 
     def test_non_string_returns_None(self):
         result = parse_labeled_constraint_map(dict())
-        self.assertThat(result, Is(None))
+        self.assertIsNone(result)
 
     def test_empty_string_returns_empty_map(self):
         result = parse_labeled_constraint_map("")
-        self.assertThat(result, Equals({}))
+        self.assertEqual({}, result)
 
     def test_multiple_value_map(self):
         result = parse_labeled_constraint_map("a:b=c,d=e")
-        self.assertThat(result, Equals({"a": {"b": ["c"], "d": ["e"]}}))
+        self.assertEqual({"a": {"b": ["c"], "d": ["e"]}}, result)
 
     def test_multiple_value_map_with_duplicate_keys_appends_to_list(self):
         result = parse_labeled_constraint_map("a:a=abc,a=def,a=ghi")
-        self.assertThat(result, Equals({"a": {"a": ["abc", "def", "ghi"]}}))
+        self.assertEqual({"a": {"a": ["abc", "def", "ghi"]}}, result)
 
     def test_multiple_label_map(self):
         result = parse_labeled_constraint_map("foo:a=b;bar:c=d")
-        self.assertThat(
-            result, Equals({"foo": {"a": ["b"]}, "bar": {"c": ["d"]}})
-        )
+        self.assertEqual({"foo": {"a": ["b"]}, "bar": {"c": ["d"]}}, result)
 
     def test_multiple_value_map_multiple_label_map(self):
         result = parse_labeled_constraint_map("foo:a=b,c=d;bar:e=f,g=h")

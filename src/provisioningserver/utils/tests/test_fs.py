@@ -24,7 +24,6 @@ from testtools.matchers import (
     DirContains,
     DirExists,
     EndsWith,
-    Equals,
     FileExists,
     GreaterThan,
     HasLength,
@@ -373,9 +372,9 @@ class TestAtomicSymlink(MAASTestCase):
         target_path = self.make_dir()  # The target is a directory.
         link_path = os.path.join(self.make_dir(), factory.make_name("sub"))
         atomic_symlink(target_path, link_path)
-        self.assertThat(
+        self.assertEqual(
+            os.path.relpath(target_path, os.path.dirname(link_path)),
             os.readlink(link_path),
-            Equals(os.path.relpath(target_path, os.path.dirname(link_path))),
         )
         self.assertTrue(os.path.samefile(target_path, link_path))
 
@@ -536,7 +535,7 @@ class TestSudoWriteFile(MAASTestCase):
         mode = random.randint(0o000, 0o777) | 0o400  # Always u+r.
         sudo_write_file(filename, contents, mode)
         self.assertThat(filename, FileContains(contents))
-        self.assertThat(os.stat(filename).st_mode & 0o777, Equals(mode))
+        self.assertEqual(mode, os.stat(filename).st_mode & 0o777)
 
 
 class TestSudoDeleteFile(MAASTestCase):
@@ -606,7 +605,7 @@ class TestSudoWriteFileScript(MAASTestCase):
         self.script.atomic_write = create_autospec(self.script.atomic_write)
 
     def test_allowed_list_is_a_non_empty_set_of_file_names(self):
-        self.assertThat(self.script.WRITABLE_FILES, IsInstance(set))
+        self.assertIsInstance(self.script.WRITABLE_FILES, set)
         self.assertThat(self.script.WRITABLE_FILES, Not(HasLength(0)))
         self.assertThat(self.script.WRITABLE_FILES, AllMatch(IsInstance(str)))
 
@@ -634,7 +633,7 @@ class TestSudoWriteFileScript(MAASTestCase):
             )
         self.assertThat(error.code, GreaterThan(0))
         self.assertThat(self.script.atomic_write, MockNotCalled())
-        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertEqual("", stdio.getOutput())
         self.assertThat(
             stdio.getError(),
             DocTestMatches(
@@ -653,7 +652,7 @@ class TestSudoWriteFileScript(MAASTestCase):
             )
         self.assertThat(error.code, GreaterThan(0))
         self.assertThat(self.script.atomic_write, MockNotCalled())
-        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertEqual("", stdio.getOutput())
         self.assertThat(
             stdio.getError(),
             DocTestMatches(
@@ -673,7 +672,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
         self.script.atomic_delete = create_autospec(self.script.atomic_delete)
 
     def test_allowed_list_is_a_non_empty_set_of_file_names(self):
-        self.assertThat(self.script.DELETABLE_FILES, IsInstance(set))
+        self.assertIsInstance(self.script.DELETABLE_FILES, set)
         self.assertThat(self.script.DELETABLE_FILES, Not(HasLength(0)))
         self.assertThat(self.script.DELETABLE_FILES, AllMatch(IsInstance(str)))
 
@@ -703,7 +702,7 @@ class TestSudoDeleteFileScript(MAASTestCase):
             error = self.assertRaises(SystemExit, self.script.main, args)
         self.assertThat(error.code, GreaterThan(0))
         self.assertThat(self.script.atomic_delete, MockNotCalled())
-        self.assertThat(stdio.getOutput(), Equals(""))
+        self.assertEqual("", stdio.getOutput())
         self.assertThat(
             stdio.getError(),
             DocTestMatches(
@@ -850,7 +849,7 @@ class TestWriteTextFile(MAASTestCase):
         text = "\xae"
         write_text_file(path, text)
         with open(path, encoding="utf-8") as fd:
-            self.assertThat(fd.read(), Equals(text))
+            self.assertEqual(text, fd.read())
 
     def test_uses_given_encoding(self):
         path = self.make_file()
@@ -858,7 +857,7 @@ class TestWriteTextFile(MAASTestCase):
         text = "\xae"
         write_text_file(path, text, encoding="utf-16")
         with open(path, encoding="utf-16") as fd:
-            self.assertThat(fd.read(), Equals(text))
+            self.assertEqual(text, fd.read())
 
 
 class TestSystemLocks(MAASTestCase):
@@ -1081,7 +1080,7 @@ class TestNamedLock(MAASTestCase):
     def test_byte_name_is_rejected(self):
         name = factory.make_name("lock").encode("ascii")
         error = self.assertRaises(TypeError, NamedLock, name)
-        self.assertThat(str(error), Equals("Lock name must be str, not bytes"))
+        self.assertEqual("Lock name must be str, not bytes", str(error))
 
     def test_name_rejects_unacceptable_characters(self):
         # This demonstrates that validation is performed, but it is not an
@@ -1094,6 +1093,6 @@ class TestNamedLock(MAASTestCase):
         self.assertRaises(ValueError, NamedLock, "foo=bar")
         # The error message contains all of the unacceptable characters.
         error = self.assertRaises(ValueError, NamedLock, "[foo;bar]")
-        self.assertThat(
-            str(error), Equals("Lock name contains illegal characters: ;[]")
+        self.assertEqual(
+            "Lock name contains illegal characters: ;[]", str(error)
         )

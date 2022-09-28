@@ -65,9 +65,9 @@ class TestPCAP(MAASTestCase):
         stream = io.BytesIO(TESTDATA)
         pcap = PCAP(stream)
         header = pcap.global_header
-        self.assertThat(header, Equals((2712847316, 2, 4, 0, 0, 64, 1)))
+        self.assertEqual((2712847316, 2, 4, 0, 0, 64, 1), header)
         pkt1 = pcap.read()
-        self.assertThat(pkt1[0], Equals((1467058714, 931534, 60, 60)))
+        self.assertEqual((1467058714, 931534, 60, 60), pkt1[0])
         self.assertThat(
             pkt1[1],
             Equals(
@@ -78,7 +78,7 @@ class TestPCAP(MAASTestCase):
             ),
         )
         pkt2 = pcap.read()
-        self.assertThat(pkt2[0], Equals((1467058715, 380619, 60, 60)))
+        self.assertEqual((1467058715, 380619, 60, 60), pkt2[0])
         self.assertThat(
             pkt2[1],
             Equals(
@@ -104,13 +104,13 @@ class TestPCAP(MAASTestCase):
         for _ in pcap:
             count += 1
         # Expect no exception to have been thrown, and there are two packets.
-        self.assertThat(count, Equals(2))
+        self.assertEqual(2, count)
 
     def test_raises_PCAPError_for_invalid_packet_header(self):
         stream = io.BytesIO(TESTDATA_INVALID_PACKET_HEADER)
         pcap = PCAP(stream)
         header = pcap.global_header
-        self.assertThat(header, Equals((2712847316, 2, 4, 0, 0, 64, 1)))
+        self.assertEqual((2712847316, 2, 4, 0, 0, 64, 1), header)
         with ExpectedException(
             PCAPError, "Unexpected end of PCAP stream: invalid packet header."
         ):
@@ -120,7 +120,7 @@ class TestPCAP(MAASTestCase):
         stream = io.BytesIO(TESTDATA_INVALID_PACKET)
         pcap = PCAP(stream)
         header = pcap.global_header
-        self.assertThat(header, Equals((2712847316, 2, 4, 0, 0, 64, 1)))
+        self.assertEqual((2712847316, 2, 4, 0, 0, 64, 1), header)
         with ExpectedException(
             PCAPError, "Unexpected end of PCAP stream: invalid packet."
         ):

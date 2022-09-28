@@ -10,7 +10,7 @@ import os
 from unittest.mock import sentinel
 
 from fixtures import EnvironmentVariableFixture
-from testtools.matchers import DirExists, Equals, IsInstance
+from testtools.matchers import DirExists
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -149,7 +149,7 @@ class TestClassify(MAASTestCase):
 
 class TestFlatten(MAASTestCase):
     def test_returns_iterator(self):
-        self.assertThat(flatten(()), IsInstance(Iterator))
+        self.assertIsInstance(flatten(()), Iterator)
 
     def test_returns_empty_when_nothing_provided(self):
         self.assertEqual([], list(flatten([])))
@@ -222,7 +222,7 @@ class TestSortTop(MAASTestCase):
     """Tests for `sorttop`."""
 
     def assertSort(self, data, *batches):
-        self.assertThat(tuple(sorttop(data)), Equals(batches))
+        self.assertEqual(batches, tuple(sorttop(data)))
 
     def test_empty_yields_no_batches(self):
         self.assertSort({})
@@ -251,7 +251,7 @@ class TestSortTop(MAASTestCase):
         data = {1: {2, 5}, 2: {3, 4, 5}, 6: {2}}
         orig = deepcopy(data)
         self.assertSort(data, {3, 4, 5}, {2}, {1, 6})
-        self.assertThat(data, Equals(orig))
+        self.assertEqual(orig, data)
 
     def test_can_sort_non_numeric_things_too(self):
         computers = object()
@@ -300,48 +300,36 @@ class TestIsInstanceOrSubclass(MAASTestCase):
     )
 
     def test_accepts_correct_type(self):
-        self.assertThat(is_instance_or_subclass(self.foo, Foo), Equals(True))
-        self.assertThat(is_instance_or_subclass(self.bar, Bar), Equals(True))
-        self.assertThat(is_instance_or_subclass(self.baz, Baz), Equals(True))
+        self.assertTrue(is_instance_or_subclass(self.foo, Foo))
+        self.assertTrue(is_instance_or_subclass(self.bar, Bar))
+        self.assertTrue(is_instance_or_subclass(self.baz, Baz))
 
     def test_returns_false_if_object_is_not_relevant(self):
-        self.assertThat(is_instance_or_subclass("Bar", Bar), Equals(False))
+        self.assertFalse(is_instance_or_subclass("Bar", Bar))
 
     def test_accept_subclass(self):
-        self.assertThat(is_instance_or_subclass(self.baz, Bar), Equals(True))
+        self.assertTrue(is_instance_or_subclass(self.baz, Bar))
 
     def test_rejects_incorrect_type(self):
-        self.assertThat(is_instance_or_subclass(self.foo, Bar), Equals(False))
-        self.assertThat(is_instance_or_subclass(self.bar, Baz), Equals(False))
-        self.assertThat(is_instance_or_subclass(self.baz, Foo), Equals(False))
+        self.assertFalse(is_instance_or_subclass(self.foo, Bar))
+        self.assertFalse(is_instance_or_subclass(self.bar, Baz))
+        self.assertFalse(is_instance_or_subclass(self.baz, Foo))
 
     def test_accepts_tuple_or_list(self):
-        self.assertThat(
-            is_instance_or_subclass(self.foo, (Baz, Foo, Bar)), Equals(True)
-        )
-        self.assertThat(
-            is_instance_or_subclass(self.bar, (Baz, Foo)), Equals(False)
-        )
-        self.assertThat(
-            is_instance_or_subclass(self.baz, [Bar, Foo]), Equals(True)
-        )
+        self.assertTrue(is_instance_or_subclass(self.foo, (Baz, Foo, Bar)))
+        self.assertFalse(is_instance_or_subclass(self.bar, (Baz, Foo)))
+        self.assertTrue(is_instance_or_subclass(self.baz, [Bar, Foo]))
 
     def test_accepts_variable_args(self):
-        self.assertThat(
-            is_instance_or_subclass(self.foo, Baz, Foo, Bar), Equals(True)
-        )
-        self.assertThat(
-            is_instance_or_subclass(self.foo, Baz, Bar), Equals(False)
-        )
+        self.assertTrue(is_instance_or_subclass(self.foo, Baz, Foo, Bar))
+        self.assertFalse(is_instance_or_subclass(self.foo, Baz, Bar))
 
     def test_accepts_non_flat_list(self):
-        self.assertThat(
-            is_instance_or_subclass(self.foo, (Baz, (Bar, (Foo,)))),
-            Equals(True),
+        self.assertTrue(
+            is_instance_or_subclass(self.foo, (Baz, (Bar, (Foo,))))
         )
-        self.assertThat(
-            is_instance_or_subclass(self.bar, *[Baz, [Bar, [Foo]]]),
-            Equals(True),
+        self.assertTrue(
+            is_instance_or_subclass(self.bar, *[Baz, [Bar, [Foo]]])
         )
 
 

@@ -258,7 +258,7 @@ class TestGetEnvWithLocale(MAASTestCase):
             "LANGUAGE"
         ] = "C.UTF-8"
         observed = get_env_with_locale(basis)
-        self.assertThat(observed, Equals(expected))
+        self.assertEqual(expected, observed)
 
     def test_defaults_to_process_environment(self):
         name = factory.make_name("name")
@@ -343,7 +343,7 @@ class TestGetEnvWithBytesLocale(MAASTestCase):
             b"LANGUAGE"
         ] = b"C.UTF-8"
         observed = get_env_with_bytes_locale(basis)
-        self.assertThat(observed, Equals(expected))
+        self.assertEqual(expected, observed)
 
     def test_defaults_to_process_environment(self):
         name = factory.make_name("name")

@@ -125,16 +125,16 @@ class TestIPv4(MAASTestCase):
         payload = factory.make_bytes(48)
         packet = make_ipv4_packet(payload=payload)
         ipv4 = IPv4(packet)
-        self.assertThat(ipv4.is_valid(), Equals(True))
-        self.assertThat(ipv4.version, Equals(4))
-        self.assertThat(ipv4.ihl, Equals(20))
-        self.assertThat(ipv4.payload, Equals(payload))
+        self.assertTrue(ipv4.is_valid())
+        self.assertEqual(4, ipv4.version)
+        self.assertEqual(20, ipv4.ihl)
+        self.assertEqual(payload, ipv4.payload)
 
     def test_fails_for_non_ipv4_packet(self):
         payload = factory.make_bytes(48)
         packet = make_ipv4_packet(payload=payload, version=5)
         ipv4 = IPv4(packet)
-        self.assertThat(ipv4.is_valid(), Equals(False))
+        self.assertFalse(ipv4.is_valid())
         self.assertThat(
             ipv4.invalid_reason, DocTestMatches("Invalid version...")
         )
@@ -143,7 +143,7 @@ class TestIPv4(MAASTestCase):
         payload = factory.make_bytes(48)
         packet = make_ipv4_packet(payload=payload, ihl=0)
         ipv4 = IPv4(packet)
-        self.assertThat(ipv4.is_valid(), Equals(False))
+        self.assertFalse(ipv4.is_valid())
         self.assertThat(
             ipv4.invalid_reason, DocTestMatches("Invalid IPv4 IHL...")
         )
@@ -151,7 +151,7 @@ class TestIPv4(MAASTestCase):
     def test_fails_for_truncated_packet(self):
         packet = make_ipv4_packet(truncated=True)
         ipv4 = IPv4(packet)
-        self.assertThat(ipv4.is_valid(), Equals(False))
+        self.assertFalse(ipv4.is_valid())
         self.assertThat(ipv4.invalid_reason, DocTestMatches("Truncated..."))
 
 
@@ -160,16 +160,16 @@ class TestIPv6(MAASTestCase):
         payload = factory.make_bytes(48)
         packet = make_ipv6_packet(payload=payload)
         ipv6 = IPv6(packet)
-        self.assertThat(ipv6.is_valid(), Equals(True))
-        self.assertThat(ipv6.version, Equals(6))
-        self.assertThat(ipv6.packet.payload_length, Equals(len(payload)))
-        self.assertThat(ipv6.payload, Equals(payload))
+        self.assertTrue(ipv6.is_valid())
+        self.assertEqual(6, ipv6.version)
+        self.assertEqual(len(payload), ipv6.packet.payload_length)
+        self.assertEqual(payload, ipv6.payload)
 
     def test_fails_for_non_ipv6_packet(self):
         payload = factory.make_bytes(48)
         packet = make_ipv6_packet(payload=payload, version=5)
         ipv6 = IPv6(packet)
-        self.assertThat(ipv6.is_valid(), Equals(False))
+        self.assertFalse(ipv6.is_valid())
         self.assertThat(
             ipv6.invalid_reason, DocTestMatches("Invalid version...")
         )
@@ -177,7 +177,7 @@ class TestIPv6(MAASTestCase):
     def test_fails_for_truncated_packet(self):
         packet = make_ipv6_packet(truncated=True)
         ipv6 = IPv6(packet)
-        self.assertThat(ipv6.is_valid(), Equals(False))
+        self.assertFalse(ipv6.is_valid())
         self.assertThat(ipv6.invalid_reason, DocTestMatches("Truncated..."))
 
 
@@ -224,13 +224,13 @@ class TestUDP(MAASTestCase):
         payload = factory.make_bytes(48)
         packet = make_udp_packet(payload=payload)
         udp = UDP(packet)
-        self.assertThat(udp.is_valid(), Equals(True))
-        self.assertThat(udp.payload, Equals(payload))
+        self.assertTrue(udp.is_valid())
+        self.assertEqual(payload, udp.payload)
 
     def test_fails_for_truncated_udp_header(self):
         packet = make_udp_packet(truncated_header=True)
         udp = UDP(packet)
-        self.assertThat(udp.is_valid(), Equals(False))
+        self.assertFalse(udp.is_valid())
         self.assertThat(
             udp.invalid_reason, DocTestMatches("Truncated UDP header...")
         )
@@ -239,7 +239,7 @@ class TestUDP(MAASTestCase):
         payload = factory.make_bytes(48)
         packet = make_udp_packet(total_length=0, payload=payload)
         udp = UDP(packet)
-        self.assertThat(udp.is_valid(), Equals(False))
+        self.assertFalse(udp.is_valid())
         self.assertThat(
             udp.invalid_reason,
             DocTestMatches("Invalid UDP packet; got length..."),
@@ -249,7 +249,7 @@ class TestUDP(MAASTestCase):
         payload = factory.make_bytes(48)
         packet = make_udp_packet(truncated_payload=True, payload=payload)
         udp = UDP(packet)
-        self.assertThat(udp.is_valid(), Equals(False))
+        self.assertFalse(udp.is_valid())
         self.assertThat(
             udp.invalid_reason, DocTestMatches("UDP packet truncated...")
         )

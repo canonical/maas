@@ -9,7 +9,6 @@ from random import randint
 from subprocess import CalledProcessError
 import types
 
-from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 
 from maastesting.factory import factory
@@ -147,4 +146,4 @@ class TestActionScript(MAASTestCase):
             # This needs to be a no-op.
             self.patch(script_module.ActionScript, "setup")
             script(["smash"])
-        self.assertThat(self.stdio.getError(), Equals("Towel.\n"))
+        self.assertEqual("Towel.\n", self.stdio.getError())

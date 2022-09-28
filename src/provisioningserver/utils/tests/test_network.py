@@ -14,7 +14,6 @@ import netifaces
 from netifaces import AF_INET, AF_INET6, AF_LINK
 from testtools import ExpectedException
 from testtools.matchers import (
-    Contains,
     ContainsAll,
     Equals,
     HasLength,
@@ -149,49 +148,49 @@ class TestMakeNetwork(MAASTestCase):
 class TestInetNtop(MAASTestCase):
     def test_ipv4(self):
         ip = factory.make_ipv4_address()
-        self.assertThat(inet_ntop(IPAddress(ip).value), Equals(ip))
+        self.assertEqual(ip, inet_ntop(IPAddress(ip).value))
 
     def test_ipv6(self):
         ip = factory.make_ipv6_address()
-        self.assertThat(inet_ntop(IPAddress(ip).value), Equals(ip))
+        self.assertEqual(ip, inet_ntop(IPAddress(ip).value))
 
 
 class TestConversionFunctions(MAASTestCase):
     def test_bytes_to_hex(self):
-        self.assertThat(bytes_to_hex(b"\x01\xff"), Equals(b"01ff"))
-        self.assertThat(bytes_to_hex(b"\x00\x01\xff"), Equals(b"0001ff"))
+        self.assertEqual(b"01ff", bytes_to_hex(b"\x01\xff"))
+        self.assertEqual(b"0001ff", bytes_to_hex(b"\x00\x01\xff"))
 
     def test_bytes_to_int(self):
-        self.assertThat(bytes_to_int(b"\xff\xff"), Equals(65535))
-        self.assertThat(bytes_to_int(b"\xff\xff\xff"), Equals(16777215))
-        self.assertThat(
-            bytes_to_int(b"\xff\xff\xff\xff\xff\xff"), Equals(281474976710655)
+        self.assertEqual(65535, bytes_to_int(b"\xff\xff"))
+        self.assertEqual(16777215, bytes_to_int(b"\xff\xff\xff"))
+        self.assertEqual(
+            281474976710655, bytes_to_int(b"\xff\xff\xff\xff\xff\xff")
         )
 
     def test_hex_str_to_bytes(self):
-        self.assertThat(hex_str_to_bytes("0x0000"), Equals(b"\x00\x00"))
-        self.assertThat(hex_str_to_bytes("ff:ff"), Equals(b"\xff\xff"))
-        self.assertThat(hex_str_to_bytes("ff ff  "), Equals(b"\xff\xff"))
-        self.assertThat(hex_str_to_bytes("  ff-ff"), Equals(b"\xff\xff"))
-        self.assertThat(hex_str_to_bytes("ff-ff"), Equals(b"\xff\xff"))
-        self.assertThat(hex_str_to_bytes("0xffff"), Equals(b"\xff\xff"))
-        self.assertThat(hex_str_to_bytes(" 0xffff"), Equals(b"\xff\xff"))
-        self.assertThat(
+        self.assertEqual(b"\x00\x00", hex_str_to_bytes("0x0000"))
+        self.assertEqual(b"\xff\xff", hex_str_to_bytes("ff:ff"))
+        self.assertEqual(b"\xff\xff", hex_str_to_bytes("ff ff  "))
+        self.assertEqual(b"\xff\xff", hex_str_to_bytes("  ff-ff"))
+        self.assertEqual(b"\xff\xff", hex_str_to_bytes("ff-ff"))
+        self.assertEqual(b"\xff\xff", hex_str_to_bytes("0xffff"))
+        self.assertEqual(b"\xff\xff", hex_str_to_bytes(" 0xffff"))
+        self.assertEqual(
+            b"\x01\x02\x03\x04\x05\x06",
             hex_str_to_bytes("01:02:03:04:05:06"),
-            Equals(b"\x01\x02\x03\x04\x05\x06"),
         )
-        self.assertThat(
+        self.assertEqual(
+            b"\x0a\x0b\x0c\x0d\x0e\x0f",
             hex_str_to_bytes("0A:0B:0C:0D:0E:0F"),
-            Equals(b"\x0a\x0b\x0c\x0d\x0e\x0f"),
         )
-        self.assertThat(
+        self.assertEqual(
+            b"\x0a\x0b\x0c\x0d\x0e\x0f",
             hex_str_to_bytes("0a:0b:0c:0d:0e:0f"),
-            Equals(b"\x0a\x0b\x0c\x0d\x0e\x0f"),
         )
 
     def test_format_eui(self):
-        self.assertThat(
-            format_eui(EUI("0A-0B-0C-0D-0E-0F")), Equals("0a:0b:0c:0d:0e:0f")
+        self.assertEqual(
+            "0a:0b:0c:0d:0e:0f", format_eui(EUI("0A-0B-0C-0D-0E-0F"))
         )
 
 
@@ -260,7 +259,7 @@ class TestGetMACOrganization(MAASTestCase):
         mock_eui.oui.registration = Mock()
         mock_eui.oui.registration.side_effect = UnicodeError
         organization = get_eui_organization(mock_eui)
-        self.assertThat(organization, Is(None))
+        self.assertIsNone(organization)
 
     def test_get_eui_organization_returns_None_for_IndexError(self):
         mock_eui = Mock()
@@ -268,11 +267,11 @@ class TestGetMACOrganization(MAASTestCase):
         mock_eui.oui.registration = Mock()
         mock_eui.oui.registration.side_effect = IndexError
         organization = get_eui_organization(mock_eui)
-        self.assertThat(organization, Is(None))
+        self.assertIsNone(organization)
 
     def test_get_eui_organization_returns_none_for_invalid_mac(self):
         organization = get_eui_organization(EUI("FF:FF:b7:00:00:00"))
-        self.assertThat(organization, Is(None))
+        self.assertIsNone(organization)
 
 
 class TestFindMACViaARP(MAASTestCase):
@@ -726,15 +725,15 @@ class TestMAASIPSet(MAASTestCase):
                 make_iprange("10.0.0.200", "10.0.0.254"),
             ]
         )
-        self.assertThat(s, Contains("10.0.0.1"))
-        self.assertThat(s, Contains(IPAddress("10.0.0.1")))
-        self.assertThat(s, Contains(IPRange("10.0.0.1", "10.0.0.100")))
-        self.assertThat(s, Not(Contains(IPRange("10.0.0.1", "10.0.0.101"))))
-        self.assertThat(s, Not(Contains("10.0.0.101")))
-        self.assertThat(s, Not(Contains("10.0.0.199")))
-        self.assertThat(s, Contains(IPRange("10.0.0.200", "10.0.0.254")))
-        self.assertThat(s, Not(Contains(IPRange("10.0.0.99", "10.0.0.254"))))
-        self.assertThat(s, Not(Contains("10.0.0.255")))
+        self.assertIn("10.0.0.1", s)
+        self.assertIn(IPAddress("10.0.0.1"), s)
+        self.assertIn(IPRange("10.0.0.1", "10.0.0.100"), s)
+        self.assertNotIn(IPRange("10.0.0.1", "10.0.0.101"), s)
+        self.assertNotIn("10.0.0.101", s)
+        self.assertNotIn("10.0.0.199", s)
+        self.assertIn(IPRange("10.0.0.200", "10.0.0.254"), s)
+        self.assertNotIn(IPRange("10.0.0.99", "10.0.0.254"), s)
+        self.assertNotIn("10.0.0.255", s)
 
     def test_normalizes_range(self):
         addr1 = "10.0.0.1"
@@ -743,15 +742,15 @@ class TestMAASIPSet(MAASTestCase):
         range2 = make_iprange("10.0.0.4", "10.0.0.100", purpose="DHCP")
         s = MAASIPSet([range2, range1, addr1, addr2])
         for item in s:
-            self.assertThat(type(item), Equals(MAASIPRange))
-        self.assertThat(s, Contains("10.0.0.1"))
-        self.assertThat(s, Contains("10.0.0.2"))
-        self.assertThat(s, Contains("10.0.0.3"))
-        self.assertThat(s, Contains("10.0.0.4"))
-        self.assertThat(s, Contains("10.0.0.50"))
-        self.assertThat(s, Contains("10.0.0.100"))
-        self.assertThat(s, Not(Contains("10.0.0.101")))
-        self.assertThat(s, Not(Contains("10.0.0.0")))
+            self.assertEqual(MAASIPRange, type(item))
+        self.assertIn("10.0.0.1", s)
+        self.assertIn("10.0.0.2", s)
+        self.assertIn("10.0.0.3", s)
+        self.assertIn("10.0.0.4", s)
+        self.assertIn("10.0.0.50", s)
+        self.assertIn("10.0.0.100", s)
+        self.assertNotIn("10.0.0.101", s)
+        self.assertNotIn("10.0.0.0", s)
 
     def test_normalizes_ipv6_range(self):
         addr1 = "fe80::1"
@@ -762,13 +761,13 @@ class TestMAASIPSet(MAASTestCase):
         )
         s = MAASIPSet([range2, range1, addr1, addr2])
         for item in s:
-            self.assertThat(type(item), Equals(MAASIPRange))
-        self.assertThat(s, Contains("fe80::1"))
-        self.assertThat(s, Contains("fe80::2"))
-        self.assertThat(s, Contains("fe80::3"))
-        self.assertThat(s, Contains("fe80::100"))
-        self.assertThat(s, Contains("fe80::ffff:ffff:ffff:ffff"))
-        self.assertThat(s, Not(Contains("fe80::1:ffff:ffff:ffff:ffff")))
+            self.assertEqual(MAASIPRange, type(item))
+        self.assertIn("fe80::1", s)
+        self.assertIn("fe80::2", s)
+        self.assertIn("fe80::3", s)
+        self.assertIn("fe80::100", s)
+        self.assertIn("fe80::ffff:ffff:ffff:ffff", s)
+        self.assertNotIn("fe80::1:ffff:ffff:ffff:ffff", s)
 
     def test_normalizes_range_with_iprange(self):
         addr1 = "10.0.0.1"
@@ -777,15 +776,15 @@ class TestMAASIPSet(MAASTestCase):
         range2 = IPRange("10.0.0.4", "10.0.0.100")
         s = MAASIPSet([range2, range1, addr1, addr2])
         for item in s:
-            self.assertThat(type(item), Equals(MAASIPRange))
-        self.assertThat(s, Contains("10.0.0.1"))
-        self.assertThat(s, Contains("10.0.0.2"))
-        self.assertThat(s, Contains("10.0.0.3"))
-        self.assertThat(s, Contains("10.0.0.4"))
-        self.assertThat(s, Contains("10.0.0.50"))
-        self.assertThat(s, Contains("10.0.0.100"))
-        self.assertThat(s, Not(Contains("10.0.0.101")))
-        self.assertThat(s, Not(Contains("10.0.0.0")))
+            self.assertEqual(MAASIPRange, type(item))
+        self.assertIn("10.0.0.1", s)
+        self.assertIn("10.0.0.2", s)
+        self.assertIn("10.0.0.3", s)
+        self.assertIn("10.0.0.4", s)
+        self.assertIn("10.0.0.50", s)
+        self.assertIn("10.0.0.100", s)
+        self.assertNotIn("10.0.0.101", s)
+        self.assertNotIn("10.0.0.0", s)
 
     def test_calculates_simple_unused_range(self):
         addr1 = "10.0.0.2"
@@ -794,12 +793,12 @@ class TestMAASIPSet(MAASTestCase):
         range2 = IPRange("10.0.0.5", "10.0.0.100")
         s = MAASIPSet([range2, range1, addr1, addr2])
         u = s.get_unused_ranges("10.0.0.0/24")
-        self.assertThat(u, Not(Contains("10.0.0.0")))
-        self.assertThat(u, Contains("10.0.0.1"))
-        self.assertThat(u, Contains("10.0.0.101"))
-        self.assertThat(u, Contains("10.0.0.150"))
-        self.assertThat(u, Contains("10.0.0.254"))
-        self.assertThat(u, Not(Contains("10.0.0.255")))
+        self.assertNotIn("10.0.0.0", u)
+        self.assertIn("10.0.0.1", u)
+        self.assertIn("10.0.0.101", u)
+        self.assertIn("10.0.0.150", u)
+        self.assertIn("10.0.0.254", u)
+        self.assertNotIn("10.0.0.255", u)
 
     def test_calculates_simple_unused_range_with_iprange_input(self):
         addr1 = "10.0.0.1"
@@ -808,23 +807,23 @@ class TestMAASIPSet(MAASTestCase):
         range2 = IPRange("10.0.0.4", "10.0.0.100")
         s = MAASIPSet([range2, range1, addr1, addr2])
         u = s.get_unused_ranges(IPRange("10.0.0.0", "10.0.0.255"))
-        self.assertThat(u, Contains("10.0.0.0"))
-        self.assertThat(u, Contains("10.0.0.101"))
-        self.assertThat(u, Contains("10.0.0.150"))
-        self.assertThat(u, Contains("10.0.0.254"))
-        self.assertThat(u, Contains("10.0.0.255"))
+        self.assertIn("10.0.0.0", u)
+        self.assertIn("10.0.0.101", u)
+        self.assertIn("10.0.0.150", u)
+        self.assertIn("10.0.0.254", u)
+        self.assertIn("10.0.0.255", u)
 
     def test_calculates_unused_range_with_overlap(self):
         range1 = make_iprange("10.0.0.3", purpose="DNS")
         range2 = make_iprange("10.0.0.3", "10.0.0.20", purpose="DHCP")
         rangeset = MAASIPSet([range2, range1])
         u = rangeset.get_unused_ranges("10.0.0.0/24")
-        self.assertThat(u, Contains("10.0.0.1"))
-        self.assertThat(u, Contains("10.0.0.2"))
-        self.assertThat(u, Not(Contains("10.0.0.3")))
-        self.assertThat(u, Not(Contains("10.0.0.4")))
-        self.assertThat(u, Not(Contains("10.0.0.20")))
-        self.assertThat(u, Contains("10.0.0.21"))
+        self.assertIn("10.0.0.1", u)
+        self.assertIn("10.0.0.2", u)
+        self.assertNotIn("10.0.0.3", u)
+        self.assertNotIn("10.0.0.4", u)
+        self.assertNotIn("10.0.0.20", u)
+        self.assertIn("10.0.0.21", u)
 
     def test_calculates_unused_range_with_multiple_overlap(self):
         range1 = make_iprange("10.0.0.3", purpose="DNS")
@@ -834,36 +833,36 @@ class TestMAASIPSet(MAASTestCase):
         range5 = make_iprange("10.0.0.5", "10.0.0.18", purpose="DHCP")
         s = MAASIPSet([range1, range2, range3, range4, range5])
         u = s.get_unused_ranges("10.0.0.0/24")
-        self.assertThat(u, Not(Contains("10.0.0.0")))
-        self.assertThat(u, Contains("10.0.0.1"))
-        self.assertThat(u, Contains("10.0.0.2"))
-        self.assertThat(u, Not(Contains("10.0.0.3")))
-        self.assertThat(u, Not(Contains("10.0.0.4")))
-        self.assertThat(u, Not(Contains("10.0.0.5")))
-        self.assertThat(u, Not(Contains("10.0.0.6")))
-        self.assertThat(u, Not(Contains("10.0.0.10")))
-        self.assertThat(u, Not(Contains("10.0.0.18")))
-        self.assertThat(u, Not(Contains("10.0.0.19")))
-        self.assertThat(u, Not(Contains("10.0.0.20")))
-        self.assertThat(u, Contains("10.0.0.21"))
-        self.assertThat(u, Contains("10.0.0.254"))
-        self.assertThat(u, Not(Contains("10.0.0.255")))
+        self.assertNotIn("10.0.0.0", u)
+        self.assertIn("10.0.0.1", u)
+        self.assertIn("10.0.0.2", u)
+        self.assertNotIn("10.0.0.3", u)
+        self.assertNotIn("10.0.0.4", u)
+        self.assertNotIn("10.0.0.5", u)
+        self.assertNotIn("10.0.0.6", u)
+        self.assertNotIn("10.0.0.10", u)
+        self.assertNotIn("10.0.0.18", u)
+        self.assertNotIn("10.0.0.19", u)
+        self.assertNotIn("10.0.0.20", u)
+        self.assertIn("10.0.0.21", u)
+        self.assertIn("10.0.0.254", u)
+        self.assertNotIn("10.0.0.255", u)
 
     def test_deals_with_small_gaps(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_unused_ranges("10.0.0.0/24")
-        self.assertThat(u, Not(Contains("10.0.0.0")))
-        self.assertThat(u, Contains("10.0.0.1"))
-        self.assertThat(u, Not(Contains("10.0.0.2")))
-        self.assertThat(u, Contains("10.0.0.3"))
-        self.assertThat(u, Not(Contains("10.0.0.4")))
-        self.assertThat(u, Contains("10.0.0.5"))
-        self.assertThat(u, Not(Contains("10.0.0.6")))
-        self.assertThat(u, Contains("10.0.0.7"))
-        self.assertThat(u, Not(Contains("10.0.0.8")))
-        self.assertThat(u, Contains("10.0.0.9"))
-        self.assertThat(u, Contains("10.0.0.254"))
-        self.assertThat(u, Not(Contains("10.0.0.255")))
+        self.assertNotIn("10.0.0.0", u)
+        self.assertIn("10.0.0.1", u)
+        self.assertNotIn("10.0.0.2", u)
+        self.assertIn("10.0.0.3", u)
+        self.assertNotIn("10.0.0.4", u)
+        self.assertIn("10.0.0.5", u)
+        self.assertNotIn("10.0.0.6", u)
+        self.assertIn("10.0.0.7", u)
+        self.assertNotIn("10.0.0.8", u)
+        self.assertIn("10.0.0.9", u)
+        self.assertIn("10.0.0.254", u)
+        self.assertNotIn("10.0.0.255", u)
 
     def test_calculates_ipv6_unused_range(self):
         addr1 = "fe80::1"
@@ -874,16 +873,16 @@ class TestMAASIPSet(MAASTestCase):
         )
         s = MAASIPSet([range2, range1, addr1, addr2])
         u = s.get_unused_ranges("fe80::/64")
-        self.assertThat(u, Not(Contains("fe80::1")))
-        self.assertThat(u, Not(Contains("fe80::2")))
-        self.assertThat(u, Not(Contains("fe80::3")))
-        self.assertThat(u, Not(Contains("fe80::100")))
-        self.assertThat(u, Not(Contains("fe80::ffff:ffff:ffff:fffe")))
-        self.assertThat(u, Contains("fe80::ffff:ffff:ffff:ffff"))
-        self.assertThat(u, Contains("fe80::5"))
-        self.assertThat(u, Contains("fe80::50"))
-        self.assertThat(u, Contains("fe80::99"))
-        self.assertThat(u, Contains("fe80::ff"))
+        self.assertNotIn("fe80::1", u)
+        self.assertNotIn("fe80::2", u)
+        self.assertNotIn("fe80::3", u)
+        self.assertNotIn("fe80::100", u)
+        self.assertNotIn("fe80::ffff:ffff:ffff:fffe", u)
+        self.assertIn("fe80::ffff:ffff:ffff:ffff", u)
+        self.assertIn("fe80::5", u)
+        self.assertIn("fe80::50", u)
+        self.assertIn("fe80::99", u)
+        self.assertIn("fe80::ff", u)
 
     def test_calculates_ipv6_unused_range_for_huge_range(self):
         addr1 = "fe80::1"
@@ -894,32 +893,32 @@ class TestMAASIPSet(MAASTestCase):
         )
         s = MAASIPSet([range2, range1, addr1, addr2])
         u = s.get_unused_ranges("fe80::/32")
-        self.assertThat(u, Not(Contains("fe80::1")))
-        self.assertThat(u, Not(Contains("fe80::2")))
-        self.assertThat(u, Not(Contains("fe80::3")))
-        self.assertThat(u, Not(Contains("fe80::100")))
-        self.assertThat(u, Not(Contains("fe80::ffff:ffff:ffff:fffe")))
-        self.assertThat(u, Contains("fe80::ffff:ffff:ffff:ffff"))
-        self.assertThat(u, Contains("fe80::5"))
-        self.assertThat(u, Contains("fe80::50"))
-        self.assertThat(u, Contains("fe80::99"))
-        self.assertThat(u, Contains("fe80::ff"))
-        self.assertThat(u, Contains("fe80:0:ffff:ffff:ffff:ffff:ffff:ffff"))
+        self.assertNotIn("fe80::1", u)
+        self.assertNotIn("fe80::2", u)
+        self.assertNotIn("fe80::3", u)
+        self.assertNotIn("fe80::100", u)
+        self.assertNotIn("fe80::ffff:ffff:ffff:fffe", u)
+        self.assertIn("fe80::ffff:ffff:ffff:ffff", u)
+        self.assertIn("fe80::5", u)
+        self.assertIn("fe80::50", u)
+        self.assertIn("fe80::99", u)
+        self.assertIn("fe80::ff", u)
+        self.assertIn("fe80:0:ffff:ffff:ffff:ffff:ffff:ffff", u)
 
     def test_calculates_full_range(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         for ip in range(1, 254):
-            self.assertThat(u, Contains("10.0.0.%d" % ip))
-        self.assertThat(u["10.0.0.1"].purpose, Contains("unused"))
-        self.assertThat(u["10.0.0.2"].purpose, Not(Contains("unused")))
-        self.assertThat(u["10.0.0.254"].purpose, Contains("unused"))
+            self.assertIn("10.0.0.%d" % ip, u)
+        self.assertIn("unused", u["10.0.0.1"].purpose)
+        self.assertNotIn("unused", u["10.0.0.2"].purpose)
+        self.assertIn("unused", u["10.0.0.254"].purpose)
 
     def test_calculates_full_range_for_small_ipv6(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/127")
-        self.assertThat(u["2001:db8::"].purpose, Contains("unused"))
-        self.assertThat(u["2001:db8::1"].purpose, Contains("unused"))
+        self.assertIn("unused", u["2001:db8::"].purpose)
+        self.assertIn("unused", u["2001:db8::1"].purpose)
 
     def test_supports_ior(self):
         s1 = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
@@ -937,8 +936,8 @@ class TestMAASIPSet(MAASTestCase):
         # purpose), we should present them as a single entity. That is,
         # it will appear to the user as "10.0.0.1 through 10.0.0.8".
         self.assertThat(s1.ranges, HasLength(1))
-        self.assertThat(str(IPAddress(s1.first)), Equals("10.0.0.1"))
-        self.assertThat(str(IPAddress(s1.last)), Equals("10.0.0.8"))
+        self.assertEqual("10.0.0.1", str(IPAddress(s1.first)))
+        self.assertEqual("10.0.0.8", str(IPAddress(s1.last)))
 
     def test_ior_doesnt_combine_adjacent_ranges_with_different_purposes(self):
         s1 = MAASIPSet(
@@ -962,8 +961,8 @@ class TestMAASIPSet(MAASTestCase):
         # since adjacent addresses have different purposes and thus will not
         # be combined.
         self.assertThat(s1.ranges, HasLength(8))
-        self.assertThat(str(IPAddress(s1.first)), Equals("10.0.0.1"))
-        self.assertThat(str(IPAddress(s1.last)), Equals("10.0.0.8"))
+        self.assertEqual("10.0.0.1", str(IPAddress(s1.first)))
+        self.assertEqual("10.0.0.8", str(IPAddress(s1.last)))
 
 
 class TestIPRangeStatistics(MAASTestCase):
@@ -972,135 +971,135 @@ class TestIPRangeStatistics(MAASTestCase):
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
         json = stats.render_json()
-        self.assertThat(json["num_available"], Equals(250))
-        self.assertThat(json["largest_available"], Equals(246))
-        self.assertThat(json["num_unavailable"], Equals(4))
-        self.assertThat(json["usage"], Equals(float(4) / float(254)))
-        self.assertThat(json["usage_string"], Equals("2%"))
-        self.assertThat(json["available_string"], Equals("98%"))
-        self.assertThat(json, Not(Contains("ranges")))
+        self.assertEqual(250, json["num_available"])
+        self.assertEqual(246, json["largest_available"])
+        self.assertEqual(4, json["num_unavailable"])
+        self.assertEqual(float(4) / float(254), json["usage"])
+        self.assertEqual("2%", json["usage_string"])
+        self.assertEqual("98%", json["available_string"])
+        self.assertNotIn("ranges", json)
 
     def test_statistics_are_accurate_and_ranges_are_returned_if_desired(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
         json = stats.render_json(include_ranges=True)
-        self.assertThat(json["num_available"], Equals(250))
-        self.assertThat(json["largest_available"], Equals(246))
-        self.assertThat(json["num_unavailable"], Equals(4))
-        self.assertThat(json["usage"], Equals(float(4) / float(254)))
-        self.assertThat(json["usage_string"], Equals("2%"))
-        self.assertThat(json["available_string"], Equals("98%"))
-        self.assertThat(json, Contains("ranges"))
-        self.assertThat(json["ranges"], Equals(stats.ranges.render_json()))
+        self.assertEqual(250, json["num_available"])
+        self.assertEqual(246, json["largest_available"])
+        self.assertEqual(4, json["num_unavailable"])
+        self.assertEqual(float(4) / float(254), json["usage"])
+        self.assertEqual("2%", json["usage_string"])
+        self.assertEqual("98%", json["available_string"])
+        self.assertIn("ranges", json)
+        self.assertEqual(stats.ranges.render_json(), json["ranges"])
 
     def test_statistics_are_accurate_for_full_slash_32(self):
         s = MAASIPSet(["10.0.0.1"])
         u = s.get_full_range("10.0.0.1/32")
         stats = IPRangeStatistics(u)
         json = stats.render_json()
-        self.assertThat(json["num_available"], Equals(0))
-        self.assertThat(json["largest_available"], Equals(0))
-        self.assertThat(json["num_unavailable"], Equals(1))
-        self.assertThat(json["usage"], Equals(float(1) / float(1)))
-        self.assertThat(json["usage_string"], Equals("100%"))
-        self.assertThat(json["available_string"], Equals("0%"))
-        self.assertThat(json, Not(Contains("ranges")))
+        self.assertEqual(0, json["num_available"])
+        self.assertEqual(0, json["largest_available"])
+        self.assertEqual(1, json["num_unavailable"])
+        self.assertEqual(float(1) / float(1), json["usage"])
+        self.assertEqual("100%", json["usage_string"])
+        self.assertEqual("0%", json["available_string"])
+        self.assertNotIn("ranges", json)
 
     def test_statistics_are_accurate_for_empty_slash_32(self):
         s = MAASIPSet([])
         u = s.get_full_range("10.0.0.1/32")
         stats = IPRangeStatistics(u)
         json = stats.render_json()
-        self.assertThat(json["num_available"], Equals(1))
-        self.assertThat(json["largest_available"], Equals(1))
-        self.assertThat(json["num_unavailable"], Equals(0))
-        self.assertThat(json["usage"], Equals(float(0) / float(1)))
-        self.assertThat(json["usage_string"], Equals("0%"))
-        self.assertThat(json["available_string"], Equals("100%"))
-        self.assertThat(json, Not(Contains("ranges")))
+        self.assertEqual(1, json["num_available"])
+        self.assertEqual(1, json["largest_available"])
+        self.assertEqual(0, json["num_unavailable"])
+        self.assertEqual(float(0) / float(1), json["usage"])
+        self.assertEqual("0%", json["usage_string"])
+        self.assertEqual("100%", json["available_string"])
+        self.assertNotIn("ranges", json)
 
     def test_statistics_are_accurate_for_full_slash_128(self):
         s = MAASIPSet(["2001:db8::1"])
         u = s.get_full_range("2001:db8::1/128")
         stats = IPRangeStatistics(u)
         json = stats.render_json()
-        self.assertThat(json["num_available"], Equals(0))
-        self.assertThat(json["largest_available"], Equals(0))
-        self.assertThat(json["num_unavailable"], Equals(1))
-        self.assertThat(json["usage"], Equals(float(1) / float(1)))
-        self.assertThat(json["usage_string"], Equals("100%"))
-        self.assertThat(json["available_string"], Equals("0%"))
-        self.assertThat(json, Not(Contains("ranges")))
+        self.assertEqual(0, json["num_available"])
+        self.assertEqual(0, json["largest_available"])
+        self.assertEqual(1, json["num_unavailable"])
+        self.assertEqual(float(1) / float(1), json["usage"])
+        self.assertEqual("100%", json["usage_string"])
+        self.assertEqual("0%", json["available_string"])
+        self.assertNotIn("ranges", json)
 
     def test_statistics_are_accurate_for_empty_slash_128(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::1/128")
         stats = IPRangeStatistics(u)
         json = stats.render_json()
-        self.assertThat(json["num_available"], Equals(1))
-        self.assertThat(json["largest_available"], Equals(1))
-        self.assertThat(json["num_unavailable"], Equals(0))
-        self.assertThat(json["usage"], Equals(float(0) / float(1)))
-        self.assertThat(json["usage_string"], Equals("0%"))
-        self.assertThat(json["available_string"], Equals("100%"))
-        self.assertThat(json, Not(Contains("ranges")))
+        self.assertEqual(1, json["num_available"])
+        self.assertEqual(1, json["largest_available"])
+        self.assertEqual(0, json["num_unavailable"])
+        self.assertEqual(float(0) / float(1), json["usage"])
+        self.assertEqual("0%", json["usage_string"])
+        self.assertEqual("100%", json["available_string"])
+        self.assertNotIn("ranges", json)
 
     def test_statistics_are_accurate_for_empty_slash_127(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::1/127")
         stats = IPRangeStatistics(u)
         json = stats.render_json()
-        self.assertThat(json["num_available"], Equals(2))
-        self.assertThat(json["largest_available"], Equals(2))
-        self.assertThat(json["num_unavailable"], Equals(0))
-        self.assertThat(json["usage"], Equals(float(0) / float(2)))
-        self.assertThat(json["usage_string"], Equals("0%"))
-        self.assertThat(json["available_string"], Equals("100%"))
-        self.assertThat(json, Not(Contains("ranges")))
+        self.assertEqual(2, json["num_available"])
+        self.assertEqual(2, json["largest_available"])
+        self.assertEqual(0, json["num_unavailable"])
+        self.assertEqual(float(0) / float(2), json["usage"])
+        self.assertEqual("0%", json["usage_string"])
+        self.assertEqual("100%", json["available_string"])
+        self.assertNotIn("ranges", json)
 
     def test_statistics_are_accurate_for_empty_slash_31(self):
         s = MAASIPSet([])
         u = s.get_full_range("10.0.0.0/31")
         stats = IPRangeStatistics(u)
         json = stats.render_json()
-        self.assertThat(json["num_available"], Equals(2))
-        self.assertThat(json["largest_available"], Equals(2))
-        self.assertThat(json["num_unavailable"], Equals(0))
-        self.assertThat(json["usage"], Equals(float(0) / float(2)))
-        self.assertThat(json["usage_string"], Equals("0%"))
-        self.assertThat(json["available_string"], Equals("100%"))
-        self.assertThat(json, Not(Contains("ranges")))
+        self.assertEqual(2, json["num_available"])
+        self.assertEqual(2, json["largest_available"])
+        self.assertEqual(0, json["num_unavailable"])
+        self.assertEqual(float(0) / float(2), json["usage"])
+        self.assertEqual("0%", json["usage_string"])
+        self.assertEqual("100%", json["available_string"])
+        self.assertNotIn("ranges", json)
 
     def test_suggests_subnet_anycast_address_for_ipv6(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/64")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
+        self.assertEqual("2001:db8::", stats.suggested_gateway)
 
     def test_suggests_first_ip_as_default_gateway_if_available(self):
         s = MAASIPSet(["10.0.0.2", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("10.0.0.1"))
+        self.assertEqual("10.0.0.1", stats.suggested_gateway)
 
     def test_suggests_last_ip_as_default_gateway_if_needed(self):
         s = MAASIPSet(["10.0.0.1", "10.0.0.4", "10.0.0.6", "10.0.0.8"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("10.0.0.254"))
+        self.assertEqual("10.0.0.254", stats.suggested_gateway)
 
     def test_suggests_first_available_ip_as_default_gateway_if_needed(self):
         s = MAASIPSet(["10.0.0.1", "10.0.0.4", "10.0.0.6", "10.0.0.254"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("10.0.0.2"))
+        self.assertEqual("10.0.0.2", stats.suggested_gateway)
 
     def test_suggests_no_gateway_if_range_full(self):
         s = MAASIPSet(["10.0.0.1"])
         u = s.get_full_range("10.0.0.1/32")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Is(None))
+        self.assertIsNone(stats.suggested_gateway)
 
     def test_suggests_no_dynamic_range_if_dynamic_range_exists(self):
         s = MAASIPSet(
@@ -1109,111 +1108,91 @@ class TestIPRangeStatistics(MAASTestCase):
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
         json = stats.render_json(include_suggestions=True)
-        self.assertThat(stats.suggested_dynamic_range, Is(None))
-        self.assertThat(json["suggested_dynamic_range"], Is(None))
+        self.assertIsNone(stats.suggested_dynamic_range)
+        self.assertIsNone(json["suggested_dynamic_range"])
 
     def test_suggests_upper_one_fourth_range_for_dynamic_by_default(self):
         s = MAASIPSet([])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("10.0.0.1"))
+        self.assertEqual("10.0.0.1", stats.suggested_gateway)
         self.assertThat(stats.suggested_dynamic_range, HasLength(64))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.191"))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.254"))
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.255"))
-        )
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.190"))
-        )
+        self.assertIn("10.0.0.191", stats.suggested_dynamic_range)
+        self.assertIn("10.0.0.254", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.190", stats.suggested_dynamic_range)
 
     def test_suggests_half_available_if_available_less_than_one_fourth(self):
         s = MAASIPSet([MAASIPRange("10.0.0.2", "10.0.0.205")])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("10.0.0.1"))
-        self.assertThat(stats.num_available, Equals(50))
+        self.assertEqual("10.0.0.1", stats.suggested_gateway)
+        self.assertEqual(50, stats.num_available)
         self.assertThat(stats.suggested_dynamic_range, HasLength(25))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.230"))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.254"))
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.255"))
-        )
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.229"))
-        )
+        self.assertIn("10.0.0.230", stats.suggested_dynamic_range)
+        self.assertIn("10.0.0.254", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.229", stats.suggested_dynamic_range)
 
     def test_suggested_range_excludes_suggested_gateway(self):
         s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.204")])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("10.0.0.254"))
-        self.assertThat(stats.num_available, Equals(50))
+        self.assertEqual("10.0.0.254", stats.suggested_gateway)
+        self.assertEqual(50, stats.num_available)
         self.assertThat(stats.suggested_dynamic_range, HasLength(25))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.229"))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.253"))
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.255"))
-        )
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.228"))
-        )
+        self.assertIn("10.0.0.229", stats.suggested_dynamic_range)
+        self.assertIn("10.0.0.253", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.228", stats.suggested_dynamic_range)
 
     def test_suggested_range_excludes_suggested_gateway_when_gw_first(self):
         s = MAASIPSet([MAASIPRange("10.0.0.1", "10.0.0.203"), "10.0.0.254"])
         u = s.get_full_range("10.0.0.0/24")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("10.0.0.204"))
-        self.assertThat(stats.num_available, Equals(50))
+        self.assertEqual("10.0.0.204", stats.suggested_gateway)
+        self.assertEqual(50, stats.num_available)
         self.assertThat(stats.suggested_dynamic_range, HasLength(25))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.229"))
-        self.assertThat(stats.suggested_dynamic_range, Contains("10.0.0.253"))
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.255"))
-        )
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("10.0.0.228"))
-        )
+        self.assertIn("10.0.0.229", stats.suggested_dynamic_range)
+        self.assertIn("10.0.0.253", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.255", stats.suggested_dynamic_range)
+        self.assertNotIn("10.0.0.228", stats.suggested_dynamic_range)
 
     def test_suggests_upper_one_fourth_range_for_ipv6(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/64")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
+        self.assertEqual("2001:db8::", stats.suggested_gateway)
         self.assertEqual((2**64) >> 2, stats.suggested_dynamic_range.size)
-        self.assertThat(
-            stats.suggested_dynamic_range, Contains("2001:db8:0:0:c000::")
-        )
-        self.assertThat(
+        self.assertIn("2001:db8:0:0:c000::", stats.suggested_dynamic_range)
+        self.assertIn(
+            "2001:db8::ffff:ffff:ffff:ffff",
             stats.suggested_dynamic_range,
-            Contains("2001:db8::ffff:ffff:ffff:ffff"),
         )
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("2001:db8::1"))
-        )
-        self.assertThat(
+        self.assertNotIn("2001:db8::1", stats.suggested_dynamic_range)
+        self.assertNotIn(
+            "2001:db8::bfff:ffff:ffff:ffff",
             stats.suggested_dynamic_range,
-            Not(Contains("2001:db8::bfff:ffff:ffff:ffff")),
         )
 
     def test_no_suggestion_for_small_ipv6_slash_126(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/126")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
-        self.assertThat(stats.suggested_dynamic_range, Is(None))
+        self.assertEqual("2001:db8::", stats.suggested_gateway)
+        self.assertIsNone(stats.suggested_dynamic_range)
 
     def test_no_suggestion_for_small_ipv6_slash_127(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/127")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals(None))
+        self.assertIsNone(stats.suggested_gateway)
 
     def test_no_suggestion_and_no_gateway_for_small_ipv6_slash_128(self):
         s = MAASIPSet([])
         u = s.get_full_range("2001:db8::/128")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Is(None))
+        self.assertIsNone(stats.suggested_gateway)
 
     def test_suggests_half_available_for_ipv6(self):
         s = MAASIPSet(
@@ -1221,45 +1200,43 @@ class TestIPRangeStatistics(MAASTestCase):
         )
         u = s.get_full_range("2001:db8::/64")
         stats = IPRangeStatistics(u)
-        self.assertThat(stats.suggested_gateway, Equals("2001:db8::"))
-        self.assertThat(stats.num_available, Equals(255))
+        self.assertEqual("2001:db8::", stats.suggested_gateway)
+        self.assertEqual(255, stats.num_available)
         self.assertThat(stats.suggested_dynamic_range, HasLength(127))
-        self.assertThat(
+        self.assertIn(
+            "2001:db8::ffff:ffff:ffff:ff81",
             stats.suggested_dynamic_range,
-            Contains("2001:db8::ffff:ffff:ffff:ff81"),
         )
-        self.assertThat(
+        self.assertIn(
+            "2001:db8::ffff:ffff:ffff:ffff",
             stats.suggested_dynamic_range,
-            Contains("2001:db8::ffff:ffff:ffff:ffff"),
         )
-        self.assertThat(
-            stats.suggested_dynamic_range, Not(Contains("2001:db8::1"))
-        )
-        self.assertThat(
+        self.assertNotIn("2001:db8::1", stats.suggested_dynamic_range)
+        self.assertNotIn(
+            "2001:db8::ffff:ffff:ffff:ff80",
             stats.suggested_dynamic_range,
-            Not(Contains("2001:db8::ffff:ffff:ffff:ff80")),
         )
 
 
 class TestParseInteger(MAASTestCase):
     def test_parses_decimal_integer(self):
-        self.assertThat(parse_integer("0"), Equals(0))
-        self.assertThat(parse_integer("1"), Equals(1))
-        self.assertThat(parse_integer("-1"), Equals(-1))
-        self.assertThat(parse_integer("1000"), Equals(1000))
-        self.assertThat(parse_integer("10000000"), Equals(10000000))
+        self.assertEqual(0, parse_integer("0"))
+        self.assertEqual(1, parse_integer("1"))
+        self.assertEqual(-1, parse_integer("-1"))
+        self.assertEqual(1000, parse_integer("1000"))
+        self.assertEqual(10000000, parse_integer("10000000"))
 
     def test_parses_hexadecimal_integer(self):
-        self.assertThat(parse_integer("0x0"), Equals(0))
-        self.assertThat(parse_integer("0x1"), Equals(1))
-        self.assertThat(parse_integer("0x1000"), Equals(0x1000))
-        self.assertThat(parse_integer("0x10000000"), Equals(0x10000000))
+        self.assertEqual(0, parse_integer("0x0"))
+        self.assertEqual(1, parse_integer("0x1"))
+        self.assertEqual(0x1000, parse_integer("0x1000"))
+        self.assertEqual(0x10000000, parse_integer("0x10000000"))
 
     def test_parses_binary_integer(self):
-        self.assertThat(parse_integer("0b0"), Equals(0))
-        self.assertThat(parse_integer("0b1"), Equals(1))
-        self.assertThat(parse_integer("0b1000"), Equals(0b1000))
-        self.assertThat(parse_integer("0b10000000"), Equals(0b10000000))
+        self.assertEqual(0, parse_integer("0b0"))
+        self.assertEqual(1, parse_integer("0b1"))
+        self.assertEqual(0b1000, parse_integer("0b1000"))
+        self.assertEqual(0b10000000, parse_integer("0b10000000"))
 
 
 class TestGetAllInterfacesDefinition(MAASTestCase):
@@ -1845,34 +1822,34 @@ class TestGetIfnameIfdataForDestination(MAASTestCase):
         ifname, ifdata = get_ifname_ifdata_for_destination(
             "2001:db8::2", self.interfaces
         )
-        self.assertThat(ifname, Equals("eth1"))
-        self.assertThat(ifdata, Equals(self.interfaces["eth1"]))
+        self.assertEqual("eth1", ifname)
+        self.assertEqual(self.interfaces["eth1"], ifdata)
         self.get_source_address_mock.return_value = "192.168.0.1"
         ifname, ifdata = get_ifname_ifdata_for_destination(
             "192.168.0.2", self.interfaces
         )
-        self.assertThat(ifname, Equals("eth0"))
-        self.assertThat(ifdata, Equals(self.interfaces["eth0"]))
+        self.assertEqual("eth0", ifname)
+        self.assertEqual(self.interfaces["eth0"], ifdata)
         self.get_source_address_mock.return_value = "172.16.0.1"
         ifname, ifdata = get_ifname_ifdata_for_destination(
             "172.16.0.2", self.interfaces
         )
-        self.assertThat(ifname, Equals("eth1"))
-        self.assertThat(ifdata, Equals(self.interfaces["eth1"]))
+        self.assertEqual("eth1", ifname)
+        self.assertEqual(self.interfaces["eth1"], ifdata)
 
     def test_handles_loopback_addresses(self):
         self.get_source_address_mock.return_value = "127.0.0.1"
         ifname, ifdata = get_ifname_ifdata_for_destination(
             "127.0.0.1", self.interfaces
         )
-        self.assertThat(ifname, Equals("lo"))
-        self.assertThat(ifdata, Equals(LOOPBACK_INTERFACE_INFO))
+        self.assertEqual("lo", ifname)
+        self.assertEqual(LOOPBACK_INTERFACE_INFO, ifdata)
         self.get_source_address_mock.return_value = "::1"
         ifname, ifdata = get_ifname_ifdata_for_destination(
             "::1", self.interfaces
         )
-        self.assertThat(ifname, Equals("lo"))
-        self.assertThat(ifdata, Equals(LOOPBACK_INTERFACE_INFO))
+        self.assertEqual("lo", ifname)
+        self.assertEqual(LOOPBACK_INTERFACE_INFO, ifdata)
 
     def test_raises_valueerror_if_no_route_to_host(self):
         self.get_source_address_mock.return_value = None
@@ -1896,8 +1873,8 @@ class TestEnumerateAddresses(InterfaceLinksTestCase):
         )
         ip_addresses = list(enumerate_assigned_ips(interface))
         ipv4_addresses = list(enumerate_ipv4_addresses(interface))
-        self.assertThat(ip_addresses, Equals([ipv6_address, ipv4_address]))
-        self.assertThat(ipv4_addresses, Equals([ipv4_address]))
+        self.assertEqual([ipv6_address, ipv4_address], ip_addresses)
+        self.assertEqual([ipv4_address], ipv4_addresses)
 
 
 class TestGetInterfaceChildren(MAASTestCase):
@@ -1910,9 +1887,7 @@ class TestGetInterfaceChildren(MAASTestCase):
             "bond0": {"parents": ["eth0", "eth1"]},
         }
         children_map = get_interface_children(interfaces)
-        self.assertThat(
-            children_map, Equals({"eth0": {"bond0"}, "eth1": {"bond0"}})
-        )
+        self.assertEqual({"eth0": {"bond0"}, "eth1": {"bond0"}}, children_map)
 
     def test_calculates_children_from_vlan_parents(self):
         interfaces = {
@@ -1922,8 +1897,8 @@ class TestGetInterfaceChildren(MAASTestCase):
             "eth1.100": {"parents": ["eth1"]},
         }
         children_map = get_interface_children(interfaces)
-        self.assertThat(
-            children_map, Equals({"eth0": {"eth0.100"}, "eth1": {"eth1.100"}})
+        self.assertEqual(
+            {"eth0": {"eth0.100"}, "eth1": {"eth1.100"}}, children_map
         )
 
     def test_calculates_children_from_bond_and_vlan_parents(self):
@@ -1985,8 +1960,8 @@ class TestInterfaceChildren(MAASTestCase):
         eth0_children = list(
             interface_children("eth0", interfaces, children_map)
         )
-        self.assertThat(eth0_children[0].name, Equals("eth0.100"))
-        self.assertThat(eth0_children[0].data, Equals({"parents": ["eth0"]}))
+        self.assertEqual("eth0.100", eth0_children[0].name)
+        self.assertEqual({"parents": ["eth0"]}, eth0_children[0].data)
 
 
 class TestGetDefaultMonitoredInterfaces(MAASTestCase):
@@ -2076,11 +2051,11 @@ class TestIsLoopbackAddress(MAASTestCase):
     def test_handles_ipv4_loopback(self):
         network = IPNetwork("127.0.0.0/8")
         address = factory.pick_ip_in_network(network)
-        self.assertEqual(is_loopback_address(address), True)
+        self.assertTrue(is_loopback_address(address))
 
     def test_handles_ipv6_loopback(self):
         address = "::1"
-        self.assertEqual(is_loopback_address(address), True)
+        self.assertTrue(is_loopback_address(address))
 
     def test_handles_random_ipv4_address(self):
         address = factory.make_ipv4_address()
@@ -2097,7 +2072,7 @@ class TestIsLoopbackAddress(MAASTestCase):
     def test_handles_ipv6_format_ipv4_loopback(self):
         network = IPNetwork("127.0.0.0/8")
         address = factory.pick_ip_in_network(network)
-        self.assertEqual(is_loopback_address("::ffff:%s" % address), True)
+        self.assertTrue(is_loopback_address("::ffff:%s" % address))
 
     def test_handles_ipv6_format_ipv4_nonloopback(self):
         address = factory.make_ipv4_address()
@@ -2118,7 +2093,7 @@ class TestIsLoopbackAddress(MAASTestCase):
             ),
         )
         name = factory.make_name("name")
-        self.assertEqual(is_loopback_address(name), False)
+        self.assertFalse(is_loopback_address(name))
         self.assertThat(gai, MockNotCalled())
 
     def test_handles_localhost(self):
@@ -2132,7 +2107,7 @@ class TestIsLoopbackAddress(MAASTestCase):
                 ("2001:db8::1", None, 0, 1),
             ),
         )
-        self.assertEqual(is_loopback_address("localhost"), True)
+        self.assertTrue(is_loopback_address("localhost"))
         self.assertThat(gai, MockNotCalled())
 
 
@@ -2149,7 +2124,7 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
             ),
         )
         name = factory.make_name("name")
-        self.assertEqual(resolves_to_loopback_address(name), True)
+        self.assertTrue(resolves_to_loopback_address(name))
         self.assertThat(gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))
 
     def test_resolves_hostnames_non_loopback(self):
@@ -2164,7 +2139,7 @@ class TestResolvesToLoopbackAddress(MAASTestCase):
             ),
         )
         name = factory.make_name("name")
-        self.assertEqual(resolves_to_loopback_address(name), False)
+        self.assertFalse(resolves_to_loopback_address(name))
         self.assertThat(gai, MockCalledOnceWith(name, None, proto=IPPROTO_TCP))
 
 
@@ -2173,9 +2148,9 @@ class TestPreferredHostnamesSortKey(MAASTestCase):
 
     def test_sorts_flat_names(self):
         names = ("c", "b", "a", "z")
-        self.assertThat(
+        self.assertEqual(
+            ["a", "b", "c", "z"],
             sorted(names, key=preferred_hostnames_sort_key),
-            Equals(["a", "b", "c", "z"]),
         )
 
     def test_sorts_more_qualified_names_first(self):
@@ -2419,62 +2394,60 @@ class TestCoerceHostname(MAASTestCase):
 
 class TestGetSourceAddress(MAASTestCase):
     def test_accepts_ipnetwork(self):
-        self.assertThat(
-            get_source_address(IPNetwork("127.0.0.1/8")), Equals("127.0.0.1")
+        self.assertEqual(
+            "127.0.0.1", get_source_address(IPNetwork("127.0.0.1/8"))
         )
 
     def test_ipnetwork_works_for_ipv4_slash32(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "10.0.0.1"
-        self.assertThat(
-            get_source_address(IPNetwork("10.0.0.1/32")), Equals("10.0.0.1")
+        self.assertEqual(
+            "10.0.0.1", get_source_address(IPNetwork("10.0.0.1/32"))
         )
 
     def test_ipnetwork_works_for_ipv6_slash128(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "2001:67c:1560::1"
-        self.assertThat(
+        self.assertEqual(
+            "2001:67c:1560::1",
             get_source_address(IPNetwork("2001:67c:1560::/128")),
-            Equals("2001:67c:1560::1"),
         )
 
     def test_ipnetwork_works_for_ipv6_slash48(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "2001:67c:1560::1"
-        self.assertThat(
+        self.assertEqual(
+            "2001:67c:1560::1",
             get_source_address(IPNetwork("2001:67c:1560::/48")),
-            Equals("2001:67c:1560::1"),
         )
 
     def test_ipnetwork_works_for_ipv6_slash64(self):
         mock = self.patch(network_module, "get_source_address_for_ipaddress")
         mock.return_value = "2001:67c:1560::1"
-        self.assertThat(
+        self.assertEqual(
+            "2001:67c:1560::1",
             get_source_address(IPNetwork("2001:67c:1560::1/64")),
-            Equals("2001:67c:1560::1"),
         )
 
     def test_accepts_ipaddress(self):
-        self.assertThat(
-            get_source_address(IPAddress("127.0.0.1")), Equals("127.0.0.1")
+        self.assertEqual(
+            "127.0.0.1", get_source_address(IPAddress("127.0.0.1"))
         )
 
     def test_accepts_string(self):
-        self.assertThat(get_source_address("127.0.0.1"), Equals("127.0.0.1"))
+        self.assertEqual("127.0.0.1", get_source_address("127.0.0.1"))
 
     def test_converts_ipv4_mapped_ipv6_to_ipv4(self):
-        self.assertThat(
-            get_source_address("::ffff:127.0.0.1"), Equals("127.0.0.1")
-        )
+        self.assertEqual("127.0.0.1", get_source_address("::ffff:127.0.0.1"))
 
     def test_supports_ipv6(self):
-        self.assertThat(get_source_address("::1"), Equals("::1"))
+        self.assertEqual("::1", get_source_address("::1"))
 
     def test_returns_none_if_no_route_found(self):
         self.assertIsNone(get_source_address("255.255.255.255"))
 
     def test_returns_appropriate_address_for_global_ip(self):
-        self.assertThat(get_source_address("8.8.8.8"), Not(Is(None)))
+        self.assertIsNotNone(get_source_address("8.8.8.8"))
 
 
 class TestGenerateMACAddress(MAASTestCase):
@@ -2536,6 +2509,4 @@ class TestGetIfnameForLabel(MAASTestCase):
     ]
 
     def test_scenarios(self):
-        self.assertThat(
-            get_ifname_for_label(self.input), Equals(self.expected)
-        )
+        self.assertEqual(self.expected, get_ifname_for_label(self.input))

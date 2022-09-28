@@ -17,15 +17,7 @@ import time
 from unittest.mock import Mock
 from uuid import UUID, uuid1
 
-from testtools.matchers import (
-    Contains,
-    Equals,
-    HasLength,
-    Is,
-    IsInstance,
-    LessThan,
-    Not,
-)
+from testtools.matchers import HasLength, LessThan
 from testtools.testcase import ExpectedException
 
 from maastesting.factory import factory
@@ -74,10 +66,10 @@ class TestBeaconToJSON(MAASTestCase):
             test_bytes, test_version, test_type, test_payload
         )
         beacon_json = beacon_to_json(beacon)
-        self.assertThat(beacon_json["version"], Equals(test_version))
-        self.assertThat(beacon_json["type"], Equals(test_type))
-        self.assertThat(beacon_json["payload"], Equals(test_payload))
-        self.assertThat(beacon_json, Not(Contains("bytes")))
+        self.assertEqual(test_version, beacon_json["version"])
+        self.assertEqual(test_type, beacon_json["type"])
+        self.assertEqual(test_payload, beacon_json["payload"])
+        self.assertNotIn("bytes", beacon_json)
         self.assertThat(beacon_json, HasLength(3))
 
 
@@ -90,18 +82,16 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
 
     def test_returns_beaconpayload_namedtuple(self):
         beacon = create_beacon_payload("solicitation")
-        self.assertThat(beacon.bytes, IsInstance(bytes))
-        self.assertThat(beacon.payload, Is(None))
-        self.assertThat(beacon.type, Equals("solicitation"))
-        self.assertThat(beacon.version, Equals(1))
+        self.assertIsInstance(beacon.bytes, bytes)
+        self.assertIsNone(beacon.payload)
+        self.assertEqual("solicitation", beacon.type)
+        self.assertEqual(1, beacon.version)
 
     def test_succeeds_when_shared_secret_present(self):
         self.write_secret()
         beacon = create_beacon_payload("solicitation", payload={})
-        self.assertThat(beacon.type, Equals("solicitation"))
-        self.assertThat(
-            beacon.payload["type"], Equals(BEACON_TYPES["solicitation"])
-        )
+        self.assertEqual("solicitation", beacon.type)
+        self.assertEqual(BEACON_TYPES["solicitation"], beacon.payload["type"])
 
     def test_supplements_data_and_returns_complete_data(self):
         self.write_secret()
@@ -113,12 +103,10 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
         )
         # Ensure a valid UUID was added.
         self.assertIsNotNone(UUID(beacon.payload["uuid"]))
-        self.assertThat(beacon.type, Equals(random_type))
+        self.assertEqual(random_type, beacon.type)
         # The type is replicated here for authentication purposes.
-        self.assertThat(
-            beacon.payload["type"], Equals(BEACON_TYPES[random_type])
-        )
-        self.assertThat(beacon.payload[random_key], Equals(random_value))
+        self.assertEqual(BEACON_TYPES[random_type], beacon.payload["type"])
+        self.assertEqual(random_value, beacon.payload[random_key])
 
     def test_creates_packet_that_can_decode(self):
         self.write_secret()
@@ -129,8 +117,8 @@ class TestCreateBeaconPayload(SharedSecretTestCase):
             random_type, payload={random_key: random_value}
         )
         decrypted = read_beacon_payload(packet_bytes)
-        self.assertThat(decrypted.type, Equals(random_type))
-        self.assertThat(decrypted.payload[random_key], Equals(random_value))
+        self.assertEqual(random_type, decrypted.type)
+        self.assertEqual(random_value, decrypted.payload[random_key])
 
 
 def _make_beacon_payload(version=1, type_code=1, length=None, payload=None):
