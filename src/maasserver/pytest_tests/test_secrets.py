@@ -26,6 +26,16 @@ class TestSecretManagerFromDB:
         with pytest.raises(SecretNotFound):
             manager.get_composite_secret("credentials", obj=bmc)
 
+    def test_get_composite_secret_with_model_not_found_default(self):
+        bmc = factory.make_BMC()
+        manager = SecretManager()
+        assert (
+            manager.get_composite_secret(
+                "credentials", obj=bmc, default="default"
+            )
+            == "default"
+        )
+
     def test_get_composite_secret_global(self):
         Secret.objects.create(path="global/foo", value={"bar": "baz"})
         manager = SecretManager()
@@ -36,7 +46,13 @@ class TestSecretManagerFromDB:
         with pytest.raises(SecretNotFound):
             manager.get_composite_secret("foo")
 
-    def test_get_simple_with_model(self):
+    def test_get_composite_secret_global_not_found_default(self):
+        manager = SecretManager()
+        assert (
+            manager.get_composite_secret("foo", default="default") == "default"
+        )
+
+    def test_get_simple_secret_with_model(self):
         metadata = factory.make_NodeMetadata()
         Secret.objects.create(
             path=f"nodemetadata/{metadata.id}/value", value={"secret": "foo"}
@@ -44,10 +60,33 @@ class TestSecretManagerFromDB:
         manager = SecretManager()
         assert manager.get_simple_secret("value", obj=metadata) == "foo"
 
+    def test_get_simple_secret_with_model_not_found(self):
+        metadata = factory.make_NodeMetadata()
+        manager = SecretManager()
+        with pytest.raises(SecretNotFound):
+            manager.get_simple_secret("value", obj=metadata)
+
+    def test_get_simple_secret_with_model_not_found_default(self):
+        metadata = factory.make_NodeMetadata()
+        manager = SecretManager()
+        assert (
+            manager.get_simple_secret("value", obj=metadata, default="bar")
+            == "bar"
+        )
+
     def test_get_simple_secret_global(self):
         Secret.objects.create(path="global/foo", value={"secret": "bar"})
         manager = SecretManager()
         assert manager.get_simple_secret("foo") == "bar"
+
+    def get_simple_secret_global_not_found(self):
+        manager = SecretManager()
+        with pytest.raises(SecretNotFound):
+            manager.get_simple_secret("foo")
+
+    def get_simple_secret_global_not_found_default(self):
+        manager = SecretManager()
+        assert manager.get_simple_secret("foo", default="bar") == "bar"
 
     def test_set_composite_secret_with_model(self):
         bmc = factory.make_BMC()
@@ -141,6 +180,18 @@ class TestSecretManagerFromVault:
         with pytest.raises(SecretNotFound):
             manager.get_composite_secret("credentials", obj=bmc)
 
+    def test_get_composite_secret_with_model_not_found_default(
+        self, mock_vault_client
+    ):
+        bmc = factory.make_BMC()
+        manager = SecretManager(vault_client=mock_vault_client)
+        assert (
+            manager.get_composite_secret(
+                "credentials", obj=bmc, default="default"
+            )
+            == "default"
+        )
+
     def test_get_composite_secret_global(self, mock_vault_client):
         mock_vault_client.store["global/foo"] = {"bar": "baz"}
         manager = SecretManager(vault_client=mock_vault_client)
@@ -151,6 +202,14 @@ class TestSecretManagerFromVault:
         with pytest.raises(SecretNotFound):
             manager.get_composite_secret("foo")
 
+    def test_get_composite_secret_global_not_found_default(
+        self, mock_vault_client
+    ):
+        manager = SecretManager(vault_client=mock_vault_client)
+        assert (
+            manager.get_composite_secret("foo", default="default") == "default"
+        )
+
     def test_get_simple_with_model(self, mock_vault_client):
         metadata = factory.make_NodeMetadata()
         mock_vault_client.store[f"nodemetadata/{metadata.id}/value"] = {
@@ -159,10 +218,35 @@ class TestSecretManagerFromVault:
         manager = SecretManager(vault_client=mock_vault_client)
         assert manager.get_simple_secret("value", obj=metadata) == "foo"
 
+    def test_get_simple_secret_with_model_not_found(self, mock_vault_client):
+        metadata = factory.make_NodeMetadata()
+        manager = SecretManager(vault_client=mock_vault_client)
+        with pytest.raises(SecretNotFound):
+            manager.get_simple_secret("value", obj=metadata)
+
+    def test_get_simple_secret_with_model_not_found_default(
+        self, mock_vault_client
+    ):
+        metadata = factory.make_NodeMetadata()
+        manager = SecretManager(vault_client=mock_vault_client)
+        assert (
+            manager.get_simple_secret("value", obj=metadata, default="bar")
+            == "bar"
+        )
+
     def test_get_simple_secret_global(self, mock_vault_client):
         mock_vault_client.store["global/foo"] = {"secret": "bar"}
         manager = SecretManager(vault_client=mock_vault_client)
         assert manager.get_simple_secret("foo") == "bar"
+
+    def get_simple_secret_global_not_found(self, mock_vault_client):
+        manager = SecretManager(vault_client=mock_vault_client)
+        with pytest.raises(SecretNotFound):
+            manager.get_simple_secret("foo")
+
+    def get_simple_secret_global_not_found_default(self, mock_vault_client):
+        manager = SecretManager(vault_client=mock_vault_client)
+        assert manager.get_simple_secret("foo", default="bar") == "bar"
 
     def test_set_composite_secret_with_model(self, mock_vault_client):
         bmc = factory.make_BMC()

@@ -25,6 +25,9 @@ class SecretNotFound(Exception):
         super().__init__(f"Secret '{path}' not found")
 
 
+UNSET = object()
+
+
 class SecretManager:
     """Handle operations on secrets."""
 
@@ -57,25 +60,46 @@ class SecretManager:
 
         Secret.objects.filter(path=path).delete()
 
-    def get_composite_secret(self, name: str, obj: Optional[Model] = None):
+    def get_composite_secret(
+        self,
+        name: str,
+        obj: Optional[Model] = None,
+        default: Any = UNSET,
+    ):
         """Return the value for a secret.
 
         The secret can be either global or for a model instance.
         """
         path = self._get_secret_path(name, obj=obj)
-        if self._vault_client:
-            return self._get_secret_from_vault(path)
+        try:
+            if self._vault_client:
+                return self._get_secret_from_vault(path)
 
-        return self._get_secret_from_db(path)
+            return self._get_secret_from_db(path)
+        except SecretNotFound:
+            if default is UNSET:
+                raise
+            return default
 
-    def get_simple_secret(self, name: str, obj: Optional[Model] = None):
+    def get_simple_secret(
+        self,
+        name: str,
+        obj: Optional[Model] = None,
+        default: Any = UNSET,
+    ):
         """Return the value for a simple secret.
 
         Simple secrets are stored as values of a single SIMPLE_SECRET_KEY key.
 
         The secret can be either global or for a model instance.
         """
-        return self.get_composite_secret(name, obj=obj)[SIMPLE_SECRET_KEY]
+        try:
+            secret = self.get_composite_secret(name, obj=obj)
+        except SecretNotFound:
+            if default is UNSET:
+                raise
+            return default
+        return secret[SIMPLE_SECRET_KEY]
 
     def _get_secret_path(self, name: str, obj: Optional[Model] = None):
         if obj:

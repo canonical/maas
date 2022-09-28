@@ -10,7 +10,7 @@ import os
 from pytz import UTC
 
 from maasserver import locks
-from maasserver.secrets import SecretManager, SecretNotFound
+from maasserver.secrets import SecretManager
 from maasserver.utils import synchronised
 from maasserver.utils.orm import transactional, with_connection
 from maasserver.utils.threads import deferToDatabase
@@ -37,11 +37,8 @@ def get_serial():
 @transactional
 def get_shared_secret_txn():
     manager = SecretManager()
-    try:
-        secret_in_db_hex = manager.get_simple_secret("rpc-shared")
-        secret_in_db = to_bin(secret_in_db_hex) if secret_in_db_hex else None
-    except SecretNotFound:
-        secret_in_db = None
+    secret_in_db_hex = manager.get_simple_secret("rpc-shared", default=None)
+    secret_in_db = to_bin(secret_in_db_hex) if secret_in_db_hex else None
     # Load secret from the filesystem, if it exists.
     secret_on_fs = get_shared_secret_from_filesystem()
 
